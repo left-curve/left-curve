@@ -1,6 +1,6 @@
 use {
     crate::utils::setup_client_test,
-    dango_types::constants::usdc,
+    dango_types::constants::usd,
     grug::{
         BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, SearchTxClient, Signer,
     },
@@ -15,7 +15,7 @@ async fn broadcast() -> anyhow::Result<()> {
     let tx = accounts.user1.sign_transaction(
         NonEmpty::new_unchecked(vec![Message::transfer(
             accounts.user2.address.into_inner(),
-            Coins::one(usdc::DENOM.clone(), 100)?,
+            Coins::one(usd::DENOM.clone(), 100)?,
         )?]),
         MOCK_CHAIN_ID,
         1000000,

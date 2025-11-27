@@ -6,11 +6,11 @@ use grug::Udec128_24;
 ///
 /// The reason for this is to accomodate for assets with low prices and high
 /// decimal places. Let's take the SHIB token for example. It has 18 decimal
-/// places, and as I'm writing this, it's trading at 0.00001267 USDC (1.267e-5)
+/// places, and as I'm writing this, it's trading at 0.00001267 USD (1.267e-5)
 /// per token.
 ///
-/// In our DEX, prices are not represented in human units (USDC per SHIB), but
-/// in base units. For SHIB, the base unit is 1e-18 SHIB. For USDC, it's 1e-6 USDC.
+/// In our DEX, prices are not represented in human units (USD per SHIB), but
+/// in base units. For SHIB, the base unit is 1e-18 SHIB. For USD, it's 1e-6 USD.
 /// So the price would be:
 ///
 /// ```plain
@@ -29,7 +29,7 @@ use grug::Udec128_24;
 /// (2^128 - 1) / 10^24 = 3.4e+14
 /// ```
 ///
-/// Suppose ETH is trading at 4000 USDC (or in other words, 4e-15 in base units),
+/// Suppose ETH is trading at 4000 USD (or in other words, 4e-15 in base units),
 /// this corresponds to 3.4e+14 / 4e-15 = 8.5e+28 wei or 8.5e+10 ETH, way beyond
 /// the biggest order size we reasonable expect. So, 128-bit is sufficient.
 pub type Price = Udec128_24;

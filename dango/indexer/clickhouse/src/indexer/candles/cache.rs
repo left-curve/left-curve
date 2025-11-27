@@ -563,7 +563,7 @@ mod tests {
 
         let cache_key = CandleCacheKey::new(
             "bridge/btc".to_string(),
-            "bridge/usdc".to_string(),
+            "bridge/usd".to_string(),
             CandleInterval::OneSecond,
         );
 
@@ -600,7 +600,7 @@ mod tests {
     async fn when_pair_prices_are_not_in_order() -> Result<()> {
         let mut candle_cache = CandleCache::default();
 
-        let quote_denom = "bridge/usdc";
+        let quote_denom = "bridge/usd";
         let base_denom = "bridge/btc";
 
         let pair_prices = vec![
@@ -648,7 +648,7 @@ mod tests {
 
     #[tokio::test]
     async fn correct_candles_when_pair_prices_are_not_in_order() -> Result<()> {
-        let quote_denom = "bridge/usdc";
+        let quote_denom = "bridge/usd";
         let base_denom = "bridge/btc";
 
         let pair_prices = vec![
@@ -772,7 +772,7 @@ mod tests {
     async fn close_price_is_correct() -> Result<()> {
         let mut candle_cache = CandleCache::default();
 
-        let quote_denom = "bridge/usdc";
+        let quote_denom = "bridge/usd";
         let base_denom = "bridge/btc";
 
         let pair_prices = vec![
@@ -831,7 +831,7 @@ mod tests {
     async fn missing_pair_prices_creates_candles() -> Result<()> {
         let mut candle_cache = CandleCache::default();
 
-        let quote_denom = "bridge/usdc";
+        let quote_denom = "bridge/usd";
         let base_denom = "bridge/btc";
 
         let pair_prices = vec![
@@ -928,7 +928,7 @@ mod tests {
     }
 
     fn parsed_pair_prices() -> Result<Vec<PairPrice>> {
-        let quote_denom = "bridge/usdc";
+        let quote_denom = "bridge/usd";
         let base_denom = "bridge/btc";
 
         Ok(vec![

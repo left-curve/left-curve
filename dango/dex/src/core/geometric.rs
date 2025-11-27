@@ -224,8 +224,8 @@ pub fn reflect_curve(
     // We will place orders above and below this price.
     //
     // Note that we aren't computing the price in the human units, but in their
-    // base units. In other words, we don't want to know how many BTC is per USDC;
-    // we want to know how many sat (1e-8 BTC) is per 1e-6 USDC.
+    // base units. In other words, we don't want to know how many BTC is per USD;
+    // we want to know how many sat (1e-8 BTC) is per 1e-6 USD.
     let marginal_price = {
         const PRECISION: Uint128 = Uint128::new(1_000_000);
 
@@ -318,7 +318,7 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            constants::{eth, usdc},
+            constants::{eth, usd},
             oracle::PrecisionedPrice,
         },
         grug::{ResultExt, Timestamp, Udec128_24},
@@ -351,7 +351,7 @@ mod tests {
     #[test]
     fn testnet_3_halt_20251015() {
         let eth_reserve = Uint128::new(491567617626054560353243);
-        let usdc_reserve = Uint128::new(8);
+        let usd_reserve = Uint128::new(8);
 
         let (bids, asks) = reflect_curve(
             &mut OracleQuerier::new_mock(
@@ -365,7 +365,7 @@ mod tests {
                         ),
                     ),
                     (
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         PrecisionedPrice::new(
                             Udec128::from_str("0.99996229").unwrap(),
                             Timestamp::from_millis(1760513220400),
@@ -377,9 +377,9 @@ mod tests {
                 .collect(),
             ),
             &eth::DENOM,
-            &usdc::DENOM,
+            &usd::DENOM,
             eth_reserve,
-            usdc_reserve,
+            usd_reserve,
             Geometric {
                 ratio: Bounded::new(Udec128::new_percent(60)).unwrap(),
                 spacing: Udec128::from_str("0.000000000005").unwrap(),
@@ -397,6 +397,6 @@ mod tests {
         let bids_sum = bids
             .map(|(price, amount)| amount.checked_mul_dec_ceil(price).unwrap())
             .sum::<Uint128>();
-        assert!(bids_sum <= usdc_reserve);
+        assert!(bids_sum <= usd_reserve);
     }
 }

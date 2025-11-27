@@ -1,6 +1,6 @@
 use {
     dango_testing::{generate_random_key, setup_test},
-    dango_types::constants::{dango, usdc},
+    dango_types::constants::{dango, usd},
     grug::{
         Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, Inner, JsonDeExt, QuerierExt,
         ResultExt, SearchEvent, UniqueVec, btree_set, coins,
@@ -118,7 +118,7 @@ fn test_announce() {
                 },
                 coins! {
                     dango::DENOM.clone() => announce_fee,
-                    usdc::DENOM.clone()  => announce_fee,
+                    usd::DENOM.clone()  => announce_fee,
                 },
             )
             .should_fail_with_error("invalid payment");
@@ -135,7 +135,7 @@ fn test_announce() {
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                coins! { usdc::DENOM.clone() => announce_fee - 1 },
+                coins! { usd::DENOM.clone() => announce_fee - 1 },
             )
             .should_fail_with_error("insufficient validator announce fee");
     }
@@ -151,7 +151,7 @@ fn test_announce() {
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                coins! { usdc::DENOM.clone() => announce_fee },
+                coins! { usd::DENOM.clone() => announce_fee },
             )
             .should_succeed()
             .events
@@ -208,7 +208,7 @@ fn test_announce() {
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                coins! { usdc::DENOM.clone() => announce_fee },
+                coins! { usd::DENOM.clone() => announce_fee },
             )
             .should_fail_with_error("duplicate data found!");
     }
@@ -233,7 +233,7 @@ fn test_announce() {
                     validator: announcement2.validator,
                     signature: announcement2.signature,
                 },
-                coins! { usdc::DENOM.clone() => announce_fee2 },
+                coins! { usd::DENOM.clone() => announce_fee2 },
             )
             .should_succeed()
             .events
@@ -297,7 +297,7 @@ fn test_announce() {
                     validator: announcement3.validator,
                     signature: announcement3.signature,
                 },
-                coins! { usdc::DENOM.clone() => announce_fee3 },
+                coins! { usd::DENOM.clone() => announce_fee3 },
             )
             .should_succeed()
             .events
@@ -363,7 +363,7 @@ fn test_announce() {
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                coins! { usdc::DENOM.clone() => announce_fee },
+                coins! { usd::DENOM.clone() => announce_fee },
             )
             .should_fail_with_error("pubkey mismatch");
     }

@@ -3,7 +3,7 @@ use {
     dango_gateway::REVERSE_ROUTES,
     dango_testing::{HyperlaneTestSuite, TestOption, setup_test, setup_test_with_indexer},
     dango_types::{
-        constants::{sol, usdc},
+        constants::{sol, usd},
         gateway::{self, Remote},
         warp::TokenMessage,
     },
@@ -70,7 +70,7 @@ async fn sending_remote() {
         .balances()
         .record_many([&accounts.user1.address(), &contracts.taxman]);
 
-    // User1 sends USDC to Ethereum.
+    // User1 withdrawals USD,the remote being USDC on Ethereum.
     suite
         .execute(
             &mut accounts.user1,
@@ -82,7 +82,7 @@ async fn sending_remote() {
                 },
                 recipient: RECIPIENT,
             },
-            coins! { usdc::DENOM.clone() => SEND_AMOUNT },
+            coins! { usd::DENOM.clone() => SEND_AMOUNT },
         )
         .should_succeed();
 
@@ -112,19 +112,19 @@ async fn sending_remote() {
 
     // Sender should have been deducted balance.
     suite.balances().should_change(&accounts.user1, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Decreased(SEND_AMOUNT),
+        usd::DENOM.clone() => BalanceChange::Decreased(SEND_AMOUNT),
     });
 
     // Taxman should have received the fee.
     suite
         .balances()
         .should_change(&contracts.taxman, btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Increased(ETHEREUM_USDC_WITHDRAWAL_FEE),
+            usd::DENOM.clone() => BalanceChange::Increased(ETHEREUM_USDC_WITHDRAWAL_FEE),
         });
 
     // Gateway contract should not hold any of the synth token (should be burned).
     suite
-        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .query_balance(&contracts.gateway, usd::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
     // ----------------------------- Check indexer -----------------------------
@@ -180,7 +180,7 @@ fn sending_remote_incorrect_route() {
 
     const SEND_AMOUNT: u128 = 888_000_000;
 
-    // User attempts to send USDC through a wrong route (incorrct Warp address
+    // User attempts to send USD through a wrong route (incorrct Warp address
     // on Ethereum). Should fail.
     suite
         .execute(
@@ -190,11 +190,11 @@ fn sending_remote_incorrect_route() {
                 remote: ETHEREUM_WETH_REMOTE,
                 recipient: RECIPIENT,
             },
-            coins! { usdc::DENOM.clone() => SEND_AMOUNT },
+            coins! { usd::DENOM.clone() => SEND_AMOUNT },
         )
         .should_fail_with_error(StdError::data_not_found::<Addr>(
             REVERSE_ROUTES
-                .path((&usdc::DENOM, ETHEREUM_WETH_REMOTE))
+                .path((&usd::DENOM, ETHEREUM_WETH_REMOTE))
                 .storage_key(),
         ));
 }
@@ -218,7 +218,7 @@ fn sending_remote_insufficient_reserve() {
 
     const SEND_AMOUNT_AFTER_FEE: u128 = SEND_AMOUNT - SOLANA_USDC_WITHDRAWAL_FEE;
 
-    // Right now, the entire reserve of USDC is from Ethereum. User1 attempts to
+    // Right now, the entire reserve of USD is USDC from Ethereum. User1 attempts to
     // withdraw to Solana. Should fail.
     suite
         .execute(
@@ -228,14 +228,14 @@ fn sending_remote_insufficient_reserve() {
                 remote: SOLANA_USDC_REMOTE,
                 recipient: MOCK_SOLANA_RECIPIENT,
             },
-            coins! { usdc::DENOM.clone() => SEND_AMOUNT },
+            coins! { usd::DENOM.clone() => SEND_AMOUNT },
         )
         .should_fail_with_error(format!(
             "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
             contracts.warp, SOLANA_USDC_REMOTE, 0, SEND_AMOUNT_AFTER_FEE
         ));
 
-    // User2 receives some USDC so that we have sufficient reserve.
+    // User2 receives some USD so that we have sufficient reserve.
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
@@ -255,7 +255,7 @@ fn sending_remote_insufficient_reserve() {
                 remote: SOLANA_USDC_REMOTE,
                 recipient: MOCK_SOLANA_RECIPIENT,
             },
-            coins! { usdc::DENOM.clone() => SEND_AMOUNT },
+            coins! { usd::DENOM.clone() => SEND_AMOUNT },
         )
         .should_succeed();
 }

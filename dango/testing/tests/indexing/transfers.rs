@@ -4,7 +4,7 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
-        constants::usdc,
+        constants::usd,
     },
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
@@ -23,7 +23,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
             &account_factory::ExecuteMsg::RegisterAccount {
                 params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
             },
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap(),
     ];
@@ -62,7 +62,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
 
     let msg = Message::transfer(
         accounts.user1.address(),
-        Coins::one(usdc::DENOM.clone(), 123).unwrap(),
+        Coins::one(usd::DENOM.clone(), 123).unwrap(),
     )
     .unwrap();
 

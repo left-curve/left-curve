@@ -11,7 +11,7 @@ use {
         constants::{
             btc, dango, eth,
             mock::{ONE, ONE_TENTH},
-            usdc,
+            usd,
         },
         dex::{
             self, AmountOption, CreateOrderRequest, Direction, ExecuteMsg, Geometric,
@@ -43,7 +43,7 @@ use {
 fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
-    // Supply oracle prices. DANGO = $200, USDC = $1.
+    // Supply oracle prices. DANGO = $200, USD = $1.
     suite
         .execute(
             &mut accounts.owner,
@@ -54,7 +54,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
                     precision: 0,
                     timestamp: Timestamp::from_nanos(u128::MAX), // use max timestamp so the oracle price isn't rejected for being too old
                 },
-                usdc::DENOM.clone() => PriceSource::Fixed {
+                usd::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_nanos(u128::MAX),
@@ -72,9 +72,9 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             contracts.dex,
             &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 params: PairParams {
-                    lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
+                    lp_denom: Denom::from_str("dex/pool/btc/usd").unwrap(),
                     pool_type: PassiveLiquidity::Geometric(Geometric {
                         spacing: Udec128::ONE,
                         ratio: Bounded::new_unchecked(Udec128::ONE),
@@ -93,19 +93,19 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
         )
         .should_succeed();
 
-    // Add liquidity to the DANGO-USDC pool: 10 dango, 2,000 USDC (2_000_000_000 uusdc)
+    // Add liquidity to the DANGO-USD pool: 10 dango, 2,000 USD (2_000_000_000 uusd)
     suite
         .execute(
             &mut accounts.owner,
             contracts.dex,
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 10,
-                usdc::DENOM.clone() => 2_000_000_000,
+                usd::DENOM.clone() => 2_000_000_000,
             },
         )
         .should_succeed();
@@ -116,13 +116,13 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
     suite
         .query_wasm_smart(contracts.dex, dex::QueryLiquidityDepthRequest {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
             bucket_size: ONE_TENTH,
             limit: Some(10),
         })
         .should_succeed_and_equal(dex::LiquidityDepthResponse {
             bid_depth: Some(vec![(
-                Price::new(199_400_000), // 200 * (1 - 0.3%), considering 6 decimal difference between dango and usdc
+                Price::new(199_400_000), // 200 * (1 - 0.3%), considering 6 decimal difference between DANGO and USD
                 LiquidityDepth {
                     depth_base: Udec128_6::new(10), // floor(available quote liquidity / price) = floor(2_000_000_000 / 199_400_000) = 1
                     depth_quote: Udec128_6::new(1_994_000_000), // order size in base * price = 10 * 199_400_000 = 1_994_000_000
@@ -147,7 +147,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
         .should_succeed_and_equal(btree_map! {
             OrderId::from(!1) => OrdersByUserResponse {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 direction: Direction::Bid,
                 price: Price::new(199_400_000),
                 amount: Uint128::new(10),
@@ -155,7 +155,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             },
             OrderId::from(2) => OrdersByUserResponse {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 direction: Direction::Ask,
                 price: Price::new(200_600_000),
                 amount: Uint128::new(10),
@@ -171,7 +171,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates: vec![CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     price: PriceOption::Limit(NonZero::new_unchecked(Price::new(200_600_000))),
                     amount: AmountOption::Bid {
                         quote: NonZero::new_unchecked(Uint128::new(200_600_000 * 3)), // should create an order with base amount 3
@@ -180,7 +180,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
                 }],
                 cancels: None,
             },
-            coins! { usdc::DENOM.clone() => 200_600_000 * 3 },
+            coins! { usd::DENOM.clone() => 200_600_000 * 3 },
         )
         .should_succeed();
 
@@ -188,7 +188,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
     suite
         .query_wasm_smart(contracts.dex, dex::QueryLiquidityDepthRequest {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
             bucket_size: ONE_TENTH,
             limit: Some(10),
         })
@@ -214,7 +214,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
         .should_succeed_and_equal(btree_map! {
             OrderId::from(!4) => OrdersByUserResponse {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 direction: Direction::Bid,
                 price: Price::new(199_400_000),
                 amount: Uint128::new(10),
@@ -222,7 +222,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             },
             OrderId::from(5) => OrdersByUserResponse {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 direction: Direction::Ask,
                 price: Price::new(200_600_000),
                 amount: Uint128::new(10),
@@ -242,7 +242,7 @@ fn issue_6_cannot_mint_zero_lp_tokens() {
             contracts.dex,
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 minimum_output: None,
             },
             coins! {
@@ -263,12 +263,12 @@ fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
             contracts.dex,
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: eth::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 minimum_output: None,
             },
             coins! {
                 eth::DENOM.clone() => 100_000,
-                usdc::DENOM.clone() => 100_000,
+                usd::DENOM.clone() => 100_000,
             },
         )
         .should_succeed();
@@ -285,11 +285,11 @@ fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
                 route: SwapRoute::new_unchecked(
                     UniqueVec::new(vec![dex::PairId {
                         base_denom: eth::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                        quote_denom: usd::DENOM.clone(),
                     }])
                     .unwrap(),
                 ),
-                output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
+                output: NonZero::new_unchecked(Coin::new(usd::DENOM.clone(), 100).unwrap()),
             },
             coins! {
                 eth::DENOM.clone() => 103,
@@ -300,7 +300,7 @@ fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
     // Assert that the user's balance has changed correctly
     suite.balances().should_change(&accounts.user1, btree_map! {
         eth::DENOM.clone() => BalanceChange::Decreased(103),
-        usdc::DENOM.clone() => BalanceChange::Increased(100),
+        usd::DENOM.clone() => BalanceChange::Increased(100),
     });
 }
 
@@ -323,7 +323,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             contracts.dex,
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: eth::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 minimum_output: None,
             },
             Coins::new(),
@@ -336,7 +336,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             contracts.dex,
             &dex::ExecuteMsg::WithdrawLiquidity {
                 base_denom: eth::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 minimum_output: None,
             },
             Coins::new(),
@@ -351,7 +351,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
                 route: SwapRoute::new_unchecked(
                     UniqueVec::new(vec![PairId {
                         base_denom: eth::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                        quote_denom: usd::DENOM.clone(),
                     }])
                     .unwrap(),
                 ),
@@ -369,7 +369,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
                 route: SwapRoute::new_unchecked(
                     UniqueVec::new(vec![PairId {
                         base_denom: eth::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                        quote_denom: usd::DENOM.clone(),
                     }])
                     .unwrap(),
                 ),
@@ -423,7 +423,7 @@ fn issue_156_depth_quote_rounding_error() {
     let balance = suite.query_balances(&accounts.user1.address()).unwrap();
 
     let base_denom = eth::DENOM.clone();
-    let quote_denom = usdc::DENOM.clone();
+    let quote_denom = usd::DENOM.clone();
 
     let pair_info = suite
         .query_wasm_smart(contracts.dex, QueryPairRequest {
@@ -432,16 +432,16 @@ fn issue_156_depth_quote_rounding_error() {
         })
         .unwrap();
 
-    let denominator = Uint128::new(10_u128.pow(eth::DECIMAL - usdc::DECIMAL));
+    let denominator = Uint128::new(10_u128.pow(eth::DECIMAL - usd::DECIMAL));
 
     // Open a Bid order at really small price and a Ask order at a really large price
     // in order to non delete all depth from contract.
     let bid_order = CreateOrderRequest {
         base_denom: base_denom.clone(),
         quote_denom: quote_denom.clone(),
-        price: PriceOption::Limit(NonZero::new_unchecked(Price::raw(Uint128::new(1)))), /* 1e-18 USDC per wei */
+        price: PriceOption::Limit(NonZero::new_unchecked(Price::raw(Uint128::new(1)))), /* 1e-18 USD per wei */
         amount: AmountOption::Bid {
-            quote: NonZero::new_unchecked(Uint128::new(1_000_000)), // 1 USDC
+            quote: NonZero::new_unchecked(Uint128::new(1_000_000)), // 1 USD
         },
         time_in_force: TimeInForce::GoodTilCanceled,
     };
@@ -449,7 +449,7 @@ fn issue_156_depth_quote_rounding_error() {
     let ask_order = CreateOrderRequest {
         base_denom: base_denom.clone(),
         quote_denom: quote_denom.clone(),
-        price: PriceOption::Limit(NonZero::new_unchecked(Price::new(10u128.pow(10)))), /* 1e6 USDC per wei */
+        price: PriceOption::Limit(NonZero::new_unchecked(Price::new(10u128.pow(10)))), /* 1e6 USD per wei */
         amount: AmountOption::Ask {
             base: NonZero::new_unchecked(Uint128::new(1_000_000_000_000)), // 1 ETH
         },
@@ -633,9 +633,9 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             dex: DexOption {
                 pairs: vec![PairUpdate {
                     base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        lp_denom: Denom::from_str("dex/pool/dango/usd").unwrap(),
                         pool_type: PassiveLiquidity::Geometric(Geometric {
                             spacing: Udec128::new_percent(1),
                             ratio: Bounded::new_unchecked(Udec128::new(1)),
@@ -655,7 +655,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
                         precision: 0,
                         timestamp: Timestamp::from_nanos(u128::MAX),
                     },
-                    usdc::DENOM.clone() => PriceSource::Fixed {
+                    usd::DENOM.clone() => PriceSource::Fixed {
                         humanized_price: Udec128::new(1),
                         precision: 0,
                         timestamp: Timestamp::from_nanos(u128::MAX),
@@ -673,12 +673,12 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             contracts.dex,
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 5,
-                usdc::DENOM.clone() => 1000,
+                usd::DENOM.clone() => 1000,
             },
         )
         .should_succeed();
@@ -692,14 +692,14 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
                 creates: vec![
                     CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         Direction::Bid,
                         NonZero::new_unchecked(Price::new(195)),
                         NonZero::new_unchecked(Uint128::new(195)),
                     ),
                     CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         Direction::Ask,
                         NonZero::new_unchecked(Price::new(205)),
                         NonZero::new_unchecked(Uint128::new(1)),
@@ -709,7 +709,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             },
             coins! {
                 dango::DENOM.clone() => 1,
-                usdc::DENOM.clone() => 195,
+                usd::DENOM.clone() => 195,
             },
         )
         .should_succeed();
@@ -734,18 +734,18 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
         .query_balance(&contracts.dex, dango::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(5 + 1));
     suite
-        .query_balance(&contracts.dex, usdc::DENOM.clone())
+        .query_balance(&contracts.dex, usd::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(1000 + 195));
 
     // Check the pool's reserves. Should equal the liquidity provided.
     suite
         .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
         })
         .should_succeed_and_equal(CoinPair::new_unchecked(
             Coin {
-                denom: usdc::DENOM.clone(),
+                denom: usd::DENOM.clone(),
                 amount: Uint128::new(1000),
             },
             Coin {
@@ -758,7 +758,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
     suite
         .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
             start_after: None,
             limit: None,
         })
@@ -815,22 +815,22 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
     // Ensure token balances and in/outflows.
     suite.balances().should_change(&contracts.dex, btree_map! {
         dango::DENOM.clone() => BalanceChange::Decreased(1),
-        usdc::DENOM.clone() => BalanceChange::Decreased(195),
+        usd::DENOM.clone() => BalanceChange::Decreased(195),
     });
     suite.balances().should_change(&accounts.user1, btree_map! {
         dango::DENOM.clone() => BalanceChange::Increased(1),
-        usdc::DENOM.clone() => BalanceChange::Increased(195),
+        usd::DENOM.clone() => BalanceChange::Increased(195),
     });
 
     // Ensure reserves are unchanged.
     suite
         .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
         })
         .should_succeed_and_equal(CoinPair::new_unchecked(
             Coin {
-                denom: usdc::DENOM.clone(),
+                denom: usd::DENOM.clone(),
                 amount: Uint128::new(1000),
             },
             Coin {
@@ -843,7 +843,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
     suite
         .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
             start_after: None,
             limit: None,
         })
@@ -862,7 +862,7 @@ fn issue_233_minimum_order_size_cannot_be_circumvented_for_ask_orders() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates: vec![CreateOrderRequest::new_limit(
                     dango::DENOM.clone(),
-                    usdc::DENOM.clone(),
+                    usd::DENOM.clone(),
                     Direction::Ask,
                     NonZero::new_unchecked(Price::new(50)),
                     NonZero::new_unchecked(Uint128::new(1)),
@@ -885,12 +885,12 @@ fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
             contracts.dex,
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 1000,
-                usdc::DENOM.clone() => 5,
+                usd::DENOM.clone() => 5,
             },
         )
         .should_succeed();
@@ -906,7 +906,7 @@ fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
                     precision: 0,
                     timestamp: Timestamp::from_nanos(0),
                 },
-                usdc::DENOM.clone() => oracle::PriceSource::Fixed {
+                usd::DENOM.clone() => oracle::PriceSource::Fixed {
                     humanized_price: Udec128::new(1),
                     precision: 0,
                     timestamp: Timestamp::from_nanos(0),
@@ -920,9 +920,9 @@ fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
     suite
         .query_wasm_smart(contracts.dex, dex::QuerySimulateProvideLiquidityRequest {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
             deposit: CoinPair::new_unchecked(
-                Coin::new(usdc::DENOM.clone(), 1000).unwrap(),
+                Coin::new(usd::DENOM.clone(), 1000).unwrap(),
                 Coin::new(dango::DENOM.clone(), 5).unwrap(),
             ),
         })
@@ -942,12 +942,12 @@ fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
             contracts.dex,
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 100_000,
-                usdc::DENOM.clone() => 100_000,
+                usd::DENOM.clone() => 100_000,
             },
         )
         .should_succeed();
@@ -959,7 +959,7 @@ fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountOut {
                 route: SwapRoute::new_unchecked(UniqueVec::new_unchecked(vec![])),
-                output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
+                output: NonZero::new_unchecked(Coin::new(usd::DENOM.clone(), 100).unwrap()),
             },
             Coins::new(),
         )
@@ -976,18 +976,18 @@ fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
                 route: SwapRoute::new_unchecked(UniqueVec::new_unchecked(vec![
                     PairId {
                         base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                        quote_denom: usd::DENOM.clone(),
                     },
                     PairId {
                         base_denom: eth::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                        quote_denom: usd::DENOM.clone(),
                     },
                     PairId {
                         base_denom: btc::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                        quote_denom: usd::DENOM.clone(),
                     },
                 ])),
-                output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
+                output: NonZero::new_unchecked(Coin::new(usd::DENOM.clone(), 100).unwrap()),
             },
             Coins::new(),
         )

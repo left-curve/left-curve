@@ -12,78 +12,78 @@ const fn bucket(numerator: u128, denominator: u128, base: u32, quote: u32) -> No
     NonZero::new_unchecked(Price::raw(Uint128::new(raw)))
 }
 
-pub mod dango_usdc {
+pub mod dango_usd {
     use {
         super::*,
-        crate::constants::{dango, usdc},
+        crate::constants::{dango, usd},
     };
 
-    pub const ONE_THOUSANDTH: NonZero<Price> = bucket(1, 1000, dango::DECIMAL, usdc::DECIMAL);
+    pub const ONE_THOUSANDTH: NonZero<Price> = bucket(1, 1000, dango::DECIMAL, usd::DECIMAL);
 
-    pub const ONE_HUNDREDTH: NonZero<Price> = bucket(1, 100, dango::DECIMAL, usdc::DECIMAL);
+    pub const ONE_HUNDREDTH: NonZero<Price> = bucket(1, 100, dango::DECIMAL, usd::DECIMAL);
 
-    pub const ONE_TENTH: NonZero<Price> = bucket(1, 10, dango::DECIMAL, usdc::DECIMAL);
+    pub const ONE_TENTH: NonZero<Price> = bucket(1, 10, dango::DECIMAL, usd::DECIMAL);
 
-    pub const ONE: NonZero<Price> = bucket(1, 1, dango::DECIMAL, usdc::DECIMAL);
+    pub const ONE: NonZero<Price> = bucket(1, 1, dango::DECIMAL, usd::DECIMAL);
 
-    pub const TEN: NonZero<Price> = bucket(10, 1, dango::DECIMAL, usdc::DECIMAL);
+    pub const TEN: NonZero<Price> = bucket(10, 1, dango::DECIMAL, usd::DECIMAL);
 
-    pub const FIFTY: NonZero<Price> = bucket(50, 1, dango::DECIMAL, usdc::DECIMAL);
+    pub const FIFTY: NonZero<Price> = bucket(50, 1, dango::DECIMAL, usd::DECIMAL);
 
-    pub const ONE_HUNDRED: NonZero<Price> = bucket(100, 1, dango::DECIMAL, usdc::DECIMAL);
+    pub const ONE_HUNDRED: NonZero<Price> = bucket(100, 1, dango::DECIMAL, usd::DECIMAL);
 }
 
-pub mod btc_usdc {
+pub mod btc_usd {
     use {
         super::*,
-        crate::constants::{btc, usdc},
+        crate::constants::{btc, usd},
     };
 
-    pub const ONE_HUNDREDTH: NonZero<Price> = bucket(1, 100, btc::DECIMAL, usdc::DECIMAL);
+    pub const ONE_HUNDREDTH: NonZero<Price> = bucket(1, 100, btc::DECIMAL, usd::DECIMAL);
 
-    pub const ONE_TENTH: NonZero<Price> = bucket(1, 10, btc::DECIMAL, usdc::DECIMAL);
+    pub const ONE_TENTH: NonZero<Price> = bucket(1, 10, btc::DECIMAL, usd::DECIMAL);
 
-    pub const ONE: NonZero<Price> = bucket(1, 1, btc::DECIMAL, usdc::DECIMAL);
+    pub const ONE: NonZero<Price> = bucket(1, 1, btc::DECIMAL, usd::DECIMAL);
 
-    pub const TEN: NonZero<Price> = bucket(10, 1, btc::DECIMAL, usdc::DECIMAL);
+    pub const TEN: NonZero<Price> = bucket(10, 1, btc::DECIMAL, usd::DECIMAL);
 
-    pub const FIFTY: NonZero<Price> = bucket(50, 1, btc::DECIMAL, usdc::DECIMAL);
+    pub const FIFTY: NonZero<Price> = bucket(50, 1, btc::DECIMAL, usd::DECIMAL);
 
-    pub const ONE_HUNDRED: NonZero<Price> = bucket(100, 1, btc::DECIMAL, usdc::DECIMAL);
+    pub const ONE_HUNDRED: NonZero<Price> = bucket(100, 1, btc::DECIMAL, usd::DECIMAL);
 }
 
-pub mod eth_usdc {
+pub mod eth_usd {
     use {
         super::*,
-        crate::constants::{eth, usdc},
+        crate::constants::{eth, usd},
     };
 
-    pub const ONE_HUNDREDTH: NonZero<Price> = bucket(1, 100, eth::DECIMAL, usdc::DECIMAL);
+    pub const ONE_HUNDREDTH: NonZero<Price> = bucket(1, 100, eth::DECIMAL, usd::DECIMAL);
 
-    pub const ONE_TENTH: NonZero<Price> = bucket(1, 10, eth::DECIMAL, usdc::DECIMAL);
+    pub const ONE_TENTH: NonZero<Price> = bucket(1, 10, eth::DECIMAL, usd::DECIMAL);
 
-    pub const ONE: NonZero<Price> = bucket(1, 1, eth::DECIMAL, usdc::DECIMAL);
+    pub const ONE: NonZero<Price> = bucket(1, 1, eth::DECIMAL, usd::DECIMAL);
 
-    pub const TEN: NonZero<Price> = bucket(10, 1, eth::DECIMAL, usdc::DECIMAL);
+    pub const TEN: NonZero<Price> = bucket(10, 1, eth::DECIMAL, usd::DECIMAL);
 
-    pub const FIFTY: NonZero<Price> = bucket(50, 1, eth::DECIMAL, usdc::DECIMAL);
+    pub const FIFTY: NonZero<Price> = bucket(50, 1, eth::DECIMAL, usd::DECIMAL);
 
-    pub const ONE_HUNDRED: NonZero<Price> = bucket(100, 1, eth::DECIMAL, usdc::DECIMAL);
+    pub const ONE_HUNDRED: NonZero<Price> = bucket(100, 1, eth::DECIMAL, usd::DECIMAL);
 }
 
-pub mod sol_usdc {
+pub mod sol_usd {
     use {
         super::*,
-        crate::constants::{sol, usdc},
+        crate::constants::{sol, usd},
     };
 
-    pub const ONE_HUNDREDTH: NonZero<Price> = bucket(1, 100, sol::DECIMAL, usdc::DECIMAL);
+    pub const ONE_HUNDREDTH: NonZero<Price> = bucket(1, 100, sol::DECIMAL, usd::DECIMAL);
 
-    pub const ONE_TENTH: NonZero<Price> = bucket(1, 10, sol::DECIMAL, usdc::DECIMAL);
+    pub const ONE_TENTH: NonZero<Price> = bucket(1, 10, sol::DECIMAL, usd::DECIMAL);
 
-    pub const ONE: NonZero<Price> = bucket(1, 1, sol::DECIMAL, usdc::DECIMAL);
+    pub const ONE: NonZero<Price> = bucket(1, 1, sol::DECIMAL, usd::DECIMAL);
 
-    pub const TEN: NonZero<Price> = bucket(10, 1, sol::DECIMAL, usdc::DECIMAL);
+    pub const TEN: NonZero<Price> = bucket(10, 1, sol::DECIMAL, usd::DECIMAL);
 }
 
 /// Some price buckets without considering base and quote decimal places.

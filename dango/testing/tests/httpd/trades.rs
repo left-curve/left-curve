@@ -5,7 +5,7 @@ use {
     dango_genesis::Contracts,
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
-        constants::{dango, usdc},
+        constants::{dango, usd},
         dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
@@ -82,7 +82,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     {
                         "addr": accounts.user6.address(),
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "clearingPrice": "27.5",
                         "direction": "ask",
                         "timeInForce": "GTC",
@@ -94,7 +94,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     {
                         "addr": accounts.user5.address(),
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "clearingPrice": "27.5",
                         "direction": "ask",
                         "timeInForce": "GTC",
@@ -106,7 +106,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     {
                         "addr": accounts.user4.address(),
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "clearingPrice": "27.5",
                         "direction": "ask",
                         "timeInForce": "GTC",
@@ -118,7 +118,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     {
                         "addr": accounts.user1.address(),
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "clearingPrice": "27.5",
                         "direction": "bid",
                         "timeInForce": "GTC",
@@ -216,7 +216,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                     {
                         "addr": accounts.user6.address(),
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "clearingPrice": "27.5",
                         "direction": "ask",
                         "timeInForce": "GTC",
@@ -228,7 +228,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                     {
                         "addr": accounts.user5.address(),
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "clearingPrice": "27.5",
                         "direction": "ask",
                         "timeInForce": "GTC",
@@ -240,7 +240,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                     {
                         "addr": accounts.user4.address(),
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "clearingPrice": "27.5",
                         "direction": "ask",
                         "timeInForce": "GTC",
@@ -252,7 +252,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                     {
                         "addr": accounts.user1.address(),
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "clearingPrice": "27.5",
                         "direction": "bid",
                         "timeInForce": "GTC",
@@ -338,7 +338,7 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
                     {
                         "addr": accounts.user6.address(),
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "clearingPrice": "27.5",
                         "direction": "ask",
                     },
@@ -389,7 +389,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
         query: graphql_query,
         variables: serde_json::json!({
             "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
+            "quote_denom": "bridge/usd",
         })
         .as_object()
         .unwrap()
@@ -529,7 +529,7 @@ async fn create_pair_prices(
             let fund = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
+                    Coin::new(usd::DENOM.clone(), quote_amount).unwrap()
                 },
                 Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
             };
@@ -539,7 +539,7 @@ async fn create_pair_prices(
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates: vec![CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         direction,
                         NonZero::new_unchecked(price),
                         NonZero::new_unchecked(fund.amount),

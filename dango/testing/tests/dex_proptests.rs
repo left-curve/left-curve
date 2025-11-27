@@ -2,7 +2,7 @@ use {
     dango_genesis::Contracts,
     dango_testing::{BridgeOp, TestAccounts, TestOption, TestSuite, setup_test_naive},
     dango_types::{
-        constants::{dango, dango_usdc, eth, eth_usdc, sol, sol_usdc, usdc},
+        constants::{dango, dango_usd, eth, eth_usd, sol, sol_usd, usd},
         dex::{
             self, CreateOrderRequest, Direction, Geometric, PairId, PairParams, PairUpdate,
             PassiveLiquidity, Price, SwapRoute, Xyk,
@@ -623,7 +623,7 @@ impl DexAction {
 
 fn denoms() -> Vec<Denom> {
     vec![
-        usdc::DENOM.clone(),
+        usd::DENOM.clone(),
         dango::DENOM.clone(),
         sol::DENOM.clone(),
         eth::DENOM.clone(),
@@ -635,15 +635,15 @@ fn pair_ids() -> Vec<PairId> {
     vec![
         PairId {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
         },
         PairId {
             base_denom: sol::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
         },
         PairId {
             base_denom: eth::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
         },
     ]
 }
@@ -653,35 +653,35 @@ fn bucket_sizes() -> BTreeMap<PairId, BTreeSet<NonZero<Price>>> {
     btree_map! {
         PairId {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
         } => btree_set! {
-            dango_usdc::ONE_THOUSANDTH,
-            dango_usdc::ONE_HUNDREDTH,
-            dango_usdc::ONE_TENTH,
-            dango_usdc::ONE,
-            dango_usdc::TEN,
-            dango_usdc::FIFTY,
-            dango_usdc::ONE_HUNDRED,
+            dango_usd::ONE_THOUSANDTH,
+            dango_usd::ONE_HUNDREDTH,
+            dango_usd::ONE_TENTH,
+            dango_usd::ONE,
+            dango_usd::TEN,
+            dango_usd::FIFTY,
+            dango_usd::ONE_HUNDRED,
         },
         PairId {
             base_denom: sol::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
         } => btree_set! {
-            sol_usdc::ONE_HUNDREDTH,
-            sol_usdc::ONE_TENTH,
-            sol_usdc::ONE,
-            sol_usdc::TEN,
+            sol_usd::ONE_HUNDREDTH,
+            sol_usd::ONE_TENTH,
+            sol_usd::ONE,
+            sol_usd::TEN,
         },
         PairId {
             base_denom: eth::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
         } => btree_set! {
-            eth_usdc::ONE_HUNDREDTH,
-            eth_usdc::ONE_TENTH,
-            eth_usdc::ONE,
-            eth_usdc::TEN,
-            eth_usdc::FIFTY,
-            eth_usdc::ONE_HUNDRED,
+            eth_usd::ONE_HUNDREDTH,
+            eth_usd::ONE_TENTH,
+            eth_usd::ONE,
+            eth_usd::TEN,
+            eth_usd::FIFTY,
+            eth_usd::ONE_HUNDRED,
         },
     }
 }
@@ -1185,15 +1185,15 @@ fn xyk_liquidity_should_not_reduce_to_zero_by_market_order() {
         vec![
             DexAction::ProvideLiquidity {
                 base_denom: eth::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 funds: coins! {
                     eth::DENOM.clone() => Uint128::new(106265421),
-                    usdc::DENOM.clone() => Uint128::new(58295192),
+                    usd::DENOM.clone() => Uint128::new(58295192),
                 },
             },
             DexAction::CreateMarketOrder {
                 base_denom: eth::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 direction: Direction::Ask,
                 amount: Uint128::new(626970560),
             },
@@ -1210,10 +1210,10 @@ fn xyk_liquidity_should_not_reduce_to_zero_by_market_order() {
     suite
         .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
             base_denom: eth::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
         })
         .should_succeed_and(|reserve| {
             reserve.amount_of(&eth::DENOM).unwrap().is_non_zero()
-                && reserve.amount_of(&usdc::DENOM).unwrap().is_non_zero()
+                && reserve.amount_of(&usd::DENOM).unwrap().is_non_zero()
         });
 }

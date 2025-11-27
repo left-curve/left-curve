@@ -13,7 +13,7 @@ use {
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        constants::usdc,
+        constants::usd,
         dex::{
             CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
             Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
@@ -956,7 +956,7 @@ fn refund_ioc_order(
 
 /// Updates trading volumes for both user addresses and usernames.
 ///
-/// This is only done if the quote denom is USDC. Volumes are stored as USDC microunits.
+/// This is only done if the quote denom is USD. Volumes are stored as USD microunits.
 fn update_trading_volumes(
     storage: &mut dyn Storage,
     account_querier: &mut AccountQuerier,
@@ -966,8 +966,8 @@ fn update_trading_volumes(
     volumes: &mut HashMap<Addr, Udec128_6>,
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
-    // Only track trading volumes where quote asset is USDC.
-    if quote_denom != &usdc::DENOM.clone() {
+    // Only track trading volumes where quote asset is USD.
+    if quote_denom != &usd::DENOM.clone() {
         return Ok(());
     }
 
@@ -1061,7 +1061,7 @@ mod tests {
         super::*,
         dango_types::{
             config::{AppAddresses, AppConfig},
-            constants::{dango, usdc},
+            constants::{dango, usd},
             dex::{Geometric, OrderId, PairParams, PassiveLiquidity, Price},
             oracle::PriceSource,
         },
@@ -1228,7 +1228,7 @@ mod tests {
                 // logic is simply skipped.
             })
             .with_raw_contract_storage(MOCK_ORACLE, |storage| {
-                // Set the prices for dango and USDC.
+                // Set the prices for dango and USD.
                 // Used by the `update_trading_volumes` function.
                 dango_oracle::PRICE_SOURCES
                     .save(
@@ -1244,7 +1244,7 @@ mod tests {
                 dango_oracle::PRICE_SOURCES
                     .save(
                         storage,
-                        &usdc::DENOM,
+                        &usd::DENOM,
                         &PriceSource::Fixed {
                             humanized_price: Udec128::new(1),
                             precision: 6,
@@ -1279,9 +1279,9 @@ mod tests {
         PAIRS
             .save(
                 &mut ctx.storage,
-                (&dango::DENOM, &usdc::DENOM),
+                (&dango::DENOM, &usd::DENOM),
                 &PairParams {
-                    lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                    lp_denom: Denom::from_str("dex/pool/dango/usd").unwrap(),
                     pool_type: PassiveLiquidity::Geometric(Geometric {
                         spacing: Udec128::ZERO,
                         ratio: Bounded::new_unchecked(Udec128::ONE),
@@ -1302,7 +1302,7 @@ mod tests {
                 .save(
                     &mut ctx.storage,
                     (
-                        (dango::DENOM.clone(), usdc::DENOM.clone()),
+                        (dango::DENOM.clone(), usd::DENOM.clone()),
                         direction,
                         price,
                         id,
@@ -1328,7 +1328,7 @@ mod tests {
                 .save(
                     &mut ctx.storage,
                     (
-                        (dango::DENOM.clone(), usdc::DENOM.clone()),
+                        (dango::DENOM.clone(), usd::DENOM.clone()),
                         direction,
                         price,
                         id,
@@ -1352,7 +1352,7 @@ mod tests {
 
         // Return the resting order book state after the auction to check for accuracy.
         RESTING_ORDER_BOOK
-            .load(&ctx.storage, (&dango::DENOM, &usdc::DENOM))
+            .load(&ctx.storage, (&dango::DENOM, &usd::DENOM))
             .unwrap()
     }
 }

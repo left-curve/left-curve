@@ -503,7 +503,7 @@ mod tests {
         super::*,
         crate::RESTING_ORDER_BOOK,
         dango_types::{
-            constants::{dango, usdc},
+            constants::{dango, usd},
             dex::{
                 AmountOption, PairParams, PassiveLiquidity, Price, PriceOption,
                 RestingOrderBookState, TimeInForce, Xyk,
@@ -521,7 +521,7 @@ mod tests {
         ExecuteMsg::BatchUpdateOrders {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
                 amount: AmountOption::Bid {
                     quote: NonZero::new_unchecked(Uint128::new(200)),
@@ -530,8 +530,8 @@ mod tests {
             }],
             cancels: None,
         },
-        coins! { usdc::DENOM.clone() => 300 },
-        coins! { usdc::DENOM.clone() => 100 };
+        coins! { usd::DENOM.clone() => 300 },
+        coins! { usd::DENOM.clone() => 100 };
         "overfunded limit bid: send 300, require 200"
     )]
     #[test_case(
@@ -539,7 +539,7 @@ mod tests {
         ExecuteMsg::BatchUpdateOrders {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
                 amount: AmountOption::Ask {
                     base: NonZero::new_unchecked(Uint128::new(100)),
@@ -561,7 +561,7 @@ mod tests {
         ExecuteMsg::BatchUpdateOrders {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 price: PriceOption::Market {
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
@@ -572,8 +572,8 @@ mod tests {
             }],
             cancels: None,
         },
-        coins! { usdc::DENOM.clone() => 300 },
-        coins! { usdc::DENOM.clone() => 200 };
+        coins! { usd::DENOM.clone() => 300 },
+        coins! { usd::DENOM.clone() => 200 };
         "overfunded market bid: send 300, require 100"
     )]
     #[test_case(
@@ -585,7 +585,7 @@ mod tests {
         ExecuteMsg::BatchUpdateOrders {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
                 price: PriceOption::Market {
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
@@ -611,7 +611,7 @@ mod tests {
                 // two market orders
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     price: PriceOption::Market {
                         max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                     },
@@ -622,7 +622,7 @@ mod tests {
                 },
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     price: PriceOption::Market {
                         max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                     },
@@ -634,7 +634,7 @@ mod tests {
                 // two limit orders
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
                     amount: AmountOption::Bid {
                         quote: NonZero::new_unchecked(Uint128::new(200)),
@@ -643,7 +643,7 @@ mod tests {
                 },
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
                     amount: AmountOption::Ask {
                         base: NonZero::new_unchecked(Uint128::new(100)),
@@ -654,14 +654,14 @@ mod tests {
             cancels: None,
         },
         coins! {
-            usdc::DENOM.clone() => 600,
+            usd::DENOM.clone() => 600,
             dango::DENOM.clone() => 600,
         },
         coins! {
-            usdc::DENOM.clone() => 300,
+            usd::DENOM.clone() => 300,
             dango::DENOM.clone() => 400,
         };
-        "overfunded both in one tx; send 600 usdc + 600 dango, require 300 usdc + 200 dango"
+        "overfunded both in one tx; send 600 usd + 600 dango, require 300 usd + 200 dango"
     )]
     fn overfunded_order_refund_works(
         resting_order_book_state: Option<RestingOrderBookState>,
@@ -673,10 +673,10 @@ mod tests {
         let dex_contract = Addr::mock(2);
 
         let querier = MockQuerier::new().with_raw_contract_storage(dex_contract, |storage| {
-            // Create the dango-usdc pair.
+            // Create the DANGO-USD pair.
             // The specific parameters don't matter. We just need the pair to exist.
             PAIRS
-                .save(storage, (&dango::DENOM, &usdc::DENOM), &PairParams {
+                .save(storage, (&dango::DENOM, &usd::DENOM), &PairParams {
                     lp_denom: Denom::from_str("lp").unwrap(),
                     pool_type: PassiveLiquidity::Xyk(Xyk {
                         spacing: Udec128::ONE,
@@ -700,12 +700,12 @@ mod tests {
         // Set the pause state as unpaused.
         PAUSED.save(&mut ctx.storage, &false).unwrap();
 
-        // Create the dango-usdc pair.
+        // Create the DANGO-USD pair.
         // The specific parameters don't matter. We just need the pair to exist.
         PAIRS
             .save(
                 &mut ctx.storage,
-                (&dango::DENOM, &usdc::DENOM),
+                (&dango::DENOM, &usd::DENOM),
                 &PairParams {
                     lp_denom: Denom::from_str("lp").unwrap(),
                     pool_type: PassiveLiquidity::Xyk(Xyk {
@@ -728,7 +728,7 @@ mod tests {
             RESTING_ORDER_BOOK
                 .save(
                     &mut ctx.storage,
-                    (&dango::DENOM, &usdc::DENOM),
+                    (&dango::DENOM, &usd::DENOM),
                     &resting_order_book_state,
                 )
                 .unwrap();

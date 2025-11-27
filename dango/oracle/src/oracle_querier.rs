@@ -219,7 +219,7 @@ impl<'a> RemoteLending<'a> {
 mod tests {
     use {
         super::*,
-        dango_types::constants::{eth, usdc},
+        dango_types::constants::{eth, usd},
         grug::{ResultExt, Timestamp, hash_map},
         test_case::test_case,
     };
@@ -241,7 +241,7 @@ mod tests {
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
-            usdc::DENOM.clone() => PrecisionedPrice::new(
+            usd::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(1000),
                 Timestamp::from_seconds(1730802926),
                 6,

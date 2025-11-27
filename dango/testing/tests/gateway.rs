@@ -1,7 +1,7 @@
 use {
     dango_testing::{HyperlaneTestSuite, TestOption, TestSuite, setup_test},
     dango_types::{
-        constants::{dango, usdc},
+        constants::{dango, usd},
         gateway::{self, Origin, RateLimit, Remote},
     },
     grug::{
@@ -54,12 +54,12 @@ fn rate_limit() {
 
         // Check balances.
         suite.balances().should_change(receiver, btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Increased(300_000_000),
+            usd::DENOM.clone() => BalanceChange::Increased(300_000_000),
         });
     }
 
     suite
-        .query_supply(usdc::DENOM.clone())
+        .query_supply(usd::DENOM.clone())
         .should_succeed_and_equal(300_000_000.into());
 
     // Total supply = 300 usdc
@@ -70,7 +70,7 @@ fn rate_limit() {
             owner,
             contracts.gateway,
             &gateway::ExecuteMsg::SetRateLimits(btree_map! {
-                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+                usd::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
             }),
             Coins::default(),
         )
@@ -83,7 +83,6 @@ fn rate_limit() {
     // Current limit = 10% of 300 = 30
     // alloy_usdc => 300 * 0.1 = 30
     // Send 30 alloy_usdc back to solana.
-
     suite
         .execute(
             receiver,
@@ -95,7 +94,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usd::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 
@@ -111,9 +110,9 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usd::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
-        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usd, amount: 1");
 
     // Receive more tokens increase rate limit and allow to send them back.
     suite
@@ -131,11 +130,11 @@ fn rate_limit() {
     // `receiver` should has 370_000_000 - 10_000 (fee) = 369_990_000
     {
         suite
-            .query_supply(usdc::DENOM.clone())
+            .query_supply(usd::DENOM.clone())
             .should_succeed_and_equal(370_000_000.into());
 
         suite.balances().should_change(receiver, btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Increased(369_990_000),
+            usd::DENOM.clone() => BalanceChange::Increased(369_990_000),
         });
     }
 
@@ -151,7 +150,7 @@ fn rate_limit() {
                 },
                 recipient: mock_eth_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 100_000_000 + usdc_eth_fee).unwrap(),
+            Coin::new(usd::DENOM.clone(), 100_000_000 + usdc_eth_fee).unwrap(),
         )
         .should_succeed();
 
@@ -167,9 +166,9 @@ fn rate_limit() {
                 },
                 recipient: mock_eth_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_eth_fee).unwrap(),
+            Coin::new(usd::DENOM.clone(), 1 + usdc_eth_fee).unwrap(),
         )
-        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usd, amount: 1");
 
     // Make 1 day pass letting the cron job to reset the rate limits.
     advance_to_next_day(&mut suite);
@@ -216,7 +215,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 27_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usd::DENOM.clone(), 27_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 
@@ -232,9 +231,9 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usd::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
-        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usd, amount: 1");
 
     // Increase the rate limit
     suite
@@ -242,7 +241,7 @@ fn rate_limit() {
             owner,
             contracts.gateway,
             &gateway::ExecuteMsg::SetRateLimits(btree_map! {
-                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(99)),
+                usd::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(99)),
             }),
             Coins::default(),
         )
@@ -268,7 +267,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 143_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usd::DENOM.clone(), 143_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 
@@ -285,7 +284,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usd::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("insufficient reserve!");
 }

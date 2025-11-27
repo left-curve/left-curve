@@ -13,7 +13,7 @@ use {
             QueryAccountsByUserRequest, Salt, Username,
         },
         auth::Key,
-        constants::usdc,
+        constants::usd,
     },
     grug::{
         Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256, HashExt, Inner, JsonSerExt,
@@ -54,7 +54,7 @@ fn setup_multi_test<'a>() -> (
             },
             // Fund the multisig with some tokens.
             // The multisig will pay for gas fees, so it must have sufficient tokens.
-            Coins::one(usdc::DENOM.clone(), 5_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 5_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -115,7 +115,7 @@ fn multi_creation() {
 
     // The multisig should have received tokens.
     suite
-        .query_balance(&multi, usdc::DENOM.clone())
+        .query_balance(&multi, usd::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(5_000_000));
 }
 
@@ -135,7 +135,7 @@ fn proposal_passing_with_auto_execution() {
                 messages: vec![
                     Message::transfer(
                         accounts.owner.address(),
-                        Coins::one(usdc::DENOM.clone(), 888_888).unwrap(),
+                        Coins::one(usd::DENOM.clone(), 888_888).unwrap(),
                     )
                     .unwrap(),
                 ],
@@ -183,7 +183,7 @@ fn proposal_passing_with_auto_execution() {
     // Ensure the tokens have been delivered.
     // Owner has 100_000_000_000 uusd to start, and now has received 888_888.
     suite
-        .query_balance(&accounts.owner, usdc::DENOM.clone())
+        .query_balance(&accounts.owner, usd::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100_000_888_888));
 }
 
@@ -652,7 +652,7 @@ fn unauthorized_messages() {
         .transfer(
             multi.with_signer(&accounts.user1),
             accounts.user1.address(),
-            Coins::one(usdc::DENOM.clone(), 123).unwrap(),
+            Coins::one(usd::DENOM.clone(), 123).unwrap(),
         )
         .should_fail_with_error("illegal action for a multi-signature account");
 

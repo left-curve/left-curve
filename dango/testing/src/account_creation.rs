@@ -7,7 +7,7 @@ use {
         account::single::Params,
         account_factory::{self, AccountParams, Username},
         auth::Key,
-        constants::usdc,
+        constants::usd,
     },
     grug::{Coins, ContractWrapper, Hash256, HashExt, JsonSerExt, Op, ResultExt},
     grug_db_memory::MemDb,
@@ -58,7 +58,7 @@ pub fn add_account_with_existing_user(
             suite.deref_mut(),
             contracts.account_factory,
             AccountParams::Spot(Params::new(test_account.username.clone())),
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap()
 }

@@ -10,7 +10,7 @@ use {
             self, Account, AccountParams, QueryAccountRequest, RegisterUserData, Username,
         },
         bank,
-        constants::usdc,
+        constants::usd,
     },
     grug::{
         Addressable, Coins, HashExt, Json, JsonSerExt, Message, NonEmpty, Op, QuerierExt,
@@ -51,7 +51,7 @@ fn user_onboarding() {
     // The transfer should be an orphaned transfer. The bank contract should be
     // holding the 10 USDC.
     suite
-        .query_balance(&contracts.bank, usdc::DENOM.clone())
+        .query_balance(&contracts.bank, usd::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
 
     // The orphaned transfer should have been recorded.
@@ -60,7 +60,7 @@ fn user_onboarding() {
             sender: contracts.gateway,
             recipient: user.address(),
         })
-        .should_succeed_and_equal(coins! { usdc::DENOM.clone() => 10_000_000 });
+        .should_succeed_and_equal(coins! { usd::DENOM.clone() => 10_000_000 });
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
@@ -115,7 +115,7 @@ fn user_onboarding() {
 
     // User's account should have been created with the correct token balance.
     suite
-        .query_balance(&user, usdc::DENOM.clone())
+        .query_balance(&user, usd::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
 }
 
@@ -414,7 +414,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
 
     // Make sure a spot account is created with the deposited balance.
     suite
-        .query_balance(&user, usdc::DENOM.clone())
+        .query_balance(&user, usd::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
 }
 

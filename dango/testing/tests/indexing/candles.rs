@@ -12,7 +12,7 @@ use {
         setup_test_with_indexer_and_custom_genesis,
     },
     dango_types::{
-        constants::{dango, usdc},
+        constants::{dango, usd},
         dex::{
             self, CreateOrderRequest, Direction, Geometric, PairParams, PairUpdate,
             PassiveLiquidity,
@@ -75,7 +75,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
             let fund = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
+                    Coin::new(usd::DENOM.clone(), quote_amount).unwrap()
                 },
                 Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
             };
@@ -85,7 +85,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates: vec![CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         direction,
                         NonZero::new_unchecked(price),
                         NonZero::new_unchecked(fund.amount),
@@ -120,7 +120,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     let pair_price = clickhouse_inserts[0].clone();
 
     // Manual asserts so if clearing price changes, it doesn't break this test.
-    assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
+    assert_that!(pair_price.quote_denom).is_equal_to("bridge/usd".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
     assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
 
@@ -137,7 +137,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish()?;
 
     let pair_price_query_builder =
-        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string()).with_limit(1);
+        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usd".to_string()).with_limit(1);
 
     let pair_price = pair_price_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())
@@ -145,7 +145,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         .unwrap();
 
     // Manual asserts so if clearing price changes, it doesn't break this test.
-    assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
+    assert_that!(pair_price.quote_denom).is_equal_to("bridge/usd".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
     assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
     assert_that!(pair_price.volume_base)
@@ -159,7 +159,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     let candle_query_builder = CandleQueryBuilder::new(
         CandleInterval::OneMinute,
         "dango".to_string(),
-        "bridge/usdc".to_string(),
+        "bridge/usd".to_string(),
     )
     .with_limit(1);
 
@@ -168,7 +168,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         .await?
         .unwrap();
 
-    assert_that!(candle_1m.quote_denom).is_equal_to("bridge/usdc".to_string());
+    assert_that!(candle_1m.quote_denom).is_equal_to("bridge/usd".to_string());
     assert_that!(candle_1m.base_denom).is_equal_to("dango".to_string());
     assert_that!(candle_1m.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());
     assert_that!(candle_1m.high).is_equal_to(Udec128_24::from_str("27.5").unwrap());
@@ -191,7 +191,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 
     suite.app.indexer.wait_for_finish()?;
 
-    let pair_prices = PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string())
+    let pair_prices = PairPriceQueryBuilder::new("dango".to_string(), "bridge/usd".to_string())
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?
         .pair_prices;
@@ -201,7 +201,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
     let candles_1m = CandleQueryBuilder::new(
         CandleInterval::OneMinute,
         "dango".to_string(),
-        "bridge/usdc".to_string(),
+        "bridge/usd".to_string(),
     )
     .fetch_all(clickhouse_context.clickhouse_client())
     .await?;
@@ -286,7 +286,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
 
     suite.app.indexer.wait_for_finish()?;
 
-    let pair_prices = PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string())
+    let pair_prices = PairPriceQueryBuilder::new("dango".to_string(), "bridge/usd".to_string())
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?
         .pair_prices;
@@ -296,7 +296,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
     let candles_1s = CandleQueryBuilder::new(
         CandleInterval::OneSecond,
         "dango".to_string(),
-        "bridge/usdc".to_string(),
+        "bridge/usd".to_string(),
     )
     .fetch_all(clickhouse_context.clickhouse_client())
     .await?
@@ -306,7 +306,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
     assert_that!(candles_1s).is_equal_to(vec![
         Candle {
             base_denom: "dango".to_string(),
-            quote_denom: "bridge/usdc".to_string(),
+            quote_denom: "bridge/usd".to_string(),
             time_start: MOCK_GENESIS_TIMESTAMP.to_utc_date_time() + TimeDelta::seconds(2),
             open: Udec128_24::new(25),
             high: Udec128_24::new(25),
@@ -320,7 +320,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
         },
         Candle {
             base_denom: "dango".to_string(),
-            quote_denom: "bridge/usdc".to_string(),
+            quote_denom: "bridge/usd".to_string(),
             time_start: MOCK_GENESIS_TIMESTAMP.to_utc_date_time() + TimeDelta::seconds(1),
             open: Udec128_24::new(25),
             high: Udec128_24::new(25),
@@ -334,7 +334,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
         },
         Candle {
             base_denom: "dango".to_string(),
-            quote_denom: "bridge/usdc".to_string(),
+            quote_denom: "bridge/usd".to_string(),
             time_start: MOCK_GENESIS_TIMESTAMP.to_utc_date_time(),
             open: Udec128_24::from_str("27.5").unwrap(),
             high: Udec128_24::from_str("27.5").unwrap(),
@@ -369,7 +369,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                 dex: DexOption {
                     pairs: vec![PairUpdate {
                         base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                        quote_denom: usd::DENOM.clone(),
                         params: PairParams {
                             lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
                             pool_type: PassiveLiquidity::Geometric(Geometric {
@@ -422,14 +422,14 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                     creates: vec![
                         CreateOrderRequest::new_limit(
                             dango::DENOM.clone(),
-                            usdc::DENOM.clone(),
+                            usd::DENOM.clone(),
                             Direction::Ask,
                             NonZero::new_unchecked(price),
                             NonZero::new_unchecked(amount),
                         ),
                         CreateOrderRequest::new_limit(
                             dango::DENOM.clone(),
-                            usdc::DENOM.clone(),
+                            usd::DENOM.clone(),
                             Direction::Bid,
                             NonZero::new_unchecked(price),
                             NonZero::new_unchecked(amount.checked_mul_dec_ceil(price).unwrap()),
@@ -439,7 +439,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                 },
                 coins! {
                     dango::DENOM.clone() => amount,
-                    usdc::DENOM.clone() => amount.checked_mul_dec_ceil(price).unwrap(),
+                    usd::DENOM.clone() => amount.checked_mul_dec_ceil(price).unwrap(),
                 },
             )
             .should_succeed();
@@ -459,7 +459,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     let candle_query_builder = CandleQueryBuilder::new(
         CandleInterval::OneMinute,
         "dango".to_string(),
-        "bridge/usdc".to_string(),
+        "bridge/usd".to_string(),
     );
 
     // -------------------------------- block 1 --------------------------------
@@ -638,7 +638,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
                 creates: vec![
                     CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         Direction::Ask,
                         NonZero::new_unchecked(
                             Udec128_24::from_str("0.000000003836916198").unwrap(),
@@ -647,7 +647,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
                     ),
                     CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         Direction::Bid,
                         NonZero::new_unchecked(
                             Udec128_24::from_str("0.000000003836916198").unwrap(),
@@ -659,7 +659,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
             },
             coins! {
                 dango::DENOM.clone() => Uint128::new(20000000000000),
-                usdc::DENOM.clone() => Uint128::new(200_000),
+                usd::DENOM.clone() => Uint128::new(200_000),
             },
         )
         .should_succeed();
@@ -667,7 +667,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish()?;
 
     let pair_price_query_builder =
-        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string()).with_limit(1);
+        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usd".to_string()).with_limit(1);
 
     let pair_price = pair_price_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())
@@ -717,7 +717,7 @@ async fn create_pair_prices(
             let fund = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
+                    Coin::new(usd::DENOM.clone(), quote_amount).unwrap()
                 },
                 Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
             };
@@ -727,7 +727,7 @@ async fn create_pair_prices(
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates: vec![CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         direction,
                         NonZero::new_unchecked(price),
                         NonZero::new_unchecked(fund.amount),

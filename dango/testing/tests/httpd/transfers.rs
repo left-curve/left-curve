@@ -8,7 +8,7 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
-        constants::usdc,
+        constants::usd,
     },
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
@@ -32,7 +32,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
         &account_factory::ExecuteMsg::RegisterAccount {
             params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
         },
-        Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+        Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
     suite
@@ -139,7 +139,7 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
         .transfer(
             &mut user1,
             user2.address(),
-            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -259,7 +259,7 @@ async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
         .transfer(
             &mut user1,
             user2.address(),
-            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -331,7 +331,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
             &account_factory::ExecuteMsg::RegisterAccount {
                 params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
             },
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
         )?];
 
         suite
@@ -485,7 +485,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
         &account_factory::ExecuteMsg::RegisterAccount {
             params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
         },
-        Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+        Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
     suite
@@ -528,7 +528,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
         while let Some(_idx) = rx.recv().await {
             let msgs = vec![Message::transfer(
                 accounts.user2.address(),
-                Coins::one(usdc::DENOM.clone(), 123).unwrap(),
+                Coins::one(usd::DENOM.clone(), 123).unwrap(),
             )?];
 
             suite
@@ -623,7 +623,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         &account_factory::ExecuteMsg::RegisterAccount {
             params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
         },
-        Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+        Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
     suite
@@ -673,7 +673,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                         accounts.user1.username.clone(),
                     )),
                 },
-                Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+                Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
             )?];
 
             suite

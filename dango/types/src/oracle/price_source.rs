@@ -6,7 +6,7 @@ use {
 
 #[grug::derive(Serde)]
 pub enum PriceSource {
-    /// A price source that uses a fixed price. For testing purposes only.
+    /// A price source that uses a fixed price.
     Fixed {
         /// The price of the token.
         humanized_price: Udec128,

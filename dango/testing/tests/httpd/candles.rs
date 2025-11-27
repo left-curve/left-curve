@@ -7,7 +7,7 @@ use {
     },
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
-        constants::{dango, usdc},
+        constants::{dango, usd},
         dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
@@ -61,7 +61,7 @@ async fn query_candles() -> anyhow::Result<()> {
         query: graphql_query,
         variables: serde_json::json!({
             "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
+            "quote_denom": "bridge/usd",
             "interval": "ONE_SECOND",
         })
         .as_object()
@@ -99,7 +99,7 @@ async fn query_candles() -> anyhow::Result<()> {
                     "volumeQuote": "687.5",
                     "interval": "ONE_SECOND",
                     "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
+                    "quoteDenom": "bridge/usd",
                 });
 
                 assert_json_include!(actual: received_candles, expected: [expected_candle]);
@@ -148,7 +148,7 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
         query: graphql_query,
         variables: serde_json::json!({
             "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
+            "quote_denom": "bridge/usd",
             "interval": "ONE_SECOND",
             "earlierThan": "2025-07-24T07:00:00.000Z",
         })
@@ -187,7 +187,7 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
                     "volumeQuote": "687.5",
                     "interval": "ONE_SECOND",
                     "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
+                    "quoteDenom": "bridge/usd",
                 });
 
                 assert_json_include!(actual: received_candles, expected: [expected_candle]);
@@ -235,7 +235,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
         query: graphql_query,
         variables: serde_json::json!({
             "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
+            "quote_denom": "bridge/usd",
             "interval": "ONE_MINUTE",
         })
         .as_object()
@@ -279,7 +279,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                 let expected_json = serde_json::json!([{
                     "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
+                    "quoteDenom": "bridge/usd",
                     "interval": "ONE_MINUTE",
                     "close": "25",
                     "high": "27.5",
@@ -318,7 +318,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                     let expected_json = serde_json::json!([{
                         "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "quoteDenom": "bridge/usd",
                         "interval": "ONE_MINUTE",
                         "close": "25",
                         "high": "27.5",
@@ -424,7 +424,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
         query: graphql_query,
         variables: serde_json::json!({
             "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
+            "quote_denom": "bridge/usd",
             "interval": "ONE_MINUTE",
         })
         .as_object()
@@ -443,7 +443,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
         while let Some(_idx) = rx.recv().await {
             let msgs = vec![Message::transfer(
                 accounts.user2.address(),
-                Coins::one(usdc::DENOM.clone(), 123).unwrap(),
+                Coins::one(usd::DENOM.clone(), 123).unwrap(),
             )?];
 
             let mut suite_guard = suite_clone.lock().await;
@@ -480,7 +480,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
                 let expected_json = serde_json::json!([{
                     "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
+                    "quoteDenom": "bridge/usd",
                     "maxBlockHeight": 2,
                     "close": "27.5",
                     "high": "27.5",
@@ -504,7 +504,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
                 let expected_json = serde_json::json!([{
                     "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
+                    "quoteDenom": "bridge/usd",
                     "maxBlockHeight": 3,
                     "close": "27.5",
                     "high": "27.5",
@@ -612,7 +612,7 @@ async fn create_pair_prices(
             let fund = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
+                    Coin::new(usd::DENOM.clone(), quote_amount).unwrap()
                 },
                 Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
             };
@@ -622,7 +622,7 @@ async fn create_pair_prices(
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates: vec![CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         direction,
                         NonZero::new_unchecked(price),
                         NonZero::new_unchecked(fund.amount),

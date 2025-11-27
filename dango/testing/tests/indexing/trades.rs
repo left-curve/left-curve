@@ -4,7 +4,7 @@ use {
     dango_indexer_clickhouse::entities::trade_query::TradeQueryBuilder,
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
-        constants::{dango, usdc},
+        constants::{dango, usd},
         dex::{self, CreateOrderRequest, Direction},
     },
     grug::{
@@ -72,7 +72,7 @@ async fn create_pair_prices(
             let fund = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
+                    Coin::new(usd::DENOM.clone(), quote_amount).unwrap()
                 },
                 Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
             };
@@ -82,7 +82,7 @@ async fn create_pair_prices(
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates: vec![CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
-                        usdc::DENOM.clone(),
+                        usd::DENOM.clone(),
                         direction,
                         NonZero::new_unchecked(price),
                         NonZero::new_unchecked(fund.amount),

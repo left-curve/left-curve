@@ -21,9 +21,9 @@ use {
 /// attack of submitting swaps of extremely long routes.
 ///
 /// 2 is a reasonable number, because at launch, all the trading pairs we plan to
-/// support comes with USDC as the quote asset. As such, it's possible to go
+/// support comes with USD as the quote asset. As such, it's possible to go
 /// from any one asset to any other in no more than 2 hops. If we plan to support
-/// non-USDC quoted pairs, the maximum route length can be adjusted.
+/// non-USD quoted pairs, the maximum route length can be adjusted.
 pub type SwapRoute = LengthBounded<UniqueVec<PairId>, 1, 2>;
 
 pub type MaxSlippage = Bounded<Udec128, ZeroInclusiveOneExclusive>;

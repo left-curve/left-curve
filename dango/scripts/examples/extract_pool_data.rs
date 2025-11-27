@@ -1,7 +1,7 @@
 use {
     dango_genesis::GenesisCodes,
     dango_types::{
-        constants::{eth, usdc},
+        constants::{eth, usd},
         dex, oracle,
     },
     grug::{Addr, JsonSerExt, Query, addr},
@@ -56,49 +56,49 @@ fn main() -> anyhow::Result<()> {
     )?;
     println!("ETH price: {}", res.to_json_string_pretty()?);
 
-    // Query the oracle price of USDC.
+    // Query the oracle price of USD.
     let res = app.do_query_app(
         Query::WasmSmart(grug::QueryWasmSmartRequest {
             contract: ORACLE,
             msg: oracle::QueryMsg::Price {
-                denom: usdc::DENOM.clone(),
+                denom: usd::DENOM.clone(),
             }
             .to_json_value()?,
         }),
         Some(HEIGHT),
         false,
     )?;
-    println!("USDC price: {}", res.to_json_string_pretty()?);
+    println!("USD price: {}", res.to_json_string_pretty()?);
 
-    // Query the params of ETH-USDC pool.
+    // Query the params of ETH-USD pool.
     let res = app.do_query_app(
         Query::WasmSmart(grug::QueryWasmSmartRequest {
             contract: DEX,
             msg: dex::QueryMsg::Pair {
                 base_denom: eth::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
             }
             .to_json_value()?,
         }),
         Some(HEIGHT),
         false,
     )?;
-    println!("ETH-USDC pool params: {}", res.to_json_string_pretty()?);
+    println!("ETH-USD pool params: {}", res.to_json_string_pretty()?);
 
-    // Query the reserve of ETH-USDC pool.
+    // Query the reserve of ETH-USD pool.
     let res = app.do_query_app(
         Query::WasmSmart(grug::QueryWasmSmartRequest {
             contract: DEX,
             msg: dex::QueryMsg::Reserve {
                 base_denom: eth::DENOM.clone(),
-                quote_denom: usdc::DENOM.clone(),
+                quote_denom: usd::DENOM.clone(),
             }
             .to_json_value()?,
         }),
         Some(HEIGHT),
         false,
     )?;
-    println!("ETH-USDC pool reserve: {}", res.to_json_string_pretty()?);
+    println!("ETH-USD pool reserve: {}", res.to_json_string_pretty()?);
 
     Ok(())
 }

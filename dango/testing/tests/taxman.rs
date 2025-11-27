@@ -1,6 +1,6 @@
 use {
     dango_testing::setup_test_naive,
-    dango_types::{constants::usdc, taxman},
+    dango_types::{constants::usd, taxman},
     grug::{
         Addressable, BalanceChange, Coins, Inner, MultiplyFraction, ResultExt, Udec128, Uint128,
         btree_map,
@@ -26,7 +26,7 @@ fn fee_rate_update_works() {
             contracts.taxman,
             &taxman::ExecuteMsg::Configure {
                 new_cfg: taxman::Config {
-                    fee_denom: usdc::DENOM.clone(),
+                    fee_denom: usd::DENOM.clone(),
                     fee_rate: OLD_FEE_RATE,
                 },
             },
@@ -37,7 +37,7 @@ fn fee_rate_update_works() {
     // This transaction was run when fee rate was zero.
     // The owner's USDC balance should be unchanged.
     suite.balances().should_change(&accounts.owner, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
+        usd::DENOM.clone() => BalanceChange::Unchanged,
     });
 
     // --------------------------------- tx 2 ----------------------------------
@@ -51,7 +51,7 @@ fn fee_rate_update_works() {
             contracts.taxman,
             &taxman::ExecuteMsg::Configure {
                 new_cfg: taxman::Config {
-                    fee_denom: usdc::DENOM.clone(),
+                    fee_denom: usd::DENOM.clone(),
                     fee_rate: NEW_FEE_RATE,
                 },
             },
@@ -65,7 +65,7 @@ fn fee_rate_update_works() {
         .unwrap();
 
     suite.balances().should_change(&accounts.owner, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Decreased(fee.into_inner()),
+        usd::DENOM.clone() => BalanceChange::Decreased(fee.into_inner()),
     });
 
     // --------------------------------- tx 3 ----------------------------------
@@ -83,6 +83,6 @@ fn fee_rate_update_works() {
         .unwrap();
 
     suite.balances().should_change(&accounts.user1, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Decreased(fee.into_inner()),
+        usd::DENOM.clone() => BalanceChange::Decreased(fee.into_inner()),
     });
 }

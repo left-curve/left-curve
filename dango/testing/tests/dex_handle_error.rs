@@ -2,7 +2,7 @@ use {
     dango_genesis::Contracts,
     dango_testing::setup_test_naive,
     dango_types::{
-        constants::{dango, usdc},
+        constants::{dango, usd},
         dex::{
             self, CreateOrderRequest, Direction, OrderId, OrdersByPairResponse, Price,
             QueryOrdersByPairRequest, QueryPausedRequest,
@@ -119,14 +119,14 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
                         creates: vec![
                             CreateOrderRequest::new_limit(
                                 dango::DENOM.clone(),
-                                usdc::DENOM.clone(),
+                                usd::DENOM.clone(),
                                 Direction::Bid,
                                 NonZero::new_unchecked(Price::new(100)),
                                 NonZero::new_unchecked(Uint128::new(300)), // 100 * 3
                             ),
                             CreateOrderRequest::new_limit(
                                 dango::DENOM.clone(),
-                                usdc::DENOM.clone(),
+                                usd::DENOM.clone(),
                                 Direction::Ask,
                                 NonZero::new_unchecked(Price::new(100)),
                                 NonZero::new_unchecked(Uint128::new(3)),
@@ -136,7 +136,7 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
                     },
                     coins! {
                         dango::DENOM.clone() => 3,
-                        usdc::DENOM.clone() => 300,
+                        usd::DENOM.clone() => 300,
                     },
                 )
                 .unwrap(),
@@ -161,7 +161,7 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
     suite
         .query_wasm_smart(contracts.dex, QueryOrdersByPairRequest {
             base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
+            quote_denom: usd::DENOM.clone(),
             start_after: None,
             limit: None,
         })

@@ -1,7 +1,7 @@
 use {
     dango_client::{Secp256k1, Secret, SingleSigner},
     dango_types::{
-        constants::{btc, btc_usdc, dango, eth, eth_usdc, sol, sol_usdc, usdc},
+        constants::{btc, btc_usd, dango, eth, eth_usd, sol, sol_usd, usd},
         dex::{self, Geometric, PairParams, PairUpdate, PassiveLiquidity, Xyk},
     },
     grug::{
@@ -51,9 +51,9 @@ async fn main() -> anyhow::Result<()> {
                     &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![
                         PairUpdate {
                             base_denom: dango::DENOM.clone(),
-                            quote_denom: usdc::DENOM.clone(),
+                            quote_denom: usd::DENOM.clone(),
                             params: PairParams {
-                                lp_denom: Denom::from_str("dex/pool/dango/usdc")?,
+                                lp_denom: Denom::from_str("dex/pool/dango/usd")?,
                                 pool_type: PassiveLiquidity::Xyk(Xyk {
                                     spacing: Udec128::new_bps(10),
                                     reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
@@ -67,21 +67,21 @@ async fn main() -> anyhow::Result<()> {
                         },
                         PairUpdate {
                             base_denom: btc::DENOM.clone(),
-                            quote_denom: usdc::DENOM.clone(),
+                            quote_denom: usd::DENOM.clone(),
                             params: PairParams {
-                                lp_denom: Denom::from_str("dex/pool/btc/usdc")?,
+                                lp_denom: Denom::from_str("dex/pool/btc/usd")?,
                                 pool_type: PassiveLiquidity::Geometric(Geometric {
                                     spacing: Udec128::new_bps(10), // means 10 USDC
                                     ratio: Bounded::new_unchecked(Udec128::new_percent(60)),
                                     limit: 5,
                                 }),
                                 bucket_sizes: btree_set! {
-                                    btc_usdc::ONE_HUNDREDTH,
-                                    btc_usdc::ONE_TENTH,
-                                    btc_usdc::ONE,
-                                    btc_usdc::TEN,
-                                    btc_usdc::FIFTY,
-                                    btc_usdc::ONE_HUNDRED,
+                                    btc_usd::ONE_HUNDREDTH,
+                                    btc_usd::ONE_TENTH,
+                                    btc_usd::ONE,
+                                    btc_usd::TEN,
+                                    btc_usd::FIFTY,
+                                    btc_usd::ONE_HUNDRED,
                                 },
                                 swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                                 min_order_size_base: Uint128::new(5),
@@ -90,21 +90,21 @@ async fn main() -> anyhow::Result<()> {
                         },
                         PairUpdate {
                             base_denom: eth::DENOM.clone(),
-                            quote_denom: usdc::DENOM.clone(),
+                            quote_denom: usd::DENOM.clone(),
                             params: PairParams {
-                                lp_denom: Denom::from_str("dex/pool/eth/usdc")?,
+                                lp_denom: Denom::from_str("dex/pool/eth/usd")?,
                                 pool_type: PassiveLiquidity::Geometric(Geometric {
                                     spacing: Udec128::from_str("0.000000000005")?, // means 5 USDC
                                     ratio: Bounded::new_unchecked(Udec128::new_percent(60)),
                                     limit: 5,
                                 }),
                                 bucket_sizes: btree_set! {
-                                    eth_usdc::ONE_HUNDREDTH,
-                                    eth_usdc::ONE_TENTH,
-                                    eth_usdc::ONE,
-                                    eth_usdc::TEN,
-                                    eth_usdc::FIFTY,
-                                    eth_usdc::ONE_HUNDRED,
+                                    eth_usd::ONE_HUNDREDTH,
+                                    eth_usd::ONE_TENTH,
+                                    eth_usd::ONE,
+                                    eth_usd::TEN,
+                                    eth_usd::FIFTY,
+                                    eth_usd::ONE_HUNDRED,
                                 },
                                 swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                                 min_order_size_base: Uint128::new(5),
@@ -113,19 +113,19 @@ async fn main() -> anyhow::Result<()> {
                         },
                         PairUpdate {
                             base_denom: sol::DENOM.clone(),
-                            quote_denom: usdc::DENOM.clone(),
+                            quote_denom: usd::DENOM.clone(),
                             params: PairParams {
-                                lp_denom: Denom::from_str("dex/pool/sol/usdc")?,
+                                lp_denom: Denom::from_str("dex/pool/sol/usd")?,
                                 pool_type: PassiveLiquidity::Geometric(Geometric {
                                     spacing: Udec128::new_bps(10), // means 1 USDC
                                     ratio: Bounded::new_unchecked(Udec128::new_percent(60)),
                                     limit: 5,
                                 }),
                                 bucket_sizes: btree_set! {
-                                    sol_usdc::ONE_HUNDREDTH,
-                                    sol_usdc::ONE_TENTH,
-                                    sol_usdc::ONE,
-                                    sol_usdc::TEN,
+                                    sol_usd::ONE_HUNDREDTH,
+                                    sol_usd::ONE_TENTH,
+                                    sol_usd::ONE,
+                                    sol_usd::TEN,
                                 },
                                 swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                                 min_order_size_base: Uint128::new(5),

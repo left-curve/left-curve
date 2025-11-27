@@ -41,6 +41,6 @@ define_denom! {
     eth  => 18,
     ltc  => 8,
     sol  => 9,
-    usdc => 6,
+    usd  => 6,
     xrp  => 6
 }

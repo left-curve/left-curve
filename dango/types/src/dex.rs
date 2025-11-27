@@ -24,6 +24,6 @@ pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("dex
 ///
 /// E.g.,
 ///
-/// - `dex/pool/eth/usdc`
-/// - `dex/pool/btc/usdc`
+/// - `dex/pool/eth/usd`
+/// - `dex/pool/btc/usd`
 pub static LP_NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("pool"));

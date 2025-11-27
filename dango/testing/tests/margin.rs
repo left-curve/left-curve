@@ -10,7 +10,7 @@ use {
         },
         account_factory::AccountParams,
         config::AppConfig,
-        constants::{dango, eth, usdc},
+        constants::{dango, eth, usd},
         dex::{CreateOrderRequest, Direction},
         lending::{self, InterestRateModel, QueryDebtRequest, QueryMarketRequest},
         oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource, QueryPriceRequest},
@@ -188,7 +188,7 @@ fn setup_margin_test_env(
         suite,
         accounts,
         contracts,
-        usdc::DENOM.clone(),
+        usd::DENOM.clone(),
         Udec128::from_str("1.00000966").unwrap(),
         6,
     );
@@ -220,7 +220,7 @@ fn setup_margin_test_env(
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(usdc::DENOM.clone(), 10_000_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 10_000_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -228,7 +228,7 @@ fn setup_margin_test_env(
     set_collateral_power(
         suite,
         accounts,
-        usdc::DENOM.clone(),
+        usd::DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(100)).unwrap(),
     );
 
@@ -264,7 +264,7 @@ fn cant_liquidate_when_overcollateralised() {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
-                coins! { usdc::DENOM.clone() => 100_000_000 },
+                coins! { usd::DENOM.clone() => 100_000_000 },
             )),
             Coins::new(),
         )
@@ -276,7 +276,7 @@ fn cant_liquidate_when_overcollateralised() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: usdc::DENOM.clone(),
+                collateral: usd::DENOM.clone(),
             },
             Coins::new(),
         )
@@ -294,7 +294,7 @@ fn liquidation_works() {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
-                coins! { usdc::DENOM.clone() => 100_000_000 },
+                coins! { usd::DENOM.clone() => 100_000_000 },
             )),
             Coins::new(),
         )
@@ -302,14 +302,14 @@ fn liquidation_works() {
 
     // Confirm the margin account has the borrowed coins
     suite
-        .query_balance(&margin_account.address(), usdc::DENOM.clone())
+        .query_balance(&margin_account.address(), usd::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100_000_000));
 
     // Update USDC collateral power to 90% to make the account undercollateralised
     set_collateral_power(
         &mut suite,
         &mut accounts,
-        usdc::DENOM.clone(),
+        usd::DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(90)).unwrap(),
     );
 
@@ -322,7 +322,7 @@ fn liquidation_works() {
 
     // Check liquidator account's USDC balance before
     let balance_before = suite
-        .query_balance(&accounts.user1.address(), usdc::DENOM.clone())
+        .query_balance(&accounts.user1.address(), usd::DENOM.clone())
         .unwrap();
 
     // Try to partially liquidate the margin account, should succeed
@@ -331,15 +331,15 @@ fn liquidation_works() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: usdc::DENOM.clone(),
+                collateral: usd::DENOM.clone(),
             },
-            Coins::one(usdc::DENOM.clone(), 50_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 50_000_000).unwrap(),
         )
         .should_succeed();
 
     // Check liquidator account's USDC balance after
     let balance_after = suite
-        .query_balance(&accounts.user1.address(), usdc::DENOM.clone())
+        .query_balance(&accounts.user1.address(), usd::DENOM.clone())
         .unwrap();
 
     // Ensure balance increased (should receive collateral plus bonus worth more than the repaid debt)
@@ -354,7 +354,7 @@ fn liquidation_works() {
 
     // Since this is a partial liquidation, ensure the debt has decreased exactly with the sent amount
     assert_eq!(
-        debts_before.amount_of(&usdc::DENOM) - debts_after.amount_of(&usdc::DENOM),
+        debts_before.amount_of(&usd::DENOM) - debts_after.amount_of(&usd::DENOM),
         Uint128::new(50_000_000)
     );
 
@@ -364,16 +364,16 @@ fn liquidation_works() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: usdc::DENOM.clone(),
+                collateral: usd::DENOM.clone(),
             },
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
         )
         .should_succeed();
 
     // Check liquidator account's USDC balance after
     let balance_before = balance_after;
     let balance_after = suite
-        .query_balance(&accounts.user1.address(), usdc::DENOM.clone())
+        .query_balance(&accounts.user1.address(), usd::DENOM.clone())
         .unwrap();
 
     // Ensure balance increased (should receive collateral plus bonus worth more than the repaid debt)
@@ -388,11 +388,11 @@ fn liquidation_works() {
         .unwrap();
 
     // This liquidation incurred bad debt, so we just check that the debts have decreased
-    assert!(debts_before.amount_of(&usdc::DENOM) > debts_after.amount_of(&usdc::DENOM));
+    assert!(debts_before.amount_of(&usd::DENOM) > debts_after.amount_of(&usd::DENOM));
 
     // Ensure the account has no collateral left
     suite
-        .query_balance(&margin_account.address(), usdc::DENOM.clone())
+        .query_balance(&margin_account.address(), usd::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 }
 
@@ -407,7 +407,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
-                coins! { usdc::DENOM.clone() => 1_000_000_000 }, // 1K USDC
+                coins! { usd::DENOM.clone() => 1_000_000_000 }, // 1K USDC
             )),
             Coins::new(),
         )
@@ -418,7 +418,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .transfer(
             &mut accounts.user1,
             margin_account.address(),
-            Coins::one(usdc::DENOM.clone(), 15_000_000_000).unwrap(), // 15k USDC
+            Coins::one(usd::DENOM.clone(), 15_000_000_000).unwrap(), // 15k USDC
         )
         .should_succeed();
 
@@ -464,11 +464,11 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     let debts_before = health.debts;
     // Add one microunit as debt may have increased by the time we liquidate due to interest
-    let usdc_repay_amount = debts_before.amount_of(&usdc::DENOM).into_inner() + 1;
+    let usdc_repay_amount = debts_before.amount_of(&usd::DENOM).into_inner() + 1;
 
     // Check liquidator account's USDC balance before
     let usdc_balance_before = suite
-        .query_balance(&accounts.user1.address(), usdc::DENOM.clone())
+        .query_balance(&accounts.user1.address(), usd::DENOM.clone())
         .unwrap();
 
     // Try to partially liquidate the margin account, fully paying off USDC debt,
@@ -478,10 +478,10 @@ fn liquidation_works_with_multiple_debt_denoms() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: usdc::DENOM.clone(),
+                collateral: usd::DENOM.clone(),
             },
             coins! {
-                usdc::DENOM.clone() => usdc_repay_amount,
+                usd::DENOM.clone() => usdc_repay_amount,
                 eth::DENOM.clone() => 10_u128.pow(15), // 0.001 ETH
             },
         )
@@ -489,7 +489,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     // Check liquidator account's USDC balance after
     let usdc_balance_after = suite
-        .query_balance(&accounts.user1.address(), usdc::DENOM.clone())
+        .query_balance(&accounts.user1.address(), usd::DENOM.clone())
         .unwrap();
 
     // Ensure liquidators USDC balance increased
@@ -503,7 +503,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .unwrap();
 
     // Ensure the USDC debt was fully paid off
-    assert!(debts_after.amount_of(&usdc::DENOM).is_zero());
+    assert!(debts_after.amount_of(&usd::DENOM).is_zero());
 
     // Try to liquidate the rest of the account's ETH collateral, but send USDC
     // to cover the debt. Should fail since the account no longer has USDC debt.
@@ -514,7 +514,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
             &account::margin::ExecuteMsg::Liquidate {
                 collateral: eth::DENOM.clone(),
             },
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
         )
         .should_fail_with_error("no debt was repaid");
 
@@ -596,7 +596,7 @@ fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
         .transfer(
             &mut accounts.user1,
             margin_account.address(),
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -606,7 +606,7 @@ fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
-                coins! { usdc::DENOM.clone() => 1_000_000_000 }, // 1K USDC
+                coins! { usd::DENOM.clone() => 1_000_000_000 }, // 1K USDC
             )),
             Coins::new(),
         )
@@ -618,14 +618,14 @@ fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(usdc::DENOM.clone(), 1_000_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 1_000_000_000).unwrap(),
         )
         .should_fail_with_error("this action would make account undercollateralized!");
 
     // Query market for USDC
     let market = suite
         .query_wasm_smart(contracts.lending, QueryMarketRequest {
-            denom: usdc::DENOM.clone(),
+            denom: usd::DENOM.clone(),
         })
         .unwrap();
 
@@ -655,7 +655,7 @@ fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(usdc::DENOM.clone(), 1_000_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 1_000_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -676,7 +676,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .transfer(
             &mut accounts.user1,
             margin_account.address(),
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -706,14 +706,14 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
             &dango_types::dex::ExecuteMsg::BatchUpdateOrders {
                 creates: vec![CreateOrderRequest::new_limit(
                     dango::DENOM.clone(),
-                    usdc::DENOM.clone(),
+                    usd::DENOM.clone(),
                     Direction::Bid,
                     NonZero::new_unchecked(Udec128_24::ONE),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 )],
                 cancels: None,
             },
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -730,7 +730,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
     );
     assert_eq!(
         health.limit_order_collaterals,
-        Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+        Coins::one(usd::DENOM.clone(), 100_000_000).unwrap(),
     );
     assert_eq!(
         health.limit_order_outputs,
@@ -771,7 +771,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
 
     // Check liquidator account's USDC and ETH balance before
     let usdc_balance_before = suite
-        .query_balance(&accounts.user1.address(), usdc::DENOM.clone())
+        .query_balance(&accounts.user1.address(), usd::DENOM.clone())
         .unwrap();
     let eth_balance_before = suite
         .query_balance(&accounts.user1.address(), eth::DENOM.clone())
@@ -783,7 +783,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: usdc::DENOM.clone(),
+                collateral: usd::DENOM.clone(),
             },
             Coins::one(eth::DENOM.clone(), 6 * 10u128.pow(15)).unwrap(),
         )
@@ -791,7 +791,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
 
     // Check liquidator account's USDC and ETH balance after
     let usdc_balance_after = suite
-        .query_balance(&accounts.user1.address(), usdc::DENOM.clone())
+        .query_balance(&accounts.user1.address(), usd::DENOM.clone())
         .unwrap();
     let eth_balance_after = suite
         .query_balance(&accounts.user1.address(), eth::DENOM.clone())
@@ -820,7 +820,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .unwrap();
     assert!(health.limit_order_collaterals.is_empty());
     assert!(health.limit_order_outputs.is_empty());
-    assert!(health.collaterals.amount_of(&usdc::DENOM) < Uint128::new(100)); // some dust left
+    assert!(health.collaterals.amount_of(&usd::DENOM) < Uint128::new(100)); // some dust left
     assert_eq!(
         health.debts.amount_of(&eth::DENOM),
         Uint128::new(6 * 10u128.pow(15)) - liquidator_eth_decrease,

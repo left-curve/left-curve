@@ -14,8 +14,8 @@ use {
         auth::Key,
         bank::Metadata,
         constants::{
-            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, btc_usdc, dango, doge, eth, eth_usdc, ltc,
-            sol, sol_usdc, usdc, xrp,
+            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, btc_usd, dango, doge, eth, eth_usd, ltc, sol,
+            sol_usd, usd, xrp,
         },
         dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
         gateway::{Origin, Remote, WithdrawalFee},
@@ -189,7 +189,7 @@ impl Preset for GrugOption {
         GrugOption {
             owner_username: owner::USERNAME.clone(),
             fee_cfg: taxman::Config {
-                fee_denom: usdc::DENOM.clone(),
+                fee_denom: usd::DENOM.clone(),
                 fee_rate: Udec128::ZERO, // Use zero gas price for testing.
             },
             max_orphan_age: Duration::from_weeks(1),
@@ -252,7 +252,7 @@ impl Preset for AccountOption {
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
             },
-            minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+            minimum_deposit: coins! { usd::DENOM.clone() => 10_000_000 },
         }
     }
 }
@@ -315,10 +315,10 @@ impl Preset for BankOption {
                     decimals: sol::DECIMAL,
                     description: None,
                 },
-                usdc::DENOM.clone() => Metadata {
-                    name: LengthBounded::new_unchecked("USD Coin".to_string()),
-                    symbol: LengthBounded::new_unchecked("USDC".to_string()),
-                    decimals: usdc::DECIMAL,
+                usd::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("United States Dollar".to_string()),
+                    symbol: LengthBounded::new_unchecked("USD".to_string()),
+                    decimals: usd::DECIMAL,
                     description: None,
                 },
                 xrp::DENOM.clone() => Metadata {
@@ -338,9 +338,9 @@ impl Preset for DexOption {
             pairs: vec![
                 PairUpdate {
                     base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        lp_denom: Denom::from_str("dex/pool/dango/usd").unwrap(),
                         pool_type: PassiveLiquidity::Xyk(Xyk {
                             spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
@@ -354,21 +354,21 @@ impl Preset for DexOption {
                 },
                 PairUpdate {
                     base_denom: btc::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
+                        lp_denom: Denom::from_str("dex/pool/btc/usd").unwrap(),
                         pool_type: PassiveLiquidity::Xyk(Xyk {
                             spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                             limit: 30,
                         }),
                         bucket_sizes: btree_set! {
-                            btc_usdc::ONE_HUNDREDTH,
-                            btc_usdc::ONE_TENTH,
-                            btc_usdc::ONE,
-                            btc_usdc::TEN,
-                            btc_usdc::FIFTY,
-                            btc_usdc::ONE_HUNDRED,
+                            btc_usd::ONE_HUNDREDTH,
+                            btc_usd::ONE_TENTH,
+                            btc_usd::ONE,
+                            btc_usd::TEN,
+                            btc_usd::FIFTY,
+                            btc_usd::ONE_HUNDRED,
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                         min_order_size_quote: Uint128::ZERO,
@@ -377,21 +377,21 @@ impl Preset for DexOption {
                 },
                 PairUpdate {
                     base_denom: eth::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
+                        lp_denom: Denom::from_str("dex/pool/eth/usd").unwrap(),
                         pool_type: PassiveLiquidity::Xyk(Xyk {
                             spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                             limit: 30,
                         }),
                         bucket_sizes: btree_set! {
-                            eth_usdc::ONE_HUNDREDTH,
-                            eth_usdc::ONE_TENTH,
-                            eth_usdc::ONE,
-                            eth_usdc::TEN,
-                            eth_usdc::FIFTY,
-                            eth_usdc::ONE_HUNDRED,
+                            eth_usd::ONE_HUNDREDTH,
+                            eth_usd::ONE_TENTH,
+                            eth_usd::ONE,
+                            eth_usd::TEN,
+                            eth_usd::FIFTY,
+                            eth_usd::ONE_HUNDRED,
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                         min_order_size_quote: Uint128::ZERO,
@@ -400,7 +400,7 @@ impl Preset for DexOption {
                 },
                 PairUpdate {
                     base_denom: sol::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
+                    quote_denom: usd::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
                         pool_type: PassiveLiquidity::Xyk(Xyk {
@@ -409,10 +409,10 @@ impl Preset for DexOption {
                             limit: 30,
                         }),
                         bucket_sizes: btree_set! {
-                            sol_usdc::ONE_HUNDREDTH,
-                            sol_usdc::ONE_TENTH,
-                            sol_usdc::ONE,
-                            sol_usdc::TEN,
+                            sol_usd::ONE_HUNDREDTH,
+                            sol_usd::ONE_TENTH,
+                            sol_usd::ONE,
+                            sol_usd::TEN,
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                         min_order_size_quote: Uint128::ZERO,
@@ -428,26 +428,48 @@ impl Preset for GatewayOption {
     fn preset_test() -> Self {
         GatewayOption {
             warp_routes: btree_set! {
-                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
+                // ---------------------------- USD ----------------------------
+                (Origin::Remote(usd::SUBDENOM.clone()), Remote::Warp {
                     domain: arbitrum::DOMAIN,
                     contract: arbitrum::USDC_WARP,
                 }),
-                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
+                (Origin::Remote(usd::SUBDENOM.clone()), Remote::Warp {
+                    domain: arbitrum::DOMAIN,
+                    contract: arbitrum::USDT_WARP,
+                }),
+                (Origin::Remote(usd::SUBDENOM.clone()), Remote::Warp {
                     domain: base::DOMAIN,
                     contract: base::USDC_WARP,
                 }),
-                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
+                (Origin::Remote(usd::SUBDENOM.clone()), Remote::Warp {
+                    domain: base::DOMAIN,
+                    contract: base::USDT_WARP,
+                }),
+                (Origin::Remote(usd::SUBDENOM.clone()), Remote::Warp {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::USDC_WARP,
                 }),
-                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
+                (Origin::Remote(usd::SUBDENOM.clone()), Remote::Warp {
+                    domain: ethereum::DOMAIN,
+                    contract: ethereum::USDT_WARP,
+                }),
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: optimism::DOMAIN,
                     contract: optimism::USDC_WARP,
                 }),
-                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
+                    domain: optimism::DOMAIN,
+                    contract: optimism::USDT_WARP,
+                }),
+                (Origin::Remote(usd::SUBDENOM.clone()), Remote::Warp {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 }),
+                (Origin::Remote(usd::SUBDENOM.clone()), Remote::Warp {
+                    domain: solana::DOMAIN,
+                    contract: solana::USDT_WARP,
+                }),
+                // ---------------------------- ETH ----------------------------
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: arbitrum::DOMAIN,
                     contract: arbitrum::WETH_WARP,
@@ -471,7 +493,7 @@ impl Preset for GatewayOption {
             },
             withdrawal_fees: vec![
                 WithdrawalFee {
-                    denom: usdc::DENOM.clone(),
+                    denom: usd::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: arbitrum::DOMAIN,
                         contract: arbitrum::USDC_WARP,
@@ -479,7 +501,15 @@ impl Preset for GatewayOption {
                     fee: Uint128::new(100_000),
                 },
                 WithdrawalFee {
-                    denom: usdc::DENOM.clone(),
+                    denom: usd::DENOM.clone(),
+                    remote: Remote::Warp {
+                        domain: arbitrum::DOMAIN,
+                        contract: arbitrum::USDT_WARP,
+                    },
+                    fee: Uint128::new(100_000),
+                },
+                WithdrawalFee {
+                    denom: usd::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: base::DOMAIN,
                         contract: base::USDC_WARP,
@@ -487,7 +517,15 @@ impl Preset for GatewayOption {
                     fee: Uint128::new(100_000),
                 },
                 WithdrawalFee {
-                    denom: usdc::DENOM.clone(),
+                    denom: usd::DENOM.clone(),
+                    remote: Remote::Warp {
+                        domain: base::DOMAIN,
+                        contract: base::USDT_WARP,
+                    },
+                    fee: Uint128::new(100_000),
+                },
+                WithdrawalFee {
+                    denom: usd::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::USDC_WARP,
@@ -495,7 +533,15 @@ impl Preset for GatewayOption {
                     fee: Uint128::new(1_000_000),
                 },
                 WithdrawalFee {
-                    denom: usdc::DENOM.clone(),
+                    denom: usd::DENOM.clone(),
+                    remote: Remote::Warp {
+                        domain: ethereum::DOMAIN,
+                        contract: ethereum::USDT_WARP,
+                    },
+                    fee: Uint128::new(1_000_000),
+                },
+                WithdrawalFee {
+                    denom: usd::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: optimism::DOMAIN,
                         contract: optimism::USDC_WARP,
@@ -503,10 +549,26 @@ impl Preset for GatewayOption {
                     fee: Uint128::new(100_000),
                 },
                 WithdrawalFee {
-                    denom: usdc::DENOM.clone(),
+                    denom: usd::DENOM.clone(),
+                    remote: Remote::Warp {
+                        domain: optimism::DOMAIN,
+                        contract: optimism::USDT_WARP,
+                    },
+                    fee: Uint128::new(100_000),
+                },
+                WithdrawalFee {
+                    denom: usd::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: solana::DOMAIN,
                         contract: solana::USDC_WARP,
+                    },
+                    fee: Uint128::new(10_000),
+                },
+                WithdrawalFee {
+                    denom: usd::DENOM.clone(),
+                    remote: Remote::Warp {
+                        domain: solana::DOMAIN,
+                        contract: solana::USDT_WARP,
                     },
                     fee: Uint128::new(10_000),
                 },
@@ -552,9 +614,9 @@ impl Preset for GatewayOption {
                 },
             ],
             rate_limits: btree_map! {
-                usdc::DENOM.clone() => Bounded::new_unchecked(Udec128::new_percent(10)),
-                eth::DENOM.clone()  => Bounded::new_unchecked(Udec128::new_percent(10)),
-                sol::DENOM.clone()  => Bounded::new_unchecked(Udec128::new_percent(10)),
+                usd::DENOM.clone() => Bounded::new_unchecked(Udec128::new_percent(10)),
+                eth::DENOM.clone() => Bounded::new_unchecked(Udec128::new_percent(10)),
+                sol::DENOM.clone() => Bounded::new_unchecked(Udec128::new_percent(10)),
             },
             rate_limit_refresh_period: Duration::from_days(1),
         }
@@ -579,7 +641,7 @@ impl Preset for HyperlaneOption {
                 solana::DOMAIN   => mock_validator_set,
             },
             va_announce_fee_per_byte: Coin {
-                denom: usdc::DENOM.clone(),
+                denom: usd::DENOM.clone(),
                 amount: Uint128::new(100),
             },
         }
@@ -590,7 +652,7 @@ impl Preset for LendingOption {
     fn preset_test() -> Self {
         LendingOption {
             markets: btree_map! {
-                usdc::DENOM.clone() => InterestRateModel::mock(),
+                usd::DENOM.clone() => InterestRateModel::mock(),
                 eth::DENOM.clone() => InterestRateModel::mock(),
             },
         }

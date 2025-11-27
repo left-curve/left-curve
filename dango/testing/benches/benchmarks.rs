@@ -7,7 +7,7 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams, Salt},
-        constants::usdc,
+        constants::usd,
     },
     grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins},
     grug_app::{AppError, Db, ProposalPreparer, Vm},
@@ -52,7 +52,7 @@ where
                     )),
                 },
                 if i < 100 {
-                    coins! { usdc::DENOM.clone() => 100_000_000 }
+                    coins! { usd::DENOM.clone() => 100_000_000 }
                 } else {
                     Coins::new()
                 },
@@ -91,7 +91,7 @@ where
             );
 
             // Sign the transaction.
-            let msg = Message::transfer(receiver, coins! { usdc::DENOM.clone() => 123 }).unwrap();
+            let msg = Message::transfer(receiver, coins! { usd::DENOM.clone() => 123 }).unwrap();
 
             let (data, credential) = accounts
                 .owner

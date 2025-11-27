@@ -4,7 +4,7 @@ use {
     dango_genesis::GenesisOption,
     dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
     dango_testing::{Preset, TestOption},
-    dango_types::constants::usdc,
+    dango_types::constants::usd,
     grug::{BlockCreation, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, Signer},
     grug_types::{BroadcastClient, BroadcastClientExt, Denom, GasOption},
     indexer_client::HttpClient,
@@ -377,7 +377,7 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
     let tx = accounts.user1.sign_transaction(
         NonEmpty::new_unchecked(vec![Message::transfer(
             accounts.user2.address.into_inner(),
-            Coins::one(usdc::DENOM.clone(), 100)?,
+            Coins::one(usd::DENOM.clone(), 100)?,
         )?]),
         MOCK_CHAIN_ID,
         1000000,

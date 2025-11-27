@@ -117,7 +117,7 @@ mod tests {
     use {
         super::*,
         dango_types::constants::{
-            eth_usdc,
+            eth_usd,
             mock::{FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, ONE_THOUSANDTH, TEN},
         },
         grug::Uint128,
@@ -238,73 +238,73 @@ mod tests {
     // A few tests of real world scenario with Ether, which is tricky due to its
     // 18 decimal places. We took the actual price of ETH from GoinGecko.
     #[test_case(
-        *eth_usdc::ONE_HUNDREDTH,
+        *eth_usd::ONE_HUNDREDTH,
         Direction::Bid,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.00000000431614").unwrap() // $4316.14
     )]
     #[test_case(
-        *eth_usdc::ONE_HUNDREDTH,
+        *eth_usd::ONE_HUNDREDTH,
         Direction::Ask,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.00000000431614").unwrap() // $4316.14
     )]
     #[test_case(
-        *eth_usdc::ONE_TENTH,
+        *eth_usd::ONE_TENTH,
         Direction::Bid,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.0000000043161").unwrap() // $4316.1
     )]
     #[test_case(
-        *eth_usdc::ONE_TENTH,
+        *eth_usd::ONE_TENTH,
         Direction::Ask,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.0000000043162").unwrap() // $4316.2
     )]
     #[test_case(
-        *eth_usdc::ONE,
+        *eth_usd::ONE,
         Direction::Bid,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.000000004316").unwrap() // $4316
     )]
     #[test_case(
-        *eth_usdc::ONE,
+        *eth_usd::ONE,
         Direction::Ask,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.000000004317").unwrap() // $4317
     )]
     #[test_case(
-        *eth_usdc::TEN,
+        *eth_usd::TEN,
         Direction::Bid,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.000000004310").unwrap() // $4310
     )]
     #[test_case(
-        *eth_usdc::TEN,
+        *eth_usd::TEN,
         Direction::Ask,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.000000004320").unwrap() // $4320
     )]
     #[test_case(
-        *eth_usdc::FIFTY,
+        *eth_usd::FIFTY,
         Direction::Bid,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.000000004300").unwrap() // $4300
     )]
     #[test_case(
-        *eth_usdc::FIFTY,
+        *eth_usd::FIFTY,
         Direction::Ask,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.000000004350").unwrap() // $4350
     )]
     #[test_case(
-        *eth_usdc::ONE_HUNDRED,
+        *eth_usd::ONE_HUNDRED,
         Direction::Bid,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.000000004300").unwrap() // $4300
     )]
     #[test_case(
-        *eth_usdc::ONE_HUNDRED,
+        *eth_usd::ONE_HUNDRED,
         Direction::Ask,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
         => Price::from_str("0.000000004400").unwrap() // $4400
