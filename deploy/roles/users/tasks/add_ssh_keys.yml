@@ -1,0 +1,21 @@
+- name: Add all keys for {{ user }}
+  authorized_key:
+    user: "{{ authorized_user }}"
+    state: present
+    key: "{{ lookup('file', item) }}"
+    manage_dir: true
+  with_fileglob:
+    - "authorized_keys/{{ user }}/*.pub"
+
+- name: Check for single pubkey file
+  stat:
+    path: "authorized_keys/{{ user }}.pub"
+  register: single_key
+
+- name: Add single pubkey for {{ user }}
+  authorized_key:
+    user: "{{ authorized_user }}"
+    state: present
+    key: "{{ lookup('file', 'authorized_keys/' ~ user ~ '.pub') }}"
+    manage_dir: true
+  when: single_key.stat.exists

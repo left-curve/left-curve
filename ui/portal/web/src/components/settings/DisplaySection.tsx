@@ -6,6 +6,8 @@ import {
   IconMoon,
   IconSun,
   IconTheme,
+  IconTime,
+  IconWorld,
   Select,
   Tab,
   Tabs,
@@ -106,7 +108,7 @@ const TimeFormatSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconCalendar className="text-ink-tertiary-500" />
+        <IconTime className="text-ink-tertiary-500" />
         <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.time"]()}</span>
       </p>
 
@@ -160,7 +162,7 @@ const TimeZoneSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconCalendar className="text-ink-tertiary-500" />
+        <IconWorld className="text-ink-tertiary-500" />
         <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.timeZone"]()}</span>
       </p>
 
