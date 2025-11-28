@@ -7996,6 +7996,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "axum",
+ "dotenvy",
  "grug",
  "indexer-disk-saver",
  "metrics",
