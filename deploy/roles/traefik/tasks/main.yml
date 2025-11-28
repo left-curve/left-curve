@@ -113,6 +113,12 @@
   args:
     creates: "{{ traefik_dir }}/letsencrypt/live/dango.zone/fullchain.pem"
 
+- name: Create cloudflare network
+  become: true
+  become_user: root
+  docker_network:
+    name: cloudflare
+
 - name: Deploy all
   community.docker.docker_compose_v2:
     project_src: "{{ traefik_dir }}"
@@ -123,6 +129,7 @@
     wait: true
     wait_timeout: 300
 
+# We don't allow those port from public IPs anymore
 - name: Add UFW rules
   become: true
   become_user: root
@@ -131,7 +138,9 @@
     direction: in
     port: "{{ item }}"
     proto: tcp
+    delete: yes
   loop: [80, 443]
+  ignore_errors: yes
 
 - name: Renew Let's Encrypt certs for Traefik
   become: true
