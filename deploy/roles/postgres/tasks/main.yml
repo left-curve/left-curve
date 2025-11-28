@@ -77,6 +77,8 @@
   become_user: root
 
 - name: Create postgres network
+  become: true
+  become_user: root
   docker_network:
     name: postgres
 

@@ -27,8 +27,6 @@ futures            = { workspace = true }
 grug-app           = { workspace = true }
 grug-types         = { workspace = true, features = ["chrono", "sea-orm"] }
 indexer-disk-saver = { workspace = true, features = ["tracing"] }
-indexer-hooked     = { workspace = true }
-itertools          = { workspace = true }
 metrics            = { workspace = true, optional = true }
 serde              = { workspace = true }
 serde_json         = { workspace = true }

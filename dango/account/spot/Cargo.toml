@@ -19,5 +19,3 @@ anyhow      = { workspace = true }
 dango-auth  = { workspace = true }
 dango-types = { workspace = true }
 grug        = { workspace = true }
-
-[dev-dependencies]

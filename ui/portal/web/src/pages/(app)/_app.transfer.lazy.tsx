@@ -54,7 +54,7 @@ function TransferApplet() {
   });
 
   const { account, isConnected } = useAccount();
-  const { coins } = useConfig();
+  const { coins, getCoinInfo } = useConfig();
   const { data: signingClient } = useSigningClient();
 
   const { data: balances = {}, refetch: refreshBalances } = useBalances({
@@ -166,7 +166,7 @@ function TransferApplet() {
                   startText="right"
                   startContent={
                     <CoinSelector
-                      coins={Object.values(coins.byDenom)}
+                      coins={Object.keys(balances).map((denom) => getCoinInfo(denom))}
                       value={selectedDenom}
                       isDisabled={isPending}
                       onChange={(k) => [setSelectedDenom(k)]}

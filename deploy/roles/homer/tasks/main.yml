@@ -33,12 +33,3 @@
     pull: always
   retries: 3
   delay: 5
-
-- name: Add UFW rule
-  become: true
-  become_user: root
-  ufw:
-    rule: allow
-    direction: in
-    port: 80
-    proto: tcp

@@ -29,11 +29,19 @@
     update_cache: yes
     name: ['docker-ce', 'docker-ce-cli', 'containerd.io', 'docker-buildx-plugin', 'docker-compose-plugin', 'apparmor']
 
-- name: Adding deploy user to group docker
+- name: Adding {{ ansible_env.USER }} user to group docker
   become: true
   user:
     append: true
     name: '{{ ansible_env.USER }}'
+    groups:
+      - docker
+
+- name: Adding {{ deploy_user }} user to group docker
+  become: true
+  user:
+    append: true
+    name: '{{ deploy_user }}'
     groups:
       - docker
 
