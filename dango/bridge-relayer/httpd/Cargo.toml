@@ -34,6 +34,8 @@ metrics-exporter-prometheus = { workspace = true, optional = true }
 sea-orm                     = { workspace = true }
 sea-orm-migration           = { workspace = true }
 sentry-actix                = { workspace = true }
+serde                       = { workspace = true }
+serde_json                  = { workspace = true }
 thiserror                   = { workspace = true }
 tokio                       = { workspace = true }
 tracing                     = { workspace = true, optional = true }

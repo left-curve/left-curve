@@ -1,6 +1,6 @@
 use {
     super::error::Error,
-    crate::context::Context,
+    crate::{context::Context, routes},
     actix_cors::Cors,
     actix_web::{
         App, HttpResponse, HttpServer, http,
@@ -68,7 +68,8 @@ where
             "/health",
             web::get().to(|| async { HttpResponse::Ok().body("Bridge relayer server is healthy") }),
         )
-        .service(crate::routes::deposit_address)
+        .service(routes::deposit_address)
+        .service(routes::deposit_addresses)
     })
     .workers(8)
     // .max_connections(10_000)

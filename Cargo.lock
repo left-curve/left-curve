@@ -3569,6 +3569,8 @@ dependencies = [
  "sea-orm",
  "sea-orm-migration",
  "sentry-actix",
+ "serde",
+ "serde_json",
  "test-case",
  "thiserror 2.0.12",
  "tokio",
