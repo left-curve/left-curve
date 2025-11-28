@@ -64,7 +64,7 @@
       service_name: "clickhouse"
       environment: "production"
     ports:
-      - "{{ tailscape_ip }}:9126:9126" # Prometheus metrics
+      - "{{ tailscale_ip }}:9126:9126" # Prometheus metrics
       - "{{ wireguard_ip }}:9126:9126" # Prometheus metrics
     volumes:
       - "{{ data_dir }}:/var/lib/clickhouse"
