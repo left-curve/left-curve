@@ -11,58 +11,80 @@
 
 use {
     dango_hyperlane_deployment::{
-        config,
-        contract_bindings::proxy::ProxyAdmin,
-        evm::{deploy_proxy_admin, deploy_warp_route, get_or_deploy_ism},
+        config::{
+            self, EVMWarpRouteDeployment,
+            evm::{WarpRoute, WarpRouteType},
+        },
+        evm::{
+            deploy_proxy_admin, deploy_warp_route, deploy_warp_route_and_update_deployment,
+            get_or_deploy_ism,
+        },
         setup,
     },
     dotenvy::dotenv,
 };
+
+// The kind of warp route to deploy.
+const WARP_ROUTE_TYPE: WarpRouteType = WarpRouteType::Native;
+// The symbol to use as subdenom for the token on Dango.
+const SYMBOL: &str = "sepoliaETH";
+
+const EVM_NETWORK: &str = "sepolia";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
     let mut config = config::load_config()?;
+    let mut deployments = config::load_deployments()?;
 
-    // Separate block to avoid borrowing issues with the config
-    {
-        let evm_config = config.evm.get_mut("sepolia").unwrap();
-        let (provider, owner) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
+    let evm_config = config.evm.get_mut(EVM_NETWORK).unwrap();
+    let (provider, owner) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
-        let ism = get_or_deploy_ism(
-            &provider,
-            &evm_config.hyperlane_deployments,
-            evm_config.ism.clone(),
-        )
-        .await?;
+    let maybe_deployment = deployments.evm.get(EVM_NETWORK);
 
-        match evm_config.proxy_admin_address {
-            Some(proxy_admin_address) => {
-                println!("Using provided ProxyAdmin contract at {proxy_admin_address}");
-                ProxyAdmin::new(proxy_admin_address, &provider)
-            },
-            None => {
-                let proxy_admin_address = deploy_proxy_admin(&provider).await?;
-                evm_config.proxy_admin_address = Some(proxy_admin_address);
-                ProxyAdmin::new(proxy_admin_address, &provider)
-            },
-        };
+    let mut evm_deployment = match maybe_deployment {
+        Some(deployment) => deployment.clone(),
+        None => {
+            let proxy_admin_address = deploy_proxy_admin(&provider).await?;
+            config::EVMDeployment {
+                proxy_admin_address,
+                warp_routes: vec![],
+            }
+        },
+    };
 
-        deploy_warp_route(
-            &provider,
-            &evm_config.hyperlane_deployments,
-            &evm_config.warp_routes[0],
-            evm_config.proxy_admin_address.unwrap(),
-            Some(ism),
-            owner,
-        )
-        .await?;
-    }
+    let warp_route = WarpRoute {
+        warp_route_type: WARP_ROUTE_TYPE.clone(),
+        symbol: SYMBOL.to_string(),
+    };
 
-    // Save the config
-    println!("Saving updated config...");
-    config::save_config(&config)?;
+    // Get or deploy the ISM
+    let ism = get_or_deploy_ism(
+        &provider,
+        &evm_config.hyperlane_deployments,
+        evm_config.ism.clone(),
+    )
+    .await?;
+
+    deploy_warp_route_and_update_deployment(
+        &provider,
+        &warp_route,
+        owner,
+        Some(ism),
+        &evm_config,
+        &mut evm_deployment,
+    )
+    .await?;
+
+    // Update the deployments with the new deployment
+    deployments
+        .evm
+        .insert(EVM_NETWORK.to_string(), evm_deployment);
+
+    // Save the updated deployments
+    println!("Saving updated deployments...");
+    config::save_deployments(&deployments)?;
 
     println!("Done!");
 

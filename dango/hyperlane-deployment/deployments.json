@@ -1,0 +1,37 @@
+{
+  "evm": {
+    "sepolia": {
+      "proxy_admin_address": "0x311d8cd0eddab142be43a7f794b9013408675dbb",
+      "warp_routes": [
+        [
+          "native",
+          {
+            "address": "0x613942eff27c6886bb2a33a172cdaf03a009e601",
+            "proxy_address": "0x34dc3f292fc04e3dcc2830ac69bb5d4cd5e8f654",
+            "symbol": "sepoliaETH"
+          }
+        ],
+        [
+          {
+            "erc20_collateral": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238"
+          },
+          {
+            "address": "0xd05909852ae07118857f9d071781671d12c0f36c",
+            "proxy_address": "0x6ba100453e826b903de1a7aecdb7a3396670ae51",
+            "symbol": "sepoliaUSDC"
+          }
+        ],
+        [
+          {
+            "erc20_collateral": "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"
+          },
+          {
+            "address": "0xd0e8879ff9e967c4f321534f4f92439217bf25ce",
+            "proxy_address": "0xccc25c0ab58c1a143ae962191dc310045e70921c",
+            "symbol": "sepoliaUNI"
+          }
+        ]
+      ]
+    }
+  }
+}

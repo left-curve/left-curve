@@ -4,7 +4,12 @@ This crate contains the code for deploying Hyperlane Warp Routes on EVM and conn
 
 ## EVM
 
-The `hyperlane-monorepo` is included as git sumbodule in `dango/hyperlane-deployment/hyperlane-monorepo. All the binaries we deploy are built from this source. To rebuild the EVM contracts from source, run the following.
+The `hyperlane-monorepo` is included as git sumbodule in `dango/hyperlane-deployment/hyperlane-monorepo. All the binaries we deploy are built from this source.
+The binaries used are located in the `dango/hyperlane-deployment/artifacts/evm` directory. If you don't need to rebuild the contracts, you can skip this section.
+
+### Rebuilding the Solidity artifacts
+
+To rebuild the EVM contracts from source, run the following.
 
 1. Checkout the new desired commit of the `hyperlane-monorepo`
 
@@ -26,7 +31,12 @@ cp ./hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/HypERC20
 cp ./hyperlane-monorepo/solidity/artifacts/contracts/token/HypNative.sol/HypNative.json artifacts/evm
 ```
 
-4. Run the deployment scripts.
+### Running the deployment scripts
+
+Before you can run the deployment scripts make sure you have the correct environment variables set. See the EVM section of `dango/hyperlane-deployment/env.example`.
+
+The deployment scripts are located in the `dango/hyperlane-deployment/src/bin/evm/` directory. Use the `dango/hyperlane-deployment/config.json` file to configure the deployment.
+The main script is `deploy.rs`. It deploys the Hyperlane Routes that are configured in the config file.
 
 ## SVM
 
@@ -75,6 +85,4 @@ solana program deploy ./hyperlane_sealevel_token.so --keypair keypair.json
 solana program invoke --program-id hBHAApi5ZoeCYHqDdCKkCzVKmBdwywdT3hMqe327eZB --keypair keypair.json --instruction configure-igp
 ```
 
-
 ### Flow
-

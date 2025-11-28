@@ -1,8 +1,8 @@
 use {
     crate::{
         config::{
-            Config,
-            evm::{HyperlaneDeployments, ISM, WarpRoute, WarpRouteType},
+            Config, EVMDeployment, EVMWarpRouteDeployment,
+            evm::{EVMConfig, HyperlaneDeployments, ISM, WarpRoute, WarpRouteType},
         },
         contract_bindings::{
             hyp_erc20_collateral::HypERC20Collateral,
@@ -145,6 +145,54 @@ pub async fn deploy_warp_route(
     println!("Done! Proxy address: {}", proxy.address());
 
     Ok((hyperlane_warp_route, *proxy.address()))
+}
+
+/// Deploys a new warp route if it is not already deployed and updates the deployment with the new warp route.
+pub async fn deploy_warp_route_and_update_deployment(
+    provider: &impl Provider,
+    warp_route: &WarpRoute,
+    owner: Address,
+    ism: Option<Address>,
+    evm_config: &EVMConfig,
+    deployment: &mut EVMDeployment,
+) -> anyhow::Result<()> {
+    // Return early if the warp route is already deployed
+    if deployment
+        .warp_routes
+        .iter()
+        .any(|(warp_route_type, _)| *warp_route_type == warp_route.warp_route_type)
+    {
+        println!(
+            "Warp route {:?} for {} already deployed. Skipping...",
+            warp_route.warp_route_type, warp_route.symbol
+        );
+        return Ok(());
+    }
+
+    println!(
+        "Deploying warp route {:?} for {}...",
+        warp_route.warp_route_type, warp_route.symbol
+    );
+    let (warp_route_address, proxy_address) = deploy_warp_route(
+        &provider,
+        &evm_config.hyperlane_deployments,
+        &warp_route,
+        deployment.proxy_admin_address,
+        ism,
+        owner,
+    )
+    .await?;
+
+    // Update the deployment with the new warp route
+    deployment.warp_routes.push(
+        (warp_route.warp_route_type.clone(), EVMWarpRouteDeployment {
+            address: warp_route_address,
+            proxy_address,
+            symbol: warp_route.symbol.clone(),
+        }),
+    );
+
+    Ok(())
 }
 
 /// Sets the ISM address on the warp route.

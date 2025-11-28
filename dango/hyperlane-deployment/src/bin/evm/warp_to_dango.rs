@@ -34,22 +34,31 @@ const WARP_ROUTE_PROXY_ADDRESS: Address = usdc::WARP_ROUTE_PROXY;
 
 const DANGO_RECIPIENT: Addr = addr!("a20a0e1a71b82d50fc046bc6e3178ad0154fd184");
 
+const EVM_NETWORK: &str = "sepolia";
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
     let config = config::load_config()?;
-    let evm_config = config.evm.get("sepolia").unwrap();
+    let deployments = config::load_deployments()?;
+    let evm_config = config.evm.get(EVM_NETWORK).unwrap();
+    let evm_deployment = deployments.evm.get(EVM_NETWORK).ok_or_else(|| {
+        anyhow::anyhow!(
+            "No deployment for EVM network '{}' found in deployments.json",
+            EVM_NETWORK
+        )
+    })?;
 
     let mut maybe_warp_route = None;
-    for warp_route in evm_config.warp_routes.iter() {
-        if warp_route.proxy_address == Some(WARP_ROUTE_PROXY_ADDRESS) {
-            maybe_warp_route = Some(warp_route.clone());
+    for (warp_route_type, warp_route_deployment) in evm_deployment.warp_routes.iter() {
+        if warp_route_deployment.proxy_address == WARP_ROUTE_PROXY_ADDRESS {
+            maybe_warp_route = Some((warp_route_type.clone(), warp_route_deployment.clone()));
             break;
         }
     }
-    let warp_route = maybe_warp_route.ok_or(anyhow::anyhow!("Warp route not found in config"))?;
-    let warp_route_proxy_address = warp_route.proxy_address.unwrap();
+    let (warp_route_type, warp_route_deployment) =
+        maybe_warp_route.ok_or(anyhow::anyhow!("Warp route not found in config"))?;
 
     let (dango_client, ..) = setup::setup_dango(&config.dango).await?;
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
@@ -69,12 +78,12 @@ async fn main() -> anyhow::Result<()> {
     // Setup ethereum provider
     let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
-    let value = match warp_route.warp_route_type {
+    let value = match warp_route_type {
         WarpRouteType::ERC20Collateral(erc20_address) => {
             println!(
                 "approving spend of {} for route proxy ({}) on {}",
                 WARP_AMOUNT,
-                warp_route_proxy_address.to_string(),
+                warp_route_deployment.proxy_address.to_string(),
                 erc20_address.to_string()
             );
             let tx_hash = provider
@@ -82,7 +91,7 @@ async fn main() -> anyhow::Result<()> {
                     TransactionRequest::default()
                         .with_to(erc20_address)
                         .with_call(&HypERC20::approveCall {
-                            spender: warp_route_proxy_address,
+                            spender: warp_route_deployment.proxy_address,
                             amount: U256::from(WARP_AMOUNT),
                         }),
                 )
@@ -96,7 +105,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Setup contracts
-    let warp_route_proxy = TokenRouter::new(warp_route.proxy_address.unwrap(), &provider);
+    let warp_route_proxy = TokenRouter::new(warp_route_deployment.proxy_address, &provider);
 
     // Assert that the dango domain is correctly enrolled in the warp route proxy
     let router_address = warp_route_proxy.routers(dango_domain).call().await?;
@@ -105,7 +114,10 @@ async fn main() -> anyhow::Result<()> {
         FixedBytes::<32>::left_padding_from(app_cfg.addresses.warp.inner())
     );
 
-    println!("warping {} {} to dango...", WARP_AMOUNT, &warp_route.symbol);
+    println!(
+        "warping {} {} to dango...",
+        WARP_AMOUNT, &warp_route_deployment.symbol
+    );
     let tx_hash = warp_route_proxy
         .transferRemote(
             dango_domain,

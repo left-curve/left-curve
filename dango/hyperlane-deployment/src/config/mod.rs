@@ -1,8 +1,14 @@
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
+use {
+    alloy::primitives::Address,
+    serde::{Deserialize, Serialize},
+};
 
-use crate::config::{dango::DangoConfig, evm::EVMConfig};
+use crate::config::{
+    dango::DangoConfig,
+    evm::{EVMConfig, WarpRouteType},
+};
 
 pub mod dango;
 pub mod evm;
@@ -18,19 +24,6 @@ pub fn load_config() -> anyhow::Result<Config> {
     let config = std::fs::read_to_string(config_path)?;
     let config: Config = serde_json::from_str(&config)?;
 
-    // Validate the config
-    for warp_route in config
-        .evm
-        .iter()
-        .flat_map(|(_, evm_config)| evm_config.warp_routes.iter())
-    {
-        if warp_route.address.is_none() != warp_route.proxy_address.is_none() {
-            return Err(anyhow::anyhow!(
-                "warp_route.address and warp_route.proxy_address must be either both set or both unset"
-            ));
-        }
-    }
-
     Ok(config)
 }
 
@@ -38,6 +31,48 @@ pub fn save_config(config: &Config) -> anyhow::Result<()> {
     let config_path = format!("{}/config.json", env!("CARGO_MANIFEST_DIR"));
     let config_json = serde_json::to_string_pretty(config)?;
     std::fs::write(config_path, config_json)?;
+    Ok(())
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct EVMDeployment {
+    pub proxy_admin_address: Address,
+    pub warp_routes: Vec<(WarpRouteType, EVMWarpRouteDeployment)>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, Ord, PartialOrd, Eq, PartialEq)]
+pub struct EVMWarpRouteDeployment {
+    pub address: Address,
+    pub proxy_address: Address,
+    pub symbol: String,
+}
+
+pub fn load_evm_deployments() -> anyhow::Result<EVMDeployment> {
+    let deployments_path = format!("{}/deployments.json", env!("CARGO_MANIFEST_DIR"));
+    let deployments = std::fs::read_to_string(deployments_path)?;
+    let deployments: EVMDeployment = serde_json::from_str(&deployments)?;
+
+    Ok(deployments)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Deployments {
+    pub evm: BTreeMap<String, EVMDeployment>,
+}
+
+pub fn load_deployments() -> anyhow::Result<Deployments> {
+    let deployments_path = format!("{}/deployments.json", env!("CARGO_MANIFEST_DIR"));
+    let deployments = std::fs::read_to_string(deployments_path)?;
+    let deployments: Deployments = serde_json::from_str(&deployments)?;
+
+    Ok(deployments)
+}
+
+pub fn save_deployments(deployments: &Deployments) -> anyhow::Result<()> {
+    let deployments_path = format!("{}/deployments.json", env!("CARGO_MANIFEST_DIR"));
+    let deployments_json = serde_json::to_string_pretty(deployments)?;
+    std::fs::write(deployments_path.clone(), deployments_json)?;
+    println!("Saved deployments to {}", deployments_path);
     Ok(())
 }
 
@@ -66,32 +101,14 @@ mod tests {
     }
 
     #[test]
-    fn t2() {
-        let b = btree_map! {
-            "sepolia" => EVMConfig {
-                infura_rpc_url: "https://sepolia.infura.io/v3/".to_string(),
-                hyperlane_deployments: HyperlaneDeployments {
-                    static_message_id_multisig_ism_factory: address!("0xFEb9585b2f948c1eD74034205a7439261a9d27DD"),
-                    mailbox: address!("0xFEb9585b2f948c1eD74034205a7439261a9d27DD"),
-                },
-                hyperlane_domain: 11155111,
-                hyperlane_protocol_fee: 1,
-                ism: ISM::StaticMessageIdMultisigIsm {
-                    validators: vec![address!("0x4e5088dd05269194c9cdf30cd7a72a2ddd31b23c")],
-                    threshold: 1,
-                },
-                proxy_admin_address: Some(address!("0x311d8cd0eddab142be43a7f794b9013408675dbb")),
-                warp_routes: vec![
-                    WarpRoute {
-                        warp_route_type: WarpRouteType::Native,
-                        address: Some(address!("0x613942eff27c6886bb2a33a172cdaf03a009e601")),
-                        proxy_address: Some(address!("0x34dc3f292fc04e3dcc2830ac69bb5d4cd5e8f654")),
-                        symbol: "sepoliaETH".to_string(),
-                    },
-                ],
-            },
-        };
-        let serialized = serde_json::to_string_pretty(&b).unwrap();
-        println!("serialized = {}", serialized);
+    fn test_load_evm_deployments() {
+        let deployments = load_evm_deployments().unwrap();
+        println!("deployments = {:?}", deployments);
+    }
+
+    #[test]
+    fn test_load_deployments() {
+        let deployments = load_deployments().unwrap();
+        println!("deployments = {:?}", deployments);
     }
 }
