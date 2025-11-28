@@ -191,6 +191,11 @@ uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "6"
 wasmer-middlewares          = "6"
 
+# S3 client (AWS SDK v1)
+aws-config                  = "1"
+aws-sdk-s3                  = "1"
+aws-credential-types        = "1"
+
 # Left curve packages
 dango-account-factory       = { path = "dango/account/factory" }
 dango-account-margin        = { path = "dango/account/margin" }
