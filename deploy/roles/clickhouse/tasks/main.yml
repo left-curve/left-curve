@@ -64,6 +64,7 @@
       service_name: "clickhouse"
       environment: "production"
     ports:
+      - "127.0.0.1:9000:9000" # Native TCP interface
       - "{{ tailscale_ip }}:9126:9126" # Prometheus metrics
       - "{{ wireguard_ip }}:9126:9126" # Prometheus metrics
     volumes:
