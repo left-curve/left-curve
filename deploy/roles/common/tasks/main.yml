@@ -155,3 +155,30 @@
     - { name: "net.core.rmem_max",         value: "7500000" }
     - { name: "net.core.wmem_max",         value: "7500000" }
 
+- name: Enable unattended-upgrades
+  apt:
+    name: unattended-upgrades
+    state: present
+
+- name: Configure unattended-upgrades
+  copy:
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    content: |
+      Unattended-Upgrade::Allowed-Origins {
+        "${distro_id}:${distro_codename}-security";
+        "${distro_id}ESMApps:${distro_codename}-apps-security";
+        "${distro_id}ESM:${distro_codename}-infra-security";
+      };
+      Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+      Unattended-Upgrade::Remove-Unused-Dependencies "true";
+      Unattended-Upgrade::Automatic-Reboot "false";
+      # Unattended-Upgrade::Automatic-Reboot "true";
+      # Unattended-Upgrade::Automatic-Reboot-Time "{{ reboot_time | default('10:00')";
+      # Unattended-Upgrade::Automatic-Reboot-WithUsers "false"
+
+- name: Enable automatic updates
+  copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
