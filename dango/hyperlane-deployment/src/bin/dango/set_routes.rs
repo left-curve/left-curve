@@ -10,66 +10,36 @@
 //! ```
 
 use {
-    dango_hyperlane_deployment::setup,
-    dango_types::{config::AppConfig, gateway},
+    alloy::primitives::{Address, address},
+    dango_hyperlane_deployment::{config, dango::set_warp_routes, setup},
+    dango_types::config::AppConfig,
     dotenvy::dotenv,
-    grug::{BroadcastClientExt, Coins, GasOption, QueryClientExt, btree_set},
-    tokio::time::sleep,
+    grug::{QueryClientExt, btree_set},
+    std::collections::BTreeSet,
+};
+
+const ROUTES: BTreeSet<(String, Address)> = btree_set! {
+    ("sepoliaETH", address!("0x613942eff27c6886bb2a33a172cdaf03a009e601")),
 };
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
-    let (dango_client, mut dango_owner, config) = setup::setup_dango().await?;
+    let config = config::load_config()?;
+    let evm_config = config.evm.get("sepolia").unwrap();
+
+    let (dango_client, mut dango_owner) = setup::setup_dango(&config.dango).await?;
 
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
 
-    for route in config.routes {
-        // Set the route on the gateway
-        println!(
-            "setting route for origin: {:?}, remote: {:?}",
-            route.origin, route.remote
-        );
-        dango_client
-            .execute(
-                &mut dango_owner,
-                app_cfg.addresses.gateway,
-                &gateway::ExecuteMsg::SetRoutes(btree_set! {
-                    (route.origin, app_cfg.addresses.warp, route.remote)
-                }),
-                Coins::new(),
-                GasOption::Predefined {
-                    gas_limit: 1_000_000_u64,
-                },
-                config.dango_chain_id.as_str(),
-            )
-            .await?;
-
-        sleep(std::time::Duration::from_millis(500)).await;
-
-        // Query the route on the gateway
-        println!("querying the route on the gateway...");
-        let denom = dango_client
-            .query_wasm_smart(
-                app_cfg.addresses.gateway,
-                gateway::QueryRouteRequest {
-                    bridge: app_cfg.addresses.warp,
-                    remote: route.remote,
-                },
-                None,
-            )
-            .await?;
-
-        if let Some(denom) = denom {
-            println!(
-                "Successfully set the route. Denom in use on Dango: {:#?}",
-                denom
-            );
-        } else {
-            return Err(anyhow::anyhow!("Failed to set the route"));
-        }
-    }
-
+    set_warp_routes(
+        &dango_client,
+        &config.dango,
+        &mut dango_owner,
+        evm_config.hyperlane_domain,
+        ROUTES,
+    )
+    .await?;
     Ok(())
 }

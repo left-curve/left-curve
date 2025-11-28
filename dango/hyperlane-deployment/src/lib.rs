@@ -5,8 +5,14 @@ pub mod addresses {
         pub const WARP_DOMAIN: u32 = 11155111;
         pub const HYPERLANE_MAILBOX: Address = address!("fFAEF09B3cd11D9b20d1a19bECca54EEC2884766");
 
+        pub const HYPERLANE_STATIC_MESSAGE_ID_MULTISIG_ISM_FACTORY: Address =
+            address!("FEb9585b2f948c1eD74034205a7439261a9d27DD");
+
         pub mod hyperlane_deployments {
             use super::*;
+
+            pub const CUSTOM_MULTISIG_ISM: Address =
+                address!("08A587C17C1CD3a1BC2220E0808281a143877B70");
 
             pub mod eth {
                 use super::*;
@@ -86,7 +92,78 @@ pub mod contract_bindings {
             "artifacts/evm/TransparentUpgradeableProxy.json"
         }
     }
+
+    pub mod mailbox {
+        use alloy::sol;
+
+        sol! {
+            #[sol(rpc)]
+            Mailbox,
+            "artifacts/evm/Mailbox.json"
+        }
+    }
+
+    pub mod ism {
+        use alloy::sol;
+
+        sol! {
+            #[sol(rpc)]
+            IInterchainSecurityModule,
+            "artifacts/evm/IInterchainSecurityModule.json"
+        }
+
+        sol! {
+            #[sol(rpc)]
+            IRoutingIsm,
+            "artifacts/evm/IRoutingIsm.json"
+        }
+
+        sol! {
+            #[sol(rpc)]
+            DefaultFallbackRoutingIsm,
+            "artifacts/evm/DefaultFallbackRoutingIsm.json"
+        }
+
+        sol! {
+            #[sol(rpc)]
+            StaticAggregationIsm,
+            "artifacts/evm/StaticAggregationIsm.json"
+        }
+
+        sol! {
+            #[sol(rpc)]
+            AbstractMetaProxyMultisigIsm,
+            "artifacts/evm/AbstractMetaProxyMultisigIsm.json"
+        }
+
+        sol! {
+            #[sol(rpc)]
+            StaticMessageIdMultisigIsm,
+            "artifacts/evm/StaticMessageIdMultisigIsm.json"
+        }
+
+        sol! {
+            #[sol(rpc)]
+            StaticMessageIdMultisigIsmFactory,
+            "artifacts/evm/StaticMessageIdMultisigIsmFactory.json"
+        }
+
+        sol! {
+            #[sol(rpc)]
+            StaticThresholdAddressSetFactory,
+            "artifacts/evm/StaticThresholdAddressSetFactory.json"
+        }
+
+        sol! {
+            #[sol(rpc)]
+            TokenRouter,
+            "artifacts/evm/TokenRouter.json"
+        }
+    }
 }
 
 pub mod config;
 pub mod setup;
+
+pub mod dango;
+pub mod evm;

@@ -1,5 +1,5 @@
 use {
-    crate::config::DangoConfig,
+    crate::config::dango::DangoConfig,
     dango_client::{Secp256k1, Secret, SingleSigner},
     dango_types::auth::Nonce,
     grug::{Addr, Defined, addr},
@@ -14,14 +14,15 @@ const DANGO_OWNER_ADDR: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9")
 const DANGO_OWNER_PRIVATE_KEY: [u8; 32] =
     hex!("8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177");
 
-pub async fn setup_dango() -> anyhow::Result<(
-    HttpClient,
-    SingleSigner<Secp256k1, Defined<Nonce>>,
-    DangoConfig,
-)> {
-    let config = config::load_dango_config()?;
+const DANGO_USER5_USERNAME: &str = "user5";
+const DANGO_USER5_ADDR: Addr = addr!("a20a0e1a71b82d50fc046bc6e3178ad0154fd184");
+const DANGO_USER5_PRIVATE_KEY: [u8; 32] =
+    hex!("fe55076e4b2c9ffea813951406e8142fefc85183ebda6222500572b0a92032a7");
 
-    let dango_client = HttpClient::new(&config.dango_api_url)?;
+pub async fn setup_dango(
+    config: &DangoConfig,
+) -> anyhow::Result<(HttpClient, SingleSigner<Secp256k1, Defined<Nonce>>)> {
+    let dango_client = HttpClient::new(&config.api_url)?;
 
     let dango_owner = SingleSigner::new(
         &DANGO_OWNER_USERNAME,
@@ -31,7 +32,52 @@ pub async fn setup_dango() -> anyhow::Result<(
     .with_query_nonce(&dango_client)
     .await?;
 
-    Ok((dango_client, dango_owner, config))
+    Ok((dango_client, dango_owner))
+}
+
+pub async fn get_user5(
+    dango_client: &HttpClient,
+) -> anyhow::Result<SingleSigner<Secp256k1, Defined<Nonce>>> {
+    let user5 = SingleSigner::new(
+        &DANGO_USER5_USERNAME,
+        DANGO_USER5_ADDR,
+        Secp256k1::from_bytes(DANGO_USER5_PRIVATE_KEY)?,
+    )?
+    .with_query_nonce(dango_client)
+    .await?;
+
+    Ok(user5)
+}
+
+pub mod evm {
+    use {
+        crate::config,
+        alloy::{
+            network::EthereumWallet,
+            primitives::Address,
+            providers::{Provider, ProviderBuilder},
+            signers::local::{MnemonicBuilder, coins_bip39::English},
+        },
+        std::env,
+    };
+
+    pub fn setup_ethereum_provider(
+        infura_rpc_url: &str,
+    ) -> anyhow::Result<(impl Provider, Address)> {
+        let infura_api_key = env::var("INFURA_API_KEY")?;
+        let url = reqwest::Url::parse(infura_rpc_url)?.join(&infura_api_key)?;
+
+        let mnemonic = env::var("SEPOLIA_MNEMONIC")?;
+        let signer = MnemonicBuilder::<English>::default()
+            .phrase(&mnemonic)
+            .build()?;
+
+        let provider = ProviderBuilder::new()
+            .wallet(EthereumWallet::new(signer.clone()))
+            .connect_http(url);
+
+        Ok((provider, signer.address()))
+    }
 }
 
 #[cfg(test)]
@@ -40,6 +86,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_setup_dango() {
-        setup_dango().await.unwrap();
+        let config = config::load_config().unwrap().dango;
+        setup_dango(&config).await.unwrap();
     }
 }

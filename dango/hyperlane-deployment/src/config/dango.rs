@@ -4,17 +4,16 @@ use {dango_types::gateway::Origin, serde::Serialize};
 
 use {dango_types::gateway::Remote, serde::Deserialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Route {
     pub origin: Origin,
     pub remote: Remote,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct DangoConfig {
-    pub dango_api_url: String,
-    pub dango_chain_id: String,
-    pub routes: Vec<Route>,
+    pub api_url: String,
+    pub chain_id: String,
 }
 
 pub fn load_dango_config() -> anyhow::Result<DangoConfig> {

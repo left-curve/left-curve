@@ -11,35 +11,24 @@
 
 use {
     alloy::{
-        network::{EthereumWallet, TransactionBuilder},
+        network::TransactionBuilder,
         primitives::{Address, FixedBytes, U256},
-        providers::{Provider, ProviderBuilder},
+        providers::Provider,
         rpc::types::TransactionRequest,
-        signers::local::{MnemonicBuilder, coins_bip39::English},
     },
     dango_hyperlane_deployment::{
-        addresses::sepolia::{erc20s::USDC, hyperlane_deployments::usdc},
-        contract_bindings::{
-            hyp_erc20::HypERC20, hyp_erc20_collateral::HypERC20Collateral,
-            proxy::TransparentUpgradeableProxy,
-        },
+        addresses::sepolia::hyperlane_deployments::usdc,
+        config::{self, evm::WarpRouteType},
+        contract_bindings::{hyp_erc20::HypERC20, ism::TokenRouter},
         setup,
     },
     dango_types::config::AppConfig,
     dotenvy::dotenv,
     grug::{Addr, Inner, QueryClientExt, addr},
-    std::env,
 };
-
-/// The required hook on Sepolia is set to the `ProtocolFee` contract which
-/// charges a static fee of 1 wei for all outgoing transfers.
-const SEPOLIA_PROTOCOL_FEE: U256 = U256::from_le_slice(&[1]);
 
 // The coin to warp. Ether "eth" or USDC "usdc".
 const WARP_AMOUNT: u64 = 100;
-
-/// The ERC20 address to warp. If set to None, the native coin will be warped.
-const WARP_ERC20_ADDRESS: Option<Address> = Some(USDC);
 
 const WARP_ROUTE_PROXY_ADDRESS: Address = usdc::WARP_ROUTE_PROXY;
 
@@ -49,7 +38,20 @@ const DANGO_RECIPIENT: Addr = addr!("a20a0e1a71b82d50fc046bc6e3178ad0154fd184");
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
-    let (dango_client, ..) = setup::setup_dango().await?;
+    let config = config::load_config()?;
+    let evm_config = config.evm.get("sepolia").unwrap();
+
+    let mut maybe_warp_route = None;
+    for warp_route in evm_config.warp_routes.iter() {
+        if warp_route.proxy_address == Some(WARP_ROUTE_PROXY_ADDRESS) {
+            maybe_warp_route = Some(warp_route.clone());
+            break;
+        }
+    }
+    let warp_route = maybe_warp_route.ok_or(anyhow::anyhow!("Warp route not found in config"))?;
+    let warp_route_proxy_address = warp_route.proxy_address.unwrap();
+
+    let (dango_client, ..) = setup::setup_dango(&config.dango).await?;
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
 
     // Query the mailbox config to get the dango domain
@@ -62,70 +64,60 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     let dango_domain = mailbox_config.local_domain;
 
+    let hyperlane_protocol_fee = U256::from(evm_config.hyperlane_protocol_fee);
+
     // Setup ethereum provider
-    let infura_api_key = env::var("INFURA_API_KEY")?;
-    let url = format!("https://sepolia.infura.io/v3/{infura_api_key}");
+    let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
-    let mnemonic = env::var("SEPOLIA_MNEMONIC")?;
-    let signer = MnemonicBuilder::<English>::default()
-        .phrase(&mnemonic)
-        .build()?;
-
-    let owner = signer.address();
-    println!("using {owner} as owner address");
-
-    let provider = ProviderBuilder::new()
-        .wallet(EthereumWallet::new(signer))
-        .connect_http(url.parse()?);
-
-    // Setup contracts
-    let warp_route_proxy = TransparentUpgradeableProxy::new(WARP_ROUTE_PROXY_ADDRESS, &provider);
-
-    let token_name = WARP_ERC20_ADDRESS
-        .map(|a| a.to_string())
-        .unwrap_or("wei".to_string());
-    println!("warping {} {} to dango...", WARP_AMOUNT, token_name);
-
-    let value = if let Some(erc20_address) = WARP_ERC20_ADDRESS {
-        println!(
-            "approving spend of {} for route proxy ({}) on {}",
-            WARP_AMOUNT,
-            warp_route_proxy.address().to_string(),
-            erc20_address.to_string()
-        );
-        let tx_hash = provider
-            .send_transaction(
-                TransactionRequest::default()
-                    .with_to(erc20_address)
-                    .with_call(&HypERC20::approveCall {
-                        spender: *warp_route_proxy.address(),
-                        amount: U256::from(WARP_AMOUNT),
-                    }),
-            )
-            .await?
-            .watch()
-            .await?;
-        println!("done! tx hash: {tx_hash}");
-        SEPOLIA_PROTOCOL_FEE
-    } else {
-        U256::from(WARP_AMOUNT) + SEPOLIA_PROTOCOL_FEE
+    let value = match warp_route.warp_route_type {
+        WarpRouteType::ERC20Collateral(erc20_address) => {
+            println!(
+                "approving spend of {} for route proxy ({}) on {}",
+                WARP_AMOUNT,
+                warp_route_proxy_address.to_string(),
+                erc20_address.to_string()
+            );
+            let tx_hash = provider
+                .send_transaction(
+                    TransactionRequest::default()
+                        .with_to(erc20_address)
+                        .with_call(&HypERC20::approveCall {
+                            spender: warp_route_proxy_address,
+                            amount: U256::from(WARP_AMOUNT),
+                        }),
+                )
+                .await?
+                .watch()
+                .await?;
+            println!("done! tx hash: {tx_hash}");
+            hyperlane_protocol_fee
+        },
+        WarpRouteType::Native => U256::from(WARP_AMOUNT) + hyperlane_protocol_fee,
     };
 
-    println!("warping {} {} to dango...", WARP_AMOUNT, token_name);
-    let tx_hash = provider
-        .send_transaction(
-            TransactionRequest::default()
-                .with_to(*warp_route_proxy.address())
-                .with_value(value)
-                .with_call(&HypERC20Collateral::transferRemoteCall {
-                    _destination: dango_domain,
-                    _recipient: FixedBytes::<32>::left_padding_from(DANGO_RECIPIENT.inner()),
-                    _amount: U256::from(WARP_AMOUNT),
-                }),
+    // Setup contracts
+    let warp_route_proxy = TokenRouter::new(warp_route.proxy_address.unwrap(), &provider);
+
+    // Assert that the dango domain is correctly enrolled in the warp route proxy
+    let router_address = warp_route_proxy.routers(dango_domain).call().await?;
+    assert_eq!(
+        router_address,
+        FixedBytes::<32>::left_padding_from(app_cfg.addresses.warp.inner())
+    );
+
+    println!("warping {} {} to dango...", WARP_AMOUNT, &warp_route.symbol);
+    let tx_hash = warp_route_proxy
+        .transferRemote(
+            dango_domain,
+            FixedBytes::<32>::left_padding_from(DANGO_RECIPIENT.inner()),
+            U256::from(WARP_AMOUNT),
         )
+        .value(value)
+        .send()
         .await?
         .watch()
         .await?;
+
     println!("done! tx hash: {tx_hash}");
 
     Ok(())

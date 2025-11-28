@@ -10,146 +10,61 @@
 //! ```
 
 use {
-    alloy::{
-        network::{EthereumWallet, TransactionBuilder},
-        primitives::{Address, FixedBytes, U256},
-        providers::{Provider, ProviderBuilder},
-        rpc::types::TransactionRequest,
-        signers::local::{MnemonicBuilder, coins_bip39::English},
-        sol_types::SolCall,
-    },
     dango_hyperlane_deployment::{
-        addresses::sepolia::{HYPERLANE_MAILBOX, erc20s, hyperlane_deployments::eth},
-        contract_bindings::{
-            hyp_erc20_collateral::HypERC20Collateral,
-            hyp_native::HypNative,
-            proxy::{ProxyAdmin, TransparentUpgradeableProxy},
-        },
+        config,
+        contract_bindings::proxy::ProxyAdmin,
+        evm::{deploy_proxy_admin, deploy_warp_route, get_or_deploy_ism},
+        setup,
     },
-    dango_types::config::AppConfig,
     dotenvy::dotenv,
-    grug::{Inner, QueryClientExt},
-    indexer_client::HttpClient,
-    std::env,
 };
-
-const DANGO_API_URL: &str = "https://api-pr-1414-ovh2.dango.zone/";
-
-/// The ERC20 address which will be wrapped by the HWR. If set to None the HWR will be deployed as a HypNative contract.
-/// If provided, the HWR will be deployed as a HypERC20Collateral contract.
-const ERC20_ADDRESS: Option<Address> = Some(erc20s::USDC);
-
-/// The proxy admin address to use. If set to None, a new ProxyAdmin contract will be deployed.
-const PROXY_ADMIN_ADDRESS: Option<Address> = Some(eth::PROXY_ADMIN);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
-    let dango_client = HttpClient::new(DANGO_API_URL)?;
-    let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
+    let mut config = config::load_config()?;
 
-    // Query the mailbox config to get the dango domain
-    let mailbox_config = dango_client
-        .query_wasm_smart(
-            app_cfg.addresses.hyperlane.mailbox,
-            hyperlane_types::mailbox::QueryConfigRequest {},
-            None,
-        )
-        .await?;
-    let dango_domain = mailbox_config.local_domain;
-    println!("Deploying HWR pointingto Dango domain: {dango_domain}");
+    // Separate block to avoid borrowing issues with the config
+    {
+        let evm_config = config.evm.get_mut("sepolia").unwrap();
+        let (provider, owner) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
-    let infura_api_key = env::var("INFURA_API_KEY")?;
-    let url = format!("https://sepolia.infura.io/v3/{infura_api_key}");
-
-    let mnemonic = env::var("SEPOLIA_MNEMONIC")?;
-    let signer = MnemonicBuilder::<English>::default()
-        .phrase(&mnemonic)
-        .build()?;
-
-    let owner = signer.address();
-    println!("using {owner} as owner address");
-
-    let provider = ProviderBuilder::new()
-        .wallet(EthereumWallet::new(signer))
-        .connect_http(url.parse()?);
-
-    // Deploy new ProxyAdmin contract if not provided.
-    let admin = if let Some(proxy_admin_address) = PROXY_ADMIN_ADDRESS {
-        println!("Using existing ProxyAdmin contract: {proxy_admin_address}");
-        ProxyAdmin::new(proxy_admin_address, &provider)
-    } else {
-        println!("Deploying new ProxyAdmin contract...");
-        let admin = ProxyAdmin::deploy(&provider).await?;
-        println!("Done! ProxyAdmin address: {}", admin.address());
-        admin
-    };
-
-    let proxy = if let Some(erc20_address) = ERC20_ADDRESS {
-        println!("Deploying HypERC20Collateral contract for {erc20_address}");
-        let hyperlane_warp_route =
-            HypERC20Collateral::deploy(&provider, erc20_address, U256::ONE, HYPERLANE_MAILBOX)
-                .await?;
-        println!("Done! HWR address: {}", hyperlane_warp_route.address());
-
-        println!("Deploying proxy contract...");
-        let proxy = TransparentUpgradeableProxy::deploy(
+        let ism = get_or_deploy_ism(
             &provider,
-            *hyperlane_warp_route.address(),
-            *admin.address(),
-            HypNative::initializeCall {
-                _hook: Address::ZERO,                     // use mailbox default
-                _interchainSecurityModule: Address::ZERO, // use mailbox default
-                _owner: owner,
-            }
-            .abi_encode()
-            .into(),
+            &evm_config.hyperlane_deployments,
+            evm_config.ism.clone(),
         )
         .await?;
-        println!("Done! Proxy address: {}", proxy.address());
 
-        proxy
-    } else {
-        println!("Deploying HypNative contract...");
-        let hyperlane_warp_route =
-            HypNative::deploy(&provider, U256::ONE, HYPERLANE_MAILBOX).await?;
-        println!("Done! HWR address: {}", hyperlane_warp_route.address());
+        match evm_config.proxy_admin_address {
+            Some(proxy_admin_address) => {
+                println!("Using provided ProxyAdmin contract at {proxy_admin_address}");
+                ProxyAdmin::new(proxy_admin_address, &provider)
+            },
+            None => {
+                let proxy_admin_address = deploy_proxy_admin(&provider).await?;
+                evm_config.proxy_admin_address = Some(proxy_admin_address);
+                ProxyAdmin::new(proxy_admin_address, &provider)
+            },
+        };
 
-        println!("Deploying proxy contract...");
-        let proxy = TransparentUpgradeableProxy::deploy(
+        deploy_warp_route(
             &provider,
-            *hyperlane_warp_route.address(),
-            *admin.address(),
-            HypERC20Collateral::initializeCall {
-                _hook: Address::ZERO,                     // use mailbox default
-                _interchainSecurityModule: Address::ZERO, // use mailbox default
-                _owner: owner,
-            }
-            .abi_encode()
-            .into(),
+            &evm_config.hyperlane_deployments,
+            &evm_config.warp_routes[0],
+            evm_config.proxy_admin_address.unwrap(),
+            Some(ism),
+            owner,
         )
         .await?;
-        println!("Done! Proxy address: {}", proxy.address());
+    }
 
-        proxy
-    };
+    // Save the config
+    println!("Saving updated config...");
+    config::save_config(&config)?;
 
-    println!("Enrolling dango domain in router...");
-    let tx_hash = provider
-        .send_transaction(
-            TransactionRequest::default()
-                .with_to(*proxy.address())
-                .with_call(&HypNative::enrollRemoteRouterCall {
-                    _domain: dango_domain,
-                    _router: FixedBytes::<32>::left_padding_from(app_cfg.addresses.warp.inner()),
-                }),
-        )
-        .await?
-        .watch()
-        .await?;
-
-    println!("Done! tx hash: {tx_hash}");
+    println!("Done!");
 
     Ok(())
 }
