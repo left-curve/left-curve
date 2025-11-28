@@ -33,8 +33,14 @@ jobs:
       # This builds mdbook from source, which is really slow.
       # We should consider using: https://github.com/peaceiris/actions-mdbook
       # but it doesn't support the katex preprocessor.
+      #
+      # 20251124: mdbook 0.5 is released, but mdbook-katex won't support it:
+      # https://github.com/lzanini/mdbook-katex/issues/130
+      # It's a shame, because 0.5 comes with a bunch of nice new features.
+      # For now, let's just pin mdbook to 0.4. At a later time we can migrate to
+      # another LaTeX renderer e.g. MathJax.
       - name: Install mdbook and preprocessors
-        run: cargo install mdbook mdbook-katex
+        run: cargo install mdbook@0.4.48 mdbook-katex@0.9.4
 
       - name: Build book
         run: mdbook build

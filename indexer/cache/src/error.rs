@@ -3,21 +3,23 @@ use {grug_app::AppError, grug_types::StdError};
 #[error_backtrace::backtrace]
 #[derive(Debug, thiserror::Error)]
 pub enum IndexerError {
-    #[error("anyhow error: {0}")]
-    Anyhow(anyhow::Error),
-
     #[error("join error: {0}")]
     #[backtrace(new)]
     Join(tokio::task::JoinError),
 
-    #[error("indexing error: {error}")]
-    Indexing { error: String },
-
-    #[error("mutex poison error: {error}")]
-    Poison { error: String },
+    #[error("mutex is poisoned: {error}")]
+    MutexPoisoned { error: String },
 
     #[error("runtime error: {error}")]
     Runtime { error: String },
+
+    #[error(transparent)]
+    #[backtrace(new)]
+    StripPrefixError(std::path::StripPrefixError),
+
+    #[error("byte stream error: {error}")]
+    #[backtrace(new)]
+    ByteStream { error: String },
 
     #[error(transparent)]
     #[backtrace(new)]
@@ -50,6 +52,10 @@ pub enum IndexerError {
     #[error("parse error: {0}")]
     #[backtrace(new)]
     Parse(std::num::ParseIntError),
+
+    #[error("s3 error: {error}")]
+    #[backtrace(new)]
+    S3 { error: String },
 }
 
 pub type Result<T> = core::result::Result<T, IndexerError>;
@@ -72,11 +78,16 @@ macro_rules! parse_error {
 impl From<IndexerError> for grug_app::IndexerError {
     fn from(err: IndexerError) -> Self {
         match err {
-            IndexerError::Anyhow(e) => parse_error!(Generic, e),
+            IndexerError::StripPrefixError(e) => parse_error!(Generic, e),
             IndexerError::Join(e) => parse_error!(Generic, e),
-            IndexerError::Indexing { error, backtrace } => parse_error!(Generic, error, backtrace),
-            IndexerError::Poison { error, backtrace } => parse_error!(Generic, error, backtrace),
+            // IndexerError::Indexing { error, backtrace } => parse_error!(Generic, error, backtrace),
+            IndexerError::MutexPoisoned { error, backtrace } => {
+                parse_error!(Generic, error, backtrace)
+            },
             IndexerError::Runtime { error, backtrace } => parse_error!(Generic, error, backtrace),
+            IndexerError::ByteStream { error, backtrace } => {
+                parse_error!(Generic, error, backtrace)
+            },
             IndexerError::TryFromInt(e) => parse_error!(Generic, e),
             IndexerError::App(be) => {
                 // For App errors, just wrap as generic since it's already processed
@@ -92,6 +103,7 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::Hooks { error, backtrace } => parse_error!(Hook, error, backtrace),
             IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
             IndexerError::Parse(e) => parse_error!(Generic, e),
+            IndexerError::S3 { error, backtrace } => parse_error!(Generic, error, backtrace),
         }
     }
 }

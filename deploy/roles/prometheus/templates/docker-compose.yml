@@ -33,6 +33,7 @@ services:
   victoriametrics:
     image: victoriametrics/victoria-metrics
     ports:
+      - "{{ tailscale_ip }}:{{ victoriametrics_port }}:8428"
       - "{{ wireguard_ip }}:{{ victoriametrics_port }}:8428"
     volumes:
       - ./victoria-metrics-data:/victoria-metrics-data
@@ -53,6 +54,7 @@ services:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
     ports:
+      - "{{ tailscale_ip }}:{{ alertmanager_port }}:9093"
       - "{{ wireguard_ip }}:{{ alertmanager_port }}:9093"
     volumes:
       - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml

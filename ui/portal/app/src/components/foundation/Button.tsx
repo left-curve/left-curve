@@ -11,6 +11,7 @@ import { cloneElement, isValidElement } from "react";
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
 import type { PropsWithChildren, ReactElement, ReactNode } from "react";
+import { ShadowContainer } from "./ShadowContainer";
 
 export const radiusSizes = {
   none: 0,
@@ -133,7 +134,6 @@ const ButtonShadow: React.FC<PropsWithChildren<Pick<ButtonProps, "radius" | "var
   radius = "full",
   variant,
 }) => {
-  const { theme } = useTheme();
   const br = radiusSizes[radius];
 
   if (variant === "link") {
@@ -145,7 +145,7 @@ const ButtonShadow: React.FC<PropsWithChildren<Pick<ButtonProps, "radius" | "var
       <Shadow
         distance={3}
         startColor="rgba(0,0,0,0.07)"
-        offset={[0, -1]}
+        offset={[0, 1]}
         style={{ borderRadius: br }}
       >
         <Shadow
@@ -173,62 +173,7 @@ const ButtonShadow: React.FC<PropsWithChildren<Pick<ButtonProps, "radius" | "var
     );
   }
 
-  if (theme === "light") {
-    return (
-      <Shadow
-        distance={4}
-        startColor="rgba(171,158,138,0.40)"
-        offset={[0, 2]}
-        style={{ borderRadius: br }}
-      >
-        <Shadow
-          distance={2}
-          startColor="rgba(241,219,186,0.50)"
-          offset={[0, -1]}
-          style={{ borderRadius: br }}
-        >
-          <LinearGradient
-            colors={["rgba(255,255,255,0.64)", "rgba(255,255,255,0.00)"]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 0.7 }}
-            style={{ ...StyleSheet.absoluteFillObject, borderRadius: br }}
-          />
-          <LinearGradient
-            colors={["rgba(255,255,255,0.48)", "rgba(255,255,255,0.00)"]}
-            start={{ x: 0.5, y: 0.3 }}
-            end={{ x: 0.5, y: 1 }}
-            style={{ ...StyleSheet.absoluteFillObject, borderRadius: br }}
-          />
-          {children}
-        </Shadow>
-      </Shadow>
-    );
-  }
-
-  return (
-    <Shadow distance={6} startColor="rgba(0,0,0,0.04)" offset={[0, 4]} style={{ borderRadius: br }}>
-      <Shadow
-        distance={6}
-        startColor="rgba(0,0,0,0.04)"
-        offset={[0, 4]}
-        style={{ borderRadius: br }}
-      >
-        <LinearGradient
-          colors={["rgba(255,255,255,0.48)", "rgba(255,255,255,0.00)"]}
-          start={{ x: 0.5, y: 0.2 }}
-          end={{ x: 0.5, y: 1 }}
-          style={{ ...StyleSheet.absoluteFillObject, borderRadius: br }}
-        />
-        <LinearGradient
-          colors={["rgba(255,255,255,0.64)", "rgba(255,255,255,0.00)"]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 0.6 }}
-          style={{ ...StyleSheet.absoluteFillObject, borderRadius: br }}
-        />
-        {children}
-      </Shadow>
-    </Shadow>
-  );
+  return <ShadowContainer>{children}</ShadowContainer>;
 };
 export interface ButtonProps extends VariantProps<typeof buttonVariants> {
   isLoading?: boolean;

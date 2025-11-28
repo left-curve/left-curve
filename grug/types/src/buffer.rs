@@ -96,10 +96,10 @@ where
     where
         I: AsKey + 'a,
     {
-        if let (Some(min), Some(max)) = (min, max) {
-            if min > max {
-                return Box::new(iter::empty());
-            }
+        if let (Some(min), Some(max)) = (min, max)
+            && min > max
+        {
+            return Box::new(iter::empty());
         }
 
         let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
@@ -230,6 +230,9 @@ where
     }
 
     fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
         // Find all keys within the bounds and mark them all as to be deleted.
         //
         // We use `self.scan_keys` here, which scans both the base and pending.
@@ -241,9 +244,6 @@ where
             .scan_keys(min, max, Order::Ascending)
             .map(|key| (key, Op::Delete))
             .collect::<Vec<_>>();
-
-        #[cfg(feature = "metrics")]
-        let duration = Instant::now();
 
         self.pending.extend(deletes);
 

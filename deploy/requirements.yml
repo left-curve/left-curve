@@ -3,6 +3,7 @@ collections:
   - name: community.postgresql
   - name: community.general
   - name: community.clickhouse
+  - name: amazon.aws
 roles:
   - name: artis3n.tailscale
     src: artis3n.tailscale

@@ -14,5 +14,3 @@ borsh           = { workspace = true, features = ["derive"] }
 error-backtrace = { workspace = true }
 grug-types      = { workspace = true }
 serde           = { workspace = true }
-
-[dev-dependencies]

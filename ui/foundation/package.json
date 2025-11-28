@@ -12,6 +12,7 @@
     "./messages/*": "./messages/*",
     "./inlang/*": "./project.inlang/*",
     "./paraglide/*": "./paraglide/*",
+    "./coins": "./coins.ts",
     ".": {
       "types": "./build/index.d.ts",
       "import": "./build/index.js",

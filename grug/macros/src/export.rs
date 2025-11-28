@@ -20,7 +20,7 @@ pub fn process(mut input: TokenStream) -> TokenStream {
         r##"
             #[cfg(target_arch = "wasm32")]
             mod __wasm_export_{name} {{
-                #[no_mangle]
+                #[unsafe(no_mangle)]
                 extern "C" fn {name}({typed_ptrs}) -> usize {{
                     grug::do_{name}(&super::{name}, {ptrs})
                 }}

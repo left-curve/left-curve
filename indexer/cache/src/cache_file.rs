@@ -52,7 +52,7 @@ impl CacheFile {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub fn compress_file(file_path: PathBuf) -> error::Result<()> {
+    pub fn compress_file(file_path: PathBuf) -> error::Result<PathBuf> {
         #[cfg(feature = "tracing")]
         tracing::debug!(?file_path, "Compressing block file");
 
@@ -68,7 +68,7 @@ impl CacheFile {
             "Compressed block file"
         );
 
-        Ok(())
+        Ok(file.file_path)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
@@ -85,6 +85,10 @@ impl CacheFile {
 
     pub fn exists(file_path: PathBuf) -> bool {
         DiskPersistence::new(file_path, false).exists()
+    }
+
+    pub fn file_path(file_path: PathBuf) -> PathBuf {
+        DiskPersistence::new(file_path, false).file_path
     }
 
     pub fn delete_from_disk(file_path: PathBuf) -> error::Result<()> {
