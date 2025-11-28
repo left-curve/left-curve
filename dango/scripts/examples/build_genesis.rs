@@ -10,11 +10,11 @@ use {
     dango_testing::Preset,
     dango_types::{
         constants::{btc, btc_usdc, dango, eth, eth_usdc, sol, sol_usdc, usdc},
-        dex::{Geometric, PairParams, PairUpdate, PassiveLiquidity},
+        dex::{AvellanedaStoikovParams, Geometric, PairParams, PairUpdate, PassiveLiquidity},
     },
     grug::{
-        Bounded, Dec, Denom, Inner, Json, JsonDeExt, JsonSerExt, NumberConst, Udec128, Uint128,
-        btree_set,
+        Bounded, Dec, Denom, Duration, Inner, Json, JsonDeExt, JsonSerExt, NumberConst, Udec128,
+        Uint128, btree_set,
     },
     grug_vm_rust::RustVm,
     std::{
@@ -57,6 +57,16 @@ fn main() -> anyhow::Result<()> {
                                 limit: 1,
                                 spacing: Udec128::new_bps(1),
                                 ratio: Bounded::new_unchecked(Dec::ONE),
+                                avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                    gamma: Dec::from_str("1.0").unwrap(),
+                                    time_horizon: Duration::from_seconds(0),
+                                    k: Dec::from_str("1.0").unwrap(),
+                                    half_life: Duration::from_seconds(30),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
+                                },
                             }),
                             bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(1)),
@@ -73,6 +83,16 @@ fn main() -> anyhow::Result<()> {
                                 limit: 1,
                                 spacing: Udec128::new_bps(1),
                                 ratio: Bounded::new_unchecked(Dec::ONE),
+                                avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                    gamma: Dec::from_str("1.0").unwrap(),
+                                    time_horizon: Duration::from_seconds(0),
+                                    k: Dec::from_str("1.0").unwrap(),
+                                    half_life: Duration::from_seconds(30),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
+                                },
                             }),
                             bucket_sizes: btree_set! {
                                 btc_usdc::ONE_HUNDREDTH,
@@ -96,6 +116,16 @@ fn main() -> anyhow::Result<()> {
                                 limit: 1,
                                 spacing: Udec128::new_bps(1),
                                 ratio: Bounded::new_unchecked(Dec::ONE),
+                                avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                    gamma: Dec::from_str("1.0").unwrap(),
+                                    time_horizon: Duration::from_seconds(0),
+                                    k: Dec::from_str("1.0").unwrap(),
+                                    half_life: Duration::from_seconds(30),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
+                                },
                             }),
                             bucket_sizes: btree_set! {
                                 eth_usdc::ONE_HUNDREDTH,
@@ -119,6 +149,16 @@ fn main() -> anyhow::Result<()> {
                                 limit: 1,
                                 spacing: Udec128::new_bps(1),
                                 ratio: Bounded::new_unchecked(Dec::ONE),
+                                avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                    gamma: Dec::from_str("1.0").unwrap(),
+                                    time_horizon: Duration::from_seconds(0),
+                                    k: Dec::from_str("1.0").unwrap(),
+                                    half_life: Duration::from_seconds(30),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
+                                },
                             }),
                             bucket_sizes: btree_set! {
                                 sol_usdc::ONE_HUNDREDTH,
@@ -132,6 +172,7 @@ fn main() -> anyhow::Result<()> {
                         },
                     },
                 ],
+                ..Preset::preset_test()
             },
             ..Preset::preset_test()
         },

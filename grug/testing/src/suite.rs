@@ -214,12 +214,14 @@ where
             .unwrap_or_else(|err| panic!("fatal error while checking tx: {err}"))
     }
 
-    /// Increase the chain's time by the given duration.
-    pub fn increase_time(&mut self, duration: Duration) {
+    /// Increase the chain's time by the given duration and return the block outcome
+    /// from the empty block
+    pub fn increase_time(&mut self, duration: Duration) -> MakeBlockOutcome {
         let old_block_time = self.block_time;
         self.block_time = duration;
-        self.make_empty_block();
+        let block_outcome = self.make_empty_block();
         self.block_time = old_block_time;
+        block_outcome
     }
 
     /// Make a new block without any transaction. Panic if any error happens.

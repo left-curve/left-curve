@@ -139,7 +139,7 @@ struct SharedIter<'a, S> {
     inner: Box<dyn Iterator<Item = Record> + 'this>,
 }
 
-impl<'a, S> Iterator for SharedIter<'a, S>
+impl<S> Iterator for SharedIter<'_, S>
 where
     S: Storage,
 {

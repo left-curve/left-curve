@@ -14,8 +14,8 @@ use {
     dango_types::{
         constants::{dango, usdc},
         dex::{
-            self, CreateOrderRequest, Direction, Geometric, PairParams, PairUpdate,
-            PassiveLiquidity,
+            self, AvellanedaStoikovParams, CreateOrderRequest, Direction, Geometric, PairParams,
+            PairUpdate, PassiveLiquidity, Price,
         },
         oracle::{self, PriceSource},
     },
@@ -376,6 +376,13 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                                 spacing: Udec128::new_percent(1),
                                 ratio: Bounded::new_unchecked(Udec128::new(1)),
                                 limit: 1,
+                                avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                    gamma: Price::from_str("0.001000500166708").unwrap(),  // e^0.001 - 1, so ln(1+gamma) ≈ 0.001
+                                    time_horizon: Duration::from_seconds(0),
+                                    k: Price::ONE,
+                                    half_life: Duration::from_seconds(30),
+                                    base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+                                },
                             }),
                             bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
@@ -383,6 +390,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                             min_order_size_base: Uint128::ZERO,
                         },
                     }],
+                    ..Preset::preset_test()
                 },
                 ..Preset::preset_test()
             },
