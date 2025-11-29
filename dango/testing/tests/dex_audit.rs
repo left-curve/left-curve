@@ -19,7 +19,7 @@ use {
             PairParams, PairUpdate, PassiveLiquidity, Price, PriceOption, QueryPairRequest,
             SwapRoute, TimeInForce,
         },
-        gateway::Remote,
+        gateway::{Remote, WarpRemote},
         oracle::{self, PriceSource},
     },
     grug::{
@@ -400,18 +400,18 @@ fn issue_156_depth_quote_rounding_error() {
         bridge_ops: |accounts| {
             vec![
                 BridgeOp {
-                    remote: Remote::Warp {
+                    remote: Remote::Warp(WarpRemote {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::USDC_WARP,
-                    },
+                    }),
                     amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
-                    remote: Remote::Warp {
+                    remote: Remote::Warp(WarpRemote {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::WETH_WARP,
-                    },
+                    }),
                     amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),
                 },

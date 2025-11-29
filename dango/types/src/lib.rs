@@ -2,6 +2,7 @@ pub mod account;
 pub mod account_factory;
 pub mod auth;
 pub mod bank;
+pub mod bitcoin;
 pub mod config;
 pub mod constants;
 pub mod dex;
