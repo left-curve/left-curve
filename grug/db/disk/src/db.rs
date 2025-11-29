@@ -4,7 +4,7 @@ use uuid::Uuid;
 use {crate::statistics, grug_types::MetricsIterExt};
 use {
     crate::{DbError, DbResult},
-    grug_app::{CONTRACT_NAMESPACE, Commitment, Db},
+    grug_app::{CONTRACT_NAMESPACE, Commitment, Db, GRUG_NAMESPACE_LEN},
     grug_types::{Addr, Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
     itertools::Itertools,
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
@@ -151,11 +151,12 @@ impl<T> DiskDb<T> {
         let opts = new_db_options();
         let cf_opts = new_state_cf_options();
         let wasm_cf_opts = new_wasm_cf_options(cf_opts.clone());
+        let storage_cf_opts = new_storage_cf_options(cf_opts.clone());
         let db = DB::open_cf_with_opts(&opts, data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
             #[cfg(feature = "ibc")]
             (CF_NAME_PREIMAGES, Options::default()),
-            (CF_NAME_STATE_STORAGE, cf_opts.clone()),
+            (CF_NAME_STATE_STORAGE, storage_cf_opts),
             (CF_NAME_STATE_COMMITMENT, cf_opts),
             (CF_NAME_WASM_STORAGE, wasm_cf_opts),
         ])?;
@@ -1033,7 +1034,7 @@ fn create_state_iter<'a>(
     #[cfg(feature = "metrics")]
     let duration = std::time::Instant::now();
 
-    let opts = new_read_options(min, max);
+    let opts = new_storage_read_options(new_read_options(min, max), min, max);
     let mode = into_iterator_mode(order);
 
     let iter = db
@@ -1174,6 +1175,11 @@ pub fn new_wasm_cf_options(mut opts: Options) -> Options {
     opts
 }
 
+pub fn new_storage_cf_options(mut opts: Options) -> Options {
+    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(GRUG_NAMESPACE_LEN));
+    opts
+}
+
 /// Create a tuned default `ReadOptions`.
 pub fn new_read_options(
     iterate_lower_bound: Option<&[u8]>,
@@ -1210,6 +1216,21 @@ pub fn new_wasm_read_options(
         opts.set_prefix_same_as_start(true);
     }
 
+    opts
+}
+
+pub fn new_storage_read_options(
+    mut opts: ReadOptions,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+) -> ReadOptions {
+    if let (Some(min), Some(max)) = (min, max)
+        && min.len() >= GRUG_NAMESPACE_LEN
+        && max.len() >= GRUG_NAMESPACE_LEN
+        && min[..GRUG_NAMESPACE_LEN] == max[..GRUG_NAMESPACE_LEN]
+    {
+        opts.set_prefix_same_as_start(true);
+    }
     opts
 }
 
