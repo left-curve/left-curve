@@ -3,6 +3,7 @@
   become: true
   become_user: "{{ deploy_user }}"
   gather_facts: yes
+  any_errors_fatal: true
   vars:
   vars_files:
     - roles/full-app/vars/main.yml
@@ -101,59 +102,87 @@
           run_once: true
           become: false
           ignore_errors: true
+
         - name: Fail unreachable early
           fail:
             msg: "Unreachable host(s) detected before deploy."
 
-    - name: Set system wide cometbft and dango directories and overwrite s3_bucket
+    - name: Check for existing deployment lock
+      stat:
+        path: "{{ deploy_lock_file }}"
+      register: deploy_lock_stat
+
+    - name: Calculate if deployment lock is recent
       set_fact:
-        dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
-        cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
-      when: system_wide_directories
+        deploy_lock_recent: "{{ deploy_lock_stat.stat.exists and ((ansible_date_time.epoch | int) - (deploy_lock_stat.stat.mtime | int) < (deploy_lock_threshold_seconds | int)) }}"
 
-    - name: Read current deploy
-      include_role:
-        name: full-app
-        tasks_from: read_current_deploy.yml
+    - name: Abort due to active deployment lock
+      when: deploy_lock_recent | bool
+      fail:
+        msg: "Active deployment lock found at {{ deploy_lock_file }}. Remove manually to override."
 
-    - name: Run setup tasks
-      include_role:
-        name: full-app
-        tasks_from: setup.yml
+    - name: Create or refresh deployment lock
+      file:
+        path: "{{ deploy_lock_file }}"
+        state: touch
+        mode: "0644"
+      register: deploy_lock_touch
 
-    - name: Detect free ports
-      include_role:
-        name: full-app
-        tasks_from: detect_free_ports.yml
-      when: expose_ports and not skip_port_discovery
-
-    - name: Generate keys
-      include_role:
-        name: full-app
-        tasks_from: cometbft_keys.yml
-
-    - name: Build persistent_peers list
+    - name: Mark lock as acquired
       set_fact:
-        persistent_peers: "{{ peer_list }}"
-      vars:
-        peer_list: |-
-          {%- set peers = [] -%}
-          {%- for host in groups['full-app'] -%}
-            {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
-              {%- set port = (traefik_enabled | default(false))
-                            | ternary(traefik[dango_network].ports.cometbft_p2p_port,
-                                      hostvars[host].cometbft_p2p_port) -%}
-              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].wireguard_ip ~ ':' ~ port -%}
-              {{- peers.append(peer) or '' -}}
-            {%- endif -%}
-          {%- endfor -%}
-          {{- peers | join(',') -}}
-      when: cometbft_node_id is defined
+        deployment_lock_set: true
 
-    - name: Debug peer configuration
-      debug:
-        msg: "Persistent peers for {{ inventory_hostname }}: {{ persistent_peers }}"
-      when: persistent_peers is defined
+    - block:
+        - name: Run preparation tasks after lock
+          import_role:
+            name: full-app
+            tasks_from: prep_after_lock.yml
+      rescue:
+        - name: Mark deployment as failed
+          set_fact:
+            deploy_failed: true
+        - name: Notify Discord of deployment failure (first phase)
+          when:
+            - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
+          uri:
+            url: "{{ discord_hook | default(discord_webhook) }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+              embeds:
+                - title: "❌ Deployment Failed ❌"
+                  color: 15158332
+                  fields:
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: false
+                    - name: "Phase"
+                      value: "Preparation"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
+        - name: Remove deployment lock file on all hosts (first phase failure)
+          when: deployment_lock_set | default(false)
+          file:
+            path: "{{ deploy_lock_file }}"
+            state: absent
+          become: true
+          become_user: "{{ deploy_user }}"
+          ignore_errors: true
+        - name: Abort due to errors in preparation phase
+          fail:
+            msg: "Deployment failed during preparation phase; locks removed."
 
     # Stop for debugging
     # - meta: end_play
@@ -161,6 +190,7 @@
 - hosts: full-app
   become: true
   become_user: "{{ deploy_user }}"
+  any_errors_fatal: true
   collections:
     - community.docker
     - community.clickhouse
@@ -273,6 +303,15 @@
             facility: local0
             priority: info
             ident: dango
+
+        - name: Remove deployment lock file on all hosts
+          when: deployment_lock_set | default(false)
+          file:
+            path: "{{ deploy_lock_file }}"
+            state: absent
+          become: true
+          become_user: "{{ deploy_user }}"
+          ignore_errors: true
 
         - name: Notify Discord of deployment success
           when:

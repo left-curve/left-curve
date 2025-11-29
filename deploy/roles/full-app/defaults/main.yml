@@ -10,3 +10,4 @@ clickhouse_external_host: "127.0.0.1"
 frontend_banner: ""
 cosign_certificate_oidc_issuer: "https://token.actions.githubusercontent.com"
 verify_signatures: true
+deploy_lock_threshold_seconds: 600
