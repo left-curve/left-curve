@@ -1,0 +1,51 @@
+---
+- name: Set system wide cometbft and dango directories and overwrite s3_bucket
+  set_fact:
+    dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
+    cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
+  when: system_wide_directories
+
+- name: Read current deploy
+  include_role:
+    name: full-app
+    tasks_from: read_current_deploy.yml
+
+- name: Run setup tasks
+  include_role:
+    name: full-app
+    tasks_from: setup.yml
+
+- name: Detect free ports
+  include_role:
+    name: full-app
+    tasks_from: detect_free_ports.yml
+  when: expose_ports and not skip_port_discovery
+
+- name: Generate keys
+  include_role:
+    name: full-app
+    tasks_from: cometbft_keys.yml
+
+- name: Build persistent_peers list
+  set_fact:
+    persistent_peers: "{{ peer_list }}"
+  vars:
+    peer_list: |-
+      {%- set peers = [] -%}
+      {%- for host in groups['full-app'] -%}
+        {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
+          {%- set port = (traefik_enabled | default(false))
+                        | ternary(traefik[dango_network].ports.cometbft_p2p_port,
+                                  hostvars[host].cometbft_p2p_port) -%}
+          {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].wireguard_ip ~ ':' ~ port -%}
+          {{- peers.append(peer) or '' -}}
+        {%- endif -%}
+      {%- endfor -%}
+      {{- peers | join(',') -}}
+  when: cometbft_node_id is defined
+
+- name: Debug peer configuration
+  debug:
+    msg: "Persistent peers for {{ inventory_hostname }}: {{ persistent_peers }}"
+  when: persistent_peers is defined
+
