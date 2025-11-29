@@ -27,19 +27,32 @@
 
     - name: Notify Discord of deployment start
       when:
-        - discord_webhook is defined
-        - discord_webhook | length > 0
+        - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
       uri:
-        url: "{{ discord_webhook }}"
+        url: "{{ discord_hook | default(discord_webhook) }}"
         method: POST
         status_code: 204
         body_format: json
         headers:
           Content-Type: application/json
         body:
-          content: "🚀 Starting deployment {{ deployment_name }} (network={{ dango_network }}) — triggered by {{ lookup('env','USER') | default(lookup('env','LOGNAME')) }}@{{ lookup('pipe','hostname') }}"
-          allowed_mentions:
-            parse: []
+          username: "{{ discord_username | default('Deploy Bot') }}"
+          avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+          embeds:
+            - title: "Deployment Started"
+              description: "{{ '🚀 Starting deployment ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+              color: 3447003
+              fields:
+                - name: "Triggered by"
+                  value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                  inline: false
+                - name: "Deployment"
+                  value: "{{ deployment_name }}"
+                  inline: true
+                - name: "Network"
+                  value: "{{ dango_network }}"
+                  inline: true
+              timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
       delegate_to: localhost
       run_once: true
       become: false
@@ -171,19 +184,32 @@
 
         - name: Notify Discord of deployment failure
           when:
-            - discord_webhook is defined
-            - discord_webhook | length > 0
+            - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
           uri:
-            url: "{{ discord_webhook }}"
+            url: "{{ discord_hook | default(discord_webhook) }}"
             method: POST
             status_code: 204
             body_format: json
             headers:
               Content-Type: application/json
             body:
-              content: "❌ Deployment FAILED for {{ deployment_name }} (network={{ dango_network }}) — triggered by {{ lookup('env','USER') | default(lookup('env','LOGNAME')) }}@{{ lookup('pipe','hostname') }}"
-              allowed_mentions:
-                parse: []
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+              embeds:
+                - title: "Deployment Failed"
+                  description: "{{ '❌ Deployment FAILED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+                  color: 15158332
+                  fields:
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: false
+                    - name: "Deployment"
+                      value: "{{ deployment_name }}"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
           run_once: true
           become: false
@@ -203,20 +229,33 @@
 
         - name: Notify Discord of deployment success
           when:
-            - discord_webhook is defined
-            - discord_webhook | length > 0
             - not (deploy_failed | default(false))
+            - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
           uri:
-            url: "{{ discord_webhook }}"
+            url: "{{ discord_hook | default(discord_webhook) }}"
             method: POST
             status_code: 204
             body_format: json
             headers:
               Content-Type: application/json
             body:
-              content: "✅ Deployment SUCCEEDED for {{ deployment_name }} (network={{ dango_network }}) — triggered by {{ lookup('env','USER') | default(lookup('env','LOGNAME')) }}@{{ lookup('pipe','hostname') }}"
-              allowed_mentions:
-                parse: []
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+              embeds:
+                - title: "Deployment Succeeded"
+                  description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+                  color: 3066993
+                  fields:
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: false
+                    - name: "Deployment"
+                      value: "{{ deployment_name }}"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
           run_once: true
           become: false
