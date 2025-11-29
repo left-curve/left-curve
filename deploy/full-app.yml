@@ -40,7 +40,7 @@
           avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
           embeds:
             - title: "Deployment Started"
-              description: "{{ '🚀 Starting deployment ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+              # description: "{{ '🚀 Starting deployment ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
               color: 3447003
               fields:
                 - name: "Triggered by"
@@ -57,6 +57,53 @@
       run_once: true
       become: false
       ignore_errors: true
+
+    - block:
+        - name: Verify SSH connectivity to target host
+          wait_for_connection:
+            timeout: 15
+      rescue:
+        - name: Mark deployment as failed (connectivity)
+          set_fact:
+            deploy_failed: true
+        - name: Notify Discord of deployment failure (unreachable)
+          when:
+            - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
+          uri:
+            url: "{{ discord_hook | default(discord_webhook) }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+              embeds:
+                - title: "Deployment Failed"
+                  # description: "{{ '❌ Deployment FAILED (unreachable host) for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+                  color: 15158332
+                  fields:
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: false
+                    - name: "Host"
+                      value: "{{ inventory_hostname }}"
+                      inline: true
+                    - name: "Deployment"
+                      value: "{{ deployment_name }}"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
+        - name: Fail unreachable early
+          fail:
+            msg: "Unreachable host(s) detected before deploy."
 
     - name: Set system wide cometbft and dango directories and overwrite s3_bucket
       set_fact:
@@ -197,7 +244,7 @@
               avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
               embeds:
                 - title: "Deployment Failed"
-                  description: "{{ '❌ Deployment FAILED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+                  # description: "{{ '❌ Deployment FAILED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 15158332
                   fields:
                     - name: "Triggered by"
@@ -243,7 +290,7 @@
               avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
               embeds:
                 - title: "Deployment Succeeded"
-                  description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+                  # description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 3066993
                   fields:
                     - name: "Triggered by"
