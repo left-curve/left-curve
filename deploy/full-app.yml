@@ -80,7 +80,7 @@
               username: "{{ discord_username | default('Deploy Bot') }}"
               avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
               embeds:
-                - title: "Deployment Failed"
+                - title: "❌ Deployment Failed ❌"
                   # description: "{{ '❌ Deployment FAILED (unreachable host) for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 15158332
                   fields:
@@ -243,7 +243,7 @@
               username: "{{ discord_username | default('Deploy Bot') }}"
               avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
               embeds:
-                - title: "Deployment Failed"
+                - title: "❌ Deployment Failed ❌"
                   # description: "{{ '❌ Deployment FAILED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 15158332
                   fields:
@@ -289,7 +289,7 @@
               username: "{{ discord_username | default('Deploy Bot') }}"
               avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
               embeds:
-                - title: "Deployment Succeeded"
+                - title: "✅ Deployment Succeeded ✅"
                   # description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 3066993
                   fields:
