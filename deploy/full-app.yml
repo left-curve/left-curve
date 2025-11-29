@@ -25,6 +25,26 @@
         priority: info
         ident: dango
 
+    - name: Notify Discord of deployment start
+      when:
+        - discord_webhook is defined
+        - discord_webhook | length > 0
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        status_code: 204
+        body_format: json
+        headers:
+          Content-Type: application/json
+        body:
+          content: "🚀 Starting deployment {{ deployment_name }} (network={{ dango_network }}) — triggered by {{ lookup('env','USER') | default(lookup('env','LOGNAME')) }}@{{ lookup('pipe','hostname') }}"
+          allowed_mentions:
+            parse: []
+      delegate_to: localhost
+      run_once: true
+      become: false
+      ignore_errors: true
+
     - name: Set system wide cometbft and dango directories and overwrite s3_bucket
       set_fact:
         dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
@@ -145,6 +165,30 @@
             priority: err
             ident: dango
 
+        - name: Mark deployment as failed
+          set_fact:
+            deploy_failed: true
+
+        - name: Notify Discord of deployment failure
+          when:
+            - discord_webhook is defined
+            - discord_webhook | length > 0
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              content: "❌ Deployment FAILED for {{ deployment_name }} (network={{ dango_network }}) — triggered by {{ lookup('env','USER') | default(lookup('env','LOGNAME')) }}@{{ lookup('pipe','hostname') }}"
+              allowed_mentions:
+                parse: []
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
+
         - name: Fail the task
           fail:
             msg: "Deployment failed, please look at the logs. You can also ssh to any of the servers, to {{ deployment_dir }} and run `docker compose logs`"
@@ -156,6 +200,27 @@
             facility: local0
             priority: info
             ident: dango
+
+        - name: Notify Discord of deployment success
+          when:
+            - discord_webhook is defined
+            - discord_webhook | length > 0
+            - not (deploy_failed | default(false))
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              content: "✅ Deployment SUCCEEDED for {{ deployment_name }} (network={{ dango_network }}) — triggered by {{ lookup('env','USER') | default(lookup('env','LOGNAME')) }}@{{ lookup('pipe','hostname') }}"
+              allowed_mentions:
+                parse: []
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
 
 - hosts: monitoring
   become: true
