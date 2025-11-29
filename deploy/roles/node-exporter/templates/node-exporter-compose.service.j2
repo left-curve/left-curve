@@ -1,0 +1,21 @@
+[Unit]
+Description=Node Exporter Docker Compose stack
+Requires=docker.service
+Wants=network-online.target tailscaled.service wg-quick@wg0.service
+After=docker.service network-online.target tailscaled.service wg-quick@wg0.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+User={{ deploy_user }}
+WorkingDirectory={{ node_exporter_dir }}
+Environment="DOCKER_HOST=unix:///var/run/docker.sock"
+ExecStart=/usr/bin/docker compose up -d --remove-orphans
+ExecStop=/usr/bin/docker compose stop
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+

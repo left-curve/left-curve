@@ -24,3 +24,20 @@
     pull: missing
     state: present
     recreate: always
+
+- name: Install systemd unit for Loki compose
+  become: true
+  become_user: root
+  template:
+    src: loki-compose.service.j2
+    dest: /etc/systemd/system/loki-compose.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start loki-compose service
+  become: true
+  become_user: root
+  systemd:
+    name: loki-compose.service
+    enabled: true
+    state: started
