@@ -13,6 +13,11 @@
         timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
       run_once: true
 
+    - name: Get current commit short SHA
+      set_fact:
+        commit_short_sha: "{{ lookup('pipe', 'git rev-parse --short=7 HEAD') }}"
+      run_once: true
+
     - name: Set timestamp and deployment name on all hosts
       set_fact:
         deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
@@ -52,6 +57,9 @@
                   inline: true
                 - name: "Network"
                   value: "{{ dango_network }}"
+                  inline: true
+                - name: "Commit"
+                  value: "{{ commit_short_sha }}"
                   inline: true
               timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
       delegate_to: localhost
@@ -96,6 +104,9 @@
                       inline: true
                     - name: "Network"
                       value: "{{ dango_network }}"
+                      inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
@@ -166,6 +177,9 @@
                       inline: true
                     - name: "Network"
                       value: "{{ dango_network }}"
+                      inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
@@ -286,6 +300,9 @@
                     - name: "Network"
                       value: "{{ dango_network }}"
                       inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
+                      inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
           run_once: true
@@ -340,6 +357,9 @@
                       inline: true
                     - name: "Network"
                       value: "{{ dango_network }}"
+                      inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
