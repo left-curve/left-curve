@@ -14,7 +14,13 @@ use {
 };
 
 #[cfg(feature = "s3")]
-use {crate::s3, std::time::Duration, std::time::Instant, tokio::time::sleep};
+use {
+    crate::s3,
+    futures::future::try_join_all,
+    std::time::Duration,
+    std::time::Instant,
+    tokio::{sync::Semaphore, time::sleep},
+};
 
 #[cfg(feature = "http-request-details")]
 use grug_types::{Hash256, HttpRequestDetails};
@@ -23,6 +29,9 @@ const HIGHEST_BLOCK_FILENAME: &str = "last_block.json";
 
 #[cfg(feature = "s3")]
 const S3_HIGHEST_BLOCK_FILENAME: &str = "s3_highest_block.json";
+
+#[cfg(feature = "s3")]
+const MAX_CONCURRENT_S3_UPLOADS: usize = 100;
 
 // TODO: need to add `keep_blocks` configuration to allow choosing if we keep blocks
 // or not, to save disk space. `app.toml` could also add a u64 field to limit the
@@ -266,18 +275,23 @@ impl Cache {
             return Ok(());
         }
 
-        // NOTE: for simplification I don't do those uploads in parallel,
-        // we could easily do it but need to handle errors properly like:
-        //
-        // - Do not write the highest block height locally if any failed
-        // - Have a maximum number of concurrent uploads
-        let mut had_error = false;
+        let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_S3_UPLOADS));
+        let mut tasks = Vec::new();
+
         for block_height in (last_synced_height + 1)..=last_stored_height {
-            // I discard the error so one failed block does not stop the whole sync process.
-            if Self::sync_block_to_s3(context, block_height).await.is_err() {
-                had_error = true;
-            }
+            let context = context.clone();
+            let permit = semaphore.clone().acquire_owned().await.unwrap();
+
+            let task = tokio::spawn(async move {
+                let result = Self::sync_block_to_s3(&context, block_height).await;
+                drop(permit);
+                result
+            });
+
+            tasks.push(task);
         }
+
+        let had_error = try_join_all(tasks).await.is_err();
 
         if had_error {
             #[cfg(feature = "tracing")]
