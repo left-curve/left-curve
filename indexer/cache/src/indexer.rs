@@ -256,10 +256,15 @@ impl Cache {
             Self::read_last_block_height(context, HIGHEST_BLOCK_FILENAME)?
         else {
             #[cfg(feature = "tracing")]
-            tracing::info!("No blocks stored locally, skipping S3 sync");
+            tracing::debug!("No blocks stored locally, skipping S3 sync");
 
             return Ok(());
         };
+
+        if last_synced_height >= last_stored_height {
+            // Already up-to-date
+            return Ok(());
+        }
 
         // NOTE: for simplification I don't do those uploads in parallel,
         // we could easily do it but need to handle errors properly like:
@@ -267,7 +272,7 @@ impl Cache {
         // - Do not write the highest block height locally if any failed
         // - Have a maximum number of concurrent uploads
         let mut had_error = false;
-        for block_height in last_synced_height + 1..=last_stored_height {
+        for block_height in (last_synced_height + 1)..=last_stored_height {
             // I discard the error so one failed block does not stop the whole sync process.
             if Self::sync_block_to_s3(context, block_height).await.is_err() {
                 had_error = true;
@@ -276,7 +281,7 @@ impl Cache {
 
         if had_error {
             #[cfg(feature = "tracing")]
-            tracing::error!("S3 sync failed");
+            tracing::error!("S3 sync failed, check previous logs for details");
 
             return Ok(());
         }
@@ -285,8 +290,8 @@ impl Cache {
 
         #[cfg(feature = "tracing")]
         tracing::info!(
-            to_height = last_stored_height,
             from_height = last_synced_height + 1,
+            to_height = last_stored_height,
             "S3 sync up-to-date"
         );
 
@@ -304,7 +309,7 @@ impl grug_app::Indexer for Cache {
                 loop {
                     Self::sync_to_s3(&context).await.ok();
 
-                    sleep(Duration::from_millis(1000)).await;
+                    sleep(Duration::from_millis(100)).await;
                 }
             });
         }
