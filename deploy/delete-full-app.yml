@@ -217,9 +217,9 @@
     - name: Notify Discord of delete success
       when:
         - not (deploy_failed | default(false))
-        - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
+        - discord_webhook is defined
       uri:
-        url: "{{ discord_hook | default(discord_webhook) }}"
+        url: "{{ discord_webhook }}"
         method: POST
         status_code: 204
         body_format: json
