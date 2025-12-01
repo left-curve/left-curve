@@ -40,6 +40,9 @@ const S3_BLOCKS_FILENAME: &str = "s3_blocks.bin";
 #[cfg(feature = "s3")]
 const MAX_CONCURRENT_S3_UPLOADS: usize = 100;
 
+#[cfg(feature = "s3")]
+const INTERVAL_BETWEEN_S3_BITMAP_STORES: u64 = 60;
+
 // TODO: need to add `keep_blocks` configuration to allow choosing if we keep blocks
 // or not, to save disk space. `app.toml` could also add a u64 field to limit the
 // number of blocks to keep, deleting the oldest ones when exceeding that number.
@@ -416,7 +419,7 @@ impl grug_app::Indexer for Cache {
                     Self::sync_to_s3(&context, s3_bitmap.clone()).await.ok();
 
                     // Periodically store the bitmap to disk
-                    if start_time.elapsed().as_secs() > 60 {
+                    if start_time.elapsed().as_secs() > INTERVAL_BETWEEN_S3_BITMAP_STORES {
                         if let Err(_error) = Self::store_bitmap(&context, s3_bitmap.clone()) {
                             #[cfg(feature = "tracing")]
                             tracing::error!(
