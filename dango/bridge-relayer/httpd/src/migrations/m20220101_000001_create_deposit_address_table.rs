@@ -13,7 +13,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(pk_auto(DepositAddress::Id))
                     .col(string(DepositAddress::Address).unique_key())
-                    .col(date_time(DepositAddress::CreatedAt))
+                    .col(big_integer(DepositAddress::CreatedAt))
                     .to_owned(),
             )
             .await

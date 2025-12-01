@@ -5,19 +5,26 @@ use {
         middlewares,
     },
     actix_web::{
-        HttpResponseBuilder, Responder, Result,
+        HttpResponse, HttpResponseBuilder, Responder, Result,
         error::{ErrorBadRequest, InternalError},
         get,
         http::StatusCode,
         post, web,
     },
+    async_stream::stream,
     chrono::Utc,
     dango_types::bitcoin::{MultisigWallet, Recipient},
     grug::Addr,
     metrics::counter,
-    sea_orm::{ActiveValue::Set, EntityTrait, PaginatorTrait, QueryOrder, SqlErr},
+    sea_orm::{
+        ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QueryTrait, SqlErr,
+    },
     serde::{Deserialize, Serialize},
-    std::str::FromStr,
+    std::{
+        str::FromStr,
+        sync::{Arc, Mutex},
+    },
+    tokio_stream::StreamExt,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -57,10 +64,12 @@ async fn deposit_address(path: web::Path<String>, context: web::Data<Context>) -
     );
     let bitcoin_deposit_address = multisig_wallet.address(context.network);
 
+    let created_at = Utc::now().timestamp_millis();
+
     // Store the deposit address in the database.
     let deposit_address = entity::deposit_address::ActiveModel {
         address: Set(bitcoin_deposit_address.to_string()),
-        created_at: Set(Utc::now().naive_utc()),
+        created_at: Set(created_at),
         ..Default::default()
     };
     if let Err(e) = entity::deposit_address::Entity::insert(deposit_address)
@@ -86,6 +95,12 @@ async fn deposit_address(path: web::Path<String>, context: web::Data<Context>) -
             ));
         }
     } else {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(%bitcoin_deposit_address, %created_at, "Deposit address stored in database.");
+        }
+
+        #[cfg(feature = "metrics")]
         counter!(middlewares::metrics::LABEL_DEPOSIT_ADDRESS_TOTAL).increment(1);
     }
 
@@ -94,79 +109,84 @@ async fn deposit_address(path: web::Path<String>, context: web::Data<Context>) -
 
 #[derive(Deserialize, Serialize)]
 pub struct DepositAddressesRequest {
-    pub page: Option<u64>,
-    pub limit: Option<u64>,
+    /// The unix timestamp in milliseconds of the time at which the deposit address after which to fetch.
+    pub after_created_at: Option<u64>,
 }
-
-#[derive(Deserialize, Serialize)]
-pub struct DepositAddressesResponse {
-    pub addresses: Vec<String>,
-    pub next_page: Option<u64>,
-}
-
-pub const DEFAULT_PAGE_LIMIT: u64 = 1000;
 
 #[get("/deposit-addresses")]
 async fn deposit_addresses(
     info: web::Query<DepositAddressesRequest>,
     context: web::Data<Context>,
 ) -> Result<impl Responder> {
-    let limit = info.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
-    let page = info.page.unwrap_or(0);
-
-    let paginator = entity::deposit_address::Entity::find()
-        .order_by_asc(entity::deposit_address::Column::Id)
-        .paginate(&context.db, limit);
-
-    let num_pages = paginator.num_pages().await.map_err(|e| {
-        #[cfg(feature = "tracing")]
-        {
-            tracing::error!(err = e.to_string(), "Failed to fetch deposit addresses.");
-        }
-        json_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Something went wrong. Please try again later.",
-        )
-    })?;
-
-    if page >= num_pages {
-        return Err(json_error(
-            StatusCode::BAD_REQUEST,
-            &format!("Invalid page number. Page number must be less than {num_pages}."),
-        ));
-    }
+    let after_created_at = info.after_created_at;
+    let db = context.db.clone();
 
     #[cfg(feature = "tracing")]
     {
-        tracing::debug!(page, limit, num_pages, "Fetching deposit addresses.");
+        tracing::info!(after_created_at = ?after_created_at, "Fetching deposit addresses.");
     }
 
-    let addresses: Vec<String> = paginator
-        .fetch_page(page)
-        .await
-        .map_err(|e| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = e.to_string(), "Failed to fetch deposit addresses.");
+    let is_first = Arc::new(Mutex::new(true));
+
+    let response_stream = stream! {
+        // First, yield the opening bracket
+        yield Ok::<_, actix_web::Error>(web::Bytes::from("["));
+
+        // Create the database stream
+        let mut db_stream = match entity::deposit_address::Entity::find().apply_if(after_created_at, |query, v| {
+            query.filter(entity::deposit_address::Column::CreatedAt.gt(v))
+        })
+            .order_by_asc(entity::deposit_address::Column::CreatedAt)
+            .stream(&db)
+            .await
+        {
+            Ok(stream) => stream,
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = e.to_string(), "Failed to fetch deposit addresses.");
+                }
+                yield Err(json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Something went wrong. Please try again later.",
+                ));
+                return;
             }
-            json_error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Something went wrong. Please try again later.",
-            )
-        })?
-        .into_iter()
-        .map(|model| model.address)
-        .collect();
+        };
 
-    let next_page = if page < num_pages - 1 {
-        Some(page + 1)
-    } else {
-        None
+        // Stream the results
+        while let Some(result) = db_stream.next().await {
+            match result {
+                Ok(model) => {
+                    let mut first = is_first.lock().unwrap();
+                    let prefix = if *first {
+                        *first = false;
+                        ""
+                    } else {
+                        ","
+                    };
+                    let json = serde_json::to_string(&model.address).unwrap();
+                    yield Ok(web::Bytes::from(format!("{}{}", prefix, json)));
+                }
+                Err(e) => {
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::error!(err = e.to_string(), "Error streaming deposit addresses.");
+                    }
+                    yield Err(json_error(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Something went wrong. Please try again later.",
+                    ));
+                    return;
+                }
+            }
+        }
+
+        // Finally, yield the closing bracket
+        yield Ok(web::Bytes::from("]"));
     };
 
-    let res = DepositAddressesResponse {
-        addresses,
-        next_page,
-    };
-    Ok(web::Json(res))
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .streaming(response_stream))
 }

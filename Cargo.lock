@@ -3558,6 +3558,7 @@ dependencies = [
  "actix-web",
  "actix-web-metrics",
  "anyhow",
+ "async-stream",
  "chrono",
  "dango-types",
  "dotenvy",
@@ -3574,6 +3575,7 @@ dependencies = [
  "test-case",
  "thiserror 2.0.12",
  "tokio",
+ "tokio-stream",
  "tracing",
  "tracing-subscriber",
 ]

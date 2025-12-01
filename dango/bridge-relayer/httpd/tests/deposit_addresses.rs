@@ -1,16 +1,17 @@
 use {
     actix_web::{App, HttpResponse, http::StatusCode, test, web},
+    chrono::Utc,
     dango_bridge_relayer_httpd::{
         context::Context,
         migrations,
-        routes::{self, DepositAddressesResponse, ErrorResponse},
+        routes::{self},
     },
     dango_types::bitcoin::{Config, MultisigSettings, Network},
     grug::{__private::hex_literal::hex, Addr, HexByteArray, NonEmpty, Uint128, btree_set},
     metrics_exporter_prometheus::PrometheusBuilder,
     sea_orm::Database,
     sea_orm_migration::MigratorTrait,
-    std::collections::HashSet,
+    std::{collections::HashSet, time::Duration},
 };
 
 async fn test_context() -> Context {
@@ -67,18 +68,14 @@ async fn test_deposit_addresses() {
     ))
     .await;
 
-    // Try to call without any data in the database. Should fail.
+    // Try to call without any data in the database. Should return an empty array.
     let req = test::TestRequest::get()
         .uri("/deposit-addresses")
         .to_request();
     let resp = test::call_service(&app, req).await;
-    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     let result = test::read_body(resp).await;
-    let res = serde_json::from_slice::<ErrorResponse>(&result).unwrap();
-    assert_eq!(
-        res.error,
-        "Invalid page number. Page number must be less than 0."
-    );
+    let res = serde_json::from_slice::<Vec<String>>(&result).unwrap();
+    assert_eq!(res.len(), 0);
 
     // Create 10 deposit addresses.
     let mut addresses = HashSet::<String>::new();
@@ -106,48 +103,38 @@ async fn test_deposit_addresses() {
     let req = test::TestRequest::get()
         .uri("/deposit-addresses")
         .to_request();
-
     let resp = test::call_service(&app, req).await;
     assert_eq!(resp.status(), StatusCode::OK);
     let result = test::read_body(resp).await;
-    let res = serde_json::from_slice::<DepositAddressesResponse>(&result).unwrap();
-    assert_eq!(res.addresses.len(), 10);
-    assert!(res.addresses.iter().all(|addr| addresses.contains(addr)));
-    assert_eq!(res.next_page, None);
+    let res = serde_json::from_slice::<Vec<String>>(&result).unwrap();
+    assert_eq!(res.len(), 10);
+    assert!(res.iter().all(|addr| addresses.contains(addr)));
 
-    // Try to fetch the first page of addresses with limit of 4.
-    let req = test::TestRequest::get()
-        .uri("/deposit-addresses?page=0&limit=4")
+    // Get the current timestamp in milliseconds.
+    let now = Utc::now().timestamp_millis();
+
+    // Sleep for 1 second.
+    tokio::time::sleep(Duration::from_secs(1)).await;
+
+    // Create one more deposit address
+    let req = test::TestRequest::post()
+        .uri(format!("/deposit-address/{}", Addr::mock(10).to_string()).as_str())
         .to_request();
     let resp = test::call_service(&app, req).await;
     assert_eq!(resp.status(), StatusCode::OK);
     let result = test::read_body(resp).await;
-    let res = serde_json::from_slice::<DepositAddressesResponse>(&result).unwrap();
-    assert_eq!(res.addresses.len(), 4);
-    assert!(res.addresses.iter().all(|addr| addresses.contains(addr)));
-    assert_eq!(res.next_page, Some(1));
+    let text = String::from_utf8(result.to_vec()).unwrap();
+    assert_eq!(text.len(), 62);
 
-    // Try to fetch the second page of addresses with limit of 4.
+    // Try to fetch the deposit addresses after the saved timestamp. Should return only the new address.
     let req = test::TestRequest::get()
-        .uri("/deposit-addresses?page=1&limit=4")
+        .uri(format!("/deposit-addresses?after_created_at={}", now).as_str())
         .to_request();
     let resp = test::call_service(&app, req).await;
     assert_eq!(resp.status(), StatusCode::OK);
     let result = test::read_body(resp).await;
-    let res = serde_json::from_slice::<DepositAddressesResponse>(&result).unwrap();
-    assert_eq!(res.addresses.len(), 4);
-    assert!(res.addresses.iter().all(|addr| addresses.contains(addr)));
-    assert_eq!(res.next_page, Some(2));
-
-    // Try to fetch the third page of addresses with limit of 4. Should only return 2 addresses.
-    let req = test::TestRequest::get()
-        .uri("/deposit-addresses?page=2&limit=4")
-        .to_request();
-    let resp = test::call_service(&app, req).await;
-    assert_eq!(resp.status(), StatusCode::OK);
-    let result = test::read_body(resp).await;
-    let res = serde_json::from_slice::<DepositAddressesResponse>(&result).unwrap();
-    assert_eq!(res.addresses.len(), 2);
-    assert!(res.addresses.iter().all(|addr| addresses.contains(addr)));
-    assert_eq!(res.next_page, None);
+    let res = serde_json::from_slice::<Vec<String>>(&result).unwrap();
+    assert_eq!(res.len(), 1);
+    assert!(res.iter().all(|addr| addresses.contains(addr)));
+    assert_eq!(res[0], text);
 }
