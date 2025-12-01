@@ -241,7 +241,6 @@
               timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
       delegate_to: localhost
       run_once: true
-      become: false
       ignore_errors: true
 
 - hosts: monitoring

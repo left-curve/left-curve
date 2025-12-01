@@ -326,6 +326,9 @@
                     - name: "PR title"
                       value: "{{ pr_title | default('-', true) }}"
                       inline: true
+                    - name: "PR URL"
+                      value: "{{ (github_pr_number is defined) | ternary('[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')', '-') }}"
+                      inline: true
                     - name: "Deployment"
                       value: "{{ deployment_name }}"
                       inline: true
@@ -389,6 +392,9 @@
                       inline: false
                     - name: "PR title"
                       value: "{{ pr_title | default('-', true) }}"
+                      inline: true
+                    - name: "PR URL"
+                      value: "{{ (github_pr_number is defined) | ternary('[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')', '-') }}"
                       inline: true
                     - name: "Deployment"
                       value: "{{ deployment_name }}"
