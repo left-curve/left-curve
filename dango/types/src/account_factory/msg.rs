@@ -8,25 +8,8 @@ use {
     },
     grug::{Addr, Coins, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
     sha2::Sha256,
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, BTreeSet},
 };
-
-/// Option for querying a user. A user can be queried by either its numerical
-/// index or its human-readable username.
-#[grug::derive(Serde)]
-pub enum UserQuery {
-    ByName(Username),
-    ByIndex(UserIndex),
-}
-
-/// Identifiers of a user. Includes a numerical identifier (used by smart
-/// contract internal logics) and a human-readable username (for display on the
-/// frontend).
-#[grug::derive(Serde)]
-pub struct UserIds {
-    pub name: Option<Username>,
-    pub index: UserIndex,
-}
 
 /// Information about a user. Used in query response.
 #[grug::derive(Serde)]
@@ -112,7 +95,10 @@ pub enum QueryMsg {
     },
     /// Query a key by its hash and the user it is associated with.
     #[returns(Key)]
-    Key { user: UserQuery, key_hash: Hash256 },
+    Key {
+        user_index: UserIndex,
+        key_hash: Hash256,
+    },
     /// Enumerate all keys.
     #[returns(Vec<QueryKeyResponseItem>)]
     Keys {
@@ -121,7 +107,7 @@ pub enum QueryMsg {
     },
     /// Find all keys associated with a user.
     #[returns(BTreeMap<Hash256, Key>)]
-    KeysByUser(UserQuery),
+    KeysByUser { user_index: UserIndex },
     /// Query parameters of an account by address.
     #[returns(Account)]
     Account(Addr),
@@ -133,10 +119,10 @@ pub enum QueryMsg {
     },
     /// Find all accounts associated with a user.
     #[returns(BTreeMap<Addr, Account>)]
-    AccountsByUser(UserQuery),
+    AccountsByUser { user_index: UserIndex },
     /// Query a single user by its idenfier (either the index or the username).
     #[returns(User)]
-    User(UserQuery),
+    User { user_index: UserIndex },
     /// Query a user's username by index.
     ///
     /// `None` if the user index doesn't exist, or if the user index exists but
@@ -150,23 +136,23 @@ pub enum QueryMsg {
     UserIndexByName(Username),
     /// Query user identifiers (index or username) associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
-    #[returns(Vec<UserIds>)]
+    #[returns(BTreeSet<UserIndex>)]
     ForgotUsername {
         key_hash: Hash256,
-        start_after: Option<UserQuery>,
+        start_after: Option<UserIndex>,
         limit: Option<u32>,
     },
 }
 
 #[grug::derive(Serde)]
 pub struct QueryKeyPaginateParam {
-    pub user: UserQuery,
+    pub user_index: UserIndex,
     pub key_hash: Hash256,
 }
 
 #[grug::derive(Serde)]
 pub struct QueryKeyResponseItem {
-    pub user: UserIds,
+    pub user_index: UserIndex,
     pub key_hash: Hash256,
     pub key: Key,
 }

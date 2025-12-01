@@ -6,7 +6,7 @@ use {
     dango_types::{
         account_factory::{
             Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
-            QueryMsg, User, UserIds, UserIndex, UserQuery, Username,
+            QueryMsg, User, UserIndex, Username,
         },
         auth::Key,
     },
@@ -14,7 +14,7 @@ use {
         Addr, Bound, Coins, DEFAULT_PAGE_LIMIT, Hash256, ImmutableCtx, Json, JsonSerExt, Order,
         StdResult, Storage,
     },
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -40,16 +40,19 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_code_hashes(ctx.storage, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::Key { user, key_hash } => {
-            let res = query_key(ctx.storage, user, key_hash)?;
+        QueryMsg::Key {
+            user_index,
+            key_hash,
+        } => {
+            let res = query_key(ctx.storage, user_index, key_hash)?;
             res.to_json_value()
         },
         QueryMsg::Keys { start_after, limit } => {
             let res = query_keys(ctx.storage, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::KeysByUser(user) => {
-            let res = query_keys_by_user(ctx.storage, &user)?;
+        QueryMsg::KeysByUser { user_index } => {
+            let res = query_keys_by_user(ctx.storage, user_index)?;
             res.to_json_value()
         },
         QueryMsg::Account(address) => {
@@ -60,12 +63,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_accounts(ctx.storage, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::AccountsByUser(user) => {
-            let res = query_accounts_by_user(ctx.storage, &user)?;
+        QueryMsg::AccountsByUser { user_index } => {
+            let res = query_accounts_by_user(ctx.storage, user_index)?;
             res.to_json_value()
         },
-        QueryMsg::User(user) => {
-            let res = query_user(ctx.storage, user)?;
+        QueryMsg::User { user_index } => {
+            let res = query_user(ctx.storage, user_index)?;
             res.to_json_value()
         },
         QueryMsg::UserNameByIndex(user_index) => {
@@ -118,8 +121,7 @@ fn query_code_hashes(
         .collect()
 }
 
-fn query_key(storage: &dyn Storage, user: UserQuery, key_hash: Hash256) -> StdResult<Key> {
-    let user_index = get_user_index(storage, &user)?;
+fn query_key(storage: &dyn Storage, user_index: UserIndex, key_hash: Hash256) -> StdResult<Key> {
     KEYS.load(storage, (user_index, key_hash))
 }
 
@@ -128,21 +130,15 @@ fn query_keys(
     start_after: Option<QueryKeyPaginateParam>,
     limit: Option<u32>,
 ) -> StdResult<Vec<QueryKeyResponseItem>> {
-    let start = start_after
-        .map(|param| -> StdResult<_> {
-            let user_index = get_user_index(storage, &param.user)?;
-            Ok(Bound::Exclusive((user_index, param.key_hash)))
-        })
-        .transpose()?;
+    let start = start_after.map(|param| Bound::Exclusive((param.user_index, param.key_hash)));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     KEYS.range(storage, start, None, Order::Ascending)
         .take(limit)
         .map(|res| {
-            let ((index, key_hash), key) = res?;
-            let name = USER_NAMES_BY_INDEX.may_load(storage, index)?;
+            let ((user_index, key_hash), key) = res?;
             Ok(QueryKeyResponseItem {
-                user: UserIds { name, index },
+                user_index,
                 key_hash,
                 key,
             })
@@ -152,10 +148,8 @@ fn query_keys(
 
 fn query_keys_by_user(
     storage: &dyn Storage,
-    user: &UserQuery,
+    user_index: UserIndex,
 ) -> StdResult<BTreeMap<Hash256, Key>> {
-    let user_index = get_user_index(storage, user)?;
-
     KEYS.prefix(user_index)
         .range(storage, None, None, Order::Ascending)
         .collect()
@@ -181,10 +175,8 @@ fn query_accounts(
 
 fn query_accounts_by_user(
     storage: &dyn Storage,
-    user: &UserQuery,
+    user_index: UserIndex,
 ) -> StdResult<BTreeMap<Addr, Account>> {
-    let user_index = get_user_index(storage, user)?;
-
     ACCOUNTS_BY_USER
         .prefix(user_index)
         .keys(storage, None, None, Order::Ascending)
@@ -196,9 +188,9 @@ fn query_accounts_by_user(
         .collect()
 }
 
-fn query_user(storage: &dyn Storage, user: UserQuery) -> StdResult<User> {
-    let keys = query_keys_by_user(storage, &user)?;
-    let accounts = query_accounts_by_user(storage, &user)?;
+fn query_user(storage: &dyn Storage, user_index: UserIndex) -> StdResult<User> {
+    let keys = query_keys_by_user(storage, user_index)?;
+    let accounts = query_accounts_by_user(storage, user_index)?;
 
     Ok(User { keys, accounts })
 }
@@ -220,34 +212,15 @@ fn query_user_index_by_name(
 fn forgot_username(
     storage: &dyn Storage,
     key_hash: Hash256,
-    start_after: Option<UserQuery>,
+    start_after: Option<UserIndex>,
     limit: Option<u32>,
-) -> StdResult<Vec<UserIds>> {
-    let start = start_after
-        .map(|user| -> StdResult<_> {
-            let user_index = get_user_index(storage, &user)?;
-            Ok(Bound::Exclusive(user_index))
-        })
-        .transpose()?;
+) -> StdResult<BTreeSet<UserIndex>> {
+    let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     USERS_BY_KEY
         .prefix(key_hash)
         .keys(storage, start, None, Order::Ascending)
-        .map(|res| {
-            let index = res?;
-            let name = USER_NAMES_BY_INDEX.may_load(storage, index)?;
-            Ok(UserIds { index, name })
-        })
         .take(limit)
         .collect()
-}
-
-/// Convert a `UserQuery`, which is either a username or an index, to the index.
-/// Error if it's a username, and the username isn't associated with any index.
-fn get_user_index(storage: &dyn Storage, user: &UserQuery) -> StdResult<UserIndex> {
-    match user {
-        UserQuery::ByName(name) => USER_INDEXES_BY_NAME.load(storage, name),
-        UserQuery::ByIndex(index) => Ok(*index),
-    }
 }
