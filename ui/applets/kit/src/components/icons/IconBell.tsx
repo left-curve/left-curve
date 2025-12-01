@@ -10,7 +10,7 @@ export const IconBell: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...p
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      <g clip-path="url(#clip0_460_9601)">
+      <g clipPath="url(#clip0_460_9601)">
         <path
           fill-rule="evenodd"
           clip-rule="evenodd"

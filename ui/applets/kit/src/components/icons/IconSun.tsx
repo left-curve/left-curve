@@ -10,7 +10,7 @@ export const IconSun: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...pr
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      <g clip-path="url(#clip0_909_32094)">
+      <g clipPath="url(#clip0_909_32094)">
         <mask id="mask0_909_32094" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
           <path d="M24 0H0V24H24V0Z" fill="white" />
         </mask>
