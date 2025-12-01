@@ -57,9 +57,8 @@ export { ConnectWalletWithModal } from "./ConnectWalletWithModal";
 
 /* ---------------------------------- Icons --------------------------------- */
 
-export { CheckCircleIcon } from "./icons/CheckCircle";
-export { XCircleIcon } from "./icons/XCircle";
-
+export { IconSuccessCircle } from "./icons/IconSuccessCircle";
+export { IconErrorCircle } from "./icons/IconErrorCircle";
 export { IconDangoDots } from "./icons/IconDangoDots";
 export { IconCopyCheck } from "./icons/IconCopyCheck";
 export { IconDoubleChevronRight } from "./icons/IconDoubleChevronRight";
