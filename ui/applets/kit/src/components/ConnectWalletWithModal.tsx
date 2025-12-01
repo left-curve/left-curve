@@ -31,7 +31,7 @@ export const ConnectWalletWithModal: React.FC<ConnectWalletWithModalProps> = ({
 
       const walletId = await promise;
       const connector = connectors.find((c) => c.id === walletId);
-      if (!connector) onReject();
+      if (!connector) return onReject();
 
       try {
         const provider = await (
