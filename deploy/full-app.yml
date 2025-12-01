@@ -329,7 +329,7 @@
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
                     - name: "PR URL"
-                      value: "{{ (github_pr_number is defined) | ternary('[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')', '-') }}"
+                      value: "{{ '[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')' if (github_pr_number is defined) else '-' }}"
                       inline: true
                     - name: "Deployment"
                       value: "{{ deployment_name }}"
@@ -396,7 +396,7 @@
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
                     - name: "PR URL"
-                      value: "{{ (github_pr_number is defined) | ternary('[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')', '-') }}"
+                      value: "{{ '[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')' if (github_pr_number is defined) else '-' }}"
                       inline: true
                     - name: "Deployment"
                       value: "{{ deployment_name }}"
