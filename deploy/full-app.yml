@@ -327,7 +327,7 @@
             headers:
               Accept: application/vnd.github+json
               X-GitHub-Api-Version: "2022-11-28"
-              Authorization: "{{ (github_api_token is defined and (github_api_token | length > 0)) | ternary('Bearer ' ~ github_api_token, omit) }}"
+              Authorization: "Bearer {{ ghcr_token }}"
           register: pr_api_response
           failed_when: false
           ignore_errors: true
