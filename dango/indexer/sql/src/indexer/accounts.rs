@@ -43,10 +43,10 @@ pub(crate) async fn save_accounts(
 
     // NOTE:
     // The kind of operations which needs to be executed after are:
-    // - UserRegistered: a username, key and key hash. We should create a user entry.
-    // - AccountRegistered: an address, username, We should create an account entry.
-    // - KeyOwned: a username, key and key hash. We should update the users entry with the new key.
-    // - KeyDisowned: a username and key hash. We should delete that key hash attached to that user.
+    // - UserRegistered: a user index, key and key hash. We should create a user entry.
+    // - AccountRegistered: an address, user index, We should create an account entry.
+    // - KeyOwned: a user index, key and key hash. We should update the users entry with the new key.
+    // - KeyDisowned: a user index and key hash. We should delete that key hash attached to that user.
 
     for ((_tx, tx_hash), tx_outcome) in block
         .block
