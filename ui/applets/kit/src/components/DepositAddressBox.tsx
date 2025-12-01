@@ -1,4 +1,4 @@
-import { TextCopy } from "@left-curve/applets-kit";
+import { TextCopy } from "./TextCopy";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
