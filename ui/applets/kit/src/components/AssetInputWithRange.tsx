@@ -12,17 +12,22 @@ import { PairAssetSelector } from "./PairAssetSelector";
 
 type AssetInputWithRangeProps = {
   name: string;
+  controllers: ReturnType<typeof useInputs>;
   label?: string;
   asset: AnyCoin;
   isDisabled?: boolean;
   isLoading?: boolean;
-  controllers: ReturnType<typeof useInputs>;
   showCoinSelector?: boolean;
   shouldValidate?: boolean;
   showRange?: boolean;
   onFocus?: () => void;
   onSelectCoin?: (denom: string) => void;
   triggerSimulation?: (reverse?: boolean) => void;
+  renderSelector?: (params: {
+    value: string;
+    onChange: (denom: string) => void;
+    isDisabled?: boolean;
+  }) => React.ReactNode;
 };
 
 export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) => {
@@ -46,10 +51,18 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
     onFocus,
     onSelectCoin,
     triggerSimulation,
+    renderSelector,
   } = props;
+
   const { register, setValue } = controllers;
 
   const balance = formatUnits(balances[asset.denom] || 0, asset.decimals);
+
+  const selectorValue = asset.denom;
+  const handleSelectorChange = (denom: string) => {
+    onSelectCoin?.(denom);
+    triggerSimulation?.(true);
+  };
 
   const {
     onChange,
@@ -87,13 +100,15 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
       startText="right"
       startContent={
         showCoinSelector ? (
-          <PairAssetSelector
-            value={asset.denom}
-            onChange={(d) => {
-              onSelectCoin?.(d);
-              triggerSimulation?.(true);
-            }}
-          />
+          renderSelector ? (
+            renderSelector({
+              value: selectorValue,
+              onChange: handleSelectorChange,
+              isDisabled,
+            })
+          ) : (
+            <PairAssetSelector value={selectorValue} onChange={handleSelectorChange} />
+          )
         ) : (
           <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
             <div className="flex gap-2 items-center font-semibold">
