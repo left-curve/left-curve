@@ -162,18 +162,24 @@ impl Cache {
     }
 
     #[cfg(feature = "s3")]
-    fn store_bitmap(&self) -> Result<()> {
-        let s3_bitmap = self
-            .s3_bitmap
+    fn store_bitmap(context: &Context, s3_bitmap: Arc<Mutex<RoaringTreemap>>) -> Result<()> {
+        #[cfg(feature = "tracing")]
+        let time_start = Instant::now();
+
+        let s3_bitmap = s3_bitmap
             .lock()
             .map_err(|err| IndexerError::mutex_poisoned(err.to_string()))?;
+        let blocks_len = s3_bitmap.len();
 
-        let mut tmp = tempfile::NamedTempFile::new_in(self.context.indexer_path.blocks_path())?;
+        let mut tmp = tempfile::NamedTempFile::new_in(context.indexer_path.blocks_path())?;
         s3_bitmap.serialize_into(BufWriter::new(&mut tmp))?;
         drop(s3_bitmap);
 
         tmp.flush()?;
-        tmp.persist(Self::s3_block_file_path(&self.context.indexer_path))?;
+        tmp.persist(Self::s3_block_file_path(&context.indexer_path))?;
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(time_elapsed = ?time_start.elapsed(), blocks_len, "Stored S3 bitmap to disk");
 
         Ok(())
     }
@@ -403,10 +409,24 @@ impl grug_app::Indexer for Cache {
         if self.context.s3.enabled {
             let context = self.context.clone();
             let s3_bitmap = self.s3_bitmap.clone();
+            let mut start_time = Instant::now();
 
             self.runtime_handler.spawn(async move {
                 loop {
                     Self::sync_to_s3(&context, s3_bitmap.clone()).await.ok();
+
+                    // Periodically store the bitmap to disk
+                    if start_time.elapsed().as_secs() > 60 {
+                        if let Err(_error) = Self::store_bitmap(&context, s3_bitmap.clone()) {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(
+                                error = %_error,
+                                "Failed to store S3 bitmap to disk",
+                            );
+                        }
+
+                        start_time = Instant::now();
+                    }
 
                     sleep(Duration::from_millis(100)).await;
                 }
@@ -419,7 +439,7 @@ impl grug_app::Indexer for Cache {
 
     #[cfg(feature = "s3")]
     fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
-        self.store_bitmap()?;
+        Self::store_bitmap(&self.context, self.s3_bitmap.clone())?;
 
         Ok(())
     }
