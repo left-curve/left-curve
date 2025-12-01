@@ -118,8 +118,4 @@ export { IconToastWarning } from "./icons/IconToastWarning";
 export { IconWorld } from "./icons/IconWorld";
 export { IconTime } from "./icons/IconTime";
 export { IconTelegram } from "./icons/IconTelegram";
-export { IconTrust } from "./icons/IconTrust";
-export { IconMetamask } from "./icons/IconMetamask";
-export { IconUniswap } from "./icons/IconUniswap";
-export { IconWalletConnect } from "./icons/IconWalletConnect";
 export { IconShare } from "./icons/IconShare";
