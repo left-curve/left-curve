@@ -1,6 +1,7 @@
 use {
     async_graphql::{types::connection::*, *},
     dango_indexer_sql::entity,
+    dango_types::account_factory::UserIndex,
     indexer_httpd::{
         context::Context,
         graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
@@ -73,7 +74,7 @@ impl TransferQuery {
         from_address: Option<String>,
         // The to address of the transfer
         to_address: Option<String>,
-        username: Option<String>,
+        user_index: Option<UserIndex>,
     ) -> Result<
         Connection<
             OpaqueCursor<TransferCursor>,
@@ -110,12 +111,12 @@ impl TransferQuery {
                         query = query.filter(entity::transfers::Column::ToAddress.eq(&to_address));
                     }
 
-                    if let Some(username) = username {
+                    if let Some(user_index) = user_index {
                         // NOTE: keeping the "safe" version for now, until I confirm in production the subquery code works correctly.
 
                         // let accounts = entity::accounts::Entity::find()
                         //     .find_also_related(entity::users::Entity)
-                        //     .filter(entity::users::Column::Username.eq(&username))
+                        //     .filter(entity::users::Column::UserIndex.eq(user_index))
                         //     .all(txn)
                         //     .await?;
 
@@ -142,7 +143,7 @@ impl TransferQuery {
                                 JoinType::InnerJoin,
                                 entity::accounts_users::Relation::User.def(),
                             )
-                            .filter(entity::users::Column::Username.eq(&username));
+                            .filter(entity::users::Column::UserIndex.eq(user_index));
 
                         query =
                             query.filter(
