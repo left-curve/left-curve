@@ -60,7 +60,7 @@ pub struct InstantiateMsg {
     /// Users with associated key to set up during genesis.
     /// Each genesis user is to be associated with exactly one key.
     /// A spot account will be created for each genesis user.
-    pub users: Vec<(Hash256, Key)>,
+    pub users: BTreeMap<Username, (Hash256, Key)>,
     /// The minimum deposit required to onboard a user.
     pub minimum_deposit: Coins,
 }
