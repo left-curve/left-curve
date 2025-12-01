@@ -15,8 +15,12 @@ use {
 
 #[cfg(feature = "s3")]
 use {
+    crate::error::IndexerError,
     crate::s3,
     futures::future::try_join_all,
+    roaring::RoaringTreemap,
+    std::fs::File,
+    std::io::{BufReader, BufWriter},
     std::time::Duration,
     std::time::Instant,
     tokio::{sync::Semaphore, time::sleep},
@@ -29,6 +33,9 @@ const HIGHEST_BLOCK_FILENAME: &str = "last_block.json";
 
 #[cfg(feature = "s3")]
 const S3_HIGHEST_BLOCK_FILENAME: &str = "s3_highest_block.json";
+
+#[cfg(feature = "s3")]
+const S3_BLOCKS_FILENAME: &str = "s3_blocks.bin";
 
 #[cfg(feature = "s3")]
 const MAX_CONCURRENT_S3_UPLOADS: usize = 100;
@@ -44,6 +51,8 @@ pub struct Cache {
     // This because the way indexer methods are called, we need to store the blocks
     // in memory between `pre_indexing`, `index_block` and `post_indexing`.
     blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
+    #[cfg(feature = "s3")]
+    s3_bitmap: Arc<Mutex<RoaringTreemap>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -53,34 +62,55 @@ struct LastBlockHeight {
 
 impl Cache {
     pub fn new_with_tempdir() -> Self {
+        let indexer_path = IndexerPath::new_with_tempdir();
+
+        #[cfg(feature = "s3")]
+        let s3_bitmap = Arc::new(Mutex::new(Self::s3_bitmap(&indexer_path)));
+
         Self {
             context: Context {
-                indexer_path: IndexerPath::new_with_tempdir(),
+                indexer_path,
                 ..Default::default()
             },
             runtime_handler: RuntimeHandler::default(),
+            #[cfg(feature = "s3")]
+            s3_bitmap,
             ..Default::default()
         }
     }
 
     pub fn new_with_dir(directory: PathBuf) -> Self {
+        let indexer_path = IndexerPath::new_with_dir(directory);
+
+        #[cfg(feature = "s3")]
+        let s3_bitmap = Arc::new(Mutex::new(Self::s3_bitmap(&indexer_path)));
+
         Self {
             context: Context {
-                indexer_path: IndexerPath::new_with_dir(directory),
+                indexer_path,
                 ..Default::default()
             },
             runtime_handler: RuntimeHandler::default(),
+            #[cfg(feature = "s3")]
+            s3_bitmap,
             ..Default::default()
         }
     }
 
     pub fn new_with_dir_and_runtime(directory: PathBuf, runtime_handler: RuntimeHandler) -> Self {
+        let indexer_path = IndexerPath::new_with_dir(directory);
+
+        #[cfg(feature = "s3")]
+        let s3_bitmap = Arc::new(Mutex::new(Self::s3_bitmap(&indexer_path)));
+
         Self {
             context: Context {
-                indexer_path: IndexerPath::new_with_dir(directory),
+                indexer_path,
                 ..Default::default()
             },
             runtime_handler,
+            #[cfg(feature = "s3")]
+            s3_bitmap,
             ..Default::default()
         }
     }
@@ -117,6 +147,37 @@ impl Cache {
         Ok(http_request_details)
     }
 
+    #[cfg(feature = "s3")]
+    fn s3_block_file_path(indexer_path: &IndexerPath) -> PathBuf {
+        indexer_path.blocks_path().join(S3_BLOCKS_FILENAME)
+    }
+
+    #[cfg(feature = "s3")]
+    fn s3_bitmap(indexer_path: &IndexerPath) -> RoaringTreemap {
+        if let Ok(file) = File::open(Self::s3_block_file_path(indexer_path)) {
+            RoaringTreemap::deserialize_from(BufReader::new(file)).unwrap()
+        } else {
+            RoaringTreemap::new()
+        }
+    }
+
+    #[cfg(feature = "s3")]
+    fn store_bitmap(&self) -> Result<()> {
+        let s3_bitmap = self
+            .s3_bitmap
+            .lock()
+            .map_err(|err| IndexerError::mutex_poisoned(err.to_string()))?;
+
+        let mut tmp = tempfile::NamedTempFile::new_in(self.context.indexer_path.blocks_path())?;
+        s3_bitmap.serialize_into(BufWriter::new(&mut tmp))?;
+        drop(s3_bitmap);
+
+        tmp.flush()?;
+        tmp.persist(Self::s3_block_file_path(&self.context.indexer_path))?;
+
+        Ok(())
+    }
+
     /// Store the last block height in the file cache.
     fn store_last_block_height(context: &Context, block_height: u64, filename: &str) -> Result<()> {
         // We don't store if existing block height is greater
@@ -131,9 +192,9 @@ impl Cache {
         let payload = LastBlockHeight { block_height };
         serde_json::to_writer(&mut tmp, &payload)?;
         tmp.flush()?;
-        tmp.persist(context.indexer_path.blocks_path().join(filename))
-            .map(|_| ())
-            .map_err(|e| e.error.into())
+        tmp.persist(context.indexer_path.blocks_path().join(filename))?;
+
+        Ok(())
     }
 
     /// Read the last block height from the file cache.
@@ -151,7 +212,20 @@ impl Cache {
     }
 
     #[cfg(feature = "s3")]
-    async fn sync_block_to_s3(context: &Context, block_height: u64) -> Result<()> {
+    async fn sync_block_to_s3(
+        context: &Context,
+        s3_bitmap: Arc<Mutex<RoaringTreemap>>,
+        block_height: u64,
+    ) -> Result<()> {
+        {
+            let s3_bitmap = s3_bitmap
+                .lock()
+                .map_err(|err| IndexerError::mutex_poisoned(err.to_string()))?;
+            if s3_bitmap.contains(block_height) {
+                return Ok(());
+            }
+        }
+
         let blocks_root = context.indexer_path.blocks_path();
         let s3_client = s3::Client::new(context.s3.clone()).await?;
 
@@ -220,6 +294,7 @@ impl Cache {
             match s3_client.upload_file(s3_key.clone(), &file_path).await {
                 Ok(()) => {
                     let elapsed = start.elapsed();
+
                     #[cfg(feature = "tracing")]
                     tracing::info!(
                         block_height,
@@ -234,6 +309,14 @@ impl Cache {
                         metrics::histogram!("indexer.s3.upload.bytes").record(size as f64);
                         metrics::histogram!("indexer.s3.upload.duration")
                             .record(elapsed.as_secs_f64());
+                    }
+
+                    // Mark block as uploaded in the bitmap
+                    {
+                        let mut s3_bitmap = s3_bitmap
+                            .lock()
+                            .map_err(|err| IndexerError::mutex_poisoned(err.to_string()))?;
+                        s3_bitmap.insert(block_height);
                     }
 
                     break;
@@ -253,7 +336,7 @@ impl Cache {
     }
 
     #[cfg(feature = "s3")]
-    async fn sync_to_s3(context: &Context) -> Result<()> {
+    async fn sync_to_s3(context: &Context, s3_bitmap: Arc<Mutex<RoaringTreemap>>) -> Result<()> {
         if !context.s3.enabled {
             return Ok(());
         }
@@ -281,9 +364,10 @@ impl Cache {
         for block_height in (last_synced_height + 1)..=last_stored_height {
             let context = context.clone();
             let permit = semaphore.clone().acquire_owned().await.unwrap();
+            let s3_bitmap = s3_bitmap.clone();
 
             let task = tokio::spawn(async move {
-                let result = Self::sync_block_to_s3(&context, block_height).await;
+                let result = Self::sync_block_to_s3(&context, s3_bitmap, block_height).await;
                 drop(permit);
                 result
             });
@@ -318,10 +402,11 @@ impl grug_app::Indexer for Cache {
         #[cfg(feature = "s3")]
         if self.context.s3.enabled {
             let context = self.context.clone();
+            let s3_bitmap = self.s3_bitmap.clone();
 
             self.runtime_handler.spawn(async move {
                 loop {
-                    Self::sync_to_s3(&context).await.ok();
+                    Self::sync_to_s3(&context, s3_bitmap.clone()).await.ok();
 
                     sleep(Duration::from_millis(100)).await;
                 }
@@ -329,6 +414,13 @@ impl grug_app::Indexer for Cache {
         }
 
         // NOTE: might need to create caching directory, but working so far.
+        Ok(())
+    }
+
+    #[cfg(feature = "s3")]
+    fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+        self.store_bitmap()?;
+
         Ok(())
     }
 

@@ -158,6 +158,7 @@ quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                     = { version = "0.12", features = ["stream"] }
 ripemd                      = "0.1"
+roaring                     = "0.11"
 rocksdb                     = "0.23"
 sea-orm                     = { version = "1", features = ["runtime-tokio-rustls", "sea-orm-internal", "sqlx-postgres", "sqlx-sqlite", "with-bigdecimal", "with-chrono", "with-json", "with-time", "with-uuid"] }
 sea-orm-migration           = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"] }
