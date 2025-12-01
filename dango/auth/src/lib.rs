@@ -431,10 +431,7 @@ impl SignData for VerifyData {
 mod tests {
     use {
         super::*,
-        dango_types::{
-            account_factory::Username,
-            config::{AppAddresses, AppConfig},
-        },
+        dango_types::config::{AppAddresses, AppConfig},
         grug::{Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt, btree_map},
         std::str::FromStr,
     };
@@ -841,7 +838,6 @@ mod tests {
             signature,
             VerifyData::Onboard(RegisterUserData {
                 chain_id: "dev-6".into(),
-                username: Some(Username::from_str("javier_test").unwrap()),
             }),
         )
         .should_succeed();
