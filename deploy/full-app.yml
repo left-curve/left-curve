@@ -24,6 +24,34 @@
         timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
         s3_bucket: "dango-{{ dango_network }}-{{ timestamp }}"
 
+    - name: Fetch PR title from GitHub API (once)
+      when:
+        - github_pr_number is defined
+      uri:
+        url: "https://api.github.com/repos/{{ github_repo }}/pulls/{{ github_pr_number }}"
+        method: GET
+        body_format: json
+        headers:
+          Accept: application/vnd.github+json
+          X-GitHub-Api-Version: "2022-11-28"
+        return_content: true
+      register: pr_api_response
+      failed_when: false
+      ignore_errors: true
+      run_once: true
+      delegate_to: localhost
+      become: false
+
+    - name: Set PR title fact from GitHub response
+      when:
+        - pr_api_response is defined
+        - pr_api_response.json is defined
+        - (pr_api_response.json.title | default('') | length) > 0
+      set_fact:
+        pr_title: "{{ pr_api_response.json.title }}"
+      run_once: true
+      delegate_to: localhost
+
     - name: Log deployment start
       community.general.syslogger:
         msg: "[{{ deployment_name }}] Starting deployment"
@@ -33,9 +61,9 @@
 
     - name: Notify Discord of deployment start
       when:
-        - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
+        - discord_webhook is defined
       uri:
-        url: "{{ discord_hook | default(discord_webhook) }}"
+        url: "{{ discord_webhook }}"
         method: POST
         status_code: 204
         body_format: json
@@ -43,7 +71,7 @@
           Content-Type: application/json
         body:
           username: "{{ discord_username | default('Deploy Bot') }}"
-          avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+          avatar_url: "{{ discord_avatar_url }}"
           embeds:
             - title: "Deployment Started"
               # description: "{{ '🚀 Starting deployment ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
@@ -51,7 +79,7 @@
               fields:
                 - name: "Triggered by"
                   value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                  inline: false
+                  inline: true
                 - name: "Deployment"
                   value: "{{ deployment_name }}"
                   inline: true
@@ -77,9 +105,9 @@
             deploy_failed: true
         - name: Notify Discord of deployment failure (unreachable)
           when:
-            - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
+            - discord_webhook is defined
           uri:
-            url: "{{ discord_hook | default(discord_webhook) }}"
+            url: "{{ discord_webhook }}"
             method: POST
             status_code: 204
             body_format: json
@@ -87,7 +115,7 @@
               Content-Type: application/json
             body:
               username: "{{ discord_username | default('Deploy Bot') }}"
-              avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+              avatar_url: "{{ discord_avatar_url }}"
               embeds:
                 - title: "❌ Deployment Failed ❌"
                   # description: "{{ '❌ Deployment FAILED (unreachable host) for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
@@ -95,7 +123,7 @@
                   fields:
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                      inline: false
+                      inline: true
                     - name: "Host"
                       value: "{{ inventory_hostname }}"
                       inline: true
@@ -154,9 +182,9 @@
             deploy_failed: true
         - name: Notify Discord of deployment failure (first phase)
           when:
-            - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
+            - discord_webhook is defined
           uri:
-            url: "{{ discord_hook | default(discord_webhook) }}"
+            url: "{{ discord_webhook }}"
             method: POST
             status_code: 204
             body_format: json
@@ -164,14 +192,14 @@
               Content-Type: application/json
             body:
               username: "{{ discord_username | default('Deploy Bot') }}"
-              avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+              avatar_url: "{{ discord_avatar_url }}"
               embeds:
                 - title: "❌ Deployment Failed ❌"
                   color: 15158332
                   fields:
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                      inline: false
+                      inline: true
                     - name: "Phase"
                       value: "Preparation"
                       inline: true
@@ -273,11 +301,14 @@
           set_fact:
             deploy_failed: true
 
+
+
+
         - name: Notify Discord of deployment failure
           when:
-            - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
+            - discord_webhook is defined
           uri:
-            url: "{{ discord_hook | default(discord_webhook) }}"
+            url: "{{ discord_webhook }}"
             method: POST
             status_code: 204
             body_format: json
@@ -285,15 +316,21 @@
               Content-Type: application/json
             body:
               username: "{{ discord_username | default('Deploy Bot') }}"
-              avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+              avatar_url: "{{ discord_avatar_url }}"
               embeds:
                 - title: "❌ Deployment Failed ❌"
                   # description: "{{ '❌ Deployment FAILED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 15158332
                   fields:
+                    - name: "PR title"
+                      value: "{{ pr_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                      inline: false
+                      inline: true
+                    - name: "PR URL"
+                      value: "{{ (github_pr_number is defined) | ternary('[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')', '-') }}"
+                      inline: true
                     - name: "Deployment"
                       value: "{{ deployment_name }}"
                       inline: true
@@ -330,12 +367,15 @@
           become_user: "{{ deploy_user }}"
           ignore_errors: true
 
+
+
+
         - name: Notify Discord of deployment success
           when:
             - not (deploy_failed | default(false))
-            - (discord_hook is defined and (discord_hook | length > 0)) or (discord_webhook is defined and (discord_webhook | length > 0))
+            - discord_webhook is defined
           uri:
-            url: "{{ discord_hook | default(discord_webhook) }}"
+            url: "{{ discord_webhook }}"
             method: POST
             status_code: 204
             body_format: json
@@ -343,15 +383,21 @@
               Content-Type: application/json
             body:
               username: "{{ discord_username | default('Deploy Bot') }}"
-              avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+              avatar_url: "{{ discord_avatar_url }}"
               embeds:
                 - title: "✅ Deployment Succeeded ✅"
                   # description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 3066993
                   fields:
+                    - name: "PR title"
+                      value: "{{ pr_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                      inline: false
+                      inline: true
+                    - name: "PR URL"
+                      value: "{{ (github_pr_number is defined) | ternary('[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')', '-') }}"
+                      inline: true
                     - name: "Deployment"
                       value: "{{ deployment_name }}"
                       inline: true

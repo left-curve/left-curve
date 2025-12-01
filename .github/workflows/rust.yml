@@ -986,30 +986,30 @@ jobs:
           backend_published="${{ needs['backend-push-manifest'].outputs.published }}"
           frontend_published="${{ needs['frontend-push-manifest'].outputs.published }}"
           run_event="${{ github.event_name }}"
-          backend_repo="ghcr.io/left-curve/left-curve/dango"
-          frontend_repo="ghcr.io/left-curve/left-curve/dango-frontend"
+          backend_image_url="ghcr.io/left-curve/left-curve/dango"
+          frontend_image_url="ghcr.io/left-curve/left-curve/dango-frontend"
 
           commit_tag="${{ env.GIT_COMMIT }}"
           pr_tag=""
 
           if [ "$backend_published" = "true" ]; then
             backend_tag="$commit_tag"
-          elif docker manifest inspect "${backend_repo}:${commit_tag}" >/dev/null 2>&1; then
+          elif docker manifest inspect "${backend_image_url}:${commit_tag}" >/dev/null 2>&1; then
             backend_tag="$commit_tag"
           elif [ "$run_event" = "pull_request" ]; then
             pr_tag="pr-${{ github.event.pull_request.number }}-latest"
-            if docker manifest inspect "${backend_repo}:${pr_tag}" >/dev/null 2>&1; then
+            if docker manifest inspect "${backend_image_url}:${pr_tag}" >/dev/null 2>&1; then
               backend_tag="$pr_tag"
             fi
           fi
 
           if [ "$frontend_published" = "true" ]; then
             frontend_tag="$commit_tag"
-          elif docker manifest inspect "${frontend_repo}:${commit_tag}" >/dev/null 2>&1; then
+          elif docker manifest inspect "${frontend_image_url}:${commit_tag}" >/dev/null 2>&1; then
             frontend_tag="$commit_tag"
           elif [ "$run_event" = "pull_request" ]; then
             pr_tag="pr-${{ github.event.pull_request.number }}-latest"
-            if docker manifest inspect "${frontend_repo}:${pr_tag}" >/dev/null 2>&1; then
+            if docker manifest inspect "${frontend_image_url}:${pr_tag}" >/dev/null 2>&1; then
               frontend_tag="$pr_tag"
             fi
           fi
