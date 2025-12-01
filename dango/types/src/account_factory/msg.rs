@@ -37,17 +37,10 @@ pub struct User {
     pub accounts: BTreeMap<Addr, Account>,
 }
 
-/// Data the user must sign when onboarding.
+/// Data the user must sign when onboarding. Currently, this consists of only
+/// the chain ID.
 #[grug::derive(Serde)]
 pub struct RegisterUserData {
-    /// The user may choose a username when signing up.
-    ///
-    /// If specified, but it's already taken, the transaction will fail.
-    ///
-    /// For general use cases, we recommend leaving this empty, and only later
-    /// choose a username by executing the account-factory contract with
-    /// `ExecuteMsg::UpdateUsername`.
-    pub username: Option<Username>,
     pub chain_id: String,
 }
 
@@ -67,7 +60,7 @@ pub struct InstantiateMsg {
     /// Users with associated key to set up during genesis.
     /// Each genesis user is to be associated with exactly one key.
     /// A spot account will be created for each genesis user.
-    pub users: BTreeMap<Username, (Hash256, Key)>,
+    pub users: Vec<(Hash256, Key)>,
     /// The minimum deposit required to onboard a user.
     pub minimum_deposit: Coins,
 }
@@ -78,7 +71,6 @@ pub enum ExecuteMsg {
     ///
     /// This is the second of the two-step user onboarding process.
     RegisterUser {
-        username: Option<Username>,
         key: Key,
         key_hash: Hash256,
         seed: u32,
