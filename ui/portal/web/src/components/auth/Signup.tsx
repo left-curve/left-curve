@@ -399,7 +399,7 @@ const Username: React.FC = () => {
           ) : errorMessage ? (
             <XCircleIcon className="stroke-primitives-red-light-400 stroke-2" />
           ) : isUsernameAvailable ? (
-            <CheckCircleIcon className="stroke-status-success stroke-2" />
+            <CheckCircleIcon className="text-status-success stroke-2" />
           ) : null
         }
       />

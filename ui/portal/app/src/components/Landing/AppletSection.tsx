@@ -7,7 +7,6 @@ import { APPLETS, ASSETS } from "~/constants";
 
 import type React from "react";
 import type { AppletMetadata } from "@left-curve/store/types";
-import { Shadow } from "react-native-shadow-2";
 
 interface AppletSquareProps {
   applet: AppletMetadata;
