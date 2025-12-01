@@ -158,14 +158,14 @@ fn margin_account_creation() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Create a margin account.
-    let username = accounts.user1.username.clone();
+    let user_index = accounts.user1.user_index;
 
     accounts
         .user1
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(username)),
+            AccountParams::Margin(single::Params::new(user_index)),
             Coins::new(),
         )
         .should_succeed();
@@ -203,13 +203,13 @@ fn setup_margin_test_env(
     );
 
     // Create a margin account.
-    let username = accounts.user1.username.clone();
+    let user_index = accounts.user1.user_index;
     let margin_account = accounts
         .user1
         .register_new_account(
             suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(username)),
+            AccountParams::Margin(single::Params::new(user_index)),
             Coins::new(),
         )
         .should_succeed();
@@ -1120,13 +1120,13 @@ proptest! {
         let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
         // Create margin account that will borrow and be liquidated
-        let username = accounts.user1.username.clone();
+        let user_index = accounts.user1.user_index;
         let mut margin_account = accounts
             .user1
             .register_new_account(
                 &mut suite,
                 contracts.account_factory,
-                AccountParams::Margin(single::Params::new(username.clone())),
+                AccountParams::Margin(single::Params::new(user_index)),
                 Coins::new(),
             )
             .should_succeed();
@@ -1137,7 +1137,7 @@ proptest! {
             .register_new_account(
                 &mut suite,
                 contracts.account_factory,
-                AccountParams::Spot(single::Params::new(username.clone())),
+                AccountParams::Spot(single::Params::new(user_index)),
                 Coins::new(),
             )
             .should_succeed();
