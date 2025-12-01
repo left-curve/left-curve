@@ -317,18 +317,11 @@
             msg: "Deployment failed, please look at the logs. You can also ssh to any of the servers, to {{ deployment_dir }} and run `docker compose logs`"
 
       always:
-        - name: Extract PR number from deployment name (if preview)
-          set_fact:
-            pr_number: "{{ (deployment_name | regex_search('^pr-[0-9]+') | default('', true)) | regex_replace('^pr-','') }}"
-          run_once: true
-          delegate_to: localhost
-          become: false
-
         - name: Fetch PR title from GitHub API
           when:
-            - (pr_number | default('')) | length > 0
+            - github_pr_number is defined
           uri:
-            url: "https://api.github.com/repos/{{ github_repo }}/pulls/{{ pr_number }}"
+            url: "https://api.github.com/repos/{{ github_repo }}/pulls/{{ github_pr_number }}"
             method: GET
             body_format: json
             headers:
@@ -340,7 +333,18 @@
           ignore_errors: true
           run_once: true
           delegate_to: localhost
-          become: false
+
+        - name: Debug GitHub PR API response
+          when:
+            - pr_api_response is defined
+          debug:
+            msg:
+              - "github_pr_title={{ pr_api_response.json.title | default('') }}"
+              - "github_status={{ pr_api_response.status | default('') }}"
+              - "github_message={{ pr_api_response.json.message | default('') }}"
+              - "github_url=https://api.github.com/repos/{{ github_repo }}/pulls/{{ pr_number }}"
+          run_once: true
+          delegate_to: localhost
 
         - name: Set PR title fact from GitHub response
           when:
@@ -350,7 +354,6 @@
             pr_title: "{{ pr_api_response.json.title | default('') }}"
           run_once: true
           delegate_to: localhost
-          become: false
 
         - name: Log deployment finished
           community.general.syslogger:
