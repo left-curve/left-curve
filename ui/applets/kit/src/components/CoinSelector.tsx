@@ -4,8 +4,9 @@ import { twMerge } from "@left-curve/foundation";
 import type { AnyCoin } from "@left-curve/store/types";
 import type { SelectProps } from "./Select";
 
-interface Props extends Omit<SelectProps, "children"> {
+export interface CoinSelectorProps extends Omit<SelectProps, "children"> {
   coins: AnyCoin[];
+  variant?: "boxed" | "plain";
   classNames?: {
     base?: string;
     listboxWrapper?: string;
@@ -17,16 +18,22 @@ interface Props extends Omit<SelectProps, "children"> {
   };
 }
 
-export const CoinSelector: React.FC<Props> = ({ coins, defaultValue, classNames, ...props }) => {
+export const CoinSelector: React.FC<CoinSelectorProps> = ({
+  coins,
+  defaultValue,
+  classNames,
+  variant = "plain",
+  ...props
+}) => {
   return (
     <Select
-      defaultValue={defaultValue || coins[0].denom}
+      defaultValue={defaultValue}
       classNames={{
         base: `${classNames?.base}`,
         listboxWrapper: `top-12 ${classNames?.listboxWrapper}`,
         listbox: `${classNames?.listbox}`,
         value: `${classNames?.value}`,
-        trigger: `min-w-10 p-3 bg-transparent shadow-none justify-start ${classNames?.trigger}`,
+        trigger: `${variant === "plain" ? `min-w-10 p-3 bg-transparent shadow-none justify-start ${classNames?.trigger}` : `${classNames?.trigger}`}`,
         icon: `${classNames?.selectorIcon}`,
       }}
       {...props}

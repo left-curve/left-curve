@@ -16,7 +16,7 @@ import type { useInputs } from "@left-curve/foundation";
 type AssetInputWithRangeProps = {
   name: string;
   controllers: ReturnType<typeof useInputs>;
-  label?: string;
+  label?: React.ReactNode;
   asset: AnyCoin;
   isDisabled?: boolean;
   isLoading?: boolean;
