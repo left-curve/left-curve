@@ -294,6 +294,9 @@
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: false
+                    - name: "PR title"
+                      value: "{{ pr_title | default('-', true) }}"
+                      inline: true
                     - name: "Deployment"
                       value: "{{ deployment_name }}"
                       inline: true
@@ -387,11 +390,9 @@
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: false
-                    {% if pr_title is defined and (pr_title | length > 0) %}
                     - name: "PR title"
-                      value: "{{ pr_title }}"
+                      value: "{{ pr_title | default('-', true) }}"
                       inline: true
-                    {% endif %}
                     - name: "Deployment"
                       value: "{{ deployment_name }}"
                       inline: true
