@@ -342,7 +342,7 @@
               - "github_pr_title={{ pr_api_response.json.title | default('') }}"
               - "github_status={{ pr_api_response.status | default('') }}"
               - "github_message={{ pr_api_response.json.message | default('') }}"
-              - "github_url=https://api.github.com/repos/{{ github_repo }}/pulls/{{ pr_number }}"
+              - "github_url=https://api.github.com/repos/{{ github_repo }}/pulls/{{ github_pr_number }}"
           run_once: true
           delegate_to: localhost
 
