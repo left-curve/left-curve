@@ -19,7 +19,10 @@ const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
   const AppletImage = AppletAsset ? AppletAsset.default : null;
 
   return (
-    <View key={`applets.section.${id}`} className="w-1/3 items-center flex flex-col gap-2 mb-4">
+    <View
+      key={`applets.section.${id}`}
+      className="w-1/3 md:w-1/4 items-center flex flex-col gap-2 mb-4"
+    >
       <ShadowContainer>
         <Pressable
           onPress={() => push(path)}
@@ -52,7 +55,7 @@ export const AppletsSection: React.FC = () => {
         <AppletSquare key={`applets.section.${applet.id}`} applet={applet} />
       ))}
 
-      <View className="w-1/3 items-center mb-4">
+      <View className="w-1/3 md:w-1/4  items-center mb-4">
         <ShadowContainer>
           <Pressable
             onPress={() => push("/search")}
