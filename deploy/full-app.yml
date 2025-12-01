@@ -367,13 +367,11 @@
           become_user: "{{ deploy_user }}"
           ignore_errors: true
 
-
-
-
-        - name: Notify Discord of deployment success
+        - name: Notify Discord of deployment success for main
           when:
             - not (deploy_failed | default(false))
             - discord_webhook is defined
+            - github_pr_number is not defined
           uri:
             url: "{{ discord_webhook }}"
             method: POST
@@ -385,8 +383,45 @@
               username: "{{ discord_username | default('Deploy Bot') }}"
               avatar_url: "{{ discord_avatar_url }}"
               embeds:
-                - title: "✅ Deployment Succeeded ✅"
+                - title: "✅ {{ dango_network }} Deployment Succeeded ✅"
                   # description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+                  color: 3066993
+                  fields:
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: true
+                    - name: "Deployment"
+                      value: "{{ deployment_name }}"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
+
+        - name: Notify Discord of deployment success for PR
+          when:
+            - not (deploy_failed | default(false))
+            - discord_webhook is defined
+            - github_pr_number is defined
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ discord_avatar_url }}"
+              embeds:
+                - title: "✅ PR Deployment Succeeded ✅"
                   color: 3066993
                   fields:
                     - name: "PR title"
@@ -396,7 +431,7 @@
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
                     - name: "PR URL"
-                      value: "{{ '[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')' if (github_pr_number is defined) else '-' }}"
+                      value: "{{ '[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')' }}"
                       inline: true
                     - name: "Deployment"
                       value: "{{ deployment_name }}"
