@@ -111,10 +111,12 @@ const BridgeDeposit: React.FC = () => {
         label={m["bridge.selectCoin"]()}
         placeholder={m["bridge.selectCoin"]()}
         variant="boxed"
-        classNames={{ base: "w-full", trigger: "h-[56px]" }}
+        classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
         value={coin ? coin.denom : undefined}
         onChange={(denom) => changeCoin(denom)}
         coins={coins}
+        withName
+        withPrice
       />
 
       <NetworkSelector
