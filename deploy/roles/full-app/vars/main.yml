@@ -31,6 +31,8 @@ clickhouse_database: "dango_{{ timestamp }}"
 deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
 dango_directory: "{{ deployment_dir }}/dango"
 cometbft_directory: "{{ deployment_dir }}/cometbft"
+# Lock file used to prevent concurrent deploys per network
+deploy_lock_file: "{{ ansible_env.HOME }}/deployments/.{{ dango_network }}.deploy.lock"
 # should we use system wide dango and cometbft directories instead of contained in the deploy
 system_wide_directories: false
 # Set this to true to deploy a new database and cometbft/dango directory

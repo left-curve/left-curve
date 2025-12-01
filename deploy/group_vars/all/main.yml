@@ -1,4 +1,6 @@
 traefik_dir: "{{ ansible_env.HOME }}/traefik"
+discord_username: "Deploy"
+discord_avatar_url: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ansible-light.svg"
 ssh_users:
   - penso
   - rhaki
