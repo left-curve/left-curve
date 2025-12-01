@@ -179,7 +179,7 @@ impl Cache {
             },
             Ok(true) => {
                 #[cfg(feature = "tracing")]
-                tracing::info!(
+                tracing::debug!(
                     block_height,
                     key = %s3_key,
                     path = %path.display(),
