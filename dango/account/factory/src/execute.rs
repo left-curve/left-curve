@@ -34,21 +34,20 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     let instantiate_data = msg
         .users
         .into_iter()
-        .enumerate()
-        .map(|(seed, (username, (key_hash, key)))| {
+        .map(|user| {
             let (msg, user_registered, account_registered) = onboard_new_user(
                 ctx.storage,
                 ctx.contract,
-                key,
-                key_hash,
-                seed as u32,
+                user.key,
+                user.key_hash,
+                user.seed,
                 Coins::default(),
             )?;
 
-            KEYS.save(ctx.storage, (user_registered.user_index, key_hash), &key)?;
-            USERS_BY_KEY.insert(ctx.storage, (key_hash, user_registered.user_index))?;
-            USER_NAMES_BY_INDEX.save(ctx.storage, user_registered.user_index, &username)?;
-            USER_INDEXES_BY_NAME.save(ctx.storage, &username, &user_registered.user_index)?;
+            let user_index = user_registered.user_index;
+
+            KEYS.save(ctx.storage, (user_index, user.key_hash), &user.key)?;
+            USERS_BY_KEY.insert(ctx.storage, (user.key_hash, user_index))?;
 
             Ok((msg, (user_registered, account_registered)))
         })

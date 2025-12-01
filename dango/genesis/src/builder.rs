@@ -1,7 +1,7 @@
 use {
-    crate::{Addresses, Codes, Contracts, GenesisOption},
+    crate::{Codes, Contracts, GenesisOption},
     dango_types::{
-        account_factory::{self, AccountType, NewUserSalt},
+        account_factory::{self, AccountType},
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         constants::dango,
@@ -9,19 +9,18 @@ use {
     },
     grug::{
         Addr, Binary, Coins, Config, Duration, GENESIS_SENDER, GenesisState, Hash256, HashExt,
-        IsZero, JsonSerExt, Message, Permission, Permissions, ResultExt, StdResult, btree_map,
-        btree_set, coins,
+        IsZero, JsonSerExt, Message, Permission, Permissions, ResultExt, btree_map, btree_set,
+        coins,
     },
     hyperlane_types::{isms, mailbox, va},
     serde::Serialize,
-    std::collections::BTreeMap,
 };
 
 /// Create the Dango genesis state given a genesis config.
 pub fn build_genesis<T>(
     codes: Codes<T>,
     opt: GenesisOption,
-) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
+) -> anyhow::Result<(GenesisState, Contracts, Vec<Addr>)>
 where
     T: Into<Binary>,
 {
@@ -49,7 +48,7 @@ where
         .account
         .genesis_users
         .iter()
-        .map(|(username, user)| (username.clone(), (user.key_hash, user.key)))
+        .map(|user| user.salt.clone())
         .collect();
 
     // Derive the account factory contract address.
@@ -65,20 +64,15 @@ where
         .account
         .genesis_users
         .iter()
-        .enumerate()
-        .map(|(seed, (username, user))| {
-            let salt = NewUserSalt {
-                key: user.key,
-                key_hash: user.key_hash,
-                seed: seed as u32,
-            }
-            .to_bytes();
-            let address = Addr::derive(account_factory, account_spot_code_hash, &salt);
-            Ok((username.clone(), address))
+        .map(|user| {
+            let salt = user.salt.to_bytes();
+            Addr::derive(account_factory, account_spot_code_hash, &salt)
         })
-        .collect::<StdResult<BTreeMap<_, _>>>()?;
+        .collect::<Vec<_>>();
 
-    let owner = addresses.get(&opt.grug.owner_username).cloned().unwrap();
+    // Genesis users starts from user index 0, so the owner's user index is the
+    // same as the index in the `addresses` vector.
+    let owner = addresses[opt.grug.owner_index as usize];
 
     let account_factory = instantiate(
         &mut msgs,
@@ -205,7 +199,7 @@ where
         .genesis_users
         .into_iter()
         .zip(&addresses)
-        .filter_map(|((_, user), (_, address))| {
+        .filter_map(|(user, address)| {
             if user.dango_balance.is_non_zero() {
                 Some((*address, coins! {
                     dango::DENOM.clone() => user.dango_balance,

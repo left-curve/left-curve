@@ -4,7 +4,7 @@ use {
         account::{single, spot},
         account_factory::{
             self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
-            QueryNextAccountIndexRequest, RegisterUserData, Salt, Username,
+            QueryNextAccountIndexRequest, RegisterUserData, Salt, UserIndex,
         },
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
         signer::SequencedSigner,
@@ -77,7 +77,7 @@ pub struct TestAccount<
     T: MaybeDefined<Addr> = Defined<Addr>,
     K = BTreeMap<Hash256, (SigningKey, Key)>,
 > {
-    pub username: Username,
+    pub user_index: UserIndex,
     pub nonce: u32,
     keys: K,
     sign_with: Hash256,
@@ -98,19 +98,19 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         (sk, Key::Secp256k1(pk))
     }
 
-    pub fn new_random(username: Username) -> Self {
+    pub fn new_random(user_index: UserIndex) -> Self {
         let sk = SigningKey::random(&mut OsRng);
 
-        Self::new(username, sk)
+        Self::new(user_index, sk)
     }
 
-    pub fn new_from_private_key(username: Username, sk_bytes: [u8; 32]) -> Self {
+    pub fn new_from_private_key(user_index: UserIndex, sk_bytes: [u8; 32]) -> Self {
         let sk = SigningKey::from_bytes(&sk_bytes.into()).unwrap();
 
-        Self::new(username, sk)
+        Self::new(user_index, sk)
     }
 
-    pub fn new(username: Username, sk: SigningKey) -> Self {
+    pub fn new(user_index: UserIndex, sk: SigningKey) -> Self {
         let pk = sk
             .verifying_key()
             .to_encoded_point(true)
@@ -122,7 +122,7 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         let key_hash = pk.hash256();
 
         Self {
-            username,
+            user_index,
             nonce: 0,
             address: Undefined::new(),
             keys: (sk, key),
@@ -151,7 +151,7 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         let address = Addr::derive(factory, spot_code_hash, &salt);
 
         TestAccount {
-            username: self.username,
+            user_index: self.user_index,
             nonce: self.nonce,
             address: Defined::new(address),
             keys: btree_map! { self.sign_with => self.keys },
@@ -162,16 +162,11 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
     pub fn set_address(self, address: Addr) -> TestAccount {
         TestAccount {
             address: Defined::new(address),
-            username: self.username,
+            user_index: self.user_index,
             nonce: self.nonce,
             keys: btree_map! { self.sign_with => self.keys },
             sign_with: self.sign_with,
         }
-    }
-
-    pub fn set_address_with(self, addresses: &BTreeMap<Username, Addr>) -> TestAccount {
-        let address = addresses[&self.username];
-        self.set_address(address)
     }
 }
 
@@ -181,7 +176,7 @@ where
 {
     pub fn metadata(&self, chain_id: &str, nonce: u32, expiry: Option<Duration>) -> Metadata {
         Metadata {
-            username: self.username.clone(),
+            user_index: self.user_index.clone(),
             chain_id: chain_id.to_string(),
             expiry,
             nonce,
@@ -265,22 +260,16 @@ where
                 factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     seed: 0,
-                    username: self.username.clone(),
                     key: self.first_key(),
                     key_hash: self.first_key_hash(),
-                    signature: self
-                        .sign_arbitrary(RegisterUserData {
-                            username: self.username.clone(),
-                            chain_id,
-                        })
-                        .unwrap(),
+                    signature: self.sign_arbitrary(RegisterUserData { chain_id }).unwrap(),
                 },
                 funds,
             )
             .should_succeed();
     }
 
-    /// Register a new account with the username and key of this account and returns a new
+    /// Register a new account with the user index and key of this account and returns a new
     /// `TestAccount` with the new account's address.
     pub fn register_new_account<PP, DB, VM, ID>(
         &mut self,
@@ -299,11 +288,11 @@ where
         // If registering a single account, ensure the supplied username matches this account's username.
         let account_type = match &params {
             AccountParams::Spot(single::Params { owner, .. }) => {
-                assert_eq!(owner, &self.username);
+                assert_eq!(owner, &self.user_index);
                 AccountType::Spot
             },
             AccountParams::Margin(single::Params { owner, .. }) => {
-                assert_eq!(owner, &self.username);
+                assert_eq!(owner, &self.user_index);
                 AccountType::Margin
             },
             AccountParams::Multi(_) => AccountType::Multi,
@@ -315,7 +304,7 @@ where
             .unwrap();
 
         let code_hash = test_suite
-            .query_wasm_smart(factory, QueryCodeHashRequest { account_type })
+            .query_wasm_smart(factory, QueryCodeHashRequest(account_type))
             .should_succeed();
 
         let address = Addr::derive(factory, code_hash, Salt { index }.into_bytes().as_slice());
@@ -331,7 +320,7 @@ where
             .should_succeed();
 
         Ok(TestAccount {
-            username: self.username.clone(),
+            user_index: self.user_index,
             nonce: 0,
             address: Defined::new(address),
             keys: self.keys.clone(),

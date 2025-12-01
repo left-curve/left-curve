@@ -5,7 +5,7 @@ use {
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{
         account::single::Params,
-        account_factory::{self, AccountParams, Username},
+        account_factory::{self, AccountParams, UserIndex},
         auth::Key,
         constants::usdc,
     },
@@ -15,7 +15,7 @@ use {
     hyperlane_types::constants::solana,
     indexer_hooked::HookedIndexer,
     pyth_client::PythClientCache,
-    std::{ops::DerefMut, str::FromStr},
+    std::ops::DerefMut,
 };
 
 pub fn create_user_account(
@@ -57,7 +57,7 @@ pub fn add_account_with_existing_user(
         .register_new_account(
             suite.deref_mut(),
             contracts.account_factory,
-            AccountParams::Spot(Params::new(test_account.username.clone())),
+            AccountParams::Spot(Params::new(test_account.user_index)),
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap()
@@ -68,10 +68,9 @@ pub fn create_user_and_account(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     codes: &Codes<ContractWrapper>,
-    username: &str,
+    user_index: UserIndex,
 ) -> TestAccount {
-    let username = Username::from_str(username).unwrap();
-    let mut user = TestAccount::new_random(username.clone()).predict_address(
+    let mut user = TestAccount::new_random(user_index).predict_address(
         contracts.account_factory,
         0,
         codes.account_spot.to_bytes().hash256(),

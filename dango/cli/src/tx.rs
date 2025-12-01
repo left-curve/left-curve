@@ -8,7 +8,7 @@ use {
     colored::Colorize,
     config_parser::parse_config,
     dango_client::{Keystore, Secp256k1, Secret, SingleSigner},
-    dango_types::config::AppConfig,
+    dango_types::{account_factory::UserIndex, config::AppConfig},
     grug_app::GAS_COSTS,
     grug_client::TendermintRpcClient,
     grug_types::{
@@ -20,9 +20,9 @@ use {
 
 #[derive(Parser)]
 pub struct TxCmd {
-    /// Transaction sender's username
+    /// Transaction sender's user index
     #[arg(long)]
-    username: String,
+    user_index: UserIndex,
 
     /// Transaction sender's address
     #[arg(long)]
@@ -191,7 +191,7 @@ impl TxCmd {
             let password = read_password("🔑 Enter the password to decrypt the key".bold())?;
             let sk_bytes = Keystore::from_file(&key_path, &password)?;
             let sk = Secp256k1::from_bytes(sk_bytes)?;
-            let signer = SingleSigner::new(&self.username, self.address, sk)?;
+            let signer = SingleSigner::new(self.user_index, self.address, sk);
             if let Some(nonce) = self.nonce {
                 signer.with_nonce(nonce)
             } else {
