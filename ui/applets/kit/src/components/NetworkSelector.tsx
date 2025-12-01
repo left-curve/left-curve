@@ -1,4 +1,4 @@
-import { Select, type SelectProps } from "@left-curve/applets-kit";
+import { Select, type SelectProps } from "./Select";
 
 export interface NetworkSelectorProps extends Omit<SelectProps, "children"> {
   networks: { name: string; id: string; time: string }[];
