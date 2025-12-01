@@ -24,13 +24,13 @@ use {
 /// The expected storage layout of the account factory contract.
 pub mod account_factory {
     use {
-        dango_types::{account_factory::Username, auth::Key},
+        dango_types::{account_factory::UserIndex, auth::Key},
         grug::{Addr, Hash256, Map, Set},
     };
 
-    pub const KEYS: Map<(&Username, Hash256), Key> = Map::new("key");
+    pub const KEYS: Map<(UserIndex, Hash256), Key> = Map::new("key");
 
-    pub const ACCOUNTS_BY_USER: Set<(&Username, Addr)> = Set::new("account__user");
+    pub const ACCOUNTS_BY_USER: Set<(UserIndex, Addr)> = Set::new("account__user");
 }
 
 /// The [EIP-155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
@@ -102,19 +102,19 @@ pub fn authenticate_tx(
         tx.data.clone().deserialize_json()?
     };
 
-    // If the sender account is associated with the username, then an entry
-    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
-    // empty because we Borsh for encoding.
+    // If the sender account is associated with the user index, then an entry
+    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be emtpy
+    // because we Borsh for encoding.
     ensure!(
         ctx.querier
             .query_wasm_raw(
                 factory,
-                account_factory::ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
+                account_factory::ACCOUNTS_BY_USER.path((metadata.user_index, tx.sender)),
             )?
             .is_some_and(|bytes| bytes.is_empty()),
-        "account {} isn't associated with user `{}`",
+        "account {} isn't associated with user {}",
         tx.sender,
-        metadata.username,
+        metadata.user_index,
     );
 
     verify_nonce_and_signature(ctx, tx, Some(factory), Some(metadata))
@@ -238,10 +238,10 @@ pub fn verify_nonce_and_signature(
                 Credential::Standard(c) => (c, None),
             };
 
-            // Query the key by key hash and username.
+            // Query the key by key hash and user index.
             let key = ctx.querier.query_wasm_path(
                 factory,
-                &account_factory::KEYS.path((&metadata.username, key_hash)),
+                &account_factory::KEYS.path((metadata.user_index, key_hash)),
             )?;
 
             if let Some(session) = session_credential {
@@ -445,7 +445,7 @@ mod tests {
     #[test]
     fn passkey_authentication() {
         let user_address = Addr::from_str("0x94e4e04fbf35a0e67c559fe1c9579de9fdd0f6ed").unwrap();
-        let user_username = Username::from_str("pass_local").unwrap();
+        let user_index = 123;
         let user_keyhash =
             Hash256::from_str("8E60264C2887C814C0C1E873A66F51F294149EFC3161CB1A195277D330927F31")
                 .unwrap();
@@ -473,7 +473,7 @@ mod tests {
           "data": {
             "chain_id": "dev-5",
             "nonce": 0,
-            "username": "pass_local"
+            "user_index": 123
           },
           "gas_limit": 2448139,
           "msgs": [
@@ -499,10 +499,10 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (&user_username, user_address))
+                    .insert(storage, (user_index, user_address))
                     .unwrap();
                 account_factory::KEYS
-                    .save(storage, (&user_username, user_keyhash), &user_key)
+                    .save(storage, (user_index, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -518,7 +518,7 @@ mod tests {
     #[test]
     fn eip712_authentication() {
         let user_address = Addr::from_str("0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50").unwrap();
-        let user_username = Username::from_str("javier").unwrap();
+        let user_index = 123;
         let user_keyhash =
             Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
                 .unwrap();
@@ -536,10 +536,10 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (&user_username, user_address))
+                    .insert(storage, (user_index, user_address))
                     .unwrap();
                 account_factory::KEYS
-                    .save(storage, (&user_username, user_keyhash), &user_key)
+                    .save(storage, (user_index, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -564,7 +564,7 @@ mod tests {
           "data": {
             "chain_id": "dev-6",
             "nonce": 0,
-            "username": "javier"
+            "user_index": 123
           },
           "gas_limit": 2448139,
           "msgs": [
@@ -585,7 +585,7 @@ mod tests {
     #[test]
     fn secp256k1_authentication() {
         let user_address = Addr::from_str("0x33361de42571d6aa20c37daa6da4b5ab67bfaad9").unwrap();
-        let user_username = Username::from_str("owner").unwrap();
+        let user_index = 123;
         let user_keyhash =
             Hash256::from_str("06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2")
                 .unwrap();
@@ -609,7 +609,7 @@ mod tests {
           "data": {
             "chain_id": "dev-6",
             "nonce": 0,
-            "username": "owner"
+            "user_index": 123
           },
           "gas_limit": 2448142,
           "msgs": [
@@ -636,10 +636,10 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (&user_username, user_address))
+                    .insert(storage, (user_index, user_address))
                     .unwrap();
                 account_factory::KEYS
-                    .save(storage, (&user_username, user_keyhash), &user_key)
+                    .save(storage, (user_index, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -666,7 +666,7 @@ mod tests {
     #[test]
     fn session_key_with_passkey_authentication() {
         let user_address = Addr::from_str("0x5614a130eb9322e549e0d86d24a7bb1a7f683b28").unwrap();
-        let user_username = Username::from_str("pass_local").unwrap();
+        let user_index = 123;
         let user_keyhash =
             Hash256::from_str("010AB8AAF008DA93DB00F94D818931832F54192A334D933629768B59A2932817")
                 .unwrap();
@@ -690,10 +690,10 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (&user_username, user_address))
+                    .insert(storage, (user_index, user_address))
                     .unwrap();
                 account_factory::KEYS
-                    .save(storage, (&user_username, user_keyhash), &user_key)
+                    .save(storage, (user_index, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -726,7 +726,7 @@ mod tests {
           "data": {
             "chain_id": "dev-6",
             "nonce": 0,
-            "username": "pass_local"
+            "username": 123
           },
           "gas_limit": 2448139,
           "msgs": [
@@ -747,7 +747,7 @@ mod tests {
     #[test]
     fn session_key_with_eip712_authentication() {
         let user_address = Addr::from_str("0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50").unwrap();
-        let user_username = Username::from_str("javier").unwrap();
+        let user_index = 123;
         let user_keyhash =
             Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
                 .unwrap();
@@ -766,10 +766,10 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (&user_username, user_address))
+                    .insert(storage, (user_index, user_address))
                     .unwrap();
                 account_factory::KEYS
-                    .save(storage, (&user_username, user_keyhash), &user_key)
+                    .save(storage, (user_index, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -801,7 +801,7 @@ mod tests {
           "data": {
             "chain_id": "dev-6",
             "nonce": 0,
-            "username": "javier"
+            "user_index": 123
           },
           "gas_limit": 2448139,
           "msgs": [
@@ -841,7 +841,7 @@ mod tests {
             signature,
             VerifyData::Onboard(RegisterUserData {
                 chain_id: "dev-6".into(),
-                username: Username::from_str("javier_test").unwrap(),
+                username: Some(Username::from_str("javier_test").unwrap()),
             }),
         )
         .should_succeed();

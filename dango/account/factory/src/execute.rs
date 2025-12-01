@@ -1,7 +1,7 @@
 use {
     crate::{
         ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX,
-        USERNAMES_BY_KEY,
+        USER_NAMES_BY_INDEX,
     },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
@@ -133,12 +133,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateAccount(updates) => update_account(ctx, updates),
+        ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
     }
 }
 
 fn register_user(
     ctx: MutableCtx,
-    username: Username,
+    username: Option<Username>,
     key: Key,
     key_hash: Hash256,
     seed: u32,
@@ -437,4 +438,9 @@ fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Resu
     }
 
     Ok(Response::new().add_events(events)?)
+}
+
+fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Response> {
+    // TODO
+    Ok(Response::new())
 }
