@@ -20,6 +20,7 @@ export const Modals = {
   ActivityConvert: "activity-convert",
   ActivitySpotOrder: "activity-spot-order",
   SignupReminder: "signup-reminder",
+  WalletSelector: "wallet-selector",
 };
 
 export type ModalRef = {

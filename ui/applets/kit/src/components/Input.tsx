@@ -9,7 +9,7 @@ export interface InputProps
       "placeholder" | "size" | "color" | "className"
     >,
     VariantProps<typeof inputVariants> {
-  label?: string;
+  label?: React.ReactNode;
   startContent?: React.ReactNode;
   endContent?: React.ReactNode;
   bottomComponent?: React.ReactNode;
@@ -65,9 +65,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={base({ className: classNames?.base })}>
         {label ? (
-          <label className="exposure-sm-italic text-ink-secondary-700" htmlFor={name}>
-            {label}
-          </label>
+          typeof label === "string" ? (
+            <label className="exposure-sm-italic text-ink-secondary-700" htmlFor={name}>
+              {label}
+            </label>
+          ) : (
+            label
+          )
         ) : null}
 
         <div

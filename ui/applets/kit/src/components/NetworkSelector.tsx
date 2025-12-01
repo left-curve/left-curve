@@ -1,13 +1,12 @@
-import { Select } from "@left-curve/applets-kit";
-import { SelectProps } from "../../../../../applets/kit/src/components/Select";
+import { Select, type SelectProps } from "@left-curve/applets-kit";
 
-interface Props extends Omit<SelectProps, "children"> {
+export interface NetworkSelectorProps extends Omit<SelectProps, "children"> {
   networks: { name: string; id: string; time: string }[];
   selectedNetwork?: { name: string; id: string; time: string };
   onNetworkChange: (network: { name: string; id: string; time: string }) => void;
 }
 
-export const NetworkSelector: React.FC<Props> = ({
+export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
   selectedNetwork,
   onNetworkChange,
   networks,
@@ -25,8 +24,6 @@ export const NetworkSelector: React.FC<Props> = ({
     <Select
       {...props}
       onChange={handleNetworkChange}
-      label="Select Network"
-      placeholder="Select Network"
       classNames={{
         base: `w-full`,
         listboxWrapper: `${classNames?.listboxWrapper}`,

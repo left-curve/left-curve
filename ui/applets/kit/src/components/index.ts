@@ -7,7 +7,9 @@ export { Badge } from "./Badge";
 export { IconButton, type IconButtonProps } from "./IconButton";
 export { Spinner } from "./Spinner";
 export { QRCode } from "./QRCode";
-export { Select } from "./Select";
+export { Select, type SelectProps } from "./Select";
+export { CoinSelector, type CoinSelectorProps } from "./CoinSelector";
+export { NetworkSelector, type NetworkSelectorProps } from "./NetworkSelector";
 export { TruncateText } from "./TruncateText";
 export {
   Table,
@@ -25,7 +27,6 @@ export { Stepper } from "./Stepper";
 export { Carousel } from "./Carousel";
 export { ResizerContainer } from "./ResizerContainer";
 export { SelectorCreateAccount } from "./SelectorCreateAccount";
-export { CoinSelector } from "./CoinSelector";
 export { AccountSearchInput } from "./AccountSearchInput";
 export { TextLoop } from "./TextLoop";
 export { AccordionItem } from "./AccordionItem";
@@ -51,6 +52,8 @@ export { Dot } from "./Dot";
 export { CurrentBlock } from "./CurrentBlock";
 export { QRCodeReader } from "./QRCodeReader";
 export { AssetInputWithRange } from "./AssetInputWithRange";
+export { DepositAddressBox } from "./DepositAddressBox";
+export { ConnectWalletWithModal } from "./ConnectWalletWithModal";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -120,3 +123,4 @@ export { IconWorld } from "./icons/IconWorld";
 export { IconTime } from "./icons/IconTime";
 export { IconTelegram } from "./icons/IconTelegram";
 export { IconShare } from "./icons/IconShare";
+export { IconDisconnect } from "./icons/IconDisconnect";

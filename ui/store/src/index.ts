@@ -152,6 +152,11 @@ export {
 } from "./hooks/usePoolLiquidityState.js";
 
 export {
+  type UseBridgeStateParameters,
+  useBridgeState,
+} from "./hooks/useBridgeState.js";
+
+export {
   useSearchBar,
   type UseSearchBarParameters,
   type SearchBarResult,
@@ -172,7 +177,7 @@ export { useSigningClient } from "./hooks/useSigningClient.js";
 
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
-export { useLiveTradesState } from "./hooks/useLiveTradesState.js";
+export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";
 
 export { rehydrate } from "./rehydrate.js";
 

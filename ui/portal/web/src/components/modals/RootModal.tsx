@@ -156,6 +156,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.WalletSelector]: {
+    component: lazy(() =>
+      import("./WalletSelector").then(({ WalletSelector }) => ({
+        default: WalletSelector,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {
