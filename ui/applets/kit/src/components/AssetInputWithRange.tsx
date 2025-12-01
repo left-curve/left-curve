@@ -1,14 +1,17 @@
-import { Input, numberMask, Skeleton, useApp, type useInputs } from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-
-import { RangeWithButtons } from "./RangeWithButtons";
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { numberMask, useApp } from "@left-curve/foundation";
+
+import { Input } from "./Input";
+import { PairAssetSelector } from "./PairAssetSelector";
+import { RangeWithButtons } from "./RangeWithButtons";
+import { Skeleton } from "./Skeleton";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
-import { PairAssetSelector } from "./PairAssetSelector";
+import type { useInputs } from "@left-curve/foundation";
 
 type AssetInputWithRangeProps = {
   name: string;

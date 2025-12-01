@@ -1,4 +1,5 @@
-import { Button, Range } from "@left-curve/applets-kit";
+import { Range } from "./Range";
+import { Button } from "./Button";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
