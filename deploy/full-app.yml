@@ -24,6 +24,16 @@
         timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
         s3_bucket: "dango-{{ dango_network }}-{{ timestamp }}"
 
+    - name: Show curl to reproduce GitHub PR fetch
+      when:
+        - github_pr_number is defined
+      debug:
+        msg: >-
+          curl -sS \
+          -H 'Accept: application/vnd.github+json' \
+          -H 'X-GitHub-Api-Version: 2022-11-28' \
+          'https://api.github.com/repos/{{ github_repo }}/pulls/{{ github_pr_number }}'
+
     - name: Fetch PR title from GitHub API (once)
       when:
         - github_pr_number is defined
@@ -50,6 +60,14 @@
           - "github_json_defined={{ pr_api_response.json is defined }}"
           - "github_content_len={{ pr_api_response.content | default('') | length }}"
           - "github_message={{ pr_api_response.json.message | default('') }}"
+      run_once: true
+      delegate_to: localhost
+
+    - name: Debug full GitHub PR API response
+      when:
+        - pr_api_response is defined
+      debug:
+        var: pr_api_response
       run_once: true
       delegate_to: localhost
 
