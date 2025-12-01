@@ -2,15 +2,8 @@ import type React from "react";
 
 export const IconToastInfo: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...props }) => {
   return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <g clipPath="url(#clip0_10878_11123)">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g clip-path="url(#clip0_10569_343050)">
         <path
           d="M12.0009 0.75C14.7422 0.75 17.5792 1.54494 19.623 3.25195C21.9364 5.18428 23.0757 8.26161 23.2334 11.2676C23.3911 14.275 22.5816 17.4576 20.6884 19.6807C18.6058 22.1261 15.2267 23.251 12.0009 23.251C8.77522 23.2508 5.3959 22.1262 3.31343 19.6807C1.42048 17.4576 0.611773 14.2748 0.769483 11.2676C0.927164 8.26179 2.06577 5.1843 4.37886 3.25195C6.42252 1.5449 9.25974 0.750114 12.0009 0.75Z"
           fill="currentColor"
@@ -25,7 +18,7 @@ export const IconToastInfo: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({
         />
       </g>
       <defs>
-        <clipPath id="clip0_10878_11123">
+        <clipPath id="clip0_10569_343050">
           <rect width="24" height="24" fill="white" />
         </clipPath>
       </defs>

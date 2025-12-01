@@ -1,4 +1,4 @@
-import { Button, type ButtonProps, IconPasskey } from "@left-curve/applets-kit";
+import { Button, type ButtonProps, IconKey } from "@left-curve/applets-kit";
 
 import { useMutation } from "@tanstack/react-query";
 
@@ -25,7 +25,7 @@ export const PasskeyCredential: React.FC<PasskeyCredentialProps> = ({ onAuth, la
       className="gap-2"
       variant={variant || "secondary"}
     >
-      <IconPasskey className="w-6 h-6" />
+      <IconKey className="w-6 h-6" />
       <p>{label}</p>
     </Button>
   );
