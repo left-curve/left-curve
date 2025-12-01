@@ -79,7 +79,7 @@
               fields:
                 - name: "Triggered by"
                   value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                  inline: false
+                  inline: true
                 - name: "Deployment"
                   value: "{{ deployment_name }}"
                   inline: true
@@ -123,7 +123,7 @@
                   fields:
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                      inline: false
+                      inline: true
                     - name: "Host"
                       value: "{{ inventory_hostname }}"
                       inline: true
@@ -199,7 +199,7 @@
                   fields:
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                      inline: false
+                      inline: true
                     - name: "Phase"
                       value: "Preparation"
                       inline: true
@@ -322,11 +322,11 @@
                   # description: "{{ '❌ Deployment FAILED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 15158332
                   fields:
-                    - name: "Triggered by"
-                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                      inline: false
                     - name: "PR title"
                       value: "{{ pr_title | default('-', true) }}"
+                      inline: false
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
                     - name: "PR URL"
                       value: "{{ (github_pr_number is defined) | ternary('[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')', '-') }}"
@@ -389,11 +389,11 @@
                   # description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 3066993
                   fields:
-                    - name: "Triggered by"
-                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
-                      inline: false
                     - name: "PR title"
                       value: "{{ pr_title | default('-', true) }}"
+                      inline: false
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
                     - name: "PR URL"
                       value: "{{ (github_pr_number is defined) | ternary('[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')', '-') }}"
