@@ -40,7 +40,7 @@ const Overview: React.FC = () => {
         <Logo width={200} height={80} className="text-ink-primary-900" />
       </View>
 
-      <View className="w-full pb-[4rem]">
+      <View className="w-full">
         <AppletsSection />
       </View>
     </View>
