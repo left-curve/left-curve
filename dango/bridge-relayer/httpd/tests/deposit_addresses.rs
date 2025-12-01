@@ -1,5 +1,5 @@
 use {
-    actix_web::{App, http::StatusCode, test, web},
+    actix_web::{App, HttpResponse, http::StatusCode, test, web},
     dango_bridge_relayer_httpd::{
         context::Context,
         migrations,
@@ -7,6 +7,7 @@ use {
     },
     dango_types::bitcoin::{Config, MultisigSettings, Network},
     grug::{__private::hex_literal::hex, Addr, HexByteArray, NonEmpty, Uint128, btree_set},
+    metrics_exporter_prometheus::PrometheusBuilder,
     sea_orm::Database,
     sea_orm_migration::MigratorTrait,
     std::collections::HashSet,
@@ -49,6 +50,23 @@ async fn test_deposit_addresses() {
     )
     .await;
 
+    let metrics_handler = PrometheusBuilder::new().install_recorder().unwrap();
+    let metrics_app = test::init_service(App::new().route(
+        "/metrics",
+        web::get().to(move || {
+            let metrics_handler = metrics_handler.clone();
+            metrics_handler.run_upkeep();
+            async move {
+                let metrics = metrics_handler.render();
+
+                HttpResponse::Ok()
+                    .content_type("text/plain; version=0.0.4")
+                    .body(metrics)
+            }
+        }),
+    ))
+    .await;
+
     // Try to call without any data in the database. Should fail.
     let req = test::TestRequest::get()
         .uri("/deposit-addresses")
@@ -75,6 +93,14 @@ async fn test_deposit_addresses() {
         assert_eq!(text.len(), 62);
         assert!(addresses.insert(text));
     }
+
+    // Try to fetch the metrics. Should contain the total number of deposit addresses created.
+    let req = test::TestRequest::get().uri("/metrics").to_request();
+    let resp = test::call_service(&metrics_app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let result = test::read_body(resp).await;
+    let metrics = String::from_utf8(result.to_vec()).unwrap();
+    assert!(metrics.contains("http_bridge_relayer_deposit_address_total 10"));
 
     // Try to fetch all the deposit addresses. Should work.
     let req = test::TestRequest::get()

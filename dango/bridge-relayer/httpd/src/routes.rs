@@ -2,6 +2,7 @@ use {
     crate::{
         context::Context,
         entity::{self},
+        middlewares,
     },
     actix_web::{
         HttpResponseBuilder, Responder, Result,
@@ -13,6 +14,7 @@ use {
     chrono::Utc,
     dango_types::bitcoin::{MultisigWallet, Recipient},
     grug::Addr,
+    metrics::counter,
     sea_orm::{ActiveValue::Set, EntityTrait, PaginatorTrait, QueryOrder, SqlErr},
     serde::{Deserialize, Serialize},
     std::str::FromStr,
@@ -83,7 +85,9 @@ async fn deposit_address(path: web::Path<String>, context: web::Data<Context>) -
                 "Something went wrong. Please try again later.",
             ));
         }
-    };
+    } else {
+        counter!(middlewares::metrics::LABEL_DEPOSIT_ADDRESS_TOTAL).increment(1);
+    }
 
     Ok(bitcoin_deposit_address.to_string())
 }
