@@ -12,7 +12,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        account_factory::Username,
+        account_factory::UserIndex,
         constants::usdc,
         dex::{
             CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
@@ -88,7 +88,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut events = EventBuilder::new();
     let mut refunds = TransferBuilder::<DecCoins<6>>::new();
     let mut volumes = HashMap::<Addr, Udec128_6>::new();
-    let mut volumes_by_username = HashMap::<Username, Udec128_6>::new();
+    let mut volumes_by_user = HashMap::<UserIndex, Udec128_6>::new();
     let mut fees = DecCoins::<6>::new();
     let mut fee_payments = TransferBuilder::<DecCoins<6>>::new();
 
@@ -144,7 +144,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             &mut fees,
             &mut fee_payments,
             &mut volumes,
-            &mut volumes_by_username,
+            &mut volumes_by_user,
         )?;
     }
 
@@ -163,10 +163,10 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         purge_old_volume_data(VOLUMES, &address, ctx.storage, cutoff)?;
     }
 
-    for (username, volume) in volumes_by_username {
-        VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
+    for (user_index, volume) in volumes_by_user {
+        VOLUMES_BY_USER.save(ctx.storage, (user_index, ctx.block.timestamp), &volume)?;
 
-        purge_old_volume_data(VOLUMES_BY_USER, &username, ctx.storage, cutoff)?;
+        purge_old_volume_data(VOLUMES_BY_USER, user_index, ctx.storage, cutoff)?;
     }
 
     #[cfg(feature = "metrics")]
@@ -222,7 +222,7 @@ fn clear_orders_of_pair(
     fees: &mut DecCoins<6>,
     fee_payments: &mut TransferBuilder<DecCoins<6>>,
     volumes: &mut HashMap<Addr, Udec128_6>,
-    volumes_by_username: &mut HashMap<Username, Udec128_6>,
+    volumes_by_user: &mut HashMap<UserIndex, Udec128_6>,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "metrics")]
     let mut now = std::time::Instant::now();
@@ -627,7 +627,7 @@ fn clear_orders_of_pair(
             filled_quote,
             order.user,
             volumes,
-            volumes_by_username,
+            volumes_by_user,
         )?;
 
         #[cfg(feature = "metrics")]
@@ -954,7 +954,7 @@ fn refund_ioc_order(
     Ok(())
 }
 
-/// Updates trading volumes for both user addresses and usernames.
+/// Updates trading volumes for both user addresses and user indexes.
 ///
 /// This is only done if the quote denom is USDC. Volumes are stored as USDC microunits.
 fn update_trading_volumes(
@@ -964,7 +964,7 @@ fn update_trading_volumes(
     filled_quote: Udec128_6,
     order_user: Addr,
     volumes: &mut HashMap<Addr, Udec128_6>,
-    volumes_by_username: &mut HashMap<Username, Udec128_6>,
+    volumes_by_user: &mut HashMap<UserIndex, Udec128_6>,
 ) -> anyhow::Result<()> {
     // Only track trading volumes where quote asset is USDC.
     if quote_denom != &usdc::DENOM.clone() {
@@ -991,19 +991,19 @@ fn update_trading_volumes(
         }
     }
 
-    // Record trading volume for the user's username, if the trader is a
+    // Record trading volume for the user's user index, if the trader is a
     // single-signature account (skip for multisig accounts).
-    if let Some(username) = account_querier
+    if let Some(user_index) = account_querier
         .query_account(order_user)?
         .and_then(|account| account.params.owner())
     {
-        match volumes_by_username.entry(username.clone()) {
+        match volumes_by_user.entry(user_index) {
             Entry::Occupied(mut v) => {
                 v.get_mut().checked_add_assign(filled_quote)?;
             },
             Entry::Vacant(v) => {
                 let volume = VOLUMES_BY_USER
-                    .prefix(username)
+                    .prefix(user_index)
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
@@ -1023,18 +1023,18 @@ fn update_trading_volumes(
 /// We keep the most recent one, such that we can compute the volume between
 /// that time and now (by subtracting the cumulative volume now with the volume
 /// of that time).
-fn purge_old_volume_data<'a, K>(
-    map: Map<'static, (&'a K, Timestamp), Udec128_6>,
-    prefix: &'a K,
+fn purge_old_volume_data<K>(
+    map: Map<'static, (K, Timestamp), Udec128_6>,
+    prefix: K,
     storage: &mut dyn Storage,
     cutoff: Timestamp,
 ) -> StdResult<()>
 where
-    &'a K: PrimaryKey,
+    K: PrimaryKey + Clone,
 {
     // Find the most recent volume data no newer than the `cutoff` timestamp.
     let max = map
-        .prefix(prefix)
+        .prefix(prefix.clone())
         .keys(
             storage,
             None,
