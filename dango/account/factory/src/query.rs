@@ -55,7 +55,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_keys_by_user(ctx.storage, user_index)?;
             res.to_json_value()
         },
-        QueryMsg::Account(address) => {
+        QueryMsg::Account { address } => {
             let res = query_account(ctx.storage, address)?;
             res.to_json_value()
         },

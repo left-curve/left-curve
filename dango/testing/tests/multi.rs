@@ -10,7 +10,7 @@ use {
         },
         account_factory::{
             self, Account, AccountParamUpdates, AccountParams, QueryAccountRequest,
-            QueryAccountsByUserRequest, Salt, Username,
+            QueryAccountsByUserRequest, Salt, UserIndex,
         },
         auth::Key,
         constants::usdc,
@@ -35,9 +35,9 @@ fn setup_multi_test<'a>() -> (
 
     let params = multi::Params {
         members: btree_map! {
-            accounts.user1.username.clone() => NonZero::new(1).unwrap(),
-            accounts.user2.username.clone() => NonZero::new(1).unwrap(),
-            accounts.user3.username.clone() => NonZero::new(1).unwrap(),
+            accounts.user1.user_index => NonZero::new_unchecked(1),
+            accounts.user2.user_index => NonZero::new_unchecked(1),
+            accounts.user3.user_index => NonZero::new_unchecked(1),
         },
         voting_period: NonZero::new(Duration::from_seconds(30)).unwrap(),
         threshold: NonZero::new(2).unwrap(),
@@ -87,7 +87,7 @@ fn multi_creation() {
             params: AccountParams::Multi(params.clone()),
         });
 
-    // The account should be been registered under each member's username.
+    // The account should be been registered under each member's user index.
     for (member, index) in [
         (&accounts.user1, 1),
         (&accounts.user2, 2),
@@ -95,7 +95,7 @@ fn multi_creation() {
     ] {
         suite
             .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
-                username: member.username.clone(),
+                user_index: member.user_index,
             })
             .should_succeed_and_equal(btree_map! {
                 // Query response should include the user's own spot account as
@@ -103,7 +103,7 @@ fn multi_creation() {
                 member.address() => Account {
                     index,
                     params: AccountParams::Spot(single::Params::new(
-                        member.username.clone()
+                        member.user_index
                     )),
                 },
                 multi.address() => Account {
@@ -151,7 +151,7 @@ fn proposal_passing_with_auto_execution() {
             multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
-                voter: accounts.user2.username.clone(),
+                voter: accounts.user2.user_index,
                 vote: Vote::Yes,
                 execute: false,
             },
@@ -167,7 +167,7 @@ fn proposal_passing_with_auto_execution() {
             multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
-                voter: accounts.user3.username.clone(),
+                voter: accounts.user3.user_index,
                 vote: Vote::Yes,
                 execute: true,
             },
@@ -197,10 +197,10 @@ fn proposal_passing_with_manual_execution() {
     let updates = multi::ParamUpdates {
         members: ChangeSet::new_unchecked(
             btree_map! {
-                accounts.user4.username.clone() => NonZero::new(1).unwrap(),
+                accounts.user4.user_index => NonZero::new(1).unwrap(),
             },
             btree_set! {
-                accounts.user3.username.clone(),
+                accounts.user3.user_index,
             },
         ),
         voting_period: None,
@@ -237,7 +237,7 @@ fn proposal_passing_with_manual_execution() {
                 multi_address,
                 &multi::ExecuteMsg::Vote {
                     proposal_id: 1,
-                    voter: member.username.clone(),
+                    voter: member.user_index,
                     vote: Vote::Yes,
                     execute: false,
                 },
@@ -281,14 +281,14 @@ fn proposal_passing_with_manual_execution() {
     // The new member
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
-            username: accounts.user4.username.clone(),
+            user_index: accounts.user4.user_index,
         })
         .should_succeed_and(|accounts| accounts.contains_key(&multi.address()));
 
     // The removed member
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
-            username: accounts.user3.username.clone(),
+            user_index: accounts.user3.user_index,
         })
         .should_succeed_and(|accounts| !accounts.contains_key(&multi.address()));
 }
@@ -320,7 +320,7 @@ fn proposal_failing() {
                 multi_address,
                 &multi::ExecuteMsg::Vote {
                     proposal_id: 1,
-                    voter: member.username.clone(),
+                    voter: member.user_index,
                     vote: Vote::No,
                     execute: false,
                 },
@@ -383,72 +383,72 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
     // There are a few variables to consider:
     //
     // - the `voter` field in `ExecuteMsg::Vote`
-    // - the `username` field in the metadata
+    // - the `user_index` field in the metadata
     // - the `key_hash` field in the metadata
     //
     // We test all 2**3 = 8 combinations.
-    for (voter, username, key_hash, error) in [
+    for (voter, user_index, key_hash, error) in [
         // First, in `dango_account_multi::authenticate`, the contract checks the
-        // voter in the execute message matches the username in the metadata.
+        // voter in the execute message matches the user index in the metadata.
         // If not the same, the tx already fails here.
         (
-            accounts.user4.username.clone(),
-            accounts.user2.username.clone(),
+            accounts.user4.user_index,
+            accounts.user2.user_index,
             accounts.user4.first_key_hash(),
-            "can't vote with a different username".to_string(),
+            "can't vote with a different user index".to_string(),
         ),
         (
-            accounts.user4.username.clone(),
-            accounts.user2.username.clone(),
+            accounts.user4.user_index,
+            accounts.user2.user_index,
             accounts.user2.first_key_hash(),
-            "can't vote with a different username".to_string(),
+            "can't vote with a different user index".to_string(),
         ),
         (
-            accounts.user2.username.clone(),
-            accounts.user4.username.clone(),
+            accounts.user2.user_index,
+            accounts.user4.user_index,
             accounts.user4.first_key_hash(),
-            "can't vote with a different username".to_string(),
+            "can't vote with a different user index".to_string(),
         ),
         (
-            accounts.user2.username.clone(),
-            accounts.user4.username.clone(),
+            accounts.user2.user_index,
+            accounts.user4.user_index,
             accounts.user2.first_key_hash(),
-            "can't vote with a different username".to_string(),
+            "can't vote with a different user index".to_string(),
         ),
         // Then, the contract calls `dango_auth::authenticate`. The method first
-        // checks the multisig is associated with the voter's username. That is,
+        // checks the multisig is associated with the voter's user index. That is,
         // the voter is a member of the multi.
         (
-            accounts.user4.username.clone(),
-            accounts.user4.username.clone(),
+            accounts.user4.user_index,
+            accounts.user4.user_index,
             accounts.user4.first_key_hash(),
             format!(
                 "voter `{}` is not eligible to vote in this proposal",
-                accounts.user4.username
+                accounts.user4.user_index
             ),
         ),
         (
-            accounts.user4.username.clone(),
-            accounts.user4.username.clone(),
+            accounts.user4.user_index,
+            accounts.user4.user_index,
             accounts.user2.first_key_hash(),
             format!(
                 "voter `{}` is not eligible to vote in this proposal",
-                accounts.user4.username
+                accounts.user4.user_index
             ),
         ),
-        // Now we know the voter and username must both be that of a member.
+        // Now we know the voter and user index must both be that of a member.
         (
-            accounts.user2.username.clone(),
-            accounts.user2.username.clone(),
+            accounts.user2.user_index,
+            accounts.user2.user_index,
             accounts.user4.first_key_hash(),
             {
-                let path = KEYS.path((&accounts.user2.username, accounts.user4.first_key_hash()));
+                let path = KEYS.path((accounts.user2.user_index, accounts.user4.first_key_hash()));
                 StdError::data_not_found::<Key>(path.storage_key()).to_string()
             },
         ),
         (
-            accounts.user2.username.clone(),
-            accounts.user2.username.clone(),
+            accounts.user2.user_index,
+            accounts.user2.user_index,
             accounts.user2.first_key_hash(),
             "signature is unauthentic".to_string(),
         ),
@@ -458,7 +458,7 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
             multi.with_nonce(1), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
             &accounts.user4,
             voter,
-            username,
+            user_index,
             key_hash,
             error,
         );
@@ -492,7 +492,7 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
             multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
-                voter: accounts.user3.username.clone(),
+                voter: accounts.user3.user_index,
                 vote: Vote::Yes,
                 execute: false,
             },
@@ -502,70 +502,70 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
 
     // `user3`, who is a member but already voted, attempts to vote again by
     // impersonating `user1`.
-    for (voter, username, key_hash, nonce, error) in [
+    for (voter, user_index, key_hash, nonce, error) in [
         (
-            accounts.user3.username.clone(),
-            accounts.user2.username.clone(),
+            accounts.user3.user_index,
+            accounts.user2.user_index,
             accounts.user3.first_key_hash(),
             2,
-            "can't vote with a different username".to_string(),
+            "can't vote with a different user index".to_string(),
         ),
         (
-            accounts.user3.username.clone(),
-            accounts.user2.username.clone(),
+            accounts.user3.user_index,
+            accounts.user2.user_index,
             accounts.user2.first_key_hash(),
             2,
-            "can't vote with a different username".to_string(),
+            "can't vote with a different user index".to_string(),
         ),
         (
-            accounts.user2.username.clone(),
-            accounts.user3.username.clone(),
+            accounts.user2.user_index,
+            accounts.user3.user_index,
             accounts.user3.first_key_hash(),
             2,
-            "can't vote with a different username".to_string(),
+            "can't vote with a different user index".to_string(),
         ),
         (
-            accounts.user2.username.clone(),
-            accounts.user3.username.clone(),
+            accounts.user2.user_index,
+            accounts.user3.user_index,
             accounts.user2.first_key_hash(),
             2,
-            "can't vote with a different username".to_string(),
+            "can't vote with a different user index".to_string(),
         ),
         (
-            accounts.user3.username.clone(),
-            accounts.user3.username.clone(),
+            accounts.user3.user_index,
+            accounts.user3.user_index,
             accounts.user3.first_key_hash(),
             2,
             format!(
                 "user `{}` has already voted in this proposal",
-                accounts.user3.username
+                accounts.user3.user_index
             ),
         ),
         // The previous test passes `authenticate`, but fails in `execute`, so
         // the nonce should be incremented.
         (
-            accounts.user3.username.clone(),
-            accounts.user3.username.clone(),
+            accounts.user3.user_index,
+            accounts.user3.user_index,
             accounts.user2.first_key_hash(),
             3,
             {
-                let path = KEYS.path((&accounts.user3.username, accounts.user2.first_key_hash()));
+                let path = KEYS.path((accounts.user3.user_index, accounts.user2.first_key_hash()));
                 StdError::data_not_found::<Key>(path.storage_key()).to_string()
             },
         ),
         (
-            accounts.user2.username.clone(),
-            accounts.user2.username.clone(),
+            accounts.user2.user_index,
+            accounts.user2.user_index,
             accounts.user3.first_key_hash(),
             3,
             {
-                let path = KEYS.path((&accounts.user2.username, accounts.user3.first_key_hash()));
+                let path = KEYS.path((accounts.user2.user_index, accounts.user3.first_key_hash()));
                 StdError::data_not_found::<Key>(path.storage_key()).to_string()
             },
         ),
         (
-            accounts.user2.username.clone(),
-            accounts.user2.username.clone(),
+            accounts.user2.user_index,
+            accounts.user2.user_index,
             accounts.user2.first_key_hash(),
             3,
             "signature is unauthentic".to_string(),
@@ -576,7 +576,7 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
             multi.with_nonce(nonce), /* TODO: nonce isn't incremented if auth fails... should we make sure it increment? */
             &accounts.user3,
             voter,
-            username,
+            user_index,
             key_hash,
             error,
         );
@@ -589,9 +589,9 @@ fn unauthorized_voting_via_impersonation<'a>(
     // An attacker who attempts to illegally vote by impersonating a member.
     attacker: &'a TestAccount,
     // The voter usrname that the attacker will put in the `ExecuteMsg::Vote`.
-    voter: Username,
-    // The username that the attacker will put in the metadata.
-    username: Username,
+    voter: UserIndex,
+    // The user index that the attacker will put in the metadata.
+    user_index: UserIndex,
     // The key hash that the attacker will put in the metadata.
     key_hash: Hash256,
     // The expected error
@@ -622,8 +622,8 @@ fn unauthorized_voting_via_impersonation<'a>(
         .unwrap();
 
     tx.data.as_object_mut().unwrap().insert(
-        "username".to_string(),
-        username.to_json_value().unwrap().into_inner(),
+        "user_index".to_string(),
+        user_index.to_json_value().unwrap().into_inner(),
     );
 
     tx.credential
@@ -739,25 +739,27 @@ fn vote_edge_cases() {
             &multi::ExecuteMsg::Propose {
                 title: "remove user3".to_string(),
                 description: None,
-                messages: vec![Message::execute(
-                    contracts.account_factory,
-                    &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Multi(
-                        multi::ParamUpdates {
-                            members: ChangeSet::new_unchecked(
-                                btree_map! {
-                                    accounts.user4.username.clone() => NonZero::new_unchecked(1),
-                                },
-                                btree_set! {
-                                    accounts.user3.username.clone(),
-                                },
-                            ),
-                            threshold: None,
-                            voting_period: None,
-                        },
-                    )),
-                    Coins::new(),
-                )
-                .unwrap()],
+                messages: vec![
+                    Message::execute(
+                        contracts.account_factory,
+                        &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Multi(
+                            multi::ParamUpdates {
+                                members: ChangeSet::new_unchecked(
+                                    btree_map! {
+                                        accounts.user4.user_index => NonZero::new_unchecked(1),
+                                    },
+                                    btree_set! {
+                                        accounts.user3.user_index,
+                                    },
+                                ),
+                                threshold: None,
+                                voting_period: None,
+                            },
+                        )),
+                        Coins::new(),
+                    )
+                    .unwrap(),
+                ],
             },
             Coins::new(),
         )
@@ -769,7 +771,7 @@ fn vote_edge_cases() {
             multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 2,
-                voter: accounts.user1.username.clone(),
+                voter: accounts.user1.user_index,
                 vote: Vote::Yes,
                 execute: false,
             },
@@ -783,7 +785,7 @@ fn vote_edge_cases() {
             multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 2,
-                voter: accounts.user2.username.clone(),
+                voter: accounts.user2.user_index,
                 vote: Vote::Yes,
                 execute: true,
             },
@@ -798,8 +800,8 @@ fn vote_edge_cases() {
         })
         .should_succeed_and(|account| {
             let members = account.params.clone().into_multi().members;
-            !members.contains_key(&accounts.user3.username)
-                && members.contains_key(&accounts.user4.username)
+            !members.contains_key(&accounts.user3.user_index)
+                && members.contains_key(&accounts.user4.user_index)
         });
 
     // `user3` attempts to vote in first proposal. Should be accepted!
@@ -809,7 +811,7 @@ fn vote_edge_cases() {
             multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
-                voter: accounts.user3.username.clone(),
+                voter: accounts.user3.user_index,
                 vote: Vote::Yes,
                 execute: true,
             },
@@ -821,7 +823,7 @@ fn vote_edge_cases() {
     suite
         .query_wasm_smart(multi_address, QueryVoteRequest {
             proposal_id: 1,
-            member: accounts.user3.username.clone(),
+            member: accounts.user3.user_index,
         })
         .should_succeed_and_equal(Some(Vote::Yes));
 
@@ -832,7 +834,7 @@ fn vote_edge_cases() {
             multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
-                voter: accounts.user4.username.clone(),
+                voter: accounts.user4.user_index,
                 vote: Vote::Yes,
                 execute: true,
             },
@@ -840,14 +842,14 @@ fn vote_edge_cases() {
         )
         .should_fail_with_error(format!(
             "voter `{}` is not eligible to vote in this proposal",
-            accounts.user4.username
+            accounts.user4.user_index
         ));
 
     // `user4`'s vote should NOT have been recorded.
     suite
         .query_wasm_smart(multi_address, QueryVoteRequest {
             proposal_id: 1,
-            member: accounts.user4.username.clone(),
+            member: accounts.user4.user_index,
         })
         .should_succeed_and_equal(None);
 }
@@ -869,8 +871,8 @@ fn non_member_cannot_create_proposal() {
             Coins::new(),
         )
         .should_fail_with_error(format!(
-            "account {} isn't associated with user `{}`",
-            multi_address, accounts.user4.username
+            "account {} isn't associated with user {}",
+            multi_address, accounts.user4.user_index
         ));
 }
 
@@ -905,7 +907,7 @@ fn max_nonce_dos_attack() {
                 multi_address,
                 &multi::ExecuteMsg::Vote {
                     proposal_id: 1,
-                    voter: accounts.user2.username.clone(),
+                    voter: accounts.user2.user_index,
                     vote: Vote::Yes,
                     execute: false,
                 },
@@ -946,7 +948,7 @@ fn max_nonce_dos_attack() {
                 multi_address,
                 &multi::ExecuteMsg::Vote {
                     proposal_id: 1,
-                    voter: accounts.user3.username.clone(),
+                    voter: accounts.user3.user_index,
                     vote: Vote::Yes,
                     execute: false,
                 },

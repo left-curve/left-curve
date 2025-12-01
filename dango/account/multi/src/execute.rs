@@ -135,7 +135,9 @@ fn propose(
     // the proposal's creation has no effect on it.
     let params = ctx
         .querier
-        .query_wasm_smart(account_factory, QueryAccountRequest(ctx.contract))?
+        .query_wasm_smart(account_factory, QueryAccountRequest {
+            address: ctx.contract,
+        })?
         .params
         .into_multi();
 
@@ -457,12 +459,14 @@ mod tests {
             .unwrap()
             .with_smart_query_handler(move |contract, data| {
                 match (contract, data.deserialize_json().unwrap()) {
-                    (ACCOUNT_FACTORY, account_factory::QueryMsg::Account(MULTI)) => Account {
-                        index: 12345,
-                        params: AccountParams::Multi(params_clone.clone()),
-                    }
-                    .to_json_value()
-                    .into_generic_result(),
+                    (ACCOUNT_FACTORY, account_factory::QueryMsg::Account { address: MULTI }) => {
+                        Account {
+                            index: 12345,
+                            params: AccountParams::Multi(params_clone.clone()),
+                        }
+                        .to_json_value()
+                        .into_generic_result()
+                    },
                     _ => unreachable!(),
                 }
             });
@@ -494,7 +498,7 @@ mod tests {
         ctx.update_querier(|querier| {
             querier.update_smart_query_handler(move |contract, data| {
                 match (contract, data.deserialize_json().unwrap()) {
-                    (ACCOUNT_FACTORY, account_factory::QueryMsg::Account(MULTI)) => {
+                    (ACCOUNT_FACTORY, account_factory::QueryMsg::Account { address: MULTI }) => {
                         Account {
                             index: 12345,
                             // Use the updated params here!

@@ -110,7 +110,7 @@ pub enum QueryMsg {
     KeysByUser { user_index: UserIndex },
     /// Query parameters of an account by address.
     #[returns(Account)]
-    Account(Addr),
+    Account { address: Addr },
     /// Enumerate all accounts and addresses.
     #[returns(BTreeMap<Addr, Account>)]
     Accounts {
