@@ -227,7 +227,7 @@
           Content-Type: application/json
         body:
           username: "{{ discord_username | default('Deploy Bot') }}"
-          avatar_url: "{{ (discord_avatar_url is defined and (discord_avatar_url | length > 0)) | ternary(discord_avatar_url, omit) }}"
+          avatar_url: "{{ discord_avatar_url }}"
           embeds:
             - title: "Deployment Deleted"
               color: 3066993
