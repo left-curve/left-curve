@@ -19,7 +19,7 @@ use {
         db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
         query::QueryCmd, start::StartCmd, tendermint::TendermintCmd, tx::TxCmd,
     },
-    clap::Parser,
+    clap::{CommandFactory, FromArgMatches, Parser},
     config::Config,
     config_parser::parse_config,
     opentelemetry::{KeyValue, trace::TracerProvider},
@@ -31,8 +31,15 @@ use {
     tracing_subscriber::{fmt::format::FmtSpan, prelude::*},
 };
 
+fn version_with_commit() -> &'static str {
+    // Build a static string like: "0.2.0 (abcdef1)"
+    Box::leak(
+        format!("{} ({})", env!("CARGO_PKG_VERSION"), grug_types::GIT_COMMIT).into_boxed_str(),
+    )
+}
+
 #[derive(Parser)]
-#[command(author, version, about, next_display_order = None)]
+#[command(author, about, next_display_order = None)]
 struct Cli {
     /// Directory for the physical database [default: ~/.dango]
     #[arg(long, global = true)]
@@ -77,8 +84,12 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Parse CLI arguments.
-    let cli = Cli::parse();
+    // Parse CLI arguments, overriding the version to include the git commit.
+    let cli = {
+        let cmd = Cli::command().version(version_with_commit());
+        let matches = cmd.get_matches();
+        Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit())
+    };
 
     // Find the home directory from the CLI `--home` flag.
     let app_dir = HomeDirectory::new_or_default(cli.home)?;
