@@ -5,7 +5,7 @@ use {
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{
         account::single::Params,
-        account_factory::{self, AccountParams, UserIndex},
+        account_factory::{self, AccountParams},
         auth::Key,
         constants::usdc,
     },
@@ -17,14 +17,6 @@ use {
     pyth_client::PythClientCache,
     std::ops::DerefMut,
 };
-
-pub fn create_user_account(
-    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
-    contracts: &Contracts,
-    test_account: &mut TestAccount,
-) {
-    test_account.register_user(suite.deref_mut(), contracts.account_factory, Coins::new());
-}
 
 pub fn add_user_public_key(
     suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
@@ -57,7 +49,7 @@ pub fn add_account_with_existing_user(
         .register_new_account(
             suite.deref_mut(),
             contracts.account_factory,
-            AccountParams::Spot(Params::new(test_account.user_index)),
+            AccountParams::Spot(Params::new(test_account.user_index())),
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap()
@@ -68,9 +60,8 @@ pub fn create_user_and_account(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     codes: &Codes<ContractWrapper>,
-    user_index: UserIndex,
 ) -> TestAccount {
-    let mut user = TestAccount::new_random(user_index).predict_address(
+    let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         0,
         codes.account_spot.to_bytes().hash256(),
@@ -88,7 +79,6 @@ pub fn create_user_and_account(
         )
         .should_succeed();
 
-    create_user_account(suite, contracts, &mut user);
-
-    user
+    user.register_user(suite.deref_mut(), contracts.account_factory, Coins::new());
+    user.query_user_index(suite.querier())
 }

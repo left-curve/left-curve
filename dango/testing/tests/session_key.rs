@@ -140,7 +140,7 @@ mod session_account {
             gas_limit: u64,
         ) -> StdResult<Tx> {
             let data = Metadata {
-                user_index: self.user_index,
+                user_index: self.user_index(),
                 chain_id: chain_id.to_string(),
                 nonce: self.nonce,
                 expiry: None,
@@ -189,7 +189,7 @@ fn session_key() {
     let mut owner = SessionAccount::new(accounts.owner)
         .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
         .unwrap();
-    let owner_index = owner.user_index;
+    let owner_index = owner.user_index();
 
     // Ok transfer
     {

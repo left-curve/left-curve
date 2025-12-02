@@ -158,7 +158,7 @@ fn margin_account_creation() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Create a margin account.
-    let user_index = accounts.user1.user_index;
+    let user_index = accounts.user1.user_index();
 
     accounts
         .user1
@@ -203,7 +203,7 @@ fn setup_margin_test_env(
     );
 
     // Create a margin account.
-    let user_index = accounts.user1.user_index;
+    let user_index = accounts.user1.user_index();
     let margin_account = accounts
         .user1
         .register_new_account(
@@ -1120,7 +1120,7 @@ proptest! {
         let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
         // Create margin account that will borrow and be liquidated
-        let user_index = accounts.user1.user_index;
+        let user_index = accounts.user1.user_index();
         let mut margin_account = accounts
             .user1
             .register_new_account(

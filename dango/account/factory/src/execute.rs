@@ -334,7 +334,7 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
                     .prefix(user_index)
                     .values(ctx.storage, None, None, Order::Ascending)
                     .any(|v| v.is_ok_and(|k| k == key)),
-                "key is already associated with user index `{user_index}`"
+                "key is already associated with user index {user_index}"
             );
 
             KEYS.save(ctx.storage, (user_index, key_hash), &key)?;

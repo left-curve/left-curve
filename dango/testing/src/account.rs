@@ -1,6 +1,7 @@
 use {
     crate::{TestSuite, create_signature},
     dango_types::{
+        DangoQuerier,
         account::{single, spot},
         account_factory::{
             self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
@@ -12,8 +13,8 @@ use {
     digest::{consts::U32, generic_array::GenericArray},
     grug::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QuerierExt, QueryClient, QueryClientExt, ResultExt,
-        SignData, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx, btree_map,
+        MaybeDefined, Message, NonEmpty, QuerierExt, QuerierWrapper, QueryClient, QueryClientExt,
+        ResultExt, SignData, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx, btree_map,
     },
     grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
@@ -73,18 +74,19 @@ impl TestAccounts {
 // ------------------------------- test account --------------------------------
 
 #[derive(Debug, Clone)]
-pub struct TestAccount<
-    T: MaybeDefined<Addr> = Defined<Addr>,
-    K = BTreeMap<Hash256, (SigningKey, Key)>,
-> {
-    pub user_index: UserIndex,
-    pub nonce: u32,
-    keys: K,
+pub struct TestAccount<I = Defined<UserIndex>, A = Defined<Addr>>
+where
+    I: MaybeDefined<UserIndex>,
+    A: MaybeDefined<Addr>,
+{
+    pub user_index: I,
+    pub address: A,
+    pub nonce: Nonce,
+    keys: BTreeMap<Hash256, (SigningKey, Key)>,
     sign_with: Hash256,
-    pub address: T,
 }
 
-impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
+impl TestAccount<Undefined<UserIndex>, Undefined<Addr>> {
     pub fn new_key_pair() -> (SigningKey, Key) {
         let sk = SigningKey::random(&mut OsRng);
         let pk = sk
@@ -98,19 +100,19 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         (sk, Key::Secp256k1(pk))
     }
 
-    pub fn new_random(user_index: UserIndex) -> Self {
+    pub fn new_random() -> Self {
         let sk = SigningKey::random(&mut OsRng);
 
-        Self::new(user_index, sk)
+        Self::new(sk)
     }
 
-    pub fn new_from_private_key(user_index: UserIndex, sk_bytes: [u8; 32]) -> Self {
+    pub fn new_from_private_key(sk_bytes: [u8; 32]) -> Self {
         let sk = SigningKey::from_bytes(&sk_bytes.into()).unwrap();
 
-        Self::new(user_index, sk)
+        Self::new(sk)
     }
 
-    pub fn new(user_index: UserIndex, sk: SigningKey) -> Self {
+    pub fn new(sk: SigningKey) -> Self {
         let pk = sk
             .verifying_key()
             .to_encoded_point(true)
@@ -122,11 +124,65 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         let key_hash = pk.hash256();
 
         Self {
-            user_index,
-            nonce: 0,
+            user_index: Undefined::new(),
             address: Undefined::new(),
-            keys: (sk, key),
+            nonce: 0,
+            keys: btree_map! { key_hash => (sk, key) },
             sign_with: key_hash,
+        }
+    }
+}
+
+impl<A> TestAccount<Undefined<UserIndex>, A>
+where
+    A: MaybeDefined<Addr>,
+{
+    pub fn set_user_index(self, user_index: UserIndex) -> TestAccount<Defined<UserIndex>, A> {
+        TestAccount {
+            user_index: Defined::new(user_index),
+            address: self.address,
+            nonce: self.nonce,
+            keys: self.keys,
+            sign_with: self.sign_with,
+        }
+    }
+}
+
+impl TestAccount<Undefined<UserIndex>, Defined<Addr>> {
+    pub fn query_user_index(
+        self,
+        querier: QuerierWrapper<'_>,
+    ) -> TestAccount<Defined<UserIndex>, Defined<Addr>> {
+        let account_factory = querier.query_account_factory().unwrap();
+        let user_index = querier
+            .query_wasm_smart(account_factory, account_factory::QueryAccountRequest {
+                address: self.address.into_inner(),
+            })
+            .unwrap()
+            .params
+            .owner()
+            .unwrap_or_else(|| {
+                panic!(
+                    "address {} is not a single-signature account",
+                    self.address.into_inner()
+                );
+            });
+
+        self.set_user_index(user_index)
+    }
+}
+
+impl<I> TestAccount<I, Undefined<Addr>>
+where
+    I: MaybeDefined<UserIndex>,
+{
+    pub fn set_address(self, address: Addr) -> TestAccount<I, Defined<Addr>> {
+        TestAccount {
+            user_index: self.user_index,
+            address: Defined::new(address),
+            nonce: self.nonce,
+            keys: self.keys,
+            sign_with: self.sign_with,
         }
     }
 
@@ -136,10 +192,11 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         seed: u32,
         spot_code_hash: Hash256,
         new_user_salt: bool,
-    ) -> TestAccount {
+    ) -> TestAccount<I, Defined<Addr>> {
+        let (_, key) = &self.keys[&self.sign_with];
         let salt = if new_user_salt {
             NewUserSalt {
-                key: self.keys.1,
+                key: key.clone(),
                 key_hash: self.sign_with,
                 seed,
             }
@@ -150,37 +207,38 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
 
         let address = Addr::derive(factory, spot_code_hash, &salt);
 
-        TestAccount {
-            user_index: self.user_index,
-            nonce: self.nonce,
-            address: Defined::new(address),
-            keys: btree_map! { self.sign_with => self.keys },
-            sign_with: self.sign_with,
-        }
-    }
-
-    pub fn set_address(self, address: Addr) -> TestAccount {
-        TestAccount {
-            address: Defined::new(address),
-            user_index: self.user_index,
-            nonce: self.nonce,
-            keys: btree_map! { self.sign_with => self.keys },
-            sign_with: self.sign_with,
-        }
+        self.set_address(address)
     }
 }
 
-impl<T> TestAccount<T>
+impl<I, A> TestAccount<I, A>
 where
-    T: MaybeDefined<Addr>,
+    I: MaybeDefined<UserIndex>,
+    A: MaybeDefined<Addr>,
 {
-    pub fn metadata(&self, chain_id: &str, nonce: u32, expiry: Option<Duration>) -> Metadata {
-        Metadata {
-            user_index: self.user_index.clone(),
-            chain_id: chain_id.to_string(),
-            expiry,
-            nonce,
-        }
+    pub fn first_sk(&self) -> &SigningKey {
+        &self.keys.iter().next().unwrap().1.0
+    }
+
+    pub fn first_key(&self) -> Key {
+        self.keys.iter().next().unwrap().1.1
+    }
+
+    pub fn first_key_hash(&self) -> Hash256 {
+        *self.keys.keys().next().unwrap()
+    }
+
+    pub fn keys(&self) -> &BTreeMap<Hash256, (SigningKey, Key)> {
+        &self.keys
+    }
+
+    pub fn sign_with(&self) -> Hash256 {
+        self.sign_with
+    }
+
+    pub fn set_nonce(mut self, nonce: Nonce) -> Self {
+        self.nonce = nonce;
+        self
     }
 
     // TODO: currently only support sign data that use SHA256 hasher.
@@ -193,6 +251,38 @@ where
         let standard_credential = self.create_standard_credential(bytes);
 
         Ok(standard_credential.signature)
+    }
+
+    /// Note: This function expects the _hashed_ sign data.
+    pub fn create_standard_credential(
+        &self,
+        sign_data: GenericArray<u8, U32>,
+    ) -> StandardCredential {
+        let sk = &self.keys.get(&self.sign_with).unwrap().0;
+        let signature = create_signature(sk, sign_data);
+
+        StandardCredential {
+            key_hash: self.sign_with,
+            signature: Signature::Secp256k1(signature),
+        }
+    }
+}
+
+impl<A> TestAccount<Defined<UserIndex>, A>
+where
+    A: MaybeDefined<Addr>,
+{
+    pub fn user_index(&self) -> UserIndex {
+        self.user_index.into_inner()
+    }
+
+    pub fn metadata(&self, chain_id: &str, nonce: u32, expiry: Option<Duration>) -> Metadata {
+        Metadata {
+            user_index: self.user_index.into_inner(),
+            chain_id: chain_id.to_string(),
+            expiry,
+            nonce,
+        }
     }
 
     pub fn sign_transaction_with_nonce(
@@ -218,30 +308,15 @@ where
 
         Ok((data, Credential::Standard(standard_credential)))
     }
-
-    /// Note: This function expects the _hashed_ sign data.
-    pub fn create_standard_credential(
-        &self,
-        sign_data: GenericArray<u8, U32>,
-    ) -> StandardCredential {
-        let sk = &self.keys.get(&self.sign_with).unwrap().0;
-        let signature = create_signature(sk, sign_data);
-
-        StandardCredential {
-            key_hash: self.sign_with,
-            signature: Signature::Secp256k1(signature),
-        }
-    }
 }
 
-impl<T> TestAccount<T>
+impl<A> TestAccount<Undefined<UserIndex>, A>
 where
-    T: MaybeDefined<Addr>,
-    Self: Signer,
+    A: MaybeDefined<Addr>,
 {
     /// Register the user
     pub fn register_user<PP, DB, VM, ID>(
-        &mut self,
+        &self,
         test_suite: &mut TestSuite<PP, DB, VM, ID>,
         factory: Addr,
         funds: Coins,
@@ -268,7 +343,13 @@ where
             )
             .should_succeed();
     }
+}
 
+impl<A> TestAccount<Defined<UserIndex>, A>
+where
+    A: MaybeDefined<Addr>,
+    Self: Signer,
+{
     /// Register a new account with the user index and key of this account and returns a new
     /// `TestAccount` with the new account's address.
     pub fn register_new_account<PP, DB, VM, ID>(
@@ -288,11 +369,11 @@ where
         // If registering a single account, ensure the supplied username matches this account's username.
         let account_type = match &params {
             AccountParams::Spot(single::Params { owner, .. }) => {
-                assert_eq!(owner, &self.user_index);
+                assert_eq!(owner, self.user_index.inner());
                 AccountType::Spot
             },
             AccountParams::Margin(single::Params { owner, .. }) => {
-                assert_eq!(owner, &self.user_index);
+                assert_eq!(owner, self.user_index.inner());
                 AccountType::Margin
             },
             AccountParams::Multi(_) => AccountType::Multi,
@@ -329,54 +410,10 @@ where
     }
 }
 
-impl<T> TestAccount<T, (SigningKey, Key)>
+impl<I> Addressable for TestAccount<I, Defined<Addr>>
 where
-    T: MaybeDefined<Addr>,
+    I: MaybeDefined<UserIndex>,
 {
-    pub fn sk(&self) -> &SigningKey {
-        &self.keys.0
-    }
-
-    pub fn key(&self) -> Key {
-        self.keys.1
-    }
-
-    pub fn key_hash(&self) -> Hash256 {
-        self.sign_with
-    }
-}
-
-impl<T> TestAccount<T>
-where
-    T: MaybeDefined<Addr>,
-{
-    pub fn first_sk(&self) -> &SigningKey {
-        &self.keys.iter().next().unwrap().1.0
-    }
-
-    pub fn first_key(&self) -> Key {
-        self.keys.iter().next().unwrap().1.1
-    }
-
-    pub fn first_key_hash(&self) -> Hash256 {
-        *self.keys.keys().next().unwrap()
-    }
-
-    pub fn keys(&self) -> &BTreeMap<Hash256, (SigningKey, Key)> {
-        &self.keys
-    }
-
-    pub fn sign_with(&self) -> Hash256 {
-        self.sign_with
-    }
-
-    pub fn set_nonce(mut self, nonce: Nonce) -> Self {
-        self.nonce = nonce;
-        self
-    }
-}
-
-impl Addressable for TestAccount {
     fn address(&self) -> Addr {
         *self.address.inner()
     }
@@ -424,7 +461,7 @@ impl Signer for TestAccount {
 }
 
 #[async_trait::async_trait]
-impl SequencedSigner for TestAccount<Defined<Addr>> {
+impl SequencedSigner for TestAccount {
     async fn query_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
     where
         C: QueryClient,
