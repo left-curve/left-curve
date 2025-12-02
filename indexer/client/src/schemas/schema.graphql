@@ -404,7 +404,7 @@ type PageInfo {
 }
 
 type PublicKey {
-	username: String!
+	userIndex: Int!
 	keyHash: String!
 	publicKey: String!
 	keyType: KeyType!
@@ -524,7 +524,7 @@ type Query {
 		"""
 		Cursor based pagination
 		"""
-		last: Int,		sortBy: TransferSortBy,		blockHeight: Int,		fromAddress: String,		toAddress: String,		username: String
+		last: Int,		sortBy: TransferSortBy,		blockHeight: Int,		fromAddress: String,		toAddress: String,		userIndex: Int
 	): TransferConnection!
 	queryApp(
 		"""
@@ -564,9 +564,9 @@ type Query {
 		"""
 		Cursor based pagination
 		"""
-		last: Int,		sortBy: AccountSortBy,		blockHeight: Int,		username: String,		address: String
+		last: Int,		sortBy: AccountSortBy,		blockHeight: Int,		userIndex: Int,		address: String
 	): AccountConnection!
-	user(username: String!): User
+	user(userIndex: Int!): User
 	users(after: String, before: String, first: Int, last: Int, blockHeight: Int, publicKey: String, publicKeyHash: String): UserConnection!
 	"""
 	Get paginated candles
@@ -638,8 +638,8 @@ type Store {
 }
 
 type Subscription {
-	accounts(username: String, sinceBlockHeight: Int): [Account!]!
-	transfers(address: String, username: String, sinceBlockHeight: Int): [Transfer!]!
+	accounts(userIndex: Int, sinceBlockHeight: Int): [Account!]!
+	transfers(address: String, userIndex: Int, sinceBlockHeight: Int): [Transfer!]!
 	block: Block!
 	transactions(sinceBlockHeight: Int): [Transaction!]!
 	messages(sinceBlockHeight: Int): [Message!]!
@@ -883,7 +883,7 @@ See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/s
 scalar UnsignedTx
 
 type User {
-	username: String!
+	userIndex: Int!
 	createdBlockHeight: Int!
 	"""
 	Returns the account creation timestamp in ISO 8601 format with time zone.
