@@ -109,7 +109,7 @@ export function getAccount<
   };
 
   const refreshAccounts = async () => {
-    refreshAccountsAction(config, { connectorUId });
+    refreshAccountsAction(config, { connectorUId, username: config.state.username as Username });
   };
 
   const { accounts, connector, account: acc, keyHash } = connection;

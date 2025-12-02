@@ -9,7 +9,7 @@ export type DangoClient<
   transport extends Transport = Transport,
   signer extends Signer | undefined = Signer | undefined,
   extended extends ClientExtend = ClientExtend,
-> = Client<transport, Chain, signer & extended>;
+> = Client<transport, Chain, signer, extended>;
 
 export type PublicClientConfig<transport extends Transport = Transport> = ClientConfig<
   transport,
