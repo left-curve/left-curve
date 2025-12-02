@@ -14,7 +14,6 @@ mod tx;
 
 #[cfg(feature = "testing")]
 use crate::test::TestCmd;
-use std::sync::LazyLock;
 use {
     crate::{
         db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
@@ -27,7 +26,7 @@ use {
     opentelemetry_otlp::{ExportConfig, Protocol, SpanExporter, WithExportConfig},
     opentelemetry_sdk::{Resource, trace as sdktrace},
     sentry::integrations::tracing::layer as sentry_layer,
-    std::path::PathBuf,
+    std::{path::PathBuf, sync::LazyLock},
     tracing_opentelemetry::layer as otel_layer,
     tracing_subscriber::{fmt::format::FmtSpan, prelude::*},
 };
@@ -202,16 +201,13 @@ async fn main() -> anyhow::Result<()> {
 
     let mut _sentry_guard: Option<sentry::ClientInitGuard> = None;
     let sentry_layer = if cfg.sentry.enabled {
-        let guard = sentry::init((
-            cfg.sentry.dsn,
-            sentry::ClientOptions {
-                environment: Some(cfg.sentry.environment.clone().into()),
-                release: sentry::release_name!(),
-                sample_rate: cfg.sentry.sample_rate,
-                traces_sample_rate: cfg.sentry.traces_sample_rate,
-                ..Default::default()
-            },
-        ));
+        let guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
+            environment: Some(cfg.sentry.environment.clone().into()),
+            release: sentry::release_name!(),
+            sample_rate: cfg.sentry.sample_rate,
+            traces_sample_rate: cfg.sentry.traces_sample_rate,
+            ..Default::default()
+        }));
         _sentry_guard = Some(guard);
 
         sentry::configure_scope(|scope| {
