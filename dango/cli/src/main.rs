@@ -22,14 +22,57 @@ use {
     clap::Parser,
     config::Config,
     config_parser::parse_config,
-    opentelemetry::{KeyValue, trace::TracerProvider},
+    opentelemetry::{
+        KeyValue,
+        trace::{TraceContextExt, TracerProvider},
+    },
     opentelemetry_otlp::{ExportConfig, Protocol, SpanExporter, WithExportConfig},
     opentelemetry_sdk::{Resource, trace as sdktrace},
     sentry::integrations::tracing::layer as sentry_layer,
     std::path::PathBuf,
-    tracing_opentelemetry::layer as otel_layer,
-    tracing_subscriber::{fmt::format::FmtSpan, prelude::*},
+    tracing_opentelemetry::{OpenTelemetrySpanExt, layer as otel_layer},
+    tracing_subscriber::{
+        fmt::format::FmtSpan, layer::Context as LayerContext, prelude::*, registry::LookupSpan,
+    },
 };
+
+// Enrich the current span with OpenTelemetry trace/span ids so fmt logging can include them.
+struct TraceIdLayer;
+
+impl<S> tracing_subscriber::Layer<S> for TraceIdLayer
+where
+    S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+{
+    fn on_enter(&self, id: &tracing::span::Id, ctx: LayerContext<'_, S>) {
+        // When a span is entered, record otel trace/span ids onto it (if available).
+        if let Some(_span_ref) = ctx.span(id) {
+            let otel_ctx = tracing::Span::current().context();
+            let span_ref = otel_ctx.span();
+            let sc = span_ref.span_context();
+            if sc.is_valid() {
+                let trace_id = sc.trace_id();
+                let span_id = sc.span_id();
+                let span = tracing::Span::current();
+                span.record("trace_id", tracing::field::display(trace_id));
+                span.record("span_id", tracing::field::display(span_id));
+            }
+        }
+    }
+
+    fn on_event(&self, _event: &tracing::Event<'_>, _ctx: LayerContext<'_, S>) {
+        // Best-effort: also record onto whatever span is current when an event happens.
+        let otel_ctx = tracing::Span::current().context();
+        let span_ref = otel_ctx.span();
+        let sc = span_ref.span_context();
+        if sc.is_valid() {
+            let trace_id = sc.trace_id();
+            let span_id = sc.span_id();
+            let span = tracing::Span::current();
+            span.record("trace_id", tracing::field::display(trace_id));
+            span.record("span_id", tracing::field::display(span_id));
+        }
+    }
+}
 
 #[derive(Parser)]
 #[command(author, version, about, next_display_order = None)]
@@ -99,6 +142,8 @@ async fn main() -> anyhow::Result<()> {
             .with_thread_ids(true)
             .with_file(true)
             .with_line_number(true)
+            .with_current_span(true)
+            .with_span_list(true)
             .boxed(),
         config::LogFormat::Text => tracing_subscriber::fmt::layer().boxed(),
     };
@@ -214,6 +259,8 @@ async fn main() -> anyhow::Result<()> {
     // Compose the subscriber with optional layers (Option implements Layer)
     tracing_subscriber::registry()
         .with(env_filter)
+        // Enrich spans/events with otel trace/span ids for log correlation
+        .with(TraceIdLayer)
         .with(fmt_layer)
         .with(sentry_layer)
         .with(otel_layer_opt)

@@ -66,7 +66,7 @@ pub(crate) async fn save_transfers(
         .collect::<HashMap<_, _>>();
 
     #[cfg(feature = "tracing")]
-    tracing::info!(
+    tracing::debug!(
         transfer_event_count = transfer_events.len(),
         "Looked at transfer events",
     );
