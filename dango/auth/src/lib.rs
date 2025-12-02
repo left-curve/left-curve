@@ -444,48 +444,48 @@ mod tests {
 
     #[test]
     fn passkey_authentication() {
-        let user_address = Addr::from_str("0x94e4e04fbf35a0e67c559fe1c9579de9fdd0f6ed").unwrap();
+        let user_address = Addr::from_str("0xd7b73f486c66fa6daecd67d7aee46a26513b07c2").unwrap();
         let user_index = 123;
         let user_keyhash =
-            Hash256::from_str("8E60264C2887C814C0C1E873A66F51F294149EFC3161CB1A195277D330927F31")
+            Hash256::from_str("244EA558C35EF9521EBA7418B72C94395235D678C6BDDD934EE514A6BC097FD8")
                 .unwrap();
         let user_key = Key::Secp256r1(
             [
-                2, 244, 56, 241, 68, 190, 202, 32, 187, 114, 180, 9, 199, 217, 8, 121, 69, 155,
-                181, 78, 55, 162, 133, 63, 56, 242, 30, 111, 63, 93, 80, 217, 53,
+                2, 69, 17, 109, 179, 224, 216, 88, 134, 155, 142, 29, 222, 224, 160, 235, 116, 12,
+                211, 16, 191, 65, 88, 180, 255, 202, 173, 80, 196, 146, 44, 111, 119,
             ]
             .into(),
         );
 
         let tx = r#"{
+          "sender": "0xd7b73f486c66fa6daecd67d7aee46a26513b07c2",
           "credential": {
             "standard": {
-              "key_hash": "8E60264C2887C814C0C1E873A66F51F294149EFC3161CB1A195277D330927F31",
               "signature": {
                 "passkey": {
-                  "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA==",
-                  "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiS1I3OXRVWHp4R2liTzloVmhQNlk0TmZGcmRsOHg0dVR4cm9RbU5HTGhzayIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZSwib3RoZXJfa2V5c19jYW5fYmVfYWRkZWRfaGVyZSI6ImRvIG5vdCBjb21wYXJlIGNsaWVudERhdGFKU09OIGFnYWluc3QgYSB0ZW1wbGF0ZS4gU2VlIGh0dHBzOi8vZ29vLmdsL3lhYlBleCJ9",
-                  "sig": "fTKkzapyn0e3Q27ARsdxTGDQA0rSv/hmvSp++xJdKk4yBgP4CxqidByWOA0FmVQ2wBuob9BINpu7Eho+UFFroQ=="
+                  "sig": "L/ne0uoF3/aI73itjvcvW2AZ6fAJEd+QNSj/juzJc1zP9EeA++42ilmW03kJWlcqQKxTWaZQlEWCrdCnCnXU+A==",
+                  "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiZ2lzQzkzblFTUWRzOVo2WEp6X0xEQXZOdHN0b3k2b091SERhMEl3ZllqcyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+                  "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
                 }
-              }
+              },
+              "key_hash": "244EA558C35EF9521EBA7418B72C94395235D678C6BDDD934EE514A6BC097FD8"
             }
           },
           "data": {
-            "chain_id": "dev-5",
-            "nonce": 0,
-            "user_index": 123
+            "chain_id": "dev-6",
+            "user_index": 123,
+            "nonce": 0
           },
-          "gas_limit": 2448139,
           "msgs": [
             {
               "transfer": {
                 "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
-                  "hyp/eth/usdc": "1000000"
+                  "bridge/usdc": "1000000"
                 }
               }
             }
           ],
-          "sender": "0x94e4e04fbf35a0e67c559fe1c9579de9fdd0f6ed"
+          "gas_limit": 2834
         }"#;
 
         let querier = MockQuerier::new()
@@ -509,7 +509,7 @@ mod tests {
         let mut ctx = MockContext::new()
             .with_querier(querier)
             .with_contract(user_address)
-            .with_chain_id("dev-5")
+            .with_chain_id("dev-6")
             .with_mode(AuthMode::Finalize);
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).should_succeed();
@@ -517,7 +517,7 @@ mod tests {
 
     #[test]
     fn eip712_authentication() {
-        let user_address = Addr::from_str("0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50").unwrap();
+        let user_address = Addr::from_str("0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8").unwrap();
         let user_index = 123;
         let user_keyhash =
             Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
@@ -550,33 +550,33 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
+          "sender": "0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8",
           "credential": {
             "standard": {
-              "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
               "signature": {
                 "eip712": {
-                  "sig": "cpcxIOxKLlBx2QongOl+8LbntUx7YR6mQIcmsT9fvngwfGesFvEaHYPOh4namgfXKlipm7OSoJWdUaw7fdFGJBw=",
-                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImNoYWluSWQiLCJ0eXBlIjoidWludDI1NiJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoibm9uY2UiLCJ0eXBlIjoidWludDMyIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiLCJ0eXBlIjoiQ29pbjAifV0sIkNvaW4wIjpbeyJuYW1lIjoiaHlwL2V0aC91c2RjIiwidHlwZSI6InN0cmluZyJ9XX0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsImRvbWFpbiI6eyJuYW1lIjoiZGFuZ28iLCJjaGFpbklkIjoxLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4Mzg1YTk3ZmFlYWJlNGFkYzZjNWJjYWMyZmYzNjI3ZTYwYmEyM2I1MCJ9LCJtZXNzYWdlIjp7InNlbmRlciI6IjB4Mzg1YTk3ZmFlYWJlNGFkYzZjNWJjYWMyZmYzNjI3ZTYwYmEyM2I1MCIsImRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
+                  "sig": "HVjOsIIx7o8SPbwXhSqpK/+N83V9Cz92+moM7vIIAaUz9YEelg8EesIN14ir5JcSSr/waG2b4gxPFbscaToUcBw=",
+                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImNoYWluSWQiLCJ0eXBlIjoidWludDI1NiJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcl9pbmRleCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MzMzNjFkZTQyNTcxZDZhYTIwYzM3ZGFhNmRhNGI1YWI2N2JmYWFkOSIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJicmlkZ2UvdXNkYyIsInR5cGUiOiJzdHJpbmcifV19LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJkb21haW4iOnsibmFtZSI6ImRhbmdvIiwiY2hhaW5JZCI6MSwidmVyaWZ5aW5nQ29udHJhY3QiOiIweDllZTAyNzRhZTMwZDBlMjA5YmVmMmM3ZTZjZTk2NzVhOTJlZjk2YzgifSwibWVzc2FnZSI6eyJzZW5kZXIiOiIweDllZTAyNzRhZTMwZDBlMjA5YmVmMmM3ZTZjZTk2NzVhOTJlZjk2YzgiLCJkYXRhIjp7ImNoYWluX2lkIjoiZGV2LTYiLCJ1c2VyX2luZGV4IjoxMjMsIm5vbmNlIjowfSwiZ2FzX2xpbWl0IjoyODM0LCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsiMHgzMzM2MWRlNDI1NzFkNmFhMjBjMzdkYWE2ZGE0YjVhYjY3YmZhYWQ5Ijp7ImJyaWRnZS91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
                 }
-              }
+              },
+              "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165"
             }
           },
           "data": {
             "chain_id": "dev-6",
-            "nonce": 0,
-            "user_index": 123
+            "user_index": 123,
+            "nonce": 0
           },
-          "gas_limit": 2448139,
           "msgs": [
             {
               "transfer": {
                 "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
-                  "hyp/eth/usdc": "1000000"
+                  "bridge/usdc": "1000000"
                 }
               }
             }
           ],
-          "sender": "0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50"
+          "gas_limit": 2834
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
@@ -660,15 +660,15 @@ mod tests {
 
     #[test]
     fn session_key_with_passkey_authentication() {
-        let user_address = Addr::from_str("0x5614a130eb9322e549e0d86d24a7bb1a7f683b28").unwrap();
+        let user_address = Addr::from_str("0xd7b73f486c66fa6daecd67d7aee46a26513b07c2").unwrap();
         let user_index = 123;
         let user_keyhash =
-            Hash256::from_str("010AB8AAF008DA93DB00F94D818931832F54192A334D933629768B59A2932817")
+            Hash256::from_str("244EA558C35EF9521EBA7418B72C94395235D678C6BDDD934EE514A6BC097FD8")
                 .unwrap();
         let user_key = Key::Secp256r1(
             [
-                3, 49, 131, 213, 54, 16, 255, 178, 137, 198, 32, 99, 238, 21, 5, 25, 52, 140, 150,
-                228, 146, 68, 250, 57, 250, 251, 135, 159, 84, 162, 229, 40, 155,
+                2, 69, 17, 109, 179, 224, 216, 88, 134, 155, 142, 29, 222, 224, 160, 235, 116, 12,
+                211, 16, 191, 65, 88, 180, 255, 202, 173, 80, 196, 146, 44, 111, 119,
             ]
             .into(),
         );
@@ -699,41 +699,41 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-          "credential": {
+        "sender": "0xd7b73f486c66fa6daecd67d7aee46a26513b07c2",
+        "credential": {
             "session": {
-              "authorization": {
-                "key_hash": "010AB8AAF008DA93DB00F94D818931832F54192A334D933629768B59A2932817",
+            "session_info": {
+                "session_key": "AhpEarfTNt2uMf9jddpvEE6mqDl8J0yS2CJOFkQU96sV",
+                "expire_at": "1764799201191"
+            },
+            "authorization": {
+                "key_hash": "244EA558C35EF9521EBA7418B72C94395235D678C6BDDD934EE514A6BC097FD8",
                 "signature": {
-                  "passkey": {
-                    "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA==",
-                    "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTlMwTFVJUUZpUC1SN01MSmE5V3RBbEttcUZhcWdfbTdqTzZaeExubE1SZyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZSwib3RoZXJfa2V5c19jYW5fYmVfYWRkZWRfaGVyZSI6ImRvIG5vdCBjb21wYXJlIGNsaWVudERhdGFKU09OIGFnYWluc3QgYSB0ZW1wbGF0ZS4gU2VlIGh0dHBzOi8vZ29vLmdsL3lhYlBleCJ9",
-                    "sig": "kutvF0E0eD+K0FCD575y1HuaToPrdBFB20VIlxiA4HeKHdXwvDjKfcMPSnV752jb9xEeBvO1Jym+Z7PJR3dfeg=="
-                  }
+                "passkey": {
+                    "sig": "CDy/TtzDxbAkMdHF1Zb1NwsRikbwDWt00Ck61zzDfwJnuAiYLVU6+JoSvGMgtqRxS4W0b551w1rC9kqSQ6mHXQ==",
+                    "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiam9CdUxqUDhzU0pJcnh1ZDNkWllrTE5XSFhuN1lQaDI1WmxkZk1xRUktayIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+                    "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
                 }
-              },
-              "session_info": {
-                "expire_at": "1743109311084",
-                "session_key": "A9q7FcgFOItKcmXpqTZZyAgTLqszNCdG/LkHF+UZyBMs"
-              },
-              "session_signature": "lBPASUUQyv+YaQg0b/1XGvqn7Iuk7R5uGsh9m1m/IdU62YQHl+VT2ZURQ4GsIIWer9oHevALgMGqjA1KraW21A=="
+                }
+            },
+            "session_signature": "3h/hnILoPCfyyC7+qEWuku2tePMLrI7ksHI3D9hEIMFOPp9FAQB7coCmd2k12D8P7RrTOznNsDgVd2dkMebehQ=="
             }
-          },
-          "data": {
+        },
+        "data": {
             "chain_id": "dev-6",
-            "nonce": 0,
-            "username": 123
-          },
-          "gas_limit": 2448139,
-          "msgs": [
+            "user_index": 123,
+            "nonce": 0
+        },
+        "msgs": [
             {
-              "transfer": {
+            "transfer": {
                 "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
-                  "hyp/eth/usdc": "1000000"
+                "bridge/usdc": "1000000"
                 }
-              }
             }
-          ],
-          "sender": "0x5614a130eb9322e549e0d86d24a7bb1a7f683b28"
+            }
+        ],
+        "gas_limit": 2834
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
@@ -741,7 +741,7 @@ mod tests {
 
     #[test]
     fn session_key_with_eip712_authentication() {
-        let user_address = Addr::from_str("0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50").unwrap();
+        let user_address = Addr::from_str("0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8").unwrap();
         let user_index = 123;
         let user_keyhash =
             Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
@@ -775,40 +775,40 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
+          "sender": "0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8",
           "credential": {
             "session": {
+              "session_info": {
+                "session_key": "A/+qq0IZ/nVmajLRoA3RBjKaWMDQ2TVnvGNZvPSFyf4m",
+                "expire_at": "1764699053993"
+              },
               "authorization": {
                 "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
                 "signature": {
                   "eip712": {
-                    "sig": "SQvtngWCBODJSQuLloFTFK/QFRV0qGq0UTYs/4u/j8xhItf7R5Y2Is74XxlCwC+lCvHk1B0e6Sfdt8TQc8SNWRw=",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsic2Vzc2lvbl9rZXkiOiJBN0V5TThVMXVmOHlna3pwNHMrdVZ1djQ0ZStUdFVqdE9qQVczSHphNk96dCIsImV4cGlyZV9hdCI6IjE3NDU1OTY3MTYzODMifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                    "sig": "W9Wf2kO1RWcECwyf1vsZLbRLN9JZoMN/ca3DikEAtsI8+bWI3YCMRvhrJ18SOJ2K7B2pL5wjVBf/+EdUs5xRHBs=",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsic2Vzc2lvbl9rZXkiOiJBLytxcTBJWi9uVm1hakxSb0EzUkJqS2FXTURRMlRWbnZHTlp2UFNGeWY0bSIsImV4cGlyZV9hdCI6IjE3NjQ2OTkwNTM5OTMifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
                   }
                 }
               },
-              "session_info": {
-                "expire_at": "1745596716383",
-                "session_key": "A7EyM8U1uf8ygkzp4s+uVuv44e+TtUjtOjAW3Hza6Ozt"
-              },
-              "session_signature": "l/NvC8O4fXo32avZppBL8ICO39QEdQijYu9AVKLQLGB0iXSxfp/vb8JWWvMNnKlivDNoTlGHpgVFQysl6IJc4g=="
+              "session_signature": "X9Npvv1WnUEbeTtrug5Zz6WSG8K2h73B/df3GHe6rkJ5UifGLK2oanHidKYyNeNY3OXxQjVzpvDRT7LbkAmczA=="
             }
           },
           "data": {
             "chain_id": "dev-6",
-            "nonce": 0,
-            "user_index": 123
+            "user_index": 123,
+            "nonce": 0
           },
-          "gas_limit": 2448139,
           "msgs": [
             {
               "transfer": {
                 "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
-                  "hyp/eth/usdc": "1000000"
+                  "bridge/usdc": "1000000"
                 }
               }
             }
           ],
-          "sender": "0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50"
+          "gas_limit": 2834
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
@@ -897,8 +897,8 @@ mod tests {
 
         let signature = r#"{
           "eip712": {
-            "sig": "ZmeW546igJejAskWXr/2o0WhOgpDbNlTiBnScGeNHLdDlS5qSpTtkTkffnMxLYTCfQ900RtNs+oV8zmfNtveDxs=",
-            "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsidXNlcm5hbWUiOiJqYXZpZXJfdGVzdCIsImNoYWluX2lkIjoiZGV2LTYifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn1dfX0="
+            "sig": "zHPA/hLrFD3BSaFBbbdygCwCsII6mVHbIRSQYpNcN01pL81Gi2n8xNe0OTinG749kZjq/xGZYcHdlKRq3YwDBRs=",
+            "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsiY2hhaW5faWQiOiJkZXYtNiJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImNoYWluSWQiLCJ0eXBlIjoidWludDI1NiJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
           }
         }"#.deserialize_json::<Signature>().unwrap();
 
