@@ -190,6 +190,7 @@ services:
       QUEST_URL: ${QUEST_URL}
       BANNER: ${FRONTEND_BANNER}
       CHAIN_ID: ${CHAIN_ID}
+      NGINX_JSON_LOGS: ${NGINX_JSON_LOGS}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
