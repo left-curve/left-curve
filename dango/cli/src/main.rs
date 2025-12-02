@@ -14,6 +14,7 @@ mod tx;
 
 #[cfg(feature = "testing")]
 use crate::test::TestCmd;
+use std::sync::LazyLock;
 use {
     crate::{
         db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
@@ -31,12 +32,8 @@ use {
     tracing_subscriber::{fmt::format::FmtSpan, prelude::*},
 };
 
-fn version_with_commit() -> &'static str {
-    // Build a static string like: "0.2.0 (abcdef1)"
-    Box::leak(
-        format!("{} ({})", env!("CARGO_PKG_VERSION"), grug_types::GIT_COMMIT).into_boxed_str(),
-    )
-}
+static VERSION_WITH_COMMIT: LazyLock<String> =
+    LazyLock::new(|| format!("{} ({})", env!("CARGO_PKG_VERSION"), grug_types::GIT_COMMIT));
 
 #[derive(Parser)]
 #[command(author, about, next_display_order = None)]
@@ -86,7 +83,7 @@ enum Command {
 async fn main() -> anyhow::Result<()> {
     // Parse CLI arguments, overriding the version to include the git commit.
     let cli = {
-        let cmd = Cli::command().version(version_with_commit());
+        let cmd = Cli::command().version(VERSION_WITH_COMMIT.as_str());
         let matches = cmd.get_matches();
         Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit())
     };
@@ -205,13 +202,16 @@ async fn main() -> anyhow::Result<()> {
 
     let mut _sentry_guard: Option<sentry::ClientInitGuard> = None;
     let sentry_layer = if cfg.sentry.enabled {
-        let guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
-            environment: Some(cfg.sentry.environment.clone().into()),
-            release: sentry::release_name!(),
-            sample_rate: cfg.sentry.sample_rate,
-            traces_sample_rate: cfg.sentry.traces_sample_rate,
-            ..Default::default()
-        }));
+        let guard = sentry::init((
+            cfg.sentry.dsn,
+            sentry::ClientOptions {
+                environment: Some(cfg.sentry.environment.clone().into()),
+                release: sentry::release_name!(),
+                sample_rate: cfg.sentry.sample_rate,
+                traces_sample_rate: cfg.sentry.traces_sample_rate,
+                ..Default::default()
+            },
+        ));
         _sentry_guard = Some(guard);
 
         sentry::configure_scope(|scope| {
