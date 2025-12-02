@@ -2,6 +2,7 @@ import type { Address, Message, Transport } from "@left-curve/sdk/types";
 
 import { composeTxTypedData } from "../../../utils/typedData.js";
 import { getAccountSeenNonces } from "../../account-factory/queries/getAccountSeenNonces.js";
+import { getAccountInfo } from "../../account-factory/index.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
 import type {
@@ -36,17 +37,15 @@ export async function signAndBroadcastTx<transport extends Transport>(
     return chainId;
   })();
 
-  const { username } = client;
-
-  if (!username) {
-    throw new Error("client must have a username");
-  }
-
   const [nonce] = await getAccountSeenNonces(client, { address: sender });
+
+  const account = await getAccountInfo(client, { address: sender });
+
+  if (!account) throw new Error("account not found");
 
   const metadata = {
     chainId,
-    username,
+    userIndex: account.index,
     nonce,
   };
 
