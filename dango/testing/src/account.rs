@@ -196,7 +196,7 @@ where
         let (_, key) = &self.keys[&self.sign_with];
         let salt = if new_user_salt {
             NewUserSalt {
-                key: key.clone(),
+                key: *key,
                 key_hash: self.sign_with,
                 seed,
             }

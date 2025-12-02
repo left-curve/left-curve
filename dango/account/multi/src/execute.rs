@@ -493,7 +493,7 @@ mod tests {
 
         // Change the params, then create the 2nd proposal.
         // The new proposal should use the updated params.
-        params.members.insert(m4.clone(), NonZero::new(1).unwrap());
+        params.members.insert(m4, NonZero::new(1).unwrap());
 
         ctx.update_querier(|querier| {
             querier.update_smart_query_handler(move |contract, data| {
@@ -784,7 +784,7 @@ mod tests {
         assert!(result_predicate(do_vote(
             ctx.as_mutable(),
             proposal_id,
-            voter.clone(),
+            voter,
             vote,
             execute,
         )));

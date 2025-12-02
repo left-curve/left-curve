@@ -20,6 +20,7 @@ pub enum User {
     #[sea_orm(iden = "users")]
     Table,
     Id,
+    #[allow(clippy::enum_variant_names)]
     UserIndex,
     CreatedBlockHeight,
     CreatedAt,
