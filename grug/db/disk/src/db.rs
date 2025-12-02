@@ -149,9 +149,10 @@ impl<T> DiskDb<T> {
         B: AsRef<[u8]>,
     {
         let opts = new_db_options();
-        let cf_opts = new_state_cf_options();
-        let wasm_cf_opts = new_wasm_cf_options(cf_opts.clone());
-        let storage_cf_opts = new_storage_cf_options(cf_opts.clone());
+        let cf_opts = new_cf_options();
+        let wasm_cf_opts = new_cf_options_with_prefix::<WASM_PREFIX_LEN>();
+        let storage_cf_opts = new_cf_options_with_prefix::<GRUG_NAMESPACE_LEN>();
+
         let db = DB::open_cf_with_opts(&opts, data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
             #[cfg(feature = "ibc")]
@@ -991,7 +992,7 @@ fn create_wasm_iter<'a>(
     #[cfg(feature = "metrics")]
     let duration = std::time::Instant::now();
 
-    let opts = new_wasm_read_options(new_read_options(min, max), min, max);
+    let opts = new_read_options_with_prefix::<WASM_PREFIX_LEN>(min, max);
     let mode = into_iterator_mode(order);
 
     let iter = db
@@ -1034,7 +1035,7 @@ fn create_state_iter<'a>(
     #[cfg(feature = "metrics")]
     let duration = std::time::Instant::now();
 
-    let opts = new_storage_read_options(new_read_options(min, max), min, max);
+    let opts = new_read_options_with_prefix::<GRUG_NAMESPACE_LEN>(min, max);
     let mode = into_iterator_mode(order);
 
     let iter = db
@@ -1138,7 +1139,7 @@ pub fn new_db_options() -> Options {
 }
 
 /// Create a tuned default `Options` for a colume family.
-pub fn new_state_cf_options() -> Options {
+pub fn new_cf_options() -> Options {
     let mut opts = Options::default();
 
     // ---- Memtable ----
@@ -1168,15 +1169,10 @@ pub fn new_state_cf_options() -> Options {
     opts
 }
 
-/// Create an `Options` specifically for the Wasm column family, given an existing
-/// base `Options`.
-pub fn new_wasm_cf_options(mut opts: Options) -> Options {
-    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(WASM_PREFIX_LEN));
-    opts
-}
-
-pub fn new_storage_cf_options(mut opts: Options) -> Options {
-    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(GRUG_NAMESPACE_LEN));
+/// Create an `Options` for a column family that includes a prefix extractor.
+pub fn new_cf_options_with_prefix<const PREFIX_LEN: usize>() -> Options {
+    let mut opts = new_cf_options();
+    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(PREFIX_LEN));
     opts
 }
 
@@ -1200,37 +1196,25 @@ pub fn new_read_options(
     opts
 }
 
-/// Create a `ReadOptions` specifically for iteration in the Wasm column family,
-/// given an existing `ReadOptions`.
-pub fn new_wasm_read_options(
-    mut opts: ReadOptions,
+/// Create a `ReadOptions` specifically for a column family that includes a
+/// prefix extractor, and when `min` and `max` are both within a certain prefix.
+/// In such a case, we can skip the prefix, which makes the creation of iterators
+/// much faster.
+pub fn new_read_options_with_prefix<const PREFIX_LEN: usize>(
     min: Option<&[u8]>,
     max: Option<&[u8]>,
 ) -> ReadOptions {
-    // Enable prefix mode only if `min` & `max` share the exact same "wasm" + addr prefix.
+    let mut opts = new_read_options(min, max);
+
+    // Enable prefix mode only if `min` & `max` share the same prefix.
     if let (Some(min), Some(max)) = (min, max)
-        && min.len() >= WASM_PREFIX_LEN
-        && max.len() >= WASM_PREFIX_LEN
-        && min[..WASM_PREFIX_LEN] == max[..WASM_PREFIX_LEN]
+        && min.len() >= PREFIX_LEN
+        && max.len() >= PREFIX_LEN
+        && min[..PREFIX_LEN] == max[..PREFIX_LEN]
     {
         opts.set_prefix_same_as_start(true);
     }
 
-    opts
-}
-
-pub fn new_storage_read_options(
-    mut opts: ReadOptions,
-    min: Option<&[u8]>,
-    max: Option<&[u8]>,
-) -> ReadOptions {
-    if let (Some(min), Some(max)) = (min, max)
-        && min.len() >= GRUG_NAMESPACE_LEN
-        && max.len() >= GRUG_NAMESPACE_LEN
-        && min[..GRUG_NAMESPACE_LEN] == max[..GRUG_NAMESPACE_LEN]
-    {
-        opts.set_prefix_same_as_start(true);
-    }
     opts
 }
 
