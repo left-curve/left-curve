@@ -432,7 +432,10 @@ mod tests {
     use {
         super::*,
         dango_types::config::{AppAddresses, AppConfig},
-        grug::{Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt, btree_map},
+        grug::{
+            Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt, addr, btree_map, hash,
+        },
+        hex_literal::hex,
         std::str::FromStr,
     };
 
@@ -581,44 +584,39 @@ mod tests {
 
     #[test]
     fn secp256k1_authentication() {
-        let user_address = Addr::from_str("0x33361de42571d6aa20c37daa6da4b5ab67bfaad9").unwrap();
-        let user_index = 123;
+        let user_address = addr!("843a9778a711d5474ef6efd65fca38731f281471");
+        let user_index = 231893934;
         let user_keyhash =
-            Hash256::from_str("06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2")
-                .unwrap();
+            hash!("94eb754d36ed86af6fc231eae13c78b4a298ed065f63eb8dac139b8b943b76da");
         let user_key = Key::Secp256k1(
-            [
-                2, 120, 247, 183, 217, 61, 169, 181, 166, 46, 40, 67, 65, 132, 209, 195, 55, 194,
-                194, 141, 76, 237, 41, 23, 147, 33, 90, 182, 238, 137, 215, 255, 248,
-            ]
-            .into(),
+            hex!("022e730b2e26c6e3ce78d28c3700da0a798d893a73ee15055baaaee1cf46db7a4a").into(),
         );
 
         let tx = r#"{
-          "credential": {
-            "standard": {
-              "key_hash": "06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2",
-              "signature": {
-                "secp256k1": "CLlermDLySBkXKiU33LTPtzeOt8Rp0W7bKs3nMdRbEZUDumK7fldZ6WTxCjvg7apTPO1dxqFUzsbvwfQFaxG+w=="
-              }
-            }
-          },
-          "data": {
-            "chain_id": "dev-6",
-            "nonce": 0,
-            "user_index": 123
-          },
-          "gas_limit": 2448142,
+          "sender": "0x843a9778a711d5474ef6efd65fca38731f281471",
+          "gas_limit": 7378592558624777017,
           "msgs": [
             {
               "transfer": {
-                "0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d": {
-                  "hyp/eth/usdc": "100"
+                "0x836ca678a5afe736c6b64b2d5a6ee4bc85588cd8": {
+                  "bridge/usdc": "100000000"
                 }
               }
             }
           ],
-          "sender": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9"
+          "data": {
+            "chain_id": "dev-1",
+            "nonce": 27,
+            "user_index": 231893934
+          },
+          "credential": {
+            "standard": {
+              "key_hash": "94EB754D36ED86AF6FC231EAE13C78B4A298ED065F63EB8DAC139B8B943B76DA",
+              "signature": {
+                "secp256k1": "LEohIzCuV3/MRLM/XvZNcxUdNp/Q811IsioZ3SEBbbRMvXlrvWi1v3+NYeZBYnALVtQzZcpO1E2wqiBd64lSdg=="
+              }
+            }
+          }
         }"#;
 
         let querier = MockQuerier::new()
@@ -644,7 +642,7 @@ mod tests {
         let mut ctx = MockContext::new()
             .with_querier(querier)
             .with_contract(user_address)
-            .with_chain_id("not-dev-6")
+            .with_chain_id("not-dev-1")
             .with_mode(AuthMode::Finalize);
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None)
@@ -654,7 +652,7 @@ mod tests {
         let mut ctx = MockContext::new()
             .with_querier(ctx.querier)
             .with_contract(user_address)
-            .with_chain_id("dev-6")
+            .with_chain_id("dev-1")
             .with_mode(AuthMode::Finalize);
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).should_succeed();
@@ -811,6 +809,78 @@ mod tests {
             }
           ],
           "sender": "0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50"
+        }"#;
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
+    }
+
+    #[test]
+    fn session_key_with_secp256k1_authentication() {
+        let user_address = addr!("9117495f17163ec82e4ae424b7f2227dd21d3ce5");
+        let user_index = 1733837080;
+        let user_keyhash =
+            hash!("3378fadf5422e7e1cbe68fcac26e355238c437dc36139212bcdfe6fe00e4e96f");
+        let user_key = Key::Secp256k1(
+            hex!("035d1e23762e9436aaff9fd41322cf7ea3d6a5a282094f85d175035ae9ca1ea265").into(),
+        );
+
+        let querier = MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ..Default::default()
+                },
+                collateral_powers: btree_map! {},
+                ..Default::default()
+            })
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                account_factory::ACCOUNTS_BY_USER
+                    .insert(storage, (user_index, user_address))
+                    .unwrap();
+                account_factory::KEYS
+                    .save(storage, (user_index, user_keyhash), &user_key)
+                    .unwrap();
+            });
+
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("dev-1")
+            .with_mode(AuthMode::Finalize);
+
+        let tx = r#"{
+          "sender": "0x9117495f17163ec82e4ae424b7f2227dd21d3ce5",
+          "gas_limit": 6348334294010820860,
+          "msgs": [
+            {
+              "transfer": {
+                "0xe2a560440d34e43c1c02d7ce4f2ed2e86fa3367d": {
+                  "bridge/usdc": "100000000"
+                }
+              }
+            }
+          ],
+          "data": {
+            "chain_id": "dev-1",
+            "nonce": 44,
+            "user_index": 1733837080
+          },
+          "credential": {
+            "session": {
+              "authorization": {
+                "key_hash": "3378FADF5422E7E1CBE68FCAC26E355238C437DC36139212BCDFE6FE00E4E96F",
+                "signature": {
+                  "secp256k1": "U0MuCfpy8xuLKFlpvP4byrSLUvRuf5QWBaVfSRd+KnEtKQmU+4zvVyWFRf9KFiq2oUObN8LuG3cY0TQIeNuSHQ=="
+                }
+              },
+              "session_info": {
+                "expire_at": "340282366920938463463374607431.768211455",
+                "session_key": "Ax614yDvhtfapEA66dAM0QH6ZrXqwSWX3Xxy+mikaPgC"
+              },
+              "session_signature": "HnhRpEQXcltog6DFNKq3u2wIjoYpOkjfeTMFvPmP2Styl6f8IZfHeOtGZgLgBj5U6NH1PObP6SRkVaPZE7hMgg=="
+            }
+          }
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
