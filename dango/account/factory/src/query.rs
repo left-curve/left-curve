@@ -32,7 +32,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_next_account_index(ctx.storage)?;
             res.to_json_value()
         },
-        QueryMsg::CodeHash(account_type) => {
+        QueryMsg::CodeHash { account_type } => {
             let res = query_code_hash(ctx.storage, account_type)?;
             res.to_json_value()
         },
@@ -40,11 +40,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_code_hashes(ctx.storage, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::Key {
-            user_index,
-            key_hash,
-        } => {
-            let res = query_key(ctx.storage, user_index, key_hash)?;
+        QueryMsg::Key { hash, user_index } => {
+            let res = query_key(ctx.storage, hash, user_index)?;
             res.to_json_value()
         },
         QueryMsg::Keys { start_after, limit } => {
@@ -121,8 +118,8 @@ fn query_code_hashes(
         .collect()
 }
 
-fn query_key(storage: &dyn Storage, user_index: UserIndex, key_hash: Hash256) -> StdResult<Key> {
-    KEYS.load(storage, (user_index, key_hash))
+fn query_key(storage: &dyn Storage, hash: Hash256, user_index: UserIndex) -> StdResult<Key> {
+    KEYS.load(storage, (user_index, hash))
 }
 
 fn query_keys(

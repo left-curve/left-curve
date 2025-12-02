@@ -86,7 +86,7 @@ pub enum QueryMsg {
     NextAccountIndex {},
     /// Query the code hash associated with the an account type.
     #[returns(Hash256)]
-    CodeHash(AccountType),
+    CodeHash { account_type: AccountType },
     /// Enumerate all code hashes associated with account types.
     #[returns(BTreeMap<AccountType, Hash256>)]
     CodeHashes {
@@ -96,8 +96,8 @@ pub enum QueryMsg {
     /// Query a key by its hash and the user it is associated with.
     #[returns(Key)]
     Key {
+        hash: Hash256,
         user_index: UserIndex,
-        key_hash: Hash256,
     },
     /// Enumerate all keys.
     #[returns(Vec<QueryKeyResponseItem>)]

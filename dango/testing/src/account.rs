@@ -385,7 +385,7 @@ where
             .unwrap();
 
         let code_hash = test_suite
-            .query_wasm_smart(factory, QueryCodeHashRequest(account_type))
+            .query_wasm_smart(factory, QueryCodeHashRequest { account_type })
             .should_succeed();
 
         let address = Addr::derive(factory, code_hash, Salt { index }.into_bytes().as_slice());
