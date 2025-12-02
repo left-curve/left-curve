@@ -87,6 +87,9 @@
               # description: "{{ '🚀 Starting deployment ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
               color: 3447003
               fields:
+                - name: "Commit title"
+                  value: "{{ commit_title | default('-', true) }}"
+                  inline: false
                 - name: "Triggered by"
                   value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                   inline: true
@@ -99,9 +102,6 @@
                 - name: "Commit"
                   value: "{{ commit_short_sha }}"
                   inline: true
-                - name: "Commit title"
-                  value: "{{ commit_title | default('-', true) }}"
-                  inline: false
                 - name: "Author"
                   value: "{{ commit_author | default('-', true) }}"
                   inline: true
@@ -137,6 +137,9 @@
                   # description: "{{ '❌ Deployment FAILED (unreachable host) for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 15158332
                   fields:
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
@@ -152,9 +155,6 @@
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
                       inline: true
-                    - name: "Commit title"
-                      value: "{{ commit_title | default('-', true) }}"
-                      inline: false
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
                       inline: true
@@ -219,6 +219,9 @@
                 - title: "❌ Deployment Failed ❌"
                   color: 15158332
                   fields:
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
@@ -231,9 +234,6 @@
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
                       inline: true
-                    - name: "Commit title"
-                      value: "{{ commit_title | default('-', true) }}"
-                      inline: false
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
                       inline: true
@@ -415,6 +415,9 @@
                   # description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 3066993
                   fields:
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
@@ -427,9 +430,6 @@
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
                       inline: true
-                    - name: "Commit title"
-                      value: "{{ commit_title | default('-', true) }}"
-                      inline: false
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
                       inline: true
@@ -461,6 +461,9 @@
                     - name: "PR title"
                       value: "{{ pr_title | default('-', true) }}"
                       inline: false
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
@@ -476,9 +479,6 @@
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
                       inline: true
-                    - name: "Commit title"
-                      value: "{{ commit_title | default('-', true) }}"
-                      inline: false
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
                       inline: true
