@@ -1030,11 +1030,11 @@ fn purge_old_volume_data<K>(
     cutoff: Timestamp,
 ) -> StdResult<()>
 where
-    K: PrimaryKey + Clone,
+    K: PrimaryKey + Copy,
 {
     // Find the most recent volume data no newer than the `cutoff` timestamp.
     let max = map
-        .prefix(prefix.clone())
+        .prefix(prefix)
         .keys(
             storage,
             None,
