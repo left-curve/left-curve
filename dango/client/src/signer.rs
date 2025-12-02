@@ -1,8 +1,9 @@
 use {
     crate::Secret,
+    anyhow::anyhow,
     dango_types::{
         account::spot,
-        account_factory::UserIndex,
+        account_factory::{self, UserIndex},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
         signer::SequencedSigner,
     },
@@ -17,22 +18,49 @@ pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 /// Utility for signing transactions in the format by Dango's single-signature
 /// accounts, i.e. spot and margin accounts.
 #[derive(Debug)]
-pub struct SingleSigner<S, N>
+pub struct SingleSigner<S, I = Defined<UserIndex>, N = Defined<Nonce>>
 where
     S: Secret,
+    I: MaybeDefined<UserIndex>,
     N: MaybeDefined<Nonce>,
 {
-    pub user_index: UserIndex,
     pub address: Addr,
-    pub nonce: N,
     pub secret: S,
+    pub user_index: I,
+    pub nonce: N,
 }
 
-impl<S, N> SingleSigner<S, N>
+impl<S, I, N> SingleSigner<S, I, N>
 where
     S: Secret,
+    I: MaybeDefined<UserIndex>,
     N: MaybeDefined<Nonce>,
 {
+    pub async fn query_user_index<C>(&self, client: &C) -> anyhow::Result<UserIndex>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        let account_factory = client
+            .query_app_config::<dango_types::config::AppConfig>(None)
+            .await?
+            .addresses
+            .account_factory;
+
+        client
+            .query_wasm_smart(
+                account_factory,
+                account_factory::QueryAccountRequest {
+                    address: self.address,
+                },
+                None,
+            )
+            .await?
+            .params
+            .owner()
+            .ok_or_else(|| anyhow!("account {} is not a single signature account", self.address))
+    }
+
     pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
     where
         C: QueryClient,
@@ -51,31 +79,59 @@ where
     }
 }
 
-impl<S> SingleSigner<S, Undefined<Nonce>>
+impl<S> SingleSigner<S, Undefined<UserIndex>, Undefined<Nonce>>
 where
     S: Secret,
 {
     /// Create a new `SingleSigner` with the given secret key.
-    pub fn new(user_index: UserIndex, address: Addr, secret: S) -> Self {
+    pub fn new(address: Addr, secret: S) -> Self {
         Self {
-            user_index,
             address,
-            nonce: Undefined::new(),
             secret,
+            user_index: Undefined::new(),
+            nonce: Undefined::new(),
         }
     }
 }
 
-impl<S> SingleSigner<S, Undefined<Nonce>>
+impl<S, N> SingleSigner<S, Undefined<UserIndex>, N>
 where
     S: Secret,
+    N: MaybeDefined<Nonce>,
 {
-    pub fn with_nonce(self, nonce: Nonce) -> SingleSigner<S, Defined<Nonce>> {
+    pub fn with_user_index(self, user_index: UserIndex) -> SingleSigner<S, Defined<UserIndex>, N> {
         SingleSigner {
-            user_index: self.user_index,
             address: self.address,
-            nonce: Defined::new(nonce),
             secret: self.secret,
+            user_index: Defined::new(user_index),
+            nonce: self.nonce,
+        }
+    }
+
+    pub async fn with_query_user_index<C>(
+        self,
+        client: &C,
+    ) -> anyhow::Result<SingleSigner<S, Defined<UserIndex>, N>>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        let user_index = self.query_user_index(client).await?;
+        Ok(self.with_user_index(user_index))
+    }
+}
+
+impl<S, I> SingleSigner<S, I, Undefined<Nonce>>
+where
+    S: Secret,
+    I: MaybeDefined<UserIndex>,
+{
+    pub fn with_nonce(self, nonce: Nonce) -> SingleSigner<S, I, Defined<Nonce>> {
+        SingleSigner {
+            address: self.address,
+            secret: self.secret,
+            user_index: self.user_index,
+            nonce: Defined::new(nonce),
         }
     }
 
@@ -83,25 +139,20 @@ where
     pub async fn with_query_nonce<C>(
         self,
         client: &C,
-    ) -> anyhow::Result<SingleSigner<S, Defined<Nonce>>>
+    ) -> anyhow::Result<SingleSigner<S, I, Defined<Nonce>>>
     where
         C: QueryClient,
         anyhow::Error: From<C::Error>,
     {
         let nonce = self.query_next_nonce(client).await?;
-
-        Ok(SingleSigner {
-            user_index: self.user_index,
-            address: self.address,
-            nonce: Defined::new(nonce),
-            secret: self.secret,
-        })
+        Ok(self.with_nonce(nonce))
     }
 }
 
-impl<S, N> Addressable for SingleSigner<S, N>
+impl<S, I, N> Addressable for SingleSigner<S, I, N>
 where
     S: Secret,
+    I: MaybeDefined<UserIndex>,
     N: MaybeDefined<Nonce>,
 {
     fn address(&self) -> Addr {
@@ -109,7 +160,27 @@ where
     }
 }
 
-impl<S> Signer for SingleSigner<S, Defined<Nonce>>
+impl<S, N> SingleSigner<S, Defined<UserIndex>, N>
+where
+    S: Secret,
+    N: MaybeDefined<Nonce>,
+{
+    pub fn user_index(&self) -> UserIndex {
+        self.user_index.into_inner()
+    }
+}
+
+impl<S, I> SingleSigner<S, I, Defined<Nonce>>
+where
+    S: Secret,
+    I: MaybeDefined<UserIndex>,
+{
+    pub fn nonce(&self) -> Nonce {
+        self.nonce.into_inner()
+    }
+}
+
+impl<S> Signer for SingleSigner<S>
 where
     S: Secret,
 {
@@ -122,9 +193,9 @@ where
             sender: self.address,
             msgs,
             data: Metadata {
-                user_index: self.user_index,
                 chain_id: chain_id.to_string(),
-                nonce: self.nonce.into_inner(),
+                user_index: self.user_index(),
+                nonce: self.nonce(),
                 expiry: None, // TODO
             }
             .to_json_value()?,
@@ -137,11 +208,11 @@ where
         chain_id: &str,
         gas_limit: u64,
     ) -> StdResult<Tx> {
-        let nonce = self.nonce.into_inner();
+        let nonce = self.nonce();
         *self.nonce.inner_mut() += 1;
 
         let metadata = Metadata {
-            user_index: self.user_index,
+            user_index: self.user_index(),
             chain_id: chain_id.to_string(),
             nonce,
             expiry: None, // TODO
@@ -218,8 +289,9 @@ mod tests {
         let nonce = 0;
         let account_factory = Addr::mock(1);
 
-        let mut signer =
-            SingleSigner::new(user_index, address, Secp256k1::new_random()).with_nonce(nonce);
+        let mut signer = SingleSigner::new(address, Secp256k1::new_random())
+            .with_nonce(nonce)
+            .with_user_index(user_index);
 
         let tx = signer
             .sign_transaction(
@@ -270,8 +342,9 @@ mod tests {
         let nonce = 0;
         let account_factory = Addr::mock(1);
 
-        let mut signer =
-            SingleSigner::new(user_index, address, Eip712::new_random()).with_nonce(nonce);
+        let mut signer = SingleSigner::new(address, Eip712::new_random())
+            .with_nonce(nonce)
+            .with_user_index(user_index);
 
         let tx = signer
             .sign_transaction(

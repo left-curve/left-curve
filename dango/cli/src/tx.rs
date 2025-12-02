@@ -20,10 +20,6 @@ use {
 
 #[derive(Parser)]
 pub struct TxCmd {
-    /// Transaction sender's user index
-    #[arg(long)]
-    user_index: UserIndex,
-
     /// Transaction sender's address
     #[arg(long)]
     address: Addr,
@@ -31,6 +27,10 @@ pub struct TxCmd {
     /// Name of the key to sign transactions
     #[arg(long)]
     key: String,
+
+    /// Transaction sender's user index [default: query from chain]
+    #[arg(long)]
+    user_index: Option<UserIndex>,
 
     /// Account nonce [default: query from chain]
     #[arg(long)]
@@ -191,7 +191,16 @@ impl TxCmd {
             let password = read_password("🔑 Enter the password to decrypt the key".bold())?;
             let sk_bytes = Keystore::from_file(&key_path, &password)?;
             let sk = Secp256k1::from_bytes(sk_bytes)?;
-            let signer = SingleSigner::new(self.user_index, self.address, sk);
+            let signer = SingleSigner::new(self.address, sk);
+
+            // Set or query the signer's user index.
+            let signer = if let Some(user_index) = self.user_index {
+                signer.with_user_index(user_index)
+            } else {
+                signer.with_query_user_index(&client).await?
+            };
+
+            // Set or query the signer's nonce.
             if let Some(nonce) = self.nonce {
                 signer.with_nonce(nonce)
             } else {
