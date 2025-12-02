@@ -30,7 +30,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
     let msgs = vec![Message::execute(
         contracts.account_factory,
         &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
+            params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
         },
         Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
@@ -58,11 +58,11 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
             amount
             denom
             createdAt
-            accounts { address users { username }}
-            fromAccount { address users { username }}
-            toAccount { address users { username }}
+            accounts { address users { userIndex }}
+            fromAccount { address users { userIndex }}
+            toAccount { address users { userIndex }}
           }
-          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { userIndex }} fromAccount { address users { userIndex }} toAccount { address users { userIndex }} } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -126,14 +126,14 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn graphql_transfers_with_username() -> anyhow::Result<()> {
+async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
-    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo2");
+    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     suite
         .transfer(
@@ -146,8 +146,8 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
-      query Transfers($username: String) {
-        transfers(username: $username) {
+      query Transfers($userIndex: String) {
+        transfers(userIndex: $userIndex) {
           nodes {
             id
             idx
@@ -158,18 +158,18 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
             amount
             denom
             createdAt
-            accounts { address users { username }}
-            fromAccount { address users { username }}
-            toAccount { address users { username }}
+            accounts { address users { userIndex }}
+            fromAccount { address users { userIndex }}
+            toAccount { address users { userIndex }}
           }
-          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { userIndex }} fromAccount { address users { userIndex }} toAccount { address users { userIndex }} } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
     "#;
 
     let variables = serde_json::json!({
-        "username": user1.username,
+        "userIndex": user1.user_index(),
     })
     .as_object()
     .unwrap()
@@ -214,7 +214,7 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
                             .and_then(|o| o.get("users"))
                             .and_then(|u| u.as_array())
                             .and_then(|a| a.first())
-                            .and_then(|u| u.get("username"))
+                            .and_then(|u| u.get("userIndex"))
                             .and_then(|u| u.as_str()))
                         .collect::<Vec<_>>()
                 )
@@ -232,7 +232,7 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
                             .and_then(|o| o.get("users"))
                             .and_then(|u| u.as_array())
                             .and_then(|a| a.first())
-                            .and_then(|u| u.get("username"))
+                            .and_then(|u| u.get("userIndex"))
                             .and_then(|u| u.as_str()))
                         .collect::<Vec<_>>()
                 )
@@ -246,14 +246,14 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
+async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
-    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo2");
+    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     suite
         .transfer(
@@ -264,8 +264,8 @@ async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
         .should_succeed();
 
     let graphql_query = r#"
-      query Transfers($username: String) {
-        transfers(username: $username) {
+      query Transfers($userIndex: String) {
+        transfers(userIndex: $userIndex) {
           nodes {
             id
             idx
@@ -276,18 +276,18 @@ async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
             amount
             denom
             createdAt
-            accounts { address users { username }}
-            fromAccount { address users { username }}
-            toAccount { address users { username }}
+            accounts { address users { userIndex }}
+            fromAccount { address users { userIndex }}
+            toAccount { address users { userIndex }}
           }
-          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { userIndex }} fromAccount { address users { userIndex }} toAccount { address users { userIndex }} } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
     "#;
 
     let variables = serde_json::json!({
-        "username": "wrong_username",
+        "userIndex": 114514, // a random user index that doesn't exist
     })
     .as_object()
     .unwrap()
@@ -329,7 +329,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
         let msgs = vec![Message::execute(
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
+                params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
             },
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )?];
@@ -358,11 +358,11 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
             amount
             denom
             createdAt
-            accounts { address users { username }}
-            fromAccount { address users { username }}
-            toAccount { address users { username }}
+            accounts { address users { userIndex }}
+            fromAccount { address users { userIndex }}
+            toAccount { address users { userIndex }}
           }
-          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { userIndex }} fromAccount { address users { userIndex }} toAccount { address users { userIndex }} } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -483,7 +483,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     let msgs = vec![Message::execute(
         contracts.account_factory,
         &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
+            params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
         },
         Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
@@ -621,7 +621,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     let msgs = vec![Message::execute(
         contracts.account_factory,
         &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
+            params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
         },
         Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
@@ -669,9 +669,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
             let msgs = vec![Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Spot(single::Params::new(
-                        accounts.user1.username.clone(),
-                    )),
+                    params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
                 },
                 Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
             )?];
