@@ -215,10 +215,11 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                             .and_then(|u| u.as_array())
                             .and_then(|a| a.first())
                             .and_then(|u| u.get("userIndex"))
-                            .and_then(|u| u.as_str()))
+                            .and_then(|u| u.as_number())
+                            .and_then(|u| u.as_u64()))
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec!["foo"]);
+                .is_equal_to(vec![user1.user_index() as u64]);
 
                 assert_that!(
                     response
@@ -233,10 +234,11 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                             .and_then(|u| u.as_array())
                             .and_then(|a| a.first())
                             .and_then(|u| u.get("userIndex"))
-                            .and_then(|u| u.as_str()))
+                            .and_then(|u| u.as_number())
+                            .and_then(|u| u.as_u64()))
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec!["foo2"]);
+                .is_equal_to(vec![user2.user_index() as u64]);
 
                 Ok::<(), anyhow::Error>(())
             })
