@@ -87,9 +87,9 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
             className={trigger({ className: classNames?.trigger })}
           >
             {placeholder && !selected ? (
-              <span>{placeholder}</span>
+              <span className="lc-select-trigger-value">{placeholder}</span>
             ) : (
-              <span>
+              <span className="lc-select-trigger-value">
                 {
                   (
                     Children.toArray(children).find(
@@ -146,7 +146,7 @@ const Item: React.FC<PropsWithChildren<SelectItemProps>> = ({ value, children })
     <li
       value={value}
       onClick={() => setSelected(value)}
-      className={twMerge(slots.listBoxItem(), classNames?.listBoxItem)}
+      className={twMerge("lc-select-list-item", slots.listBoxItem(), classNames?.listBoxItem)}
     >
       {children}
     </li>
