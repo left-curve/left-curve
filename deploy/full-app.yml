@@ -18,6 +18,16 @@
         commit_short_sha: "{{ lookup('pipe', 'git rev-parse --short=7 HEAD') }}"
       run_once: true
 
+    - name: Get current commit title
+      set_fact:
+        commit_title: "{{ lookup('pipe', 'git log -1 --pretty=%s') }}"
+      run_once: true
+
+    - name: Get current commit author
+      set_fact:
+        commit_author: "{{ lookup('pipe', 'git log -1 --pretty=%an') }}"
+      run_once: true
+
     - name: Set timestamp and deployment name on all hosts
       set_fact:
         deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
@@ -89,6 +99,12 @@
                 - name: "Commit"
                   value: "{{ commit_short_sha }}"
                   inline: true
+                - name: "Commit title"
+                  value: "{{ commit_title | default('-', true) }}"
+                  inline: false
+                - name: "Author"
+                  value: "{{ commit_author | default('-', true) }}"
+                  inline: true
               timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
       delegate_to: localhost
       run_once: true
@@ -135,6 +151,12 @@
                       inline: true
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
@@ -208,6 +230,12 @@
                       inline: true
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
@@ -399,6 +427,12 @@
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
                       inline: true
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
+                      inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
           run_once: true
@@ -441,6 +475,12 @@
                       inline: true
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
