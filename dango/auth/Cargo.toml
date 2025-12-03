@@ -18,3 +18,9 @@ grug          = { workspace = true }
 hex           = { workspace = true }
 serde         = { workspace = true }
 sha2          = { workspace = true }
+
+[dev-dependencies]
+hex-literal = { workspace = true }
+identity    = { workspace = true }
+k256        = { workspace = true }
+rand        = { workspace = true }

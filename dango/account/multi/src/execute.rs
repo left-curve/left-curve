@@ -8,7 +8,7 @@ use {
             InstantiateMsg,
             multi::{ExecuteMsg, Proposal, ProposalId, Status, Vote},
         },
-        account_factory::{QueryAccountRequest, Username},
+        account_factory::{QueryAccountRequest, UserIndex},
         auth::Metadata,
     },
     grug::{
@@ -36,14 +36,14 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // The only type of transaction a multisig account is allowed to emit is to
     // execute itself. Everything else needs to be done through proposals.
     // Additionally, if the action is proposing or voting, the proposer/voter's
-    // username must match the transaction signer's username.
+    // user index must match the transaction signer's user index.
     for msg in tx.msgs.iter() {
         match msg {
             Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
                 // If the action is to vote for a proposal:
                 //
-                // 1. The voter username in `ExecuteMsg::Vote` must batch
-                //    the signer username in `Metadata`.
+                // 1. The voter user index in `ExecuteMsg::Vote` must batch
+                //    the signer user index in `Metadata`.
                 //
                 // 2. The voter/signer must be a member _at the time the
                 //    proposal was created_. It doesn't matter whether they
@@ -53,8 +53,8 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
                         proposal_id, voter, ..
                     } => {
                         ensure!(
-                            voter == metadata.username,
-                            "can't vote with a different username"
+                            voter == metadata.user_index,
+                            "can't vote with a different user index"
                         );
 
                         let proposal = PROPOSALS.load(ctx.storage, proposal_id)?;
@@ -166,7 +166,7 @@ fn propose(
 fn do_vote(
     ctx: MutableCtx,
     proposal_id: ProposalId,
-    voter: Username,
+    voter: UserIndex,
     vote: Vote,
     execute: bool,
 ) -> anyhow::Result<Response> {
@@ -176,7 +176,7 @@ fn do_vote(
     // Unlike Cosmos SDK's x/gov module, we don't allow changing votes.
     // Whereas DAO voters sometimes change votes, this rarely happens for multisig.
     ensure!(
-        !VOTES.has(ctx.storage, (proposal_id, &voter)),
+        !VOTES.has(ctx.storage, (proposal_id, voter)),
         "user `{voter}` has already voted in this proposal"
     );
 
@@ -194,10 +194,10 @@ fn do_vote(
             // Update the vote count.
             match vote {
                 Vote::Yes => {
-                    *yes += params.power_of(&voter)?;
+                    *yes += params.power_of(voter)?;
                 },
                 Vote::No => {
-                    *no += params.power_of(&voter)?;
+                    *no += params.power_of(voter)?;
                 },
             }
 
@@ -252,7 +252,7 @@ fn do_vote(
     };
 
     // Save the vote.
-    VOTES.save(ctx.storage, (proposal_id, &voter), &vote)?;
+    VOTES.save(ctx.storage, (proposal_id, voter), &vote)?;
 
     // Save the updated proposal.
     PROPOSALS.save(ctx.storage, proposal_id, &proposal)?;
@@ -294,7 +294,7 @@ mod tests {
             Addr, AuthMode, Coins, Duration, GenericResultExt, Json, JsonSerExt, MOCK_BLOCK,
             MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp, btree_map,
         },
-        std::{collections::BTreeMap, str::FromStr},
+        std::collections::BTreeMap,
         test_case::test_case,
     };
 
@@ -339,9 +339,9 @@ mod tests {
 
     #[test]
     fn authenticating() {
-        let member1 = Username::from_str("member1").unwrap();
-        let member2 = Username::from_str("member2").unwrap();
-        let member3 = Username::from_str("member3").unwrap();
+        let member1 = 1;
+        let member2 = 2;
+        let member3 = 3;
         let chain_id = String::from("test");
 
         // Create a multisig with 3 signers.
@@ -355,7 +355,7 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                for member in [&member1, &member2, &member3] {
+                for member in [member1, member2, member3] {
                     ACCOUNTS_BY_USER.insert(storage, (member, MULTI)).unwrap();
                 }
             });
@@ -375,7 +375,7 @@ mod tests {
                     Message::transfer(Addr::mock(123), Coins::new()).unwrap(),
                 ]),
                 data: Metadata {
-                    username: member1,
+                    user_index: member1,
                     chain_id,
                     nonce: 0,
                     expiry: None,
@@ -411,7 +411,7 @@ mod tests {
                     .unwrap(),
                 ]),
                 data: Metadata {
-                    username: member3,
+                    user_index: member3,
                     chain_id: "".to_string(),
                     nonce: 0,
                     expiry: None,
@@ -423,23 +423,23 @@ mod tests {
 
             assert!(res.is_err_and(|err| {
                 err.to_string()
-                    .contains("can't vote with a different username")
+                    .contains("can't vote with a different user index")
             }));
         }
     }
 
     #[test]
     fn creating_proposal() {
-        let m1 = Username::from_str("member1").unwrap();
-        let m2 = Username::from_str("member2").unwrap();
-        let m3 = Username::from_str("member3").unwrap();
-        let m4 = Username::from_str("member4").unwrap();
+        let m1 = 1;
+        let m2 = 2;
+        let m3 = 3;
+        let m4 = 4;
 
         let mut params = Params {
             members: btree_map! {
-                m1.clone() => NonZero::new(1).unwrap(),
-                m2.clone() => NonZero::new(1).unwrap(),
-                m3.clone() => NonZero::new(1).unwrap(),
+                m1 => NonZero::new_unchecked(1),
+                m2 => NonZero::new_unchecked(1),
+                m3 => NonZero::new_unchecked(1),
             },
             voting_period: NonZero::new(Duration::from_seconds(100)).unwrap(),
             threshold: NonZero::new(2).unwrap(),
@@ -493,7 +493,7 @@ mod tests {
 
         // Change the params, then create the 2nd proposal.
         // The new proposal should use the updated params.
-        params.members.insert(m4.clone(), NonZero::new(1).unwrap());
+        params.members.insert(m4, NonZero::new(1).unwrap());
 
         ctx.update_querier(|querier| {
             querier.update_smart_query_handler(move |contract, data| {
@@ -574,7 +574,7 @@ mod tests {
             .with_sender(MULTI)
             .with_funds(Coins::new());
 
-        let voter = Username::from_str("member").unwrap();
+        let voter = 456;
         let vote = Vote::Yes;
         let proposal_id = 123;
 
@@ -599,14 +599,14 @@ mod tests {
 
     #[test_case(
         btree_map! {
-            Username::from_str("member1").unwrap() => Vote::Yes,
+            1 => Vote::Yes,
         },
-        Username::from_str("member1").unwrap(),
+        1,
         Vote::No,
         false,
         None,
         |result| result.is_err_and(|err| {
-            err.to_string().contains("user `member1` has already voted in this proposal")
+            err.to_string().contains("user `1` has already voted in this proposal")
         }),
         // Transaction is reverted, no need to check proposal status.
         |_| true;
@@ -614,21 +614,21 @@ mod tests {
     )]
     #[test_case(
         btree_map! {},
-        Username::from_str("jake").unwrap(),
+        8, // a user that isn't in the member set
         Vote::Yes,
         false,
         None,
         |result| result.is_err_and(|err| {
-            err.to_string().contains("user `jake` is not authorized to create or vote in this proposal")
+            err.to_string().contains("user `8` is not authorized to create or vote in this proposal")
         }),
         |_| true;
         "non-member voting"
     )]
     #[test_case(
         btree_map! {
-            Username::from_str("member1").unwrap() => Vote::Yes,
+            1 => Vote::Yes,
         },
-        Username::from_str("member2").unwrap(),
+        2,
         Vote::Yes,
         true,
         None,
@@ -638,9 +638,9 @@ mod tests {
     )]
     #[test_case(
         btree_map! {
-            Username::from_str("member1").unwrap() => Vote::Yes,
+            1 => Vote::Yes,
         },
-        Username::from_str("member2").unwrap(),
+        2,
         Vote::Yes,
         false,
         None,
@@ -650,9 +650,9 @@ mod tests {
     )]
     #[test_case(
         btree_map! {
-            Username::from_str("member1").unwrap() => Vote::Yes,
+            1 => Vote::Yes,
         },
-        Username::from_str("member2").unwrap(),
+        2,
         Vote::Yes,
         true,
         Some(Duration::from_seconds(100)),
@@ -664,9 +664,9 @@ mod tests {
     )]
     #[test_case(
         btree_map! {
-            Username::from_str("member1").unwrap() => Vote::Yes,
+            1 => Vote::Yes,
         },
-        Username::from_str("member2").unwrap(),
+        2,
         Vote::Yes,
         false,
         Some(Duration::from_seconds(100)),
@@ -681,9 +681,9 @@ mod tests {
     )]
     #[test_case(
         btree_map! {
-            Username::from_str("member1").unwrap() => Vote::No,
+            1 => Vote::No,
         },
-        Username::from_str("member2").unwrap(),
+        2,
         Vote::No,
         false,
         None,
@@ -693,9 +693,9 @@ mod tests {
     )]
     #[test_case(
         btree_map! {
-            Username::from_str("member1").unwrap() => Vote::Yes,
+            1 => Vote::Yes,
         },
-        Username::from_str("member2").unwrap(),
+        2,
         Vote::No,
         false,
         None,
@@ -704,22 +704,22 @@ mod tests {
         "not enough vote to either pass or fail yet"
     )]
     fn voting(
-        previous_votes: BTreeMap<Username, Vote>,
-        voter: Username,
+        previous_votes: BTreeMap<UserIndex, Vote>,
+        voter: UserIndex,
         vote: Vote,
         execute: bool,
         timelock: Option<Duration>,
         result_predicate: fn(anyhow::Result<Response>) -> bool,
         proposal_predicate: fn(Proposal) -> bool,
     ) {
-        let member1 = Username::from_str("member1").unwrap();
-        let member2 = Username::from_str("member2").unwrap();
-        let member3 = Username::from_str("member3").unwrap();
+        let member1 = 1;
+        let member2 = 2;
+        let member3 = 3;
 
         let members = btree_map! {
-            member1.clone() => NonZero::new(1).unwrap(),
-            member2.clone() => NonZero::new(1).unwrap(),
-            member3.clone() => NonZero::new(1).unwrap(),
+            member1 => NonZero::new_unchecked(1),
+            member2 => NonZero::new_unchecked(1),
+            member3 => NonZero::new_unchecked(1),
         };
 
         let previous_yes_votes = previous_votes
@@ -776,7 +776,7 @@ mod tests {
         // Save previous votes.
         for (voter, vote) in previous_votes {
             VOTES
-                .save(&mut ctx.storage, (proposal_id, &voter), &vote)
+                .save(&mut ctx.storage, (proposal_id, voter), &vote)
                 .unwrap();
         }
 
@@ -784,7 +784,7 @@ mod tests {
         assert!(result_predicate(do_vote(
             ctx.as_mutable(),
             proposal_id,
-            voter.clone(),
+            voter,
             vote,
             execute,
         )));

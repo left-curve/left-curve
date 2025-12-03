@@ -1,6 +1,7 @@
 use {
     async_graphql::{futures_util::stream::Stream, *},
     dango_indexer_sql::entity,
+    dango_types::account_factory::UserIndex,
     futures_util::stream::{StreamExt, once},
     indexer_httpd::graphql::subscription::MAX_PAST_BLOCKS,
     indexer_sql::entity::blocks::latest_block_height,
@@ -20,12 +21,12 @@ impl AccountSubscription {
     async fn get_accounts(
         app_ctx: &crate::context::Context,
         block_heights: RangeInclusive<i64>,
-        username: Option<String>,
+        user_index: Option<UserIndex>,
     ) -> Vec<entity::accounts::Model> {
         let mut query = entity::accounts::Entity::find()
             .filter(entity::accounts::Column::CreatedBlockHeight.is_in(block_heights));
 
-        if let Some(username) = username {
+        if let Some(user_index) = user_index {
             query = query
                 .join(
                     JoinType::InnerJoin,
@@ -35,7 +36,7 @@ impl AccountSubscription {
                     JoinType::InnerJoin,
                     entity::accounts_users::Relation::User.def(),
                 )
-                .filter(entity::users::Column::Username.eq(&username));
+                .filter(entity::users::Column::UserIndex.eq(user_index));
         }
 
         let query = query.order_by_desc(entity::accounts::Column::CreatedBlockHeight);
@@ -53,7 +54,7 @@ impl AccountSubscription {
     async fn accounts<'a>(
         &self,
         ctx: &Context<'a>,
-        username: Option<String>,
+        user_index: Option<UserIndex>,
         // The block height of the transfer
         // This is used to get the older account creations in case of disconnection
         since_block_height: Option<u64>,
@@ -72,8 +73,6 @@ impl AccountSubscription {
             return Err(async_graphql::Error::new("`since_block_height` is too old"));
         }
 
-        let u = username.clone();
-
         #[cfg(feature = "metrics")]
         let gauge_guard = Arc::new(GaugeGuard::new(
             "graphql.subscriptions.active",
@@ -87,16 +86,19 @@ impl AccountSubscription {
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
-            async { Self::get_accounts(app_ctx, block_range, u).await }
+            async move { Self::get_accounts(app_ctx, block_range, user_index).await }
         })
         .chain(stream.then(move |block_height| {
-            let u = username.clone();
-
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
             async move {
-                Self::get_accounts(app_ctx, block_height as i64..=block_height as i64, u).await
+                Self::get_accounts(
+                    app_ctx,
+                    block_height as i64..=block_height as i64,
+                    user_index,
+                )
+                .await
             }
         }))
         .filter_map(|maybe_accounts| async move {

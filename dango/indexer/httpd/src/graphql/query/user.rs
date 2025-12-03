@@ -4,6 +4,7 @@ use {
         *,
     },
     dango_indexer_sql::entity,
+    dango_types::account_factory::UserIndex,
     indexer_httpd::context::Context,
     sea_orm::{
         ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
@@ -14,14 +15,14 @@ use {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserCursor {
     created_block_height: u64,
-    username: String,
+    user_index: UserIndex,
 }
 
 impl From<entity::users::Model> for UserCursor {
     fn from(user: entity::users::Model) -> Self {
         Self {
             created_block_height: user.created_block_height as u64,
-            username: user.username,
+            user_index: user.user_index,
         }
     }
 }
@@ -38,12 +39,12 @@ impl UserQuery {
     async fn user(
         &self,
         ctx: &async_graphql::Context<'_>,
-        username: String,
+        user_index: UserIndex,
     ) -> Result<Option<entity::users::Model>> {
         let app_ctx = ctx.data::<Context>()?;
 
         Ok(entity::users::Entity::find()
-            .filter(entity::users::Column::Username.eq(&username))
+            .filter(entity::users::Column::UserIndex.eq(user_index))
             .one(&app_ctx.db)
             .await?)
     }
@@ -102,7 +103,7 @@ impl UserQuery {
                 //  sort must be before `find_with_related`
                 query = query
                     .order_by(entity::users::Column::CreatedBlockHeight, Order::Desc)
-                    .order_by(entity::users::Column::Username, Order::Desc);
+                    .order_by(entity::users::Column::UserIndex, Order::Desc);
 
                 let mut query = query.find_with_related(entity::public_keys::Entity);
 

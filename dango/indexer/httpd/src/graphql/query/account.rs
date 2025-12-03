@@ -1,6 +1,7 @@
 use {
     async_graphql::{types::connection::*, *},
     dango_indexer_sql::entity,
+    dango_types::account_factory::UserIndex,
     indexer_httpd::{
         context::Context,
         graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
@@ -69,7 +70,7 @@ impl AccountQuery {
         sort_by: Option<SortBy>,
         // The block height at which the account was created
         block_height: Option<u64>,
-        username: Option<String>,
+        user_index: Option<UserIndex>,
         address: Option<String>,
     ) -> Result<
         Connection<OpaqueCursor<AccountCursor>, entity::accounts::Model, EmptyFields, EmptyFields>,
@@ -98,7 +99,7 @@ impl AccountQuery {
                         query = query.filter(entity::accounts::Column::Address.eq(&address));
                     }
 
-                    if let Some(username) = username {
+                    if let Some(user_index) = user_index {
                         query = query
                             .join(
                                 JoinType::InnerJoin,
@@ -108,7 +109,7 @@ impl AccountQuery {
                                 JoinType::InnerJoin,
                                 entity::accounts_users::Relation::User.def(),
                             )
-                            .filter(entity::users::Column::Username.eq(&username));
+                            .filter(entity::users::Column::UserIndex.eq(user_index));
                     }
 
                     Ok(query)

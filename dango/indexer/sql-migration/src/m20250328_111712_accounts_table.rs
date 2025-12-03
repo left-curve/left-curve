@@ -15,7 +15,7 @@ impl MigrationTrait for Migration {
                     .table(User::Table)
                     .if_not_exists()
                     .col(pk_uuid(User::Id))
-                    .col(string_uniq(User::Username))
+                    .col(integer_uniq(User::UserIndex))
                     .col(date_time(User::CreatedAt))
                     .col(
                         ColumnDef::new(User::CreatedBlockHeight)
@@ -30,9 +30,9 @@ impl MigrationTrait for Migration {
             .create_index(
                 sea_query::Index::create()
                     .if_not_exists()
-                    .name("users-username")
+                    .name("users-user_index")
                     .table(User::Table)
-                    .col(User::Username)
+                    .col(User::UserIndex)
                     .unique()
                     .to_owned(),
             )
@@ -103,7 +103,7 @@ impl MigrationTrait for Migration {
                     .table(PublicKey::Table)
                     .if_not_exists()
                     .col(pk_uuid(PublicKey::Id))
-                    .col(string(PublicKey::Username))
+                    .col(integer(PublicKey::UserIndex))
                     .col(string(PublicKey::KeyHash))
                     .col(string(PublicKey::PublicKey))
                     .col(small_integer(PublicKey::KeyType))
@@ -132,9 +132,9 @@ impl MigrationTrait for Migration {
             .create_index(
                 sea_query::Index::create()
                     .if_not_exists()
-                    .name("public_keys-username")
+                    .name("public_keys-user_index")
                     .table(PublicKey::Table)
-                    .col(PublicKey::Username)
+                    .col(PublicKey::UserIndex)
                     .to_owned(),
             )
             .await

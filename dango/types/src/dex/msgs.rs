@@ -1,6 +1,6 @@
 use {
     crate::{
-        account_factory::Username,
+        account_factory::UserIndex,
         dex::{
             Direction, OrderId, PairParams, PairUpdate, Price, RestingOrderBookState, TimeInForce,
         },
@@ -301,7 +301,8 @@ pub enum QueryMsg {
     #[returns(Udec128)]
     VolumeByUser {
         /// The username to query trading volume for.
-        user: Username,
+        // TODO: allow query with either username or user index.
+        user: UserIndex,
         /// The start timestamp to query trading volume for. If not provided,
         /// username's total trading volume will be returned.
         since: Option<Timestamp>,
