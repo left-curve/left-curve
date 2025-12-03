@@ -18,6 +18,16 @@
         commit_short_sha: "{{ lookup('pipe', 'git rev-parse --short=7 HEAD') }}"
       run_once: true
 
+    - name: Get current commit title
+      set_fact:
+        commit_title: "{{ lookup('pipe', 'git log -1 --pretty=%s') }}"
+      run_once: true
+
+    - name: Get current commit author
+      set_fact:
+        commit_author: "{{ lookup('pipe', 'git log -1 --pretty=%an') }}"
+      run_once: true
+
     - name: Set timestamp and deployment name on all hosts
       set_fact:
         deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
@@ -77,6 +87,9 @@
               # description: "{{ '🚀 Starting deployment ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
               color: 3447003
               fields:
+                - name: "Commit title"
+                  value: "{{ commit_title | default('-', true) }}"
+                  inline: false
                 - name: "Triggered by"
                   value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                   inline: true
@@ -88,6 +101,9 @@
                   inline: true
                 - name: "Commit"
                   value: "{{ commit_short_sha }}"
+                  inline: true
+                - name: "Author"
+                  value: "{{ commit_author | default('-', true) }}"
                   inline: true
               timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
       delegate_to: localhost
@@ -121,6 +137,9 @@
                   # description: "{{ '❌ Deployment FAILED (unreachable host) for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 15158332
                   fields:
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
@@ -135,6 +154,9 @@
                       inline: true
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
@@ -197,6 +219,9 @@
                 - title: "❌ Deployment Failed ❌"
                   color: 15158332
                   fields:
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
@@ -208,6 +233,9 @@
                       inline: true
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
@@ -387,6 +415,9 @@
                   # description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
                   color: 3066993
                   fields:
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
@@ -398,6 +429,9 @@
                       inline: true
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
@@ -427,6 +461,9 @@
                     - name: "PR title"
                       value: "{{ pr_title | default('-', true) }}"
                       inline: false
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
                     - name: "Triggered by"
                       value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
                       inline: true
@@ -441,6 +478,9 @@
                       inline: true
                     - name: "Commit"
                       value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
