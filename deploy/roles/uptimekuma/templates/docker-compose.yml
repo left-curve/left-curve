@@ -1,0 +1,11 @@
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    volumes:
+      - {{ uptimekuma_dir }}/data:/app/data
+    ports:
+      - "{{ tailscale_ip }}:3001:3001"
+      - "{{ wireguard_ip }}:3001:3001"
+    restart: unless-stopped
+

@@ -1,0 +1,8 @@
+- hosts: uptimekuma
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+  roles:
+    - uptimekuma
+
