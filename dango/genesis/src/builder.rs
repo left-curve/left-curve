@@ -2,7 +2,7 @@ use {
     crate::{Addresses, Codes, Contracts, GenesisOption},
     dango_types::{
         account_factory::{self, AccountType, NewUserSalt},
-        bank,
+        bank, bitcoin,
         config::{AppAddresses, AppConfig, Hyperlane},
         constants::dango,
         dex, gateway, lending, oracle, taxman, vesting, warp,
@@ -33,6 +33,7 @@ where
     let account_multi_code_hash = upload(&mut msgs, codes.account_multi);
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let bank_code_hash = upload(&mut msgs, codes.bank);
+    let bitcoin_code_hash = upload(&mut msgs, codes.bitcoin);
     let dex_code_hash = upload(&mut msgs, codes.dex);
     let gateway_code_hash = upload(&mut msgs, codes.gateway);
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
@@ -180,6 +181,26 @@ where
         owner,
     )?;
 
+    // Instantiate the bitcoin bridge contract.
+    let bitcoin = instantiate(
+        &mut msgs,
+        bitcoin_code_hash,
+        &bitcoin::InstantiateMsg {
+            config: bitcoin::Config {
+                network: opt.bitcoin.network,
+                vault: opt.bitcoin.vault,
+                multisig: opt.bitcoin.multisig,
+                sats_per_vbyte: opt.bitcoin.sats_per_vbyte,
+                fee_rate_updater: *addresses.get(&opt.bitcoin.fee_rate_updater).unwrap(),
+                minimum_deposit: opt.bitcoin.minimum_deposit,
+                max_output_per_tx: opt.bitcoin.max_output_per_tx,
+            },
+        },
+        "dango/bitcoin",
+        "dango/bitcoin",
+        owner,
+    )?;
+
     // Instantiate the gateway contract.
     let gateway = instantiate(
         &mut msgs,
@@ -187,9 +208,16 @@ where
         &gateway::InstantiateMsg {
             routes: opt
                 .gateway
-                .warp_routes
+                .routes
                 .into_iter()
-                .map(|(part, remote)| (part, warp, remote))
+                .map(|(part, remote)| {
+                    let contract = match remote {
+                        gateway::Remote::Warp { .. } => warp,
+                        gateway::Remote::Bitcoin => bitcoin,
+                    };
+
+                    (part, contract, remote)
+                })
                 .collect(),
             rate_limits: opt.gateway.rate_limits,
             withdrawal_fees: opt.gateway.withdrawal_fees,
@@ -275,6 +303,7 @@ where
     let contracts = Contracts {
         account_factory,
         bank,
+        bitcoin,
         dex,
         gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
@@ -290,6 +319,7 @@ where
         bank,
         taxman,
         cronjobs: btree_map! {
+            bitcoin => opt.bitcoin.withdraw_timeout,
             dex => Duration::ZERO, // Important: DEX cronjob is to be invoked at end of every block.
             gateway => opt.gateway.rate_limit_refresh_period,
         },
@@ -303,6 +333,7 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
+            bitcoin,
             dex,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
