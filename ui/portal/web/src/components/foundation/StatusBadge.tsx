@@ -108,7 +108,9 @@ export const StatusBadge: React.FC = () => {
               <Button
                 variant="link"
                 className="py-0 h-fit flex gap-1 items-center"
-                onClick={() => window.open("https://status.dango.exchange/", "_blank")}
+                onClick={() =>
+                  window.open("https://status.dango.exchange/", "_blank", "noopener,noreferrer")
+                }
               >
                 {m["statusBadge.details"]()}
                 <IconLink className="w-4 h-4" />
@@ -122,7 +124,7 @@ export const StatusBadge: React.FC = () => {
           </div>
         }
         classNames={{
-          menu: "p-6 shadow-none border border-outline-secondary-gray",
+          menu: "p-6 border border-outline-secondary-gray",
           panel: "px-4 py-2",
         }}
       />
