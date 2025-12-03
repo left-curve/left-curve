@@ -80,8 +80,20 @@
     mode: "{{ item.mode }}"
   loop:
     - { src: "env.j2", dest: ".env", mode: "0600" }
-    - { src: "config.yml", dest: "config.yml", mode: "0644" }
     - { src: "docker-compose.yml", dest: "docker-compose.yml", mode: "0644" }
+
+- name: Copy cloudflared config (default then host override)
+  become: true
+  become_user: root
+  template:
+    src: "{{ item }}"
+    dest: "{{ cloudflared_dir }}/config.yml"
+    owner: "{{ deploy_user }}"
+    mode: "0644"
+  loop:
+    - "config.yml"
+    - "config-{{ hostname }}.yml"
+  ignore_errors: yes
 
 - name: Create cloudflare network
   community.docker.docker_network:
