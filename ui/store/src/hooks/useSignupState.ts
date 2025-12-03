@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useSubmitTx, useConnectors, usePublicClient, useConfig } from "@left-curve/store";
+import { useConnectors } from "./useConnectors.js";
+import { usePublicClient } from "./usePublicClient.js";
+import { useConfig } from "./useConfig.js";
+import { useSubmitTx } from "./useSubmitTx.js";
 import { createKeyHash } from "@left-curve/dango";
 import { registerUser } from "@left-curve/dango/actions";
 
