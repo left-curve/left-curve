@@ -213,6 +213,37 @@
         facility: local0
         priority: info
         ident: dango
+
+    - name: Notify Discord of delete success
+      when:
+        - not (deploy_failed | default(false))
+        - discord_webhook is defined
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        status_code: 204
+        body_format: json
+        headers:
+          Content-Type: application/json
+        body:
+          username: "{{ discord_username | default('Deploy Bot') }}"
+          avatar_url: "{{ discord_avatar_url }}"
+          embeds:
+            - title: "Deployment Deleted"
+              color: 3066993
+              fields:
+                - name: "Triggered by"
+                  value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                  inline: false
+                - name: "Deployment"
+                  value: "{{ deployment_name }}"
+                  inline: true
+              timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+      delegate_to: localhost
+      run_once: true
+      ignore_errors: true
+      become: false
+
 - hosts: monitoring
   become: true
   become_user: "{{ deploy_user }}"

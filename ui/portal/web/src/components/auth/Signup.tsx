@@ -1,5 +1,7 @@
 import {
   ensureErrorMessage,
+  IconErrorCircle,
+  IconSuccessCircle,
   IconWallet,
   useApp,
   useInputs,
@@ -25,7 +27,6 @@ import { wait } from "@left-curve/dango/utils";
 
 import {
   Button,
-  CheckCircleIcon,
   Checkbox,
   ExpandOptions,
   IconAlert,
@@ -34,7 +35,6 @@ import {
   ResizerContainer,
   Spinner,
   Stepper,
-  XCircleIcon,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
 import { AuthCarousel } from "./AuthCarousel";
@@ -397,9 +397,9 @@ const Username: React.FC = () => {
           isFetching ? (
             <Spinner size="sm" color="gray" />
           ) : errorMessage ? (
-            <XCircleIcon className="stroke-primitives-red-light-400 stroke-2" />
+            <IconErrorCircle className="text-primitives-red-light-400" />
           ) : isUsernameAvailable ? (
-            <CheckCircleIcon className="text-status-success stroke-2" />
+            <IconSuccessCircle className="text-status-success" />
           ) : null
         }
       />
