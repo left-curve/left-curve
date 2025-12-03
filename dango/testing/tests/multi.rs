@@ -10,7 +10,7 @@ use {
         },
         account_factory::{
             self, Account, AccountParamUpdates, AccountParams, QueryAccountRequest,
-            QueryAccountsByUserRequest, Salt, UserIndex,
+            QueryAccountsByUserRequest, Salt, UserIndex, UserIndexOrName,
         },
         auth::Key,
         constants::usdc,
@@ -95,7 +95,7 @@ fn multi_creation() {
     ] {
         suite
             .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
-                user_index: member.user_index(),
+                user: UserIndexOrName::Index(member.user_index()),
             })
             .should_succeed_and_equal(btree_map! {
                 // Query response should include the user's own spot account as
@@ -281,14 +281,14 @@ fn proposal_passing_with_manual_execution() {
     // The new member
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
-            user_index: accounts.user4.user_index(),
+            user: UserIndexOrName::Index(accounts.user4.user_index()),
         })
         .should_succeed_and(|accounts| accounts.contains_key(&multi.address()));
 
     // The removed member
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
-            user_index: accounts.user3.user_index(),
+            user: UserIndexOrName::Index(accounts.user3.user_index()),
         })
         .should_succeed_and(|accounts| !accounts.contains_key(&multi.address()));
 }

@@ -8,8 +8,21 @@ use {
     },
     grug::{Addr, Coins, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
     sha2::Sha256,
-    std::collections::{BTreeMap, BTreeSet},
+    std::collections::BTreeMap,
 };
+
+#[grug::derive(Serde)]
+pub enum UserIndexOrName {
+    Index(UserIndex),
+    Name(Username),
+}
+
+#[grug::derive(Serde)]
+pub struct UserIndexAndName {
+    pub index: UserIndex,
+    /// `None` if the user hasn't chosen a username yet.
+    pub name: Option<Username>,
+}
 
 /// Information about a user. Used in query response.
 #[grug::derive(Serde)]
@@ -97,7 +110,7 @@ pub enum QueryMsg {
     #[returns(Key)]
     Key {
         hash: Hash256,
-        user_index: UserIndex,
+        user: UserIndexOrName,
     },
     /// Enumerate all keys.
     #[returns(Vec<QueryKeyResponseItem>)]
@@ -107,7 +120,7 @@ pub enum QueryMsg {
     },
     /// Find all keys associated with a user.
     #[returns(BTreeMap<Hash256, Key>)]
-    KeysByUser { user_index: UserIndex },
+    KeysByUser { user: UserIndexOrName },
     /// Query parameters of an account by address.
     #[returns(Account)]
     Account { address: Addr },
@@ -119,10 +132,10 @@ pub enum QueryMsg {
     },
     /// Find all accounts associated with a user.
     #[returns(BTreeMap<Addr, Account>)]
-    AccountsByUser { user_index: UserIndex },
+    AccountsByUser { user: UserIndexOrName },
     /// Query a single user by its idenfier (either the index or the username).
     #[returns(User)]
-    User { user_index: UserIndex },
+    User(UserIndexOrName),
     /// Query a user's username by index.
     ///
     /// `None` if the user index doesn't exist, or if the user index exists but
@@ -136,23 +149,23 @@ pub enum QueryMsg {
     UserIndexByName(Username),
     /// Query user identifiers (index or username) associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
-    #[returns(BTreeSet<UserIndex>)]
+    #[returns(Vec<UserIndexAndName>)]
     ForgotUsername {
         key_hash: Hash256,
-        start_after: Option<UserIndex>,
+        start_after: Option<UserIndexOrName>,
         limit: Option<u32>,
     },
 }
 
 #[grug::derive(Serde)]
 pub struct QueryKeyPaginateParam {
-    pub user_index: UserIndex,
+    pub user: UserIndexOrName,
     pub key_hash: Hash256,
 }
 
 #[grug::derive(Serde)]
 pub struct QueryKeyResponseItem {
-    pub user_index: UserIndex,
+    pub user: UserIndexAndName,
     pub key_hash: Hash256,
     pub key: Key,
 }
