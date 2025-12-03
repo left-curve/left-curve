@@ -38,6 +38,7 @@ enum SubCmd {
     /// Start the metrics HTTP server
     MetricsHttpd,
     CheckCandles,
+    S3Sync,
 }
 
 impl IndexerCmd {
@@ -167,6 +168,19 @@ impl IndexerCmd {
                 );
 
                 clickhouse_indexer.check_all().await?;
+            },
+            SubCmd::S3Sync => {
+                let cfg: Config = parse_config(app_dir.config_file())?;
+
+                let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
+                indexer_cache.context.s3 = cfg.indexer.s3.clone();
+
+                indexer_cache::Cache::sync_to_s3(
+                    &indexer_cache.context,
+                    indexer_cache.s3_bitmap,
+                    0,
+                )
+                .await?;
             },
         }
 

@@ -55,7 +55,7 @@ pub struct Cache {
     // in memory between `pre_indexing`, `index_block` and `post_indexing`.
     blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
     #[cfg(feature = "s3")]
-    s3_bitmap: Arc<Mutex<RoaringTreemap>>,
+    pub s3_bitmap: Arc<Mutex<RoaringTreemap>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -255,50 +255,50 @@ impl Cache {
 
         let path = file_path.clone();
 
-        // When restarting the node, we could have some already copied over blocks. Skipping those.
-        match s3_client.exists(&s3_key).await {
-            Ok(false) => {
-                // File does not exist in S3, proceed with upload
-            },
-            Ok(true) => {
-                #[cfg(feature = "tracing")]
-                tracing::debug!(
-                    block_height,
-                    key = %s3_key,
-                    path = %path.display(),
-                    "Cached block already exists in S3"
-                );
-                return Ok(());
-            },
-            Err(err) => {
-                #[cfg(feature = "tracing")]
-                tracing::error!(
-                    block_height,
-                    key = %s3_key,
-                    path = %path.display(),
-                    error = %err,
-                    "Failed to check if cached block exists in S3"
-                );
-
-                // Error occurred, proceed with upload
-            },
-        }
-
-        #[cfg(feature = "tracing")]
-        tracing::info!(
-            block_height,
-            key = %s3_key,
-            path = %path.display(),
-            "Uploading cached block to S3"
-        );
-
-        #[cfg(feature = "metrics")]
-        metrics::counter!("indexer.s3.upload.attempts").increment(1);
-
         // Naive retries, in case of network error.
         for _ in 0..=10 {
+            // When restarting the node, we could have some already copied over blocks. Skipping those.
+            match s3_client.exists(&s3_key).await {
+                Ok(false) => {
+                    // File does not exist in S3, proceed with upload
+                },
+                Ok(true) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::debug!(
+                        block_height,
+                        key = %s3_key,
+                        path = %path.display(),
+                        "Cached block already exists in S3"
+                    );
+                    return Ok(());
+                },
+                Err(err) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(
+                        block_height,
+                        key = %s3_key,
+                        path = %path.display(),
+                        error = %err,
+                        "Failed to check if cached block exists in S3"
+                    );
+
+                    // Error occurred, proceed with upload
+                },
+            }
+
             let size = std::fs::metadata(&file_path).map(|m| m.len()).unwrap_or(0);
             let start = Instant::now();
+
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                block_height,
+                key = %s3_key,
+                path = %path.display(),
+                "Uploading cached block to S3"
+            );
+
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.s3.upload.attempts").increment(1);
 
             match s3_client.upload_file(s3_key.clone(), &file_path).await {
                 Ok(()) => {
@@ -345,13 +345,14 @@ impl Cache {
     }
 
     #[cfg(feature = "s3")]
-    async fn sync_to_s3(context: &Context, s3_bitmap: Arc<Mutex<RoaringTreemap>>) -> Result<()> {
+    pub async fn sync_to_s3(
+        context: &Context,
+        s3_bitmap: Arc<Mutex<RoaringTreemap>>,
+        last_synced_height: u64,
+    ) -> Result<()> {
         if !context.s3.enabled {
             return Ok(());
         }
-
-        let last_synced_height =
-            Self::read_last_block_height(context, S3_HIGHEST_BLOCK_FILENAME)?.unwrap_or(0);
 
         let Some(last_stored_height) =
             Self::read_last_block_height(context, HIGHEST_BLOCK_FILENAME)?
@@ -416,7 +417,19 @@ impl grug_app::Indexer for Cache {
 
             self.runtime_handler.spawn(async move {
                 loop {
-                    Self::sync_to_s3(&context, s3_bitmap.clone()).await.ok();
+                    let last_synced_height = match Self::read_last_block_height(&context, S3_HIGHEST_BLOCK_FILENAME) {
+                        Err(_error) => {
+
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error = %_error, "Failed to read last S3 synced block height");
+
+                            sleep(Duration::from_millis(1000)).await;
+                            continue;
+                        }
+                        Ok(last_synced_height) => last_synced_height.unwrap_or(0),
+                    };
+
+                    Self::sync_to_s3(&context, s3_bitmap.clone(), last_synced_height).await.ok();
 
                     // Periodically store the bitmap to disk
                     if start_time.elapsed().as_secs() > INTERVAL_BETWEEN_S3_BITMAP_STORES {
