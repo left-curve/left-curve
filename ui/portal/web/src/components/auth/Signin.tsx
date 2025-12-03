@@ -32,11 +32,18 @@ type SignInProps = {
 };
 
 export const Signin: React.FC<SignInProps> = ({ goTo }) => {
-  const { settings } = useApp();
+  const { settings, toast } = useApp();
 
   const state = useSigninState({
     expiration: DEFAULT_SESSION_EXPIRATION,
     session: settings.useSessionKey,
+    connect: {
+      error: () =>
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.failedSigningIn"](),
+        }),
+    },
   });
 
   return (

@@ -56,6 +56,7 @@ export function useSigninState(parameters: UseSigninStateParameters) {
         const usernames = await publicClient.forgotUsername({ keyHash });
         setAuthData({ usernames, connectorId, keyHash });
       }
+      setScreen("usernames");
     },
   });
 
