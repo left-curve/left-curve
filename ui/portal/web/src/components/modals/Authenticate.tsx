@@ -1,15 +1,17 @@
 import { forwardRef, useState } from "react";
 import { Signup } from "../auth/Signup";
+import { Signin } from "../auth/Signin";
 
 import { IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 const views = {
+  signin: Signin,
   signup: Signup,
 };
 
 export const Authenticate = forwardRef((_, __) => {
   const { hideModal } = useApp();
-  const [view, setView] = useState("signup");
+  const [view, setView] = useState("signin");
 
   const AuthView = views[view as keyof typeof views];
 

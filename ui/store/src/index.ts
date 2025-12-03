@@ -103,12 +103,6 @@ export {
 } from "./hooks/useSigninWithDesktop.js";
 
 export {
-  type UseSigninParameters,
-  type UseSigninReturnType,
-  useSignin,
-} from "./hooks/useSignin.js";
-
-export {
   type UseOrdersByUserParameters,
   type UseOrdersByUserReturnType,
   useOrdersByUser,
@@ -160,6 +154,11 @@ export {
   type UseSignupStateParameters,
   useSignupState,
 } from "./hooks/useSignupState.js";
+
+export {
+  type UseSigninStateParameters,
+  useSigninState,
+} from "./hooks/useSigninState.js";
 
 export {
   useSearchBar,

@@ -13,7 +13,6 @@ import type { Connector } from "@left-curve/store/types";
 import type Privy from "@privy-io/js-sdk-core";
 
 type StepInputEmailProps = {
-  disableSignup?: boolean;
   value?: string;
   onChange: (email: string) => void;
   defaultValue?: string;

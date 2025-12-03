@@ -1,5 +1,5 @@
 import { useAccount } from "@left-curve/store";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useRouterState } from "@tanstack/react-router";
 import { Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
 
 import { Button, IconButton, IconWallet, twMerge } from "@left-curve/applets-kit";
@@ -20,7 +20,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
 
   const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
-  const navigate = useNavigate();
   const { isLg } = useMediaQuery();
 
   const isProSwap = location.pathname.includes("trade");
@@ -66,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           {!isSearchBarVisible ? (
             <IconButton
               onClick={() =>
-                isConnected ? setSidebarVisibility(true) : navigate({ to: "/signin" })
+                isConnected ? setSidebarVisibility(true) : showModal(Modals.Authenticate)
               }
               variant="utility"
               size="lg"
@@ -94,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
                 </span>
               </div>
             ) : (
-              <span>{m["common.signup"]()}</span>
+              <span>{m["common.signin"]()}</span>
             )}
           </Button>
         </div>

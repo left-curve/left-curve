@@ -7,7 +7,7 @@ import { WS_URI } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const SignWithDesktop = forwardRef((_, _ref) => {
-  const { toast, hideModal, navigate } = useApp();
+  const { toast, hideModal } = useApp();
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
     url: WS_URI,
@@ -20,7 +20,6 @@ export const SignWithDesktop = forwardRef((_, _ref) => {
     },
     mutation: {
       onSuccess: () => {
-        navigate("/");
         hideModal();
       },
     },
