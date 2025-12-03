@@ -133,7 +133,7 @@ impl Cache {
     }
 
     #[cfg(feature = "s3")]
-    fn s3_bitmap(indexer_path: &IndexerPath) -> RoaringTreemap {
+    pub fn s3_bitmap(indexer_path: &IndexerPath) -> RoaringTreemap {
         if let Ok(file) = File::open(Self::s3_block_file_path(indexer_path)) {
             RoaringTreemap::deserialize_from(BufReader::new(file)).unwrap()
         } else {
@@ -142,7 +142,7 @@ impl Cache {
     }
 
     #[cfg(feature = "s3")]
-    fn store_bitmap(context: &Context, s3_bitmap: Arc<Mutex<RoaringTreemap>>) -> Result<()> {
+    pub fn store_bitmap(context: &Context, s3_bitmap: Arc<Mutex<RoaringTreemap>>) -> Result<()> {
         #[cfg(feature = "tracing")]
         let time_start = Instant::now();
 
@@ -330,9 +330,9 @@ impl Cache {
         context: &Context,
         s3_bitmap: Arc<Mutex<RoaringTreemap>>,
         last_synced_height: u64,
-    ) -> Result<()> {
+    ) -> Result<Option<u64>> {
         if !context.s3.enabled {
-            return Ok(());
+            return Ok(None);
         }
 
         let Some(last_stored_height) =
@@ -341,12 +341,12 @@ impl Cache {
             #[cfg(feature = "tracing")]
             tracing::debug!("No blocks stored locally, skipping S3 sync");
 
-            return Ok(());
+            return Ok(None);
         };
 
         if last_synced_height >= last_stored_height {
             // Already up-to-date
-            return Ok(());
+            return Ok(None);
         }
 
         let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_S3_UPLOADS));
@@ -354,28 +354,22 @@ impl Cache {
 
         for block_height in (last_synced_height + 1)..=last_stored_height {
             let context = context.clone();
-            let permit = semaphore.clone().acquire_owned().await.unwrap();
+            let permit = semaphore
+                .clone()
+                .acquire_owned()
+                .await
+                .expect("Semaphore should not be acquired");
             let s3_bitmap = s3_bitmap.clone();
 
             let task = tokio::spawn(async move {
-                let result = Self::sync_block_to_s3(&context, s3_bitmap, block_height).await;
-                drop(permit);
-                result
+                let _permit = permit;
+                Self::sync_block_to_s3(&context, s3_bitmap, block_height).await
             });
 
             tasks.push(task);
         }
 
-        let had_error = try_join_all(tasks).await.is_err();
-
-        if had_error {
-            #[cfg(feature = "tracing")]
-            tracing::error!("S3 sync failed, check previous logs for details");
-
-            return Ok(());
-        }
-
-        Self::store_last_block_height(context, last_stored_height, S3_HIGHEST_BLOCK_FILENAME)?;
+        try_join_all(tasks).await?;
 
         #[cfg(feature = "tracing")]
         tracing::info!(
@@ -384,7 +378,7 @@ impl Cache {
             "S3 sync up-to-date"
         );
 
-        Ok(())
+        Ok(Some(last_stored_height))
     }
 }
 
@@ -413,9 +407,25 @@ impl grug_app::Indexer for Cache {
                         Ok(last_synced_height) => last_synced_height.unwrap_or(0),
                     };
 
-                    Self::sync_to_s3(&context, s3_bitmap.clone(), last_synced_height)
-                        .await
-                        .ok();
+                    match Self::sync_to_s3(&context, s3_bitmap.clone(), last_synced_height).await {
+                        Err(_error) => {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error = %_error, "Failed to sync S3");
+                        },
+                        Ok(Some(last_stored_height)) => {
+                            if let Err(_err) = Self::store_last_block_height(
+                                &context,
+                                last_stored_height,
+                                S3_HIGHEST_BLOCK_FILENAME,
+                            ) {
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(error = %_err, "Failed to store last synced block height");
+                            }
+                        },
+                        Ok(None) => {
+                            // Already synced
+                        },
+                    }
 
                     // Periodically store the bitmap to disk
                     if start_time.elapsed().as_secs() > INTERVAL_BETWEEN_S3_BITMAP_STORES {

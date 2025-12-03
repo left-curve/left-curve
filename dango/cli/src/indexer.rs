@@ -4,6 +4,10 @@ use {
     config_parser::parse_config,
     indexer_cache::{IndexerPath, cache_file::CacheFile},
     metrics_exporter_prometheus::PrometheusBuilder,
+    std::{
+        sync::{Arc, Mutex},
+        time::Instant,
+    },
     tokio::task::JoinSet,
 };
 
@@ -162,12 +166,40 @@ impl IndexerCmd {
                 let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
                 indexer_cache.context.s3 = cfg.indexer.s3.clone();
 
+                let start = Instant::now();
+
                 indexer_cache::Cache::sync_to_s3(
                     &indexer_cache.context,
-                    indexer_cache.s3_bitmap,
+                    indexer_cache.s3_bitmap.clone(),
                     0,
                 )
                 .await?;
+
+                tracing::info!(
+                    elapsed = start.elapsed().as_secs_f32(),
+                    "Finished syncing to S3"
+                );
+
+                // The sync will definitely take a few seconds, I reload the s3_bitmap from disk which could have be modified
+                // in the meantime, merge both and rewrite it.
+                // What can happen:
+                // - We write the bitmap at the same time as the dango process, therefor missing the changes from here
+                // - We write the bitmap at the same time as the dango process, therefor missing the change from dango process
+                // Both are fine.
+
+                let on_disk_s3_bitmap =
+                    indexer_cache::Cache::s3_bitmap(&indexer_cache.context.indexer_path);
+
+                let s3_bitmap = indexer_cache.s3_bitmap.lock().map_err(|err| {
+                    indexer_cache::error::IndexerError::mutex_poisoned(err.to_string())
+                })?;
+
+                let merged = &on_disk_s3_bitmap | &*s3_bitmap;
+
+                indexer_cache::Cache::store_bitmap(
+                    &indexer_cache.context,
+                    Arc::new(Mutex::new(merged)),
+                )?;
             },
         }
 
