@@ -2,6 +2,8 @@ services:
   uptime-kuma:
     image: louislam/uptime-kuma:latest
     container_name: uptime-kuma
+    networks:
+      - cloudflare
     volumes:
       - {{ uptimekuma_dir }}/data:/app/data
     ports:
@@ -14,3 +16,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+networks:
+  cloudflare:
+    external: true
