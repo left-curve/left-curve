@@ -6,8 +6,8 @@ import { useSubmitTx } from "./useSubmitTx.js";
 import { createKeyHash } from "@left-curve/dango";
 import { registerUser } from "@left-curve/dango/actions";
 
-import type { EIP1193Provider } from "@left-curve/store/types";
 import type { Address, Key } from "@left-curve/dango/types";
+import type { EIP1193Provider } from "../types/eip1193.js";
 
 type ScreenState = "options" | "email" | "wallets";
 
