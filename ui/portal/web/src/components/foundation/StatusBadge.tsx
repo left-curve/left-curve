@@ -2,7 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import { Badge, CurrentBlock, Dot, Popover, twMerge, useApp } from "@left-curve/applets-kit";
+import {
+  Badge,
+  Button,
+  CurrentBlock,
+  Dot,
+  IconLink,
+  Popover,
+  twMerge,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -94,7 +103,17 @@ export const StatusBadge: React.FC = () => {
         }
         menu={
           <div className="flex flex-col gap-4">
-            <p className="h4-bold text-ink-primary-900">{m["statusBadge.status"]()}</p>
+            <div className="flex items-center justify-between">
+              <p className="h4-bold text-ink-primary-900">{m["statusBadge.status"]()}</p>
+              <Button
+                variant="link"
+                className="py-0 h-fit flex gap-1 items-center"
+                onClick={() => window.open("https://status.dango.exchange/", "_blank")}
+              >
+                {m["statusBadge.details"]()}
+                <IconLink className="w-4 h-4" />
+              </Button>
+            </div>
             <div className="flex flex-col gap-2">
               <WebSocketStatusSection wsStatus={wsStatus} />
               <ChainStatusSection chainStatus={chainStatus} />
