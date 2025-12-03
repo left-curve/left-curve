@@ -44,7 +44,7 @@ services:
       - "127.0.0.1:${DANGO_FRONTEND_PORT:-5081}:80"
     environment:
       - INDEXER_URL=http://localhost:8080
-      - FAUCET_URL=http://localhost:8082/mint
+      - FAUCET_URL=http://localhost:8082
       - QUEST_URL=http://localhost:8081/check_username
       - UP_URL=http://localhost:8080/up
       # Set to "true" to enable JSON access logs
@@ -252,7 +252,6 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
-
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest

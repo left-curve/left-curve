@@ -5,7 +5,7 @@ use {
     dango_types::dex::{PairParams, PassiveLiquidity, Price},
     grug::{
         Coin, CoinPair, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst,
-        PrevNumber, Sign, Udec128, Uint128,
+        PrevNumber, Sign, Storage, Udec128, Uint128,
     },
     std::ops::Sub,
 };
@@ -75,6 +75,7 @@ pub trait PassiveLiquidityPool {
     /// The input asset must be one of the reserve assets, otherwise error.
     fn swap_exact_amount_in(
         &self,
+        storage: &dyn Storage,
         oracle_querier: &mut OracleQuerier,
         base_denom: &Denom,
         quote_denom: &Denom,
@@ -99,6 +100,7 @@ pub trait PassiveLiquidityPool {
     /// The output asset must be one of the reserve assets, otherwise error.
     fn swap_exact_amount_out(
         &self,
+        storage: &dyn Storage,
         oracle_querier: &mut OracleQuerier,
         base_denom: &Denom,
         quote_denom: &Denom,
@@ -128,6 +130,7 @@ pub trait PassiveLiquidityPool {
     /// terminates.
     fn reflect_curve(
         self,
+        storage: &dyn Storage,
         oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
@@ -260,6 +263,7 @@ impl PassiveLiquidityPool for PairParams {
 
     fn swap_exact_amount_in(
         &self,
+        storage: &dyn Storage,
         oracle_querier: &mut OracleQuerier,
         base_denom: &Denom,
         quote_denom: &Denom,
@@ -287,6 +291,7 @@ impl PassiveLiquidityPool for PairParams {
                 self.swap_fee_rate,
             )?,
             PassiveLiquidity::Geometric(params) => geometric::swap_exact_amount_in(
+                storage,
                 oracle_querier,
                 base_denom,
                 quote_denom,
@@ -314,6 +319,7 @@ impl PassiveLiquidityPool for PairParams {
 
     fn swap_exact_amount_out(
         &self,
+        storage: &dyn Storage,
         oracle_querier: &mut OracleQuerier,
         base_denom: &Denom,
         quote_denom: &Denom,
@@ -337,6 +343,7 @@ impl PassiveLiquidityPool for PairParams {
                 self.swap_fee_rate,
             )?,
             PassiveLiquidity::Geometric(params) => geometric::swap_exact_amount_out(
+                storage,
                 oracle_querier,
                 base_denom,
                 quote_denom,
@@ -364,6 +371,7 @@ impl PassiveLiquidityPool for PairParams {
 
     fn reflect_curve(
         self,
+        storage: &dyn Storage,
         oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
@@ -380,6 +388,7 @@ impl PassiveLiquidityPool for PairParams {
                 xyk::reflect_curve(base_reserve, quote_reserve, params, self.swap_fee_rate)
             },
             PassiveLiquidity::Geometric(params) => geometric::reflect_curve(
+                storage,
                 oracle_querier,
                 &base_denom,
                 &quote_denom,
@@ -412,11 +421,16 @@ mod tests {
         super::*,
         dango_types::{
             constants::{eth, usdc},
-            dex::{Geometric, Xyk},
+            dex::{AvellanedaStoikovParams, Geometric, Xyk},
             oracle::PrecisionedPrice,
         },
-        grug::{Bounded, Coins, Inner, Timestamp, coin_pair, coins, hash_map},
-        std::collections::{BTreeSet, HashMap},
+        grug::{
+            Bounded, Coins, Duration, Inner, MockStorage, Timestamp, coin_pair, coins, hash_map,
+        },
+        std::{
+            collections::{BTreeSet, HashMap},
+            str::FromStr,
+        },
         test_case::test_case,
     };
 
@@ -577,6 +591,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(70)).unwrap(),
             spacing: Udec128::new_percent(1),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.010050167084168058").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         Udec128::new_percent(1),
         coins! {
@@ -643,8 +664,11 @@ mod tests {
         });
 
         let reserve = pool_liquidity.try_into().unwrap();
+        let storage = MockStorage::new();
+
         let (bids, asks) = pair
             .reflect_curve(
+                &storage,
                 &mut oracle_querier,
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
@@ -681,6 +705,14 @@ mod tests {
                 ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
                 spacing: Udec128::new_percent(50),
                 limit: 10,
+                avellaneda_stoikov_params: AvellanedaStoikovParams {
+                    gamma: Price::from_str("0.010050167084168057").unwrap(), /* e^0.01 - 1, so ln(1+gamma) = 0.01 */
+                    time_horizon: Duration::from_seconds(0),
+                    k: Price::ONE,
+                    half_life: Duration::from_seconds(30),
+                    base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50))
+                        .unwrap(),
+                },
             }),
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(Udec128::new_percent(1)).unwrap(),
@@ -710,8 +742,11 @@ mod tests {
             ),
         });
 
+        let storage = MockStorage::new();
+
         let (bids, asks) = pair
             .reflect_curve(
+                &storage,
                 &mut oracle_querier,
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
@@ -743,6 +778,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -774,6 +816,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.010050167084168057").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -805,6 +854,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.020201340026755865").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -829,13 +885,20 @@ mod tests {
             eth::DENOM.clone() => 10000000 - 2475247,
             usdc::DENOM.clone() => 10000000 + 5000000,
         };
-        "geometric pool 2:1 price swap in quote denom amount partiallymatches first order"
+        "geometric pool 2:1 price swap in quote denom amount partiall ymatches first order"
     )]
     #[test_case(
         PassiveLiquidity::Geometric(Geometric {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -867,6 +930,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -898,6 +968,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -929,6 +1006,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -960,6 +1044,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1006,9 +1097,11 @@ mod tests {
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
         let mut oracle_querier = OracleQuerier::new_mock(oracle_prices);
+        let storage = MockStorage::new();
 
         let (reserve, output) = pair
             .swap_exact_amount_in(
+                &storage,
                 &mut oracle_querier,
                 &eth::DENOM.clone(),
                 &usdc::DENOM.clone(),
@@ -1026,6 +1119,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1057,6 +1157,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1088,6 +1195,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1119,6 +1233,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1150,6 +1271,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1181,6 +1309,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1212,6 +1347,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1243,6 +1385,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1274,6 +1423,13 @@ mod tests {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
+                time_horizon: Duration::from_seconds(0),
+                k: Price::ONE,
+                half_life: Duration::from_seconds(30),
+                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            },
         }),
         coin_pair! {
             eth::DENOM.clone() => 10000000,
@@ -1320,9 +1476,11 @@ mod tests {
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
         let mut oracle_querier = OracleQuerier::new_mock(oracle_prices);
+        let storage = MockStorage::new();
 
         let (reserve, input) = pair
             .swap_exact_amount_out(
+                &storage,
                 &mut oracle_querier,
                 &eth::DENOM.clone(),
                 &usdc::DENOM.clone(),

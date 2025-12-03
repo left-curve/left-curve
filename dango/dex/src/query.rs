@@ -597,8 +597,13 @@ fn query_reflect_curve(
     let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
 
     // Reflect the curve.
-    let (bids, asks) =
-        pair.reflect_curve(&mut oracle_querier, base_denom, quote_denom, &reserve)?;
+    let (bids, asks) = pair.reflect_curve(
+        ctx.storage,
+        &mut oracle_querier,
+        base_denom,
+        quote_denom,
+        &reserve,
+    )?;
 
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 

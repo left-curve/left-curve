@@ -420,6 +420,7 @@ impl Preset for DexOption {
                     },
                 },
             ],
+            cron_frequency: Duration::ZERO, /* Important: DEX cronjob is to be invoked at end of every block. */
         }
     }
 }
