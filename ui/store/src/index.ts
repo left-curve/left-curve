@@ -157,6 +157,11 @@ export {
 } from "./hooks/useBridgeState.js";
 
 export {
+  type UseSignupStateParameters,
+  useSignupState,
+} from "./hooks/useSignupState.js";
+
+export {
   useSearchBar,
   type UseSearchBarParameters,
   type SearchBarResult,

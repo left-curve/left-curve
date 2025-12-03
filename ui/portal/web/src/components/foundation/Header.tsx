@@ -1,6 +1,6 @@
 import { useAccount } from "@left-curve/store";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useApp, useMediaQuery } from "@left-curve/applets-kit";
+import { Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
 
 import { Button, IconButton, IconWallet, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
@@ -18,7 +18,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected } = useAccount();
 
-  const { setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
+  const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
   const navigate = useNavigate();
   const { isLg } = useMediaQuery();
@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             variant="utility"
             size="lg"
             onClick={() =>
-              isConnected ? setSidebarVisibility(!isSidebarVisible) : navigate({ to: "/signup" })
+              isConnected ? setSidebarVisibility(!isSidebarVisible) : showModal(Modals.Authenticate)
             }
           >
             {isConnected ? (

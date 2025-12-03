@@ -163,6 +163,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.Authenticate]: {
+    component: lazy(() =>
+      import("./Authenticate").then(({ Authenticate }) => ({
+        default: Authenticate,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {
