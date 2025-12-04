@@ -83,6 +83,7 @@
   },
   "statusBadge": {
     "status": "Status",
+    "details": "See Details",
     "websocket": "WebSocket",
     "chain": "Chain",
     "dex": "DEX",

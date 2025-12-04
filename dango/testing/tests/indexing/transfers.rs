@@ -21,7 +21,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
         Message::execute(
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
+                params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
             },
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )

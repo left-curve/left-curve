@@ -40,7 +40,6 @@ export function session(parameters: SessionConnectorParameters = {}) {
         const client = createSignerClient({
           signer: this,
           type: "session",
-          username,
           transport,
         });
 
@@ -63,13 +62,10 @@ export function session(parameters: SessionConnectorParameters = {}) {
         emitter.emit("disconnect");
       },
       async getClient() {
-        const username = getUsername();
-        if (!username) throw new Error("session: username not found");
         return createSignerClient({
           signer: this,
           chain,
           type: "session",
-          username,
           transport: transport,
         });
       },

@@ -1,3 +1,18 @@
+x-wireguard-hosts: &wg-hosts
+{% set wg_hosts = [] %}
+{% for h in groups['all'] %}
+{%   if hostvars[h].wireguard_ip is defined and hostvars[h].hostname is defined %}
+{%     set _ = wg_hosts.append({'name': hostvars[h].hostname, 'ip': hostvars[h].wireguard_ip}) %}
+{%   endif %}
+{% endfor %}
+{% if wg_hosts | length == 0 %}
+  []
+{% else %}
+{%   for item in wg_hosts | sort(attribute='name') %}
+  - "{{ item.name }}:{{ item.ip }}"
+{%   endfor %}
+{% endif %}
+
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -21,6 +36,7 @@ services:
       - ./config/alert-rules.yml:/etc/prometheus/alert-rules.yml
       - ./data:/prometheus
       - ./targets:/etc/prometheus/targets
+    extra_hosts: *wg-hosts
     restart: unless-stopped
     depends_on:
       - alertmanager
@@ -35,6 +51,7 @@ services:
     ports:
       - "{{ tailscale_ip }}:{{ victoriametrics_port }}:8428"
       - "{{ wireguard_ip }}:{{ victoriametrics_port }}:8428"
+    extra_hosts: *wg-hosts
     volumes:
       - ./victoria-metrics-data:/victoria-metrics-data
     command:
@@ -56,6 +73,7 @@ services:
     ports:
       - "{{ tailscale_ip }}:{{ alertmanager_port }}:9093"
       - "{{ wireguard_ip }}:{{ alertmanager_port }}:9093"
+    extra_hosts: *wg-hosts
     volumes:
       - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
       - ./alertmanager-data:/alertmanager
@@ -68,6 +86,7 @@ services:
 
   alertmanager-discord:
     image: benjojo/alertmanager-discord
+    extra_hosts: *wg-hosts
     environment:
       - DISCORD_WEBHOOK={{ discord_webhook }}
 

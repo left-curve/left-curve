@@ -17,7 +17,7 @@ async fn query_user() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     suite.app.indexer.wait_for_finish()?;
 
@@ -25,10 +25,10 @@ async fn query_user() -> anyhow::Result<()> {
       query Users {
       users {
           nodes {
-            username
+            userIndex
             publicKeys { publicKey keyHash }
           }
-          edges { node { username publicKeys { publicKey keyHash } }  cursor }
+          edges { node { userIndex publicKeys { publicKey keyHash } }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -54,7 +54,7 @@ async fn query_user() -> anyhow::Result<()> {
                 .await?;
 
                 let expected_data = serde_json::json!({
-                    "username": user.username.to_string(),
+                    "userIndex": user.user_index(),
                     "publicKeys": [
                         {
                             "publicKey": user.first_key().to_string(),
@@ -78,8 +78,7 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account =
-        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let mut test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     let (pk, key_hash) = add_user_public_key(&mut suite, &contracts, &mut test_account);
 
@@ -89,10 +88,10 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
       query Users {
       users {
           nodes {
-            username
+            userIndex
             publicKeys { publicKey keyHash }
           }
-          edges { node { username publicKeys { publicKey keyHash } }  cursor }
+          edges { node { userIndex publicKeys { publicKey keyHash } }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -118,7 +117,7 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
                 .await?;
 
                 let expected_data = serde_json::json!({
-                    "username": test_account.username.to_string()
+                    "userIndex": test_account.user_index(),
                 });
 
                 assert_json_include!(actual: response.data.edges[0].node, expected: expected_data);

@@ -165,7 +165,7 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.user_index())),
             Coins::new(),
         )
         .unwrap();
@@ -385,7 +385,7 @@ fn cant_borrow_if_no_collateral() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.user_index())),
             Coins::new(),
         )
         .unwrap();
@@ -425,7 +425,7 @@ fn cant_borrow_if_undercollateralized() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.user_index())),
             Coins::new(),
         )
         .unwrap();
@@ -473,7 +473,7 @@ fn borrowing_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.user_index())),
             Coins::new(),
         )
         .unwrap();
@@ -554,7 +554,7 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.user_index())),
             Coins::new(),
         )
         .unwrap();
@@ -604,7 +604,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.user_index())),
             Coins::new(),
         )
         .unwrap();
@@ -676,7 +676,7 @@ fn repay_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.user_index())),
             Coins::new(),
         )
         .unwrap();
@@ -759,7 +759,7 @@ fn interest_rate_setup() -> (
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.user_index())),
             Coins::new(),
         )
         .unwrap();

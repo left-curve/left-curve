@@ -1,7 +1,6 @@
 use {
     dango_types::{
-        account_factory::Username,
-        auth::Key,
+        account_factory::{NewUserSalt, UserIndex},
         bank,
         config::Hyperlane,
         dex::PairUpdate,
@@ -10,14 +9,10 @@ use {
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, Timestamp, Uint128},
+    grug::{Addr, Binary, Coin, Coins, Denom, Duration, Timestamp, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     std::collections::{BTreeMap, BTreeSet},
 };
-
-pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
-
-pub type Addresses = BTreeMap<Username, Addr>;
 
 #[grug::derive(Serde)]
 pub struct Contracts {
@@ -50,8 +45,7 @@ pub struct Codes<T> {
     pub warp: T,
 }
 pub struct GenesisUser {
-    pub key: Key,
-    pub key_hash: Hash256,
+    pub salt: NewUserSalt,
     pub dango_balance: Uint128,
 }
 
@@ -68,9 +62,9 @@ pub struct GenesisOption {
 }
 
 pub struct GrugOption {
-    /// A username whose genesis spot account is to be appointed as the owner.
+    /// A user index whose genesis spot account is to be appointed as the owner.
     /// We expect to transfer ownership to a multisig account afterwards.
-    pub owner_username: Username,
+    pub owner_index: UserIndex,
     /// Gas fee configuration.
     pub fee_cfg: taxman::Config,
     /// The maximum age a contract bytecode can remain orphaned (not used by any
@@ -82,7 +76,7 @@ pub struct GrugOption {
 pub struct AccountOption {
     /// Initial users and their balances.
     /// For each genesis user will be created a spot account.
-    pub genesis_users: BTreeMap<Username, GenesisUser>,
+    pub genesis_users: Vec<GenesisUser>,
     /// The minimum deposit required to onboard a user.
     pub minimum_deposit: Coins,
 }

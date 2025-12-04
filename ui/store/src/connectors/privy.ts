@@ -85,14 +85,10 @@ export function privy(parameters: PrivyConnectorParameters) {
         emitter.emit("disconnect");
       },
       async getClient() {
-        const username = getUsername();
-        if (!username) throw new Error("privy: username not found");
-
         return createSignerClient({
           signer: this,
           type: "privy",
           chain,
-          username,
           transport,
         });
       },

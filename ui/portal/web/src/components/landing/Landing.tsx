@@ -10,7 +10,7 @@ import {
   IconTwitter,
 } from "@left-curve/applets-kit";
 import { SearchMenu } from "../foundation/SearchMenu";
-import { AppletsSection } from "../overview/AppletsSection";
+import { AppletsSection } from "./AppletsSection";
 
 import { decodeBase64, decodeUtf8 } from "@left-curve/dango/encoding";
 import ReactFullpage from "@fullpage/react-fullpage";

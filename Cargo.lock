@@ -3640,6 +3640,10 @@ dependencies = [
  "data-encoding",
  "grug",
  "hex",
+ "hex-literal",
+ "identity",
+ "k256",
+ "rand 0.8.5",
  "serde",
  "sha2 0.10.9",
 ]

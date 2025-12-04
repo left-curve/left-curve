@@ -47,9 +47,7 @@ where
             Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Spot(single::Params::new(
-                        accounts.user1.username.clone(),
-                    )),
+                    params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
                 },
                 if i < 100 {
                     coins! { usdc::DENOM.clone() => 100_000_000 }

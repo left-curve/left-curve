@@ -1,5 +1,5 @@
 use {
-    crate::account_factory::Username,
+    crate::account_factory::UserIndex,
     grug::{
         Addr, Binary, ByteArray, Hash256, JsonSerExt, Message, NonEmpty, SignData, StdError,
         Timestamp,
@@ -156,7 +156,7 @@ impl SignData for SignDoc {
 #[grug::derive(Serde)]
 pub struct Metadata {
     /// Identifies the user who signed this transaction.
-    pub username: Username,
+    pub user_index: UserIndex,
     /// Identifies the chain this transaction is intended for.
     pub chain_id: String,
     /// The nonce this transaction was signed with.

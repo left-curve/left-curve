@@ -10,12 +10,10 @@ import type {
   KeyHash,
   Signature,
   Signer,
-  Username,
 } from "../../../types/index.js";
 import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 
 export type RegisterUserParameters = {
-  username: Username;
   key: Key;
   keyHash: KeyHash;
   seed: number;
@@ -38,7 +36,7 @@ export async function registerUser<transport extends Transport>(
   client: DangoClient<transport, undefined | Signer>,
   parameters: RegisterUserParameters,
 ): RegisterUserReturnType {
-  const { username, keyHash, key, seed, signature } = parameters;
+  const { keyHash, key, seed, signature } = parameters;
 
   const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
 
@@ -46,7 +44,6 @@ export async function registerUser<transport extends Transport>(
 
   const registerMsg = {
     registerUser: {
-      username,
       keyHash,
       key,
       seed,

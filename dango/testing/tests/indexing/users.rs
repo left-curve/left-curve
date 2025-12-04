@@ -15,8 +15,7 @@ async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account1 =
-        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     let (pk, key_hash) = add_user_public_key(&mut suite, &contracts, &mut test_account1);
 
