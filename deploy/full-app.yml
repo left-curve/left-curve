@@ -177,6 +177,46 @@
       set_fact:
         deploy_lock_recent: "{{ deploy_lock_stat.stat.exists and ((ansible_date_time.epoch | int) - (deploy_lock_stat.stat.mtime | int) < (deploy_lock_threshold_seconds | int)) }}"
 
+    - name: Notify Discord of deployment stop due to active lock
+      when:
+        - deploy_lock_recent | bool
+        - discord_webhook is defined
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        status_code: 204
+        body_format: json
+        headers:
+          Content-Type: application/json
+        body:
+          username: "{{ discord_username | default('Deploy Bot') }}"
+          avatar_url: "{{ discord_avatar_url }}"
+          embeds:
+            - title: "⛔ Deployment Stopped: Active Lock"
+              color: 15158332
+              description: "An active deployment lock exists at {{ deploy_lock_file }}. You can manually delete the lock or retry later."
+              fields:
+                - name: "Triggered by"
+                  value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                  inline: true
+                - name: "Deployment"
+                  value: "{{ deployment_name }}"
+                  inline: true
+                - name: "Network"
+                  value: "{{ dango_network }}"
+                  inline: true
+                - name: "Commit"
+                  value: "{{ commit_short_sha }}"
+                  inline: true
+                - name: "Lock path"
+                  value: "{{ deploy_lock_file }}"
+                  inline: false
+              timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+      delegate_to: localhost
+      run_once: true
+      become: false
+      ignore_errors: true
+
     - name: Abort due to active deployment lock
       when: deploy_lock_recent | bool
       fail:
