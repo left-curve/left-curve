@@ -55,6 +55,13 @@ services:
         url: "http://ovh3:3000"
         target: "_blank"
 
+      - name: "Uptime Kuma"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/uptime-kuma.png"
+        subtitle: "Status & Uptime Monitoring"
+        tag: "monitoring"
+        url: "http://ovh3:3001"
+        target: "_blank"
+
       - name: "Prometheus"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/prometheus.png"
         subtitle: "Metrics Collection"

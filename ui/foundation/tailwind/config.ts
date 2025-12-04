@@ -683,7 +683,7 @@ export const tailwindConfig: Partial<Config> = {
         ".diatype-sm-regular": {
           fontWeight: "400",
           fontSize: "14px",
-          lineHeight: "22.4px",
+          lineHeight: "130%",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
         ".diatype-sm-medium": {

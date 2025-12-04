@@ -42,6 +42,7 @@ If adding/upgrading these, align versions across crates to avoid trait/type mism
 - Keep key crate versions aligned (OTEL, tracing, Sentry).
 - Avoid reassigning tracing subscribers; compose with `.with(optional_layer)`.
 - Config updates must touch both runtime templates.
+- When adding new imports (especially under `#[cfg(feature = "...")]`), always place them in the file header's import section, not inline in functions.
 
 ## Playbooks
 - Telemetry (OTLP + Sentry, graceful shutdown): `docs/telemetry.md`

@@ -1,0 +1,9 @@
+protocol: quic
+edge-ip-version: auto
+ha-connections: 12
+transport-loglevel: warn
+
+ingress:
+  - hostname: status.dango.exchange
+    service: http://uptime-kuma:3001
+  - service: http_status:404

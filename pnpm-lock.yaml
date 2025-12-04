@@ -668,7 +668,7 @@ importers:
         version: link:../../sdk/dango
       '@privy-io/js-sdk-core':
         specifier: ^0.56.3
-        version: 0.56.3(typescript@5.6.3)(viem@2.37.9(typescript@5.6.3)(zod@3.25.76))
+        version: 0.56.3(typescript@5.6.3)(viem@2.39.0(typescript@5.6.3)(zod@3.25.76))
       eventemitter3:
         specifier: 'catalog:'
         version: 5.0.1
@@ -678,6 +678,9 @@ importers:
       use-sync-external-store:
         specifier: ^1.2.2
         version: 1.4.0(react@18.3.1)
+      viem:
+        specifier: ^2.39.0
+        version: 2.39.0(typescript@5.6.3)(zod@3.25.76)
       zustand:
         specifier: 'catalog:'
         version: 5.0.1(@types/react@18.3.11)(react@18.3.1)(use-sync-external-store@1.4.0(react@18.3.1))
@@ -9495,8 +9498,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  viem@2.37.9:
-    resolution: {integrity: sha512-XXUOE5yJcjr9/M9kRoQcPMUfetwHprO9aTho6vNELjBKJIBx7rYq1fjvBw+xEnhsRjhh5lsORi6B0h8fYFB7NA==}
+  viem@2.39.0:
+    resolution: {integrity: sha512-rCN+IfnMESlrg/iPyyVL+M9NS/BHzyyNy72470tFmbTuscY3iPaZGMtJDcHKKV8TC6HV9DjWk0zWX6cpu0juyA==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -11673,7 +11676,7 @@ snapshots:
       undici: 6.21.1
       unique-string: 2.0.0
       wrap-ansi: 7.0.0
-      ws: 8.18.0
+      ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -12439,15 +12442,15 @@ snapshots:
 
   '@privy-io/chains@0.0.3': {}
 
-  '@privy-io/ethereum@0.0.2(viem@2.37.9(typescript@5.6.3)(zod@3.25.76))':
+  '@privy-io/ethereum@0.0.2(viem@2.39.0(typescript@5.6.3)(zod@3.25.76))':
     dependencies:
-      viem: 2.37.9(typescript@5.6.3)(zod@3.25.76)
+      viem: 2.39.0(typescript@5.6.3)(zod@3.25.76)
 
-  '@privy-io/js-sdk-core@0.56.3(typescript@5.6.3)(viem@2.37.9(typescript@5.6.3)(zod@3.25.76))':
+  '@privy-io/js-sdk-core@0.56.3(typescript@5.6.3)(viem@2.39.0(typescript@5.6.3)(zod@3.25.76))':
     dependencies:
       '@privy-io/api-base': 1.7.1
       '@privy-io/chains': 0.0.3
-      '@privy-io/ethereum': 0.0.2(viem@2.37.9(typescript@5.6.3)(zod@3.25.76))
+      '@privy-io/ethereum': 0.0.2(viem@2.39.0(typescript@5.6.3)(zod@3.25.76))
       '@privy-io/public-api': 2.51.0(typescript@5.6.3)
       canonicalize: 2.1.0
       eventemitter3: 5.0.1
@@ -12458,7 +12461,7 @@ snapshots:
       set-cookie-parser: 2.7.1
       uuid: 9.0.1
     optionalDependencies:
-      viem: 2.37.9(typescript@5.6.3)(zod@3.25.76)
+      viem: 2.39.0(typescript@5.6.3)(zod@3.25.76)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -12469,7 +12472,7 @@ snapshots:
       '@privy-io/api-base': 1.7.1
       bs58: 5.0.0
       libphonenumber-js: 1.12.23
-      viem: 2.37.9(typescript@5.6.3)(zod@3.25.76)
+      viem: 2.39.0(typescript@5.6.3)(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
       - bufferutil
@@ -13462,7 +13465,7 @@ snapshots:
       recast: 0.23.9
       semver: 7.6.3
       util: 0.12.5
-      ws: 8.18.0
+      ws: 8.18.3
     optionalDependencies:
       prettier: 3.5.0
     transitivePeerDependencies:
@@ -19707,7 +19710,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.2
 
-  viem@2.37.9(typescript@5.6.3)(zod@3.25.76):
+  viem@2.39.0(typescript@5.6.3)(zod@3.25.76):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0

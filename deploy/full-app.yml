@@ -3,6 +3,7 @@
   become: true
   become_user: "{{ deploy_user }}"
   gather_facts: yes
+  any_errors_fatal: true
   vars:
   vars_files:
     - roles/full-app/vars/main.yml
@@ -12,11 +13,54 @@
         timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
       run_once: true
 
+    - name: Get current commit short SHA
+      set_fact:
+        commit_short_sha: "{{ lookup('pipe', 'git rev-parse --short=7 HEAD') }}"
+      run_once: true
+
+    - name: Get current commit title
+      set_fact:
+        commit_title: "{{ lookup('pipe', 'git log -1 --pretty=%s') }}"
+      run_once: true
+
+    - name: Get current commit author
+      set_fact:
+        commit_author: "{{ lookup('pipe', 'git log -1 --pretty=%an') }}"
+      run_once: true
+
     - name: Set timestamp and deployment name on all hosts
       set_fact:
         deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
         timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
         s3_bucket: "dango-{{ dango_network }}-{{ timestamp }}"
+
+    - name: Fetch PR title from GitHub API (once)
+      when:
+        - github_pr_number is defined
+      uri:
+        url: "https://api.github.com/repos/{{ github_repo }}/pulls/{{ github_pr_number }}"
+        method: GET
+        body_format: json
+        headers:
+          Accept: application/vnd.github+json
+          X-GitHub-Api-Version: "2022-11-28"
+        return_content: true
+      register: pr_api_response
+      failed_when: false
+      ignore_errors: true
+      run_once: true
+      delegate_to: localhost
+      become: false
+
+    - name: Set PR title fact from GitHub response
+      when:
+        - pr_api_response is defined
+        - pr_api_response.json is defined
+        - (pr_api_response.json.title | default('') | length) > 0
+      set_fact:
+        pr_title: "{{ pr_api_response.json.title }}"
+      run_once: true
+      delegate_to: localhost
 
     - name: Log deployment start
       community.general.syslogger:
@@ -25,55 +69,190 @@
         priority: info
         ident: dango
 
-    - name: Set system wide cometbft and dango directories and overwrite s3_bucket
+    - name: Notify Discord of deployment start
+      when:
+        - discord_webhook is defined
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        status_code: 204
+        body_format: json
+        headers:
+          Content-Type: application/json
+        body:
+          username: "{{ discord_username | default('Deploy Bot') }}"
+          avatar_url: "{{ discord_avatar_url }}"
+          embeds:
+            - title: "Deployment Started"
+              # description: "{{ '🚀 Starting deployment ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+              color: 3447003
+              fields:
+                - name: "Commit title"
+                  value: "{{ commit_title | default('-', true) }}"
+                  inline: false
+                - name: "Triggered by"
+                  value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                  inline: true
+                - name: "Deployment"
+                  value: "{{ deployment_name }}"
+                  inline: true
+                - name: "Network"
+                  value: "{{ dango_network }}"
+                  inline: true
+                - name: "Commit"
+                  value: "{{ commit_short_sha }}"
+                  inline: true
+                - name: "Author"
+                  value: "{{ commit_author | default('-', true) }}"
+                  inline: true
+              timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+      delegate_to: localhost
+      run_once: true
+      become: false
+      ignore_errors: true
+
+    - block:
+        - name: Verify SSH connectivity to target host
+          wait_for_connection:
+            timeout: 15
+      rescue:
+        - name: Mark deployment as failed (connectivity)
+          set_fact:
+            deploy_failed: true
+        - name: Notify Discord of deployment failure (unreachable)
+          when:
+            - discord_webhook is defined
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ discord_avatar_url }}"
+              embeds:
+                - title: "❌ Deployment Failed ❌"
+                  # description: "{{ '❌ Deployment FAILED (unreachable host) for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+                  color: 15158332
+                  fields:
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: true
+                    - name: "Host"
+                      value: "{{ inventory_hostname }}"
+                      inline: true
+                    - name: "Deployment"
+                      value: "{{ deployment_name }}"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
+
+        - name: Fail unreachable early
+          fail:
+            msg: "Unreachable host(s) detected before deploy."
+
+    - name: Check for existing deployment lock
+      stat:
+        path: "{{ deploy_lock_file }}"
+      register: deploy_lock_stat
+
+    - name: Calculate if deployment lock is recent
       set_fact:
-        dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
-        cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
-      when: system_wide_directories
+        deploy_lock_recent: "{{ deploy_lock_stat.stat.exists and ((ansible_date_time.epoch | int) - (deploy_lock_stat.stat.mtime | int) < (deploy_lock_threshold_seconds | int)) }}"
 
-    - name: Read current deploy
-      include_role:
-        name: full-app
-        tasks_from: read_current_deploy.yml
+    - name: Abort due to active deployment lock
+      when: deploy_lock_recent | bool
+      fail:
+        msg: "Active deployment lock found at {{ deploy_lock_file }}. Remove manually to override."
 
-    - name: Run setup tasks
-      include_role:
-        name: full-app
-        tasks_from: setup.yml
+    - name: Create or refresh deployment lock
+      file:
+        path: "{{ deploy_lock_file }}"
+        state: touch
+        mode: "0644"
+      register: deploy_lock_touch
 
-    - name: Detect free ports
-      include_role:
-        name: full-app
-        tasks_from: detect_free_ports.yml
-      when: expose_ports and not skip_port_discovery
-
-    - name: Generate keys
-      include_role:
-        name: full-app
-        tasks_from: cometbft_keys.yml
-
-    - name: Build persistent_peers list
+    - name: Mark lock as acquired
       set_fact:
-        persistent_peers: "{{ peer_list }}"
-      vars:
-        peer_list: |-
-          {%- set peers = [] -%}
-          {%- for host in groups['full-app'] -%}
-            {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
-              {%- set port = (traefik_enabled | default(false))
-                            | ternary(traefik[dango_network].ports.cometbft_p2p_port,
-                                      hostvars[host].cometbft_p2p_port) -%}
-              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].wireguard_ip ~ ':' ~ port -%}
-              {{- peers.append(peer) or '' -}}
-            {%- endif -%}
-          {%- endfor -%}
-          {{- peers | join(',') -}}
-      when: cometbft_node_id is defined
+        deployment_lock_set: true
 
-    - name: Debug peer configuration
-      debug:
-        msg: "Persistent peers for {{ inventory_hostname }}: {{ persistent_peers }}"
-      when: persistent_peers is defined
+    - block:
+        - name: Run preparation tasks after lock
+          import_role:
+            name: full-app
+            tasks_from: prep_after_lock.yml
+      rescue:
+        - name: Mark deployment as failed
+          set_fact:
+            deploy_failed: true
+        - name: Notify Discord of deployment failure (first phase)
+          when:
+            - discord_webhook is defined
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ discord_avatar_url }}"
+              embeds:
+                - title: "❌ Deployment Failed ❌"
+                  color: 15158332
+                  fields:
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: true
+                    - name: "Phase"
+                      value: "Preparation"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
+        - name: Remove deployment lock file on all hosts (first phase failure)
+          when: deployment_lock_set | default(false)
+          file:
+            path: "{{ deploy_lock_file }}"
+            state: absent
+          become: true
+          become_user: "{{ deploy_user }}"
+          ignore_errors: true
+        - name: Abort due to errors in preparation phase
+          fail:
+            msg: "Deployment failed during preparation phase; locks removed."
 
     # Stop for debugging
     # - meta: end_play
@@ -81,6 +260,7 @@
 - hosts: full-app
   become: true
   become_user: "{{ deploy_user }}"
+  any_errors_fatal: true
   collections:
     - community.docker
     - community.clickhouse
@@ -145,6 +325,55 @@
             priority: err
             ident: dango
 
+        - name: Mark deployment as failed
+          set_fact:
+            deploy_failed: true
+
+
+
+
+        - name: Notify Discord of deployment failure
+          when:
+            - discord_webhook is defined
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ discord_avatar_url }}"
+              embeds:
+                - title: "❌ Deployment Failed ❌"
+                  # description: "{{ '❌ Deployment FAILED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+                  color: 15158332
+                  fields:
+                    - name: "PR title"
+                      value: "{{ pr_title | default('-', true) }}"
+                      inline: false
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: true
+                    - name: "PR URL"
+                      value: "{{ '[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')' if (github_pr_number is defined) else '-' }}"
+                      inline: true
+                    - name: "Deployment"
+                      value: "{{ deployment_name }}"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
+
         - name: Fail the task
           fail:
             msg: "Deployment failed, please look at the logs. You can also ssh to any of the servers, to {{ deployment_dir }} and run `docker compose logs`"
@@ -156,6 +385,108 @@
             facility: local0
             priority: info
             ident: dango
+
+        - name: Remove deployment lock file on all hosts
+          when: deployment_lock_set | default(false)
+          file:
+            path: "{{ deploy_lock_file }}"
+            state: absent
+          become: true
+          become_user: "{{ deploy_user }}"
+          ignore_errors: true
+
+        - name: Notify Discord of deployment success for main
+          when:
+            - not (deploy_failed | default(false))
+            - discord_webhook is defined
+            - github_pr_number is not defined
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ discord_avatar_url }}"
+              embeds:
+                - title: "✅ {{ dango_network }} Deployment Succeeded ✅"
+                  # description: "{{ '✅ Deployment SUCCEEDED for ' ~ deployment_name ~ ' (network=' ~ dango_network ~ ')' }}"
+                  color: 3066993
+                  fields:
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: true
+                    - name: "Deployment"
+                      value: "{{ deployment_name }}"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
+
+        - name: Notify Discord of deployment success for PR
+          when:
+            - not (deploy_failed | default(false))
+            - discord_webhook is defined
+            - github_pr_number is defined
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            status_code: 204
+            body_format: json
+            headers:
+              Content-Type: application/json
+            body:
+              username: "{{ discord_username | default('Deploy Bot') }}"
+              avatar_url: "{{ discord_avatar_url }}"
+              embeds:
+                - title: "✅ PR Deployment Succeeded ✅"
+                  color: 3066993
+                  fields:
+                    - name: "PR title"
+                      value: "{{ pr_title | default('-', true) }}"
+                      inline: false
+                    - name: "Commit title"
+                      value: "{{ commit_title | default('-', true) }}"
+                      inline: false
+                    - name: "Triggered by"
+                      value: "{{ (lookup('env','USER') | default(lookup('env','LOGNAME'))) ~ '@' ~ lookup('pipe','hostname') }}"
+                      inline: true
+                    - name: "PR URL"
+                      value: "{{ '[PR #' ~ github_pr_number ~ '](https://github.com/' ~ github_repo ~ '/pull/' ~ github_pr_number ~ ')' }}"
+                      inline: true
+                    - name: "Deployment"
+                      value: "{{ deployment_name }}"
+                      inline: true
+                    - name: "Network"
+                      value: "{{ dango_network }}"
+                      inline: true
+                    - name: "Commit"
+                      value: "{{ commit_short_sha }}"
+                      inline: true
+                    - name: "Author"
+                      value: "{{ commit_author | default('-', true) }}"
+                      inline: true
+                  timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          delegate_to: localhost
+          run_once: true
+          become: false
+          ignore_errors: true
 
 - hosts: monitoring
   become: true

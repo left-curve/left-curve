@@ -1,5 +1,9 @@
-import { CoinSelector, Skeleton, useControlledState } from "@left-curve/applets-kit";
+import { useControlledState } from "@left-curve/foundation";
 import { useAppConfig, useConfig } from "@left-curve/store";
+
+import { CoinSelector } from "./CoinSelector";
+import { Skeleton } from "./Skeleton";
+
 import type React from "react";
 
 type PairAssetSelectorProps = {

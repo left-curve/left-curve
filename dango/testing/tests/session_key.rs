@@ -1,13 +1,8 @@
 use {
     dango_testing::setup_test_naive,
-    dango_types::{
-        account::single::Params,
-        account_factory::{AccountParams, Username},
-        constants::usdc,
-    },
+    dango_types::{account::single::Params, account_factory::AccountParams, constants::usdc},
     grug::{Addressable, Coin, Coins, Duration, ResultExt},
     session_account::SessionAccount,
-    std::str::FromStr,
 };
 
 mod session_account {
@@ -145,7 +140,7 @@ mod session_account {
             gas_limit: u64,
         ) -> StdResult<Tx> {
             let data = Metadata {
-                username: self.username.clone(),
+                user_index: self.user_index(),
                 chain_id: chain_id.to_string(),
                 nonce: self.nonce,
                 expiry: None,
@@ -194,6 +189,7 @@ fn session_key() {
     let mut owner = SessionAccount::new(accounts.owner)
         .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
         .unwrap();
+    let owner_index = owner.user_index();
 
     // Ok transfer
     {
@@ -245,7 +241,7 @@ fn session_key() {
             .register_new_account(
                 &mut suite,
                 contracts.account_factory,
-                AccountParams::Spot(Params::new(Username::from_str("owner").unwrap())),
+                AccountParams::Spot(Params::new(owner_index)),
                 Coins::default(),
             )
             .unwrap();

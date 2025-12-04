@@ -4,7 +4,7 @@ use uuid::Uuid;
 use {crate::statistics, grug_types::MetricsIterExt};
 use {
     crate::{DbError, DbResult},
-    grug_app::{CONTRACT_NAMESPACE, Commitment, Db},
+    grug_app::{CONTRACT_NAMESPACE, Commitment, Db, GRUG_NAMESPACE_LEN},
     grug_types::{Addr, Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
     itertools::Itertools,
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
@@ -151,11 +151,12 @@ impl<T> DiskDb<T> {
         let opts = new_db_options();
         let cf_opts = new_state_cf_options();
         let wasm_cf_opts = new_wasm_cf_options(cf_opts.clone());
+        let storage_cf_opts = new_storage_cf_options(cf_opts.clone());
         let db = DB::open_cf_with_opts(&opts, data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
             #[cfg(feature = "ibc")]
             (CF_NAME_PREIMAGES, Options::default()),
-            (CF_NAME_STATE_STORAGE, cf_opts.clone()),
+            (CF_NAME_STATE_STORAGE, storage_cf_opts),
             (CF_NAME_STATE_COMMITMENT, cf_opts),
             (CF_NAME_WASM_STORAGE, wasm_cf_opts),
         ])?;
@@ -1033,7 +1034,7 @@ fn create_state_iter<'a>(
     #[cfg(feature = "metrics")]
     let duration = std::time::Instant::now();
 
-    let opts = new_read_options(min, max);
+    let opts = new_storage_read_options(new_read_options(min, max), min, max);
     let mode = into_iterator_mode(order);
 
     let iter = db
@@ -1140,21 +1141,22 @@ pub fn new_db_options() -> Options {
 pub fn new_state_cf_options() -> Options {
     let mut opts = Options::default();
 
-    // ---- Memtable ----
-    opts.set_write_buffer_size(16 * 1024 * 1024); // Default is 64MB
     opts.set_max_write_buffer_number(2); // Default is 2
     opts.set_min_write_buffer_number_to_merge(1); // Default is 1
 
     // ---- L0 ----
-    opts.set_level_zero_file_num_compaction_trigger(4); // Default is 4
+    opts.set_level_zero_file_num_compaction_trigger(2); // Default is 4
     opts.set_level_zero_slowdown_writes_trigger(8); // Default is 20
     opts.set_level_zero_stop_writes_trigger(16); // Default is 24
+
+    opts.set_target_file_size_base(8 * 1024 * 1024); // ~8MB per SST L1 (Default is 64MB)
+    opts.set_max_bytes_for_level_base(64 * 1024 * 1024); // ~64MB per L1 (Default is 256MB)
 
     opts.set_max_open_files(-1); // Default is -1
 
     // ---- Compaction ----
     opts.set_compaction_style(DBCompactionStyle::Level); // Default is DBCompactionStyle::Level
-    opts.set_compaction_pri(CompactionPri::MinOverlappingRatio); // Default is CompactionPri::ByCompensatedSize
+    opts.set_compaction_pri(CompactionPri::ByCompensatedSize); // Default is CompactionPri::ByCompensatedSize
 
     // ---- Block-based table ----
     let mut block_opts = BlockBasedOptions::default();
@@ -1170,7 +1172,32 @@ pub fn new_state_cf_options() -> Options {
 /// Create an `Options` specifically for the Wasm column family, given an existing
 /// base `Options`.
 pub fn new_wasm_cf_options(mut opts: Options) -> Options {
+    // ---- Memtable ----
+    //
+    // Wasm contract storage tends to generate far fewer tombstones than the
+    // chain-level state CF, and also have a strong prefix locality (fixed 24-byte prefix).
+    //
+    // A 16MB memtable gives:
+    // - fewer flushes during periods of high contract activity,
+    // - better write throughput,
+    // - minimal impact on iterator performance, since wasm keys have a
+    //   strong prefix locality (fixed 24-byte prefix).
+    //
+    // Adjust later if specific contracts generate large amounts of deletes.
+    opts.set_write_buffer_size(16 * 1024 * 1024); // Default is 64MB
     opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(WASM_PREFIX_LEN));
+    opts
+}
+
+pub fn new_storage_cf_options(mut opts: Options) -> Options {
+    // ---- Memtable ----
+    // The state-storage CF is extremely delete-heavy (cronjobs), producing a
+    // very large number of tombstones. A small memtable (2MB) keeps the number
+    // of live entries + tombstones low at any moment, which greatly reduces
+    // iterator construction time. With a 2MB memtable we flush frequently,
+    // minimizing the worst-case "ramp-up" in iterator latency.
+    opts.set_write_buffer_size(2 * 1024 * 1024); // Default is 64MB
+    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(GRUG_NAMESPACE_LEN));
     opts
 }
 
@@ -1210,6 +1237,21 @@ pub fn new_wasm_read_options(
         opts.set_prefix_same_as_start(true);
     }
 
+    opts
+}
+
+pub fn new_storage_read_options(
+    mut opts: ReadOptions,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+) -> ReadOptions {
+    if let (Some(min), Some(max)) = (min, max)
+        && min.len() >= GRUG_NAMESPACE_LEN
+        && max.len() >= GRUG_NAMESPACE_LEN
+        && min[..GRUG_NAMESPACE_LEN] == max[..GRUG_NAMESPACE_LEN]
+    {
+        opts.set_prefix_same_as_start(true);
+    }
     opts
 }
 

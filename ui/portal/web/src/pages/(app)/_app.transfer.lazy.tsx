@@ -1,4 +1,10 @@
-import { Modals, useApp, useInputs, useWatchEffect } from "@left-curve/applets-kit";
+import {
+  AssetInputWithRange,
+  Modals,
+  useApp,
+  useInputs,
+  useWatchEffect,
+} from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -15,7 +21,6 @@ import {
   AccountSearchInput,
   Button,
   CoinSelector,
-  Input,
   QRCode,
   ResizerContainer,
   Tabs,
@@ -28,13 +33,7 @@ import { MobileTitle } from "~/components/foundation/MobileTitle";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { isValidAddress } from "@left-curve/dango";
-import {
-  capitalize,
-  formatNumber,
-  formatUnits,
-  parseUnits,
-  withResolvers,
-} from "@left-curve/dango/utils";
+import { capitalize, parseUnits, withResolvers } from "@left-curve/dango/utils";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
   component: TransferApplet,
@@ -43,36 +42,28 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 function TransferApplet() {
   const { action } = Route.useSearch();
   const navigate = useNavigate({ from: "/transfer" });
-  const { settings, showModal } = useApp();
-  const { formatNumberOptions } = settings;
+  const { showModal } = useApp();
 
   const queryClient = useQueryClient();
   const setAction = (v: string) => navigate({ search: { action: v }, replace: true });
   const [selectedDenom, setSelectedDenom] = useState("bridge/usdc");
-  const { register, setValue, reset, handleSubmit, inputs } = useInputs({
+  const controllers = useInputs({
     strategy: "onSubmit",
   });
 
+  const { register, reset, handleSubmit, inputs } = controllers;
+
   const { account, isConnected } = useAccount();
-  const { coins, getCoinInfo } = useConfig();
+  const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
 
-  const { data: balances = {}, refetch: refreshBalances } = useBalances({
+  const { refetch: refreshBalances } = useBalances({
     address: account?.address,
   });
 
   useWatchEffect(isConnected, (v) => !v && setAction("send"));
 
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
-
   const selectedCoin = coins.byDenom[selectedDenom];
-
-  const humanAmount = formatUnits(balances[selectedDenom] || 0, selectedCoin.decimals);
-
-  const price = getPrice(inputs.amount?.value || "0", selectedDenom, {
-    format: true,
-    formatOptions: { ...formatNumberOptions, currency: "USD" },
-  });
 
   const { mutateAsync: onSubmit, isPending } = useSubmitTx<
     void,
@@ -138,58 +129,28 @@ function TransferApplet() {
           {action === "send" ? (
             <form onSubmit={handleSubmit(onSubmit)}>
               <div className="flex flex-col w-full gap-4">
-                <Input
+                <AssetInputWithRange
+                  name="amount"
                   label="You're sending"
-                  placeholder="0"
-                  classNames={{
-                    base: "z-20",
-                    inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px]",
-                    inputParent: "h-[34px] h3-bold",
-                    input: "!h3-bold",
-                  }}
+                  asset={selectedCoin}
+                  controllers={controllers}
                   isDisabled={isPending}
-                  {...register("amount", {
-                    strategy: "onChange",
-                    validate: (v) => {
-                      if (!v) return m["errors.validations.amountIsRequired"]();
-                      if (Number(v) <= 0) return m["errors.validations.amountIsZero"]();
-                      if (Number(v) > Number(humanAmount))
-                        return m["errors.validations.insufficientFunds"]();
-                      return true;
-                    },
-                    mask: (v, prev) => {
-                      const regex = /^\d+(\.\d{0,18})?$/;
-                      if (v === "" || regex.test(v)) return v;
-                      return prev;
-                    },
-                  })}
-                  startText="right"
-                  startContent={
+                  shouldValidate
+                  showRange
+                  showCoinSelector
+                  onSelectCoin={(denom) => setSelectedDenom(denom)}
+                  renderSelector={({ value, onChange, isDisabled }) => (
                     <CoinSelector
-                      coins={Object.keys(balances).map((denom) => getCoinInfo(denom))}
-                      value={selectedDenom}
-                      isDisabled={isPending}
-                      onChange={(k) => [setSelectedDenom(k)]}
+                      coins={
+                        isConnected
+                          ? Object.keys(coins.byDenom).map((denom) => coins.byDenom[denom])
+                          : Object.values(coins.byDenom)
+                      }
+                      value={value}
+                      isDisabled={isDisabled}
+                      onChange={(k) => onChange(k)}
                     />
-                  }
-                  insideBottomComponent={
-                    <div className="w-full flex justify-between pl-4 h-[22px]">
-                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-ink-tertiary-500">
-                        <span>{formatNumber(humanAmount, formatNumberOptions)}</span>
-                        <Button
-                          type="button"
-                          isDisabled={isPending}
-                          variant="tertiary-red"
-                          size="xs"
-                          className="py-[2px] px-[6px]"
-                          onClick={() => setValue("amount", humanAmount)}
-                        >
-                          {m["common.max"]()}
-                        </Button>
-                      </div>
-                      <p>{price}</p>
-                    </div>
-                  }
+                  )}
                 />
                 <AccountSearchInput
                   {...register("address", {

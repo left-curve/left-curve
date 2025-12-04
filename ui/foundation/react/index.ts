@@ -55,5 +55,5 @@ export { formatDate, formatActivityTimestamp } from "./utils/dates.js";
 export { twMerge } from "./utils/twMerge.js";
 export { mergeRefs } from "./utils/mergeRefs.js";
 export { forwardRefPolymorphic } from "./utils/polymorph.js";
-export { numberMask } from "./utils/masks.js";
+export { numberMask, ethAddressMask } from "./utils/masks.js";
 export { ensureErrorMessage } from "./utils/error.js";

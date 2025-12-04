@@ -1,5 +1,5 @@
 use {
-    crate::{account_factory::Username, auth::Nonce},
+    crate::{account_factory::UserIndex, auth::Nonce},
     anyhow::anyhow,
     grug::{ChangeSet, Duration, Inner, Message, NonZero, Timestamp},
     std::collections::{BTreeMap, BTreeSet},
@@ -18,7 +18,7 @@ pub type Power = u32;
 #[grug::derive(Serde, Borsh)]
 pub struct Params {
     /// Users who can votes in this multisig, and their respective voting power.
-    pub members: BTreeMap<Username, NonZero<Power>>,
+    pub members: BTreeMap<UserIndex, NonZero<Power>>,
     /// The period of time since a proposal's creation when votes can be casted.
     pub voting_period: NonZero<Duration>,
     /// The minimum number of YES votes a proposal must receive in order to pass.
@@ -30,12 +30,12 @@ pub struct Params {
 
 impl Params {
     /// Find the voting power of a user. Error if the user doesn't have power.
-    pub fn power_of(&self, username: &Username) -> anyhow::Result<Power> {
+    pub fn power_of(&self, user_index: UserIndex) -> anyhow::Result<Power> {
         self.members
-            .get(username)
+            .get(&user_index)
             .map(|power| power.into_inner())
             .ok_or_else(|| {
-                anyhow!("user `{username}` is not authorized to create or vote in this proposal")
+                anyhow!("user `{user_index}` is not authorized to create or vote in this proposal")
             })
     }
 
@@ -67,7 +67,7 @@ impl Params {
 /// A set of updates to be applied to a multi-signature account.
 #[grug::derive(Serde)]
 pub struct ParamUpdates {
-    pub members: ChangeSet<Username, NonZero<Power>>,
+    pub members: ChangeSet<UserIndex, NonZero<Power>>,
     pub voting_period: Option<NonZero<Duration>>,
     pub threshold: Option<NonZero<Power>>,
     // Note that we don't allow changing the timelock, which is an important
@@ -138,7 +138,7 @@ pub enum ExecuteMsg {
     /// Vote on a proposal during its voting period.
     Vote {
         proposal_id: ProposalId,
-        voter: Username,
+        voter: UserIndex,
         vote: Vote,
         /// Immediately execute the proposal, if:
         /// - the vote is a YES vote, and
@@ -171,9 +171,9 @@ pub enum QueryMsg {
     #[returns(Option<Vote>)]
     Vote {
         proposal_id: ProposalId,
-        member: Username,
+        member: UserIndex,
     },
     /// Enumerate all votes in a proposal.
-    #[returns(BTreeMap<Username, Vote>)]
+    #[returns(BTreeMap<UserIndex, Vote>)]
     Votes { proposal_id: ProposalId },
 }

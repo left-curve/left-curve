@@ -2918,6 +2918,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bytemuck"
+version = "1.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fbdf580320f38b612e485521afda1ee26d10cc9884efaaa750d383e13e3c5f4"
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3846,6 +3852,10 @@ dependencies = [
  "data-encoding",
  "grug",
  "hex",
+ "hex-literal",
+ "identity",
+ "k256",
+ "rand 0.8.5",
  "serde",
  "sha2 0.10.9",
 ]
@@ -6598,6 +6608,7 @@ dependencies = [
  "grug-types",
  "indexer-disk-saver",
  "metrics",
+ "roaring",
  "serde",
  "serde_json",
  "strum 0.27.2",
@@ -9395,6 +9406,16 @@ checksum = "bb919243f34364b6bd2fc10ef797edbfa75f33c252e7998527479c6d6b47e1ec"
 dependencies = [
  "bytes",
  "rustc-hex",
+]
+
+[[package]]
+name = "roaring"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f08d6a905edb32d74a5d5737a0c9d7e950c312f3c46cb0ca0a2ca09ea11878a0"
+dependencies = [
+ "bytemuck",
+ "byteorder",
 ]
 
 [[package]]

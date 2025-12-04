@@ -326,28 +326,48 @@ where
 
     // Create the test accounts.
     let accounts = {
-        let owner = TestAccount::new_from_private_key(owner::USERNAME.clone(), owner::PRIVATE_KEY);
-        let user1 = TestAccount::new_from_private_key(user1::USERNAME.clone(), user1::PRIVATE_KEY);
-        let user2 = TestAccount::new_from_private_key(user2::USERNAME.clone(), user2::PRIVATE_KEY);
-        let user3 = TestAccount::new_from_private_key(user3::USERNAME.clone(), user3::PRIVATE_KEY);
-        let user4 = TestAccount::new_from_private_key(user4::USERNAME.clone(), user4::PRIVATE_KEY);
-        let user5 = TestAccount::new_from_private_key(user5::USERNAME.clone(), user5::PRIVATE_KEY);
-        let user6 = TestAccount::new_from_private_key(user6::USERNAME.clone(), user6::PRIVATE_KEY);
-        let user7 = TestAccount::new_from_private_key(user7::USERNAME.clone(), user7::PRIVATE_KEY);
-        let user8 = TestAccount::new_from_private_key(user8::USERNAME.clone(), user8::PRIVATE_KEY);
-        let user9 = TestAccount::new_from_private_key(user9::USERNAME.clone(), user9::PRIVATE_KEY);
+        let owner = TestAccount::new_from_private_key(owner::PRIVATE_KEY)
+            .set_user_index(0)
+            .set_address(addresses[0]);
+        let user1 = TestAccount::new_from_private_key(user1::PRIVATE_KEY)
+            .set_user_index(1)
+            .set_address(addresses[1]);
+        let user2 = TestAccount::new_from_private_key(user2::PRIVATE_KEY)
+            .set_user_index(2)
+            .set_address(addresses[2]);
+        let user3 = TestAccount::new_from_private_key(user3::PRIVATE_KEY)
+            .set_user_index(3)
+            .set_address(addresses[3]);
+        let user4 = TestAccount::new_from_private_key(user4::PRIVATE_KEY)
+            .set_user_index(4)
+            .set_address(addresses[4]);
+        let user5 = TestAccount::new_from_private_key(user5::PRIVATE_KEY)
+            .set_user_index(5)
+            .set_address(addresses[5]);
+        let user6 = TestAccount::new_from_private_key(user6::PRIVATE_KEY)
+            .set_user_index(6)
+            .set_address(addresses[6]);
+        let user7 = TestAccount::new_from_private_key(user7::PRIVATE_KEY)
+            .set_user_index(7)
+            .set_address(addresses[7]);
+        let user8 = TestAccount::new_from_private_key(user8::PRIVATE_KEY)
+            .set_user_index(8)
+            .set_address(addresses[8]);
+        let user9 = TestAccount::new_from_private_key(user9::PRIVATE_KEY)
+            .set_user_index(9)
+            .set_address(addresses[9]);
 
         TestAccounts {
-            owner: owner.set_address_with(&addresses),
-            user1: user1.set_address_with(&addresses),
-            user2: user2.set_address_with(&addresses),
-            user3: user3.set_address_with(&addresses),
-            user4: user4.set_address_with(&addresses),
-            user5: user5.set_address_with(&addresses),
-            user6: user6.set_address_with(&addresses),
-            user7: user7.set_address_with(&addresses),
-            user8: user8.set_address_with(&addresses),
-            user9: user9.set_address_with(&addresses),
+            owner,
+            user1,
+            user2,
+            user3,
+            user4,
+            user5,
+            user6,
+            user7,
+            user8,
+            user9,
         }
     };
 

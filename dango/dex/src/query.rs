@@ -8,7 +8,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        account_factory::Username,
+        account_factory::UserIndex,
         dex::{
             Direction, LiquidityDepth, LiquidityDepthResponse, OrderId, OrderResponse,
             OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams, PairUpdate, Price,
@@ -473,7 +473,7 @@ fn query_volume(
 
 fn query_volume_by_user(
     ctx: ImmutableCtx,
-    user: Username,
+    user: UserIndex,
     since: Option<Timestamp>,
 ) -> anyhow::Result<Udec128_6> {
     // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
@@ -485,7 +485,7 @@ fn query_volume_by_user(
     }
 
     let volume_now = VOLUMES_BY_USER
-        .prefix(&user)
+        .prefix(user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
         .next()
         .transpose()?
@@ -493,7 +493,7 @@ fn query_volume_by_user(
 
     let volume_since = if let Some(since) = since {
         VOLUMES_BY_USER
-            .prefix(&user)
+            .prefix(user)
             .values(
                 ctx.storage,
                 None,
