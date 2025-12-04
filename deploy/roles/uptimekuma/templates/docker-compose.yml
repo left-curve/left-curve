@@ -1,7 +1,23 @@
+x-wireguard-hosts: &wg-hosts
+{% set wg_hosts = [] %}
+{% for h in groups['all'] %}
+{%   if hostvars[h].wireguard_ip is defined and hostvars[h].hostname is defined %}
+{%     set _ = wg_hosts.append({'name': hostvars[h].hostname, 'ip': hostvars[h].wireguard_ip}) %}
+{%   endif %}
+{% endfor %}
+{% if wg_hosts | length == 0 %}
+  []
+{% else %}
+{%   for item in wg_hosts | sort(attribute='name') %}
+  - "{{ item.name }}:{{ item.ip }}"
+{%   endfor %}
+{% endif %}
+
 services:
   uptime-kuma:
     image: louislam/uptime-kuma:latest
     container_name: uptime-kuma
+    extra_hosts: *wg-hosts
     networks:
       - cloudflare
     volumes:
