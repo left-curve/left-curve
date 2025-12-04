@@ -71,9 +71,9 @@
 
     - name: Notify Discord of deployment start
       when:
-        - discord_webhook is defined
+        - logs_discord_webhook is defined
       uri:
-        url: "{{ discord_webhook }}"
+        url: "{{ logs_discord_webhook }}"
         method: POST
         status_code: 204
         body_format: json
@@ -121,9 +121,9 @@
             deploy_failed: true
         - name: Notify Discord of deployment failure (unreachable)
           when:
-            - discord_webhook is defined
+            - logs_discord_webhook is defined
           uri:
-            url: "{{ discord_webhook }}"
+            url: "{{ logs_discord_webhook }}"
             method: POST
             status_code: 204
             body_format: json
@@ -180,9 +180,9 @@
     - name: Notify Discord of deployment stop due to active lock
       when:
         - deploy_lock_recent | bool
-        - discord_webhook is defined
+        - logs_discord_webhook is defined
       uri:
-        url: "{{ discord_webhook }}"
+        url: "{{ logs_discord_webhook }}"
         method: POST
         status_code: 204
         body_format: json
@@ -244,9 +244,9 @@
             deploy_failed: true
         - name: Notify Discord of deployment failure (first phase)
           when:
-            - discord_webhook is defined
+            - logs_discord_webhook is defined
           uri:
-            url: "{{ discord_webhook }}"
+            url: "{{ logs_discord_webhook }}"
             method: POST
             status_code: 204
             body_format: json
@@ -374,9 +374,9 @@
 
         - name: Notify Discord of deployment failure
           when:
-            - discord_webhook is defined
+            - logs_discord_webhook is defined
           uri:
-            url: "{{ discord_webhook }}"
+            url: "{{ logs_discord_webhook }}"
             method: POST
             status_code: 204
             body_format: json
@@ -438,10 +438,10 @@
         - name: Notify Discord of deployment success for main
           when:
             - not (deploy_failed | default(false))
-            - discord_webhook is defined
+            - logs_discord_webhook is defined
             - github_pr_number is not defined
           uri:
-            url: "{{ discord_webhook }}"
+            url: "{{ logs_discord_webhook }}"
             method: POST
             status_code: 204
             body_format: json
@@ -482,10 +482,10 @@
         - name: Notify Discord of deployment success for PR
           when:
             - not (deploy_failed | default(false))
-            - discord_webhook is defined
+            - logs_discord_webhook is defined
             - github_pr_number is defined
           uri:
-            url: "{{ discord_webhook }}"
+            url: "{{ logs_discord_webhook }}"
             method: POST
             status_code: 204
             body_format: json

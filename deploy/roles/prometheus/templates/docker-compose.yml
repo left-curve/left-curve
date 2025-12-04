@@ -88,7 +88,7 @@ services:
     image: benjojo/alertmanager-discord
     extra_hosts: *wg-hosts
     environment:
-      - DISCORD_WEBHOOK={{ discord_webhook }}
+      - DISCORD_WEBHOOK={{ status_discord_webhook }}
 
 networks:
   default:
