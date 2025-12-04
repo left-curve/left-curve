@@ -66,14 +66,10 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         emitter.emit("disconnect");
       },
       async getClient() {
-        const username = getUsername();
-        if (!username) throw new Error("eip1193: username not found");
-
         return createSignerClient({
           signer: this,
           type: "eip1193",
           chain,
-          username,
           transport,
         });
       },

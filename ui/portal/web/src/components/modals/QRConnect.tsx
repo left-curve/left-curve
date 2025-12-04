@@ -90,7 +90,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
           isLoading={isLoading}
           data={
             messageExchanger
-              ? `${document.location.origin}/signin?socketId=${messageExchanger.getSocketId()}`
+              ? `${document.location.origin}/?socketId=${messageExchanger.getSocketId()}`
               : undefined
           }
         />
