@@ -1269,7 +1269,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
     ],
-    Uint128::new(72_965_238)
+    Uint128::new(72_937_428)  // Updated to account for taker fee on asymmetric deposit
     ; "provision at different ratio"
 )]
 #[test_case(
@@ -1323,7 +1323,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
     ],
-    Uint128::new(249_909_089)
+    Uint128::new(249_836_362)  // Updated to account for taker fee on asymmetric deposit
     ; "geometric pool provision at different ratio"
 )]
 #[test_case(
@@ -1341,7 +1341,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
     ],
-    Uint128::new(199_899_999)
+    Uint128::new(199_819_999)  // Updated to account for taker fee on asymmetric deposit
     ; "geometric pool provision at different ratio 2"
 )]
 fn provide_liquidity(
