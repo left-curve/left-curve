@@ -1,14 +1,23 @@
 use {
     super::error::Error,
-    crate::{context::Context, routes},
+    crate::{context::Context, migrations, routes},
     actix_cors::Cors,
     actix_web::{
         App, HttpResponse, HttpServer, http,
         middleware::{Compress, Logger},
         web::{self},
     },
+    dango_types::{
+        bitcoin::{Config as BridgeConfig, QueryConfigRequest},
+        config::AppConfig,
+    },
+    grug::{ClientWrapper, QueryClientExt},
+    indexer_client::HttpClient,
+    metrics_exporter_prometheus::PrometheusBuilder,
+    sea_orm::DatabaseConnection,
+    sea_orm_migration::MigratorTrait,
     sentry_actix::Sentry,
-    std::fmt::Display,
+    std::{fmt::Display, sync::Arc},
 };
 #[cfg(feature = "metrics")]
 use {actix_web_metrics::ActixWebMetricsBuilder, metrics_exporter_prometheus::PrometheusHandle};
@@ -131,6 +140,49 @@ where
     .bind((ip.to_string(), port))?
     .run()
     .await?;
+
+    Ok(())
+}
+
+pub async fn get_bridge_config(dango_url: String) -> Result<BridgeConfig, Error> {
+    // Initialize Dango client.
+    let dango_client = ClientWrapper::new(Arc::new(HttpClient::new(dango_url)?));
+
+    // Query the bitcoin bridge contract address.
+    let bitcoin_bridge = dango_client
+        .query_app_config::<AppConfig>(None)
+        .await?
+        .addresses
+        .bitcoin;
+
+    // Load bitcoin bridge config from contract.
+    let bridge_config = dango_client
+        .query_wasm_smart(bitcoin_bridge, QueryConfigRequest {}, None)
+        .await?;
+
+    Ok(bridge_config)
+}
+
+pub async fn run_servers(bridge_config: BridgeConfig, db: DatabaseConnection) -> Result<(), Error> {
+    // Initialize metrics handler.
+    // This should be done as soon as possible to capture all events.
+    let metrics_handler = PrometheusBuilder::new().install_recorder()?;
+
+    // Run migrations.
+    #[cfg(feature = "tracing")]
+    tracing::info!("running migrations");
+    migrations::Migrator::up(&db, None).await?;
+    #[cfg(feature = "tracing")]
+    tracing::info!("ran migrations successfully");
+
+    // Create context.
+    let context = Context::new(bridge_config, db);
+
+    // Run the server
+    let server = run_server("127.0.0.1", 8080, None, context);
+    let metrics = run_metrics_server("127.0.0.1", 8081, metrics_handler);
+
+    tokio::try_join!(server, metrics)?;
 
     Ok(())
 }

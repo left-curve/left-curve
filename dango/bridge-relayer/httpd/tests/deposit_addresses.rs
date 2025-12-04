@@ -1,23 +1,27 @@
 use {
     actix_web::{App, HttpResponse, http::StatusCode, test, web},
     chrono::Utc,
+    corepc_client::bitcoin::Address,
     dango_bridge_relayer_httpd::{
         context::Context,
         entity, migrations,
         routes::{self},
     },
+    dango_genesis::GenesisOption,
+    dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
+    dango_testing::Preset,
     dango_types::bitcoin::{Config, MultisigSettings, Network},
     grug::{__private::hex_literal::hex, Addr, HexByteArray, NonEmpty, Uint128, btree_set},
     metrics_exporter_prometheus::PrometheusBuilder,
     sea_orm::{ColumnTrait, Database, EntityTrait, QueryFilter},
     sea_orm_migration::MigratorTrait,
-    std::{collections::HashSet, time::Duration},
+    std::{collections::HashSet, str::FromStr, time::Duration},
 };
 
-async fn test_context() -> Context {
+async fn mock_context(network: Network) -> Context {
     let pk1 = hex!("029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f6");
     let bridge_config = Config {
-        network: Network::Testnet,
+        network,
         vault: "0x0000000000000000000000000000000000000000".to_string(),
         multisig: MultisigSettings::new(
             1,
@@ -37,12 +41,48 @@ async fn test_context() -> Context {
     Context::new(bridge_config, db)
 }
 
+async fn run_mock_indexer() -> anyhow::Result<String> {
+    let port = get_mock_socket_addr();
+
+    let (sx, _rx) = tokio::sync::oneshot::channel();
+
+    // Run server in separate thread with its own runtime
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            tracing::info!("Starting mock HTTP server on port {port}");
+
+            if let Err(error) = dango_mock_httpd::run_with_callback(
+                port,
+                BlockCreation::OnBroadcast,
+                None,
+                TestOption::default(),
+                GenesisOption::preset_test(),
+                None,
+                |accounts, _, _, _, _| {
+                    sx.send(accounts).unwrap();
+                },
+            )
+            .await
+            {
+                println!("Error running mock HTTP server: {error}");
+            }
+        });
+    });
+
+    wait_for_server_ready(port).await?;
+
+    Ok(format!("http://localhost:{port}"))
+}
+
 #[actix_web::test]
 async fn test_deposit_addresses() {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
-    let context = test_context().await;
+    let network = Network::Testnet;
+
+    let context = mock_context(network).await;
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(context.clone()))
@@ -87,7 +127,11 @@ async fn test_deposit_addresses() {
         assert_eq!(resp.status(), StatusCode::OK);
         let result = test::read_body(resp).await;
         let text = String::from_utf8(result.to_vec()).unwrap();
-        assert_eq!(text.len(), 62);
+        assert!(
+            Address::from_str(&text)
+                .unwrap()
+                .is_valid_for_network(network)
+        );
         assert!(addresses.insert(text));
     }
 
@@ -124,7 +168,11 @@ async fn test_deposit_addresses() {
     assert_eq!(resp.status(), StatusCode::OK);
     let result = test::read_body(resp).await;
     let text = String::from_utf8(result.to_vec()).unwrap();
-    assert_eq!(text.len(), 62);
+    assert!(
+        Address::from_str(&text)
+            .unwrap()
+            .is_valid_for_network(network)
+    );
 
     // Try to fetch the deposit addresses after the saved timestamp. Should return only the new address.
     let req = test::TestRequest::get()
@@ -156,7 +204,11 @@ async fn test_deposit_addresses() {
     let result = test::read_body(resp).await;
     let text = String::from_utf8(result.to_vec()).unwrap();
     assert_eq!(text, text);
-    assert_eq!(text.len(), 62);
+    assert!(
+        Address::from_str(&text)
+            .unwrap()
+            .is_valid_for_network(network)
+    );
 
     // Try to fetch the deposit addresses after the saved timestamp. Should return only the new address.
     let req = test::TestRequest::get()
@@ -178,4 +230,202 @@ async fn test_deposit_addresses() {
         .unwrap()
         .created_at;
     assert!(created_at_new > created_at);
+}
+
+#[tokio::test]
+async fn e2e_test_bridge_relayer() -> anyhow::Result<()> {
+    // Initialize tracing
+    tracing_subscriber::fmt::init();
+
+    let dango_url = run_mock_indexer().await?;
+    let database_url = "sqlite::memory:".to_string();
+
+    // Get bridge config from Dango
+    let bridge_config = dango_bridge_relayer_httpd::server::get_bridge_config(dango_url).await?;
+    let network = bridge_config.network.clone();
+
+    // Create database connection
+    let db = Database::connect(database_url.clone()).await.unwrap();
+    let db_clone = db.clone();
+
+    // Start bridge relayer servers in separate thread with its own runtime
+    let _server_handle = std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            tracing::info!("Starting bridge relayer servers");
+
+            if let Err(error) =
+                dango_bridge_relayer_httpd::server::run_servers(bridge_config, db_clone).await
+            {
+                println!("Error running bridge relayer servers: {error}");
+            }
+        });
+    });
+
+    // Give servers time to start up
+    tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+
+    println!("Servers should be running, starting tests...");
+
+    // Test the health endpoint
+    let client = reqwest::Client::new();
+
+    // Test main server health
+    let response = client.get("http://127.0.0.1:8080/health").send().await?;
+
+    assert!(response.status().is_success());
+    let body = response.text().await?;
+    assert_eq!(body, "Bridge relayer server is healthy");
+    println!("✓ Main server health check passed");
+
+    // Try to call without any data in the database. Should return an empty array.
+    let response = client
+        .get("http://127.0.0.1:8080/deposit-addresses")
+        .send()
+        .await?;
+    let body = response.text().await?;
+    let res = serde_json::from_str::<Vec<String>>(&body).unwrap();
+    assert_eq!(res.len(), 0);
+
+    // Create 10 deposit addresses.
+    let mut addresses = HashSet::<String>::new();
+    for i in 0..10 {
+        let response = client
+            .post(
+                format!(
+                    "http://127.0.0.1:8080/deposit-address/{}",
+                    Addr::mock(i).to_string()
+                )
+                .as_str(),
+            )
+            .send()
+            .await?;
+        assert!(response.status().is_success());
+        let text = response.text().await?;
+        println!("text: {text}");
+        assert!(
+            Address::from_str(&text)
+                .unwrap()
+                .is_valid_for_network(network)
+        );
+        assert!(addresses.insert(text));
+    }
+
+    // Try to fetch the metrics. Should contain the total number of deposit addresses created.
+    let response = client.get("http://127.0.0.1:8081/metrics").send().await?;
+    assert!(response.status().is_success());
+    let metrics = response.text().await?;
+    assert!(metrics.contains("http_bridge_relayer_deposit_address_total 10"));
+
+    // Try to fetch all the deposit addresses. Should work.
+    let response = client
+        .get("http://127.0.0.1:8080/deposit-addresses")
+        .send()
+        .await?;
+    assert!(response.status().is_success());
+    let body = response.text().await?;
+    let res = serde_json::from_str::<Vec<String>>(&body).unwrap();
+    assert_eq!(res.len(), 10);
+    assert!(res.iter().all(|addr| addresses.contains(addr)));
+
+    // Get the current timestamp in milliseconds.
+    let now = Utc::now().timestamp_millis();
+
+    // Sleep for 1 second.
+    tokio::time::sleep(Duration::from_secs(1)).await;
+
+    // Create one more deposit address
+    let response = client
+        .post(
+            format!(
+                "http://127.0.0.1:8080/deposit-address/{}",
+                Addr::mock(10).to_string()
+            )
+            .as_str(),
+        )
+        .send()
+        .await?;
+    assert!(response.status().is_success());
+    let body = response.text().await?;
+    let text = body;
+    assert!(
+        Address::from_str(&text)
+            .unwrap()
+            .is_valid_for_network(network)
+    );
+
+    // Try to fetch the deposit addresses after the saved timestamp. Should return only the new address.
+    let response = client
+        .get(
+            format!(
+                "http://127.0.0.1:8080/deposit-addresses?after_created_at={}",
+                now
+            )
+            .as_str(),
+        )
+        .send()
+        .await?;
+    assert!(response.status().is_success());
+    let body = response.text().await?;
+    let res = serde_json::from_str::<Vec<String>>(&body).unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0], text);
+
+    // Check created_at timestamp of the new deposit address.
+    let created_at = entity::deposit_address::Entity::find()
+        .filter(entity::deposit_address::Column::Address.eq(text))
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap()
+        .created_at;
+    assert!(created_at > now);
+
+    // Try to create an existing deposit address. Should update the created_at timestamp and return the same address.
+    let response = client
+        .post(
+            format!(
+                "http://127.0.0.1:8080/deposit-address/{}",
+                Addr::mock(10).to_string()
+            )
+            .as_str(),
+        )
+        .send()
+        .await?;
+    assert!(response.status().is_success());
+    let text = response.text().await?;
+    assert!(
+        Address::from_str(&text)
+            .unwrap()
+            .is_valid_for_network(network)
+    );
+
+    // Try to fetch the deposit addresses after the saved timestamp. Should return only the new address.
+    let response = client
+        .get(
+            format!(
+                "http://127.0.0.1:8080/deposit-addresses?after_created_at={}",
+                now
+            )
+            .as_str(),
+        )
+        .send()
+        .await?;
+    assert!(response.status().is_success());
+    let body = response.text().await?;
+    let res = serde_json::from_str::<Vec<String>>(&body).unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0], text);
+
+    // Ensure the created_at timestamp of the new deposit address is updated.
+    let created_at_new = entity::deposit_address::Entity::find()
+        .filter(entity::deposit_address::Column::Address.eq(text))
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap()
+        .created_at;
+    assert!(created_at_new > created_at);
+
+    Ok(())
 }
