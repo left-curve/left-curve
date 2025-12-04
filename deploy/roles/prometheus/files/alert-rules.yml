@@ -2,7 +2,7 @@ groups:
 - name: instance-alerts
   rules:
   - alert: InstanceDown
-    expr: up == 0
+    expr: up{environment!="preview"} == 0
     for: 2m
     labels:
       severity: critical
@@ -40,21 +40,21 @@ groups:
 - name: application-alerts
   rules:
   - alert: DangoServiceDown
-    expr: up{job="dango"} == 0
+    expr: up{job="dango", environment!="preview"} == 0
     for: 1m
     labels:
       severity: critical
     annotations:
-      summary: "Dango service is down on {{ $labels.instance }}"
+      summary: "Dango service is down on {{ $labels.instance }} ({{ $labels.dango_network }})"
       description: "Dango service has been down for more than 1 minute."
 
   - alert: CometBFTServiceDown
-    expr: up{job="cometbft"} == 0
+    expr: up{job="cometbft", environment!="preview"} == 0
     for: 1m
     labels:
       severity: critical
     annotations:
-      summary: "CometBFT service is down on {{ $labels.instance }}"
+      summary: "CometBFT service is down on {{ $labels.instance }} ({{ $labels.dango_network }})"
       description: "CometBFT service has been down for more than 1 minute."
 
   - alert: HighErrorRate

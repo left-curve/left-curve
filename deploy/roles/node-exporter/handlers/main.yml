@@ -1,6 +1,6 @@
 ---
 - name: Reload systemd
   become: true
+  become_user: root
   ansible.builtin.systemd:
     daemon_reload: true
-
