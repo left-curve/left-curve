@@ -161,7 +161,7 @@
     },
     "bridge": {
       "id": "bridge",
-      "img": "/images/emojis/simple/pig.svg",
+      "img": "/images/emojis/simple/moneybag.svg",
       "title": "Deposit & Withdraw",
       "description": "Deposit and withdraw assets across chains",
       "path": "/bridge",
