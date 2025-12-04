@@ -3,13 +3,13 @@ use {
     chrono::Utc,
     dango_bridge_relayer_httpd::{
         context::Context,
-        migrations,
+        entity, migrations,
         routes::{self},
     },
     dango_types::bitcoin::{Config, MultisigSettings, Network},
     grug::{__private::hex_literal::hex, Addr, HexByteArray, NonEmpty, Uint128, btree_set},
     metrics_exporter_prometheus::PrometheusBuilder,
-    sea_orm::Database,
+    sea_orm::{ColumnTrait, Database, EntityTrait, QueryFilter},
     sea_orm_migration::MigratorTrait,
     std::{collections::HashSet, time::Duration},
 };
@@ -45,7 +45,7 @@ async fn test_deposit_addresses() {
     let context = test_context().await;
     let app = test::init_service(
         App::new()
-            .app_data(web::Data::new(context))
+            .app_data(web::Data::new(context.clone()))
             .service(routes::deposit_address)
             .service(routes::deposit_addresses),
     )
@@ -135,6 +135,47 @@ async fn test_deposit_addresses() {
     let result = test::read_body(resp).await;
     let res = serde_json::from_slice::<Vec<String>>(&result).unwrap();
     assert_eq!(res.len(), 1);
-    assert!(res.iter().all(|addr| addresses.contains(addr)));
     assert_eq!(res[0], text);
+
+    // Check created_at timestamp of the new deposit address.
+    let created_at = entity::deposit_address::Entity::find()
+        .filter(entity::deposit_address::Column::Address.eq(text))
+        .one(&context.db)
+        .await
+        .unwrap()
+        .unwrap()
+        .created_at;
+    assert!(created_at > now);
+
+    // Try to create an existing deposit address. Should update the created_at timestamp and return the same address.
+    let req = test::TestRequest::post()
+        .uri(format!("/deposit-address/{}", Addr::mock(10).to_string()).as_str())
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let result = test::read_body(resp).await;
+    let text = String::from_utf8(result.to_vec()).unwrap();
+    assert_eq!(text, text);
+    assert_eq!(text.len(), 62);
+
+    // Try to fetch the deposit addresses after the saved timestamp. Should return only the new address.
+    let req = test::TestRequest::get()
+        .uri(format!("/deposit-addresses?after_created_at={}", now).as_str())
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let result = test::read_body(resp).await;
+    let res = serde_json::from_slice::<Vec<String>>(&result).unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0], text);
+
+    // Ensure the created_at timestamp of the new deposit address is updated.
+    let created_at_new = entity::deposit_address::Entity::find()
+        .filter(entity::deposit_address::Column::Address.eq(text))
+        .one(&context.db)
+        .await
+        .unwrap()
+        .unwrap()
+        .created_at;
+    assert!(created_at_new > created_at);
 }

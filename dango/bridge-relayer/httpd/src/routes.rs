@@ -17,7 +17,9 @@ use {
     grug::Addr,
     metrics::counter,
     sea_orm::{
-        ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QueryTrait, SqlErr,
+        ActiveValue::{NotSet, Set},
+        ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QueryTrait,
+        sea_query::OnConflict,
     },
     serde::{Deserialize, Serialize},
     std::{
@@ -70,34 +72,33 @@ async fn deposit_address(path: web::Path<String>, context: web::Data<Context>) -
     let deposit_address = entity::deposit_address::ActiveModel {
         address: Set(bitcoin_deposit_address.to_string()),
         created_at: Set(created_at),
-        ..Default::default()
+        id: NotSet,
     };
     if let Err(e) = entity::deposit_address::Entity::insert(deposit_address)
+        .on_conflict(
+            OnConflict::column(entity::deposit_address::Column::Address)
+                .update_column(entity::deposit_address::Column::CreatedAt)
+                .value(entity::deposit_address::Column::CreatedAt, created_at)
+                .to_owned(),
+        )
         .exec(&context.db)
         .await
     {
-        if matches!(e.sql_err(), Some(SqlErr::UniqueConstraintViolation(_))) {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::debug!(%bitcoin_deposit_address, "Deposit address already exists.");
-            }
-        } else {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(
-                    err = e.to_string(),
-                    "Failed to store deposit address in database."
-                );
-            }
-            return Err(json_error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Something went wrong. Please try again later.",
-            ));
+        #[cfg(feature = "tracing")]
+        {
+            tracing::error!(
+                err = e.to_string(),
+                "Failed to store or update deposit address in database."
+            );
         }
+        return Err(json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Something went wrong. Please try again later.",
+        ));
     } else {
         #[cfg(feature = "tracing")]
         {
-            tracing::info!(%bitcoin_deposit_address, %created_at, "Deposit address stored in database.");
+            tracing::info!(%bitcoin_deposit_address, %created_at, "Deposit address stored or updated in database.");
         }
 
         #[cfg(feature = "metrics")]
