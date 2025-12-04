@@ -28,7 +28,6 @@ export const ASSETS = {
   transfer: require("@left-curve/foundation/images/emojis/simple/money.svg"),
   "create-account": require("@left-curve/foundation/images/emojis/simple/wizard.svg"),
   settings: require("@left-curve/foundation/images/emojis/simple/settings.svg"),
-  notifications: require("@left-curve/foundation/images/emojis/simple/notifications.svg"),
   devtool: require("@left-curve/foundation/images/emojis/simple/factory-2.svg"),
 };
 
