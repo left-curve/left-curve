@@ -16,6 +16,7 @@
     "test": "turbo test",
     "test:sdk": "turbo test -F=./sdk/**",
     "dev": "turbo dev",
+    "test:e2e": "pnpm portal-web test:e2e",
     "machine-translate": "pnpm -F ui-config machine-translate",
     "dev:sdk": "turbo dev -F=./sdk/**",
     "dev:applets": "turbo dev -F=./ui/applets/**",
