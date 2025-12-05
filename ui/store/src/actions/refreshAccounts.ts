@@ -7,7 +7,7 @@ import type { Address, UID } from "@left-curve/dango/types";
 import type { Config } from "../types/store.js";
 
 export type RefreshAccountsParameters = {
-  username?: Username;
+  username: Username;
   connectorUId?: UID;
 };
 
@@ -15,8 +15,10 @@ export type RefreshAccountsReturnType = void;
 
 export async function refreshAccounts<config extends Config>(
   config: config,
-  parameters: RefreshAccountsParameters = {},
+  parameters: RefreshAccountsParameters,
 ): Promise<RefreshAccountsReturnType> {
+  const { username } = parameters;
+
   const connectorUId = (() => {
     if (parameters.connectorUId) return parameters.connectorUId;
     const connector = getConnector(config);
@@ -24,12 +26,6 @@ export async function refreshAccounts<config extends Config>(
   })();
 
   const client = await getConnectorClient(config, { connectorUId: connectorUId });
-
-  const username = (() => {
-    if (parameters.username) return parameters.username;
-    if (client.username) return client.username;
-    throw new Error("Username not provided");
-  })();
 
   const accounts = await client.getAccountsByUsername({ username });
 

@@ -35,5 +35,13 @@ export async function forgotUsername<
 
   const { addresses } = await action<AppConfig>({});
 
-  return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
+  const response = await queryWasmSmart(client, {
+    contract: addresses.accountFactory,
+    msg,
+    height,
+  });
+
+  return (response as { index: number; name?: string }[]).map(
+    ({ index, name }) => name ?? `user #${index}`,
+  );
 }

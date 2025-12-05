@@ -26,7 +26,7 @@ export async function getAccountsByUsername<
   parameters: GetAccountsByUsernameParameters,
 ): GetAccountsByUsernameReturnType {
   const { username, height = 0 } = parameters;
-  const msg = { accountsByUser: { username } };
+  const msg = { accountsByUser: { user: { name: username } } };
 
   const action = getAction(client, getAppConfig, "getAppConfig");
 

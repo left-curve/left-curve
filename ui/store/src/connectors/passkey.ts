@@ -64,12 +64,9 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         emitter.emit("disconnect");
       },
       async getClient() {
-        const username = getUsername();
-        if (!username) throw new Error("passkey: username not found");
         return createSignerClient({
           signer: this,
           type: "passkey",
-          username,
           chain,
           transport,
         });
