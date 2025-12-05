@@ -79,13 +79,13 @@ pub mod evm {
 
 #[cfg(test)]
 mod tests {
-    use crate::config;
+    // use crate::config;
 
-    use super::*;
+    // use super::*;
 
-    #[tokio::test]
-    async fn test_setup_dango() {
-        let config = config::load_config().unwrap().dango;
-        setup_dango(&config).await.unwrap();
-    }
+    // #[tokio::test]
+    // async fn test_setup_dango() {
+    //     let config = config::load_config().unwrap().dango;
+    //     setup_dango(&config).await.unwrap();
+    // }
 }

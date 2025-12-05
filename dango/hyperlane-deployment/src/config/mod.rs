@@ -47,14 +47,6 @@ pub struct EVMWarpRouteDeployment {
     pub symbol: String,
 }
 
-pub fn load_evm_deployments() -> anyhow::Result<EVMDeployment> {
-    let deployments_path = format!("{}/deployments.json", env!("CARGO_MANIFEST_DIR"));
-    let deployments = std::fs::read_to_string(deployments_path)?;
-    let deployments: EVMDeployment = serde_json::from_str(&deployments)?;
-
-    Ok(deployments)
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Deployments {
     pub evm: BTreeMap<String, EVMDeployment>,
@@ -94,12 +86,6 @@ mod tests {
         println!("serialized = {}", serialized);
         let deserialized: Address = serde_json::from_str(&serialized).unwrap();
         println!("deserialized = {}", deserialized);
-    }
-
-    #[test]
-    fn test_load_evm_deployments() {
-        let deployments = load_evm_deployments().unwrap();
-        println!("deployments = {:?}", deployments);
     }
 
     #[test]
