@@ -78,17 +78,13 @@ pub fn save_deployments(deployments: &Deployments) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use {
-        crate::config::evm::{HyperlaneDeployments, ISM, WarpRoute, WarpRouteType},
-        alloy::primitives::{Address, address},
-        grug::btree_map,
-    };
+    use alloy::primitives::{Address, address};
 
     use super::*;
 
     #[test]
     fn test_load_config() {
-        let config = load_config().unwrap();
+        load_config().unwrap();
     }
 
     #[test]

@@ -1,21 +1,11 @@
 use {
-    dango_client::{Secp256k1, Secret, SingleSigner},
+    dango_hyperlane_deployment::{config, setup},
     dango_types::config::AppConfig,
-    grug::{
-        Addr, BroadcastClientExt, Coins, GasOption, HexByteArray, QueryClientExt, SearchTxClient,
-        addr,
-    },
+    grug::{BroadcastClientExt, Coins, GasOption, HexByteArray, QueryClientExt, SearchTxClient},
     hex_literal::hex,
     hyperlane_types::isms::multisig::ValidatorSet,
-    indexer_client::HttpClient,
 };
 
-const CURRENT_OWNER: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9");
-const CURRENT_OWNER_USERNAME: &str = "owner";
-const CURRENT_OWNER_PRIVATE_KEY: [u8; 32] =
-    hex!("8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177");
-
-const DANGO_API_URL: &str = "https://api-pr-1414-ovh2.dango.zone/";
 const REMOTE_DOMAIN: u32 = 11155111;
 
 const CHAIN_ID: &str = "pr-1414";
@@ -29,20 +19,11 @@ const REMOTE_VALIDATOR_SET_THRESHOLD: u32 = 2;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let dango_client = HttpClient::new(DANGO_API_URL)?;
+    let config = config::load_config()?;
 
-    println!("querying contracts...");
+    let (dango_client, mut signer) = setup::setup_dango(&config.dango).await?;
+
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
-    println!("app_cfg: {:#?}", app_cfg);
-
-    // Setup signer
-    let mut signer = SingleSigner::new(
-        CURRENT_OWNER_USERNAME,
-        CURRENT_OWNER,
-        Secp256k1::from_bytes(CURRENT_OWNER_PRIVATE_KEY)?,
-    )?
-    .with_query_nonce(&dango_client)
-    .await?;
 
     // Query mailbox Config
     let mailbox_config = dango_client

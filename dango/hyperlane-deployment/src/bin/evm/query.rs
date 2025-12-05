@@ -12,10 +12,7 @@
 use {
     dango_hyperlane_deployment::{
         config,
-        contract_bindings::{
-            hyp_erc20_collateral::HypERC20Collateral, hyp_native::HypNative,
-            ism::StaticMessageIdMultisigIsm,
-        },
+        contract_bindings::{hyp_native::HypNative, ism::StaticMessageIdMultisigIsm},
         evm::get_or_deploy_ism,
         setup,
     },
@@ -29,6 +26,9 @@ pub async fn main() -> anyhow::Result<()> {
     let config = config::load_config()?;
     let evm_config = config.evm.get("sepolia").unwrap();
 
+    let deployments = config::load_deployments()?;
+    let evm_deployment = deployments.evm.get("sepolia").unwrap();
+
     let ism = evm_config.ism.clone();
 
     let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
@@ -37,28 +37,17 @@ pub async fn main() -> anyhow::Result<()> {
 
     println!("ISM address: {ism_address}");
 
-    let warp_route_1 = evm_config.warp_routes[0].clone();
-    let warp_route_2 = evm_config.warp_routes[1].clone();
+    let warp_route_2 = evm_deployment.warp_routes[1].clone();
 
-    let hyp_native = HypNative::new(warp_route_1.address.unwrap(), &provider);
-    let hyp_erc20_collateral =
-        HypERC20Collateral::new(warp_route_2.proxy_address.unwrap(), &provider);
-    let proxy = HypNative::new(warp_route_2.proxy_address.unwrap(), &provider);
+    let proxy = HypNative::new(warp_route_2.1.proxy_address, &provider);
 
     println!("Querying the warp route for the current ISM...");
-    let hyp_native_ism = hyp_native.interchainSecurityModule().call().await?;
+    let hyp_native_ism = proxy.interchainSecurityModule().call().await?;
     println!("Native ISM: {hyp_native_ism}");
-
-    println!("Querying the ERC20 collateral ISM for the current ISM...");
-    let hyp_erc20_collateral_ism = hyp_erc20_collateral
-        .interchainSecurityModule()
-        .call()
-        .await?;
-    println!("ERC20 collateral ISM: {hyp_erc20_collateral_ism}");
 
     // Query the ISM for validators and threshold
     println!("Querying the new ISM for validators and threshold...");
-    let validators_and_threshold = StaticMessageIdMultisigIsm::new(ism_address, &provider)
+    let validators_and_threshold = StaticMessageIdMultisigIsm::new(hyp_native_ism, &provider)
         .validatorsAndThreshold(b"".to_vec().into())
         .call()
         .await?;

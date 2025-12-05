@@ -12,11 +12,11 @@
 use {
     dango_hyperlane_deployment::{
         config::{
-            self, EVMWarpRouteDeployment,
+            self,
             evm::{WarpRoute, WarpRouteType},
         },
         evm::{
-            deploy_proxy_admin, deploy_warp_route, deploy_warp_route_and_update_deployment,
+            deploy_proxy_admin, deploy_warp_route_and_update_deployment,
             get_or_deploy_ism,
         },
         setup,
@@ -72,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
         &warp_route,
         owner,
         Some(ism),
-        &evm_config,
+        evm_config,
         &mut evm_deployment,
     )
     .await?;

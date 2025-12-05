@@ -83,8 +83,8 @@ async fn main() -> anyhow::Result<()> {
             println!(
                 "approving spend of {} for route proxy ({}) on {}",
                 WARP_AMOUNT,
-                warp_route_deployment.proxy_address.to_string(),
-                erc20_address.to_string()
+                warp_route_deployment.proxy_address,
+                erc20_address
             );
             let tx_hash = provider
                 .send_transaction(

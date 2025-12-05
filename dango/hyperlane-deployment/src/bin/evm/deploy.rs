@@ -2,12 +2,8 @@ use {
     clap::Parser,
     dango_hyperlane_deployment::{
         config,
-        contract_bindings::proxy::ProxyAdmin,
         dango::set_warp_routes,
-        evm::{
-            deploy_proxy_admin, deploy_warp_route, deploy_warp_route_and_update_deployment,
-            get_or_deploy_ism,
-        },
+        evm::{deploy_proxy_admin, deploy_warp_route_and_update_deployment, get_or_deploy_ism},
         setup,
     },
     dotenvy::dotenv,
@@ -64,7 +60,7 @@ async fn main() -> anyhow::Result<()> {
             warp_route,
             owner,
             Some(ism_address),
-            &evm_config,
+            evm_config,
             &mut evm_deployment,
         )
         .await?;

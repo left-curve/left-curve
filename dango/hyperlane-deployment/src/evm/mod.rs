@@ -1,13 +1,13 @@
 use {
     crate::{
         config::{
-            Config, EVMDeployment, EVMWarpRouteDeployment,
-            evm::{EVMConfig, HyperlaneDeployments, ISM, WarpRoute, WarpRouteType},
+            EVMDeployment, EVMWarpRouteDeployment,
+            evm::{EVMConfig, HyperlaneDeployments, Ism, WarpRoute, WarpRouteType},
         },
         contract_bindings::{
             hyp_erc20_collateral::HypERC20Collateral,
             hyp_native::HypNative,
-            ism::{StaticMessageIdMultisigIsm, StaticMessageIdMultisigIsmFactory},
+            ism::StaticMessageIdMultisigIsmFactory,
             proxy::{ProxyAdmin, TransparentUpgradeableProxy},
         },
     },
@@ -176,7 +176,7 @@ pub async fn deploy_warp_route_and_update_deployment(
     let (warp_route_address, proxy_address) = deploy_warp_route(
         &provider,
         &evm_config.hyperlane_deployments,
-        &warp_route,
+        warp_route,
         deployment.proxy_admin_address,
         ism,
         owner,
@@ -220,10 +220,10 @@ pub async fn set_ism_on_warp_route(
 pub async fn get_or_deploy_ism(
     provider: &impl Provider,
     hyperlane_deployments: &HyperlaneDeployments,
-    ism: ISM,
+    ism: Ism,
 ) -> anyhow::Result<Address> {
     match ism {
-        ISM::StaticMessageIdMultisigIsm {
+        Ism::StaticMessageIdMultisigIsm {
             validators,
             threshold,
         } => {
@@ -247,7 +247,7 @@ pub async fn get_or_deploy_ism(
             if !is_deployed {
                 println!("ISM is not yet deployed. Deploying...");
                 let tx = factory
-                    .deploy(validators, threshold)
+                    .deploy_call(validators, threshold)
                     .send()
                     .await?
                     .watch()

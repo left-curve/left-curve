@@ -26,7 +26,10 @@ async fn main() -> anyhow::Result<()> {
     let config = config::load_config()?;
     let evm_config = config.evm.get("sepolia").unwrap();
 
-    let (provider, owner) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
+    let deployments = config::load_deployments()?;
+    let evm_deployment = deployments.evm.get("sepolia").unwrap();
+
+    let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
     let ism = evm_config.ism.clone();
 
@@ -34,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
 
     println!("ISM address: {ism_address}");
 
-    let hyp_native = HypNative::new(evm_config.warp_routes[1].proxy_address.unwrap(), &provider);
+    let hyp_native = HypNative::new(evm_deployment.warp_routes[1].1.proxy_address, &provider);
 
     println!(
         "Setting ISM on warp route {:?} to {ism_address}...",

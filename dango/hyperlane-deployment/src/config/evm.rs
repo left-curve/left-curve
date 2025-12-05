@@ -9,7 +9,7 @@ pub struct EVMConfig {
     pub hyperlane_deployments: HyperlaneDeployments,
     pub hyperlane_domain: u32,
     pub hyperlane_protocol_fee: u128,
-    pub ism: ISM,
+    pub ism: Ism,
     pub warp_routes: Vec<WarpRoute>,
 }
 
@@ -30,7 +30,7 @@ pub enum WarpRouteType {
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ISM {
+pub enum Ism {
     StaticMessageIdMultisigIsm {
         validators: Vec<Address>,
         threshold: u8,
@@ -40,7 +40,7 @@ pub enum ISM {
 impl EVMConfig {
     pub fn get_multisig_ism_factory_address(&self) -> Address {
         match self.ism {
-            ISM::StaticMessageIdMultisigIsm { .. } => {
+            Ism::StaticMessageIdMultisigIsm { .. } => {
                 self.hyperlane_deployments
                     .static_message_id_multisig_ism_factory
             },

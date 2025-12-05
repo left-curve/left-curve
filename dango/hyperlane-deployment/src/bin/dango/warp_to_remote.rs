@@ -9,22 +9,6 @@
 //! MNEMONIC="your_mnemonic"
 //! ```
 
-use {
-    alloy::primitives::Address,
-    dango_client::SingleSigner,
-    dango_hyperlane_deployment::{addresses::sepolia::hyperlane_deployments::eth, setup},
-    dango_types::{
-        config::AppConfig,
-        gateway::{self, Remote},
-    },
-    dotenvy::dotenv,
-    grug::{BroadcastClientExt, Coins, GasOption, QueryClientExt, btree_set},
-    tokio::time::sleep,
-};
-
-const REMOTE_WARP_CONTRACT: Address = eth::WARP_ROUTE_PROXY;
-const WARP_AMOUNT: u64 = 100;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // dotenv()?;

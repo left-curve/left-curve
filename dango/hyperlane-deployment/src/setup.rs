@@ -7,14 +7,10 @@ use {
     indexer_client::HttpClient,
 };
 
-use crate::config;
-
-const DANGO_OWNER_USERNAME: &str = "owner";
 const DANGO_OWNER_ADDR: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9");
 const DANGO_OWNER_PRIVATE_KEY: [u8; 32] =
     hex!("8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177");
 
-const DANGO_USER5_USERNAME: &str = "user5";
 const DANGO_USER5_ADDR: Addr = addr!("a20a0e1a71b82d50fc046bc6e3178ad0154fd184");
 const DANGO_USER5_PRIVATE_KEY: [u8; 32] =
     hex!("fe55076e4b2c9ffea813951406e8142fefc85183ebda6222500572b0a92032a7");
@@ -25,10 +21,11 @@ pub async fn setup_dango(
     let dango_client = HttpClient::new(&config.api_url)?;
 
     let dango_owner = SingleSigner::new(
-        &DANGO_OWNER_USERNAME,
         DANGO_OWNER_ADDR,
         Secp256k1::from_bytes(DANGO_OWNER_PRIVATE_KEY)?,
-    )?
+    )
+    .with_query_user_index(&dango_client)
+    .await?
     .with_query_nonce(&dango_client)
     .await?;
 
@@ -39,10 +36,11 @@ pub async fn get_user5(
     dango_client: &HttpClient,
 ) -> anyhow::Result<SingleSigner<Secp256k1, Defined<Nonce>>> {
     let user5 = SingleSigner::new(
-        &DANGO_USER5_USERNAME,
         DANGO_USER5_ADDR,
         Secp256k1::from_bytes(DANGO_USER5_PRIVATE_KEY)?,
-    )?
+    )
+    .with_query_user_index(dango_client)
+    .await?
     .with_query_nonce(dango_client)
     .await?;
 
@@ -51,7 +49,6 @@ pub async fn get_user5(
 
 pub mod evm {
     use {
-        crate::config,
         alloy::{
             network::EthereumWallet,
             primitives::Address,
@@ -82,6 +79,8 @@ pub mod evm {
 
 #[cfg(test)]
 mod tests {
+    use crate::config;
+
     use super::*;
 
     #[tokio::test]
