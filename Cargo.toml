@@ -98,8 +98,8 @@ alloy                       = "1.1"
 anyhow                      = "1"
 assert-json-diff            = "2"
 assertor                    = "0.0.4"
-async-graphql               = { version = "7.0", features = ["apollo_persisted_queries", "apollo_tracing", "chrono", "dataloader", "decimal", "log", "opentelemetry", "tracing", "unblock", "url", "uuid"] } # see https://github.com/async-graphql/async-graphql/issues/1726
-async-graphql-actix-web     = "7.0"
+async-graphql               = { version = "7.0.17", features = ["apollo_persisted_queries", "apollo_tracing", "chrono", "dataloader", "decimal", "log", "opentelemetry", "tracing", "unblock", "url", "uuid"] } # see https://github.com/async-graphql/async-graphql/issues/1726
+async-graphql-actix-web     = "7.0.16"
 async-std                   = { version = "1", features = ["attributes", "tokio1"] }
 async-stream                = "0"
 async-trait                 = "0"
@@ -187,9 +187,9 @@ tokio-stream                = { version = "0.1", features = ["sync"] }
 toml                        = "0.8"
 tower                       = "0.5"
 tower-abci                  = "0.19"
-tracing                     = "0.1"
+tracing                     = "0.1.41"
 tracing-opentelemetry       = "0.32"
-tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+tracing-subscriber          = { version = "0.3.19", features = ["env-filter", "fmt", "json"] }
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "6"
