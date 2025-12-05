@@ -15,10 +15,7 @@ use {
             self,
             evm::{WarpRoute, WarpRouteType},
         },
-        evm::{
-            deploy_proxy_admin, deploy_warp_route_and_update_deployment,
-            get_or_deploy_ism,
-        },
+        evm::{deploy_proxy_admin, deploy_warp_route_and_update_deployment, get_or_deploy_ism},
         setup,
     },
     dotenvy::dotenv,

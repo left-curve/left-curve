@@ -82,9 +82,7 @@ async fn main() -> anyhow::Result<()> {
         WarpRouteType::ERC20Collateral(erc20_address) => {
             println!(
                 "approving spend of {} for route proxy ({}) on {}",
-                WARP_AMOUNT,
-                warp_route_deployment.proxy_address,
-                erc20_address
+                WARP_AMOUNT, warp_route_deployment.proxy_address, erc20_address
             );
             let tx_hash = provider
                 .send_transaction(
