@@ -1,0 +1,3 @@
+[submodule "dependencies/hyperlane-monorepo"]
+	path = dependencies/hyperlane-monorepo
+	url = https://github.com/hyperlane-xyz/hyperlane-monorepo

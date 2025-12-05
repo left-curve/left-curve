@@ -12,3 +12,4 @@ version       = { workspace = true }
 
 [dependencies]
 digest = { workspace = true }
+generic-array = { workspace = true }

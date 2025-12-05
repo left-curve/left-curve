@@ -4,15 +4,48 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "dango-scripts"
+name          = "dango-hyperlane-deployment"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[dependencies]
-alloy           = { workspace = true, features = ["full", "signer-mnemonic", "contract"] }
+[[bin]]
+name = "evm_query"
+path = "src/bin/evm/query.rs"
 
-[dev-dependencies]
+[[bin]]
+name = "evm_deploy"
+path = "src/bin/evm/deploy.rs"
+
+[[bin]]
+name = "evm_deploy_hwr_sepolia"
+path = "src/bin/evm/deploy_hwr.rs"
+
+[[bin]]
+name = "evm_warp_to_dango"
+path = "src/bin/evm/warp_to_dango.rs" 
+
+[[bin]]
+name = "evm_enroll_dango_domain"
+path = "src/bin/evm/enroll_dango_domain_in_remote_hwr.rs"
+
+[[bin]]
+name = "evm_set_ism"
+path = "src/bin/evm/set_ism.rs"
+
+[[bin]]
+name = "dango_set_routes"
+path = "src/bin/dango/set_routes.rs"
+
+[[bin]]
+name = "dango_set_ism_validator_set"
+path = "src/bin/dango/dango_set_ism_validator_set.rs"
+
+[[bin]]
+name = "dango_warp_to_remote"
+path = "src/bin/dango/warp_to_remote.rs"
+
+[dependencies]
 alloy           = { workspace = true, features = ["full", "signer-mnemonic", "contract"] }
 anyhow          = { workspace = true }
 chrono          = { workspace = true }
