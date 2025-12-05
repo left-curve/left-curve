@@ -93,7 +93,7 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     // Set the validator set on the Dango gateway
-    dango::set_ism_validator_set(&dango_client, &config, &mut dango_owner, &evm_config).await?;
+    dango::set_ism_validator_set(&dango_client, &config, &mut dango_owner, evm_config).await?;
 
     println!("Done!");
 

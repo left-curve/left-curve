@@ -14,7 +14,7 @@ async fn main() -> anyhow::Result<()> {
 
     let (dango_client, mut dango_owner) = setup::setup_dango(&config.dango).await?;
 
-    dango::set_ism_validator_set(&dango_client, &config, &mut dango_owner, &evm_config).await?;
+    dango::set_ism_validator_set(&dango_client, &config, &mut dango_owner, evm_config).await?;
 
     Ok(())
 }
