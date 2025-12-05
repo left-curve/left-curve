@@ -57,6 +57,9 @@ function LayoutApp() {
 
   useEffect(() => {
     if (socketId) showModal(Modals.SignWithDesktopFromNativeCamera, { socketId });
+    const params = new URLSearchParams(window.location.search);
+    const authAction = params.get("auth_callback");
+    if (authAction) showModal(Modals.Authenticate, { action: authAction });
   }, []);
 
   useEffect(() => {
