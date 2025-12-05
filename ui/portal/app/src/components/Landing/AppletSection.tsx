@@ -30,7 +30,7 @@ const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
           accessibilityLabel={title}
           className="h-20 w-20 rounded-xl p-2.5 bg-surface-primary-red active:opacity-80 flex items-center justify-center"
         >
-          <AppletImage width="44" height="44" />
+          <AppletImage width="56" height="56" />
         </Pressable>
       </ShadowContainer>
 
