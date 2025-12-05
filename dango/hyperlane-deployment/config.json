@@ -1,7 +1,20 @@
 {
   "dango": {
     "api_url": "https://api-pr-1414-ovh2.dango.zone/",
-    "chain_id": "pr-1414"
+    "chain_id": "pr-1414",
+    "isms": [
+      [
+        11155111,
+        {
+          "validators": [
+            "b22b65f202558adf86a8bb2847b76ae1036686a5",
+            "469f0940684d147defc44f3647146cb90dd0bc8e",
+            "d3c75dcf15056012a4d74c483a0c6ea11d8c2b83"
+          ],
+          "threshold": 1
+        }
+      ]
+    ]
   },
   "evm": {
     "sepolia": {

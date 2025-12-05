@@ -2,7 +2,7 @@ use {
     clap::Parser,
     dango_hyperlane_deployment::{
         config,
-        dango::set_warp_routes,
+        dango::{self, set_warp_routes},
         evm::{deploy_proxy_admin, deploy_warp_route_and_update_deployment, get_or_deploy_ism},
         setup,
     },
@@ -91,6 +91,9 @@ async fn main() -> anyhow::Result<()> {
         routes,
     )
     .await?;
+
+    // Set the validator set on the Dango gateway
+    dango::set_ism_validator_set(&dango_client, &config, &mut dango_owner, &evm_config).await?;
 
     println!("Done!");
 
