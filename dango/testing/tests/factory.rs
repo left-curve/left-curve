@@ -5,119 +5,24 @@ use {
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
-        account::single,
+        account::{single, spot},
         account_factory::{self, Account, AccountParams, RegisterUserData, UserIndexOrName},
+        auth::AccountStatus,
         bank,
         constants::usdc,
     },
     grug::{
-        Addressable, Coins, HashExt, Json, JsonSerExt, Message, NonEmpty, Op, QuerierExt,
-        ResultExt, Tx, Uint128, btree_map, coins,
+        Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
+        Signer, Uint128, btree_map,
     },
     hyperlane_types::constants::solana,
 };
 
-#[test]
-fn user_onboarding() {
-    let (suite, mut accounts, codes, contracts, validator_sets) =
-        setup_test_naive(Default::default());
-    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
-
-    let chain_id = suite.chain_id.clone();
-
-    // Create a new key offchain; then, predict what its address would be.
-    let user = TestAccount::new_random().predict_address(
-        contracts.account_factory,
-        0,
-        codes.account_spot.to_bytes().hash256(),
-        true,
-    );
-
-    // Make the initial deposit.
-    suite
-        .receive_warp_transfer(
-            &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
-            &user,
-            10_000_000,
-        )
-        .should_succeed();
-
-    // The transfer should be an orphaned transfer. The bank contract should be
-    // holding the 10 USDC.
-    suite
-        .query_balance(&contracts.bank, usdc::DENOM.clone())
-        .should_succeed_and_equal(Uint128::new(10_000_000));
-
-    // The orphaned transfer should have been recorded.
-    suite
-        .query_wasm_smart(contracts.bank, bank::QueryOrphanedTransferRequest {
-            sender: contracts.gateway,
-            recipient: user.address(),
-        })
-        .should_succeed_and_equal(coins! { usdc::DENOM.clone() => 10_000_000 });
-
-    // User uses account factory as sender to send an empty transaction.
-    // Account factory should interpret this action as the user wishes to create
-    // an account and claim the funds held in orphaned transfer in bank.
-    suite
-        .execute(
-            &mut Factory::new(contracts.account_factory),
-            contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterUser {
-                key: user.first_key(),
-                key_hash: user.first_key_hash(),
-                seed: 0,
-                signature: user
-                    .sign_arbitrary(RegisterUserData {
-                        chain_id: chain_id.clone(),
-                    })
-                    .unwrap(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Now that the user has been created, query it's index.
-    let user = user.query_user_index(suite.querier());
-
-    // The user's key should have been recorded in account factory.
-    suite
-        .query_wasm_smart(
-            contracts.account_factory,
-            account_factory::QueryKeysByUserRequest {
-                user: UserIndexOrName::Index(user.user_index()),
-            },
-        )
-        .should_succeed_and_equal(btree_map! { user.first_key_hash() => user.first_key() });
-
-    // The user's account info should have been recorded in account factory.
-    // Note: a user's first ever account is always a spot account.
-    suite
-        .query_wasm_smart(
-            contracts.account_factory,
-            account_factory::QueryAccountsByUserRequest {
-                user: UserIndexOrName::Index(user.user_index()),
-            },
-        )
-        .should_succeed_and_equal(btree_map! {
-            user.address() => Account {
-                // We have 10 genesis accounts (owner + users 1-9), indexed from
-                // zero, so this one should have the index of 10.
-                index: 10,
-                params: AccountParams::Spot(single::Params::new(user.user_index())),
-            },
-        });
-
-    // User's account should have been created with the correct token balance.
-    suite
-        .query_balance(&user, usdc::DENOM.clone())
-        .should_succeed_and_equal(Uint128::new(10_000_000));
-}
-
-/// Attempt to register a user without first making a deposit.
-/// The transaction should fail `CheckTx` and be rejected from entering mempool.
+/// Prior to PR [#1460](https://github.com/left-curve/left-curve/pull/1460),
+/// users are expected to first make a deposit before sending the `RegisterUser`
+/// message. Sending the `RegisterUser` message without a deposit resulting in
+/// the transaction failing. This design has drawbacks; see the PR's description.
+/// Since PR #1460, this test now reflects the intended onboarding procedure.
 #[test]
 fn onboarding_without_deposit() {
     let (suite, mut accounts, codes, contracts, validator_sets) =
@@ -143,50 +48,44 @@ fn onboarding_without_deposit() {
     );
 
     // Send the register user transaction without making a deposit first.
-    // Should fail during `CheckTx` with "data not found" error.
-    let tx = Tx {
-        sender: contracts.account_factory,
-        gas_limit: 1_000_000,
-        msgs: NonEmpty::new_unchecked(vec![
-            Message::execute(
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterUser {
-                    key: user.first_key(),
-                    key_hash: user.first_key_hash(),
-                    seed: 3,
-                    signature: user
-                        .sign_arbitrary(RegisterUserData {
-                            chain_id: chain_id.clone(),
-                        })
-                        .unwrap(),
-                },
-                Coins::new(),
-            )
-            .unwrap(),
-        ]),
-        data: Json::null(),
-        credential: Json::null(),
-    };
-
     suite
-        .check_tx(tx.clone())
-        .should_fail_with_error("minimum deposit not satisfied!");
-
-    // Make a deposit but not enough.
-    suite
-        .receive_warp_transfer(
-            &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
-            &user,
-            7_000_000,
+        .execute(
+            &mut Factory::new(contracts.account_factory),
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterUser {
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+                seed: 3,
+                signature: user
+                    .sign_arbitrary(RegisterUserData {
+                        chain_id: chain_id.clone(),
+                    })
+                    .unwrap(),
+            },
+            Coins::new(),
         )
         .should_succeed();
 
-    // Try again, should fail.
+    // The account should have been created in the `Inactive` state.
+    suite
+        .query_wasm_smart(user.address(), spot::QueryStatusRequest {})
+        .should_succeed_and_equal(AccountStatus::Inactive);
+
+    // Attempting to send a transaction at this time. `CheckTx` should fail.
+    let mut user = user.query_user_index(suite.querier());
+    let tx = user
+        .sign_transaction(
+            NonEmpty::new_unchecked(vec![
+                Message::transfer(user.address(), Coins::new()).unwrap(),
+            ]),
+            &suite.chain_id,
+            100_000,
+        )
+        .unwrap();
+
     suite
         .check_tx(tx.clone())
-        .should_fail_with_error("minimum deposit not satisfied");
+        .should_fail_with_error(format!("account {} is not active", user.address()));
 
     // Make a deposit of the minimum amount.
     suite
@@ -195,14 +94,21 @@ fn onboarding_without_deposit() {
             solana::DOMAIN,
             solana::USDC_WARP,
             &user,
-            3_000_000,
+            10_000_000, // Minimum deposit is 10_000_000. Need to send at this that amount.
         )
         .should_succeed();
+
+    // Account should have been activated.
+    suite
+        .query_wasm_smart(user.address(), spot::QueryStatusRequest {})
+        .should_succeed_and_equal(AccountStatus::Active);
 
     // Try again, should succeed.
     suite.check_tx(tx).should_succeed();
 }
 
+/// If minimum deposit is zero, then the account is automatically activated.
+/// No need to make a deposit.
 #[test]
 fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     // Set up the test with minimum deposit set to zero.
@@ -269,12 +175,22 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
             },
         });
 
+    // The newly created account should be active.
+    suite
+        .query_wasm_smart(user.address(), spot::QueryStatusRequest {})
+        .should_succeed_and_equal(AccountStatus::Active);
+
     // The newly created account should have zero balance.
     suite
         .query_balances(&user)
         .should_succeed_and(|coins| coins.is_empty());
 }
 
+/// Since PR [#1460](https://github.com/left-curve/left-curve/pull/1460), it's
+/// not longer necessary to make a deposit before onboarding.
+/// However, we keep this test for the edge case -- what if someone sends a
+/// transfer before creating the account? The user needs to be able to recover
+/// the funds.
 #[test]
 fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     // Set up the test with minimum deposit set to zero.
@@ -297,6 +213,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     );
 
     // Make the initial deposit, even though not required.
+    // The deposit should be held in the bank contract as an orphaned transfer.
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
@@ -330,6 +247,22 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
         )
         .should_succeed();
 
+    // Now that the user has been created, he can claim the orphaned transfer.
+    let mut user = user.query_user_index(suite.querier());
+    let user_address = user.address();
+
+    suite
+        .execute(
+            &mut user,
+            contracts.bank,
+            &bank::ExecuteMsg::RecoverTransfer {
+                sender: contracts.gateway,
+                recipient: user_address,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
     // Make sure a spot account is created with the deposited balance.
     suite
         .query_balance(&user, usdc::DENOM.clone())
@@ -338,9 +271,17 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
 
 #[test]
 fn update_key() {
-    let (suite, mut accounts, codes, contracts, validator_sets) =
-        setup_test_naive(Default::default());
-    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+    let (mut suite, _, codes, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            account: AccountOption {
+                // This test doesn't involve deposit, so we set it to zero to
+                // keep things simple (suhc that, during test setup, no need to
+                // make a deposit in order to activate the account).
+                minimum_deposit: Coins::new(),
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
 
     let chain_id = suite.chain_id.clone();
 
@@ -351,17 +292,6 @@ fn update_key() {
         codes.account_spot.to_bytes().hash256(),
         true,
     );
-
-    // Make the initial deposit.
-    suite
-        .receive_warp_transfer(
-            &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
-            &user,
-            10_000_000,
-        )
-        .should_succeed();
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create

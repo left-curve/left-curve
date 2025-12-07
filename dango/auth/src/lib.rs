@@ -196,7 +196,7 @@ pub fn authenticate_tx(
 
     // The account must be in the `Active` state.
     ensure!(
-        account::STATUS.may_load(ctx.storage)?.unwrap_or_default() == AccountStatus::Active, /* note: the default status is `Inactive` */
+        query_status(ctx.storage)? == AccountStatus::Active,
         "account {} is not active",
         tx.sender
     );

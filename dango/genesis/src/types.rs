@@ -9,7 +9,7 @@ use {
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Binary, Coin, Denom, Duration, Timestamp, Uint128},
+    grug::{Addr, Binary, Coin, Coins, Denom, Duration, Timestamp, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -77,6 +77,8 @@ pub struct AccountOption {
     /// Initial users and their balances.
     /// For each genesis user will be created a spot account.
     pub genesis_users: Vec<GenesisUser>,
+    /// The minimum deposit required to onboard a user.
+    pub minimum_deposit: Coins,
 }
 
 pub struct BankOption {

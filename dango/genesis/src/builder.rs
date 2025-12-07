@@ -304,6 +304,7 @@ where
             taxman,
             warp,
         },
+        minimum_deposit: opt.account.minimum_deposit,
         ..Default::default()
     };
 
