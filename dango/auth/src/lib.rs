@@ -14,8 +14,8 @@ use {
     },
     data_encoding::BASE64URL_NOPAD,
     grug::{
-        Addr, Api, AuthCtx, AuthMode, Inner, JsonDeExt, JsonSerExt, MutableCtx, QuerierExt,
-        SignData, StdError, StdResult, Storage, StorageQuerier, Tx,
+        Addr, Api, AuthCtx, AuthMode, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt, JsonSerExt,
+        MutableCtx, QuerierExt, SignData, StdError, StdResult, Storage, StorageQuerier, Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -103,6 +103,31 @@ pub fn query_seen_nonces(storage: &dyn Storage) -> StdResult<BTreeSet<Nonce>> {
     account::SEEN_NONCES
         .may_load(storage)
         .map(|opt| opt.unwrap_or_default()) // default to an empty B-tree set
+}
+
+pub fn create_account(ctx: MutableCtx) -> anyhow::Result<()> {
+    let app_cfg = ctx.querier.query_dango_config()?;
+
+    // Only the account factory can create new accounts.
+    ensure!(
+        ctx.sender == app_cfg.addresses.account_factory,
+        "you don't have the right, O you don't have the right"
+    );
+
+    // Upon creation, the account's status is set to `Inactive`.
+    // We don't need to save it in storage, because if storage is empty, it's
+    // default to `Inactive`. This is an intentional optimization to minimize
+    // disk writes.
+    //
+    // Two exceptions to this are:
+    // 1. during genesis;
+    // 2. if the minimum deposit is zero.
+    // In these two cases, the account is activated without needing a deposit.
+    if ctx.block.height == GENESIS_BLOCK_HEIGHT || app_cfg.minimum_deposit.is_empty() {
+        account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
+    }
+
+    Ok(())
 }
 
 pub fn receive_transfer(ctx: MutableCtx) -> anyhow::Result<()> {
