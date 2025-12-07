@@ -26,7 +26,7 @@ use {
     grug::{
         Addressable, Binary, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Timestamp, Udec128, Uint128,
-        btree_map, btree_set, coins,
+        btree_map, btree_set,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -283,7 +283,6 @@ impl Preset for AccountOption {
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
             ],
-            minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
         }
     }
 }

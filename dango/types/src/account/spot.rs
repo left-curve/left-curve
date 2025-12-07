@@ -1,13 +1,10 @@
 use {
     crate::auth::{AccountStatus, Nonce},
-    grug::Coins,
+    grug::Empty,
     std::collections::BTreeSet,
 };
 
-#[grug::derive(Serde)]
-pub struct InstantiateMsg {
-    pub minimum_deposit: Coins,
-}
+pub type InstantiateMsg = Empty;
 
 /// Query messages for the spot account
 #[grug::derive(Serde, QueryRequest)]

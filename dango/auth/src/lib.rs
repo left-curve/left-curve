@@ -14,8 +14,8 @@ use {
     },
     data_encoding::BASE64URL_NOPAD,
     grug::{
-        Addr, Api, AuthCtx, AuthMode, Inner, JsonDeExt, JsonSerExt, QuerierExt, SignData, StdError,
-        StdResult, Storage, StorageQuerier, Tx,
+        Addr, Api, AuthCtx, AuthMode, Inner, JsonDeExt, JsonSerExt, MutableCtx, QuerierExt,
+        SignData, StdError, StdResult, Storage, StorageQuerier, Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -103,6 +103,32 @@ pub fn query_seen_nonces(storage: &dyn Storage) -> StdResult<BTreeSet<Nonce>> {
     account::SEEN_NONCES
         .may_load(storage)
         .map(|opt| opt.unwrap_or_default()) // default to an empty B-tree set
+}
+
+pub fn receive_transfer(ctx: MutableCtx) -> anyhow::Result<()> {
+    match query_status(ctx.storage)? {
+        // If the account is inactive: query the minimum deposit from app-config.
+        // If the _any_ denom in the receive fund is equal to or greater than
+        // the minimum deposit, set the account status to active.
+        AccountStatus::Inactive => {
+            if ctx
+                .querier
+                .query_minimum_deposit()?
+                .into_iter()
+                .any(|coin| ctx.funds.amount_of(&coin.denom) >= coin.amount)
+            {
+                account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
+                // TODO: emit an event?
+            }
+        },
+        AccountStatus::Frozen => bail!(
+            "account {} is frozen, can't receive transfers",
+            ctx.contract
+        ),
+        AccountStatus::Active => { /* nothing to do */ },
+    }
+
+    Ok(())
 }
 
 /// Authenticate a transaction by ensuring:

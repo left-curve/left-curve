@@ -1,7 +1,7 @@
 use {
     crate::{NEXT_PROPOSAL_ID, PROPOSALS, VOTES},
     anyhow::{bail, ensure},
-    dango_auth::{authenticate_tx, verify_nonce_and_signature},
+    dango_auth::{authenticate_tx, receive_transfer, verify_nonce_and_signature},
     dango_types::{
         DangoQuerier,
         account::{
@@ -13,7 +13,7 @@ use {
     },
     grug::{
         AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, QuerierExt,
-        Response, StdResult, Tx,
+        Response, Tx,
     },
 };
 
@@ -24,6 +24,11 @@ pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Resp
         ctx.sender == ctx.querier.query_account_factory()?,
         "you don't have the right, O you don't have the right"
     );
+
+    // Upon creation, the account's status is set to `Inactive`.
+    // We don't need to save it in storage, because if storage is empty, it's
+    // default to `Inactive`. This is an intentional optimization to minimize
+    // disk writes.
 
     Ok(Response::new())
 }
@@ -90,7 +95,9 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
+pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
+    receive_transfer(ctx)?;
+
     Ok(Response::new())
 }
 

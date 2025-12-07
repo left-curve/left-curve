@@ -1,7 +1,7 @@
 use {
     crate::{
-        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX,
-        NEXT_USER_INDEX, USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
+        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
+        USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
     },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
@@ -41,7 +41,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
                 user.key,
                 user.key_hash,
                 user.seed,
-                Coins::default(),
             )?;
 
             let user_index = user_registered.user_index;
@@ -55,8 +54,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 
     let (instantiate_msgs, (users_registered, accounts_registered)): (Vec<_>, (Vec<_>, Vec<_>)) =
         instantiate_data.into_iter().unzip();
-
-    MINIMUM_DEPOSIT.save(ctx.storage, &msg.minimum_deposit)?;
 
     Response::new()
         .add_messages(instantiate_msgs)
@@ -153,16 +150,8 @@ fn register_user(
         }),
     )?;
 
-    let minimum_deposit = MINIMUM_DEPOSIT.load(ctx.storage)?;
-
-    let (msg, user_registered, account_registered) = onboard_new_user(
-        ctx.storage,
-        ctx.contract,
-        key,
-        key_hash,
-        seed,
-        minimum_deposit,
-    )?;
+    let (msg, user_registered, account_registered) =
+        onboard_new_user(ctx.storage, ctx.contract, key, key_hash, seed)?;
 
     // Save the key.
     KEYS.save(ctx.storage, (user_registered.user_index, key_hash), &key)?;
@@ -188,7 +177,6 @@ fn onboard_new_user(
     key: Key,
     key_hash: Hash256,
     seed: u32,
-    minimum_deposit: Coins,
 ) -> StdResult<(Message, UserRegistered, AccountRegistered)> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
@@ -218,7 +206,7 @@ fn onboard_new_user(
     Ok((
         Message::instantiate(
             code_hash,
-            &account::spot::InstantiateMsg { minimum_deposit },
+            &account::spot::InstantiateMsg {},
             salt,
             Some(format!(
                 "dango/account/{}/{}",
@@ -292,9 +280,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     Ok(Response::new()
         .add_message(Message::instantiate(
             code_hash,
-            &account::spot::InstantiateMsg {
-                minimum_deposit: Coins::default(),
-            },
+            &account::spot::InstantiateMsg {},
             salt,
             Some(format!("dango/account/{}/{}", account.params.ty(), index)),
             Some(ctx.contract),

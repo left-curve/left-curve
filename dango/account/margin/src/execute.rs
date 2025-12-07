@@ -1,7 +1,7 @@
 use {
     crate::core,
     anyhow::{anyhow, bail, ensure},
-    dango_auth::authenticate_tx,
+    dango_auth::{authenticate_tx, receive_transfer},
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
@@ -13,7 +13,7 @@ use {
     },
     grug::{
         AuthCtx, AuthResponse, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx, Number,
-        NumberConst, Response, StdResult, Tx, Udec128,
+        NumberConst, Response, Tx, Udec128,
     },
     std::cmp::{max, min},
 };
@@ -25,6 +25,11 @@ pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Resp
         ctx.sender == ctx.querier.query_account_factory()?,
         "you don't have the right, O you don't have the right"
     );
+
+    // Upon creation, the account's status is set to `Inactive`.
+    // We don't need to save it in storage, because if storage is empty, it's
+    // default to `Inactive`. This is an intentional optimization to minimize
+    // disk writes.
 
     Ok(Response::new())
 }
@@ -77,8 +82,9 @@ pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
-    // Do nothing, accept all transfers.
+pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
+    receive_transfer(ctx)?;
+
     Ok(Response::new())
 }
 
