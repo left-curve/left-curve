@@ -6,11 +6,10 @@ use {
     anyhow::{bail, ensure},
     dango_types::{
         DangoQuerier,
-        account::AccountStatus,
         account_factory::RegisterUserData,
         auth::{
-            ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
-            StandardCredential,
+            AccountStatus, ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc,
+            Signature, StandardCredential,
         },
     },
     data_encoding::BASE64URL_NOPAD,
@@ -37,7 +36,7 @@ pub mod account_factory {
 /// The expected storage layout of the account contract.
 pub mod account {
     use {
-        dango_types::{account::AccountStatus, auth::Nonce},
+        dango_types::auth::{AccountStatus, Nonce},
         grug::Item,
         std::collections::BTreeSet,
     };
@@ -92,11 +91,18 @@ pub const MAX_SEEN_NONCES: usize = 20;
 /// much bigger than the biggest nonce seen so far.
 pub const MAX_NONCE_INCREASE: Nonce = 100;
 
+/// Query the account's status.
+pub fn query_status(storage: &dyn Storage) -> StdResult<AccountStatus> {
+    account::STATUS
+        .may_load(storage)
+        .map(|opt| opt.unwrap_or_default()) // default to to `Inactive` state
+}
+
 /// Query the set of most recent nonce tracked.
 pub fn query_seen_nonces(storage: &dyn Storage) -> StdResult<BTreeSet<Nonce>> {
     account::SEEN_NONCES
         .may_load(storage)
-        .map(|opt| opt.unwrap_or_default())
+        .map(|opt| opt.unwrap_or_default()) // default to an empty B-tree set
 }
 
 /// Authenticate a transaction by ensuring:

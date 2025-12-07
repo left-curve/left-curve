@@ -1,6 +1,6 @@
 use {
     crate::{
-        auth::Nonce,
+        auth::{AccountStatus, Nonce},
         dex::{OrderId, OrdersByUserResponse},
     },
     grug::{Bounded, Coins, Denom, Udec128, Udec256, Uint128, ZeroExclusiveOneInclusive},
@@ -52,6 +52,9 @@ pub enum ExecuteMsg {
 /// Query messages for the margin account
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query the account's status.
+    #[returns(AccountStatus)]
+    Status {},
     /// Query the most recent transaction nonces that have been recorded.
     #[returns(BTreeSet<Nonce>)]
     SeenNonces {},
