@@ -16,8 +16,8 @@ use {
     digest::{
         FixedOutput, HashMarker, Output, OutputSizeUser, Update,
         consts::{U32, U64},
+        generic_array::GenericArray,
     },
-    generic_array::GenericArray,
     std::ops::Deref,
 };
 

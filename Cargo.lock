@@ -6522,7 +6522,6 @@ name = "identity"
 version = "0.0.0"
 dependencies = [
  "digest 0.10.7",
- "generic-array",
 ]
 
 [[package]]
