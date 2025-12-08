@@ -1,5 +1,5 @@
 use {
-    actix_web::{App, HttpResponse, http::StatusCode, test, web},
+    actix_web::{App, http::StatusCode, test, web},
     chrono::Utc,
     corepc_client::bitcoin::Address,
     dango_bridge_relayer_httpd::{
@@ -12,11 +12,13 @@ use {
     dango_testing::Preset,
     dango_types::bitcoin::{Config, MultisigSettings, Network},
     grug::{__private::hex_literal::hex, Addr, HexByteArray, NonEmpty, Uint128, btree_set},
-    metrics_exporter_prometheus::PrometheusBuilder,
     sea_orm::{ColumnTrait, Database, EntityTrait, QueryFilter},
     sea_orm_migration::MigratorTrait,
     std::{collections::HashSet, str::FromStr, time::Duration},
 };
+
+#[cfg(feature = "metrics")]
+use {actix_web::HttpResponse, metrics_exporter_prometheus::PrometheusBuilder};
 
 async fn mock_context(network: Network) -> Context {
     let pk1 = hex!("029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f6");
@@ -50,6 +52,7 @@ async fn run_mock_indexer() -> anyhow::Result<String> {
     std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
+            #[cfg(feature = "tracing")]
             tracing::info!("Starting mock HTTP server on port {port}");
 
             if let Err(error) = dango_mock_httpd::run_with_callback(
@@ -91,7 +94,9 @@ async fn test_deposit_addresses() {
     )
     .await;
 
+    #[cfg(feature = "metrics")]
     let metrics_handler = PrometheusBuilder::new().install_recorder().unwrap();
+    #[cfg(feature = "metrics")]
     let metrics_app = test::init_service(App::new().route(
         "/metrics",
         web::get().to(move || {
@@ -136,12 +141,15 @@ async fn test_deposit_addresses() {
     }
 
     // Try to fetch the metrics. Should contain the total number of deposit addresses created.
-    let req = test::TestRequest::get().uri("/metrics").to_request();
-    let resp = test::call_service(&metrics_app, req).await;
-    assert_eq!(resp.status(), StatusCode::OK);
-    let result = test::read_body(resp).await;
-    let metrics = String::from_utf8(result.to_vec()).unwrap();
-    assert!(metrics.contains("http_bridge_relayer_deposit_address_total 10"));
+    #[cfg(feature = "metrics")]
+    {
+        let req = test::TestRequest::get().uri("/metrics").to_request();
+        let resp = test::call_service(&metrics_app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let result = test::read_body(resp).await;
+        let metrics = String::from_utf8(result.to_vec()).unwrap();
+        assert!(metrics.contains("http_bridge_relayer_deposit_address_total 10"));
+    }
 
     // Try to fetch all the deposit addresses. Should work.
     let req = test::TestRequest::get()
@@ -252,6 +260,7 @@ async fn e2e_test_bridge_relayer() -> anyhow::Result<()> {
     let _server_handle = std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
+            #[cfg(feature = "tracing")]
             tracing::info!("Starting bridge relayer servers");
 
             if let Err(error) =

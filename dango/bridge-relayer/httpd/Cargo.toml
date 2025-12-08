@@ -14,8 +14,7 @@ name = "bridge-relayer-httpd"
 path = "src/main.rs"
 
 [features]
-default = ["metrics", "tracing"]
-metrics = ["dep:actix-web-metrics", "dep:metrics", "dep:metrics-exporter-prometheus"]
+metrics = ["dep:actix-web-metrics", "dep:metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
@@ -31,7 +30,7 @@ error-backtrace             = { workspace = true }
 grug                        = { workspace = true }
 indexer-client              = { workspace = true }
 metrics                     = { workspace = true, optional = true }
-metrics-exporter-prometheus = { workspace = true, optional = true }
+metrics-exporter-prometheus = { workspace = true }
 sea-orm                     = { workspace = true }
 sea-orm-migration           = { workspace = true }
 sentry-actix                = { workspace = true }

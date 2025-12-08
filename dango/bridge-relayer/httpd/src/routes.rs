@@ -2,7 +2,6 @@ use {
     crate::{
         context::Context,
         entity::{self},
-        middlewares,
     },
     actix_web::{
         HttpResponse, HttpResponseBuilder, Responder, Result,
@@ -15,7 +14,6 @@ use {
     chrono::Utc,
     dango_types::bitcoin::{MultisigWallet, Recipient},
     grug::Addr,
-    metrics::counter,
     sea_orm::{
         ActiveValue::{NotSet, Set},
         ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QueryTrait,
@@ -28,6 +26,9 @@ use {
     },
     tokio_stream::StreamExt,
 };
+
+#[cfg(feature = "metrics")]
+use {crate::middlewares, metrics::counter};
 
 #[derive(Deserialize, Serialize)]
 pub struct ErrorResponse {
@@ -74,6 +75,7 @@ async fn deposit_address(path: web::Path<String>, context: web::Data<Context>) -
         created_at: Set(created_at),
         id: NotSet,
     };
+    #[allow(unused_variables)]
     if let Err(e) = entity::deposit_address::Entity::insert(deposit_address)
         .on_conflict(
             OnConflict::column(entity::deposit_address::Column::Address)
@@ -142,6 +144,7 @@ async fn deposit_addresses(
             .await
         {
             Ok(stream) => stream,
+            #[allow(unused_variables)]
             Err(e) => {
                 #[cfg(feature = "tracing")]
                 {
@@ -169,6 +172,7 @@ async fn deposit_addresses(
                     let json = serde_json::to_string(&model.address).unwrap();
                     yield Ok(web::Bytes::from(format!("{}{}", prefix, json)));
                 }
+                #[allow(unused_variables)]
                 Err(e) => {
                     #[cfg(feature = "tracing")]
                     {

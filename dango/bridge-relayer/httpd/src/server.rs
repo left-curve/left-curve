@@ -13,14 +13,17 @@ use {
     },
     grug::{ClientWrapper, QueryClientExt},
     indexer_client::HttpClient,
-    metrics_exporter_prometheus::PrometheusBuilder,
     sea_orm::DatabaseConnection,
     sea_orm_migration::MigratorTrait,
     sentry_actix::Sentry,
-    std::{fmt::Display, sync::Arc},
+    std::sync::Arc,
 };
 #[cfg(feature = "metrics")]
-use {actix_web_metrics::ActixWebMetricsBuilder, metrics_exporter_prometheus::PrometheusHandle};
+use {
+    actix_web_metrics::ActixWebMetricsBuilder,
+    metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
+    std::fmt::Display,
+};
 
 /// Run the bridge relayer HTTP server
 pub async fn run_server<I>(
@@ -166,6 +169,7 @@ pub async fn get_bridge_config(dango_url: String) -> Result<BridgeConfig, Error>
 pub async fn run_servers(bridge_config: BridgeConfig, db: DatabaseConnection) -> Result<(), Error> {
     // Initialize metrics handler.
     // This should be done as soon as possible to capture all events.
+    #[cfg(feature = "metrics")]
     let metrics_handler = PrometheusBuilder::new().install_recorder()?;
 
     // Run migrations.
@@ -180,9 +184,13 @@ pub async fn run_servers(bridge_config: BridgeConfig, db: DatabaseConnection) ->
 
     // Run the server
     let server = run_server("127.0.0.1", 8080, None, context);
+    #[cfg(feature = "metrics")]
     let metrics = run_metrics_server("127.0.0.1", 8081, metrics_handler);
 
+    #[cfg(feature = "metrics")]
     tokio::try_join!(server, metrics)?;
+    #[cfg(not(feature = "metrics"))]
+    tokio::try_join!(server)?;
 
     Ok(())
 }
