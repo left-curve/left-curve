@@ -5,7 +5,7 @@ use {
     std::{fmt, str::FromStr},
 };
 
-/// A numerical index that uniques identifies a user.
+/// A numerical index that uniquely identifies a user.
 ///
 /// Internal logics of smart contracts should use `UserIndex` to identify users.
 /// Usernames are for displaying on the frontend only.
