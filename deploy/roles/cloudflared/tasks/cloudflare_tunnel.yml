@@ -80,8 +80,20 @@
     mode: "{{ item.mode }}"
   loop:
     - { src: "env.j2", dest: ".env", mode: "0600" }
-    - { src: "config.yml", dest: "config.yml", mode: "0644" }
     - { src: "docker-compose.yml", dest: "docker-compose.yml", mode: "0644" }
+
+- name: Copy cloudflared config (default then host override)
+  become: true
+  become_user: root
+  template:
+    src: "{{ item }}"
+    dest: "{{ cloudflared_dir }}/config.yml"
+    owner: "{{ deploy_user }}"
+    mode: "0644"
+  loop:
+    - "config.yml"
+    - "config-{{ hostname }}.yml"
+  ignore_errors: yes
 
 - name: Create cloudflare network
   community.docker.docker_network:
@@ -104,5 +116,17 @@
     state: present
     api_token: "{{ cloudflare_api_token }}"
   loop: "{{ dango_networks | product(['api','www','faucet','graphiql']) | list }}"
+  retries: 3
+  delay: 5
+
+- name: Ensure per-host CNAME → tunnel
+  community.general.cloudflare_dns:
+    zone: "{{ dango_domain }}"
+    record: "tunnel-{{ hostname }}"
+    type: CNAME
+    value: "{{ tunnel_id }}.cfargotunnel.com"
+    proxied: true
+    state: present
+    api_token: "{{ cloudflare_api_token }}"
   retries: 3
   delay: 5

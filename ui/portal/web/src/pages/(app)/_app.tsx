@@ -1,6 +1,6 @@
-import { twMerge, useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { Modals, twMerge, useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { captureException } from "@sentry/react";
-import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
+import { Outlet, createFileRoute, useRouter, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
@@ -9,7 +9,12 @@ import { TestnetBanner } from "~/components/foundation/TestnetBanner";
 
 import { WelcomeModal } from "~/components/modals/WelcomeModal";
 
+import { z } from "zod";
+
 export const Route = createFileRoute("/(app)/_app")({
+  validateSearch: z.object({
+    socketId: z.string().optional(),
+  }),
   component: LayoutApp,
   errorComponent: ({ error }) => {
     useEffect(() => {
@@ -38,6 +43,7 @@ export const Route = createFileRoute("/(app)/_app")({
 });
 
 function LayoutApp() {
+  const { showModal } = useApp();
   const [isScrolled, setIsScrolled] = useState(false);
   const { isLg } = useMediaQuery();
   const router = useRouter();
@@ -46,6 +52,15 @@ function LayoutApp() {
   const isProSwap = useMemo(() => {
     return router.state.location.pathname.includes("trade");
   }, [router.state.location.pathname]);
+
+  const { socketId } = useSearch({ strict: false });
+
+  useEffect(() => {
+    if (socketId) showModal(Modals.SignWithDesktopFromNativeCamera, { socketId });
+    const params = new URLSearchParams(window.location.search);
+    const authAction = params.get("auth_callback");
+    if (authAction) showModal(Modals.Authenticate, { action: authAction });
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {

@@ -8,7 +8,7 @@
   "scripts": {
     "turbo": "turbo",
     "doc": "typedoc",
-    "clean": "turbo clean",
+    "clean": "turbo clean && rm -rf node_modules",
     "clean:build": "turbo clean:build",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",

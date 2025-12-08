@@ -1,7 +1,7 @@
 use {
     crate::{
-        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX,
-        USERNAMES_BY_KEY,
+        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
+        USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
     },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
@@ -10,7 +10,7 @@ use {
         account_factory::{
             Account, AccountDisowned, AccountOwned, AccountParamUpdates, AccountParams,
             AccountRegistered, AccountType, ExecuteMsg, InstantiateMsg, KeyDisowned, KeyOwned,
-            NewUserSalt, RegisterUserData, Salt, UserRegistered, Username,
+            NewUserSalt, RegisterUserData, Salt, UserIndex, UserRegistered, Username,
         },
         auth::{Key, Signature},
     },
@@ -34,20 +34,20 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     let instantiate_data = msg
         .users
         .into_iter()
-        .enumerate()
-        .map(|(seed, (username, (key_hash, key)))| {
-            KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            USERNAMES_BY_KEY.insert(ctx.storage, (key_hash, &username))?;
-
+        .map(|user| {
             let (msg, user_registered, account_registered) = onboard_new_user(
                 ctx.storage,
                 ctx.contract,
-                username,
-                key,
-                key_hash,
-                seed as u32,
+                user.key,
+                user.key_hash,
+                user.seed,
                 Coins::default(),
             )?;
+
+            let user_index = user_registered.user_index;
+
+            KEYS.save(ctx.storage, (user_index, user.key_hash), &user.key)?;
+            USERS_BY_KEY.insert(ctx.storage, (user.key_hash, user_index))?;
 
             Ok((msg, (user_registered, account_registered)))
         })
@@ -55,8 +55,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 
     let (instantiate_msgs, (users_registered, accounts_registered)): (Vec<_>, (Vec<_>, Vec<_>)) =
         instantiate_data.into_iter().unzip();
-
-    MINIMUM_DEPOSIT.save(ctx.storage, &msg.minimum_deposit)?;
 
     Response::new()
         .add_messages(instantiate_msgs)
@@ -124,21 +122,20 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::RegisterUser {
-            username,
             key,
             key_hash,
             seed,
             signature,
-        } => register_user(ctx, username, key, key_hash, seed, signature),
+        } => register_user(ctx, key, key_hash, seed, signature),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateAccount(updates) => update_account(ctx, updates),
+        ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
     }
 }
 
 fn register_user(
     ctx: MutableCtx,
-    username: Username,
     key: Key,
     key_hash: Hash256,
     seed: u32,
@@ -150,38 +147,16 @@ fn register_user(
         key,
         signature,
         VerifyData::Onboard(RegisterUserData {
-            username: username.clone(),
             chain_id: ctx.chain_id,
         }),
     )?;
 
-    // The username must not already exist.
-    // We ensure this by asserting there isn't any key already associated with
-    // this username, since any existing username necessarily has at least one
-    // key associated with it. (However, this key isn't necessarily index 1.)
-    ensure!(
-        KEYS.prefix(&username)
-            .keys(ctx.storage, None, None, Order::Ascending)
-            .next()
-            .is_none(),
-        "username `{username}` already exists"
-    );
+    let (msg, user_registered, account_registered) =
+        onboard_new_user(ctx.storage, ctx.contract, key, key_hash, seed, ctx.funds)?;
 
     // Save the key.
-    KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-    USERNAMES_BY_KEY.insert(ctx.storage, (key_hash, &username))?;
-
-    let minimum_deposit = MINIMUM_DEPOSIT.load(ctx.storage)?;
-
-    let (msg, user_registered, account_registered) = onboard_new_user(
-        ctx.storage,
-        ctx.contract,
-        username,
-        key,
-        key_hash,
-        seed,
-        minimum_deposit,
-    )?;
+    KEYS.save(ctx.storage, (user_registered.user_index, key_hash), &key)?;
+    USERS_BY_KEY.insert(ctx.storage, (key_hash, user_registered.user_index))?;
 
     Ok(Response::new()
         .add_message(msg)
@@ -200,18 +175,19 @@ fn register_user(
 fn onboard_new_user(
     storage: &mut dyn Storage,
     factory: Addr,
-    username: Username,
     key: Key,
     key_hash: Hash256,
     seed: u32,
-    minimum_deposit: Coins,
+    funds: Coins,
 ) -> StdResult<(Message, UserRegistered, AccountRegistered)> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
 
-    // Increment the global account index, predict its address, and save the
-    // account info under the username.
-    let (index, _) = NEXT_ACCOUNT_INDEX.increment(storage)?;
+    // Increment the global user index.
+    let (user_index, _) = NEXT_USER_INDEX.increment(storage)?;
+
+    // Increment the global account index.
+    let (account_index, _) = NEXT_ACCOUNT_INDEX.increment(storage)?;
 
     // Derive the account address.
     let salt = NewUserSalt {
@@ -222,31 +198,35 @@ fn onboard_new_user(
     let address = Addr::derive(factory, code_hash, &salt.to_bytes());
 
     let account = Account {
-        index,
-        params: AccountParams::Spot(single::Params::new(username.clone())),
+        index: account_index,
+        params: AccountParams::Spot(single::Params::new(user_index)),
     };
 
     ACCOUNTS.save(storage, address, &account)?;
-    ACCOUNTS_BY_USER.insert(storage, (&username, address))?;
+    ACCOUNTS_BY_USER.insert(storage, (user_index, address))?;
 
     Ok((
         Message::instantiate(
             code_hash,
-            &account::spot::InstantiateMsg { minimum_deposit },
+            &account::spot::InstantiateMsg {},
             salt,
-            Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
+            Some(format!(
+                "dango/account/{}/{}",
+                AccountType::Spot,
+                account_index
+            )),
             Some(factory),
-            Coins::default(),
+            funds, // Foward the funds received to the account.
         )?,
         UserRegistered {
-            username,
+            user_index,
             key,
             key_hash,
         },
         AccountRegistered {
+            account_index,
             address,
             params: account.params,
-            index,
         },
     ))
 }
@@ -260,7 +240,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     match &params {
         AccountParams::Spot(params) | AccountParams::Margin(params) => {
             ensure!(
-                ACCOUNTS_BY_USER.has(ctx.storage, (&params.owner, ctx.sender)),
+                ACCOUNTS_BY_USER.has(ctx.storage, (params.owner, ctx.sender)),
                 "can't register account for another user"
             );
         },
@@ -290,11 +270,11 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     // Save the account ownership info.
     match &account.params {
         AccountParams::Spot(params) | AccountParams::Margin(params) => {
-            ACCOUNTS_BY_USER.insert(ctx.storage, (&params.owner, address))?;
+            ACCOUNTS_BY_USER.insert(ctx.storage, (params.owner, address))?;
         },
         AccountParams::Multi(params) => {
             for member in params.members.keys() {
-                ACCOUNTS_BY_USER.insert(ctx.storage, (member, address))?;
+                ACCOUNTS_BY_USER.insert(ctx.storage, (*member, address))?;
             }
         },
     }
@@ -302,18 +282,16 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     Ok(Response::new()
         .add_message(Message::instantiate(
             code_hash,
-            &account::spot::InstantiateMsg {
-                minimum_deposit: Coins::default(),
-            },
+            &account::spot::InstantiateMsg {},
             salt,
             Some(format!("dango/account/{}/{}", account.params.ty(), index)),
             Some(ctx.contract),
-            ctx.funds,
+            ctx.funds, // Forward the received funds to the account.
         )?)
         .add_events(match &account.params {
             AccountParams::Spot(params) | AccountParams::Margin(params) => {
                 vec![AccountOwned {
-                    username: params.owner.clone(),
+                    user_index: params.owner,
                     address,
                 }]
             },
@@ -321,55 +299,47 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
                 .members
                 .keys()
                 .map(|member| AccountOwned {
-                    username: member.clone(),
+                    user_index: *member,
                     address,
                 })
                 .collect(),
         })?
         .add_event(AccountRegistered {
+            account_index: index,
             address,
             params: account.params,
-            index,
         })?)
 }
 
 fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
-    // The sender account must be a single signature account.
-    // Find the username associated with the account.
-    let username = match ACCOUNTS.load(ctx.storage, ctx.sender)? {
-        Account {
-            params: AccountParams::Spot(params) | AccountParams::Margin(params),
-            ..
-        } => params.owner,
-        _ => bail!("sender is not a single signature account"),
-    };
+    let user_index = get_user_index_of_account_owner(ctx.storage, ctx.sender)?;
 
     match key {
         Op::Insert(key) => {
-            // Ensure the key isn't already associated with the username.
+            // Ensure the key isn't already associated with the user index.
             ensure!(
                 !KEYS
-                    .prefix(&username)
+                    .prefix(user_index)
                     .values(ctx.storage, None, None, Order::Ascending)
                     .any(|v| v.is_ok_and(|k| k == key)),
-                "key is already associated with username `{username}`"
+                "key is already associated with user index {user_index}"
             );
 
-            KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            USERNAMES_BY_KEY.insert(ctx.storage, (key_hash, &username))?;
+            KEYS.save(ctx.storage, (user_index, key_hash), &key)?;
+            USERS_BY_KEY.insert(ctx.storage, (key_hash, user_index))?;
         },
         Op::Delete => {
-            KEYS.remove(ctx.storage, (&username, key_hash));
-            USERNAMES_BY_KEY.remove(ctx.storage, (key_hash, &username));
+            KEYS.remove(ctx.storage, (user_index, key_hash));
+            USERS_BY_KEY.remove(ctx.storage, (key_hash, user_index));
 
             // Ensure the user hasn't removed every single key associated with
             // their username. There must be at least one remaining.
             ensure!(
-                KEYS.prefix(&username)
+                KEYS.prefix(user_index)
                     .range(ctx.storage, None, None, Order::Ascending)
                     .next()
                     .is_some(),
-                "can't delete the last key associated with username `{username}`"
+                "can't delete the last key associated with user index {user_index}"
             );
         },
     }
@@ -377,7 +347,7 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
     Ok(Response::new()
         .may_add_event(if let Op::Insert(key) = key {
             Some(KeyOwned {
-                username: username.clone(),
+                user_index,
                 key_hash,
                 key,
             })
@@ -386,7 +356,7 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
         })?
         .may_add_event(if let Op::Delete = key {
             Some(KeyDisowned {
-                username: username.clone(),
+                user_index,
                 key_hash,
             })
         } else {
@@ -406,19 +376,19 @@ fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Resu
             );
 
             for member in updates.members.add().keys() {
-                ACCOUNTS_BY_USER.insert(ctx.storage, (member, ctx.sender))?;
+                ACCOUNTS_BY_USER.insert(ctx.storage, (*member, ctx.sender))?;
 
                 events.push(AccountOwned {
-                    username: member.clone(),
+                    user_index: *member,
                     address: ctx.sender,
                 })?;
             }
 
             for member in updates.members.remove() {
-                ACCOUNTS_BY_USER.remove(ctx.storage, (member, ctx.sender));
+                ACCOUNTS_BY_USER.remove(ctx.storage, (*member, ctx.sender));
 
                 events.push(AccountDisowned {
-                    username: member.clone(),
+                    user_index: *member,
                     address: ctx.sender,
                 })?;
             }
@@ -437,4 +407,37 @@ fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Resu
     }
 
     Ok(Response::new().add_events(events)?)
+}
+
+fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Response> {
+    let user_index = get_user_index_of_account_owner(ctx.storage, ctx.sender)?;
+
+    ensure!(
+        !USER_NAMES_BY_INDEX.has(ctx.storage, user_index),
+        "a username is already associated with user index {user_index}"
+    );
+
+    ensure!(
+        !USER_INDEXES_BY_NAME.has(ctx.storage, &username),
+        "the username `{username}` is already associated with a user index"
+    );
+
+    USER_NAMES_BY_INDEX.save(ctx.storage, user_index, &username)?;
+    USER_INDEXES_BY_NAME.save(ctx.storage, &username, &user_index)?;
+
+    Ok(Response::new())
+}
+
+/// Given an account address,
+/// - if it's a single-signature account, return the account owner's user index;
+/// - if it's a multi-signature account, error.
+fn get_user_index_of_account_owner(
+    storage: &dyn Storage,
+    address: Addr,
+) -> anyhow::Result<UserIndex> {
+    let account = ACCOUNTS.load(storage, address)?;
+    match account.params {
+        AccountParams::Spot(params) | AccountParams::Margin(params) => Ok(params.owner),
+        _ => bail!("sender is not a single signature account"),
+    }
 }

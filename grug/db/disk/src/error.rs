@@ -18,6 +18,9 @@ pub enum DbError {
 
     #[error("requested version ({requested}) doesn't equal the current version ({current})")]
     IncorrectVersion { requested: u64, current: u64 },
+
+    #[error("key prefixed with `wasm` but is not a wasm key: {}", hex::encode(key))]
+    NotWasmKey { key: Vec<u8> },
 }
 
 impl From<DbError> for AppError {

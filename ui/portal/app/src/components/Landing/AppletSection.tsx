@@ -7,12 +7,10 @@ import { APPLETS, ASSETS } from "~/constants";
 
 import type React from "react";
 import type { AppletMetadata } from "@left-curve/store/types";
-import { Shadow } from "react-native-shadow-2";
 
 interface AppletSquareProps {
   applet: AppletMetadata;
 }
-
 const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
   const { push } = useRouter();
   const { id, title, path } = applet;
@@ -21,7 +19,10 @@ const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
   const AppletImage = AppletAsset ? AppletAsset.default : null;
 
   return (
-    <View key={`applets.section.${id}`} className="items-center flex-col flex gap-2 w-[96px]">
+    <View
+      key={`applets.section.${id}`}
+      className="w-1/3 md:w-1/4 items-center flex flex-col gap-2 mb-4"
+    >
       <ShadowContainer>
         <Pressable
           onPress={() => push(path)}
@@ -29,7 +30,7 @@ const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
           accessibilityLabel={title}
           className="h-20 w-20 rounded-xl p-2.5 bg-surface-primary-red active:opacity-80 flex items-center justify-center"
         >
-          <AppletImage width="44" height="44" />
+          <AppletImage width="56" height="56" />
         </Pressable>
       </ShadowContainer>
 
@@ -49,12 +50,12 @@ export const AppletsSection: React.FC = () => {
   const { push } = useRouter();
 
   return (
-    <View className="w-full flex flex-row items-start flex-wrap gap-2 px-[10px]">
+    <View className="w-full flex flex-row flex-wrap">
       {Object.values(APPLETS).map((applet) => (
         <AppletSquare key={`applets.section.${applet.id}`} applet={applet} />
       ))}
 
-      <View className="w-[96px] flex items-center">
+      <View className="w-1/3 md:w-1/4  items-center mb-4">
         <ShadowContainer>
           <Pressable
             onPress={() => push("/search")}

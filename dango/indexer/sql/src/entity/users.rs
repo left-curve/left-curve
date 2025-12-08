@@ -4,6 +4,7 @@ use {
     grug_types::Timestamp,
 };
 use {
+    dango_types::account_factory::UserIndex,
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
 };
@@ -22,7 +23,7 @@ pub struct Model {
     )]
     pub id: Uuid,
     #[sea_orm(unique)]
-    pub username: String,
+    pub user_index: UserIndex,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "indexer_sql::serde_iso8601")]
     pub created_at: DateTime,
@@ -51,7 +52,7 @@ impl Model {
         // TODO: leaving this here for now, in case the relation doesn't work
 
         // let public_keys = entity::public_keys::Entity::find()
-        //     .filter(entity::public_keys::Column::Username.eq(&self.username))
+        //     .filter(entity::public_keys::Column::UserIndex.eq(&self.user_index))
         //     .all(&app_ctx.db)
         //     .await?
         //     .into_iter()
@@ -72,7 +73,7 @@ impl Model {
         // TODO: leaving this here for now, in case the relation doesn't work
 
         // let account_ids = entity::accounts_users::Entity::find()
-        //     .filter(entity::accounts_users::Column::UserId.eq(self.username.clone()))
+        //     .filter(entity::accounts_users::Column::UserId.eq(self.user_index.clone()))
         //     .all(&app_ctx.db)
         //     .await?
         //     .into_iter()
@@ -101,8 +102,8 @@ pub enum Relation {
     AccountUser,
     #[sea_orm(
         has_many = "super::public_keys::Entity",
-        from = "Column::Username",
-        to = "super::public_keys::Column::Username"
+        from = "Column::UserIndex",
+        to = "super::public_keys::Column::UserIndex"
     )]
     PublicKeys,
 }

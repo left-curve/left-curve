@@ -21,6 +21,7 @@
       "maker_fee_rate": "0.0025",
       "max_liquidation_bonus": "0.2",
       "min_liquidation_bonus": "0.02",
+      "minimum_deposit": {},
       "taker_fee_rate": "0.004",
       "target_utilization_rate": "0.9"
     },
@@ -136,71 +137,78 @@
               "multi": "D86E8112F3C4C4442126F8E9F44F16867DA487F29052BF91B810457DB34209A4",
               "spot": "35BE322D094F9D154A8ABA4733B8497F180353BD7AE7B0A15F90B586B549F28B"
             },
-            "minimum_deposit": {
-              "bridge/usdc": "10000000"
-            },
-            "users": {
-              "owner": [
-                "06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2",
-                {
+            "users": [
+              {
+                "key": {
                   "secp256k1": "Anj3t9k9qbWmLihDQYTRwzfCwo1M7SkXkyFatu6J1//4"
-                }
-              ],
-              "user1": [
-                "27779FA83DC05C7BFA051A670EFE32AA662F61056DF9F84AE1C15029FB334EFC",
-                {
+                },
+                "key_hash": "06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2",
+                "seed": 0
+              },
+              {
+                "key": {
                   "secp256k1": "A7z4nV1PGASPBmLTWdF6LbuwioCxcFvBDAuVPyH7nhkR"
-                }
-              ],
-              "user2": [
-                "92F8F258701DDFD25B45EA880629609DD7064C6E0ABECFDD6D0AE552C10D021E",
-                {
+                },
+                "key_hash": "27779FA83DC05C7BFA051A670EFE32AA662F61056DF9F84AE1C15029FB334EFC",
+                "seed": 1
+              },
+              {
+                "key": {
                   "secp256k1": "AtMJunFvJxsQg+JKC51DjveuBQX2NFG8EYOZJRGzsdUt"
-                }
-              ],
-              "user3": [
-                "4F96C9A1F29229A1AB6168E12B1B0FBB81B8B0337B508562C4BDBD28E883AC93",
-                {
+                },
+                "key_hash": "92F8F258701DDFD25B45EA880629609DD7064C6E0ABECFDD6D0AE552C10D021E",
+                "seed": 2
+              },
+              {
+                "key": {
                   "secp256k1": "AkvWHYCioWPm3q/DZ2xzTSnxN5yyxBajK1fO7SS5Iuug"
-                }
-              ],
-              "user4": [
-                "B982314DCD2D9561B8FCDE7BCE3BFF7560D76552E684DFE509A65482CCA0612F",
-                {
+                },
+                "key_hash": "4F96C9A1F29229A1AB6168E12B1B0FBB81B8B0337B508562C4BDBD28E883AC93",
+                "seed": 3
+              },
+              {
+                "key": {
                   "secp256k1": "Akoj56b4XpQqTb7bhxw2ah/a1tC4TmcBJZkZlhNMJw3y"
-                }
-              ],
-              "user5": [
-                "DB2D1B779D4427A6F424448B6C8A88A891C8421FB5B3D05F011BC0B832A6256E",
-                {
+                },
+                "key_hash": "B982314DCD2D9561B8FCDE7BCE3BFF7560D76552E684DFE509A65482CCA0612F",
+                "seed": 4
+              },
+              {
+                "key": {
                   "secp256k1": "A9qGsc1v0gNQoLUlEY7vk5R3wP4/UFIZfNYxTtcvmXCt"
-                }
-              ],
-              "user6": [
-                "E78808491B346470ABFB97F8FD701F43F70D6F89B9FEA258EF58D7BD4A3BD382",
-                {
+                },
+                "key_hash": "DB2D1B779D4427A6F424448B6C8A88A891C8421FB5B3D05F011BC0B832A6256E",
+                "seed": 5
+              },
+              {
+                "key": {
                   "secp256k1": "A0KLF5oHX/IUJFPIBacaY7IyQAzDPI6ENyEeE+K9HexM"
-                }
-              ],
-              "user7": [
-                "D431DBD57994800A12772A7C498FF1CBE940E2355946BB7769CC620A0CA96B59",
-                {
+                },
+                "key_hash": "E78808491B346470ABFB97F8FD701F43F70D6F89B9FEA258EF58D7BD4A3BD382",
+                "seed": 6
+              },
+              {
+                "key": {
                   "secp256k1": "Ao1NcmXVg4GQhCraJXPvnt/JeN7JfKWc5Izx3Rk1KkQH"
-                }
-              ],
-              "user8": [
-                "703C0CB9AA21A265AC45048DA12592C1B715C8B0CEC11ADBBA3212C729B00DDD",
-                {
+                },
+                "key_hash": "D431DBD57994800A12772A7C498FF1CBE940E2355946BB7769CC620A0CA96B59",
+                "seed": 7
+              },
+              {
+                "key": {
                   "secp256k1": "AqiIsUCoNs1xpe+bx2d6OHoqQnI0PPQHIquehdX4qiG9"
-                }
-              ],
-              "user9": [
-                "F29E1799E1AF0D12150474B64997465DAB7D068DAD20534B550A7F99F2826809",
-                {
+                },
+                "key_hash": "703C0CB9AA21A265AC45048DA12592C1B715C8B0CEC11ADBBA3212C729B00DDD",
+                "seed": 8
+              },
+              {
+                "key": {
                   "secp256k1": "AjD5O6qOHb5AqSgUTsIUTu2QLJS4NUIKavSq/S6Iy3tS"
-                }
-              ]
-            }
+                },
+                "key_hash": "F29E1799E1AF0D12150474B64997465DAB7D068DAD20534B550A7F99F2826809",
+                "seed": 9
+              }
+            ]
           },
           "salt": "ZGFuZ28vYWNjb3VudF9mYWN0b3J5"
         }

@@ -12,6 +12,7 @@ use {
         GenesisUser, GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption,
     },
     dango_types::{
+        account_factory::NewUserSalt,
         auth::Key,
         bank::Metadata,
         bitcoin::{MultisigSettings, Network},
@@ -25,9 +26,9 @@ use {
         taxman,
     },
     grug::{
-        Addressable, Binary, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
+        Addressable, Binary, BlockInfo, Bounded, Coin, Coins, Denom, Duration, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT, HashExt, HexByteArray, LengthBounded, NonEmpty, NumberConst,
-        Timestamp, Udec128, Uint128, btree_map, btree_set, coins,
+        Timestamp, Udec128, Uint128, btree_map, btree_set,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -195,7 +196,7 @@ impl Preset for GenesisOption {
 impl Preset for GrugOption {
     fn preset_test() -> Self {
         GrugOption {
-            owner_username: owner::USERNAME.clone(),
+            owner_index: 0,
             fee_cfg: taxman::Config {
                 fee_denom: usdc::DENOM.clone(),
                 fee_rate: Udec128::ZERO, // Use zero gas price for testing.
@@ -208,60 +209,89 @@ impl Preset for GrugOption {
 impl Preset for AccountOption {
     fn preset_test() -> Self {
         AccountOption {
-            genesis_users: btree_map! {
-                owner::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(owner::PUBLIC_KEY.into()),
-                    key_hash: owner::PUBLIC_KEY.hash256(),
+            genesis_users: vec![
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(owner::PUBLIC_KEY.into()),
+                        key_hash: owner::PUBLIC_KEY.hash256(),
+                        seed: 0,
+                    },
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-                user1::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(user1::PUBLIC_KEY.into()),
-                    key_hash: user1::PUBLIC_KEY.hash256(),
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(user1::PUBLIC_KEY.into()),
+                        key_hash: user1::PUBLIC_KEY.hash256(),
+                        seed: 1,
+                    },
                     dango_balance: Uint128::new(1_000_000_000_000_000_000),
                 },
-                user2::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(user2::PUBLIC_KEY.into()),
-                    key_hash: user2::PUBLIC_KEY.hash256(),
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(user2::PUBLIC_KEY.into()),
+                        key_hash: user2::PUBLIC_KEY.hash256(),
+                        seed: 2,
+                    },
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-                user3::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(user3::PUBLIC_KEY.into()),
-                    key_hash: user3::PUBLIC_KEY.hash256(),
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(user3::PUBLIC_KEY.into()),
+                        key_hash: user3::PUBLIC_KEY.hash256(),
+                        seed: 3,
+                    },
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-                user4::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(user4::PUBLIC_KEY.into()),
-                    key_hash: user4::PUBLIC_KEY.hash256(),
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(user4::PUBLIC_KEY.into()),
+                        key_hash: user4::PUBLIC_KEY.hash256(),
+                        seed: 4,
+                    },
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-                user5::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(user5::PUBLIC_KEY.into()),
-                    key_hash: user5::PUBLIC_KEY.hash256(),
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(user5::PUBLIC_KEY.into()),
+                        key_hash: user5::PUBLIC_KEY.hash256(),
+                        seed: 5,
+                    },
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-                user6::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(user6::PUBLIC_KEY.into()),
-                    key_hash: user6::PUBLIC_KEY.hash256(),
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(user6::PUBLIC_KEY.into()),
+                        key_hash: user6::PUBLIC_KEY.hash256(),
+                        seed: 6,
+                    },
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-                user7::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(user7::PUBLIC_KEY.into()),
-                    key_hash: user7::PUBLIC_KEY.hash256(),
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(user7::PUBLIC_KEY.into()),
+                        key_hash: user7::PUBLIC_KEY.hash256(),
+                        seed: 7,
+                    },
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-                user8::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(user8::PUBLIC_KEY.into()),
-                    key_hash: user8::PUBLIC_KEY.hash256(),
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(user8::PUBLIC_KEY.into()),
+                        key_hash: user8::PUBLIC_KEY.hash256(),
+                        seed: 8,
+                    },
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-                user9::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(user9::PUBLIC_KEY.into()),
-                    key_hash: user9::PUBLIC_KEY.hash256(),
+                GenesisUser {
+                    salt: NewUserSalt {
+                        key: Key::Secp256k1(user9::PUBLIC_KEY.into()),
+                        key_hash: user9::PUBLIC_KEY.hash256(),
+                        seed: 9,
+                    },
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-
-            },
-            minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+            ],
+            minimum_deposit: Coins::new(),
         }
     }
 }

@@ -23,7 +23,7 @@ export async function getUser<chain extends Chain | undefined, signer extends Si
   parameters: GetUserParameters,
 ): GetUserReturnType {
   const { username, height = 0 } = parameters;
-  const msg = { user: { username } };
+  const msg = { user: { name: { username } } };
 
   const action = getAction(client, getAppConfig, "getAppConfig");
 

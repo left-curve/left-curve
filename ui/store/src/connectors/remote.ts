@@ -18,7 +18,6 @@ export function remote() {
         const client = createSignerClient({
           signer: this,
           type: "remote",
-          username,
           transport,
         });
 
@@ -42,14 +41,10 @@ export function remote() {
         emitter.emit("disconnect");
       },
       async getClient() {
-        const username = getUsername();
-        if (!username) throw new Error("remote: username not found");
-
         return createSignerClient({
           signer: this,
           type: "remote",
           chain,
-          username,
           transport,
         });
       },

@@ -1,6 +1,9 @@
 use {
-    crate::account::margin::CollateralPower,
-    grug::{Addr, Bounded, Denom, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive},
+    crate::{account::margin::CollateralPower, constants::usdc},
+    grug::{
+        Addr, Bounded, Coins, Denom, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
+        coins,
+    },
     std::collections::BTreeMap,
 };
 
@@ -9,6 +12,8 @@ use {
 pub struct AppConfig {
     /// Addresses of relevant Dango contracts.
     pub addresses: AppAddresses,
+    /// The minimum deposit required to onboard a user.
+    pub minimum_deposit: Coins,
     /// The powers of all collateral tokens. This is the adjustment factor for
     /// the collateral value of a given collateral token. Meaning, if the
     /// collateral token has a power of 0.9, then the value of the collateral
@@ -36,6 +41,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
             addresses: Default::default(),
+            minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 }, // 10 USDC
             collateral_powers: Default::default(),
             target_utilization_rate: Bounded::new(Udec128::new_percent(90)).unwrap(),
             min_liquidation_bonus: Bounded::new(Udec128::new_percent(2)).unwrap(),

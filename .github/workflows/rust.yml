@@ -986,30 +986,30 @@ jobs:
           backend_published="${{ needs['backend-push-manifest'].outputs.published }}"
           frontend_published="${{ needs['frontend-push-manifest'].outputs.published }}"
           run_event="${{ github.event_name }}"
-          backend_repo="ghcr.io/left-curve/left-curve/dango"
-          frontend_repo="ghcr.io/left-curve/left-curve/dango-frontend"
+          backend_image_url="ghcr.io/left-curve/left-curve/dango"
+          frontend_image_url="ghcr.io/left-curve/left-curve/dango-frontend"
 
           commit_tag="${{ env.GIT_COMMIT }}"
           pr_tag=""
 
           if [ "$backend_published" = "true" ]; then
             backend_tag="$commit_tag"
-          elif docker manifest inspect "${backend_repo}:${commit_tag}" >/dev/null 2>&1; then
+          elif docker manifest inspect "${backend_image_url}:${commit_tag}" >/dev/null 2>&1; then
             backend_tag="$commit_tag"
           elif [ "$run_event" = "pull_request" ]; then
             pr_tag="pr-${{ github.event.pull_request.number }}-latest"
-            if docker manifest inspect "${backend_repo}:${pr_tag}" >/dev/null 2>&1; then
+            if docker manifest inspect "${backend_image_url}:${pr_tag}" >/dev/null 2>&1; then
               backend_tag="$pr_tag"
             fi
           fi
 
           if [ "$frontend_published" = "true" ]; then
             frontend_tag="$commit_tag"
-          elif docker manifest inspect "${frontend_repo}:${commit_tag}" >/dev/null 2>&1; then
+          elif docker manifest inspect "${frontend_image_url}:${commit_tag}" >/dev/null 2>&1; then
             frontend_tag="$commit_tag"
           elif [ "$run_event" = "pull_request" ]; then
             pr_tag="pr-${{ github.event.pull_request.number }}-latest"
-            if docker manifest inspect "${frontend_repo}:${pr_tag}" >/dev/null 2>&1; then
+            if docker manifest inspect "${frontend_image_url}:${pr_tag}" >/dev/null 2>&1; then
               frontend_tag="$pr_tag"
             fi
           fi
@@ -1166,7 +1166,7 @@ jobs:
           # This deletes the existing deployment, but instead use `ansible-playbook delete-full-app.yml -e deployment_name=pr-<ID>` if you need
           # ansible-playbook delete-existing-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
 
-          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }}
+          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }}
           fi
 
   localdango:

@@ -5,7 +5,6 @@ use {
         HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
     },
-    grug::Inner,
     grug_app::Indexer,
     itertools::Itertools,
     sea_orm::EntityTrait,
@@ -17,7 +16,7 @@ async fn index_account_creations() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     suite.app.indexer.wait_for_finish()?;
 
@@ -37,13 +36,8 @@ async fn index_account_creations() -> anyhow::Result<()> {
         .all(&dango_context.db)
         .await?;
 
-    assert_that!(
-        users
-            .iter()
-            .map(|t| t.username.as_str())
-            .collect::<Vec<_>>()
-    )
-    .is_equal_to(vec![user.username.as_ref()]);
+    assert_that!(users.iter().map(|t| t.user_index).collect::<Vec<_>>())
+        .is_equal_to(vec![user.user_index()]);
 
     assert_that!(users).has_length(1);
     assert_that!(accounts).has_length(1);
@@ -52,7 +46,7 @@ async fn index_account_creations() -> anyhow::Result<()> {
 
     let public_key = public_keys.first().unwrap();
 
-    assert_that!(&public_key.username).is_equal_to(user.username.inner());
+    assert_that!(public_key.user_index).is_equal_to(user.user_index());
     assert_that!(public_key.key_hash).is_equal_to(user.first_key_hash().to_string());
     assert_that!(public_key.public_key).is_equal_to(user.first_key().to_string());
 
@@ -67,7 +61,7 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     suite.app.indexer.wait_for_finish()?;
 
@@ -83,10 +77,10 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
         accounts[0]
             .1
             .iter()
-            .map(|t| t.username.as_str())
+            .map(|t| t.user_index)
             .collect::<Vec<_>>()
     )
-    .is_equal_to(vec![user.username.as_ref()]);
+    .is_equal_to(vec![user.user_index()]);
 
     Ok(())
 }
@@ -98,8 +92,7 @@ async fn index_single_user_multiple_spot_accounts() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account1 =
-        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
 
@@ -113,9 +106,9 @@ async fn index_single_user_multiple_spot_accounts() -> anyhow::Result<()> {
 
     assert_that!(accounts).has_length(2);
 
-    let usernames = accounts
+    let user_indexes = accounts
         .iter()
-        .map(|(_, users)| &users[0].username)
+        .map(|(_, users)| users[0].user_index)
         .unique()
         .collect::<Vec<_>>();
 
@@ -125,8 +118,8 @@ async fn index_single_user_multiple_spot_accounts() -> anyhow::Result<()> {
         .unique()
         .collect::<Vec<_>>();
 
-    assert_that!(usernames).has_length(1);
-    assert_that!(usernames[0].as_str()).is_equal_to("user");
+    assert_that!(user_indexes).has_length(1);
+    assert_that!(user_indexes[0]).is_equal_to(test_account1.user_index());
 
     assert_that!(addresses).has_length(2);
     assert_that!(addresses).contains(&test_account1.address.into_inner().to_string());

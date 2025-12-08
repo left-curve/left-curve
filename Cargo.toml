@@ -160,6 +160,7 @@ quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                     = { version = "0.12", features = ["stream"] }
 ripemd                      = "0.1"
+roaring                     = "0.11"
 rocksdb                     = "0.23"
 sea-orm                     = { version = "1", features = ["runtime-tokio-rustls", "sea-orm-internal", "sqlx-postgres", "sqlx-sqlite", "with-bigdecimal", "with-chrono", "with-json", "with-time", "with-uuid"] }
 sea-orm-migration           = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"] }
@@ -192,6 +193,11 @@ url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "6"
 wasmer-middlewares          = "6"
+
+# S3 client (AWS SDK v1)
+aws-config           = "1"
+aws-credential-types = "1"
+aws-sdk-s3           = "1"
 
 # Left curve packages
 dango-account-factory       = { path = "dango/account/factory" }

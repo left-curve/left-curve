@@ -1,4 +1,4 @@
-import { useInputs } from "@left-curve/foundation";
+import { useControlledState, useInputs } from "@left-curve/foundation";
 import { useEffect, useState } from "react";
 import { useConnectors } from "@left-curve/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -12,60 +12,20 @@ import { PRIVY_ERRORS_MAPPING } from "~/constants";
 import type { Connector } from "@left-curve/store/types";
 import type Privy from "@privy-io/js-sdk-core";
 
-type EmailCredentialProps = {
-  onAuth: () => void;
-  disableSignup?: boolean;
-  goBack: () => void;
-  email: string;
-  setEmail: (email?: string) => void;
+type StepInputEmailProps = {
+  value?: string;
+  onChange: (email: string) => void;
+  defaultValue?: string;
 };
 
-export const EmailCredential: React.FC<EmailCredentialProps> = ({
-  onAuth,
-  goBack,
-  disableSignup,
-  email,
-  setEmail,
-}) => {
+const StepInputEmail: React.FC<StepInputEmailProps> = ({ value, defaultValue, onChange }) => {
   const connectors = useConnectors();
   const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
-
-  if (!connector) return null;
-
-  if (!email) {
-    return (
-      <StepInputEmail
-        disableSignup={Boolean(disableSignup)}
-        setEmail={setEmail}
-        privy={connector.privy}
-      />
-    );
-  }
-
-  return (
-    <StepInputOtp
-      disableSignup={Boolean(disableSignup)}
-      goBack={goBack}
-      email={email}
-      onAuth={onAuth}
-      privy={connector.privy}
-    />
-  );
-};
-
-type StepInputEmailProps = {
-  disableSignup: boolean;
-  setEmail: (email: string) => void;
-  privy: Privy;
-};
-
-const StepInputEmail: React.FC<StepInputEmailProps> = ({ privy, setEmail }) => {
-  const { register, inputs } = useInputs();
+  const [email, setEmail] = useControlledState(value, onChange, defaultValue);
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      const email = inputs.email.value;
-      await privy.auth.email.sendCode(email);
+      await connector.privy.auth.email.sendCode(email);
       setEmail(email);
     },
   });
@@ -80,7 +40,8 @@ const StepInputEmail: React.FC<StepInputEmailProps> = ({ privy, setEmail }) => {
     >
       <Input
         fullWidth
-        {...register("email")}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
         startContent={<IconEmail />}
         endContent={
           <Button variant="link" className="p-0" isLoading={isPending} type="submit">
@@ -100,19 +61,14 @@ const StepInputEmail: React.FC<StepInputEmailProps> = ({ privy, setEmail }) => {
 
 type StepInputOptProps = {
   email: string;
-  onAuth: () => void;
-  disableSignup: boolean;
+  onSuccess: () => Promise<void>;
+  disableSignup?: boolean;
   goBack: () => void;
-  privy: Privy;
 };
 
-const StepInputOtp: React.FC<StepInputOptProps> = ({
-  email,
-  disableSignup,
-  privy,
-  goBack,
-  onAuth,
-}) => {
+const StepInputOtp: React.FC<StepInputOptProps> = ({ email, disableSignup, goBack, onSuccess }) => {
+  const connectors = useConnectors();
+  const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
   const { register, setError, inputs } = useInputs();
   const [cooldown, setCooldown] = useState<number>(0);
 
@@ -131,7 +87,7 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({
     queryKey: ["send-email-code", email, otpValue],
     queryFn: async () => {
       try {
-        await privy.auth.email.loginWithCode(
+        await connector.privy.auth.email.loginWithCode(
           email,
           otpValue,
           disableSignup ? "no-signup" : "login-or-sign-up",
@@ -144,7 +100,7 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({
           },
         );
         await wait(500);
-        onAuth();
+        await onSuccess();
       } catch (e) {
         const message = "message" in (e as object) ? (e as Error).message : "authFailed";
         const error =
@@ -161,7 +117,7 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({
 
   const handleResend = async () => {
     if (cooldown > 0) return;
-    await privy.auth.email.sendCode(email);
+    await connector.privy.auth.email.sendCode(email);
     setCooldown(60);
   };
 
@@ -186,4 +142,9 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({
       </Button>
     </div>
   );
+};
+
+export const EmailCredential = {
+  Email: StepInputEmail,
+  OTP: StepInputOtp,
 };

@@ -1,7 +1,8 @@
 use {
+    anyhow::anyhow,
     dango_genesis::GenesisCodes,
     dango_testing::{TestAccount, TestSuite},
-    dango_types::{account, account_factory::Username, dex},
+    dango_types::{account, account_factory, dex},
     grug::{
         Addr, Coins, Duration, JsonSerExt, QuerierExt, Query, QueryStatusRequest, ResultExt,
         StdResult, addr,
@@ -10,14 +11,14 @@ use {
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     hex_literal::hex,
-    std::{path::PathBuf, str::FromStr},
+    std::path::PathBuf,
 };
+
+const ACCOUNT_FACTORY: Addr = addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b");
 
 const DEX: Addr = addr!("8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f");
 
 const OWNER: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9");
-
-const OWNER_USERNAME: &str = "owner";
 
 /// For demonstration purpose only; do not use this in production.
 const OWNER_PRIVATE_KEY: [u8; 32] =
@@ -68,16 +69,24 @@ fn main() -> anyhow::Result<()> {
         u64::MAX,
     );
 
+    let owner_user_index = suite
+        .query_wasm_smart(ACCOUNT_FACTORY, account_factory::QueryAccountRequest {
+            address: OWNER,
+        })?
+        .params
+        .owner()
+        .ok_or_else(|| anyhow!("owner {OWNER} is not a single signature account"))?;
+
     let owner_nonce = suite
         .query_wasm_smart(OWNER, account::spot::QuerySeenNoncesRequest {})
         .should_succeed()
         .pop_last()
-        .unwrap();
+        .unwrap_or(0);
 
-    let mut owner =
-        TestAccount::new_from_private_key(Username::from_str(OWNER_USERNAME)?, OWNER_PRIVATE_KEY)
-            .set_address(OWNER)
-            .set_nonce(owner_nonce + 1);
+    let mut owner = TestAccount::new_from_private_key(OWNER_PRIVATE_KEY)
+        .set_address(OWNER)
+        .set_user_index(owner_user_index)
+        .set_nonce(owner_nonce + 1);
 
     // Reset and DEX. Ensure the call succeeds.
     let outcome = suite

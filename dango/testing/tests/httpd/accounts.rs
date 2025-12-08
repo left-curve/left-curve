@@ -32,23 +32,23 @@ async fn query_accounts() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
-    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "bar");
+    let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Accounts {
-      accounts {
+        accounts {
           nodes {
             address
             accountIndex
             accountType
             createdAt
             createdBlockHeight
-            users { username }
+            users { userIndex }
           }
-          edges { node { address accountIndex accountType createdAt createdBlockHeight users { username } }  cursor }
+          edges { node { address accountIndex accountType createdAt createdBlockHeight users { userIndex } }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -81,7 +81,7 @@ async fn query_accounts() -> anyhow::Result<()> {
                         "accountType": "spot",
                         "users": [
                             {
-                                "username": user2.username.to_string(),
+                                "userIndex": user2.user_index(),
                             },
                         ],
                     },
@@ -89,7 +89,7 @@ async fn query_accounts() -> anyhow::Result<()> {
                         "accountType": "spot",
                         "users": [
                             {
-                                "username": user1.username.to_string(),
+                                "userIndex": user1.user_index(),
                             },
                         ],
                     },
@@ -105,34 +105,34 @@ async fn query_accounts() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn query_accounts_with_username() -> anyhow::Result<()> {
+async fn query_accounts_with_user_index() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
-      query Accounts($username: String) {
-      accounts(username: $username) {
+      query Accounts($userIndex: String) {
+        accounts(userIndex: $userIndex) {
           nodes {
             address
             accountIndex
             accountType
             createdAt
             createdBlockHeight
-            users { username }
+            users { userIndex }
           }
-          edges { node { address accountIndex accountType createdAt createdBlockHeight users { username } }  cursor }
+          edges { node { address accountIndex accountType createdAt createdBlockHeight users { userIndex } }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
     "#;
 
     let variables = serde_json::json!({
-        "username": user.username.to_string(),
+        "userIndex": user.user_index(),
     })
     .as_object()
     .unwrap()
@@ -161,7 +161,7 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
                     "accountType": "spot",
                     "users": [
                         {
-                            "username": user.username.to_string(),
+                            "userIndex": user.user_index(),
                         }
                     ],
                 });
@@ -176,34 +176,34 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
+async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
-      query Accounts($username: String) {
-      accounts(username: $username) {
+      query Accounts($userIndex: String) {
+      accounts(userIndex: $userIndex) {
           nodes {
             address
             accountIndex
             accountType
             createdAt
             createdBlockHeight
-            users { username }
+            users { userIndex }
           }
-          edges { node { address accountIndex accountType createdAt createdBlockHeight users { username } }  cursor }
+          edges { node { address accountIndex accountType createdAt createdBlockHeight users { userIndex } }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
     "#;
 
     let variables = serde_json::json!({
-        "username": "foo",
+        "userIndex": 114514, // a random user index that doesn't exist
     })
     .as_object()
     .unwrap()
@@ -250,32 +250,33 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account1 =
-        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user187");
-
+    // Create two accounts under the same user. The two `TestAccount`'s should
+    // have the same user index.
+    let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
     let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
+    assert_eq!(test_account1.user_index(), test_account2.user_index());
 
     suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
-      query Accounts($username: String) {
-      accounts(username: $username) {
+      query Accounts($userIndex: String) {
+      accounts(userIndex: $userIndex) {
           nodes {
             address
             accountIndex
             accountType
             createdAt
             createdBlockHeight
-            users { username }
+            users { userIndex }
           }
-          edges { node { address accountIndex accountType createdAt createdBlockHeight users { username } }  cursor }
+          edges { node { address accountIndex accountType createdAt createdBlockHeight users { userIndex } }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
     "#;
 
     let variables = serde_json::json!({
-        "username": "user187",
+        "userIndex": test_account1.user_index(),
     })
     .as_object()
     .unwrap()
@@ -346,7 +347,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                     "address": test_account2.address.inner().to_string(),
                     "users": [
                         {
-                            "username": "user187",
+                            "userIndex": test_account1.user_index(),
                         },
                     ],
                 });
@@ -359,7 +360,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                     "address": test_account1.address.inner().to_string(),
                     "users": [
                         {
-                            "username": "user187",
+                            "userIndex": test_account1.user_index(),
                         },
                     ],
                 });
@@ -380,14 +381,8 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Create 10 accounts to paginate through
-    for idx in 0..10 {
-        let _user = create_user_and_account(
-            &mut suite,
-            &mut accounts,
-            &contracts,
-            &codes,
-            &format!("foo{idx}"),
-        );
+    for _ in 0..10 {
+        let _user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
     }
 
     suite.app.indexer.wait_for_finish()?;
@@ -431,8 +426,14 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 .map(|a| a.created_block_height as u64)
                 .collect::<Vec<_>>();
 
+                // Nonce 1: register first user
+                // Nonce 2: fund first user
+                // Nonce 3: register second user
+                // Nonce 4: fund second user
+                // etc...
+                // The expected nonces where the accounts are created are 1, 3, 5, 7, ...
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2).rev().collect::<Vec<_>>());
+                    .is_equal_to((1..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
@@ -449,7 +450,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 .collect::<Vec<_>>();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2).collect::<Vec<_>>());
+                    .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 3. last with descending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
@@ -466,7 +467,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 .collect::<Vec<_>>();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2).collect::<Vec<_>>());
+                    .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 4. last with ascending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
@@ -483,7 +484,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 .collect::<Vec<_>>();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2).rev().collect::<Vec<_>>());
+                    .is_equal_to((1..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -498,22 +499,21 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let _test_account =
-        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let _test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
     suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       subscription Accounts {
-      accounts {
-            id
-            address
-            accountIndex
-            accountType
-            createdAt
-            createdBlockHeight
-            createdTxHash
-            users { username }
+        accounts {
+          id
+          address
+          accountIndex
+          accountType
+          createdAt
+          createdBlockHeight
+          createdTxHash
+          users { userIndex }
         }
       }
     "#;
@@ -529,14 +529,9 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     // Can't call this from LocalSet so using channels instead.
     let (create_account_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
-        while let Some(idx) = rx.recv().await {
-            let _test_account = create_user_and_account(
-                &mut suite,
-                &mut accounts,
-                &contracts,
-                &codes,
-                &format!("foo{idx}"),
-            );
+        while let Some(_idx) = rx.recv().await {
+            let _test_account =
+                create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -563,7 +558,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                         .map(|t| t.created_block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![2]);
+                .is_equal_to(vec![1]);
 
                 create_account_tx.send(2).await.unwrap();
 
@@ -581,7 +576,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                         .map(|t| t.created_block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![4]);
+                .is_equal_to(vec![3]);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -591,32 +586,32 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
+async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account1 =
-        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user_index = test_account1.user_index();
 
     suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
-      subscription Accounts($username: String) {
-      accounts(username: $username) {
-            id
-            address
-            accountIndex
-            accountType
-            createdAt
-            createdBlockHeight
-            users { username }
+      subscription Accounts($userIndex: String) {
+        accounts(userIndex: $userIndex) {
+          id
+          address
+          accountIndex
+          accountType
+          createdAt
+          createdBlockHeight
+          users { userIndex }
         }
       }
     "#;
 
     let variables = serde_json::json!({
-        "username": "user",
+        "userIndex": user_index,
     })
     .as_object()
     .unwrap()
@@ -633,15 +628,10 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     // Can't call this from LocalSet so using channels instead.
     let (create_account_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
-        while let Some(idx) = rx.recv().await {
-            // Create a new account with a new username, to see if the subscription filters it out
-            let _test_account = create_user_and_account(
-                &mut suite,
-                &mut accounts,
-                &contracts,
-                &codes,
-                &format!("foo{idx}"),
-            );
+        while let Some(_idx) = rx.recv().await {
+            // Create a new account with a new user index, to see if the subscription filters it out
+            let _test_account =
+                create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
             // Create a new account with the original user
             let _test_account2 =
@@ -662,7 +652,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
                 let expected_data = serde_json::json!({
                     "users": [
                         {
-                            "username": "user",
+                            "userIndex": user_index,
                         },
                     ],
                 });

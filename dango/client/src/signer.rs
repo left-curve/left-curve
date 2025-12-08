@@ -1,8 +1,9 @@
 use {
     crate::Secret,
+    anyhow::anyhow,
     dango_types::{
         account::spot,
-        account_factory::Username,
+        account_factory::{self, UserIndex},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
         signer::SequencedSigner,
     },
@@ -10,7 +11,6 @@ use {
         Addr, Addressable, Defined, JsonSerExt, MaybeDefined, Message, NonEmpty, QueryClient,
         QueryClientExt, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx,
     },
-    std::str::FromStr,
 };
 
 pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
@@ -18,22 +18,49 @@ pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 /// Utility for signing transactions in the format by Dango's single-signature
 /// accounts, i.e. spot and margin accounts.
 #[derive(Debug)]
-pub struct SingleSigner<S, N>
+pub struct SingleSigner<S, I = Defined<UserIndex>, N = Defined<Nonce>>
 where
     S: Secret,
+    I: MaybeDefined<UserIndex>,
     N: MaybeDefined<Nonce>,
 {
-    pub username: Username,
     pub address: Addr,
-    pub nonce: N,
     pub secret: S,
+    pub user_index: I,
+    pub nonce: N,
 }
 
-impl<S, N> SingleSigner<S, N>
+impl<S, I, N> SingleSigner<S, I, N>
 where
     S: Secret,
+    I: MaybeDefined<UserIndex>,
     N: MaybeDefined<Nonce>,
 {
+    pub async fn query_user_index<C>(&self, client: &C) -> anyhow::Result<UserIndex>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        let account_factory = client
+            .query_app_config::<dango_types::config::AppConfig>(None)
+            .await?
+            .addresses
+            .account_factory;
+
+        client
+            .query_wasm_smart(
+                account_factory,
+                account_factory::QueryAccountRequest {
+                    address: self.address,
+                },
+                None,
+            )
+            .await?
+            .params
+            .owner()
+            .ok_or_else(|| anyhow!("account {} is not a single signature account", self.address))
+    }
+
     pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
     where
         C: QueryClient,
@@ -52,33 +79,59 @@ where
     }
 }
 
-impl<S> SingleSigner<S, Undefined<Nonce>>
+impl<S> SingleSigner<S, Undefined<UserIndex>, Undefined<Nonce>>
 where
     S: Secret,
 {
     /// Create a new `SingleSigner` with the given secret key.
-    pub fn new(username: &str, address: Addr, secret: S) -> anyhow::Result<Self> {
-        let username = Username::from_str(username)?;
-
-        Ok(Self {
-            username,
+    pub fn new(address: Addr, secret: S) -> Self {
+        Self {
             address,
-            nonce: Undefined::new(),
             secret,
-        })
+            user_index: Undefined::new(),
+            nonce: Undefined::new(),
+        }
     }
 }
 
-impl<S> SingleSigner<S, Undefined<Nonce>>
+impl<S, N> SingleSigner<S, Undefined<UserIndex>, N>
 where
     S: Secret,
+    N: MaybeDefined<Nonce>,
 {
-    pub fn with_nonce(self, nonce: Nonce) -> SingleSigner<S, Defined<Nonce>> {
+    pub fn with_user_index(self, user_index: UserIndex) -> SingleSigner<S, Defined<UserIndex>, N> {
         SingleSigner {
-            username: self.username,
             address: self.address,
-            nonce: Defined::new(nonce),
             secret: self.secret,
+            user_index: Defined::new(user_index),
+            nonce: self.nonce,
+        }
+    }
+
+    pub async fn with_query_user_index<C>(
+        self,
+        client: &C,
+    ) -> anyhow::Result<SingleSigner<S, Defined<UserIndex>, N>>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        let user_index = self.query_user_index(client).await?;
+        Ok(self.with_user_index(user_index))
+    }
+}
+
+impl<S, I> SingleSigner<S, I, Undefined<Nonce>>
+where
+    S: Secret,
+    I: MaybeDefined<UserIndex>,
+{
+    pub fn with_nonce(self, nonce: Nonce) -> SingleSigner<S, I, Defined<Nonce>> {
+        SingleSigner {
+            address: self.address,
+            secret: self.secret,
+            user_index: self.user_index,
+            nonce: Defined::new(nonce),
         }
     }
 
@@ -86,25 +139,20 @@ where
     pub async fn with_query_nonce<C>(
         self,
         client: &C,
-    ) -> anyhow::Result<SingleSigner<S, Defined<Nonce>>>
+    ) -> anyhow::Result<SingleSigner<S, I, Defined<Nonce>>>
     where
         C: QueryClient,
         anyhow::Error: From<C::Error>,
     {
         let nonce = self.query_next_nonce(client).await?;
-
-        Ok(SingleSigner {
-            username: self.username,
-            address: self.address,
-            nonce: Defined::new(nonce),
-            secret: self.secret,
-        })
+        Ok(self.with_nonce(nonce))
     }
 }
 
-impl<S, N> Addressable for SingleSigner<S, N>
+impl<S, I, N> Addressable for SingleSigner<S, I, N>
 where
     S: Secret,
+    I: MaybeDefined<UserIndex>,
     N: MaybeDefined<Nonce>,
 {
     fn address(&self) -> Addr {
@@ -112,7 +160,27 @@ where
     }
 }
 
-impl<S> Signer for SingleSigner<S, Defined<Nonce>>
+impl<S, N> SingleSigner<S, Defined<UserIndex>, N>
+where
+    S: Secret,
+    N: MaybeDefined<Nonce>,
+{
+    pub fn user_index(&self) -> UserIndex {
+        self.user_index.into_inner()
+    }
+}
+
+impl<S, I> SingleSigner<S, I, Defined<Nonce>>
+where
+    S: Secret,
+    I: MaybeDefined<UserIndex>,
+{
+    pub fn nonce(&self) -> Nonce {
+        self.nonce.into_inner()
+    }
+}
+
+impl<S> Signer for SingleSigner<S>
 where
     S: Secret,
 {
@@ -125,9 +193,9 @@ where
             sender: self.address,
             msgs,
             data: Metadata {
-                username: self.username.clone(),
                 chain_id: chain_id.to_string(),
-                nonce: self.nonce.into_inner(),
+                user_index: self.user_index(),
+                nonce: self.nonce(),
                 expiry: None, // TODO
             }
             .to_json_value()?,
@@ -140,11 +208,11 @@ where
         chain_id: &str,
         gas_limit: u64,
     ) -> StdResult<Tx> {
-        let nonce = self.nonce.into_inner();
+        let nonce = self.nonce();
         *self.nonce.inner_mut() += 1;
 
         let metadata = Metadata {
-            username: self.username.clone(),
+            user_index: self.user_index(),
             chain_id: chain_id.to_string(),
             nonce,
             expiry: None, // TODO
@@ -209,21 +277,24 @@ mod tests {
         super::*,
         crate::{Eip712, Secp256k1},
         dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
-        dango_auth::authenticate_tx,
-        dango_types::config::{AppAddresses, AppConfig},
-        grug::{AuthMode, Coins, MockContext, MockQuerier, ResultExt},
+        dango_auth::{account::STATUS, authenticate_tx},
+        dango_types::{
+            auth::AccountStatus,
+            config::{AppAddresses, AppConfig},
+        },
+        grug::{AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt},
     };
 
     #[test]
     fn sign_secp256k1_transaction_works() {
-        let username = Username::from_str("alice").unwrap();
+        let user_index = 123;
         let address = Addr::mock(0);
         let nonce = 0;
         let account_factory = Addr::mock(1);
 
-        let mut signer = SingleSigner::new(username.as_ref(), address, Secp256k1::new_random())
-            .unwrap()
-            .with_nonce(nonce);
+        let mut signer = SingleSigner::new(address, Secp256k1::new_random())
+            .with_nonce(nonce)
+            .with_user_index(user_index);
 
         let tx = signer
             .sign_transaction(
@@ -236,14 +307,20 @@ mod tests {
             )
             .unwrap();
 
+        let mut mock_storage = MockStorage::new();
+
+        STATUS
+            .save(&mut mock_storage, &AccountStatus::Active)
+            .unwrap();
+
         let mock_querier = MockQuerier::new()
             .with_raw_contract_storage(account_factory, |storage| {
                 ACCOUNTS_BY_USER
-                    .insert(storage, (&username, address))
+                    .insert(storage, (user_index, address))
                     .unwrap();
                 KEYS.save(
                     storage,
-                    (&username, signer.secret.key_hash()),
+                    (user_index, signer.secret.key_hash()),
                     &signer.secret.key(),
                 )
                 .unwrap();
@@ -261,6 +338,7 @@ mod tests {
 
         let mut mock_ctx = MockContext::default()
             .with_chain_id("dango-1")
+            .with_storage(mock_storage)
             .with_querier(mock_querier)
             .with_mode(AuthMode::Finalize);
 
@@ -269,14 +347,14 @@ mod tests {
 
     #[test]
     fn sign_eip712_transaction_works() {
-        let username = Username::from_str("alice").unwrap();
+        let user_index = 234;
         let address = Addr::mock(0);
         let nonce = 0;
         let account_factory = Addr::mock(1);
 
-        let mut signer = SingleSigner::new(username.as_ref(), address, Eip712::new_random())
-            .unwrap()
-            .with_nonce(nonce);
+        let mut signer = SingleSigner::new(address, Eip712::new_random())
+            .with_nonce(nonce)
+            .with_user_index(user_index);
 
         let tx = signer
             .sign_transaction(
@@ -289,14 +367,20 @@ mod tests {
             )
             .unwrap();
 
+        let mut mock_storage = MockStorage::new();
+
+        STATUS
+            .save(&mut mock_storage, &AccountStatus::Active)
+            .unwrap();
+
         let mock_querier = MockQuerier::new()
             .with_raw_contract_storage(account_factory, |storage| {
                 ACCOUNTS_BY_USER
-                    .insert(storage, (&username, address))
+                    .insert(storage, (user_index, address))
                     .unwrap();
                 KEYS.save(
                     storage,
-                    (&username, signer.secret.key_hash()),
+                    (user_index, signer.secret.key_hash()),
                     &signer.secret.key(),
                 )
                 .unwrap();
@@ -314,35 +398,10 @@ mod tests {
 
         let mut mock_ctx = MockContext::default()
             .with_chain_id("dango-1")
+            .with_storage(mock_storage)
             .with_querier(mock_querier)
             .with_mode(AuthMode::Finalize);
 
         authenticate_tx(mock_ctx.as_auth(), tx, None).should_succeed();
-    }
-
-    #[ignore = "Disabling this since it doesn't test anything"]
-    #[test]
-    fn unsigned_tx() {
-        let username = Username::from_str("owner").unwrap();
-        let address = Addr::from_str("0x33361de42571d6aa20c37daa6da4b5ab67bfaad9").unwrap();
-
-        let signer = SingleSigner::new(username.as_ref(), address, Secp256k1::new_random())
-            .unwrap()
-            .with_nonce(1);
-
-        let tx = signer
-            .unsigned_transaction(
-                NonEmpty::new_unchecked(vec![
-                    Message::transfer(
-                        Addr::from_str("0x01bba610cbbfe9df0c99b8862f3ad41b2f646553").unwrap(),
-                        Coins::one("hyp/all/btc", 100).unwrap(),
-                    )
-                    .unwrap(),
-                ]),
-                "dev-6",
-            )
-            .unwrap();
-
-        println!("{}", tx.to_json_string_pretty().unwrap());
     }
 }

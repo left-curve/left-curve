@@ -52,6 +52,16 @@ running ansible-playbook, else you'll get `Permission denied (publickey)`.
 
 You must rerun `ssh-add` after you rebooted.
 
+## Using the deploy key (vaulted)
+
+The private key is encrypted in `group_vars/all/deploy_key.vault`, load it
+directly into ssh-agent without writing to disk:
+
+`just add-deploy-key`
+
+Notes:
+- Ensure `ssh-agent` is running in your shell (`eval $(ssh-agent -s)` if needed).
+
 ## Manual Cosign Verification
 
 Run this after deployments if you need to validate an image digest manually:

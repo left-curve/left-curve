@@ -1,6 +1,6 @@
 use {
     dango_types::{
-        account_factory::Username,
+        account_factory::UserIndex,
         dex::{Direction, Order, OrderId, PairParams, Price, RestingOrderBookState, TimeInForce},
     },
     grug::{
@@ -33,8 +33,8 @@ pub const DEPTHS: Map<DepthKey, (Udec128_6, Udec128_6)> = Map::new("depth");
 /// Stores the total (cumulative) trading volume in USD for each account address and timestamp.
 pub const VOLUMES: Map<(&Addr, Timestamp), Udec128_6> = Map::new("volume");
 
-/// Stores the total (cumulative) trading volume in USD for each username and timestamp.
-pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Udec128_6> = Map::new("volume_by_user");
+/// Stores the total (cumulative) trading volume in USD for each user and timestamp.
+pub const VOLUMES_BY_USER: Map<(UserIndex, Timestamp), Udec128_6> = Map::new("volume_by_user");
 
 /// Storage key for orders.
 ///

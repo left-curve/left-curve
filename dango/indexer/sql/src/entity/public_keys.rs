@@ -4,7 +4,7 @@ use {
     grug_types::Timestamp,
 };
 use {
-    dango_types::auth,
+    dango_types::{account_factory::UserIndex, auth},
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
 };
@@ -22,7 +22,7 @@ pub struct Model {
         graphql(skip)
     )]
     pub id: Uuid,
-    pub username: String,
+    pub user_index: UserIndex,
     pub key_hash: String,
     pub public_key: String,
     pub key_type: auth::KeyType,
@@ -51,7 +51,7 @@ impl Model {
         // TODO: keeping the old code for reference
 
         // let user = entity::users::Entity::find()
-        //     .filter(entity::users::Column::Username.eq(&self.username))
+        //     .filter(entity::users::Column::UserIndex.eq(&self.user_index))
         //     .one(&app_ctx.db)
         //     .await?
         //     .ok_or_else(|| async_graphql::Error::new("User not found"))?;
@@ -64,8 +64,8 @@ impl Model {
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::users::Entity",
-        from = "Column::Username",
-        to = "super::users::Column::Username"
+        from = "Column::UserIndex",
+        to = "super::users::Column::UserIndex"
     )]
     User,
 }

@@ -1,5 +1,5 @@
 use {
-    crate::account_factory::Username,
+    crate::account_factory::UserIndex,
     grug::{
         Addr, Binary, ByteArray, Hash256, JsonSerExt, Message, NonEmpty, SignData, StdError,
         Timestamp,
@@ -8,6 +8,20 @@ use {
     sha2::Sha256,
     std::fmt::Display,
 };
+
+/// The status of an account. Only accounts in the `Active` state may send transactions.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default, Copy)]
+pub enum AccountStatus {
+    /// A freshly created account is in the "inactive" state. The user must make
+    /// an initial deposit to activate it.
+    #[default]
+    Inactive,
+    /// An account is activated once it receives a sufficient initial deposit.
+    Active,
+    /// an account may be frozen by the chain's owner. This feature is not implemented yet.
+    Frozen,
+}
 
 /// A number that included in each transaction's sign doc for the purpose of
 /// replay protection.
@@ -156,7 +170,7 @@ impl SignData for SignDoc {
 #[grug::derive(Serde)]
 pub struct Metadata {
     /// Identifies the user who signed this transaction.
-    pub username: Username,
+    pub user_index: UserIndex,
     /// Identifies the chain this transaction is intended for.
     pub chain_id: String,
     /// The nonce this transaction was signed with.

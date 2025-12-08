@@ -56,7 +56,10 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
       <div className="flex items-start gap-2 max-w-full overflow-hidden cursor-pointer">
         <div className="flex items-center justify-center bg-surface-quaternary-rice min-w-7 min-h-7 w-7 h-7 rounded-sm">
           <Icon
-            className={twMerge(isSent ? "text-primitives-red-light-600" : "text-brand-green")}
+            className={twMerge(
+              "w-4 h-4",
+              isSent ? "text-primitives-red-light-600" : "text-brand-green",
+            )}
           />
         </div>
 

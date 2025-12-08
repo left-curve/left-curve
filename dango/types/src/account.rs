@@ -2,6 +2,7 @@ use grug::Empty;
 
 /// Types relevant for multi-signature accounts.
 pub mod multi;
+
 /// Types relevant for single-signature accounts.
 pub mod single;
 

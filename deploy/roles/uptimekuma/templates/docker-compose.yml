@@ -1,0 +1,38 @@
+x-wireguard-hosts: &wg-hosts
+{% set wg_hosts = [] %}
+{% for h in groups['all'] %}
+{%   if hostvars[h].wireguard_ip is defined and hostvars[h].hostname is defined %}
+{%     set _ = wg_hosts.append({'name': hostvars[h].hostname, 'ip': hostvars[h].wireguard_ip}) %}
+{%   endif %}
+{% endfor %}
+{% if wg_hosts | length == 0 %}
+  []
+{% else %}
+{%   for item in wg_hosts | sort(attribute='name') %}
+  - "{{ item.name }}:{{ item.ip }}"
+{%   endfor %}
+{% endif %}
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    extra_hosts: *wg-hosts
+    networks:
+      - cloudflare
+    volumes:
+      - {{ uptimekuma_dir }}/data:/app/data
+    ports:
+      - "{{ tailscale_ip }}:3001:3001"
+      - "{{ wireguard_ip }}:3001:3001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3001/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  cloudflare:
+    external: true

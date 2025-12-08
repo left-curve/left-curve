@@ -38,6 +38,9 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 100.107.248.71 ansible_user=debian
 100.122.37.57 ansible_user=debian
 
+[uptimekuma]
+100.122.37.57
+
 [monitoring]
 100.122.37.57 ansible_user=debian
 

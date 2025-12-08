@@ -8,13 +8,12 @@ import type { SignerClient, SignerClientConfig } from "../types/clients.js";
 export function createSignerClient<transport extends Transport = Transport>(
   parameters: SignerClientConfig<transport>,
 ): SignerClient<transport> {
-  const { name = "Dango Signer Client", type = "dango", username } = parameters;
+  const { name = "Dango Signer Client", type = "dango" } = parameters;
 
   const client = createBaseClient({
     ...parameters,
     name,
     type,
-    username,
   }) as unknown as Client<transport>;
 
   const publicClient = client.extend(publicActions) as unknown as SignerClient<transport>;
