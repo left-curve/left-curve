@@ -103,48 +103,8 @@ pub mod contract_bindings {
         }
     }
 
-    pub mod mailbox {
-        use alloy::sol;
-
-        sol! {
-            #[sol(rpc)]
-            Mailbox,
-            "artifacts/evm/Mailbox.json"
-        }
-    }
-
     pub mod ism {
         use alloy::sol;
-
-        sol! {
-            #[sol(rpc)]
-            IInterchainSecurityModule,
-            "artifacts/evm/IInterchainSecurityModule.json"
-        }
-
-        sol! {
-            #[sol(rpc)]
-            IRoutingIsm,
-            "artifacts/evm/IRoutingIsm.json"
-        }
-
-        sol! {
-            #[sol(rpc)]
-            DefaultFallbackRoutingIsm,
-            "artifacts/evm/DefaultFallbackRoutingIsm.json"
-        }
-
-        sol! {
-            #[sol(rpc)]
-            StaticAggregationIsm,
-            "artifacts/evm/StaticAggregationIsm.json"
-        }
-
-        sol! {
-            #[sol(rpc)]
-            AbstractMetaProxyMultisigIsm,
-            "artifacts/evm/AbstractMetaProxyMultisigIsm.json"
-        }
 
         sol! {
             #[sol(rpc)]
@@ -156,12 +116,6 @@ pub mod contract_bindings {
             #[sol(rpc)]
             StaticMessageIdMultisigIsmFactory,
             "artifacts/evm/StaticMessageIdMultisigIsmFactory.json"
-        }
-
-        sol! {
-            #[sol(rpc)]
-            StaticThresholdAddressSetFactory,
-            "artifacts/evm/StaticThresholdAddressSetFactory.json"
         }
 
         sol! {
