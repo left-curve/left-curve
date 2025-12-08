@@ -603,12 +603,12 @@ impl Preset for HyperlaneOption {
         HyperlaneOption {
             local_domain: MOCK_HYPERLANE_LOCAL_DOMAIN,
             ism_validator_sets: btree_map! {
-                arbitrum::DOMAIN => mock_validator_set.clone(),
-                base::DOMAIN     => mock_validator_set.clone(),
-                ethereum::DOMAIN => mock_validator_set.clone(),
-                optimism::DOMAIN => mock_validator_set.clone(),
-                solana::DOMAIN   => mock_validator_set.clone(),
-                ethereum_testnet::DOMAIN => mock_validator_set,
+                arbitrum::DOMAIN         => mock_validator_set.clone(),
+                base::DOMAIN             => mock_validator_set.clone(),
+                ethereum::DOMAIN         => mock_validator_set.clone(),
+                ethereum_testnet::DOMAIN => mock_validator_set.clone(),
+                optimism::DOMAIN         => mock_validator_set.clone(),
+                solana::DOMAIN           => mock_validator_set,
             },
             va_announce_fee_per_byte: Coin {
                 denom: usdc::DENOM.clone(),
