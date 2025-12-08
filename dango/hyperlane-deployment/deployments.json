@@ -26,8 +26,8 @@
             "erc20_collateral": "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"
           },
           {
-            "address": "0xd0e8879ff9e967c4f321534f4f92439217bf25ce",
-            "proxy_address": "0xccc25c0ab58c1a143ae962191dc310045e70921c",
+            "address": "0x9b2600199e82154d58ae3383efc2b7983c0d7a2f",
+            "proxy_address": "0xab4d0e03d8ee1daf635826f200d76701acbdfd84",
             "symbol": "sepoliaUNI"
           }
         ]

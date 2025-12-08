@@ -150,6 +150,7 @@ pub async fn deploy_warp_route(
 /// Deploys a new warp route if it is not already deployed and updates the deployment with the new warp route.
 pub async fn deploy_warp_route_and_update_deployment(
     provider: &impl Provider,
+    dango_client: &HttpClient,
     warp_route: &WarpRoute,
     owner: Address,
     ism: Option<Address>,
@@ -182,6 +183,9 @@ pub async fn deploy_warp_route_and_update_deployment(
         owner,
     )
     .await?;
+
+    // Enroll the dango domain in the warp route
+    enroll_dango_domain(provider, dango_client, proxy_address).await?;
 
     // Update the deployment with the new warp route
     deployment.warp_routes.push(

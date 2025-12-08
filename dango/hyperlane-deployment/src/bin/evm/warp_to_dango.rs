@@ -12,12 +12,11 @@
 use {
     alloy::{
         network::TransactionBuilder,
-        primitives::{Address, FixedBytes, U256},
+        primitives::{Address, FixedBytes, U256, address},
         providers::Provider,
         rpc::types::TransactionRequest,
     },
     dango_hyperlane_deployment::{
-        addresses::sepolia::hyperlane_deployments::usdc,
         config::{self, evm::WarpRouteType},
         contract_bindings::{hyp_erc20::HypERC20, ism::TokenRouter},
         setup,
@@ -30,7 +29,7 @@ use {
 // The coin to warp. Ether "eth" or USDC "usdc".
 const WARP_AMOUNT: u64 = 100;
 
-const WARP_ROUTE_PROXY_ADDRESS: Address = usdc::WARP_ROUTE_PROXY;
+const WARP_ROUTE_PROXY_ADDRESS: Address = address!("0xab4d0e03d8ee1daf635826f200d76701acbdfd84");
 
 const DANGO_RECIPIENT: Addr = addr!("a20a0e1a71b82d50fc046bc6e3178ad0154fd184");
 

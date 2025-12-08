@@ -57,6 +57,7 @@ async fn main() -> anyhow::Result<()> {
     for warp_route in evm_config.warp_routes.iter() {
         deploy_warp_route_and_update_deployment(
             &provider,
+            &dango_client,
             warp_route,
             owner,
             Some(ism_address),

@@ -35,6 +35,8 @@ async fn main() -> anyhow::Result<()> {
     let mut config = config::load_config()?;
     let mut deployments = config::load_deployments()?;
 
+    let (dango_client, ..) = setup::setup_dango(&config.dango).await?;
+
     let evm_config = config.evm.get_mut(EVM_NETWORK).unwrap();
     let (provider, owner) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
@@ -66,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
 
     deploy_warp_route_and_update_deployment(
         &provider,
+        &dango_client,
         &warp_route,
         owner,
         Some(ism),
