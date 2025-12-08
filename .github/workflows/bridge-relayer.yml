@@ -29,16 +29,16 @@ on:
   pull_request:
     branches:
       - "*"
-    paths:
-      - ".github/workflows/bridge-relayer.yml"
-      - "deploy/**"
-      - "dango/**"
-      - "docker/**"
-      - "grug/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "clippy.toml"
-      - "rustfmt.toml"
+    # paths:
+    #   - ".github/workflows/bridge-relayer.yml"
+    #   - "deploy/**"
+    #   - "dango/**"
+    #   - "docker/**"
+    #   - "grug/**"
+    #   - "Cargo.toml"
+    #   - "Cargo.lock"
+    #   - "clippy.toml"
+    #   - "rustfmt.toml"
 
 jobs:
   format:
