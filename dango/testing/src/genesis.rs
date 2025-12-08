@@ -697,7 +697,6 @@ impl Preset for BitcoinOption {
             )
             .unwrap(),
             sats_per_vbyte: Uint128::new(10),
-            fee_rate_updater: owner::USERNAME.clone(),
             outbound_fee: Uint128::new(1000),
             withdraw_timeout: Duration::from_minutes(10),
             minimum_deposit: Uint128::new(1000),

@@ -135,7 +135,6 @@ pub struct BitcoinOption {
     pub vault: BitcoinAddress,
     pub multisig: MultisigSettings,
     pub sats_per_vbyte: Uint128,
-    pub fee_rate_updater: Username,
     pub outbound_fee: Uint128,
     /// Define how often the withdrawal requests are processed.
     pub withdraw_timeout: Duration,
