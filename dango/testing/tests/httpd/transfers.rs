@@ -191,7 +191,10 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                 let response: PaginatedResponse<serde_json::Value> =
                     call_paginated_graphql(app, request_body).await?;
 
-                assert_that!(response.edges).has_length(1);
+                // We expect two transfers:
+                // 1. When creating user1, from Gateway contract to user1's account. (amount: 150_000_000)
+                // 2. From user1 to user2. (amount: 100)
+                assert_that!(response.edges).has_length(2);
 
                 assert_that!(
                     response
@@ -200,7 +203,11 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                         .flat_map(|t| t.node.get("amount").unwrap().as_str())
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec!["100"]);
+                .is_equal_to(
+                    // Transfer 1: 150_000_000 (see the `create_user_and_account` function)
+                    // Transfer 2: 100
+                    vec!["100", "150000000"],
+                );
 
                 assert_that!(
                     response
@@ -219,7 +226,11 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                             .and_then(|u| u.as_u64()))
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![user1.user_index() as u64]);
+                .is_equal_to(
+                    // Transfer 1: sender is Gateway contract, which doesn't have a user index
+                    // Transfer 2: sender is user1
+                    vec![user1.user_index() as u64],
+                );
 
                 assert_that!(
                     response
@@ -238,7 +249,11 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                             .and_then(|u| u.as_u64()))
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![user2.user_index() as u64]);
+                .is_equal_to(
+                    // Transfer 1: recipient is user1
+                    // Transfer 2: recipient is user2
+                    vec![user2.user_index() as u64, user1.user_index() as u64],
+                );
 
                 Ok::<(), anyhow::Error>(())
             })

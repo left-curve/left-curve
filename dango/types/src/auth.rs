@@ -9,6 +9,20 @@ use {
     std::fmt::Display,
 };
 
+/// The status of an account. Only accounts in the `Active` state may send transactions.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default, Copy)]
+pub enum AccountStatus {
+    /// A freshly created account is in the "inactive" state. The user must make
+    /// an initial deposit to activate it.
+    #[default]
+    Inactive,
+    /// An account is activated once it receives a sufficient initial deposit.
+    Active,
+    /// an account may be frozen by the chain's owner. This feature is not implemented yet.
+    Frozen,
+}
+
 /// A number that included in each transaction's sign doc for the purpose of
 /// replay protection.
 pub type Nonce = u32;

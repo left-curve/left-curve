@@ -1,5 +1,8 @@
 use {
-    crate::{account_factory::UserIndex, auth::Nonce},
+    crate::{
+        account_factory::UserIndex,
+        auth::{AccountStatus, Nonce},
+    },
     anyhow::anyhow,
     grug::{ChangeSet, Duration, Inner, Message, NonZero, Timestamp},
     std::collections::{BTreeMap, BTreeSet},
@@ -155,6 +158,9 @@ pub enum ExecuteMsg {
 // account factory for this instead.
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query the account's status.
+    #[returns(AccountStatus)]
+    Status {},
     /// Query the most recent transaction nonces that have been recorded.
     #[returns(BTreeSet<Nonce>)]
     SeenNonces {},
