@@ -41,7 +41,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
                 user.key,
                 user.key_hash,
                 user.seed,
-                Coins::new(),
+                Coins::default(),
             )?;
 
             let user_index = user_registered.user_index;
