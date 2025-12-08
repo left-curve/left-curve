@@ -126,7 +126,7 @@ async fn test_deposit_addresses() {
     let mut addresses = HashSet::<String>::new();
     for i in 0..10 {
         let req = test::TestRequest::post()
-            .uri(format!("/deposit-address/{}", Addr::mock(i).to_string()).as_str())
+            .uri(format!("/deposit-address/{}", Addr::mock(i)).as_str())
             .to_request();
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -170,7 +170,7 @@ async fn test_deposit_addresses() {
 
     // Create one more deposit address
     let req = test::TestRequest::post()
-        .uri(format!("/deposit-address/{}", Addr::mock(10).to_string()).as_str())
+        .uri(format!("/deposit-address/{}", Addr::mock(10)).as_str())
         .to_request();
     let resp = test::call_service(&app, req).await;
     assert_eq!(resp.status(), StatusCode::OK);
@@ -205,7 +205,7 @@ async fn test_deposit_addresses() {
 
     // Try to create an existing deposit address. Should update the created_at timestamp and return the same address.
     let req = test::TestRequest::post()
-        .uri(format!("/deposit-address/{}", Addr::mock(10).to_string()).as_str())
+        .uri(format!("/deposit-address/{}", Addr::mock(10)).as_str())
         .to_request();
     let resp = test::call_service(&app, req).await;
     assert_eq!(resp.status(), StatusCode::OK);
@@ -250,7 +250,7 @@ async fn e2e_test_bridge_relayer() -> anyhow::Result<()> {
 
     // Get bridge config from Dango
     let bridge_config = dango_bridge_relayer_httpd::server::get_bridge_config(dango_url).await?;
-    let network = bridge_config.network.clone();
+    let network = bridge_config.network;
 
     // Create database connection
     let db = Database::connect(database_url.clone()).await.unwrap();
@@ -300,13 +300,7 @@ async fn e2e_test_bridge_relayer() -> anyhow::Result<()> {
     let mut addresses = HashSet::<String>::new();
     for i in 0..10 {
         let response = client
-            .post(
-                format!(
-                    "http://127.0.0.1:8080/deposit-address/{}",
-                    Addr::mock(i).to_string()
-                )
-                .as_str(),
-            )
+            .post(format!("http://127.0.0.1:8080/deposit-address/{}", Addr::mock(i)).as_str())
             .send()
             .await?;
         assert!(response.status().is_success());
@@ -345,13 +339,7 @@ async fn e2e_test_bridge_relayer() -> anyhow::Result<()> {
 
     // Create one more deposit address
     let response = client
-        .post(
-            format!(
-                "http://127.0.0.1:8080/deposit-address/{}",
-                Addr::mock(10).to_string()
-            )
-            .as_str(),
-        )
+        .post(format!("http://127.0.0.1:8080/deposit-address/{}", Addr::mock(10)).as_str())
         .send()
         .await?;
     assert!(response.status().is_success());
@@ -392,13 +380,7 @@ async fn e2e_test_bridge_relayer() -> anyhow::Result<()> {
 
     // Try to create an existing deposit address. Should update the created_at timestamp and return the same address.
     let response = client
-        .post(
-            format!(
-                "http://127.0.0.1:8080/deposit-address/{}",
-                Addr::mock(10).to_string()
-            )
-            .as_str(),
-        )
+        .post(format!("http://127.0.0.1:8080/deposit-address/{}", Addr::mock(10)).as_str())
         .send()
         .await?;
     assert!(response.status().is_success());

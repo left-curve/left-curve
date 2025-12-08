@@ -20,10 +20,7 @@ use {
         sea_query::OnConflict,
     },
     serde::{Deserialize, Serialize},
-    std::{
-        str::FromStr,
-        sync::{Arc, Mutex},
-    },
+    std::str::FromStr,
     tokio_stream::StreamExt,
 };
 
@@ -129,9 +126,9 @@ async fn deposit_addresses(
         tracing::info!(after_created_at = ?after_created_at, "Fetching deposit addresses.");
     }
 
-    let is_first = Arc::new(Mutex::new(true));
-
     let response_stream = stream! {
+        let mut is_first = true;
+
         // First, yield the opening bracket
         yield Ok::<_, actix_web::Error>(web::Bytes::from("["));
 
@@ -162,9 +159,8 @@ async fn deposit_addresses(
         while let Some(result) = db_stream.next().await {
             match result {
                 Ok(model) => {
-                    let mut first = is_first.lock().unwrap();
-                    let prefix = if *first {
-                        *first = false;
+                    let prefix = if is_first {
+                        is_first = false;
                         ""
                     } else {
                         ","

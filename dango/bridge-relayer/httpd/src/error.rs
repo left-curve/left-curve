@@ -17,7 +17,7 @@ pub enum Error {
 
     #[error(transparent)]
     #[backtrace(new)]
-    StdError(StdError),
+    Std(StdError),
 
     #[error(transparent)]
     #[backtrace(new)]
