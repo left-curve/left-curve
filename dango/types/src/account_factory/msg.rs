@@ -128,7 +128,7 @@ pub enum QueryMsg {
     /// Find all accounts associated with a user.
     #[returns(BTreeMap<Addr, Account>)]
     AccountsByUser { user: UserIndexOrName },
-    /// Query a single user by its idenfier (either the index or the username).
+    /// Query a single user by its identifier (either the index or the username).
     #[returns(User)]
     User(UserIndexOrName),
     /// Query a user's username by index.

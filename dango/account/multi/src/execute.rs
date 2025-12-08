@@ -37,7 +37,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
             Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
                 // If the action is to vote for a proposal:
                 //
-                // 1. The voter user index in `ExecuteMsg::Vote` must batch
+                // 1. The voter user index in `ExecuteMsg::Vote` must match
                 //    the signer user index in `Metadata`.
                 //
                 // 2. The voter/signer must be a member _at the time the

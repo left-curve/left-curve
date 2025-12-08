@@ -188,7 +188,7 @@ pub fn authenticate_tx(
     };
 
     // If the sender account is associated with the user index, then an entry
-    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be emtpy
+    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be empty
     // because we Borsh for encoding.
     ensure!(
         ctx.querier
