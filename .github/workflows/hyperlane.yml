@@ -28,6 +28,7 @@ env:
   HYPERLANE_BRANCH: dango
   IMAGE_BASE: ghcr.io/left-curve/left-curve/hyperlane-agents
   USE_SCCACHE: ${{ vars.USE_SCCACHE }}
+  HYPERLANE_DIR: hyperlane-agents
 
 jobs:
   prepare:
@@ -120,8 +121,8 @@ jobs:
       - name: Clone Hyperlane fork
         run: |
           set -euo pipefail
-          git clone "${HYPERLANE_REPO_URL}" hyperlane
-          cd hyperlane
+          git clone "${HYPERLANE_REPO_URL}" "${HYPERLANE_DIR}"
+          cd "${HYPERLANE_DIR}"
           git checkout "${HYP_SHA}"
 
       - name: Enable sccache for cross (optional)
@@ -241,7 +242,7 @@ jobs:
             --bin relayer \
             --bin validator \
             --bin scraper \
-            --manifest-path hyperlane/rust/main/Cargo.toml
+            --manifest-path "${HYPERLANE_DIR}/rust/main/Cargo.toml"
 
       - name: sccache stats (cross, optional)
         if: env.USE_SCCACHE == 'true'
@@ -269,6 +270,7 @@ jobs:
             --platform "${PLATFORM}" \
             --build-arg TARGET_ARCH="${TARGET_TRIPLE}" \
             --build-arg GIT_COMMIT="${HYP_SHA}" \
+            --build-arg HYPERLANE_DIR="${HYPERLANE_DIR}" \
             --provenance=false \
             -t "${IMAGE_BASE}:${HYP_SHA}-${SUFFIX}" \
             -f docker/hyperlane/Dockerfile \

@@ -12,6 +12,7 @@ FROM ubuntu:24.04
 ARG TARGET_ARCH
 # Commit identifier from the Hyperlane fork (injected from the CI workflow)
 ARG GIT_COMMIT=unknown
+ARG HYPERLANE_DIR=hyperlane
 
 # Useful metadata for OCI registries
 LABEL org.opencontainers.image.description="Hyperlane Rust agents (left-curve fork, branch dango)"
@@ -23,8 +24,8 @@ ENV GIT_COMMIT=$GIT_COMMIT
 WORKDIR /app
 
 # Copy configuration from the cloned Hyperlane repository (present in the CI workspace)
-COPY hyperlane/rust/main/config /app/config
-COPY hyperlane/rust/main/app-contexts /app/app-contexts
+COPY ${HYPERLANE_DIR}/rust/main/config /app/config
+COPY ${HYPERLANE_DIR}/rust/main/app-contexts /app/app-contexts
 
 # Copy pre-built binaries from CI.
 COPY target/${TARGET_ARCH}/release/relayer /usr/local/bin/relayer
