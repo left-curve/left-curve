@@ -41,6 +41,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
                 user.key,
                 user.key_hash,
                 user.seed,
+                Coins::new(),
             )?;
 
             let user_index = user_registered.user_index;
@@ -151,7 +152,7 @@ fn register_user(
     )?;
 
     let (msg, user_registered, account_registered) =
-        onboard_new_user(ctx.storage, ctx.contract, key, key_hash, seed)?;
+        onboard_new_user(ctx.storage, ctx.contract, key, key_hash, seed, ctx.funds)?;
 
     // Save the key.
     KEYS.save(ctx.storage, (user_registered.user_index, key_hash), &key)?;
@@ -177,6 +178,7 @@ fn onboard_new_user(
     key: Key,
     key_hash: Hash256,
     seed: u32,
+    funds: Coins,
 ) -> StdResult<(Message, UserRegistered, AccountRegistered)> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
@@ -214,7 +216,7 @@ fn onboard_new_user(
                 account_index
             )),
             Some(factory),
-            Coins::default(),
+            funds, // Foward the funds received to the account.
         )?,
         UserRegistered {
             user_index,
@@ -284,7 +286,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
             salt,
             Some(format!("dango/account/{}/{}", account.params.ty(), index)),
             Some(ctx.contract),
-            ctx.funds,
+            ctx.funds, // Forward the received funds to the account.
         )?)
         .add_events(match &account.params {
             AccountParams::Spot(params) | AccountParams::Margin(params) => {

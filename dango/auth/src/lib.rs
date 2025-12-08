@@ -14,7 +14,7 @@ use {
     },
     data_encoding::BASE64URL_NOPAD,
     grug::{
-        Addr, Api, AuthCtx, AuthMode, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt, JsonSerExt,
+        Addr, Api, AuthCtx, AuthMode, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt, JsonSerExt,
         MutableCtx, QuerierExt, SignData, StdError, StdResult, Storage, StorageQuerier, Tx,
     },
     sha2::Sha256,
@@ -121,10 +121,13 @@ pub fn create_account(ctx: MutableCtx) -> anyhow::Result<()> {
     //
     // Two exceptions to this are:
     // 1. during genesis;
-    // 2. if the minimum deposit is zero.
-    // In these two cases, the account is activated without needing a deposit.
-    if ctx.block.height == GENESIS_BLOCK_HEIGHT || app_cfg.minimum_deposit.is_empty() {
+    // 2. the account received sufficient funds during instantiation.
+    // In these cases, activate the account now.
+    if ctx.block.height == GENESIS_BLOCK_HEIGHT
+        || is_sufficient(&ctx.funds, &app_cfg.minimum_deposit)
+    {
         account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
+        // TODO: emit an event?
     }
 
     Ok(())
@@ -133,15 +136,10 @@ pub fn create_account(ctx: MutableCtx) -> anyhow::Result<()> {
 pub fn receive_transfer(ctx: MutableCtx) -> anyhow::Result<()> {
     match query_status(ctx.storage)? {
         // If the account is inactive: query the minimum deposit from app-config.
-        // If the _any_ denom in the receive fund is equal to or greater than
-        // the minimum deposit, set the account status to active.
+        // Activate the account is the deposit is sufficient.
         AccountStatus::Inactive => {
-            if ctx
-                .querier
-                .query_minimum_deposit()?
-                .into_iter()
-                .any(|coin| ctx.funds.amount_of(&coin.denom) >= coin.amount)
-            {
+            let minimum = ctx.querier.query_minimum_deposit()?;
+            if is_sufficient(&ctx.funds, &minimum) {
                 account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
                 // TODO: emit an event?
             }
@@ -154,6 +152,16 @@ pub fn receive_transfer(ctx: MutableCtx) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// A deposit is considered **sufficient** if _either_ of the following is true:
+/// - the minimum deposit is zero;
+/// - _any_ of the coins received has an amount greater than the minimum.
+fn is_sufficient(deposit: &Coins, minimum: &Coins) -> bool {
+    minimum.is_empty()
+        || minimum
+            .iter()
+            .any(|coin| deposit.amount_of(coin.denom) >= *coin.amount)
 }
 
 /// Authenticate a transaction by ensuring:
