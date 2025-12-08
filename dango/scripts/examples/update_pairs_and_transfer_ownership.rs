@@ -18,8 +18,6 @@ const CHAIN_ID: &str = "dev-6";
 
 const CURRENT_OWNER: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9");
 
-const CURRENT_OWNER_USERNAME: &str = "owner";
-
 /// For demonstration purpose only; do not use this in production.
 const CURRENT_OWNER_PRIVATE_KEY: [u8; 32] =
     hex!("8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177");
@@ -33,10 +31,11 @@ async fn main() -> anyhow::Result<()> {
     let client = HttpClient::new("https://api-testnet.dango.zone/")?;
 
     let mut owner = SingleSigner::new(
-        CURRENT_OWNER_USERNAME,
         CURRENT_OWNER,
         Secp256k1::from_bytes(CURRENT_OWNER_PRIVATE_KEY)?,
-    )?
+    )
+    .with_query_user_index(&client)
+    .await?
     .with_query_nonce(&client)
     .await?;
 

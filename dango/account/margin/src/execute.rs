@@ -1,7 +1,6 @@
 use {
     crate::core,
     anyhow::{anyhow, bail, ensure},
-    dango_auth::authenticate_tx,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
@@ -13,18 +12,14 @@ use {
     },
     grug::{
         AuthCtx, AuthResponse, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx, Number,
-        NumberConst, Response, StdResult, Tx, Udec128,
+        NumberConst, Response, Tx, Udec128,
     },
     std::cmp::{max, min},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
-    // Only the account factory can create new accounts.
-    ensure!(
-        ctx.sender == ctx.querier.query_account_factory()?,
-        "you don't have the right, O you don't have the right"
-    );
+    dango_auth::create_account(ctx)?;
 
     Ok(Response::new())
 }
@@ -38,7 +33,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
-    authenticate_tx(ctx, tx, None)?;
+    dango_auth::authenticate_tx(ctx, tx, None)?;
 
     Ok(AuthResponse::new().request_backrun(true))
 }
@@ -77,8 +72,9 @@ pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
-    // Do nothing, accept all transfers.
+pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
+    dango_auth::receive_transfer(ctx)?;
+
     Ok(Response::new())
 }
 

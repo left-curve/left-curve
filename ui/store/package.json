@@ -41,21 +41,25 @@
   },
   "dependencies": {
     "@left-curve/dango": "workspace:^",
+    "@privy-io/js-sdk-core": "^0.56.3",
     "eventemitter3": "catalog:",
+    "fuzzysort": "^3.1.0",
     "use-sync-external-store": "^1.2.2",
+    "viem": "^2.39.0",
     "zustand": "catalog:"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
     "@tanstack/query-core": "^5.56.2",
     "@tanstack/react-query": "catalog:",
-    "@types/use-sync-external-store": "^0.0.6"
+    "@types/react": "catalog:",
+    "@types/use-sync-external-store": "^0.0.6",
+    "react": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/query-core": ">=5.0.0",
     "@tanstack/react-query": ">=5.0.0",
-    "react": "^18",
-    "react-dom": "^18"
+    "react": "^18"
   },
   "peerDependenciesMeta": {
     "@tanstack/query-core": {

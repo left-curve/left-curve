@@ -34,6 +34,7 @@ impl grug_app::Indexer for Indexer {
         Ok(None)
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
@@ -58,6 +59,7 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn post_indexing(
         &self,
         block_height: u64,

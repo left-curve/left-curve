@@ -98,7 +98,7 @@ mod tests {
         crate::{Cache, VmResult},
         grug_types::HashExt,
         std::num::NonZeroUsize,
-        wasmer::{Engine, Module, Singlepass},
+        wasmer::{Engine, Module, sys::Singlepass},
     };
 
     const CONTRACT: &[u8] = br#"(module)"#;

@@ -1,21 +1,21 @@
 #[derive(Clone, Copy)]
 pub enum Level {
-    TRACE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
 }
 
 #[cfg(feature = "tracing")]
 impl From<Level> for tracing::Level {
     fn from(level: Level) -> Self {
         match level {
-            Level::TRACE => tracing::Level::TRACE,
-            Level::DEBUG => tracing::Level::DEBUG,
-            Level::INFO => tracing::Level::INFO,
-            Level::WARN => tracing::Level::WARN,
-            Level::ERROR => tracing::Level::ERROR,
+            Level::Trace => tracing::Level::TRACE,
+            Level::Debug => tracing::Level::DEBUG,
+            Level::Info => tracing::Level::INFO,
+            Level::Warn => tracing::Level::WARN,
+            Level::Error => tracing::Level::ERROR,
         }
     }
 }
@@ -34,15 +34,15 @@ impl TraceOption {
     /// - `InitChain`
     /// - `FinalizeBlock`
     pub const LOUD: Self = Self {
-        ok_level: Level::INFO,
-        error_level: Level::WARN,
+        ok_level: Level::Info,
+        error_level: Level::Warn,
     };
     /// The tracing option to use under the following situations:
     ///
     /// - `Query`
     /// - `CheckTx`
     pub const MUTE: Self = Self {
-        ok_level: Level::TRACE,
-        error_level: Level::TRACE,
+        ok_level: Level::Trace,
+        error_level: Level::Trace,
     };
 }

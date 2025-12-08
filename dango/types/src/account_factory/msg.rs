@@ -1,14 +1,28 @@
 use {
     crate::{
         account_factory::{
-            Account, AccountIndex, AccountParamUpdates, AccountParams, AccountType, Username,
+            Account, AccountIndex, AccountParamUpdates, AccountParams, AccountType, NewUserSalt,
+            UserIndex, Username,
         },
         auth::{Key, Signature},
     },
-    grug::{Addr, Coins, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
+    grug::{Addr, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
     sha2::Sha256,
-    std::collections::{BTreeMap, BTreeSet},
+    std::collections::BTreeMap,
 };
+
+#[grug::derive(Serde)]
+pub enum UserIndexOrName {
+    Index(UserIndex),
+    Name(Username),
+}
+
+#[grug::derive(Serde)]
+pub struct UserIndexAndName {
+    pub index: UserIndex,
+    /// `None` if the user hasn't chosen a username yet.
+    pub name: Option<Username>,
+}
 
 /// Information about a user. Used in query response.
 #[grug::derive(Serde)]
@@ -19,10 +33,10 @@ pub struct User {
     pub accounts: BTreeMap<Addr, Account>,
 }
 
-/// Data the user must sign when onboarding.
+/// Data the user must sign when onboarding. Currently, this consists of only
+/// the chain ID.
 #[grug::derive(Serde)]
 pub struct RegisterUserData {
-    pub username: Username,
     pub chain_id: String,
 }
 
@@ -42,9 +56,7 @@ pub struct InstantiateMsg {
     /// Users with associated key to set up during genesis.
     /// Each genesis user is to be associated with exactly one key.
     /// A spot account will be created for each genesis user.
-    pub users: BTreeMap<Username, (Hash256, Key)>,
-    /// The minimum deposit required to onboard a user.
-    pub minimum_deposit: Coins,
+    pub users: Vec<NewUserSalt>,
 }
 
 #[grug::derive(Serde)]
@@ -53,7 +65,6 @@ pub enum ExecuteMsg {
     ///
     /// This is the second of the two-step user onboarding process.
     RegisterUser {
-        username: Username,
         key: Key,
         key_hash: Hash256,
         seed: u32,
@@ -66,15 +77,19 @@ pub enum ExecuteMsg {
     UpdateKey { key_hash: Hash256, key: Op<Key> },
     /// Update an account's parameters.
     UpdateAccount(AccountParamUpdates),
+    /// Update the username.
+    ///
+    /// For now, we only support setting the username once when it's unset.
+    /// We don't support changing the username when it's already set.
+    UpdateUsername(Username),
 }
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Query the minimum deposit required to onboard a user.
-    #[returns(Coins)]
-    MinimumDeposit {},
-    /// Query the account index, which is used in deriving the account address,
-    /// that will be used if a user is to create a new account.
+    /// Query the next user index.
+    #[returns(UserIndex)]
+    NextUserIndex {},
+    /// Query the next account index.
     #[returns(AccountIndex)]
     NextAccountIndex {},
     /// Query the code hash associated with the an account type.
@@ -86,9 +101,12 @@ pub enum QueryMsg {
         start_after: Option<AccountType>,
         limit: Option<u32>,
     },
-    /// Query a key by its hash associated to a username.
+    /// Query a key by its hash and the user it is associated with.
     #[returns(Key)]
-    Key { hash: Hash256, username: Username },
+    Key {
+        hash: Hash256,
+        user: UserIndexOrName,
+    },
     /// Enumerate all keys.
     #[returns(Vec<QueryKeyResponseItem>)]
     Keys {
@@ -97,7 +115,7 @@ pub enum QueryMsg {
     },
     /// Find all keys associated with a user.
     #[returns(BTreeMap<Hash256, Key>)]
-    KeysByUser { username: Username },
+    KeysByUser { user: UserIndexOrName },
     /// Query parameters of an account by address.
     #[returns(Account)]
     Account { address: Addr },
@@ -109,29 +127,40 @@ pub enum QueryMsg {
     },
     /// Find all accounts associated with a user.
     #[returns(BTreeMap<Addr, Account>)]
-    AccountsByUser { username: Username },
-    /// Query a single user by username.
+    AccountsByUser { user: UserIndexOrName },
+    /// Query a single user by its identifier (either the index or the username).
     #[returns(User)]
-    User { username: Username },
-    /// Query usernames associated with a given key hash.
+    User(UserIndexOrName),
+    /// Query a user's username by index.
+    ///
+    /// `None` if the user index doesn't exist, or if the user index exists but
+    /// its username is unset.
+    #[returns(Option<Username>)]
+    UserNameByIndex(UserIndex),
+    /// Query a user's index by username.
+    ///
+    /// `None` if no user index is associated with this username.
+    #[returns(Option<UserIndex>)]
+    UserIndexByName(Username),
+    /// Query user identifiers (index or username) associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
-    #[returns(BTreeSet<Username>)]
+    #[returns(Vec<UserIndexAndName>)]
     ForgotUsername {
         key_hash: Hash256,
-        start_after: Option<Username>,
+        start_after: Option<UserIndexOrName>,
         limit: Option<u32>,
     },
 }
 
 #[grug::derive(Serde)]
 pub struct QueryKeyPaginateParam {
-    pub username: Username,
+    pub user: UserIndexOrName,
     pub key_hash: Hash256,
 }
 
 #[grug::derive(Serde)]
 pub struct QueryKeyResponseItem {
-    pub username: Username,
+    pub user: UserIndexAndName,
     pub key_hash: Hash256,
     pub key: Key,
 }

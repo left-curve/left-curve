@@ -43,6 +43,7 @@ export type {
   Tx,
   TxParameters,
   UnsignedTx,
+  GetTxMessage,
 } from "./tx.js";
 
 export type {

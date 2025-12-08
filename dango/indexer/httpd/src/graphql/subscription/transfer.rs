@@ -1,6 +1,7 @@
 use {
     async_graphql::{futures_util::stream::Stream, *},
     dango_indexer_sql::entity,
+    dango_types::account_factory::UserIndex,
     futures_util::stream::{StreamExt, once},
     indexer_httpd::graphql::subscription::MAX_PAST_BLOCKS,
     indexer_sql::entity::blocks::latest_block_height,
@@ -20,28 +21,27 @@ impl TransferSubscription {
         app_ctx: &crate::context::Context,
         block_heights: RangeInclusive<i64>,
         address: Option<String>,
-        username: Option<String>,
+        user_index: Option<UserIndex>,
     ) -> Option<Vec<entity::transfers::Model>> {
         let mut filter = entity::transfers::Column::BlockHeight.is_in(block_heights);
 
-        if let Some(username) = username {
-            if let Ok(accounts) = entity::accounts::Entity::find()
+        if let Some(user_index) = user_index
+            && let Ok(accounts) = entity::accounts::Entity::find()
                 .find_also_related(entity::users::Entity)
-                .filter(entity::users::Column::Username.eq(username))
+                .filter(entity::users::Column::UserIndex.eq(user_index))
                 .all(&app_ctx.db)
                 .await
-            {
-                let addresses = accounts
-                    .into_iter()
-                    .map(|(account, _)| account.address)
-                    .collect::<Vec<_>>();
+        {
+            let addresses = accounts
+                .into_iter()
+                .map(|(account, _)| account.address)
+                .collect::<Vec<_>>();
 
-                filter = filter.and(
-                    entity::transfers::Column::FromAddress
-                        .is_in(&addresses)
-                        .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
-                );
-            }
+            filter = filter.and(
+                entity::transfers::Column::FromAddress
+                    .is_in(&addresses)
+                    .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
+            );
         }
 
         if let Some(address) = address {
@@ -75,7 +75,7 @@ impl TransferSubscription {
         &self,
         ctx: &Context<'a>,
         address: Option<String>,
-        username: Option<String>,
+        user_index: Option<UserIndex>,
         // The block height of the transfer
         // This is used to get the older transfers in case of disconnection
         since_block_height: Option<u64>,
@@ -98,7 +98,6 @@ impl TransferSubscription {
         }
 
         let a = address.clone();
-        let u = username.clone();
 
         #[cfg(feature = "metrics")]
         let gauge_guard = Arc::new(GaugeGuard::new(
@@ -113,17 +112,22 @@ impl TransferSubscription {
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
-            async move { Self::get_transfers(app_ctx, block_range, a, u).await }
+            async move { Self::get_transfers(app_ctx, block_range, a, user_index).await }
         })
         .chain(stream.then(move |block_height| {
             let a = address.clone();
-            let u = username.clone();
 
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
             async move {
-                Self::get_transfers(app_ctx, block_height as i64..=block_height as i64, a, u).await
+                Self::get_transfers(
+                    app_ctx,
+                    block_height as i64..=block_height as i64,
+                    a,
+                    user_index,
+                )
+                .await
             }
         }))
         .filter_map(|transfers| async move { transfers }))

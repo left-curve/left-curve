@@ -86,6 +86,9 @@
       loop: [ "{{ dango.dex_bot.address }}", "{{ dango.dex_bot.dex_address }}" ]
       register: balances_raw
 
+    - debug:
+        var: balances_raw
+
     - name: Pretty output
       vars:
         report: |-

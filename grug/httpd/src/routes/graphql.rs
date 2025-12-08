@@ -21,6 +21,7 @@ where
         .route(web::get().to(graphiql_playground))
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub async fn graphql_index<Q, M, S>(
     schema: web::Data<Schema<Q, M, S>>,
     req: HttpRequest,
@@ -45,6 +46,7 @@ where
     schema.execute_batch(request).await.into()
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub async fn graphiql_playground() -> HttpResponse {
     let html = GraphiQLSource::build()
         .endpoint("/graphql")
@@ -60,6 +62,7 @@ pub async fn graphiql_playground() -> HttpResponse {
         .body(html)
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub async fn graphql_ws<Q, M, S>(
     schema: web::Data<Schema<Q, M, S>>,
     req: HttpRequest,

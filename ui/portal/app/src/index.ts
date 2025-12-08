@@ -1,28 +1,12 @@
-import { install } from "react-native-quick-crypto";
-
+import "./shim";
 import "../assets/global.css";
-
-import { App } from "./app";
-import { AppRegistry } from "react-native";
-import { createMMKVStorage } from "~/storage";
-
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
-
-global.localStorage = createMMKVStorage() as Storage;
-
-global.BroadcastChannel = class {
-  constructor(public name: string) {}
-  addEventListener() {}
-  removeEventListener() {}
-  postMessage() {}
-  close() {}
-} as unknown as typeof BroadcastChannel;
+import { AppRegistry } from "react-native";
+import { App } from "./app";
 
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
   strict: false,
 });
-
-install();
 
 AppRegistry.registerComponent("main", () => App);

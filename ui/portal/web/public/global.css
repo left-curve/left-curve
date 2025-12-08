@@ -31,4 +31,8 @@
     max-height: -webkit-fill-available;
     max-height: -webkit-stretch;
   }
+
+  .lc-select-trigger-value [data-hide-in-trigger] {
+  display: none;
+}
 }

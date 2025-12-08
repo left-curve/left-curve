@@ -72,7 +72,7 @@ export function composeTxTypedData(
         { name: "messages", type: "TxMessage[]" },
       ],
       Metadata: [
-        { name: "username", type: "string" },
+        { name: "user_index", type: "uint32" },
         { name: "chain_id", type: "string" },
         { name: "nonce", type: "uint32" },
         ...(data.expiry ? [{ name: "expiry", type: "string" }] : []),

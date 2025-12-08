@@ -38,6 +38,7 @@ catalog:
   # Animations
   "framer-motion": "^11.11.7"
   # CSS
+  "tailwind-variants": "^0.2.1"
   "tailwindcss": "^3.4.13"
   "autoprefixer": "^10.4.20"
   "postcss": "^8"

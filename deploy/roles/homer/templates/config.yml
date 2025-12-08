@@ -55,6 +55,13 @@ services:
         url: "http://ovh3:3000"
         target: "_blank"
 
+      - name: "Uptime Kuma"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/uptime-kuma.png"
+        subtitle: "Status & Uptime Monitoring"
+        tag: "monitoring"
+        url: "http://ovh3:3001"
+        target: "_blank"
+
       - name: "Prometheus"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/prometheus.png"
         subtitle: "Metrics Collection"
@@ -75,6 +82,14 @@ services:
         tag: "monitoring"
         url: "http://ovh3:9093"
         target: "_blank"
+
+      - name: "Tempo"
+        logo: "https://grafana.com/static/assets/img/blog/tempo.png"
+        subtitle: "Traces"
+        tag: "logging"
+        url: "http://ovh3:3200/api/search?tags="
+        target: "_blank"
+
 
   - name: "Testnet"
     icon: "fas fa-flask"
@@ -267,6 +282,16 @@ services:
         subtitle: "Docker Logs"
         tag: "dozzle"
         url: "http://ovh7:9090"
+        target: "_blank"
+
+  - name: "Other services"
+    icon: "fas fa-network-wired"
+    items:
+      - name: "Minio"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/minio.png"
+        subtitle: "S3"
+        tag: "storage"
+        url: "http://ovh3:9001"
         target: "_blank"
 
   - name: "Reverse Proxy"

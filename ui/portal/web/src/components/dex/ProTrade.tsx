@@ -109,9 +109,7 @@ const ProTradeOverview: React.FC = () => {
 };
 
 const TradingView = lazy(() =>
-  import("./TradingView")
-    .then(({ TradingView }) => ({ default: TradingView }))
-    .catch(() => ({ default: () => <div>Chart</div> })),
+  import("./TradingView").then(({ TradingView }) => ({ default: TradingView })),
 );
 
 const ProTradeChart: React.FC = () => {
@@ -129,7 +127,7 @@ const ProTradeChart: React.FC = () => {
 
   const Chart = (
     <Suspense fallback={<Spinner color="pink" size="md" />}>
-      <div className="flex w-full lg:min-h-[45vh] h-full" id="chart-container">
+      <div className="flex w-full lg:min-h-[32.875rem] h-full" id="chart-container">
         <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
           <TradingView coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
         </ErrorBoundary>

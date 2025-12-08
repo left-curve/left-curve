@@ -103,12 +103,6 @@ export {
 } from "./hooks/useSigninWithDesktop.js";
 
 export {
-  type UseSigninParameters,
-  type UseSigninReturnType,
-  useSignin,
-} from "./hooks/useSignin.js";
-
-export {
   type UseOrdersByUserParameters,
   type UseOrdersByUserReturnType,
   useOrdersByUser,
@@ -152,6 +146,21 @@ export {
 } from "./hooks/usePoolLiquidityState.js";
 
 export {
+  type UseBridgeStateParameters,
+  useBridgeState,
+} from "./hooks/useBridgeState.js";
+
+export {
+  type UseSignupStateParameters,
+  useSignupState,
+} from "./hooks/useSignupState.js";
+
+export {
+  type UseSigninStateParameters,
+  useSigninState,
+} from "./hooks/useSigninState.js";
+
+export {
   useSearchBar,
   type UseSearchBarParameters,
   type SearchBarResult,
@@ -172,7 +181,7 @@ export { useSigningClient } from "./hooks/useSigningClient.js";
 
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
-export { useLiveTradesState } from "./hooks/useLiveTradesState.js";
+export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";
 
 export { rehydrate } from "./rehydrate.js";
 
@@ -182,6 +191,7 @@ export { rehydrate } from "./rehydrate.js";
 
 export { createMemoryStorage } from "./storages/memoryStorage.js";
 export { createStorage } from "./storages/createStorage.js";
+export { createAsyncStorage } from "./storages/createStorage.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                 Connectors                                 */
@@ -193,6 +203,7 @@ export { eip1193 } from "./connectors/eip1193.js";
 export { eip6963 } from "./connectors/eip6963.js";
 export { session } from "./connectors/session.js";
 export { remote } from "./connectors/remote.js";
+export { privy } from "./connectors/privy.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Actions                                  */

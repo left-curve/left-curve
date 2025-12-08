@@ -2,10 +2,7 @@ use {
     crate::Codes,
     dango_types::config::Hyperlane,
     grug::{Binary, ContractBuilder, ContractWrapper},
-    grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
-    grug_vm_wasm::WasmVm,
-    std::{fs, path::Path},
 };
 
 /// Get the binary codes for Dango smart contracts, for use in building the
@@ -45,7 +42,6 @@ impl GenesisCodes for RustVm {
             .with_authenticate(Box::new(dango_account_spot::authenticate))
             .with_receive(Box::new(dango_account_spot::receive))
             .with_query(Box::new(dango_account_spot::query))
-            .with_reply(Box::new(dango_account_spot::reply))
             .build();
 
         let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
@@ -135,50 +131,7 @@ impl GenesisCodes for RustVm {
     }
 }
 
-impl GenesisCodes for WasmVm {
-    type Code = Vec<u8>;
-
-    fn genesis_codes() -> Codes<Vec<u8>> {
-        let artifacts_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../artifacts");
-
-        let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm")).unwrap();
-        let account_margin = fs::read(artifacts_dir.join("dango_account_margin.wasm")).unwrap();
-        let account_multi = fs::read(artifacts_dir.join("dango_account_multi.wasm")).unwrap();
-        let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm")).unwrap();
-        let bank = fs::read(artifacts_dir.join("dango_bank.wasm")).unwrap();
-        let dex = fs::read(artifacts_dir.join("dango_dex.wasm")).unwrap();
-        let gateway = fs::read(artifacts_dir.join("dango_gateway.wasm")).unwrap();
-        let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm")).unwrap();
-        let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm")).unwrap();
-        let va = fs::read(artifacts_dir.join("hyperlane_va.wasm")).unwrap();
-        let lending = fs::read(artifacts_dir.join("dango_lending.wasm")).unwrap();
-        let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm")).unwrap();
-        let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm")).unwrap();
-        let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm")).unwrap();
-        let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm")).unwrap();
-
-        Codes {
-            account_factory,
-            account_margin,
-            account_multi,
-            account_spot,
-            bank,
-            dex,
-            gateway,
-            hyperlane: Hyperlane { ism, mailbox, va },
-            lending,
-            oracle,
-            taxman,
-            vesting,
-            warp,
-        }
-    }
-}
-
-impl GenesisCodes for HybridVm {
-    type Code = <RustVm as GenesisCodes>::Code;
-
-    fn genesis_codes() -> Codes<Self::Code> {
-        RustVm::genesis_codes()
-    }
-}
+// TODO: implement `GenesisCodes` for `WasmVm` and `HybridVm`.
+// For now, we don't want to include them here because wasmer v6 has changed to
+// the Business Source License. We want to make sure anything in the `dango/`
+// directory does NOT have dependency on it.

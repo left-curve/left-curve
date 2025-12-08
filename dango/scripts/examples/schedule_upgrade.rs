@@ -11,8 +11,6 @@ const CHAIN_ID: &str = "dev-9"; // devnet = dev-9, testnet = dev-6
 
 const OWNER: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9");
 
-const OWNER_USERNAME: &str = "owner";
-
 /// For demonstration purpose only; do not use this in production.
 const OWNER_PRIVATE_KEY: [u8; 32] =
     hex!("8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177");
@@ -21,13 +19,11 @@ const OWNER_PRIVATE_KEY: [u8; 32] =
 async fn main() -> anyhow::Result<()> {
     let client = HttpClient::new("https://api-devnet.dango.zone/")?;
 
-    let mut owner = SingleSigner::new(
-        OWNER_USERNAME,
-        OWNER,
-        Secp256k1::from_bytes(OWNER_PRIVATE_KEY)?,
-    )?
-    .with_query_nonce(&client)
-    .await?;
+    let mut owner = SingleSigner::new(OWNER, Secp256k1::from_bytes(OWNER_PRIVATE_KEY)?)
+        .with_query_user_index(&client)
+        .await?
+        .with_query_nonce(&client)
+        .await?;
 
     let outcome = client
         .upgrade(

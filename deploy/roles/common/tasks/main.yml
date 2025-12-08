@@ -67,6 +67,11 @@
       - btop
       - htop
       - jq
+      - libyaml-dev
+      - build-essential
+      - libssl-dev
+      - clang
+      - pkg-config
     state: present
     update_cache: yes
 
@@ -150,3 +155,19 @@
     - { name: "net.core.rmem_max",         value: "7500000" }
     - { name: "net.core.wmem_max",         value: "7500000" }
 
+- name: Enable unattended-upgrades
+  apt:
+    name: unattended-upgrades
+    state: present
+
+- name: Configure unattended-upgrades
+  template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+
+- name: Enable automatic updates
+  copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";

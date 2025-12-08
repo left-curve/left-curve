@@ -18,7 +18,7 @@ pub trait JsonSerExt: Sized {
     /// Serialize the Rust value into pretty JSON string.
     fn to_json_string_pretty(&self) -> StdResult<String>;
 
-    /// Serialize the Rust value into JSON value.
+    /// Serialize the Rust value into deterministically sorted JSON value.
     fn to_json_value(&self) -> StdResult<Json>;
 }
 
@@ -40,7 +40,12 @@ where
 
     fn to_json_value(&self) -> StdResult<Json> {
         serde_json::to_value(self)
-            .map(Json::from_inner)
+            .map(|mut v| {
+                // Sort all objects in the JSON value
+                // If `preserve_order` is not enabled, this method does nothing.
+                v.sort_all_objects();
+                Json::from_inner(v)
+            })
             .map_err(|err| StdError::serialize::<T, _>("json", err))
     }
 }

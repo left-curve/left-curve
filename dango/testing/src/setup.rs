@@ -10,15 +10,12 @@ use {
         warp,
     },
     grug::{
-        Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, Message, TendermintRpcClient,
-        Uint128,
+        Addr, BlockInfo, Coins, ContractWrapper, Duration, Message, TendermintRpcClient, Uint128,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
     grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
-    grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
-    grug_vm_wasm::WasmVm,
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
@@ -271,39 +268,22 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     )
 }
 
-/// Set up a `TestSuite` with `DiskDbLite`, `HybridVm`, `NaiveProposalPreparer`, and
+/// Set up a `TestSuite` with `DiskDbLite`, `RustVm`, `NaiveProposalPreparer`, and
 /// `ContractWrapper` codes.
 ///
-/// Used for running benchmarks with the hybrid VM.
-pub fn setup_benchmark_hybrid(
+/// Used for running benchmarks with the Rust VM.
+pub fn setup_benchmark_rust(
     dir: &TempDataDir,
-    wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, HybridVm, NullIndexer>,
+    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, RustVm, NullIndexer>,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
 ) {
     let db = DiskDb::open(dir).unwrap();
-    let codes = HybridVm::genesis_codes();
-    let vm = HybridVm::new(wasm_cache_size, [
-        codes.account_factory.to_bytes().hash256(),
-        codes.account_margin.to_bytes().hash256(),
-        codes.account_multi.to_bytes().hash256(),
-        codes.account_spot.to_bytes().hash256(),
-        codes.bank.to_bytes().hash256(),
-        codes.dex.to_bytes().hash256(),
-        codes.gateway.to_bytes().hash256(),
-        codes.hyperlane.ism.to_bytes().hash256(),
-        codes.hyperlane.mailbox.to_bytes().hash256(),
-        codes.hyperlane.va.to_bytes().hash256(),
-        codes.lending.to_bytes().hash256(),
-        codes.oracle.to_bytes().hash256(),
-        codes.taxman.to_bytes().hash256(),
-        codes.vesting.to_bytes().hash256(),
-        codes.warp.to_bytes().hash256(),
-    ]);
+    let codes = RustVm::genesis_codes();
+    let vm = RustVm::new();
 
     setup_suite_with_db_and_vm(
         db,
@@ -311,34 +291,6 @@ pub fn setup_benchmark_hybrid(
         NaiveProposalPreparer,
         NullIndexer,
         codes,
-        TestOption::default(),
-        GenesisOption::preset_test(),
-    )
-}
-
-/// Set up a `TestSuite` with `DiskDbLite`, `WasmVm`, `NaiveProposalPreparer`, and
-/// `Vec<u8>` codes.
-///
-/// Used for running benchmarks with the Wasm VM.
-pub fn setup_benchmark_wasm(
-    dir: &TempDataDir,
-    wasm_cache_size: usize,
-) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, WasmVm, NullIndexer>,
-    TestAccounts,
-    Codes<Vec<u8>>,
-    Contracts,
-    MockValidatorSets,
-) {
-    let db = DiskDb::open(dir).unwrap();
-    let vm = WasmVm::new(wasm_cache_size);
-
-    setup_suite_with_db_and_vm(
-        db,
-        vm,
-        NaiveProposalPreparer,
-        NullIndexer,
-        WasmVm::genesis_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
     )
@@ -374,28 +326,48 @@ where
 
     // Create the test accounts.
     let accounts = {
-        let owner = TestAccount::new_from_private_key(owner::USERNAME.clone(), owner::PRIVATE_KEY);
-        let user1 = TestAccount::new_from_private_key(user1::USERNAME.clone(), user1::PRIVATE_KEY);
-        let user2 = TestAccount::new_from_private_key(user2::USERNAME.clone(), user2::PRIVATE_KEY);
-        let user3 = TestAccount::new_from_private_key(user3::USERNAME.clone(), user3::PRIVATE_KEY);
-        let user4 = TestAccount::new_from_private_key(user4::USERNAME.clone(), user4::PRIVATE_KEY);
-        let user5 = TestAccount::new_from_private_key(user5::USERNAME.clone(), user5::PRIVATE_KEY);
-        let user6 = TestAccount::new_from_private_key(user6::USERNAME.clone(), user6::PRIVATE_KEY);
-        let user7 = TestAccount::new_from_private_key(user7::USERNAME.clone(), user7::PRIVATE_KEY);
-        let user8 = TestAccount::new_from_private_key(user8::USERNAME.clone(), user8::PRIVATE_KEY);
-        let user9 = TestAccount::new_from_private_key(user9::USERNAME.clone(), user9::PRIVATE_KEY);
+        let owner = TestAccount::new_from_private_key(owner::PRIVATE_KEY)
+            .set_user_index(0)
+            .set_address(addresses[0]);
+        let user1 = TestAccount::new_from_private_key(user1::PRIVATE_KEY)
+            .set_user_index(1)
+            .set_address(addresses[1]);
+        let user2 = TestAccount::new_from_private_key(user2::PRIVATE_KEY)
+            .set_user_index(2)
+            .set_address(addresses[2]);
+        let user3 = TestAccount::new_from_private_key(user3::PRIVATE_KEY)
+            .set_user_index(3)
+            .set_address(addresses[3]);
+        let user4 = TestAccount::new_from_private_key(user4::PRIVATE_KEY)
+            .set_user_index(4)
+            .set_address(addresses[4]);
+        let user5 = TestAccount::new_from_private_key(user5::PRIVATE_KEY)
+            .set_user_index(5)
+            .set_address(addresses[5]);
+        let user6 = TestAccount::new_from_private_key(user6::PRIVATE_KEY)
+            .set_user_index(6)
+            .set_address(addresses[6]);
+        let user7 = TestAccount::new_from_private_key(user7::PRIVATE_KEY)
+            .set_user_index(7)
+            .set_address(addresses[7]);
+        let user8 = TestAccount::new_from_private_key(user8::PRIVATE_KEY)
+            .set_user_index(8)
+            .set_address(addresses[8]);
+        let user9 = TestAccount::new_from_private_key(user9::PRIVATE_KEY)
+            .set_user_index(9)
+            .set_address(addresses[9]);
 
         TestAccounts {
-            owner: owner.set_address_with(&addresses),
-            user1: user1.set_address_with(&addresses),
-            user2: user2.set_address_with(&addresses),
-            user3: user3.set_address_with(&addresses),
-            user4: user4.set_address_with(&addresses),
-            user5: user5.set_address_with(&addresses),
-            user6: user6.set_address_with(&addresses),
-            user7: user7.set_address_with(&addresses),
-            user8: user8.set_address_with(&addresses),
-            user9: user9.set_address_with(&addresses),
+            owner,
+            user1,
+            user2,
+            user3,
+            user4,
+            user5,
+            user6,
+            user7,
+            user8,
+            user9,
         }
     };
 

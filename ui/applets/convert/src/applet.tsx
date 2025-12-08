@@ -2,6 +2,7 @@ import { useAccount, useConvertState } from "@left-curve/store";
 import { useState } from "react";
 
 import {
+  AssetInputWithRange,
   Badge,
   Button,
   IconArrowDown,
@@ -14,7 +15,6 @@ import HippoSvg from "@left-curve/foundation/images/characters/hippo.svg";
 
 import { createContext, useInputs } from "@left-curve/applets-kit";
 import { Decimal, formatNumber, formatUnits, withResolvers } from "@left-curve/dango/utils";
-import { AssetInputWithRange } from "./components/AssetInputWithRange";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PropsWithChildren } from "react";
@@ -91,7 +91,7 @@ const ConvertHeader: React.FC = () => {
 
   const { base } = pairId;
   return (
-    <div className="flex flex-col gap-3 rounded-3xl bg-surface-tertiary-rice shadow-account-card p-4 relative overflow-hidden mb-4">
+    <div className="flex flex-col gap-3 rounded-xl bg-surface-tertiary-rice shadow-account-card p-4 relative overflow-hidden mb-4">
       <div className="flex gap-2 items-center relative z-10">
         <img src={base.logoURI} alt="token" className="h-6 w-6" />
         <p className="text-ink-secondary-700 h4-bold">{base.symbol}</p>

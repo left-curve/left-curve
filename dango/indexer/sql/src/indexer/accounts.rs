@@ -6,7 +6,7 @@ use {
         },
         config::AppConfig,
     },
-    grug::{BlockAndBlockOutcomeWithHttpDetails, EventName, Inner, Json, JsonDeExt},
+    grug::{BlockAndBlockOutcomeWithHttpDetails, EventName, Json, JsonDeExt},
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
     indexer_sql::indexer::MAX_ROWS_INSERT,
     itertools::Itertools,
@@ -43,10 +43,10 @@ pub(crate) async fn save_accounts(
 
     // NOTE:
     // The kind of operations which needs to be executed after are:
-    // - UserRegistered: a username, key and key hash. We should create a user entry.
-    // - AccountRegistered: an address, username, We should create an account entry.
-    // - KeyOwned: a username, key and key hash. We should update the users entry with the new key.
-    // - KeyDisowned: a username and key hash. We should delete that key hash attached to that user.
+    // - UserRegistered: a user index, key and key hash. We should create a user entry.
+    // - AccountRegistered: an address, user index, We should create an account entry.
+    // - KeyOwned: a user index, key and key hash. We should update the users entry with the new key.
+    // - KeyDisowned: a user index and key hash. We should delete that key hash attached to that user.
 
     for ((_tx, tx_hash), tx_outcome) in block
         .block
@@ -146,7 +146,7 @@ pub(crate) async fn save_accounts(
                 .iter()
                 .map(|(user_register_event, _)| entity::users::ActiveModel {
                     id: Set(Uuid::new_v4()),
-                    username: Set(user_register_event.username.to_string()),
+                    user_index: Set(user_register_event.user_index),
                     created_at: Set(created_at),
                     created_block_height: Set(block.block.info.height as i64),
                 })
@@ -157,7 +157,7 @@ pub(crate) async fn save_accounts(
                 .map(
                     |(user_register_event, _)| entity::public_keys::ActiveModel {
                         id: Set(Uuid::new_v4()),
-                        username: Set(user_register_event.username.to_string()),
+                        user_index: Set(user_register_event.user_index),
                         key_hash: Set(user_register_event.key_hash.to_string()),
                         public_key: Set(user_register_event.key.to_string()),
                         key_type: Set(user_register_event.key.ty()),
@@ -203,7 +203,7 @@ pub(crate) async fn save_accounts(
                 id: Set(new_account_id),
                 address: Set(account_registered_event.address.to_string()),
                 account_type: Set(account_registered_event.clone().params.ty()),
-                account_index: Set(account_registered_event.index as i32),
+                account_index: Set(account_registered_event.account_index as i32),
                 created_at: Set(created_at),
                 created_block_height: Set(block.block.info.height as i64),
                 created_tx_hash: Set(tx_hash.to_string()),
@@ -215,11 +215,11 @@ pub(crate) async fn save_accounts(
 
             match account_registered_event.params {
                 AccountParams::Spot(params) | AccountParams::Margin(params) => {
-                    let username = params.owner;
+                    let user_index = params.owner;
 
                     if let Some(user_id) = entity::users::Entity::find()
                         .column(entity::users::Column::Id)
-                        .filter(entity::users::Column::Username.eq(username.inner()))
+                        .filter(entity::users::Column::UserIndex.eq(user_index))
                         .one(&txn)
                         .await?
                         .map(|user| user.id)
@@ -239,10 +239,10 @@ pub(crate) async fn save_accounts(
                     }
                 },
                 AccountParams::Multi(params) => {
-                    for username in params.members.keys() {
+                    for user_index in params.members.keys() {
                         if let Some(user_id) = entity::users::Entity::find()
                             .column(entity::users::Column::Id)
-                            .filter(entity::users::Column::Username.eq(username.inner()))
+                            .filter(entity::users::Column::UserIndex.eq(*user_index))
                             .one(&txn)
                             .await?
                             .map(|user| user.id)
@@ -273,7 +273,7 @@ pub(crate) async fn save_accounts(
         for (account_key_added_event, _) in account_key_added_events {
             let model = entity::public_keys::ActiveModel {
                 id: Set(Uuid::new_v4()),
-                username: Set(account_key_added_event.username.to_string()),
+                user_index: Set(account_key_added_event.user_index),
                 key_hash: Set(account_key_added_event.key_hash.to_string()),
                 public_key: Set(account_key_added_event.key.to_string()),
                 key_type: Set(account_key_added_event.key.ty()),
@@ -292,8 +292,8 @@ pub(crate) async fn save_accounts(
         for (account_key_removed_event, _) in account_key_removed_events {
             entity::public_keys::Entity::delete_many()
                 .filter(
-                    entity::public_keys::Column::Username
-                        .eq(account_key_removed_event.username.to_string())
+                    entity::public_keys::Column::UserIndex
+                        .eq(account_key_removed_event.user_index)
                         .and(
                             entity::public_keys::Column::KeyHash
                                 .eq(account_key_removed_event.key_hash.to_string()),

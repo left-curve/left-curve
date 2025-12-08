@@ -13,26 +13,23 @@ version       = { workspace = true }
 path = "src/lib.rs"
 
 [features]
-tracing = ["dep:tracing", "grug-app/tracing"]
+tracing = ["dep:tracing"]
 
 [dependencies]
-anyhow                = { workspace = true }
-borsh                 = { workspace = true, features = ["de_strict_order", "derive"] }
-error-backtrace       = { workspace = true }
-glob                  = { workspace = true }
-grug-app              = { workspace = true }
-grug-math             = { workspace = true }
-grug-types            = { workspace = true }
-indexer-sql-migration = { workspace = true }
-lzma-rs               = { workspace = true }
-sea-orm               = { workspace = true }
-serde                 = { workspace = true }
-serde_json            = { workspace = true }
-tempfile              = { workspace = true }
-thiserror             = { workspace = true }
-tokio                 = { workspace = true }
-tracing               = { workspace = true, optional = true }
-uuid                  = { workspace = true }
+anyhow          = { workspace = true }
+borsh           = { workspace = true, features = ["de_strict_order", "derive"] }
+error-backtrace = { workspace = true }
+grug-math       = { workspace = true }
+grug-types      = { workspace = true }
+lzma-rs         = { workspace = true }
+sea-orm         = { workspace = true }
+serde           = { workspace = true }
+serde_json      = { workspace = true }
+tempfile        = { workspace = true }
+thiserror       = { workspace = true }
+tokio           = { workspace = true }
+tracing         = { workspace = true, optional = true }
+uuid            = { workspace = true }
 
 [dev-dependencies]
 assertor           = { workspace = true }

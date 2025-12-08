@@ -25,7 +25,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
     mutationFn: async (provider: OAuthProviderType) => {
       const { url } = await connector.privy.auth.oauth.generateURL(
         provider,
-        `${window.location.origin}/${signup ? "signup" : "signin"}`,
+        `${window.location.origin}/?auth_callback=${signup ? "signup" : "signin"}`,
       );
       window.location.href = url;
     },

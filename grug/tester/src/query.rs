@@ -26,7 +26,7 @@ pub fn query_force_write(_key: &str, _value: &str) {
     {
         use grug::Region;
 
-        extern "C" {
+        unsafe extern "C" {
             fn db_write(key_ptr: usize, value_ptr: usize);
         }
 

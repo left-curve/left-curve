@@ -5,6 +5,15 @@ use {
     std::{fmt, str::FromStr},
 };
 
+/// A numerical index that uniquely identifies a user.
+///
+/// Internal logics of smart contracts should use `UserIndex` to identify users.
+/// Usernames are for displaying on the frontend only.
+///
+/// The user index is immutable, meaning a user always has the same index.
+/// However, the username may be changed.
+pub type UserIndex = u32;
+
 /// A name that uniquely identifies a user.
 ///
 /// A valid username must contain only lowercase ASCII letters (a-z), numbers

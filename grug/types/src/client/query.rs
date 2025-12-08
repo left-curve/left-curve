@@ -36,13 +36,13 @@ pub trait QueryClientExt: QueryClient {
     async fn query_status(&self, height: Option<u64>) -> Result<QueryStatusResponse, Self::Error> {
         self.query_app(Query::status(), height)
             .await
-            .map(|res| res.as_status())
+            .map(|res| res.into_status())
     }
 
     async fn query_config(&self, height: Option<u64>) -> Result<Config, Self::Error> {
         self.query_app(Query::config(), height)
             .await
-            .map(|res| res.as_config())
+            .map(|res| res.into_config())
     }
 
     async fn query_owner(&self, height: Option<u64>) -> Result<Addr, Self::Error> {
@@ -63,7 +63,7 @@ pub trait QueryClientExt: QueryClient {
     {
         self.query_app(Query::app_config(), height)
             .await
-            .and_then(|res| res.as_app_config().deserialize_json().map_err(Into::into))
+            .and_then(|res| res.into_app_config().deserialize_json().map_err(Into::into))
     }
 
     async fn query_next_upgrade(
@@ -72,7 +72,7 @@ pub trait QueryClientExt: QueryClient {
     ) -> Result<Option<NextUpgrade>, Self::Error> {
         self.query_app(Query::next_upgrade(), height)
             .await
-            .map(|res| res.as_next_upgrade())
+            .map(|res| res.into_next_upgrade())
     }
 
     async fn query_past_upgrades(
@@ -83,7 +83,7 @@ pub trait QueryClientExt: QueryClient {
     ) -> Result<BTreeMap<u64, PastUpgrade>, Self::Error> {
         self.query_app(Query::past_upgrades(start_after, limit), height)
             .await
-            .map(|res| res.as_past_upgrades())
+            .map(|res| res.into_past_upgrades())
     }
 
     async fn query_balance(
@@ -94,7 +94,7 @@ pub trait QueryClientExt: QueryClient {
     ) -> Result<Uint128, Self::Error> {
         self.query_app(Query::balance(address, denom), height)
             .await
-            .map(|res| res.as_balance().amount)
+            .map(|res| res.into_balance().amount)
     }
 
     async fn query_balances(
@@ -106,7 +106,7 @@ pub trait QueryClientExt: QueryClient {
     ) -> Result<Coins, Self::Error> {
         self.query_app(Query::balances(address, start_after, limit), height)
             .await
-            .map(|res| res.as_balances())
+            .map(|res| res.into_balances())
     }
 
     async fn query_supply(
@@ -116,7 +116,7 @@ pub trait QueryClientExt: QueryClient {
     ) -> Result<Uint128, Self::Error> {
         self.query_app(Query::supply(denom), height)
             .await
-            .map(|res| res.as_supply().amount)
+            .map(|res| res.into_supply().amount)
     }
 
     async fn query_supplies(
@@ -127,13 +127,13 @@ pub trait QueryClientExt: QueryClient {
     ) -> Result<Coins, Self::Error> {
         self.query_app(Query::supplies(start_after, limit), height)
             .await
-            .map(|res| res.as_supplies())
+            .map(|res| res.into_supplies())
     }
 
     async fn query_code(&self, hash: Hash256, height: Option<u64>) -> Result<Code, Self::Error> {
         self.query_app(Query::code(hash), height)
             .await
-            .map(|res| res.as_code())
+            .map(|res| res.into_code())
     }
 
     async fn query_codes(
@@ -144,7 +144,7 @@ pub trait QueryClientExt: QueryClient {
     ) -> Result<BTreeMap<Hash256, Code>, Self::Error> {
         self.query_app(Query::codes(start_after, limit), height)
             .await
-            .map(|res| res.as_codes())
+            .map(|res| res.into_codes())
     }
 
     async fn query_contract(
@@ -154,7 +154,7 @@ pub trait QueryClientExt: QueryClient {
     ) -> Result<ContractInfo, Self::Error> {
         self.query_app(Query::contract(address), height)
             .await
-            .map(|res| res.as_contract())
+            .map(|res| res.into_contract())
     }
 
     async fn query_contracts(
@@ -165,7 +165,7 @@ pub trait QueryClientExt: QueryClient {
     ) -> Result<BTreeMap<Addr, ContractInfo>, Self::Error> {
         self.query_app(Query::contracts(start_after, limit), height)
             .await
-            .map(|res| res.as_contracts())
+            .map(|res| res.into_contracts())
     }
 
     /// Note: In most cases, for querying a single storage path in another
@@ -184,7 +184,7 @@ pub trait QueryClientExt: QueryClient {
     {
         self.query_app(Query::wasm_raw(contract, key), height)
             .await
-            .map(|res| res.as_wasm_raw())
+            .map(|res| res.into_wasm_raw())
     }
 
     async fn query_wasm_smart<R>(
@@ -202,7 +202,7 @@ pub trait QueryClientExt: QueryClient {
 
         self.query_app(Query::wasm_smart(contract, &msg)?, height)
             .await
-            .and_then(|res| res.as_wasm_smart().deserialize_json().map_err(Into::into))
+            .and_then(|res| res.into_wasm_smart().deserialize_json().map_err(Into::into))
     }
 
     async fn query_multi<const N: usize>(
@@ -216,7 +216,7 @@ pub trait QueryClientExt: QueryClient {
                 // We trust that the host has properly implemented the multi
                 // query method, meaning the number of responses should always
                 // match the number of requests.
-                let res = res.as_multi();
+                let res = res.into_multi();
 
                 assert_eq!(
                     res.len(),

@@ -7,7 +7,9 @@ export { Badge } from "./Badge";
 export { IconButton, type IconButtonProps } from "./IconButton";
 export { Spinner } from "./Spinner";
 export { QRCode } from "./QRCode";
-export { Select } from "./Select";
+export { Select, type SelectProps } from "./Select";
+export { CoinSelector, type CoinSelectorProps } from "./CoinSelector";
+export { NetworkSelector, type NetworkSelectorProps } from "./NetworkSelector";
 export { TruncateText } from "./TruncateText";
 export {
   Table,
@@ -25,7 +27,6 @@ export { Stepper } from "./Stepper";
 export { Carousel } from "./Carousel";
 export { ResizerContainer } from "./ResizerContainer";
 export { SelectorCreateAccount } from "./SelectorCreateAccount";
-export { CoinSelector } from "./CoinSelector";
 export { AccountSearchInput } from "./AccountSearchInput";
 export { TextLoop } from "./TextLoop";
 export { AccordionItem } from "./AccordionItem";
@@ -50,12 +51,14 @@ export { FormattedNumber } from "./FormattedNumber";
 export { Dot } from "./Dot";
 export { CurrentBlock } from "./CurrentBlock";
 export { QRCodeReader } from "./QRCodeReader";
+export { AssetInputWithRange } from "./AssetInputWithRange";
+export { DepositAddressBox } from "./DepositAddressBox";
+export { ConnectWalletWithModal } from "./ConnectWalletWithModal";
 
 /* ---------------------------------- Icons --------------------------------- */
 
-export { CheckCircleIcon } from "./icons/CheckCircle";
-export { XCircleIcon } from "./icons/XCircle";
-
+export { IconSuccessCircle } from "./icons/IconSuccessCircle";
+export { IconErrorCircle } from "./icons/IconErrorCircle";
 export { IconDangoDots } from "./icons/IconDangoDots";
 export { IconCopyCheck } from "./icons/IconCopyCheck";
 export { IconDoubleChevronRight } from "./icons/IconDoubleChevronRight";
@@ -81,7 +84,6 @@ export { IconCheckedCircle } from "./icons/IconCheckedCircle";
 export { IconChecked } from "./icons/IconChecked";
 export { IconAlert } from "./icons/IconAlert";
 export { IconQR } from "./icons/IconQR";
-export { IconPasskey } from "./icons/IconPasskey";
 export { IconMobile } from "./icons/IconMobile";
 export { IconFormatNumber } from "./icons/IconFormatNumber";
 export { IconLanguage } from "./icons/IconLanguage";
@@ -116,3 +118,8 @@ export { IconToastSuccess } from "./icons/IconToastSuccess";
 export { IconToastInfo } from "./icons/IconToastInfo";
 export { IconToastError } from "./icons/IconToastError";
 export { IconToastWarning } from "./icons/IconToastWarning";
+export { IconWorld } from "./icons/IconWorld";
+export { IconTime } from "./icons/IconTime";
+export { IconTelegram } from "./icons/IconTelegram";
+export { IconShare } from "./icons/IconShare";
+export { IconDisconnect } from "./icons/IconDisconnect";

@@ -1,6 +1,8 @@
 use {
-    super::Username,
-    crate::account::{multi, single},
+    crate::{
+        account::{multi, single},
+        account_factory::UserIndex,
+    },
     grug::{Binary, PrimaryKey, RawKey, StdError, StdResult},
     paste::paste,
     std::fmt::{self, Display},
@@ -103,14 +105,14 @@ pub enum AccountParams {
 macro_rules! generate_downcast {
     ($id:ident => $ret:ty) => {
         paste! {
-            pub fn [<as_$id:snake>](self) -> $ret {
+            pub fn [<into_$id:snake>](self) -> $ret {
                 match self {
                     AccountParams::$id(value) => value,
                     _ => panic!("AccountParams is not {}", stringify!($id)),
                 }
             }
 
-            pub fn [<is_$id:snake>](self) -> bool {
+            pub fn [<is_$id:snake>](&self) -> bool {
                 matches!(self, AccountParams::$id(_))
             }
         }
@@ -137,12 +139,12 @@ impl AccountParams {
         }
     }
 
-    /// Returns the owner (username) of the account.
+    /// Returns the owner (user index) of the account.
     ///
     /// Returns `None` for multisig accounts.
-    pub fn owner(&self) -> Option<&Username> {
+    pub fn owner(&self) -> Option<UserIndex> {
         match self {
-            AccountParams::Spot(params) | AccountParams::Margin(params) => Some(&params.owner),
+            AccountParams::Spot(params) | AccountParams::Margin(params) => Some(params.owner),
             AccountParams::Multi(_) => None,
         }
     }

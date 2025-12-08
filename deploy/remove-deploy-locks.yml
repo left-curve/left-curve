@@ -1,0 +1,31 @@
+---
+- name: Remove deploy locks for the specified network
+  hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  gather_facts: yes
+  vars_files:
+    - roles/full-app/vars/main.yml
+  tasks:
+    - name: Show target lock path
+      debug:
+        msg: "Removing lock file {{ deploy_lock_file }} for network {{ dango_network }} on host {{ inventory_hostname }}"
+
+    - name: Check if lock file exists
+      stat:
+        path: "{{ deploy_lock_file }}"
+      register: lock_stat
+
+    - name: Remove lock file if present
+      file:
+        path: "{{ deploy_lock_file }}"
+        state: absent
+      when: lock_stat.stat.exists | default(false)
+
+    - name: Report lock removal result
+      debug:
+        msg: >-
+          {{
+            'Removed: ' ~ deploy_lock_file if lock_stat.stat.exists | default(false)
+            else 'No lock present at ' ~ deploy_lock_file
+          }}

@@ -27,3 +27,20 @@
     pull: missing
     state: present
     recreate: always
+
+- name: Install systemd unit for Prometheus compose
+  become: true
+  become_user: root
+  template:
+    src: prometheus-compose.service.j2
+    dest: /etc/systemd/system/prometheus-compose.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start prometheus-compose service
+  become: true
+  become_user: root
+  systemd:
+    name: prometheus-compose.service
+    enabled: true
+    state: started

@@ -156,21 +156,31 @@ fn receive_remote(
         Ok::<_, StdError>(Some(quota.checked_add(amount)?))
     })?;
 
-    // Mint the alloyed token to the recipient (if the token is not native on Dango).
-    // Otherwise, transfer the token to the recipient.
-    Ok(Response::new().add_message(if denom.is_remote() {
-        let bank = ctx.querier.query_bank()?;
-        Message::execute(
-            bank,
-            &bank::ExecuteMsg::Mint {
-                to: recipient,
-                coins: coins! { denom => amount },
-            },
-            Coins::new(),
-        )?
-    } else {
-        Message::transfer(recipient, coins! { denom => amount })?
-    }))
+    // First,
+    // - if the token is not native on Dango, mint it to the Gateway contract;
+    // - otherwise, the token should already been in the Gateway contract, no need
+    //   to mint.
+    // Then, transfer the token from Gateway to the recipient.
+    //
+    // Why mint to Gateway first and then transfer to recipient, instead of
+    // directly minting to recipient? Because minting doesn't trigger the recipient's
+    // `receive` entry point, only transferring does. In some cases, we do need
+    // `receive` to be triggered; e.g. activating a new account (see `dango_auth::receive_transfer`).
+    Ok(Response::new()
+        .may_add_message(if denom.is_remote() {
+            let bank = ctx.querier.query_bank()?;
+            Some(Message::execute(
+                bank,
+                &bank::ExecuteMsg::Mint {
+                    to: ctx.contract,
+                    coins: coins! { denom.clone() => amount },
+                },
+                Coins::new(),
+            )?)
+        } else {
+            None
+        })
+        .add_message(Message::transfer(recipient, coins! { denom => amount })?))
 }
 
 fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {

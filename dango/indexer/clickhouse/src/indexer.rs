@@ -38,6 +38,7 @@ impl grug_app::Indexer for Indexer {
         Ok(None)
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "testing")]
         if self.context.is_mocked() {
@@ -82,6 +83,7 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             return Ok(());
@@ -99,6 +101,7 @@ impl grug_app::Indexer for Indexer {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
@@ -123,6 +126,7 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn post_indexing(
         &self,
         #[allow(unused_variables)] block_height: u64,

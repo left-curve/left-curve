@@ -1,9 +1,9 @@
 use {
     crate::{PROPOSALS, VOTES},
-    dango_auth::query_seen_nonces,
+    dango_auth::{query_seen_nonces, query_status},
     dango_types::{
         account::multi::{Proposal, ProposalId, QueryMsg, Status, Vote},
-        account_factory::Username,
+        account_factory::UserIndex,
     },
     grug::{Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
     std::collections::BTreeMap,
@@ -12,6 +12,10 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
+        QueryMsg::Status {} => {
+            let res = query_status(ctx.storage)?;
+            res.to_json_value()
+        },
         QueryMsg::SeenNonces {} => {
             let res = query_seen_nonces(ctx.storage)?;
             res.to_json_value()
@@ -43,10 +47,10 @@ fn query_proposal(ctx: ImmutableCtx, proposal_id: ProposalId) -> StdResult<Propo
 
     // If the proposal is in "voting" state, but voting period has already
     // finished, it means not enough vote is received. The proposal fails.
-    if let Status::Voting { until, .. } = &proposal.status {
-        if ctx.block.timestamp > *until {
-            proposal.status = Status::Failed;
-        }
+    if let Status::Voting { until, .. } = &proposal.status
+        && ctx.block.timestamp > *until
+    {
+        proposal.status = Status::Failed;
     }
 
     Ok(proposal)
@@ -66,10 +70,10 @@ fn query_proposals(
         .map(|res| {
             let (proposal_id, mut proposal) = res?;
 
-            if let Status::Voting { until, .. } = &proposal.status {
-                if ctx.block.timestamp > *until {
-                    proposal.status = Status::Failed;
-                }
+            if let Status::Voting { until, .. } = &proposal.status
+                && ctx.block.timestamp > *until
+            {
+                proposal.status = Status::Failed;
             }
 
             Ok((proposal_id, proposal))
@@ -80,15 +84,15 @@ fn query_proposals(
 fn query_vote(
     storage: &dyn Storage,
     proposal_id: ProposalId,
-    member: Username,
+    member: UserIndex,
 ) -> StdResult<Option<Vote>> {
-    VOTES.may_load(storage, (proposal_id, &member))
+    VOTES.may_load(storage, (proposal_id, member))
 }
 
 fn query_votes(
     storage: &dyn Storage,
     proposal_id: ProposalId,
-) -> StdResult<BTreeMap<Username, Vote>> {
+) -> StdResult<BTreeMap<UserIndex, Vote>> {
     VOTES
         .prefix(proposal_id)
         .range(storage, None, None, Order::Ascending)
@@ -103,7 +107,6 @@ mod tests {
         super::*,
         dango_types::account::multi::Params,
         grug::{MockContext, NonZero, Timestamp, btree_map},
-        std::str::FromStr,
     };
 
     #[test]
@@ -119,9 +122,9 @@ mod tests {
             status: Status::Voting {
                 params: Params {
                     members: btree_map! {
-                        Username::from_str("a").unwrap() => NonZero::new(1).unwrap(),
-                        Username::from_str("b").unwrap() => NonZero::new(1).unwrap(),
-                        Username::from_str("c").unwrap() => NonZero::new(1).unwrap(),
+                        1 => NonZero::new(1).unwrap(),
+                        2 => NonZero::new(1).unwrap(),
+                        3 => NonZero::new(1).unwrap(),
                     },
                     voting_period: NonZero::new(Timestamp::from_seconds(100)).unwrap(),
                     threshold: NonZero::new(2).unwrap(),

@@ -12,7 +12,7 @@ export type UseLiveTradesStoreState = {
   clearTrades: () => void;
 };
 
-const liveTradesStore = create<UseLiveTradesStoreState>((set, get) => ({
+export const liveTradesStore = create<UseLiveTradesStoreState>((set, get) => ({
   trades: [],
   addTrades: (trades) => set((state) => ({ trades: [...trades, ...state.trades].slice(0, 50) })),
   getTrades: () => get().trades,

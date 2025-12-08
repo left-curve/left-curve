@@ -8,6 +8,8 @@ env:
   GIT_COMMIT: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
   DEPLOY_BACKEND_IMAGE_TAG: latest
   DEPLOY_FRONTEND_IMAGE_TAG: latest
+  # Toggle sccache in CI via repo/org variable USE_SCCACHE = 'true'
+  USE_SCCACHE: ${{ vars.USE_SCCACHE }}
 
 on:
   workflow_dispatch:
@@ -200,6 +202,41 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
 
+      - name: Setup sccache (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: |
+          set -euo pipefail
+          if ! command -v sccache >/dev/null 2>&1; then
+            V=0.12.0
+            ARCH=$(uname -m)
+            case "$ARCH" in
+              x86_64) A=x86_64 ;;
+              aarch64|arm64) A=aarch64 ;;
+              *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+            esac
+            curl -sSfL -o /tmp/sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v${V}/sccache-v${V}-${A}-unknown-linux-musl.tar.gz"
+            tar -xzf /tmp/sccache.tar.gz -C /tmp
+            mkdir -p "$HOME/.local/bin" "$HOME/.cache/sccache"
+            mv "/tmp/sccache-v${V}-${A}-unknown-linux-musl/sccache" "$HOME/.local/bin/sccache"
+            chmod +x "$HOME/.local/bin/sccache"
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+          else
+            mkdir -p "$HOME/.cache/sccache"
+          fi
+          {
+            echo "RUSTC_WRAPPER=sccache"
+            echo "SCCACHE_DIR=$HOME/.cache/sccache"
+            echo "SCCACHE_CACHE_SIZE=10G"
+            echo "SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+            echo "SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+            echo "SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+            echo "SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+            echo "SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+            echo "SCCACHE_S3_FORCE_PATH_STYLE=1"
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          } >> $GITHUB_ENV
+
       - uses: dtolnay/rust-toolchain@stable
         if: env.BACKEND_CHANGED == 'true'
         with:
@@ -212,6 +249,10 @@ jobs:
             echo "Checking $crate..."
             cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
           done
+
+      - name: sccache stats (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: sccache --show-stats || true
 
   backend-test:
     needs: [format, changes]
@@ -273,11 +314,47 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
 
+      - name: Setup sccache (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: |
+          set -euo pipefail
+          if ! command -v sccache >/dev/null 2>&1; then
+            V=0.12.0
+            ARCH=$(uname -m)
+            case "$ARCH" in
+              x86_64) A=x86_64 ;;
+              aarch64|arm64) A=aarch64 ;;
+              *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+            esac
+            curl -sSfL -o /tmp/sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v${V}/sccache-v${V}-${A}-unknown-linux-musl.tar.gz"
+            tar -xzf /tmp/sccache.tar.gz -C /tmp
+            mkdir -p "$HOME/.local/bin" "$HOME/.cache/sccache"
+            mv "/tmp/sccache-v${V}-${A}-unknown-linux-musl/sccache" "$HOME/.local/bin/sccache"
+            chmod +x "$HOME/.local/bin/sccache"
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+          else
+            mkdir -p "$HOME/.cache/sccache"
+          fi
+          {
+            echo "RUSTC_WRAPPER=sccache"
+            echo "SCCACHE_DIR=$HOME/.cache/sccache"
+            echo "SCCACHE_CACHE_SIZE=10G"
+            echo "SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+            echo "SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+            echo "SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+            echo "SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+            echo "SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+            echo "SCCACHE_S3_FORCE_PATH_STYLE=1"
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          } >> $GITHUB_ENV
+
       - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.88
+          # Commenting this out so we always use the latest toolchain.
+          # toolchain: 1.91
           components: clippy, llvm-tools-preview
 
       # - name: Create psql database
@@ -331,6 +408,10 @@ jobs:
         env:
           RUST_BACKTRACE: 1
 
+      - name: sccache stats (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: sccache --show-stats || true
+
       - name: Upload coverage to Qlty
         if: env.BACKEND_CHANGED == 'true'
         uses: qltysh/qlty-action/coverage@v2
@@ -364,6 +445,32 @@ jobs:
         if: env.BACKEND_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
+
+      - name: Enable sccache for cross (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.cache/sccache" "$PWD/.cross-cache/cargo"
+          opts=""
+          opts="$opts -e RUSTC_WRAPPER=/usr/local/bin/sccache"
+          # Reuse the same host cache directory inside the container
+          opts="$opts -e SCCACHE_DIR=/tmp/sccache"
+          opts="$opts -e SCCACHE_CACHE_SIZE=10G"
+          # Run container processes as the host user to avoid permission issues
+          opts="$opts --user $(id -u):$(id -g)"
+          # Provide a writable cargo home inside the container and persist it
+          opts="$opts -e CARGO_HOME=/tmp/cargo -v $PWD/.cross-cache/cargo:/tmp/cargo"
+          [ -n "${{ secrets.SCCACHE_BUCKET }}" ] && opts="$opts -e SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+          [ -n "${{ secrets.SCCACHE_ENDPOINT }}" ] && opts="$opts -e SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+          [ -n "${{ secrets.SCCACHE_REGION }}" ] && opts="$opts -e SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+          [ -n "${{ secrets.SCCACHE_S3_KEY_PREFIX }}" ] && opts="$opts -e SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+          [ -n "${{ secrets.SCCACHE_S3_USE_SSL }}" ] && opts="$opts -e SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+          opts="$opts -e SCCACHE_S3_FORCE_PATH_STYLE=1"
+          [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && opts="$opts -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+          [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && opts="$opts -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          # Mount the host cache directory into the container
+          opts="$opts -v $HOME/.cache/sccache:/tmp/sccache"
+          echo "CROSS_CONTAINER_OPTS=$opts" >> $GITHUB_ENV
 
       - name: Set build config
         id: config
@@ -468,6 +575,17 @@ jobs:
           mkdir -p .cross-cache/${{ steps.config.outputs.target }}
           CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
           cross build --target ${{ steps.config.outputs.target }} --release --verbose
+
+      - name: sccache stats (cross, optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: |
+          # Best-effort: show stats in a fresh container with the same cache mounted.
+          docker run --rm \
+            --user $(id -u):$(id -g) \
+            -e SCCACHE_DIR=/tmp/sccache \
+            -v $HOME/.cache/sccache:/tmp/sccache \
+            ${{ steps.config.outputs.image }} \
+            bash -lc 'command -v sccache && sccache --show-stats || true'
 
       - name: build docker image
         if: env.BACKEND_CHANGED == 'true'
@@ -868,30 +986,30 @@ jobs:
           backend_published="${{ needs['backend-push-manifest'].outputs.published }}"
           frontend_published="${{ needs['frontend-push-manifest'].outputs.published }}"
           run_event="${{ github.event_name }}"
-          backend_repo="ghcr.io/left-curve/left-curve/dango"
-          frontend_repo="ghcr.io/left-curve/left-curve/dango-frontend"
+          backend_image_url="ghcr.io/left-curve/left-curve/dango"
+          frontend_image_url="ghcr.io/left-curve/left-curve/dango-frontend"
 
           commit_tag="${{ env.GIT_COMMIT }}"
           pr_tag=""
 
           if [ "$backend_published" = "true" ]; then
             backend_tag="$commit_tag"
-          elif docker manifest inspect "${backend_repo}:${commit_tag}" >/dev/null 2>&1; then
+          elif docker manifest inspect "${backend_image_url}:${commit_tag}" >/dev/null 2>&1; then
             backend_tag="$commit_tag"
           elif [ "$run_event" = "pull_request" ]; then
             pr_tag="pr-${{ github.event.pull_request.number }}-latest"
-            if docker manifest inspect "${backend_repo}:${pr_tag}" >/dev/null 2>&1; then
+            if docker manifest inspect "${backend_image_url}:${pr_tag}" >/dev/null 2>&1; then
               backend_tag="$pr_tag"
             fi
           fi
 
           if [ "$frontend_published" = "true" ]; then
             frontend_tag="$commit_tag"
-          elif docker manifest inspect "${frontend_repo}:${commit_tag}" >/dev/null 2>&1; then
+          elif docker manifest inspect "${frontend_image_url}:${commit_tag}" >/dev/null 2>&1; then
             frontend_tag="$commit_tag"
           elif [ "$run_event" = "pull_request" ]; then
             pr_tag="pr-${{ github.event.pull_request.number }}-latest"
-            if docker manifest inspect "${frontend_repo}:${pr_tag}" >/dev/null 2>&1; then
+            if docker manifest inspect "${frontend_image_url}:${pr_tag}" >/dev/null 2>&1; then
               frontend_tag="$pr_tag"
             fi
           fi
@@ -1048,7 +1166,7 @@ jobs:
           # This deletes the existing deployment, but instead use `ansible-playbook delete-full-app.yml -e deployment_name=pr-<ID>` if you need
           # ansible-playbook delete-existing-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
 
-          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }}
+          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }}
           fi
 
   localdango:

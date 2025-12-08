@@ -23,11 +23,13 @@ pub trait Querier {
 /// implements `Querier`.
 pub trait QuerierExt: Querier {
     fn query_status(&self) -> StdResult<QueryStatusResponse> {
-        self.query_chain(Query::status()).map(|res| res.as_status())
+        self.query_chain(Query::status())
+            .map(|res| res.into_status())
     }
 
     fn query_config(&self) -> StdResult<Config> {
-        self.query_chain(Query::config()).map(|res| res.as_config())
+        self.query_chain(Query::config())
+            .map(|res| res.into_config())
     }
 
     fn query_owner(&self) -> StdResult<Addr> {
@@ -51,12 +53,12 @@ pub trait QuerierExt: Querier {
         T: DeserializeOwned,
     {
         self.query_chain(Query::app_config())
-            .and_then(|res| res.as_app_config().deserialize_json())
+            .and_then(|res| res.into_app_config().deserialize_json())
     }
 
     fn query_next_upgrade(&self) -> StdResult<Option<NextUpgrade>> {
         self.query_chain(Query::next_upgrade())
-            .map(|res| res.as_next_upgrade())
+            .map(|res| res.into_next_upgrade())
     }
 
     fn query_past_upgrades(
@@ -65,12 +67,12 @@ pub trait QuerierExt: Querier {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<u64, PastUpgrade>> {
         self.query_chain(Query::past_upgrades(start_after, limit))
-            .map(|res| res.as_past_upgrades())
+            .map(|res| res.into_past_upgrades())
     }
 
     fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint128> {
         self.query_chain(Query::balance(address, denom))
-            .map(|res| res.as_balance().amount)
+            .map(|res| res.into_balance().amount)
     }
 
     fn query_balances(
@@ -80,21 +82,22 @@ pub trait QuerierExt: Querier {
         limit: Option<u32>,
     ) -> StdResult<Coins> {
         self.query_chain(Query::balances(address, start_after, limit))
-            .map(|res| res.as_balances())
+            .map(|res| res.into_balances())
     }
 
     fn query_supply(&self, denom: Denom) -> StdResult<Uint128> {
         self.query_chain(Query::supply(denom))
-            .map(|res| res.as_supply().amount)
+            .map(|res| res.into_supply().amount)
     }
 
     fn query_supplies(&self, start_after: Option<Denom>, limit: Option<u32>) -> StdResult<Coins> {
         self.query_chain(Query::supplies(start_after, limit))
-            .map(|res| res.as_supplies())
+            .map(|res| res.into_supplies())
     }
 
     fn query_code(&self, hash: Hash256) -> StdResult<Code> {
-        self.query_chain(Query::code(hash)).map(|res| res.as_code())
+        self.query_chain(Query::code(hash))
+            .map(|res| res.into_code())
     }
 
     fn query_codes(
@@ -103,12 +106,12 @@ pub trait QuerierExt: Querier {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<Hash256, Code>> {
         self.query_chain(Query::codes(start_after, limit))
-            .map(|res| res.as_codes())
+            .map(|res| res.into_codes())
     }
 
     fn query_contract(&self, address: Addr) -> StdResult<ContractInfo> {
         self.query_chain(Query::contract(address))
-            .map(|res| res.as_contract())
+            .map(|res| res.into_contract())
     }
 
     fn query_contracts(
@@ -117,7 +120,7 @@ pub trait QuerierExt: Querier {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<Addr, ContractInfo>> {
         self.query_chain(Query::contracts(start_after, limit))
-            .map(|res| res.as_contracts())
+            .map(|res| res.into_contracts())
     }
 
     /// Note: In most cases, for querying a single storage path in another
@@ -130,7 +133,7 @@ pub trait QuerierExt: Querier {
         B: Into<Binary>,
     {
         self.query_chain(Query::wasm_raw(contract, key))
-            .map(|res| res.as_wasm_raw())
+            .map(|res| res.into_wasm_raw())
     }
 
     fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> StdResult<R::Response>
@@ -142,7 +145,7 @@ pub trait QuerierExt: Querier {
         let msg = R::Message::from(req);
 
         self.query_chain(Query::wasm_smart(contract, &msg)?)
-            .and_then(|res| res.as_wasm_smart().deserialize_json())
+            .and_then(|res| res.into_wasm_smart().deserialize_json())
     }
 
     fn query_multi<const N: usize>(
@@ -153,7 +156,7 @@ pub trait QuerierExt: Querier {
             // We trust that the host has properly implemented the multi
             // query method, meaning the number of responses should always
             // match the number of requests.
-            let res = res.as_multi();
+            let res = res.into_multi();
 
             assert_eq!(
                 res.len(),

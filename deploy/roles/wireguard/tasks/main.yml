@@ -46,11 +46,12 @@
     - item is defined
   notify: reload ufw
 
-- name: Allow any port on wg0
+- name: Allow all traffic on wg0
   ufw:
     rule: allow
-    direction: in
+    direction: "{{ item }}"
     interface: wg0
+  loop: [in, out]
 
 # Generate WireGuard private key if it doesn't exist
 - name: Check if WireGuard private key exists

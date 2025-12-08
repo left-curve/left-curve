@@ -21,6 +21,10 @@ pub enum GasOption {
 
 /// Configuration on how to choose the admin address when instantiating a
 /// contract.
+#[allow(
+    clippy::enum_variant_names,
+    reason = "the meanings of the enum variants are clearer this way"
+)]
 pub enum AdminOption {
     /// Set the admin to a specific address.
     SetToAddr(Addr),

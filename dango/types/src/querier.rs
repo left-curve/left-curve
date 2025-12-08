@@ -1,6 +1,6 @@
 use {
     crate::config::AppConfig,
-    grug::{Addr, Querier, QuerierExt, StdResult},
+    grug::{Addr, Coins, Querier, QuerierExt, StdResult},
 };
 
 /// An extension trait that adds some useful, Dango-specific methods to
@@ -31,6 +31,11 @@ pub trait DangoQuerier {
     fn query_warp(&self) -> StdResult<Addr> {
         self.query_dango_config()
             .map(|app_cfg| app_cfg.addresses.warp)
+    }
+
+    fn query_minimum_deposit(&self) -> StdResult<Coins> {
+        self.query_dango_config()
+            .map(|app_cfg| app_cfg.minimum_deposit)
     }
 }
 

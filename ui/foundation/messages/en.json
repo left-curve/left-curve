@@ -1,7 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common": {
-    "connect":"Connect",
+    "connect": "Connect",
     "assets": "Assets",
     "fund": "Fund",
     "send": "Send",
@@ -27,6 +27,7 @@
     "to": "To",
     "for": "for",
     "at": "at",
+    "qr": "QR",
     "width": "width",
     "error": "Error",
     "confirm": "Confirm",
@@ -82,6 +83,7 @@
   },
   "statusBadge": {
     "status": "Status",
+    "details": "See Details",
     "websocket": "WebSocket",
     "chain": "Chain",
     "dex": "DEX",
@@ -156,6 +158,14 @@
       "description": "The easiest way to trade at all sizes.",
       "path": "/convert",
       "keywords": "swap,trade,convert,exchange"
+    },
+    "bridge": {
+      "id": "bridge",
+      "img": "/images/emojis/simple/moneybag.svg",
+      "title": "Deposit & Withdraw",
+      "description": "Deposit and withdraw assets across chains",
+      "path": "/bridge",
+      "keywords": "bridge,deposit,withdraw,cross-chain"
     },
     "earn": {
       "id": "earn",
@@ -314,6 +324,9 @@
     "updateButton": "Update Now"
   },
   "modals": {
+    "walletSelector": {
+      "title": "Select Wallet"
+    },
     "qrconnect": {
       "title": "QR Connect",
       "description": "Scan the QR code with your mobile to connect to your account."
@@ -691,11 +704,27 @@
       "continueWithdraw": "Continue Withdraw"
     }
   },
+  "bridge": {
+    "title": "Deposit & Withdraw",
+    "selectCoin": "Select coin",
+    "selectNetwork": "Select network",
+    "depositAddress": "Deposit Address",
+    "networkName": "{network} Network",
+    "onlyCanReceiveOn": "This address can only receive assets on",
+    "deposit": "Deposit",
+    "youDeposit": "You deposit",
+    "youGet": "You get",
+    "withdraw": "Withdraw",
+    "youWithdraw": "You withdraw",
+    "withdrawAddress": "Withdraw Wallet Address",
+    "placeholderWithdrawAddress": "Enter your {network} wallet address"
+  },
   "settings": {
     "title": "Settings",
     "display": "Display",
     "language": "Language",
     "theme": "Theme",
+    "system": "System",
     "chart": "Chart Engine",
     "session": {
       "title": "Current Session",

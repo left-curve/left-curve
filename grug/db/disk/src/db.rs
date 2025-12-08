@@ -4,10 +4,14 @@ use uuid::Uuid;
 use {crate::statistics, grug_types::MetricsIterExt};
 use {
     crate::{DbError, DbResult},
-    grug_app::{Commitment, Db},
-    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
+    grug_app::{CONTRACT_NAMESPACE, Commitment, Db, GRUG_NAMESPACE_LEN},
+    grug_types::{Addr, Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
+    itertools::Itertools,
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
-    rocksdb::{ColumnFamily, DB, IteratorMode, Options, ReadOptions, WriteBatch},
+    rocksdb::{
+        BlockBasedOptions, Cache, ColumnFamily, CompactionPri, DB, DBCompactionStyle, IteratorMode,
+        Options, ReadOptions, SliceTransform, WriteBatch,
+    },
     std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
 };
 
@@ -30,6 +34,8 @@ pub const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 /// When performing normal read/write/remove/scan interactions, we use this CF.
 pub const CF_NAME_STATE_STORAGE: &str = "state_storage";
 
+pub const CF_NAME_WASM_STORAGE: &str = "wasm_storage";
+
 /// Storage key for the latest version.
 pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 
@@ -37,10 +43,30 @@ pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
 #[cfg(feature = "metrics")]
+pub const ITERATOR_DB_LABEL: &str = "grug.db.disk.iterator.count";
+
+#[cfg(feature = "metrics")]
 pub const PRIORITY_DATA_LABEL: &str = "priority_data";
 
 #[cfg(feature = "metrics")]
-pub const ROCKSDB_LABEL: &str = "rocksdb";
+pub const WASM_STORAGE_LABEL: &str = "wasm";
+
+#[cfg(feature = "metrics")]
+pub const STATE_STORAGE_LABEL: &str = "state";
+
+/// We assume all keys within the wasm range has the following format:
+///
+/// ```plain
+/// b"wasm" | address | sub_key
+/// ```
+///
+/// `address` is exactly 20 bytes. `sub_key` is 0 or more bytes.
+///
+/// As such, we can say that each `sub_key` is prefixed by exactly 24 bytes.
+const WASM_PREFIX_LEN: usize = CONTRACT_NAMESPACE.len() + Addr::LENGTH; // = 4 + 20 = 24
+
+/// The upper bound (exclusive) of the wasm range. Equals `increment_last_bytes(CONTRACT_NAMESPACE)`.
+const CONTRACT_NAMESPACE_PLUS_ONE: &[u8] = b"wasn";
 
 /// The base storage primitive.
 ///
@@ -123,12 +149,16 @@ impl<T> DiskDb<T> {
         B: AsRef<[u8]>,
     {
         let opts = new_db_options();
-        let db = DB::open_cf(&opts, data_dir, [
-            CF_NAME_DEFAULT,
+        let cf_opts = new_state_cf_options();
+        let wasm_cf_opts = new_wasm_cf_options(cf_opts.clone());
+        let storage_cf_opts = new_storage_cf_options(cf_opts.clone());
+        let db = DB::open_cf_with_opts(&opts, data_dir, [
+            (CF_NAME_DEFAULT, Options::default()),
             #[cfg(feature = "ibc")]
-            CF_NAME_PREIMAGES,
-            CF_NAME_STATE_STORAGE,
-            CF_NAME_STATE_COMMITMENT,
+            (CF_NAME_PREIMAGES, Options::default()),
+            (CF_NAME_STATE_STORAGE, storage_cf_opts),
+            (CF_NAME_STATE_COMMITMENT, cf_opts),
+            (CF_NAME_WASM_STORAGE, wasm_cf_opts),
         ])?;
 
         // If `priority_range` is specified, load the data in that range into memory.
@@ -136,23 +166,21 @@ impl<T> DiskDb<T> {
             #[cfg(feature = "tracing")]
             let mut size = 0;
 
-            let cf = cf_state_storage(&db);
-            let opts = new_read_options(Some(min.as_ref()), Some(max.as_ref()));
-            let records = db
-                .iterator_cf_opt(&cf, opts, IteratorMode::Start)
-                .map(|item| {
-                    let (k, v) = item.unwrap_or_else(|err| {
-                        panic!("failed to load record for priority data: {err}");
-                    });
-
-                    #[cfg(feature = "tracing")]
-                    {
-                        size += k.len() + v.len();
-                    }
-
-                    (k.to_vec(), v.to_vec())
-                })
-                .collect::<BTreeMap<_, _>>();
+            let records = create_rocksdb_storage_iter(
+                &db,
+                Some(min.as_ref()),
+                Some(max.as_ref()),
+                Order::Ascending,
+                #[cfg(feature = "metrics")]
+                "priority_data/init",
+            )
+            .inspect(|(_k, _v)| {
+                #[cfg(feature = "tracing")]
+                {
+                    size += _k.len() + _v.len();
+                }
+            })
+            .collect::<BTreeMap<_, _>>();
 
             #[cfg(feature = "tracing")]
             {
@@ -307,6 +335,16 @@ where
             return Err(DbError::pending_data_already_set());
         }
 
+        // We assume Grug App has the following behavior: for each key that is
+        // prefixed with `b"wasm"`, it must be a wasm key. See the comments of
+        // `WASM_PREFIX_LEN` and the `is_wasm_key` function for explanation.
+        if let Some(key) = batch
+            .keys()
+            .find(|k| k.starts_with(CONTRACT_NAMESPACE) && !is_wasm_key(k))
+        {
+            return Err(DbError::not_wasm_key(key.clone()));
+        }
+
         let (old_version, new_version) = match self.latest_version() {
             // An old version exist.
             // Set the new version to be the old version plus one
@@ -414,8 +452,15 @@ where
         }
 
         // Writes in state storage
-        let cf = cf_state_storage(&data.db);
+        let cf_state = cf_state_storage(&data.db);
+        let cf_wasm = cf_wasm_storage(&data.db);
         for (key, op) in pending.state_storage {
+            let cf = if is_wasm_key(&key) {
+                cf_wasm
+            } else {
+                cf_state
+            };
+
             if let Op::Insert(value) = op {
                 batch.put_cf(&cf, key, value);
             } else {
@@ -740,31 +785,37 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the disk.
         // Note: `min` is inclusive, while `max` is exclusive.
-        // TODO: the nested `if` statements can be simplified with rust edition 2024
-        if let Some(data) = &self.guard.priority_data {
-            if data.min.as_slice() <= key && key < data.max.as_slice() {
-                let value = data.records.get(key).cloned();
+        if let Some(data) = &self.guard.priority_data
+            && data.min.as_slice() <= key
+            && key < data.max.as_slice()
+        {
+            let value = data.records.get(key).cloned();
 
-                #[cfg(feature = "metrics")]
-                {
-                    metrics::histogram!(
-                        DISK_DB_LABEL,
-                        "operation" => "read",
-                        "comment" => self.comment,
-                        "source" => PRIORITY_DATA_LABEL
-                    )
-                    .record(duration.elapsed().as_secs_f64());
-                }
-
-                return value;
+            #[cfg(feature = "metrics")]
+            {
+                metrics::histogram!(
+                    DISK_DB_LABEL,
+                    "operation" => "read",
+                    "comment" => self.comment,
+                    "source" => PRIORITY_DATA_LABEL
+                )
+                .record(duration.elapsed().as_secs_f64());
             }
+
+            return value;
         }
+
+        let cf = if is_wasm_key(key) {
+            cf_wasm_storage(&self.guard.db)
+        } else {
+            cf_state_storage(&self.guard.db)
+        };
 
         let opts = new_read_options(None, None);
         let value = self
             .guard
             .db
-            .get_cf_opt(&cf_state_storage(&self.guard.db), key, &opts)
+            .get_cf_opt(&cf, key, &opts)
             .unwrap_or_else(|err| {
                 panic!("failed to read from state storage: {err}");
             });
@@ -775,7 +826,11 @@ impl Storage for StateStorage {
                 DISK_DB_LABEL,
                 "operation" => "read",
                 "comment" => self.comment,
-                "source" => ROCKSDB_LABEL
+                "source" => if is_wasm_key(key) {
+                    WASM_STORAGE_LABEL
+                } else {
+                    STATE_STORAGE_LABEL
+                }
             )
             .record(duration.elapsed().as_secs_f64());
         }
@@ -789,72 +844,51 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        #[cfg(feature = "metrics")]
-        let duration = std::time::Instant::now();
-
         // If priority data exists, and the iterator range completely falls
         // within the priority range, then create a priority iterator.
         // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
         // are both exclusive.
         // TODO: the nested `if` statements can be simplified with rust edition 2024
-        if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max) {
-            if data.min.as_slice() <= min && max <= data.max.as_slice() {
-                let iter = data.records.scan(Some(min), Some(max), order);
-
-                #[cfg(feature = "metrics")]
-                {
-                    let iter = iter.with_metrics(DISK_DB_LABEL, [
-                        ("operation", "next"),
-                        ("comment", self.comment),
-                        ("source", PRIORITY_DATA_LABEL),
-                    ]);
-
-                    metrics::histogram!(
-                        DISK_DB_LABEL,
-                        "operation" => "scan",
-                        "comment" => self.comment,
-                        "source" => PRIORITY_DATA_LABEL
-                    )
-                    .record(duration.elapsed().as_secs_f64());
-
-                    return Box::new(iter);
-                }
-
-                #[cfg(not(feature = "metrics"))]
-                return iter;
-            }
-        }
-
-        let opts = new_read_options(min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self
-            .guard
-            .db
-            .iterator_cf_opt(&cf_state_storage(&self.guard.db), opts, mode)
-            .map(|item| {
-                let (k, v) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in state storage: {err}");
-                });
-                (k.to_vec(), v.to_vec())
-            });
-
-        #[cfg(feature = "metrics")]
-        let iter = iter.with_metrics(DISK_DB_LABEL, [
-            ("operation", "next"),
-            ("comment", self.comment),
-            ("source", ROCKSDB_LABEL),
-        ]);
-
-        #[cfg(feature = "metrics")]
+        if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max)
+            && data.min.as_slice() <= min
+            && max <= data.max.as_slice()
         {
-            metrics::histogram!(
-                DISK_DB_LABEL,
-                "operation" => "scan",
-                "comment" => self.comment,
-                "source" => ROCKSDB_LABEL
-            )
-            .record(duration.elapsed().as_secs_f64());
+            #[cfg(feature = "metrics")]
+            let duration = std::time::Instant::now();
+
+            let iter = data.records.scan(Some(min), Some(max), order);
+
+            #[cfg(feature = "metrics")]
+            {
+                let iter = iter.with_metrics(DISK_DB_LABEL, [
+                    ("operation", "next"),
+                    ("comment", self.comment),
+                    ("source", PRIORITY_DATA_LABEL),
+                ]);
+
+                metrics::histogram!(
+                    DISK_DB_LABEL,
+                    "operation" => "scan",
+                    "comment" => self.comment,
+                    "source" => PRIORITY_DATA_LABEL
+                )
+                .record(duration.elapsed().as_secs_f64());
+
+                return Box::new(iter);
+            }
+
+            #[cfg(not(feature = "metrics"))]
+            return iter;
         }
+
+        let iter = create_rocksdb_storage_iter(
+            &self.guard.db,
+            min,
+            max,
+            order,
+            #[cfg(feature = "metrics")]
+            self.comment,
+        );
 
         Box::new(iter)
     }
@@ -892,6 +926,182 @@ impl Storage for StateStorage {
     }
 }
 
+// --------------------------------- iteration ---------------------------------
+
+fn create_rocksdb_storage_iter<'a>(
+    db: &'a DB,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+    order: Order,
+    #[cfg(feature = "metrics")] comment: &'static str,
+) -> Box<dyn Iterator<Item = Record> + 'a> {
+    match (min, max) {
+        // If the range falls within the wasm range, iterate only the wasm CF.
+        (Some(min), Some(max))
+            if CONTRACT_NAMESPACE <= min && max <= CONTRACT_NAMESPACE_PLUS_ONE =>
+        {
+            create_wasm_iter(
+                db,
+                Some(min),
+                Some(max),
+                order,
+                #[cfg(feature = "metrics")]
+                comment,
+            )
+        },
+        // If the range is completely bigger than the wasm range, iterate only
+        // the storage CF.
+        (Some(min), max) if CONTRACT_NAMESPACE_PLUS_ONE <= min => create_state_iter(
+            db,
+            Some(min),
+            max,
+            order,
+            #[cfg(feature = "metrics")]
+            comment,
+        ),
+        // If the range is completely smaller than the wasm range, iterate only
+        // the storage CF.
+        (min, Some(max)) if max <= CONTRACT_NAMESPACE => create_state_iter(
+            db,
+            min,
+            Some(max),
+            order,
+            #[cfg(feature = "metrics")]
+            comment,
+        ),
+        // In all other cases, iterate BOTH the wasm and storage CFs.
+        _ => create_merged_iter(
+            db,
+            min,
+            max,
+            order,
+            #[cfg(feature = "metrics")]
+            comment,
+        ),
+    }
+}
+
+fn create_wasm_iter<'a>(
+    db: &'a DB,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+    order: Order,
+    #[cfg(feature = "metrics")] comment: &'static str,
+) -> Box<dyn Iterator<Item = Record> + 'a> {
+    #[cfg(feature = "metrics")]
+    let duration = std::time::Instant::now();
+
+    let opts = new_wasm_read_options(new_read_options(min, max), min, max);
+    let mode = into_iterator_mode(order);
+
+    let iter = db
+        .iterator_cf_opt(&cf_wasm_storage(db), opts, mode)
+        .map(|item| {
+            let (k, v) = item.unwrap_or_else(|err| {
+                panic!("failed to iterate in state storage: {err}");
+            });
+            (k.to_vec(), v.to_vec())
+        });
+
+    #[cfg(feature = "metrics")]
+    let iter = iter.with_metrics(DISK_DB_LABEL, [
+        ("operation", "next"),
+        ("comment", comment),
+        ("source", WASM_STORAGE_LABEL),
+    ]);
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            DISK_DB_LABEL,
+            "operation" => "scan",
+            "comment" => comment,
+            "source" => WASM_STORAGE_LABEL
+        )
+        .record(duration.elapsed().as_secs_f64());
+    };
+
+    Box::new(iter)
+}
+
+fn create_state_iter<'a>(
+    db: &'a DB,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+    order: Order,
+    #[cfg(feature = "metrics")] comment: &'static str,
+) -> Box<dyn Iterator<Item = Record> + 'a> {
+    #[cfg(feature = "metrics")]
+    let duration = std::time::Instant::now();
+
+    let opts = new_storage_read_options(new_read_options(min, max), min, max);
+    let mode = into_iterator_mode(order);
+
+    let iter = db
+        .iterator_cf_opt(&cf_state_storage(db), opts, mode)
+        .map(|item| {
+            let (k, v) = item.unwrap_or_else(|err| {
+                panic!("failed to iterate in state storage: {err}");
+            });
+            (k.to_vec(), v.to_vec())
+        });
+
+    #[cfg(feature = "metrics")]
+    let iter = iter.with_metrics(DISK_DB_LABEL, [
+        ("operation", "next"),
+        ("comment", comment),
+        ("source", STATE_STORAGE_LABEL),
+    ]);
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            DISK_DB_LABEL,
+            "operation" => "scan",
+            "comment" => comment,
+            "source" => STATE_STORAGE_LABEL
+        )
+        .record(duration.elapsed().as_secs_f64());
+    };
+
+    Box::new(iter)
+}
+
+fn create_merged_iter<'a>(
+    db: &'a DB,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+    order: Order,
+    #[cfg(feature = "metrics")] comment: &'static str,
+) -> Box<dyn Iterator<Item = Record> + 'a> {
+    let wasm_iter = create_wasm_iter(
+        db,
+        min,
+        max,
+        order,
+        #[cfg(feature = "metrics")]
+        comment,
+    );
+    let state_iter = create_state_iter(
+        db,
+        min,
+        max,
+        order,
+        #[cfg(feature = "metrics")]
+        comment,
+    );
+
+    if let Order::Ascending = order {
+        Box::new(wasm_iter.merge_by(state_iter, |a, b| a.0 < b.0))
+    } else {
+        Box::new(wasm_iter.merge_by(state_iter, |a, b| a.0 > b.0))
+    }
+}
+
+pub fn is_wasm_key(key: &[u8]) -> bool {
+    key.starts_with(CONTRACT_NAMESPACE) && key.len() >= WASM_PREFIX_LEN
+}
+
 // ---------------------------------- helpers ----------------------------------
 
 #[inline]
@@ -902,17 +1112,97 @@ fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
     }
 }
 
-// TODO: rocksdb tuning? see:
+// Reference for RocksDB tuning:
 // https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/opts.go#L29-L65
 // https://github.com/turbofish-org/merk/blob/develop/src/merk/mod.rs#L84-L102
 pub fn new_db_options() -> Options {
     let mut opts = Options::default();
+
+    // Create the DB and CFs if they do not exist.
     opts.create_if_missing(true);
     opts.create_missing_column_families(true);
+
+    // Increase background parallelism: flushes and compactions run in more threads.
+    // Helps maintain healthy LSM structure without blocking foreground operations.
+    opts.increase_parallelism(num_cpus::get() as i32);
+
+    // Give RocksDB a memory budget to tune level-style compaction.
+    // This optimizes compaction strategy and usually reduces write amplification.
+    opts.optimize_level_style_compaction(256 * 1024 * 1024);
+
+    // Remove limit on open file descriptors, avoiding overhead of
+    // frequently opening/closing SST files.
+    opts.set_max_open_files(-1); // -1 = unlimited
+
     opts
 }
 
-pub(crate) fn new_read_options(
+/// Create a tuned default `Options` for a colume family.
+pub fn new_state_cf_options() -> Options {
+    let mut opts = Options::default();
+
+    opts.set_max_write_buffer_number(2); // Default is 2
+    opts.set_min_write_buffer_number_to_merge(1); // Default is 1
+
+    // ---- L0 ----
+    opts.set_level_zero_file_num_compaction_trigger(2); // Default is 4
+    opts.set_level_zero_slowdown_writes_trigger(8); // Default is 20
+    opts.set_level_zero_stop_writes_trigger(16); // Default is 24
+
+    opts.set_target_file_size_base(8 * 1024 * 1024); // ~8MB per SST L1 (Default is 64MB)
+    opts.set_max_bytes_for_level_base(64 * 1024 * 1024); // ~64MB per L1 (Default is 256MB)
+
+    opts.set_max_open_files(-1); // Default is -1
+
+    // ---- Compaction ----
+    opts.set_compaction_style(DBCompactionStyle::Level); // Default is DBCompactionStyle::Level
+    opts.set_compaction_pri(CompactionPri::ByCompensatedSize); // Default is CompactionPri::ByCompensatedSize
+
+    // ---- Block-based table ----
+    let mut block_opts = BlockBasedOptions::default();
+    block_opts.set_block_cache(&Cache::new_lru_cache(256 * 1024 * 1024)); // Default is 8MB
+    block_opts.set_bloom_filter(10.0, true);
+    block_opts.set_cache_index_and_filter_blocks(true);
+    block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true); // Default is false
+
+    opts.set_block_based_table_factory(&block_opts);
+    opts
+}
+
+/// Create an `Options` specifically for the Wasm column family, given an existing
+/// base `Options`.
+pub fn new_wasm_cf_options(mut opts: Options) -> Options {
+    // ---- Memtable ----
+    //
+    // Wasm contract storage tends to generate far fewer tombstones than the
+    // chain-level state CF, and also have a strong prefix locality (fixed 24-byte prefix).
+    //
+    // A 16MB memtable gives:
+    // - fewer flushes during periods of high contract activity,
+    // - better write throughput,
+    // - minimal impact on iterator performance, since wasm keys have a
+    //   strong prefix locality (fixed 24-byte prefix).
+    //
+    // Adjust later if specific contracts generate large amounts of deletes.
+    opts.set_write_buffer_size(16 * 1024 * 1024); // Default is 64MB
+    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(WASM_PREFIX_LEN));
+    opts
+}
+
+pub fn new_storage_cf_options(mut opts: Options) -> Options {
+    // ---- Memtable ----
+    // The state-storage CF is extremely delete-heavy (cronjobs), producing a
+    // very large number of tombstones. A small memtable (2MB) keeps the number
+    // of live entries + tombstones low at any moment, which greatly reduces
+    // iterator construction time. With a 2MB memtable we flush frequently,
+    // minimizing the worst-case "ramp-up" in iterator latency.
+    opts.set_write_buffer_size(2 * 1024 * 1024); // Default is 64MB
+    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(GRUG_NAMESPACE_LEN));
+    opts
+}
+
+/// Create a tuned default `ReadOptions`.
+pub fn new_read_options(
     iterate_lower_bound: Option<&[u8]>,
     iterate_upper_bound: Option<&[u8]>,
 ) -> ReadOptions {
@@ -922,6 +1212,45 @@ pub(crate) fn new_read_options(
     }
     if let Some(bound) = iterate_upper_bound {
         opts.set_iterate_upper_bound(bound);
+    }
+
+    // Enable readahead for sequential scans. This reduces the number of
+    // system calls and page faults when reading large ranges.
+    opts.set_readahead_size(1000 * 1024);
+
+    opts
+}
+
+/// Create a `ReadOptions` specifically for iteration in the Wasm column family,
+/// given an existing `ReadOptions`.
+pub fn new_wasm_read_options(
+    mut opts: ReadOptions,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+) -> ReadOptions {
+    // Enable prefix mode only if `min` & `max` share the exact same "wasm" + addr prefix.
+    if let (Some(min), Some(max)) = (min, max)
+        && min.len() >= WASM_PREFIX_LEN
+        && max.len() >= WASM_PREFIX_LEN
+        && min[..WASM_PREFIX_LEN] == max[..WASM_PREFIX_LEN]
+    {
+        opts.set_prefix_same_as_start(true);
+    }
+
+    opts
+}
+
+pub fn new_storage_read_options(
+    mut opts: ReadOptions,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+) -> ReadOptions {
+    if let (Some(min), Some(max)) = (min, max)
+        && min.len() >= GRUG_NAMESPACE_LEN
+        && max.len() >= GRUG_NAMESPACE_LEN
+        && min[..GRUG_NAMESPACE_LEN] == max[..GRUG_NAMESPACE_LEN]
+    {
+        opts.set_prefix_same_as_start(true);
     }
     opts
 }
@@ -933,7 +1262,7 @@ pub fn cf_default(db: &DB) -> &ColumnFamily {
 }
 
 #[cfg(feature = "ibc")]
-pub(crate) fn cf_preimages(db: &DB) -> &ColumnFamily {
+pub fn cf_preimages(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
@@ -942,6 +1271,12 @@ pub(crate) fn cf_preimages(db: &DB) -> &ColumnFamily {
 pub fn cf_state_storage(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_STATE_STORAGE).unwrap_or_else(|| {
         panic!("failed to find state storage column family");
+    })
+}
+
+pub fn cf_wasm_storage(db: &DB) -> &ColumnFamily {
+    db.cf_handle(CF_NAME_WASM_STORAGE).unwrap_or_else(|| {
+        panic!("failed to find wasm storage column family");
     })
 }
 
@@ -1392,7 +1727,13 @@ mod tests_jmt {
 
 #[cfg(test)]
 mod tests_simple {
-    use {super::*, grug_app::SimpleCommitment, grug_types::hash, temp_rocksdb::TempDataDir};
+    use {
+        super::*,
+        grug_app::{SimpleCommitment, StorageProvider},
+        grug_storage::Map,
+        grug_types::{BorshSerExt, MockStorage, ResultExt, Shared, btree_map, btree_set, hash},
+        temp_rocksdb::TempDataDir,
+    };
 
     // sha256(6 | donald | 1 | 5 | trump | 4 | jake | 1 | 8 | shepherd | 3 | joe | 1 | 5 | biden | 5 | larry | 1 | 8 | engineer)
     // = sha256(0006646f6e616c640100057472756d7000046a616b65010008736865706865726400036a6f65010005626964656e00056c61727279010008656e67696e656572)
@@ -1607,6 +1948,196 @@ mod tests_simple {
         // Open a brand new DB with priority data. Should succeed.
         let _db =
             DiskDb::<SimpleCommitment>::open_with_priority(&path, Some((b"000", b"004"))).unwrap();
+    }
+
+    #[test]
+    fn ensure_wasm_cf_prefix() {
+        const MAP: Map<&str, u64> = Map::new("map");
+
+        let buffer = Shared::new(Buffer::new_unnamed(MockStorage::new(), None));
+
+        let mut provider = StorageProvider::new(Box::new(buffer.clone()), &[
+            CONTRACT_NAMESPACE,
+            &Addr::mock(0),
+        ]);
+
+        MAP.save(&mut provider, "foo", &1).unwrap();
+
+        drop(provider);
+
+        let (_, b) = buffer.disassemble().disassemble();
+
+        let mut k = Vec::with_capacity(4 + 20 + 2 + 3 + 3);
+        k.extend_from_slice(b"wasm");
+        k.extend_from_slice(&Addr::mock(0));
+        k.extend_from_slice(&("map".len() as u16).to_be_bytes());
+        k.extend_from_slice(b"map");
+        k.extend_from_slice(b"foo");
+
+        assert_eq!(
+            b,
+            btree_map! { k => Op::Insert(1_u64.to_borsh_vec().unwrap()) }
+        );
+    }
+
+    #[test]
+    fn merge_iterators() {
+        // Ascending
+        let l = vec![1, 2, 4];
+        let r = vec![3, 5, 6];
+
+        assert_eq!(
+            l.into_iter()
+                .merge_by(r.into_iter(), |a, b| a < b)
+                .collect::<Vec<_>>(),
+            [1, 2, 3, 4, 5, 6]
+        );
+
+        // Descending
+        let l = vec![4, 2, 1];
+        let r = vec![6, 5, 3];
+
+        assert_eq!(
+            l.into_iter()
+                .merge_by(r.into_iter(), |a, b| a > b)
+                .collect::<Vec<_>>(),
+            [6, 5, 4, 3, 2, 1]
+        );
+    }
+
+    /// The logic of the DB assumes records in the wasm column family have a 24-byte
+    /// prefix (= 4 bytes of "wasm" + 20 bytes of contract address).
+    /// We need to make sure this is true (in case a change in `StorageProvider`
+    /// changes how storage is laid out).
+    #[test]
+    fn storage_provider_prefix_length_is_correct() {
+        assert_eq!(
+            StorageProvider::new(Box::new(MockStorage::new()), &[
+                CONTRACT_NAMESPACE,
+                &Addr::mock(0),
+            ])
+            .namespace()
+            .len(),
+            WASM_PREFIX_LEN,
+            "storage provider prefix length is not the expected value"
+        );
+    }
+
+    /// Should throw error if the batch contains a key that starts with `b"wasm"`
+    /// but doesn't have the expected format of wasm keys.
+    #[test]
+    fn rejecting_non_wasm_key() {
+        // Prepare a key that is not a wasm key. The contract address should be
+        // 20 bytes, but here we only have 10 bytes.
+        let not_wasm = concat(&[CONTRACT_NAMESPACE, &[0; 10], b"foo"]);
+        assert!(!is_wasm_key(&not_wasm));
+
+        let path = TempDataDir::new("_grug_disk_db_lite_iterator_works");
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        db.flush_but_not_commit(btree_map! { not_wasm.clone() => Op::Delete })
+            .should_fail_with_error(DbError::not_wasm_key(not_wasm));
+    }
+
+    #[test]
+    fn iterator_works() {
+        // -------------------------- prepare the DB ---------------------------
+
+        let wasm_1 = concat(&[CONTRACT_NAMESPACE, &[1; 20], b"foo"]);
+        assert!(is_wasm_key(&wasm_1));
+
+        let wasm_3 = concat(&[CONTRACT_NAMESPACE, &[3; 20], b"foo"]);
+        assert!(is_wasm_key(&wasm_3));
+
+        let keys = btree_set! {
+            b"foo".to_vec(),    // A record smaller than "wasm".
+            wasm_1,             // A record in wasm contract 0x11..11.
+            wasm_3,             // A record in wasm contract 0x33..33.
+            b"xxxfoo".to_vec(), // A record bigger than "wasn".
+        };
+
+        let path = TempDataDir::new("_grug_disk_db_lite_iterator_works");
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        let batch = keys
+            .iter()
+            .map(|k| (k.clone(), Op::Insert(b"bar".to_vec())))
+            .collect();
+        let (version, _root_hash) = db.flush_and_commit(batch).unwrap();
+
+        let storage = db.state_storage(Some(version)).unwrap();
+
+        // -------------------- iterate all possible cases ---------------------
+
+        let min_not_wasm = concat(&[CONTRACT_NAMESPACE, &[1; 10]]);
+        assert!(!is_wasm_key(&min_not_wasm));
+
+        let min_wasm = concat(&[CONTRACT_NAMESPACE, &[1; 20]]);
+        assert!(is_wasm_key(&min_wasm));
+
+        let max_not_wasm = concat(&[CONTRACT_NAMESPACE, &[2; 10]]);
+        assert!(!is_wasm_key(&max_not_wasm));
+
+        let max_wasm = concat(&[CONTRACT_NAMESPACE, &[2; 20]]);
+        assert!(is_wasm_key(&max_wasm));
+
+        for (min, max) in [
+            // max < wasm
+            (None, Some(b"fuzz".as_slice())),
+            // min < wasm < max (NOT a wasm key)
+            (None, Some(max_not_wasm.as_slice())),
+            // min < wasm < max (a wasm key)
+            (None, Some(max_wasm.as_slice())),
+            // min < wasm < wasn < max
+            (None, None),
+            // wasm < min (NOT a wasm key) < max (NOT a wasm key) < wasn
+            (Some(min_not_wasm.as_slice()), Some(max_not_wasm.as_slice())),
+            // wasm < min (NOT a wasm key) < max (a wasm key) < wasn
+            (Some(min_not_wasm.as_slice()), Some(max_wasm.as_slice())),
+            // wasm < min (a wasm key) < max (NOT a wasm key) < wasn
+            (Some(min_wasm.as_slice()), Some(max_not_wasm.as_slice())),
+            // wasm < min (a wasm key) < max (a wasm key) < wasn
+            (Some(min_wasm.as_slice()), Some(max_wasm.as_slice())),
+            // wasm < min (NOT a wasm key) < wasn < max
+            (Some(min_not_wasm.as_slice()), None),
+            // wasm < min (a wasm key) < wasn < max
+            (Some(min_wasm.as_slice()), None),
+            // wasn < min
+            (Some(b"wb".as_slice()), None),
+        ] {
+            let lower = match min {
+                Some(s) => Bound::Included(s),
+                None => Bound::Unbounded,
+            };
+
+            let upper = match max {
+                Some(s) => Bound::Excluded(s),
+                None => Bound::Unbounded,
+            };
+
+            let expect = keys
+                .range::<[u8], _>((lower, upper))
+                .cloned()
+                .collect::<Vec<_>>();
+
+            let actual = storage
+                .scan_keys(min, max, Order::Ascending)
+                .collect::<Vec<_>>();
+
+            assert_eq!(
+                actual, expect,
+                "actual and expect do not match! min = {min:?}, max = {max:?}"
+            );
+        }
+    }
+
+    fn concat(slices: &[&[u8]]) -> Vec<u8> {
+        let len = slices.iter().map(|slice| slice.len()).sum();
+        let mut vec = Vec::with_capacity(len);
+        for slice in slices {
+            vec.extend_from_slice(slice);
+        }
+        vec
     }
 }
 

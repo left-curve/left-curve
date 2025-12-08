@@ -12,6 +12,7 @@
     "./messages/*": "./messages/*",
     "./inlang/*": "./project.inlang/*",
     "./paraglide/*": "./paraglide/*",
+    "./coins": "./coins.ts",
     ".": {
       "types": "./build/index.d.ts",
       "import": "./build/index.js",
@@ -39,16 +40,21 @@
     "date-fns-tz": "^3.2.0",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "catalog:",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "clsx": "^2.1.1",
+    "tailwind-variants": "catalog:"
   },
   "devDependencies": {
+    "react": "catalog:",
+    "@types/react": "catalog:",
     "@left-curve/config": "workspace:^",
     "@types/date-fns": "catalog:",
     "date-fns": "catalog:",
     "nodemon": "^3.1.10"
   },
   "peerDependencies": {
-    "date-fns": ">=4.0.0"
+    "date-fns": ">=4.0.0",
+    "react": "^18"
   },
   "nodemonConfig": {
     "watch": [

@@ -1,0 +1,42 @@
+- name: Ensure directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop: ["{{ tempo_dir }}/config", "{{ tempo_dir }}/data"]
+
+- name: Copy files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "{{ playbook_dir }}/roles/tempo/templates/tempo.yaml", dest: "{{ tempo_dir }}/config/tempo.yaml" }
+        - { src: "{{ playbook_dir }}/roles/tempo/templates/docker-compose.yml", dest: "{{ tempo_dir }}/docker-compose.yml" }
+
+- name: Launch Tempo
+  community.docker.docker_compose_v2:
+    project_src: "{{ tempo_dir }}"
+    pull: missing
+    state: present
+    recreate: always
+
+- name: Install systemd unit for Tempo compose
+  become: true
+  become_user: root
+  template:
+    src: tempo-compose.service.j2
+    dest: /etc/systemd/system/tempo-compose.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start tempo-compose service
+  become: true
+  become_user: root
+  systemd:
+    name: tempo-compose.service
+    enabled: true
+    state: started

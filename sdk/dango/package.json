@@ -13,7 +13,7 @@
     "test:watch": "pnpm vitest",
     "pre-dev": "tsc",
     "dev": "tsc -w",
-    "build": "pnpm tsup --clean"
+    "build": "NODE_OPTIONS='--max-old-space-size=8192' pnpm tsup --clean"
   },
   "main": "./build/index.cjs",
   "module": "./build/index.js",
