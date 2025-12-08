@@ -1,6 +1,7 @@
 use {
     crate::config::{Config, dango::DangoConfig, evm::EVMConfig},
     alloy::primitives::Address,
+    anyhow::{anyhow, bail},
     dango_client::{Secp256k1, SingleSigner},
     dango_types::{
         auth::Nonce,
@@ -75,7 +76,7 @@ pub async fn set_ism_validator_set(
             None,
         )
         .await?;
-    println!("mailbox_config: {:#?}", mailbox_config);
+    println!("mailbox_config: {mailbox_config:#?}");
 
     // Query the mock validator set from the ISM contract
     let validator_sets = dango_client
@@ -89,7 +90,7 @@ pub async fn set_ism_validator_set(
         )
         .await?;
 
-    println!("validator_sets: {:#?}", validator_sets);
+    println!("validator_sets: {validator_sets:#?}");
 
     // Get the validator set for the remote domain from the config
     let validator_set = config
@@ -97,7 +98,12 @@ pub async fn set_ism_validator_set(
         .isms
         .iter()
         .find(|(domain, _)| *domain == evm_config.hyperlane_domain)
-        .unwrap()
+        .ok_or_else(|| {
+            anyhow!(
+                "no validator set found for domain `{}`",
+                evm_config.hyperlane_domain
+            )
+        })?
         .1
         .clone();
 
@@ -112,7 +118,7 @@ pub async fn set_ism_validator_set(
 
     match validator_sets.get(&evm_config.hyperlane_domain) {
         Some(validator_set) => {
-            println!("Current validator_set: {:#?}", validator_set);
+            println!("Current validator_set: {validator_set:#?}");
             if validator_set.threshold == new_validator_set.threshold
                 && validator_set.validators == new_validator_set.validators
             {
@@ -147,7 +153,7 @@ pub async fn set_ism_validator_set(
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
     let outcome = dango_client.search_tx(outcome.tx_hash).await?;
-    println!("outcome: {:#?}", outcome);
+    println!("outcome: {outcome:#?}");
 
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
@@ -162,16 +168,14 @@ pub async fn set_ism_validator_set(
             None,
         )
         .await?;
-    println!("validator_set_after: {:#?}", validator_set_after);
+    println!("validator_set_after: {validator_set_after:#?}");
 
     if validator_set_after.threshold == new_validator_set.threshold
         && validator_set_after.validators == new_validator_set.validators
     {
-        println!("Validator set is now {:#?}.", validator_set_after);
+        println!("Validator set is now {validator_set_after:#?}.");
     } else {
-        return Err(anyhow::anyhow!(
-            "Failed to set the mock validator set for the remote domain"
-        ));
+        bail!("Failed to set the mock validator set for the remote domain");
     }
 
     Ok(())

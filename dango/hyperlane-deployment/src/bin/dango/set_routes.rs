@@ -11,6 +11,7 @@
 
 use {
     alloy::primitives::{Address, address},
+    anyhow::anyhow,
     dango_hyperlane_deployment::{config, dango::set_warp_routes, setup},
     dotenvy::dotenv,
     std::collections::BTreeSet,
@@ -26,7 +27,11 @@ async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
     let config = config::load_config()?;
-    let evm_config = config.evm.get("sepolia").unwrap();
+
+    let evm_config = config
+        .evm
+        .get("sepolia")
+        .ok_or(anyhow!("EVM config not found for `sepolia`"))?;
 
     let (dango_client, mut dango_owner) = setup::setup_dango(&config.dango).await?;
 
@@ -40,6 +45,5 @@ async fn main() -> anyhow::Result<()> {
             .map(|(symbol, address)| (symbol.to_string(), *address))
             .collect::<BTreeSet<_>>(),
     )
-    .await?;
-    Ok(())
+    .await
 }
