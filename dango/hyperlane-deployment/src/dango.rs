@@ -8,8 +8,8 @@ use {
         gateway::{self, Origin, Remote},
     },
     grug::{
-        Addr, BroadcastClientExt, Coins, Defined, GasOption, HexByteArray, QueryClientExt,
-        SearchTxClient, StdError,
+        BroadcastClientExt, Coins, Defined, GasOption, HexByteArray, QueryClientExt,
+        SearchTxClient, StdResult,
     },
     hyperlane_types::{Addr32, isms::multisig::ValidatorSet},
     indexer_client::HttpClient,
@@ -37,9 +37,10 @@ pub async fn set_warp_routes(
                 },
             ))
         })
-        .collect::<Result<BTreeSet<(Origin, Addr, Remote)>, StdError>>()?;
+        .collect::<StdResult<BTreeSet<_>>>()?;
 
-    println!("Setting routes on Dango gateway: {:#?}", routes);
+    println!("Setting routes on Dango gateway: {routes:#?}");
+
     dango_client
         .execute(
             signer,
@@ -52,7 +53,8 @@ pub async fn set_warp_routes(
             dango_config.chain_id.as_str(),
         )
         .await?;
-    println!("done!");
+
+    println!("Done!");
 
     Ok(())
 }

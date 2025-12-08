@@ -84,6 +84,7 @@ async fn main() -> anyhow::Result<()> {
             )
         })
         .collect::<BTreeSet<_>>();
+
     set_warp_routes(
         &dango_client,
         &config.dango,

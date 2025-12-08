@@ -23,7 +23,13 @@ use {
     indexer_client::HttpClient,
 };
 
-pub mod utils;
+pub async fn is_contract<P>(provider: &P, address: Address) -> anyhow::Result<bool>
+where
+    P: Provider,
+{
+    let code = provider.get_code_at(address).await?;
+    Ok(!code.is_empty())
+}
 
 pub async fn enroll_dango_domain(
     provider: &impl Provider,
@@ -79,20 +85,20 @@ pub async fn deploy_proxy_admin(provider: &impl Provider) -> anyhow::Result<Addr
 ///
 /// # Arguments
 ///
-/// * `provider` - The provider to use for the deployment.
-/// * `hyperlane_deployments` - The hyperlane deployments to use for the deployment.
-/// * `warp_route` - The warp route to deploy.
-/// * `proxy_admin_address` - The address of the proxy admin to use for the deployment.
-/// * `ism` - The address of the ISM to use for the deployment.
-/// * `owner` - The address of the owner to use for the deployment.
+/// - `provider`: The provider to use for the deployment.
+/// - `hyperlane_deployments`: The hyperlane deployments to use for the deployment.
+/// - `warp_route`: The warp route to deploy.
+/// - `proxy_admin_address`: The address of the proxy admin to use for the deployment.
+/// - `ism`: The address of the ISM to use for the deployment.
+/// - `owner`: The address of the owner to use for the deployment.
 ///
 /// # Returns
 ///
-/// * `(hyperlane_warp_route_address, proxy_address)` - The address of the deployed warp route and proxy.
+/// - `(hyperlane_warp_route_address, proxy_address)`: The address of the deployed warp route and proxy.
 ///
 /// # Errors
 ///
-/// * `anyhow::Error` - If the deployment fails.
+/// - `anyhow::Error`: If the deployment fails.
 pub async fn deploy_warp_route(
     provider: &impl Provider,
     hyperlane_deployments: &HyperlaneDeployments,
@@ -247,7 +253,7 @@ pub async fn get_or_deploy_ism(
             println!("ISM address: {ism_address}");
 
             // Check if the ISM is already deployed
-            let is_deployed = utils::is_contract(&provider, ism_address).await?;
+            let is_deployed = is_contract(&provider, ism_address).await?;
             if !is_deployed {
                 println!("ISM is not yet deployed. Deploying...");
                 let tx = factory

@@ -23,6 +23,7 @@ use {
 
 // The kind of warp route to deploy.
 const WARP_ROUTE_TYPE: WarpRouteType = WarpRouteType::Native;
+
 // The symbol to use as subdenom for the token on Dango.
 const SYMBOL: &str = "sepoliaETH";
 

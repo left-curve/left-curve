@@ -43,10 +43,7 @@ async fn main() -> anyhow::Result<()> {
     let deployments = config::load_deployments()?;
     let evm_config = config.evm.get(EVM_NETWORK).unwrap();
     let evm_deployment = deployments.evm.get(EVM_NETWORK).ok_or_else(|| {
-        anyhow::anyhow!(
-            "No deployment for EVM network '{}' found in deployments.json",
-            EVM_NETWORK
-        )
+        anyhow::anyhow!("No deployment for EVM network '{EVM_NETWORK}' found in deployments.json")
     })?;
 
     let mut maybe_warp_route = None;

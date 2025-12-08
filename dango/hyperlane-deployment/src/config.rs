@@ -1,17 +1,15 @@
-use std::collections::BTreeMap;
-
-use {
-    alloy::primitives::Address,
-    serde::{Deserialize, Serialize},
-};
-
-use crate::config::{
-    dango::DangoConfig,
-    evm::{EVMConfig, WarpRouteType},
-};
-
 pub mod dango;
 pub mod evm;
+
+use {
+    crate::config::{
+        dango::DangoConfig,
+        evm::{EVMConfig, WarpRouteType},
+    },
+    alloy::primitives::Address,
+    serde::{Deserialize, Serialize},
+    std::collections::BTreeMap,
+};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -64,15 +62,19 @@ pub fn save_deployments(deployments: &Deployments) -> anyhow::Result<()> {
     let deployments_path = format!("{}/deployments.json", env!("CARGO_MANIFEST_DIR"));
     let deployments_json = serde_json::to_string_pretty(deployments)?;
     std::fs::write(deployments_path.clone(), deployments_json)?;
-    println!("Saved deployments to {}", deployments_path);
+    println!("Saved deployments to {deployments_path}");
+
     Ok(())
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
-    use alloy::primitives::{Address, address};
-
-    use super::*;
+    use {
+        super::*,
+        alloy::primitives::{Address, address},
+    };
 
     #[test]
     fn test_load_config() {
@@ -82,15 +84,17 @@ mod tests {
     #[test]
     fn t1() {
         let addr = address!("0xFEb9585b2f948c1eD74034205a7439261a9d27DD");
+
         let serialized = serde_json::to_string(&addr).unwrap();
-        println!("serialized = {}", serialized);
+        println!("serialized = {serialized}");
+
         let deserialized: Address = serde_json::from_str(&serialized).unwrap();
-        println!("deserialized = {}", deserialized);
+        println!("deserialized = {deserialized}");
     }
 
     #[test]
     fn test_load_deployments() {
         let deployments = load_deployments().unwrap();
-        println!("deployments = {:?}", deployments);
+        println!("deployments = {deployments:?}");
     }
 }

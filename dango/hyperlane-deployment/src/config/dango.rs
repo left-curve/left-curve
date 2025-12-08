@@ -1,6 +1,7 @@
-use {dango_types::gateway::Origin, serde::Serialize};
-
-use {dango_types::gateway::Remote, serde::Deserialize};
+use {
+    dango_types::gateway::{Origin, Remote},
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Route {
@@ -21,6 +22,8 @@ pub struct ValidatorSet {
     pub threshold: u32,
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
@@ -35,19 +38,19 @@ mod tests {
 
         // serialize the address
         let serialized = serde_json::to_string(&a).unwrap();
-        println!("serialized = {}", serialized);
+        println!("serialized = {serialized}");
 
         // deserialize the address
         let deserialized: Addr = serde_json::from_str(&serialized).unwrap();
-        println!("deserialized = {}", deserialized);
+        println!("deserialized = {deserialized}");
 
         let addr32 = Addr32::from(a);
         let serialized = serde_json::to_string(&addr32).unwrap();
-        println!("serialized = {}", serialized);
+        println!("serialized = {serialized}");
 
         // deserialize the address
         let deserialized: Addr32 = serde_json::from_str(&serialized).unwrap();
-        println!("deserialized = {}", deserialized);
+        println!("deserialized = {deserialized}");
     }
 
     #[test]
@@ -56,10 +59,10 @@ mod tests {
 
         // serialize the hex
         let serialized = serde_json::to_string(&h).unwrap();
-        println!("serialized = {}", serialized);
+        println!("serialized = {serialized}");
 
         // deserialize the hex
         let deserialized: [u8; 32] = serde_json::from_str(&serialized).unwrap();
-        println!("deserialized = {:?}", deserialized);
+        println!("deserialized = {deserialized:?}");
     }
 }
