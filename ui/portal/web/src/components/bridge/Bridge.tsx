@@ -25,7 +25,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import type React from "react";
-import { useEffect, type PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 
 const masks = {
   ethereum: ethAddressMask,
@@ -201,10 +201,6 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
 }) => {
   const controllers = useInputs();
   const state = useBridgeState({ action, controllers });
-
-  useEffect(() => {
-    getAllBalances("0x76858f241fe4d17b921f1f9f270a977f7cc9c2a7").then(console.log);
-  }, []);
 
   return (
     <BridgeProvider value={{ state, controllers }}>
