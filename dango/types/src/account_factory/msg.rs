@@ -6,7 +6,7 @@ use {
         },
         auth::{Key, Signature},
     },
-    grug::{Addr, Coins, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
+    grug::{Addr, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
     sha2::Sha256,
     std::collections::BTreeMap,
 };
@@ -57,8 +57,6 @@ pub struct InstantiateMsg {
     /// Each genesis user is to be associated with exactly one key.
     /// A spot account will be created for each genesis user.
     pub users: Vec<NewUserSalt>,
-    /// The minimum deposit required to onboard a user.
-    pub minimum_deposit: Coins,
 }
 
 #[grug::derive(Serde)]
@@ -88,9 +86,6 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Query the minimum deposit required to onboard a user.
-    #[returns(Coins)]
-    MinimumDeposit {},
     /// Query the next user index.
     #[returns(UserIndex)]
     NextUserIndex {},

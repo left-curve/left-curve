@@ -8,14 +8,14 @@ use {
         DangoQuerier,
         account_factory::RegisterUserData,
         auth::{
-            ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
-            StandardCredential,
+            AccountStatus, ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc,
+            Signature, StandardCredential,
         },
     },
     data_encoding::BASE64URL_NOPAD,
     grug::{
-        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt, SignData,
-        StdError, StdResult, Storage, StorageQuerier, Tx,
+        Addr, Api, AuthCtx, AuthMode, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt, JsonSerExt,
+        MutableCtx, QuerierExt, SignData, StdError, StdResult, Storage, StorageQuerier, Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -31,6 +31,31 @@ pub mod account_factory {
     pub const KEYS: Map<(UserIndex, Hash256), Key> = Map::new("key");
 
     pub const ACCOUNTS_BY_USER: Set<(UserIndex, Addr)> = Set::new("account__user");
+}
+
+/// The expected storage layout of the account contract.
+pub mod account {
+    use {
+        dango_types::auth::{AccountStatus, Nonce},
+        grug::Item,
+        std::collections::BTreeSet,
+    };
+
+    /// The account's status. Only accounts in the `Active` state can send
+    /// transactions.
+    ///
+    /// Upon creation, an account is initialized to the `Inactive` state. It
+    /// must receive transfer equal to or greater than the minimum deposit
+    /// (specified in the app-config) to become `Active`.
+    ///
+    /// If this storage slot is empty, it's default to the `Inactive` state.
+    pub const STATUS: Item<AccountStatus> = Item::new("status");
+
+    /// The most recent nonces that have been used to send transactions.
+    ///
+    /// All three account types (spot, margin, multi) stores their nonces in this
+    /// same storage slot.
+    pub const SEEN_NONCES: Item<BTreeSet<Nonce>> = Item::new("seen_nonces");
 }
 
 /// The [EIP-155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
@@ -66,17 +91,77 @@ pub const MAX_SEEN_NONCES: usize = 20;
 /// much bigger than the biggest nonce seen so far.
 pub const MAX_NONCE_INCREASE: Nonce = 100;
 
-/// The most recent nonces that have been used to send transactions.
-///
-/// All three account types (spot, margin, multi) stores their nonces in this
-/// same storage slot.
-pub const SEEN_NONCES: Item<BTreeSet<Nonce>> = Item::new("seen_nonces");
+/// Query the account's status.
+pub fn query_status(storage: &dyn Storage) -> StdResult<AccountStatus> {
+    account::STATUS
+        .may_load(storage)
+        .map(|opt| opt.unwrap_or_default()) // default to to `Inactive` state
+}
 
 /// Query the set of most recent nonce tracked.
 pub fn query_seen_nonces(storage: &dyn Storage) -> StdResult<BTreeSet<Nonce>> {
-    SEEN_NONCES
+    account::SEEN_NONCES
         .may_load(storage)
-        .map(|opt| opt.unwrap_or_default())
+        .map(|opt| opt.unwrap_or_default()) // default to an empty B-tree set
+}
+
+pub fn create_account(ctx: MutableCtx) -> anyhow::Result<()> {
+    let app_cfg = ctx.querier.query_dango_config()?;
+
+    // Only the account factory can create new accounts.
+    ensure!(
+        ctx.sender == app_cfg.addresses.account_factory,
+        "you don't have the right, O you don't have the right"
+    );
+
+    // Upon creation, the account's status is set to `Inactive`.
+    // We don't need to save it in storage, because if storage is empty, it's
+    // default to `Inactive`. This is an intentional optimization to minimize
+    // disk writes.
+    //
+    // Two exceptions to this are:
+    // 1. during genesis;
+    // 2. the account received sufficient funds during instantiation.
+    // In these cases, activate the account now.
+    if ctx.block.height == GENESIS_BLOCK_HEIGHT
+        || is_sufficient(&ctx.funds, &app_cfg.minimum_deposit)
+    {
+        account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
+        // TODO: emit an event?
+    }
+
+    Ok(())
+}
+
+pub fn receive_transfer(ctx: MutableCtx) -> anyhow::Result<()> {
+    match query_status(ctx.storage)? {
+        // If the account is inactive: query the minimum deposit from app-config.
+        // Activate the account is the deposit is sufficient.
+        AccountStatus::Inactive => {
+            let minimum = ctx.querier.query_minimum_deposit()?;
+            if is_sufficient(&ctx.funds, &minimum) {
+                account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
+                // TODO: emit an event?
+            }
+        },
+        AccountStatus::Frozen => bail!(
+            "account {} is frozen, can't receive transfers",
+            ctx.contract
+        ),
+        AccountStatus::Active => { /* nothing to do */ },
+    }
+
+    Ok(())
+}
+
+/// A deposit is considered **sufficient** if _either_ of the following is true:
+/// - the minimum deposit is zero;
+/// - _any_ of the coins received has an amount greater than the minimum.
+fn is_sufficient(deposit: &Coins, minimum: &Coins) -> bool {
+    minimum.is_empty()
+        || minimum
+            .iter()
+            .any(|coin| deposit.amount_of(coin.denom) >= *coin.amount)
 }
 
 /// Authenticate a transaction by ensuring:
@@ -115,6 +200,13 @@ pub fn authenticate_tx(
         "account {} isn't associated with user {}",
         tx.sender,
         metadata.user_index,
+    );
+
+    // The account must be in the `Active` state.
+    ensure!(
+        query_status(ctx.storage)? == AccountStatus::Active,
+        "account {} is not active",
+        tx.sender
     );
 
     verify_nonce_and_signature(ctx, tx, Some(factory), Some(metadata))
@@ -166,7 +258,7 @@ pub fn verify_nonce_and_signature(
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => {
             // Verify nonce.
-            SEEN_NONCES.may_update(ctx.storage, |maybe_nonces| {
+            account::SEEN_NONCES.may_update(ctx.storage, |maybe_nonces| {
                 let mut nonces = maybe_nonces.unwrap_or_default();
 
                 if let Some(&first) = nonces.first() {
@@ -433,7 +525,8 @@ mod tests {
         super::*,
         dango_types::config::{AppAddresses, AppConfig},
         grug::{
-            Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt, addr, btree_map, hash,
+            Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr,
+            btree_map, hash,
         },
         hex_literal::hex,
         std::str::FromStr,
@@ -488,6 +581,12 @@ mod tests {
           "gas_limit": 2834
         }"#;
 
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -507,6 +606,7 @@ mod tests {
             });
 
         let mut ctx = MockContext::new()
+            .with_storage(storage)
             .with_querier(querier)
             .with_contract(user_address)
             .with_chain_id("dev-6")
@@ -525,6 +625,12 @@ mod tests {
         let user_key =
             Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
 
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -544,6 +650,7 @@ mod tests {
             });
 
         let mut ctx = MockContext::new()
+            .with_storage(storage)
             .with_querier(querier)
             .with_contract(user_address)
             .with_chain_id("dev-6")
@@ -619,6 +726,12 @@ mod tests {
           }
         }"#;
 
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -638,9 +751,21 @@ mod tests {
                     .unwrap();
             });
 
+        // With account in the `Inactive` state. Should fail.
+        let mut ctx = MockContext::new()
+            .with_storage(MockStorage::default()) // use the default storage, which doesn't contain the active status flag
+            .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("not-dev-1")
+            .with_mode(AuthMode::Finalize);
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None)
+            .should_fail_with_error("is not active");
+
         // With the incorrect chain ID. Should fail.
         let mut ctx = MockContext::new()
-            .with_querier(querier)
+            .with_storage(storage) // use the storage that contains the active status flag
+            .with_querier(ctx.querier)
             .with_contract(user_address)
             .with_chain_id("not-dev-1")
             .with_mode(AuthMode::Finalize);
@@ -650,6 +775,7 @@ mod tests {
 
         // With the correct chain ID.
         let mut ctx = MockContext::new()
+            .with_storage(ctx.storage)
             .with_querier(ctx.querier)
             .with_contract(user_address)
             .with_chain_id("dev-1")
@@ -673,6 +799,12 @@ mod tests {
             .into(),
         );
 
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -693,6 +825,7 @@ mod tests {
             });
 
         let mut ctx = MockContext::new()
+            .with_storage(storage)
             .with_querier(querier)
             .with_contract(user_address)
             .with_chain_id("dev-6")
@@ -749,6 +882,12 @@ mod tests {
         let user_key =
             Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
 
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -769,6 +908,7 @@ mod tests {
             });
 
         let mut ctx = MockContext::new()
+            .with_storage(storage)
             .with_querier(querier)
             .with_contract(user_address)
             .with_chain_id("dev-6")
@@ -824,6 +964,12 @@ mod tests {
             hex!("035d1e23762e9436aaff9fd41322cf7ea3d6a5a282094f85d175035ae9ca1ea265").into(),
         );
 
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -844,6 +990,7 @@ mod tests {
             });
 
         let mut ctx = MockContext::new()
+            .with_storage(storage)
             .with_querier(querier)
             .with_contract(user_address)
             .with_chain_id("dev-1")
@@ -891,7 +1038,14 @@ mod tests {
         let user_key =
             Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
 
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
         let ctx = MockContext::new()
+            .with_storage(storage)
             .with_chain_id("dev-6")
             .with_mode(AuthMode::Finalize);
 

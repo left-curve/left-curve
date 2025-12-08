@@ -277,9 +277,12 @@ mod tests {
         super::*,
         crate::{Eip712, Secp256k1},
         dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
-        dango_auth::authenticate_tx,
-        dango_types::config::{AppAddresses, AppConfig},
-        grug::{AuthMode, Coins, MockContext, MockQuerier, ResultExt},
+        dango_auth::{account::STATUS, authenticate_tx},
+        dango_types::{
+            auth::AccountStatus,
+            config::{AppAddresses, AppConfig},
+        },
+        grug::{AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt},
     };
 
     #[test]
@@ -302,6 +305,12 @@ mod tests {
                 "dango-1",
                 100_000_000,
             )
+            .unwrap();
+
+        let mut mock_storage = MockStorage::new();
+
+        STATUS
+            .save(&mut mock_storage, &AccountStatus::Active)
             .unwrap();
 
         let mock_querier = MockQuerier::new()
@@ -329,6 +338,7 @@ mod tests {
 
         let mut mock_ctx = MockContext::default()
             .with_chain_id("dango-1")
+            .with_storage(mock_storage)
             .with_querier(mock_querier)
             .with_mode(AuthMode::Finalize);
 
@@ -357,6 +367,12 @@ mod tests {
             )
             .unwrap();
 
+        let mut mock_storage = MockStorage::new();
+
+        STATUS
+            .save(&mut mock_storage, &AccountStatus::Active)
+            .unwrap();
+
         let mock_querier = MockQuerier::new()
             .with_raw_contract_storage(account_factory, |storage| {
                 ACCOUNTS_BY_USER
@@ -382,6 +398,7 @@ mod tests {
 
         let mut mock_ctx = MockContext::default()
             .with_chain_id("dango-1")
+            .with_storage(mock_storage)
             .with_querier(mock_querier)
             .with_mode(AuthMode::Finalize);
 

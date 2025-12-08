@@ -1,7 +1,6 @@
 use {
     crate::{NEXT_PROPOSAL_ID, PROPOSALS, VOTES},
     anyhow::{bail, ensure},
-    dango_auth::{authenticate_tx, verify_nonce_and_signature},
     dango_types::{
         DangoQuerier,
         account::{
@@ -13,17 +12,13 @@ use {
     },
     grug::{
         AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, QuerierExt,
-        Response, StdResult, Tx,
+        Response, Tx,
     },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
-    // Only the account factory can create new accounts.
-    ensure!(
-        ctx.sender == ctx.querier.query_account_factory()?,
-        "you don't have the right, O you don't have the right"
-    );
+    dango_auth::create_account(ctx)?;
 
     Ok(Response::new())
 }
@@ -81,16 +76,18 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // If the transaction contains any message that's not voting (i.e. create or
     // execute a proposal), then the signer must be a _current_ member.
     if has_non_voting {
-        authenticate_tx(ctx, tx, Some(metadata))?;
+        dango_auth::authenticate_tx(ctx, tx, Some(metadata))?;
     } else {
-        verify_nonce_and_signature(ctx, tx, None, Some(metadata))?;
+        dango_auth::verify_nonce_and_signature(ctx, tx, None, Some(metadata))?;
     }
 
     Ok(AuthResponse::new().request_backrun(false))
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
+pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
+    dango_auth::receive_transfer(ctx)?;
+
     Ok(Response::new())
 }
 
