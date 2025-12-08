@@ -193,10 +193,10 @@ jobs:
             exit 1
           fi
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain 1.89.0
+        uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: "1.89.0"
 
       - name: Install cross
         run: cargo install cross --git https://github.com/cross-rs/cross
