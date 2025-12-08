@@ -4,7 +4,7 @@ import type { Client, Transport } from "@left-curve/sdk/types";
 import type { PublicKey } from "../../../types/key.js";
 
 export type GetUserKeysParameters = {
-  username: string;
+  userIndex: number;
 };
 
 export type GetUserKeysReturnType = Promise<PublicKey[]>;
@@ -14,8 +14,8 @@ export async function getUserKeys<transport extends Transport>(
   parameters: GetUserKeysParameters,
 ): GetUserKeysReturnType {
   const document = /* GraphQL */ `
-   query keys($username: String!){
-    user(username: $username) {
+   query keys($userIndex: Int!){
+    user(userIndex: $userIndex) {
         publicKeys {
         id
         keyHash
