@@ -5,12 +5,16 @@ import { useConnectors } from "./useConnectors.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useChainId } from "./useChainId.js";
 
-import type { SigningSession, Username } from "@left-curve/dango/types";
+import type { SigningSession, UserIndexAndName } from "@left-curve/dango/types";
 
 type ScreenState = "options" | "usernames" | "email" | "wallets";
 export type UseSigninStateParameters = {
   session: boolean;
   expiration: number;
+  login?: {
+    error?: (e: unknown) => void;
+    success?: () => void;
+  };
   connect?: {
     error?: (e: unknown) => void;
     success?: () => void;
@@ -28,11 +32,11 @@ export function useSigninState(parameters: UseSigninStateParameters) {
   const [email, setEmail] = useState<string>("");
   const [screen, setScreen] = useState<ScreenState>("options");
   const [authData, setAuthData] = useState<{
-    usernames: Username[];
+    usersIndexAndName: UserIndexAndName[];
     keyHash?: string;
     signingSession?: SigningSession;
     connectorId?: string;
-  }>({ usernames: [] });
+  }>({ usersIndexAndName: [] });
 
   const connect = useMutation({
     onError: parameters.connect?.error,
@@ -46,46 +50,48 @@ export function useSigninState(parameters: UseSigninStateParameters) {
           { connector, expireAt: Date.now() + expiration },
           { setSession: false },
         );
-        const usernames = await publicClient.forgotUsername({
+        const usersIndexAndName = await publicClient.forgotUsername({
           keyHash: signingSession.keyHash,
         });
 
-        setAuthData({ usernames, connectorId, signingSession });
+        setAuthData({ usersIndexAndName, connectorId, signingSession });
       } else {
         const keyHash = await connector.getKeyHash();
-        const usernames = await publicClient.forgotUsername({ keyHash });
-        setAuthData({ usernames, connectorId, keyHash });
+        const usersIndexAndName = await publicClient.forgotUsername({ keyHash });
+        setAuthData({ usersIndexAndName, connectorId, keyHash });
       }
       setScreen("usernames");
     },
   });
 
   const login = useMutation({
-    mutationFn: async (username: string) => {
+    onError: parameters.login?.error,
+    onSuccess: parameters.login?.success,
+    mutationFn: async (userIndexAndName: UserIndexAndName) => {
       const { connectorId, keyHash, signingSession } = authData;
       const connector = connectors.find((connector) => connector.id === connectorId);
       if (!connector) throw new Error("error: missing connector");
 
       if (!signingSession) {
         await connector.connect({
-          username,
+          userIndexAndName,
           chainId,
           ...(keyHash
             ? { keyHash }
             : { challenge: "Please sign this message to confirm your identity." }),
         });
-        return username;
+        return userIndexAndName;
       }
 
       setSession(signingSession);
 
       await connector.connect({
-        username,
+        userIndexAndName,
         chainId,
         keyHash: signingSession.keyHash,
       });
 
-      return username;
+      return userIndexAndName;
     },
   });
 
@@ -94,7 +100,7 @@ export function useSigninState(parameters: UseSigninStateParameters) {
     setScreen,
     email,
     setEmail,
-    usernames: authData.usernames,
+    usersIndexAndName: authData.usersIndexAndName,
     connect,
     login,
   };

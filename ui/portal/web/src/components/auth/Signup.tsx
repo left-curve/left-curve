@@ -1,4 +1,11 @@
-import { createContext, ensureErrorMessage, IconWallet, useApp } from "@left-curve/applets-kit";
+import {
+  Checkbox,
+  createContext,
+  ensureErrorMessage,
+  ExpandOptions,
+  IconWallet,
+  useApp,
+} from "@left-curve/applets-kit";
 import { useSignupState } from "@left-curve/store";
 
 import { Button, IconLeft, ResizerContainer } from "@left-curve/applets-kit";
@@ -8,6 +15,7 @@ import { SocialCredential } from "./SocialCredential";
 import { PasskeyCredential } from "./PasskeyCredential";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 
 import type React from "react";
 
@@ -17,14 +25,19 @@ const [SignupProvider, useSignup] = createContext<ReturnType<typeof useSignupSta
 
 type SignupProps = {
   goTo: (auth: "signin") => void;
+  onFinish: () => void;
 };
 
-export const Signup: React.FC<SignupProps> = ({ goTo }) => {
+export const Signup: React.FC<SignupProps> = ({ goTo, onFinish }) => {
   const { toast } = useApp();
 
   const state = useSignupState({
-    toast: {
-      error: (e) =>
+    expiration: DEFAULT_SESSION_EXPIRATION,
+    login: {
+      onSuccess: () => onFinish(),
+    },
+    register: {
+      onError: (e) =>
         toast.error({ title: m["errors.failureRequest"](), description: ensureErrorMessage(e) }),
     },
   });
@@ -40,13 +53,14 @@ export const Signup: React.FC<SignupProps> = ({ goTo }) => {
               className="h-12 rounded-full shadow-account-card"
             />
             <div className="flex flex-col gap-3 items-center justify-center text-center">
-              <h1 className="h2-heavy">{m["signup.stepper.title"]({ step: 0 })}</h1>
+              <h1 className="h2-heavy">{m["signup.title"]()}</h1>
               <Header />
             </div>
           </div>
           <Email />
           <Wallets />
           <Credentials />
+          <Login />
           <Footer goTo={goTo} />
         </div>
       </ResizerContainer>
@@ -73,22 +87,28 @@ const Header: React.FC = () => {
     );
   }
 
+  if (screen === "login") {
+    return (
+      <p className="text-ink-tertiary-500 diatype-m-medium">
+        {m["signup.accountCreated.description"]()}
+      </p>
+    );
+  }
+
   return (
-    <p className="text-ink-tertiary-500 diatype-m-medium">
-      {m["signup.stepper.description"]({ step: 0 })}
-    </p>
+    <p className="text-ink-tertiary-500 diatype-m-medium">{m["signup.options.description"]()}</p>
   );
 };
 
 const Email: React.FC = () => {
-  const { screen, setScreen, email, setEmail, submission } = useSignup();
+  const { screen, setScreen, email, setEmail, register } = useSignup();
 
   if (screen !== "email") return null;
 
   return (
     <EmailCredential.OTP
       email={email}
-      onSuccess={() => submission.mutateAsync("privy")}
+      onSuccess={() => register.mutateAsync("privy")}
       goBack={() => {
         setScreen("options");
         setEmail("");
@@ -98,14 +118,14 @@ const Email: React.FC = () => {
 };
 
 const Wallets: React.FC = () => {
-  const { screen, setScreen, submission } = useSignup();
+  const { screen, setScreen, register } = useSignup();
 
   if (screen !== "wallets") return null;
 
   return (
     <div className="flex flex-col gap-7 w-full items-center">
       <div className="flex flex-col gap-4 w-full items-center">
-        <AuthOptions action={submission.mutateAsync} isPending={submission.isPending} />
+        <AuthOptions action={register.mutateAsync} isPending={register.isPending} />
         <Button size="sm" variant="link" onClick={() => setScreen("options")}>
           <IconLeft className="w-[22px] h-[22px]" />
           <span>{m["common.back"]()}</span>
@@ -116,7 +136,7 @@ const Wallets: React.FC = () => {
 };
 
 const Credentials: React.FC = () => {
-  const { screen, setScreen, submission, email, setEmail } = useSignup();
+  const { screen, setScreen, register, email, setEmail } = useSignup();
 
   if (screen !== "options") return null;
 
@@ -131,9 +151,9 @@ const Credentials: React.FC = () => {
       </div>
 
       <div className="flex flex-col items-center w-full gap-4">
-        <SocialCredential onAuth={() => submission.mutateAsync("privy")} signup />
+        <SocialCredential onAuth={() => register.mutateAsync("privy")} signup />
         <PasskeyCredential
-          onAuth={() => submission.mutateAsync("passkey")}
+          onAuth={() => register.mutateAsync("passkey")}
           label={m["common.signWithPasskey"]({ action: "signup" })}
         />
 
@@ -142,6 +162,36 @@ const Credentials: React.FC = () => {
           {m["signin.connectWallet"]()}
         </Button>
       </div>
+    </div>
+  );
+};
+
+const Login: React.FC = () => {
+  const { login, screen } = useSignup();
+  const { settings, changeSettings } = useApp();
+  const { useSessionKey } = settings;
+
+  if (screen !== "login") return null;
+
+  return (
+    <div className="flex flex-col gap-6 w-full">
+      <Button
+        fullWidth
+        onClick={() => login.mutateAsync({ useSessionKey })}
+        isLoading={login.isPending}
+      >
+        {m["common.signin"]()}
+      </Button>
+      <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
+        <div className="flex items-center gap-2 flex-col">
+          <Checkbox
+            size="md"
+            label={m["common.signinWithSession"]()}
+            checked={useSessionKey}
+            onChange={(v) => changeSettings({ useSessionKey: v })}
+          />
+        </div>
+      </ExpandOptions>
     </div>
   );
 };

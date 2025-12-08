@@ -1,23 +1,26 @@
 import { IconButton, IconChevronRight } from "@left-curve/applets-kit";
 import { Fragment } from "react";
 
-import type { Username } from "@left-curve/dango/types";
+import type { UserIndexAndName } from "@left-curve/dango/types";
 import type React from "react";
 
 type UsernamesListProps = {
-  usernames: Username[];
-  onUserSelection: (username: string) => void;
+  usersIndexAndName: UserIndexAndName[];
+  onUserSelection: (username: UserIndexAndName) => void;
 };
 
-export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserSelection }) => {
+export const UsernamesList: React.FC<UsernamesListProps> = ({
+  usersIndexAndName,
+  onUserSelection,
+}) => {
   return (
     <div className="flex flex-col w-full ">
-      {usernames.map((username, i) => {
+      {usersIndexAndName.map((userIndexAndName, i) => {
         return (
-          <Fragment key={username}>
+          <Fragment key={userIndexAndName.index}>
             <div
               className="flex gap-2 w-full hover:bg-surface-tertiary-rice p-2 rounded-xs transition-all cursor-pointer"
-              onClick={() => onUserSelection(username)}
+              onClick={() => onUserSelection(userIndexAndName)}
             >
               <div className="w-12 h-12 bg-surface-primary-red rounded-xxs border border-surface-secondary-red flex items-center justify-center">
                 <img
@@ -28,7 +31,11 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserS
               </div>
               <div className="flex-1 flex gap-4 items-center justify-between">
                 <div className="flex flex-col gap-1">
-                  <p className="diatype-lg-medium text-ink-secondary-700">{username}</p>
+                  <p className="diatype-lg-medium text-ink-secondary-700">
+                    {userIndexAndName.name
+                      ? userIndexAndName.name
+                      : `User #${userIndexAndName.index}`}
+                  </p>
                 </div>
 
                 <IconButton variant="link" className="text-ink-tertiary-500 p-0 h-fit w-fit">
@@ -36,7 +43,7 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserS
                 </IconButton>
               </div>
             </div>
-            {usernames.length - 1 !== i && (
+            {usersIndexAndName.length - 1 !== i && (
               <span className="w-full h-[1px] bg-outline-secondary-gray" />
             )}
           </Fragment>
