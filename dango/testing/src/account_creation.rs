@@ -50,7 +50,7 @@ pub fn add_account_with_existing_user(
             suite.deref_mut(),
             contracts.account_factory,
             AccountParams::Spot(Params::new(test_account.user_index())),
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(), // Make sure this is bigger than the minimum deposit.
         )
         .unwrap()
 }
@@ -68,6 +68,9 @@ pub fn create_user_and_account(
         true,
     );
 
+    // Create the user and its first spot account.
+    user.register_user(suite.deref_mut(), contracts.account_factory, Coins::new());
+
     // Make the initial deposit.
     suite
         .receive_warp_transfer(
@@ -75,10 +78,9 @@ pub fn create_user_and_account(
             solana::DOMAIN,
             solana::USDC_WARP,
             &user,
-            150_000_000,
+            150_000_000, // Make sure this is bigger than the minimum deposit.
         )
         .should_succeed();
 
-    user.register_user(suite.deref_mut(), contracts.account_factory, Coins::new());
     user.query_user_index(suite.querier())
 }

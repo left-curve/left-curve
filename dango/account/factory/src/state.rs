@@ -3,10 +3,8 @@ use {
         account_factory::{Account, AccountIndex, AccountType, UserIndex, Username},
         auth::Key,
     },
-    grug::{Addr, Coins, Counter, Hash256, Item, Map, Set},
+    grug::{Addr, Counter, Hash256, Map, Set},
 };
-
-pub const MINIMUM_DEPOSIT: Item<Coins> = Item::new("minium_deposit");
 
 pub const CODE_HASHES: Map<AccountType, Hash256> = Map::new("hash");
 

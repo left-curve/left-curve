@@ -28,25 +28,26 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
     icon,
   } = parameters;
 
-  return createConnector<EIP1193Provider>(({ transport, getUsername, emitter, chain }) => {
+  return createConnector<EIP1193Provider>(({ transport, getUserIndexAndName, emitter, chain }) => {
     return {
       id,
       name,
       icon,
       type: "eip1193",
-      async connect({ username, chainId, keyHash: _keyHash_ }) {
+      async connect({ userIndexAndName, chainId, keyHash: _keyHash_ }) {
         const client = createSignerClient({
           signer: this,
           type: "eip1193",
-          username,
           transport,
         });
 
         const provider = await this.getProvider();
         await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
-        const accountsInfo = await getAccountsByUsername(client, { username });
+        const accountsInfo = await getAccountsByUsername(client, {
+          userIndexOrName: userIndexAndName,
+        });
         const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
-          toAccount({ username, address: address as Address, info: accountInfo }),
+          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
         );
 
         const keyHash = await (async () => {
@@ -56,11 +57,11 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           return createKeyHash(controllerAddress.toLowerCase());
         })();
 
-        const keys = await getKeysByUsername(client, { username });
+        const keys = await getKeysByUsername(client, { userIndexOrName: userIndexAndName });
 
         if (!keys[keyHash]) throw new Error("Not authorized");
 
-        emitter.emit("connect", { accounts, chainId, username, keyHash });
+        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash });
       },
       async disconnect() {
         emitter.emit("disconnect");
@@ -98,12 +99,12 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const username = getUsername();
-        if (!username) throw new Error("eip1193: username not found");
+        const userIndexAndName = await getUserIndexAndName();
+        if (!userIndexAndName) throw new Error("eip1193: user index not found");
 
-        const accounts = await getAccountsByUsername(client, { username });
+        const accounts = await getAccountsByUsername(client, { userIndexOrName: userIndexAndName });
         return Object.entries(accounts).map(([address, accountInfo]) =>
-          toAccount({ username, address: address as Address, info: accountInfo }),
+          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
         );
       },
       async switchChain({ chainId }) {

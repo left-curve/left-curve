@@ -106,6 +106,11 @@
             builder_cache: yes
       when: deployment_dir.stat.exists
 
+    - name: Remove lock file
+      file:
+        path: "{{ deploy_lock_file }}"
+        state: absent
+
     - name: Delete Postgres Dango production database
       when: delete_postgres_database_at_merge
       community.postgresql.postgresql_db:
