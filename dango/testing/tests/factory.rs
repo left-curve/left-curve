@@ -13,7 +13,7 @@ use {
     },
     grug::{
         Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
-        Signer, Uint128, btree_map,
+        Signer, Uint128, btree_map, coins,
     },
     hyperlane_types::constants::solana,
 };
@@ -26,7 +26,13 @@ use {
 #[test]
 fn onboarding_without_deposit() {
     let (suite, mut accounts, codes, contracts, validator_sets) =
-        setup_test_naive(Default::default());
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            account: AccountOption {
+                minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Make an empty block to advance block height from 0 to 1.
@@ -112,14 +118,7 @@ fn onboarding_without_deposit() {
 #[test]
 fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     // Set up the test with minimum deposit set to zero.
-    let (mut suite, mut accounts, codes, contracts, _) =
-        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
-            account: AccountOption {
-                minimum_deposit: Coins::new(),
-                ..Preset::preset_test()
-            },
-            ..Preset::preset_test()
-        });
+    let (mut suite, mut accounts, codes, contracts, _) = setup_test_naive(Default::default());
 
     let chain_id = suite.chain_id.clone();
 
@@ -195,13 +194,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
 fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     // Set up the test with minimum deposit set to zero.
     let (suite, mut accounts, codes, contracts, validator_sets) =
-        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
-            account: AccountOption {
-                minimum_deposit: Coins::new(),
-                ..Preset::preset_test()
-            },
-            ..Preset::preset_test()
-        });
+        setup_test_naive(Default::default());
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Generate a random key for the user.
@@ -271,17 +264,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
 
 #[test]
 fn update_key() {
-    let (mut suite, _, codes, contracts, _) =
-        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
-            account: AccountOption {
-                // This test doesn't involve deposit, so we set it to zero to
-                // keep things simple (suhc that, during test setup, no need to
-                // make a deposit in order to activate the account).
-                minimum_deposit: Coins::new(),
-                ..Preset::preset_test()
-            },
-            ..Preset::preset_test()
-        });
+    let (mut suite, _, codes, contracts, _) = setup_test_naive(Default::default());
 
     let chain_id = suite.chain_id.clone();
 
