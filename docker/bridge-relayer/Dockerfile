@@ -15,7 +15,7 @@ RUN apt-get update && \
 COPY target/${TARGET_ARCH}/release/bridge-relayer-httpd /usr/local/bin/
 WORKDIR /app
 
-# Expose the indexer httpd (8080), and indexer metrics (8081).
+# Expose the bridge relayer httpd (8080), and bridge relayer metrics (8081).
 EXPOSE 8080 8081
 
 # Run bridge relayer httpd.
