@@ -87,6 +87,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       localdango: ${{ steps.filter.outputs.localdango }}
+      hyperlane_agents: ${{ steps.filter.outputs.hyperlane_agents }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -122,6 +123,9 @@ jobs:
             localdango:
               - 'networks/localdango/**'
               - ".force_localdango"
+            hyperlane_agents:
+              - 'docker/hyperlane/**'
+              - '.force_hyperlane_agents_rebuild'
       - name: Add detected changes to summary
         run: |
           echo "## 🔍 Detected Changes" >> $GITHUB_STEP_SUMMARY
@@ -130,6 +134,7 @@ jobs:
           backend_status="${{ steps.filter.outputs.backend }}"
           frontend_status="${{ steps.filter.outputs.frontend }}"
           localdango_status="${{ steps.filter.outputs.localdango }}"
+          hyperlane_status="${{ steps.filter.outputs.hyperlane_agents }}"
           if [ "$backend_status" = "true" ]; then
             echo "| backend | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
@@ -144,6 +149,11 @@ jobs:
             echo "| localdango | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| localdango | ❌ No |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "$hyperlane_status" = "true" ]; then
+            echo "| hyperlane_agents | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| hyperlane_agents | ❌ No |" >> $GITHUB_STEP_SUMMARY
           fi
 
   format:
@@ -743,6 +753,168 @@ jobs:
           fi
         env:
           BACKEND_CHANGED: ${{ env.BACKEND_CHANGED }}
+
+  hyperlane-agents-build:
+    needs: [changes]
+    name: Build Hyperlane agents images
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      HYPERLANE_DOCKER_CHANGED: ${{ needs.changes.outputs.hyperlane_agents }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve Hyperlane fork commit (branch dango)
+        id: hyperlane-sha
+        run: |
+          set -euo pipefail
+          # Get HEAD SHA of left-curve/hyperlane-monorepo@dango
+          HYP_SHA="$(git ls-remote https://github.com/left-curve/hyperlane-monorepo.git refs/heads/dango | awk '{print $1}')"
+          if [ -z "$HYP_SHA" ]; then
+            echo "Unable to resolve Hyperlane fork SHA for branch 'dango'"
+            exit 1
+          fi
+          echo "sha=$HYP_SHA" >> "$GITHUB_OUTPUT"
+          echo "Hyperlane fork SHA: $HYP_SHA"
+
+      - name: Decide whether we need to build
+        id: decision
+        run: |
+          set -euo pipefail
+
+          HYP_SHA="${{ steps.hyperlane-sha.outputs.sha }}"
+          DOCKER_CHANGED="${{ env.HYPERLANE_DOCKER_CHANGED }}"
+          IMAGE_BASE="ghcr.io/left-curve/left-curve/hyperlane-agents"
+
+          NEED_BUILD="false"
+
+          # If Dockerfile / docker/hyperlane changed, always rebuild
+          if [ "$DOCKER_CHANGED" = "true" ]; then
+            echo "docker/hyperlane changed, forcing rebuild."
+            NEED_BUILD="true"
+          else
+            echo "docker/hyperlane not changed, checking if image for $HYP_SHA exists..."
+            if docker manifest inspect "${IMAGE_BASE}:${HYP_SHA}" >/dev/null 2>&1; then
+              echo "Image ${IMAGE_BASE}:${HYP_SHA} already exists. No rebuild needed."
+              NEED_BUILD="false"
+            else
+              echo "No image found for ${IMAGE_BASE}:${HYP_SHA}. We need to build."
+              NEED_BUILD="true"
+            fi
+          fi
+
+          echo "need_build=$NEED_BUILD" >> "$GITHUB_OUTPUT"
+
+      - name: Skip build (no changes and image already exists)
+        if: ${{ steps.decision.outputs.need_build != 'true' }}
+        run: |
+          echo "Skipping Hyperlane agents build: image already exists and Dockerfile not changed."
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.decision.outputs.need_build == 'true'
+
+      - name: Set build config
+        id: config
+        if: steps.decision.outputs.need_build == 'true'
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+            echo "platform=linux/amd64" >> "$GITHUB_OUTPUT"
+            echo "suffix=amd64" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            echo "platform=linux/arm64" >> "$GITHUB_OUTPUT"
+            echo "suffix=arm64" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unsupported arch: ${{ matrix.arch }}"
+            exit 1
+          fi
+
+      - name: Build and push Hyperlane agents image
+        if: steps.decision.outputs.need_build == 'true'
+        run: |
+          set -euo pipefail
+          HYP_SHA="${{ steps.hyperlane-sha.outputs.sha }}"
+          PLATFORM="${{ steps.config.outputs.platform }}"
+          SUFFIX="${{ steps.config.outputs.suffix }}"
+          IMAGE_BASE="ghcr.io/left-curve/left-curve/hyperlane-agents"
+
+          echo "Building ${IMAGE_BASE}:${HYP_SHA}-${SUFFIX} for platform ${PLATFORM}"
+
+          docker buildx build \
+            --push \
+            --platform "${PLATFORM}" \
+            --build-arg HYPERLANE_REPO=https://github.com/left-curve/hyperlane-monorepo.git \
+            --build-arg HYPERLANE_REF=dango \
+            --build-arg GIT_COMMIT="${HYP_SHA}" \
+            --provenance=false \
+            -t "${IMAGE_BASE}:${HYP_SHA}-${SUFFIX}" \
+            -f docker/hyperlane/Dockerfile .
+
+  hyperlane-agents-push-manifest:
+    name: Publish Hyperlane agents multi-arch manifest
+    needs: [hyperlane-agents-build]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve Hyperlane fork commit (branch dango)
+        id: hyperlane-sha
+        run: |
+          set -euo pipefail
+          HYP_SHA="$(git ls-remote https://github.com/left-curve/hyperlane-monorepo.git refs/heads/dango | awk '{print $1}')"
+          if [ -z "$HYP_SHA" ]; then
+            echo "Unable to resolve Hyperlane fork SHA for branch 'dango'"
+            exit 1
+          fi
+          echo "sha=$HYP_SHA" >> "$GITHUB_OUTPUT"
+          echo "Hyperlane fork SHA: $HYP_SHA"
+
+      - name: Create and push multi-arch Docker manifest
+        run: |
+          set -euo pipefail
+          IMAGE_BASE="ghcr.io/left-curve/left-curve/hyperlane-agents"
+          HYP_SHA="${{ steps.hyperlane-sha.outputs.sha }}"
+
+          echo "Creating multi-arch manifest for ${IMAGE_BASE}:${HYP_SHA}"
+
+          docker manifest create "${IMAGE_BASE}:${HYP_SHA}" \
+            --amend "${IMAGE_BASE}:${HYP_SHA}-amd64" \
+            --amend "${IMAGE_BASE}:${HYP_SHA}-arm64"
+
+          docker manifest push --purge "${IMAGE_BASE}:${HYP_SHA}"
+
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "Updating ${IMAGE_BASE}:latest to point to ${HYP_SHA}"
+            docker manifest create "${IMAGE_BASE}:latest" \
+              --amend "${IMAGE_BASE}:${HYP_SHA}-amd64" \
+              --amend "${IMAGE_BASE}:${HYP_SHA}-arm64"
+
+            docker manifest push --purge "${IMAGE_BASE}:latest"
+          fi
 
   frontend-build:
     needs: [changes]
