@@ -1,4 +1,4 @@
-name: Rust
+name: Bitcoin Bridge Relayer
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
