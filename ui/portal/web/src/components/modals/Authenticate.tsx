@@ -9,9 +9,13 @@ const views = {
   signup: Signup,
 };
 
-export const Authenticate = forwardRef((_, __) => {
+type AuthenticateProps = {
+  action?: "signin" | "signup";
+};
+
+export const Authenticate = forwardRef<unknown, AuthenticateProps>(({ action = "signin" }, _) => {
   const { hideModal } = useApp();
-  const [view, setView] = useState("signin");
+  const [view, setView] = useState(action);
 
   const AuthView = views[view as keyof typeof views];
 

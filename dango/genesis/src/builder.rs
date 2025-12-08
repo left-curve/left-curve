@@ -84,7 +84,6 @@ where
                 AccountType::Spot   => account_spot_code_hash,
             },
             users,
-            minimum_deposit: opt.account.minimum_deposit,
         },
         "dango/account_factory",
         "dango/account_factory",
@@ -305,6 +304,7 @@ where
             taxman,
             warp,
         },
+        minimum_deposit: opt.account.minimum_deposit,
         ..Default::default()
     };
 
