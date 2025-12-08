@@ -20,7 +20,7 @@ import type { JsonValue } from "@left-curve/dango/types";
 export const QRConnect = forwardRef((_props, _ref) => {
   const { toast, hideModal } = useApp();
   const { data: signingClient } = useConnectorClient();
-  const { username } = useAccount();
+  const { account } = useAccount();
 
   const { loading: isLoading, value: messageExchanger } = useAsync(
     () => MessageExchanger.create(WS_URI),
@@ -39,7 +39,15 @@ export const QRConnect = forwardRef((_props, _ref) => {
           pubKey: decodeBase64(publicKey),
         });
 
-        messageExchanger.sendMessage({ id, message: { data: { ...response, username } } });
+        messageExchanger.sendMessage({
+          id,
+          message: {
+            data: {
+              ...response,
+              userIndexAndName: { index: account?.index, name: account?.username },
+            },
+          },
+        });
         toast.success({
           title: "Connection established",
           description: null,

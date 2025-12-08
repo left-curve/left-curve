@@ -29,14 +29,18 @@ const [SigninProvider, useSignin] = createContext<ReturnType<typeof useSigninSta
 
 type SignInProps = {
   goTo: (auth: "signup") => void;
+  onFinish: () => void;
 };
 
-export const Signin: React.FC<SignInProps> = ({ goTo }) => {
+export const Signin: React.FC<SignInProps> = ({ goTo, onFinish }) => {
   const { settings, toast } = useApp();
 
   const state = useSigninState({
     expiration: DEFAULT_SESSION_EXPIRATION,
     session: settings.useSessionKey,
+    login: {
+      success: () => onFinish(),
+    },
     connect: {
       error: () =>
         toast.error({
@@ -63,13 +67,13 @@ export const Signin: React.FC<SignInProps> = ({ goTo }) => {
 };
 
 const Header: React.FC = () => {
-  const { screen, email, usernames } = useSignin();
+  const { screen, email, usersIndexAndName } = useSignin();
 
   let title = m["common.signin"]();
   let description: React.ReactNode = null;
 
   if (screen === "usernames") {
-    if (usernames.length > 0) {
+    if (usersIndexAndName.length > 0) {
       title = m["signin.usernamesFound"]();
       description = m["signin.chooseCredential"]();
     } else {
@@ -180,21 +184,21 @@ const Credentials: React.FC = () => {
 };
 
 const UsernamesSection: React.FC = () => {
-  const { screen, setScreen, usernames, login } = useSignin();
+  const { screen, setScreen, usersIndexAndName, login } = useSignin();
 
   const goBack = () => setScreen("options");
 
   if (screen !== "usernames") return null;
 
-  const existUsernames = usernames.length > 0;
+  const existUsernames = usersIndexAndName.length > 0;
 
   return (
     <div className="flex flex-col gap-6 w-full items-center text-center">
       {existUsernames ? (
         <div className="flex flex-col gap-4 w-full items-center">
           <UsernamesList
-            usernames={usernames}
-            onUserSelection={(username) => login.mutateAsync(username)}
+            usersIndexAndName={usersIndexAndName}
+            onUserSelection={(u) => login.mutateAsync(u)}
           />
           <Button variant="link" onClick={goBack} isLoading={login.isPending}>
             <IconLeft className="w-[22px] h-[22px]" />
