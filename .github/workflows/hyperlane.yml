@@ -42,7 +42,6 @@ jobs:
             hyperlane_agents:
               - 'docker/hyperlane/Dockerfile'
               - '.force_hyperlane_agents_rebuild'
-          list-files: shell
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -68,32 +67,16 @@ jobs:
         run: |
           set -euo pipefail
 
+          DOCKER_CHANGED="${{ steps.filter.outputs.hyperlane_agents }}"
           HYP_SHA="${{ steps.hyperlane-sha.outputs.sha }}"
-
-          # Check if Dockerfile changed in the current commit only (not all PR commits)
-          # For PRs, compare HEAD^ to HEAD. For pushes, compare HEAD~1 to HEAD.
-          DOCKERFILE_CHANGED_IN_COMMIT="false"
-          if git diff --name-only HEAD^ HEAD | grep -q "^docker/hyperlane/Dockerfile$"; then
-            DOCKERFILE_CHANGED_IN_COMMIT="true"
-            echo "Dockerfile changed in current commit"
-          else
-            echo "Dockerfile not changed in current commit"
-          fi
-
-          # Check if force rebuild flag exists
-          FORCE_REBUILD="false"
-          if [ -f ".force_hyperlane_agents_rebuild" ]; then
-            FORCE_REBUILD="true"
-            echo "Force rebuild flag found"
-          fi
 
           NEED_BUILD="false"
 
-          if [ "$DOCKERFILE_CHANGED_IN_COMMIT" = "true" ] || [ "$FORCE_REBUILD" = "true" ]; then
-            echo "Dockerfile changed or force rebuild requested, forcing rebuild."
+          if [ "$DOCKER_CHANGED" = "true" ]; then
+            echo "docker/hyperlane has changed in this PR, forcing rebuild."
             NEED_BUILD="true"
           else
-            echo "Dockerfile not changed, checking if image for $HYP_SHA exists..."
+            echo "docker/hyperlane not changed in this PR, checking if image for $HYP_SHA exists..."
             if docker manifest inspect "${IMAGE_BASE}:${HYP_SHA}" >/dev/null 2>&1; then
               echo "Image ${IMAGE_BASE}:${HYP_SHA} already exists. No rebuild needed."
               NEED_BUILD="false"
