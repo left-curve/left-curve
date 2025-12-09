@@ -100,11 +100,17 @@ jobs:
     name: Build & push Hyperlane agents images
     needs: [prepare]
     if: needs.prepare.outputs.need_build == 'true'
-    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: self-hosted
+          # NOTE: building arm64 on amd64 runner is very slow due to QEMU emulation
+          # Use native ARM64 runner for much faster builds
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
@@ -123,6 +129,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify runner architecture matches build target
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.arch }}" == "amd64" && "${{ runner.arch }}" != "X64" ]]; then
+            echo "Warning: Building amd64 on non-X64 runner (${{ runner.arch }}). This will be slow."
+          elif [[ "${{ matrix.arch }}" == "arm64" && "${{ runner.arch }}" != "ARM64" ]]; then
+            echo "Warning: Building arm64 on non-ARM64 runner (${{ runner.arch }}). This will be very slow due to QEMU emulation."
+          else
+            echo "Building ${{ matrix.arch }} on native ${{ runner.arch }} runner - optimal!"
+          fi
 
       - name: Build and push Docker image
         run: |
@@ -148,6 +165,8 @@ jobs:
             --build-arg HYPERLANE_REF="${HYPERLANE_BRANCH}" \
             --build-arg HYPERLANE_SHA="${HYP_SHA}" \
             --build-arg GIT_COMMIT="${HYP_SHA}" \
+            --cache-from type=registry,ref="${IMAGE_BASE}:buildcache-${SUFFIX}" \
+            --cache-to type=registry,ref="${IMAGE_BASE}:buildcache-${SUFFIX},mode=max" \
             --provenance=false \
             -t "${IMAGE_BASE}:${HYP_SHA}-${SUFFIX}" \
             -f docker/hyperlane/Dockerfile \
