@@ -40,7 +40,6 @@ jobs:
         with:
           filters: |
             hyperlane_agents:
-              - '.github/workflows/hyperlane.yml'
               - 'docker/hyperlane/Dockerfile'
               - '.force_hyperlane_agents_rebuild'
           list-files: shell
