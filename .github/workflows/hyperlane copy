@@ -1,0 +1,307 @@
+# name: Hyperlane Agents
+
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+#   cancel-in-progress: true
+
+# on:
+#   workflow_dispatch:
+#   push:
+#     branches:
+#       - "main"
+#       - "develop"
+#     paths:
+#       - ".github/workflows/hyperlane-agents.yml"
+#       - "docker/hyperlane/**"
+#       - ".force_hyperlane_agents_rebuild"
+
+#   pull_request:
+#     branches:
+#       - "*"
+#     paths:
+#       - ".github/workflows/hyperlane-agents.yml"
+#       - "docker/hyperlane/**"
+#       - ".force_hyperlane_agents_rebuild"
+
+# env:
+#   HYPERLANE_REPO_URL: https://github.com/left-curve/hyperlane-monorepo.git
+#   HYPERLANE_BRANCH: dango
+#   IMAGE_BASE: ghcr.io/left-curve/left-curve/hyperlane-agents
+#   USE_SCCACHE: ${{ vars.USE_SCCACHE }}
+#   HYPERLANE_DIR: hyperlane-agents
+
+# jobs:
+#   prepare:
+#     name: Detect changes & resolve Hyperlane SHA
+#     runs-on: ubuntu-latest
+#     outputs:
+#       docker_changed: ${{ steps.filter.outputs.hyperlane_agents }}
+#       hyperlane_sha: ${{ steps.hyperlane-sha.outputs.sha }}
+#       need_build: ${{ steps.decision.outputs.need_build }}
+#     steps:
+#       - name: Checkout sources
+#         uses: actions/checkout@v4
+#         with:
+#           ref: ${{ github.head_ref || github.ref }}
+
+#       - name: Determine affected paths
+#         id: filter
+#         uses: dorny/paths-filter@v3
+#         with:
+#           filters: |
+#             hyperlane_agents:
+#               - 'docker/hyperlane/**'
+#               - '.force_hyperlane_agents_rebuild'
+
+#       - name: Log in to GHCR
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+
+#       - name: Resolve Hyperlane fork HEAD SHA (branch dango)
+#         id: hyperlane-sha
+#         run: |
+#           set -euo pipefail
+#           HYP_SHA="$(git ls-remote "${HYPERLANE_REPO_URL}" "refs/heads/${HYPERLANE_BRANCH}" | awk '{print $1}')"
+#           if [ -z "$HYP_SHA" ]; then
+#             echo "Unable to resolve Hyperlane fork SHA for branch '${HYPERLANE_BRANCH}'"
+#             exit 1
+#           fi
+#           echo "sha=$HYP_SHA" >> "$GITHUB_OUTPUT"
+#           echo "Hyperlane fork SHA: $HYP_SHA"
+
+#       - name: Decide whether we need to build
+#         id: decision
+#         run: |
+#           set -euo pipefail
+
+#           DOCKER_CHANGED="${{ steps.filter.outputs.hyperlane_agents }}"
+#           HYP_SHA="${{ steps.hyperlane-sha.outputs.sha }}"
+
+#           NEED_BUILD="false"
+
+#           if [ "$DOCKER_CHANGED" = "true" ]; then
+#             echo "docker/hyperlane has changed, forcing rebuild."
+#             NEED_BUILD="true"
+#           else
+#             echo "docker/hyperlane not changed, checking if image for $HYP_SHA exists..."
+#             if docker manifest inspect "${IMAGE_BASE}:${HYP_SHA}" >/dev/null 2>&1; then
+#               echo "Image ${IMAGE_BASE}:${HYP_SHA} already exists. No rebuild needed."
+#               NEED_BUILD="false"
+#             else
+#               echo "No image found for ${IMAGE_BASE}:${HYP_SHA}. We need to build."
+#               NEED_BUILD="true"
+#             fi
+#           fi
+
+#           echo "need_build=$NEED_BUILD" >> "$GITHUB_OUTPUT"
+
+#   build:
+#     name: Build & push Hyperlane agents images
+#     needs: [prepare]
+#     if: needs.prepare.outputs.need_build == 'true'
+#     runs-on: self-hosted
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         arch: [amd64, arm64]
+#     permissions:
+#       contents: read
+#       packages: write
+#     env:
+#       HYP_SHA: ${{ needs.prepare.outputs.hyperlane_sha }}
+#     steps:
+#       - name: Checkout sources
+#         uses: actions/checkout@v4
+#         with:
+#           ref: ${{ github.head_ref || github.ref }}
+
+#       - name: Clone Hyperlane fork
+#         run: |
+#           set -euo pipefail
+#           git clone "${HYPERLANE_REPO_URL}" "${HYPERLANE_DIR}"
+#           cd "${HYPERLANE_DIR}"
+#           git checkout "${HYP_SHA}"
+
+#       - name: Enable sccache for cross (optional)
+#         if: env.USE_SCCACHE == 'true'
+#         run: |
+#           set -euo pipefail
+#           mkdir -p "$HOME/.cache/sccache" "$PWD/.cross-cache/cargo"
+#           opts=""
+#           opts="$opts -e RUSTC_WRAPPER=/usr/local/bin/sccache"
+#           # Reuse the same host cache directory inside the container
+#           opts="$opts -e SCCACHE_DIR=/tmp/sccache"
+#           opts="$opts -e SCCACHE_CACHE_SIZE=10G"
+#           # Run container processes as the host user to avoid permission issues
+#           opts="$opts --user $(id -u):$(id -g)"
+#           # Provide a writable cargo home inside the container and persist it
+#           opts="$opts -e CARGO_HOME=/tmp/cargo -v $PWD/.cross-cache/cargo:/tmp/cargo"
+#           [ -n "${{ secrets.SCCACHE_BUCKET }}" ] && opts="$opts -e SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+#           [ -n "${{ secrets.SCCACHE_ENDPOINT }}" ] && opts="$opts -e SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+#           [ -n "${{ secrets.SCCACHE_REGION }}" ] && opts="$opts -e SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+#           [ -n "${{ secrets.SCCACHE_S3_KEY_PREFIX }}" ] && opts="$opts -e SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+#           [ -n "${{ secrets.SCCACHE_S3_USE_SSL }}" ] && opts="$opts -e SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+#           opts="$opts -e SCCACHE_S3_FORCE_PATH_STYLE=1"
+#           [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && opts="$opts -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+#           [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && opts="$opts -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+#           # Mount the host cache directory into the container
+#           opts="$opts -v $HOME/.cache/sccache:/tmp/sccache"
+#           echo "CROSS_CONTAINER_OPTS=$opts" >> $GITHUB_ENV
+
+#       - name: Set build config
+#         id: config
+#         run: |
+#           set -euo pipefail
+#           if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+#             if [[ "${{ runner.arch }}" == "X64" ]]; then
+#               echo "image=ghcr.io/left-curve/left-curve/native-builder:amd64" >> $GITHUB_OUTPUT
+#               echo "arch=x86_64" >> $GITHUB_OUTPUT
+#             elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
+#               echo "image=ghcr.io/left-curve/left-curve/cross-builder-amd64" >> $GITHUB_OUTPUT
+#               echo "arch=arm64" >> $GITHUB_OUTPUT
+#             else
+#               echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+#               exit 1
+#             fi
+#             echo "target=x86_64-unknown-linux-gnu" >> $GITHUB_OUTPUT
+#             echo "platform=linux/amd64" >> $GITHUB_OUTPUT
+#             echo "suffix=amd64" >> $GITHUB_OUTPUT
+#           elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+#             if [[ "${{ runner.arch }}" == "X64" ]]; then
+#               echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+#             elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
+#               if [[ "${{ runner.os }}" == "macOS" ]]; then
+#                 echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+#               elif [[ "${{ runner.os }}" == "Linux" ]]; then
+#                 echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+#               else
+#                 echo "Unsupported runner OS for ARM64: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+#                 exit 1
+#               fi
+#             else
+#               echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+#               exit 1
+#             fi
+#             echo "target=aarch64-unknown-linux-gnu" >> $GITHUB_OUTPUT
+#             echo "platform=linux/arm64" >> $GITHUB_OUTPUT
+#             echo "suffix=arm64" >> $GITHUB_OUTPUT
+#           else
+#             echo "Unsupported matrix ${{ matrix.arch }}"
+#             exit 1
+#           fi
+
+#       - name: Install Rust toolchain 1.89.0
+#         uses: dtolnay/rust-toolchain@master
+#         with:
+#           toolchain: "1.89.0"
+
+#       - name: Install cross
+#         run: cargo install cross --git https://github.com/cross-rs/cross
+
+#       - uses: docker/setup-buildx-action@v3
+
+#       - uses: docker/login-action@v3
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+
+#       - uses: actions/cache@v4
+#         with:
+#           path: .cross-cache
+#           key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+#       - name: pull cross docker builder image
+#         run: |
+#           set -euo pipefail
+#           docker pull ${{ steps.config.outputs.image }}
+
+#       - name: Build agents binaries with cross
+#         env:
+#           RUSTFLAGS: "-C debuginfo=2 -C force-frame-pointers=yes"
+#           CARGO_PROFILE_RELEASE_STRIP: "none"
+#           CROSS_CONFIG: ${{ github.workspace }}/Cross.toml
+#         run: |
+#           set -euo pipefail
+#           mkdir -p .cross-cache/${{ steps.config.outputs.target }}
+#           # CARGO_TARGET_DIR=target -> binaries end up in ./target/<triple>/release/
+#           CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
+#           CARGO_TARGET_DIR=target \
+#           cross build \
+#             --target ${{ steps.config.outputs.target }} \
+#             --release \
+#             --verbose \
+#             --bin relayer \
+#             --bin validator \
+#             --bin scraper \
+#             --manifest-path "${HYPERLANE_DIR}/rust/main/Cargo.toml"
+
+#       - name: sccache stats (cross, optional)
+#         if: env.USE_SCCACHE == 'true'
+#         run: |
+#           # Best-effort: show stats in a fresh container with the same cache mounted.
+#           docker run --rm \
+#             --user $(id -u):$(id -g) \
+#             -e SCCACHE_DIR=/tmp/sccache \
+#             -v $HOME/.cache/sccache:/tmp/sccache \
+#             ${{ steps.config.outputs.image }} \
+#             bash -lc 'command -v sccache && sccache --show-stats || true'
+
+#       - name: Build and push runtime image
+#         run: |
+#           set -euo pipefail
+
+#           PLATFORM="${{ steps.config.outputs.platform }}"
+#           TARGET_TRIPLE="${{ steps.config.outputs.target }}"
+#           SUFFIX="${{ steps.config.outputs.suffix }}"
+
+#           echo "Building image for platform ${PLATFORM}, target ${TARGET_TRIPLE}"
+
+#           docker buildx build \
+#             --push \
+#             --platform "${PLATFORM}" \
+#             --build-arg TARGET_ARCH="${TARGET_TRIPLE}" \
+#             --build-arg GIT_COMMIT="${HYP_SHA}" \
+#             --build-arg HYPERLANE_DIR="${HYPERLANE_DIR}" \
+#             --provenance=false \
+#             -t "${IMAGE_BASE}:${HYP_SHA}-${SUFFIX}" \
+#             -f docker/hyperlane/Dockerfile \
+#             .
+
+#   push-manifest:
+#     name: Publish multi-arch manifest
+#     needs: [prepare, build]
+#     if: needs.prepare.outputs.need_build == 'true'
+#     runs-on: ubuntu-latest
+#     env:
+#       HYP_SHA: ${{ needs.prepare.outputs.hyperlane_sha }}
+#     steps:
+#       - name: Log in to GHCR
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+
+#       - name: Create and push multi-arch manifest
+#         run: |
+#           set -euo pipefail
+
+#           echo "Creating multi-arch manifest for ${IMAGE_BASE}:${HYP_SHA}"
+
+#           docker manifest create "${IMAGE_BASE}:${HYP_SHA}" \
+#             --amend "${IMAGE_BASE}:${HYP_SHA}-amd64" \
+#             --amend "${IMAGE_BASE}:${HYP_SHA}-arm64"
+
+#           docker manifest push --purge "${IMAGE_BASE}:${HYP_SHA}"
+
+#           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+#             echo "Updating latest tag for main branch"
+#             docker manifest create "${IMAGE_BASE}:latest" \
+#               --amend "${IMAGE_BASE}:${HYP_SHA}-amd64" \
+#               --amend "${IMAGE_BASE}:${HYP_SHA}-arm64"
+#             docker manifest push --purge "${IMAGE_BASE}:latest"
+#           fi
