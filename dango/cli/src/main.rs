@@ -26,7 +26,10 @@ use {
     opentelemetry_otlp::{ExportConfig, Protocol, SpanExporter, WithExportConfig},
     opentelemetry_sdk::{Resource, trace as sdktrace},
     sentry::integrations::tracing::layer as sentry_layer,
-    std::{path::PathBuf, sync::LazyLock},
+    std::{
+        path::PathBuf,
+        sync::{Arc, LazyLock},
+    },
     tracing_opentelemetry::layer as otel_layer,
     tracing_subscriber::{fmt::format::FmtSpan, prelude::*},
 };
@@ -198,6 +201,13 @@ async fn main() -> anyhow::Result<()> {
             release: sentry::release_name!(),
             sample_rate: cfg.sentry.sample_rate,
             traces_sample_rate: cfg.sentry.traces_sample_rate,
+            // Drop noisy exporter transport errors that surface as trace logs.
+            before_send: Some(Arc::new(|event| {
+                if event.logger.as_deref() == Some("opentelemetry_sdk") {
+                    return None;
+                }
+                Some(event)
+            })),
             ..Default::default()
         }));
         _sentry_guard = Some(guard);
