@@ -10,17 +10,9 @@ on:
     branches:
       - "main"
       - "develop"
-    paths:
-      - ".github/workflows/hyperlane.yml"
-      - "docker/hyperlane/Dockerfile"
-      - ".force_hyperlane_agents_rebuild"
   pull_request:
     branches:
       - "*"
-    paths:
-      - ".github/workflows/hyperlane.yml"
-      - "docker/hyperlane/Dockerfile"
-      - ".force_hyperlane_agents_rebuild"
 
 env:
   HYPERLANE_REPO_URL: https://github.com/left-curve/hyperlane-monorepo.git
