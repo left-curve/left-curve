@@ -199,6 +199,7 @@ async fn main() -> anyhow::Result<()> {
         let guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
             environment: Some(cfg.sentry.environment.clone().into()),
             release: sentry::release_name!(),
+            enable_logs: cfg.sentry.enable_logs,
             sample_rate: cfg.sentry.sample_rate,
             traces_sample_rate: cfg.sentry.traces_sample_rate,
             // Drop noisy exporter transport errors that surface as trace logs.

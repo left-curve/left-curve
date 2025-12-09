@@ -54,6 +54,7 @@ impl Default for GrugConfig {
 #[derive(Serialize, Deserialize, Default)]
 pub struct SentryConfig {
     pub enabled: bool,
+    pub enabled_logs: bool,
     pub dsn: String,
     pub environment: String,
     pub sample_rate: f32,
