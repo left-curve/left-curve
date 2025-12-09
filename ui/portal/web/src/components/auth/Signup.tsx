@@ -3,6 +3,7 @@ import {
   createContext,
   ensureErrorMessage,
   ExpandOptions,
+  IconDango,
   IconWallet,
   useApp,
 } from "@left-curve/applets-kit";
@@ -33,9 +34,6 @@ export const Signup: React.FC<SignupProps> = ({ goTo, onFinish }) => {
 
   const state = useSignupState({
     expiration: DEFAULT_SESSION_EXPIRATION,
-    login: {
-      onSuccess: () => onFinish(),
-    },
     register: {
       onError: (e) =>
         toast.error({ title: m["errors.failureRequest"](), description: ensureErrorMessage(e) }),
@@ -44,23 +42,22 @@ export const Signup: React.FC<SignupProps> = ({ goTo, onFinish }) => {
 
   return (
     <SignupProvider value={state}>
-      <ResizerContainer layoutId="signup" className="w-full max-w-[24.5rem]">
-        <div className="flex items-center justify-center gap-8 px-4 flex-col w-full">
-          <div className="flex flex-col gap-7 items-center justify-center w-full">
-            <img
-              src="./favicon.svg"
-              alt="dango-logo"
-              className="h-12 rounded-full shadow-account-card"
-            />
-            <div className="flex flex-col gap-3 items-center justify-center text-center">
-              <h1 className="h2-heavy">{m["signup.title"]()}</h1>
-              <Header />
+      <ResizerContainer layoutId="signup" className="w-full">
+        <div className="flex items-center justify-center gap-8 flex-col w-full">
+          {state.screen !== "deposit" ? (
+            <div className="flex flex-col gap-7 items-center justify-center w-full">
+              <IconDango className="w-[60px] h-[60px]" />
+              <div className="flex flex-col gap-3 items-center justify-center text-center">
+                <h1 className="h2-heavy">{m["signup.title"]()}</h1>
+                <Header />
+              </div>
             </div>
-          </div>
+          ) : null}
           <Email />
           <Wallets />
           <Credentials />
           <Login />
+          <Deposit onFinish={onFinish} />
           <Footer goTo={goTo} />
         </div>
       </ResizerContainer>
@@ -78,6 +75,7 @@ const Header: React.FC = () => {
       </p>
     );
   }
+
   if (screen === "email") {
     return (
       <p className="text-ink-tertiary-500">
@@ -142,7 +140,11 @@ const Credentials: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <EmailCredential.Email value={email} onChange={setEmail} />
+      <EmailCredential.Email
+        value={email}
+        onChange={setEmail}
+        onSubmit={() => setScreen("email")}
+      />
 
       <div className="w-full flex items-center justify-center gap-3">
         <span className="h-[1px] bg-outline-secondary-gray flex-1 " />
@@ -192,6 +194,33 @@ const Login: React.FC = () => {
           />
         </div>
       </ExpandOptions>
+    </div>
+  );
+};
+
+const Deposit: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
+  const { screen } = useSignup();
+  const { navigate } = useApp();
+
+  if (screen !== "deposit") return null;
+
+  return (
+    <div className="flex flex-col gap-6 w-full items-center">
+      <div className="flex items-center flex-col gap-5">
+        <img
+          src="/images/account-creation/deposit.svg"
+          alt="deposit-bag"
+          className="w-[60px] h-[60px]"
+        />
+        <div className="flex flex-col w-full items-center gap-1">
+          <h2 className="h4-bold text-ink-secondary-700">{m["signup.deposit.title"]()}</h2>
+          <p className="diatype-m-regular">{m["signup.deposit.description"]()}</p>
+          <p className="diatype-m-regular">{m["signup.deposit.description2"]()}</p>
+        </div>
+      </div>
+      <Button className="min-w-[11.25rem]" onClick={() => [navigate("/bridge"), onFinish()]}>
+        {m["signup.deposit.cta"]()}
+      </Button>
     </div>
   );
 };

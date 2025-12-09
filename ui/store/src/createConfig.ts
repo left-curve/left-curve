@@ -297,10 +297,12 @@ export function createConfig<
         connector.emitter.on("disconnect", disconnect);
       }
 
+      const { index, name } = data.userIndexAndName;
+
       return {
         ...x,
         current: data.uid,
-        userIndexAndName: data.userIndexAndName as State["userIndexAndName"],
+        userIndexAndName: { index, name: name ?? `User #${index}` },
         connectors: new Map(x.connectors).set(data.uid, {
           keyHash: data.keyHash,
           account: data.accounts[0],

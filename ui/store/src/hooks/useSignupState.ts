@@ -12,7 +12,7 @@ import type { EIP1193Provider } from "../types/eip1193.js";
 import { useSessionKey } from "./useSessionKey.js";
 import type { Connector } from "../types/connector.js";
 
-type ScreenState = "options" | "email" | "wallets" | "login";
+type ScreenState = "options" | "email" | "wallets" | "login" | "deposit";
 
 export type UseSignupStateParameters = {
   expiration: number;
@@ -123,6 +123,7 @@ export function useSignupState(parameters: UseSignupStateParameters) {
         chainId,
         keyHash: signingSession.keyHash,
       });
+      setScreen("deposit");
     },
   });
 

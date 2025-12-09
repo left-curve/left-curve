@@ -426,6 +426,12 @@
       "title": "Register Not Available!",
       "description": "Unfortunately, sign-up is not supported on mobile devices. Please use a desktop to complete your sign-up."
     },
+    "deposit": {
+      "title": "Activate Account",
+      "description": "Your account is almost ready!",
+      "description2": "Activate it by making your first deposit.",
+      "cta": "Deposit now"
+    },
     "createAccount": "Create Account",
     "doThisLater": "Do this later",
     "alreadyHaveAccount": "Already have an account?",
