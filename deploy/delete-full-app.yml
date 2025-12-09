@@ -110,6 +110,9 @@
       file:
         path: "{{ deploy_lock_file }}"
         state: absent
+      vars:
+        deploy_lock_file: "{{ ansible_env.HOME }}/deployments/.{{ deployment_name }}.deploy.lock"
+      ignore_errors: true
 
     - name: Delete Postgres Dango production database
       when: delete_postgres_database_at_merge
