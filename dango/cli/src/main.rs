@@ -93,6 +93,18 @@ async fn main() -> anyhow::Result<()> {
     // Parse the config file.
     let cfg: Config = parse_config(app_dir.config_file())?;
 
+    // Common environment metadata shared between telemetry backends.
+    let non_empty_env = |key: &str| std::env::var(key).ok().filter(|s| !s.is_empty());
+    let service_instance_id = cfg.transactions.chain_id.clone();
+    let service_namespace = non_empty_env("SERVICE_NAMESPACE")
+        .or_else(|| non_empty_env("DEPLOY_ENV"))
+        .or_else(|| (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone()))
+        .or_else(|| non_empty_env("DEPLOYMENT_NAME"));
+    let deployment_environment = non_empty_env("DEPLOY_ENV")
+        .or_else(|| (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone()));
+    let deployment_name = non_empty_env("DEPLOYMENT_NAME");
+    let host_name = non_empty_env("HOSTNAME");
+
     // Create the base environment filter
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| cfg.log_level.clone().into()); // Default to `cfg.log_level` if `RUST_LOG` not set.
@@ -116,41 +128,21 @@ async fn main() -> anyhow::Result<()> {
             // Keep existing chain id for querying
             KeyValue::new("chain.id", cfg.transactions.chain_id.clone()),
             // Required: service.instance.id — default to chain_id
-            KeyValue::new("service.instance.id", cfg.transactions.chain_id.clone()),
+            KeyValue::new("service.instance.id", service_instance_id.clone()),
         ];
 
         // Required: service.namespace — priority: SERVICE_NAMESPACE > DEPLOY_ENV > sentry.environment > DEPLOYMENT_NAME
-        let service_namespace = std::env::var("SERVICE_NAMESPACE")
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| std::env::var("DEPLOY_ENV").ok().filter(|s| !s.is_empty()))
-            .or_else(|| {
-                (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone())
-            })
-            .or_else(|| {
-                std::env::var("DEPLOYMENT_NAME")
-                    .ok()
-                    .filter(|s| !s.is_empty())
-            });
-        if let Some(ns) = service_namespace {
+        if let Some(ns) = service_namespace.clone() {
             attrs.push(KeyValue::new("service.namespace", ns));
         }
 
         // Optional: deployment.environment — prefer DEPLOY_ENV, else sentry.environment
-        if let Some(env) = std::env::var("DEPLOY_ENV")
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| {
-                (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone())
-            })
-        {
+        if let Some(env) = deployment_environment.clone() {
             attrs.push(KeyValue::new("deployment.environment", env));
         }
 
         // Optional: host.name — read from HOSTNAME if provided
-        if let Ok(host) = std::env::var("HOSTNAME")
-            && !host.is_empty()
-        {
+        if let Some(host) = host_name.clone() {
             attrs.push(KeyValue::new("host.name", host));
         }
 
@@ -212,6 +204,20 @@ async fn main() -> anyhow::Result<()> {
 
         sentry::configure_scope(|scope| {
             scope.set_tag("chain-id", &cfg.transactions.chain_id);
+            scope.set_tag("service.instance.id", &service_instance_id);
+            if let Some(ns) = &service_namespace {
+                scope.set_tag("service.namespace", ns);
+            }
+            if let Some(env) = &deployment_environment {
+                scope.set_tag("deployment.environment", env);
+            }
+            if let Some(name) = &deployment_name {
+                scope.set_tag("deployment.name", name);
+            }
+            if let Some(host) = &host_name {
+                scope.set_tag("host.name", host);
+            }
+            scope.set_extra("version", VERSION_WITH_COMMIT.as_str().into());
         });
         Some(sentry_layer())
     } else {
