@@ -135,7 +135,7 @@ gas_adjustment = 1.4
 enabled = false
 
 # Enable the logs feature
-enabled_logs = false
+enable_logs = false
 
 # DSN to use for Sentry.
 dsn = "https://your-dsn-here"
