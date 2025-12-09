@@ -11,16 +11,15 @@ on:
       - "main"
       - "develop"
     paths:
-      - ".github/workflows/hyperlane-agents.yml"
-      - "docker/hyperlane/**"
+      - ".github/workflows/hyperlane.yml"
+      - "docker/hyperlane/Dockerfile"
       - ".force_hyperlane_agents_rebuild"
-
   pull_request:
     branches:
       - "*"
     paths:
-      - ".github/workflows/hyperlane-agents.yml"
-      - "docker/hyperlane/**"
+      - ".github/workflows/hyperlane.yml"
+      - "docker/hyperlane/Dockerfile"
       - ".force_hyperlane_agents_rebuild"
 
 env:
@@ -48,7 +47,8 @@ jobs:
         with:
           filters: |
             hyperlane_agents:
-              - 'docker/hyperlane/**'
+              - '.github/workflows/hyperlane.yml'
+              - 'docker/hyperlane/Dockerfile'
               - '.force_hyperlane_agents_rebuild'
 
       - name: Log in to GHCR
@@ -177,6 +177,10 @@ jobs:
     needs: [prepare, build]
     if: needs.prepare.outputs.need_build == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     env:
       HYP_SHA: ${{ needs.prepare.outputs.hyperlane_sha }}
     steps:

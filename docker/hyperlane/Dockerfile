@@ -8,15 +8,29 @@
 #########################
 #     BASE + TOOLS      #
 #########################
-FROM rust:bookworm AS base
+# Use Rust 1.89.0 to match Hyperlane repo toolchain and avoid downloading it during build
+FROM rust:1.89-bookworm AS base
 
-# Install necessary build tools and musl support (same as upstream Hyperlane)
+# Install necessary build tools
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends musl-tools clang git && \
+    apt-get install -y --no-install-recommends clang git curl ca-certificates && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    rustup target add x86_64-unknown-linux-musl && \
-    cargo install --locked sccache
+    rm -rf /var/lib/apt/lists/*
+
+# Install sccache binary (faster than compiling with cargo install)
+ARG SCCACHE_VERSION=0.12.0
+RUN set -eux; \
+    ARCH=$(uname -m); \
+    case "$ARCH" in \
+      x86_64) SCCACHE_ARCH="x86_64" ;; \
+      aarch64|arm64) SCCACHE_ARCH="aarch64" ;; \
+      *) echo "Unsupported arch: $ARCH"; exit 1 ;; \
+    esac; \
+    curl -fL -o /tmp/sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-${SCCACHE_ARCH}-unknown-linux-musl.tar.gz"; \
+    tar -xzf /tmp/sccache.tar.gz -C /tmp; \
+    mv /tmp/sccache-v${SCCACHE_VERSION}-${SCCACHE_ARCH}-unknown-linux-musl/sccache /usr/local/bin/sccache; \
+    chmod +x /usr/local/bin/sccache; \
+    rm -rf /tmp/sccache*
 
 # Configure sccache for faster builds
 ENV RUSTC_WRAPPER=sccache
