@@ -70,10 +70,15 @@ jobs:
 
           DOCKER_CHANGED="${{ steps.filter.outputs.hyperlane_agents }}"
           HYP_SHA="${{ steps.hyperlane-sha.outputs.sha }}"
+          CHANGED_FILES="${{ steps.filter.outputs.hyperlane_agents_files }}"
 
           echo "Debug: DOCKER_CHANGED=$DOCKER_CHANGED"
           echo "Debug: Changed files:"
-          echo "${{ steps.filter.outputs.hyperlane_agents_files }}" || echo "No files listed"
+          if [ -n "${CHANGED_FILES}" ]; then
+            echo "${CHANGED_FILES}"
+          else
+            echo "No files listed"
+          fi
 
           NEED_BUILD="false"
 
