@@ -93,6 +93,12 @@ import {
   type GetUserKeysReturnType,
 } from "./queries/getUserKeys.js";
 
+import {
+  getUsernameByIndex,
+  type GetUsernameByIndexParameters,
+  type GetUsernameByIndexReturnType,
+} from "./queries/getUsernameByIndex.js";
+
 export type AccountFactoryQueryActions = {
   forgotUsername: (args: ForgotUsernameParameters) => ForgotUsernameReturnType;
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
@@ -112,6 +118,7 @@ export type AccountFactoryQueryActions = {
   getUser: (args: GetUserParameters) => GetUserReturnType;
   getUserKeys: (args: GetUserKeysParameters) => GetUserKeysReturnType;
   getUsersByKeyHash: (args: GetUsersByKeyhashParameters) => GetUsersByKeyHashReturnType;
+  getUsernameByIndex: (args: GetUsernameByIndexParameters) => GetUsernameByIndexReturnType;
 };
 
 export type AccountFactoryMutationActions = {
@@ -142,6 +149,7 @@ export function accountFactoryQueryActions<transport extends Transport = Transpo
     getUser: (args) => getUser(client, args),
     getUserKeys: (args) => getUserKeys(client, args),
     getUsersByKeyHash: (args) => getUsersByKeyHash(client, args),
+    getUsernameByIndex: (args) => getUsernameByIndex(client, args),
   };
 }
 

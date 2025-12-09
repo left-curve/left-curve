@@ -27,6 +27,8 @@ export type {
   AccountTypes,
   User,
   Username,
+  UserIndexAndName,
+  UserIndexOrName,
 } from "./account.js";
 
 export type { AppConfig } from "./app.js";

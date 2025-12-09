@@ -453,42 +453,13 @@
         }
       ]
     },
-    "stepper": {
-      "steps": [
-        {
-          "declarations": ["input step"],
-          "selectors": ["step"],
-          "match": {
-            "step=0": "Credential",
-            "step=1": "Fund",
-            "step=2": "Username",
-            "step=3": "Log in"
-          }
-        }
-      ],
-      "title": [
-        {
-          "declarations": ["input step"],
-          "selectors": ["step"],
-          "match": {
-            "step=0": "Create Your Account",
-            "step=1": "Fund Your Account",
-            "step=2": "Select a Username"
-          }
-        }
-      ],
-      "description": [
-        {
-          "declarations": ["input step"],
-          "selectors": ["step"],
-          "match": {
-            "step=0": "Choose a log in credential. You can add or remove credentials afterwards.",
-            "step=1": "Click the button below to request funds from the faucet for this testnet",
-            "step=2": "Your username will be public on-chain and cannot be changed afterwards.",
-            "step=3": "Your user was created and now you can log in with your new account."
-          }
-        }
-      ]
+    "accountCreated": {
+      "title": "Account Created",
+      "description": "Your user was created and now you can log in with your new account."
+    },
+    "title": "Create your account",
+    "options": {
+      "description": "Choose a log in credential. You can add or remove credentials afterwards."
     },
     "errors": {
       "couldntCompleteRequest": "Couldn’t complete request",
