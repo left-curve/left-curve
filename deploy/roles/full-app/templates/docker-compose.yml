@@ -4,6 +4,21 @@ x-common-labels: &common-labels
   dango_network: "${DANGO_NETWORK}"
   chain_id: "${CHAIN_ID}"
 
+x-wireguard-hosts: &wg-hosts
+{% set wg_hosts = [] %}
+{% for h in groups['all'] %}
+{%   if hostvars[h].wireguard_ip is defined and hostvars[h].hostname is defined %}
+{%     set _ = wg_hosts.append({'name': hostvars[h].hostname, 'ip': hostvars[h].wireguard_ip}) %}
+{%   endif %}
+{% endfor %}
+{% if wg_hosts | length == 0 %}
+  []
+{% else %}
+{%   for item in wg_hosts | sort(attribute='name') %}
+  - "{{ item.name }}:{{ item.ip }}"
+{%   endfor %}
+{% endif %}
+
 services:
 {% if deploy_includes_postgres %}
   postgres:
@@ -142,6 +157,7 @@ services:
 {% if not deploy_includes_clickhouse %}
       - clickhouse
 {% endif %}
+    extra_hosts: *wg-hosts
     ulimits:
       nofile:
         soft: 200000
@@ -288,6 +304,7 @@ services:
     networks:
       - default
       - traefik
+    extra_hosts: *wg-hosts
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
