@@ -926,7 +926,23 @@ fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
                 Coin::new(dango::DENOM.clone(), 5).unwrap(),
             ),
         })
-        .should_fail_with_error("price is too old!");
+        .should_fail_with_error(
+            // current_block_time = MOCK_GENESIS_TIMESTAMP + 2 * MOCK_BLOCK_TIME
+            // = 365 * 24 * 60 * 60 * 10^9 + 2 * 250 * 10^6
+            // = 31536000500000000
+            //
+            // no_older_than = current_block_time - MAX_ORACLE_STALENESS
+            // = 31536000500000000 - 500 * 10^6
+            // = 31536000000000000
+            //
+            // This stringifies to 1971-01-01 00:00:00.000000000
+            //
+            // Time of the oracle feed is zero, stringifying to 1970-01-01 00:00:00.000000000
+            //
+            // USDC denom (`bridge/usdc`) < DANGO denom (`dango`), so the error
+            // message should say the USDC feed is too old.
+            "price is too old! denom: bridge/usdc, timestamp: 1970-01-01T00:00:00.000000000Z, must be no older than: 1971-01-01T00:00:00.000000000Z",
+        );
 }
 
 /// Prior to the fix, a zero length swap route was allowed, which resulted in charging a fee
