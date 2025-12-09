@@ -64,8 +64,8 @@ impl<'a> OracleQuerier<'a> {
                         price.timestamp >= no_older_than,
                         "price is too old! denom: {}, timestamp: {}, must be no older than: {}",
                         denom,
-                        price.timestamp.into_nanos(),
-                        no_older_than.into_nanos()
+                        price.timestamp.to_rfc3339_string(),
+                        no_older_than.to_rfc3339_string()
                     );
                 }
 
