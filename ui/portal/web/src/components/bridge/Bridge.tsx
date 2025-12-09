@@ -35,6 +35,7 @@ const masks = {
 
 const networks = [
   { name: "Ethereum Network", id: "ethereum", time: "16 blocks | 5-30 mins" },
+  { name: "Sepolia Network", id: "sepolia", time: "16 blocks | 5-30 mins" },
   { name: "Base Network", id: "base", time: "5-30 mins" },
   { name: "Arbitrum Network", id: "arbitrum", time: "5-30 mins" },
   /*       { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
