@@ -36,6 +36,9 @@ To rebuild the EVM contracts from source, run the following.
      /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20Collateral.sol/HypERC20Collateral.json \
      /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/HypERC20.json \
      /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypNative.sol/HypNative.json
+     /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/StaticMessageIdMultisigIsm.json \
+     /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/StaticMessageIsMultisigIsmFactory.json \
+     /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/TokenRouter.json 
    do
      cp "$f" artifacts/evm
    done
