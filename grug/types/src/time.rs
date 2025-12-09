@@ -132,7 +132,7 @@ impl Timestamp {
 
     pub fn to_rfc3339_string(self) -> String {
         self.to_utc_date_time()
-            .to_rfc3339_opts(SecondsFormat::AutoSi, true)
+            .to_rfc3339_opts(SecondsFormat::Nanos, true)
     }
 }
 
