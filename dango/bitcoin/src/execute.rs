@@ -14,7 +14,7 @@ use {
         DangoQuerier,
         bitcoin::{
             BitcoinSignature, Config, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD, InboundConfirmed,
-            InboundCredential, InstantiateMsg, MultisigWallet, Network, OUTPUT_SIZE,
+            InboundCredential, InboundMsg, InstantiateMsg, MultisigWallet, Network, OUTPUT_SIZE,
             OutboundConfirmed, OutboundRequested, Recipient, SIGNATURE_SIZE, Transaction, Vout,
             create_tx_in,
         },
@@ -90,6 +90,9 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
                 &Signature::from_der(credential.signature.inner())?,
                 &PublicKey::from_slice(inbound_msg.pub_key.inner())?,
             )?;
+
+            // Ensure this message has not already been delivered.
+            check_inbound(ctx.storage, cfg, inbound_msg)?;
         },
 
         Ok(ExecuteMsg::AuthorizeOutbound {
@@ -134,6 +137,9 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
                 let secp = Secp256k1::verification_only();
                 secp.verify_ecdsa(&msg, &signature, &PublicKey::from_slice(pub_key.inner())?)?
             }
+
+            // Ensure this message has not already been delivered.
+            check_outbound(ctx.storage, cfg, id, pub_key)?;
         },
 
         _ => bail!("the execute message must be either `ObserveInbound` or `AuthorizeOutbound`"),
@@ -234,20 +240,6 @@ fn observe_inbound(
     ensure!(
         ctx.sender == ctx.contract,
         "you don't have the right, O you don't have the right"
-    );
-
-    // Ensure the amount meets the minimum deposit requirement.
-    ensure!(
-        amount >= cfg.minimum_deposit,
-        "minimum deposit not met: {} < {}",
-        amount,
-        cfg.minimum_deposit
-    );
-
-    // Ensure the UTXO has not been processed yet.
-    ensure!(
-        !PROCESSED_UTXOS.has(ctx.storage, (hash, vout)),
-        "transaction `{hash}` already exists in UTXO set"
     );
 
     let inbound = (hash, vout, amount, recipient.clone());
@@ -481,6 +473,83 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     }
 
     Ok(Response::new().add_events(events)?)
+}
+
+/// Ensure the inbound message is valid and has not already been processed.
+fn check_inbound(
+    storage: &mut dyn Storage,
+    cfg: Config,
+    inbound_msg: InboundMsg,
+) -> anyhow::Result<()> {
+    // Ensure the amount meets the minimum deposit requirement.
+    ensure!(
+        inbound_msg.amount >= cfg.minimum_deposit,
+        "minimum deposit not met: {} < {}",
+        inbound_msg.amount,
+        cfg.minimum_deposit
+    );
+
+    // Ensure the UTXO has not been processed yet.
+    ensure!(
+        !PROCESSED_UTXOS.has(storage, (inbound_msg.transaction_hash, inbound_msg.vout)),
+        "transaction `{} - {}` already exists in UTXO set",
+        inbound_msg.transaction_hash,
+        inbound_msg.vout
+    );
+
+    // Load the current voters for this inbound message.
+    let inbound = (
+        inbound_msg.transaction_hash,
+        inbound_msg.vout,
+        inbound_msg.amount,
+        inbound_msg.recipient,
+    );
+
+    let voters = INBOUNDS
+        .may_load(storage, inbound.clone())?
+        .unwrap_or_default();
+
+    // Ensure that the sender has not already voted for this inbound message.
+    ensure!(
+        !voters.contains(&inbound_msg.pub_key),
+        "you've already voted for transaction `{} - {}`",
+        inbound_msg.transaction_hash,
+        inbound_msg.vout
+    );
+
+    Ok(())
+}
+
+/// Ensure the outbound message is valid and has not already been processed.
+fn check_outbound(
+    storage: &mut dyn Storage,
+    cfg: Config,
+    id: u32,
+    pub_key: HexByteArray<33>,
+) -> anyhow::Result<()> {
+    // Ensure the transaction exists.
+    OUTBOUNDS.load(storage, id)?;
+
+    match SIGNATURES.load(storage, id) {
+        Ok(cumulative_signatures) => {
+            // Ensure that the transaction has not already enough signatures.
+            ensure!(
+                cumulative_signatures.len() < cfg.multisig.threshold() as usize,
+                "transaction `{id}` already has enough signatures"
+            );
+
+            // Ensure that the sender has not already signed this outbound message.
+            ensure!(
+                !cumulative_signatures.contains_key(&pub_key),
+                "you've already signed transaction `{id}`"
+            );
+        },
+        Err(_) => {
+            // There are no signatures yet, do nothing.
+        },
+    };
+
+    Ok(())
 }
 
 /// Ensure the given Bitcoin address is valid for the specified network.
