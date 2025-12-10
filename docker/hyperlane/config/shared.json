@@ -1,0 +1,12 @@
+{
+  "chains": {
+    "dango": {
+      "chain_id": "",
+      "httpd_urls": [""],
+      "mailbox": "0x51e5de0593d0ea0647a93925c91dafb98c36738f",
+      "interchainGasPaymaster": "0x0000000000000000000000000000000000000000",
+      "validatorAnnounce": "0x0594aa774b588f9db00dfbdb1e2b0ef2a3b9329b",
+      "merkleTreeHook": "0x51e5de0593d0ea0647a93925c91dafb98c36738f"
+    }
+  }
+}
