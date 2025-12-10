@@ -2,6 +2,7 @@ import { useAccount, useConfig, useSessionKey } from "@left-curve/store";
 
 import {
   CurrentBlock,
+  IconEdit,
   IconMobile,
   IconNetwork,
   IconTimer,
@@ -28,7 +29,10 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const UsernameSection: React.FC = () => {
-  const { username, isConnected } = useAccount();
+  const { username, isConnected, account } = useAccount();
+  const { showModal } = useApp();
+
+  const hasntChangeUsername = username === `User #${account?.index}`;
 
   if (!isConnected) return null;
 
@@ -40,8 +44,12 @@ const UsernameSection: React.FC = () => {
           <p className="diatype-m-bold text-ink-secondary-700">{m["common.username"]()}</p>
         </div>
       </div>
-      <div className="text-ink-secondary-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
-        {username}
+      <div
+        className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-end md:justify-center gap-1"
+        onClick={() => hasntChangeUsername && showModal(Modals.EditUsername)}
+      >
+        <p>{username}</p>
+        {hasntChangeUsername && <IconEdit className="w-5 h-5" />}
       </div>
     </div>
   );
@@ -85,19 +93,12 @@ const NetworkSection: React.FC = () => {
               {m["settings.session.network.title"]()}
             </span>
           </div>
-          <div className="text-ink-secondary-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
+          <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-end md:justify-center">
             {chain.name}
           </div>
         </div>
 
         <div className="flex flex-col  rounded-md justify-center gap-1 w-fit md:gap-0 pl-8">
-          {/*  <div className="flex md:items-center flex-col md:flex-row diatype-sm-regular">
-            <p className="md:min-w-[10rem] text-ink-tertiary-500">
-              {m["settings.session.network.chainId"]()}
-            </p>
-            <p className="break-all whitespace-normal">{chain.id}</p>
-          </div> */}
-
           <div className="flex md:items-center flex-col md:flex-row diatype-sm-regular">
             <p className="md:min-w-[10rem] text-ink-tertiary-500">
               {m["settings.session.network.latestBlockHeight"]()}
