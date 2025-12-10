@@ -178,7 +178,7 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
                 }
 
                 let expected_candle = serde_json::json!({
-                    "timeStart": "1971-01-01T00:00:00Z",
+                    "timeStart": "1971-01-01T00:00:00.000000000Z",
                     "open": "27.5",
                     "high": "27.5",
                     "low": "27.5",
