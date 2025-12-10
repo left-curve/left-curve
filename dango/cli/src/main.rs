@@ -107,6 +107,7 @@ async fn main() -> anyhow::Result<()> {
         .or_else(|| (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone()));
     let deployment_name = non_empty_env("DEPLOYMENT_NAME");
     let host_name = non_empty_env("HOSTNAME");
+    let dango_network = non_empty_env("DANGO_NETWORK");
 
     // Create the base environment filter
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
@@ -146,7 +147,11 @@ async fn main() -> anyhow::Result<()> {
 
         // Optional: host.name — read from HOSTNAME if provided
         if let Some(host) = host_name.clone() {
-            attrs.push(KeyValue::new("host.name", host));
+            attrs.push(KeyValue::new("hostname", host));
+        }
+
+        if let Some(dango_network) = dango_network.clone() {
+            attrs.push(KeyValue::new("dango_network", dango_network));
         }
 
         let resource = Resource::builder()
@@ -223,10 +228,13 @@ async fn main() -> anyhow::Result<()> {
                 scope.set_tag("deployment.environment", env);
             }
             if let Some(name) = &deployment_name {
-                scope.set_tag("deployment.name", name);
+                scope.set_tag("deployment_name", name);
             }
             if let Some(host) = &host_name {
-                scope.set_tag("host.name", host);
+                scope.set_tag("hostname", host);
+            }
+            if let Some(dango_network) = &dango_network {
+                scope.set_tag("dango_network", dango_network);
             }
             scope.set_extra("version", VERSION_WITH_COMMIT.as_str().into());
         });
