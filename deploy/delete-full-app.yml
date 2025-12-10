@@ -182,6 +182,7 @@
           environment:
             B2_APPLICATION_KEY_ID: "{{ s3_master_access_key }}"
             B2_APPLICATION_KEY: "{{ s3_master_secret_key }}"
+          ignore_errors: true
       run_once: true
       when:
         - delete_s3_backup_at_merge
