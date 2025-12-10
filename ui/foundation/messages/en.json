@@ -714,7 +714,12 @@
         "latestBlockTime": "Latest Block Time",
         "endpoint": "Endpoint"
       },
-      "time": { "hours": "h", "minutes": "m", "seconds": "s" }
+      "time": { "hours": "h", "minutes": "m", "seconds": "s" },
+      "username": {
+        "editUsername": "Edit Username",
+        "editDescription": "You can change your username only once. After that, it can’t be updated.",
+        "save":"Save"
+      }
     },
     "chartEngines": [
       {
