@@ -1,0 +1,221 @@
+name: Hyperlane Agents
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+      - "develop"
+  pull_request:
+    branches:
+      - "*"
+
+env:
+  HYPERLANE_REPO_URL: https://github.com/left-curve/hyperlane-monorepo.git
+  HYPERLANE_BRANCH: dango
+  IMAGE_BASE: ghcr.io/left-curve/left-curve/hyperlane-agents
+
+jobs:
+  prepare:
+    name: Detect changes & resolve Hyperlane SHA
+    runs-on: ubuntu-latest
+    outputs:
+      docker_changed: ${{ steps.filter.outputs.hyperlane_agents }}
+      hyperlane_sha: ${{ steps.hyperlane-sha.outputs.sha }}
+      need_build: ${{ steps.decision.outputs.need_build }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+          fetch-depth: 100
+
+      - name: Determine affected paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            hyperlane_agents:
+              - 'docker/hyperlane/Dockerfile'
+              - '.force_hyperlane_agents_rebuild'
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve Hyperlane fork HEAD SHA (branch dango)
+        id: hyperlane-sha
+        run: |
+          set -euo pipefail
+          HYP_SHA="$(git ls-remote "${HYPERLANE_REPO_URL}" "refs/heads/${HYPERLANE_BRANCH}" | awk '{print $1}')"
+          if [ -z "$HYP_SHA" ]; then
+            echo "Unable to resolve Hyperlane fork SHA for branch '${HYPERLANE_BRANCH}'"
+            exit 1
+          fi
+          echo "sha=$HYP_SHA" >> "$GITHUB_OUTPUT"
+          echo "Hyperlane fork SHA: $HYP_SHA"
+
+      - name: Decide whether we need to build
+        id: decision
+        run: |
+          set -euo pipefail
+
+          DOCKER_CHANGED="${{ steps.filter.outputs.hyperlane_agents }}"
+          HYP_SHA="${{ steps.hyperlane-sha.outputs.sha }}"
+
+          NEED_BUILD="false"
+
+          if [ "$DOCKER_CHANGED" = "true" ]; then
+            echo "docker/hyperlane has changed in this PR, forcing rebuild."
+            NEED_BUILD="true"
+          else
+            echo "docker/hyperlane not changed in this PR, checking if image for $HYP_SHA exists..."
+            if docker manifest inspect "${IMAGE_BASE}:${HYP_SHA}" >/dev/null 2>&1; then
+              echo "Image ${IMAGE_BASE}:${HYP_SHA} already exists. No rebuild needed."
+              NEED_BUILD="false"
+            else
+              echo "No image found for ${IMAGE_BASE}:${HYP_SHA}. We need to build."
+              NEED_BUILD="true"
+            fi
+          fi
+
+          echo "need_build=$NEED_BUILD" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build & push Hyperlane agents images
+    needs: [prepare]
+    if: needs.prepare.outputs.need_build == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: self-hosted
+          # NOTE: building arm64 on amd64 runner is very slow due to QEMU emulation
+          # Use native ARM64 runner for much faster builds
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      HYP_SHA: ${{ needs.prepare.outputs.hyperlane_sha }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify runner architecture matches build target
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.arch }}" == "amd64" && "${{ runner.arch }}" != "X64" ]]; then
+            echo "Warning: Building amd64 on non-X64 runner (${{ runner.arch }}). This will be slow."
+          elif [[ "${{ matrix.arch }}" == "arm64" && "${{ runner.arch }}" != "ARM64" ]]; then
+            echo "Warning: Building arm64 on non-ARM64 runner (${{ runner.arch }}). This will be very slow due to QEMU emulation."
+          else
+            echo "Building ${{ matrix.arch }} on native ${{ runner.arch }} runner - optimal!"
+          fi
+
+      - name: Build and push Docker image
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+            PLATFORM="linux/amd64"
+            SUFFIX="amd64"
+          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            PLATFORM="linux/arm64"
+            SUFFIX="arm64"
+          else
+            echo "Unsupported arch: ${{ matrix.arch }}"
+            exit 1
+          fi
+
+          echo "Building image for platform ${PLATFORM}, arch ${SUFFIX}"
+
+          docker buildx build \
+            --push \
+            --platform "${PLATFORM}" \
+            --build-arg HYPERLANE_REPO="${HYPERLANE_REPO_URL}" \
+            --build-arg HYPERLANE_REF="${HYPERLANE_BRANCH}" \
+            --build-arg HYPERLANE_SHA="${HYP_SHA}" \
+            --build-arg GIT_COMMIT="${HYP_SHA}" \
+            --cache-from type=registry,ref="${IMAGE_BASE}:buildcache-${SUFFIX}" \
+            --cache-to type=registry,ref="${IMAGE_BASE}:buildcache-${SUFFIX},mode=max" \
+            --provenance=false \
+            -t "${IMAGE_BASE}:${HYP_SHA}-${SUFFIX}" \
+            -f docker/hyperlane/Dockerfile \
+            .
+      - name: Ensure image works
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+            SUFFIX="amd64"
+          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            SUFFIX="arm64"
+          else
+            echo "Unsupported arch: ${{ matrix.arch }}"
+            exit 1
+          fi
+
+          IMAGE="${IMAGE_BASE}:${HYP_SHA}-${SUFFIX}"
+          echo "Ensuring image works for ${IMAGE}"
+
+          docker run --rm "${IMAGE}" > /dev/null 2>&1 || true
+
+  push-manifest:
+    name: Publish multi-arch manifest
+    needs: [prepare, build]
+    if: needs.prepare.outputs.need_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    env:
+      HYP_SHA: ${{ needs.prepare.outputs.hyperlane_sha }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch manifest
+        run: |
+          set -euo pipefail
+
+          echo "Creating multi-arch manifest for ${IMAGE_BASE}:${HYP_SHA}"
+
+          docker manifest create "${IMAGE_BASE}:${HYP_SHA}" \
+            --amend "${IMAGE_BASE}:${HYP_SHA}-amd64" \
+            --amend "${IMAGE_BASE}:${HYP_SHA}-arm64"
+
+          docker manifest push --purge "${IMAGE_BASE}:${HYP_SHA}"
+
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "Updating latest tag for main branch"
+            docker manifest create "${IMAGE_BASE}:latest" \
+              --amend "${IMAGE_BASE}:${HYP_SHA}-amd64" \
+              --amend "${IMAGE_BASE}:${HYP_SHA}-arm64"
+            docker manifest push --purge "${IMAGE_BASE}:latest"
+          fi
