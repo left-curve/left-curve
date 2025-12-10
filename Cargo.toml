@@ -6,6 +6,7 @@ members = [
   "dango/account/spot",
   "dango/auth",
   "dango/bank",
+  "dango/bitcoin",
   "dango/cli",
   "dango/client",
   "dango/dex",
@@ -118,6 +119,7 @@ clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
 config                      = "0.15"
+corepc-client               = "0.7"
 criterion                   = "0.6"
 data-encoding               = "2"
 dialoguer                   = "0.11"
@@ -206,6 +208,7 @@ dango-account-spot          = { path = "dango/account/spot" }
 dango-amm                   = { path = "dango/amm" }
 dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }
+dango-bitcoin               = { path = "dango/bitcoin" }
 dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }

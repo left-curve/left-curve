@@ -2,7 +2,10 @@ use {
     dango_account_factory::KEYS,
     dango_auth::MAX_NONCE_INCREASE,
     dango_genesis::Contracts,
-    dango_testing::{Multi, TestAccount, TestAccounts, TestSuite, setup_test_naive},
+    dango_testing::{
+        Multi, TestAccount, TestAccounts, TestSuite, constants::GENESIS_USER_COUNT,
+        setup_test_naive,
+    },
     dango_types::{
         account::{
             multi::{self, QueryProposalRequest, QueryVoteRequest, Status, Vote},
@@ -62,9 +65,9 @@ fn setup_multi_test<'a>() -> (
         contracts.account_factory,
         codes.account_multi.to_bytes().hash256(),
         Salt {
-            // We have 10 genesis users, indexed from 0, so the multisig's index
-            // should be 10.
-            index: 10,
+            // We have GENESIS_USER_COUNT genesis users, indexed from 0, so the multisig's index
+            // should be GENESIS_USER_COUNT.
+            index: GENESIS_USER_COUNT,
         }
         .into_bytes()
         .as_slice(),
@@ -83,7 +86,7 @@ fn multi_creation() {
             address: multi.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 10,
+            index: GENESIS_USER_COUNT,
             params: AccountParams::Multi(params.clone()),
         });
 
@@ -107,7 +110,7 @@ fn multi_creation() {
                     )),
                 },
                 multi.address() => Account {
-                    index: 10,
+                    index: GENESIS_USER_COUNT,
                     params: AccountParams::Multi(params.clone()),
                 },
             });
@@ -274,7 +277,7 @@ fn proposal_passing_with_manual_execution() {
             address: multi.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 10,
+            index: GENESIS_USER_COUNT,
             params: AccountParams::Multi(params),
         });
 

@@ -20,6 +20,8 @@ anyhow          = { workspace = true }
 async-graphql   = { workspace = true, optional = true }
 async-trait     = { workspace = true }
 bnum            = { workspace = true }
+borsh           = { workspace = true }
+corepc-client   = { workspace = true }
 grug            = { workspace = true }
 hyperlane-types = { workspace = true }
 paste           = { workspace = true }

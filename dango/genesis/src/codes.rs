@@ -51,6 +51,13 @@ impl GenesisCodes for RustVm {
             .with_bank_query(Box::new(dango_bank::bank_query))
             .build();
 
+        let bitcoin = ContractBuilder::new(Box::new(dango_bitcoin::instantiate))
+            .with_authenticate(Box::new(dango_bitcoin::authenticate))
+            .with_execute(Box::new(dango_bitcoin::execute))
+            .with_query(Box::new(dango_bitcoin::query))
+            .with_cron_execute(Box::new(dango_bitcoin::cron_execute))
+            .build();
+
         let dex = ContractBuilder::new(Box::new(dango_dex::instantiate))
             .with_execute(Box::new(dango_dex::execute))
             .with_cron_execute(Box::new(dango_dex::cron_execute))
@@ -119,6 +126,7 @@ impl GenesisCodes for RustVm {
             account_multi,
             account_spot,
             bank,
+            bitcoin,
             dex,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },

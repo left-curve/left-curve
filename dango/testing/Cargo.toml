@@ -54,10 +54,12 @@ assert-json-diff            = { workspace = true }
 assertor                    = { workspace = true }
 bip32                       = { workspace = true }
 chrono                      = { workspace = true }
+corepc-client               = { workspace = true }
 criterion                   = { workspace = true }
 dango-account-factory       = { workspace = true, features = ["library"] }
 dango-auth                  = { workspace = true }
 dango-bank                  = { workspace = true, features = ["library"] }
+dango-bitcoin               = { workspace = true }
 dango-dex                   = { workspace = true, features = ["library"] }
 dango-gateway               = { workspace = true, features = ["library"] }
 dango-httpd                 = { workspace = true, features = ["metrics"] }

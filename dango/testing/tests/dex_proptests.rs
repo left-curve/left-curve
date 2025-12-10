@@ -7,7 +7,7 @@ use {
             self, CreateOrderRequest, Direction, Geometric, PairId, PairParams, PairUpdate,
             PassiveLiquidity, Price, SwapRoute, Xyk,
         },
-        gateway::Remote,
+        gateway::{Remote, WarpRemote},
     },
     grug::{
         Addressable, BlockOutcome, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero,
@@ -1025,26 +1025,26 @@ fn test_dex_actions(
         bridge_ops: |accounts| {
             vec![
                 BridgeOp {
-                    remote: Remote::Warp {
+                    remote: Remote::Warp(WarpRemote {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::USDC_WARP,
-                    },
+                    }),
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
-                    remote: Remote::Warp {
+                    remote: Remote::Warp(WarpRemote {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::WETH_WARP,
-                    },
+                    }),
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
-                    remote: Remote::Warp {
+                    remote: Remote::Warp(WarpRemote {
                         domain: solana::DOMAIN,
                         contract: solana::SOL_WARP,
-                    },
+                    }),
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },

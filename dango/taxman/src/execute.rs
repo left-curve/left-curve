@@ -79,7 +79,6 @@ fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow:
     Ok(Response::new().add_events(events)?)
 }
 
-// TODO: exempt the account factory from paying fee.
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     let fee_cfg = CONFIG.load(ctx.storage)?;
@@ -87,18 +86,23 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // Compute the maximum amount of fee this transaction may incur.
     // Note that we ceil this amount, instead of flooring.
     //
-    // Under three situations, we don't charge any gas:
+    // Under two situations, we don't charge any gas:
     //
     // 1. During simulation. At this time, the user doesn't know how much gas
     //    gas limit to request. The node's query gas limit is used as `tx.gas_limit`
     //    in this case.
-    // 2. Sender is the account factory contract. This happens during a new user
-    //    onboarding. We don't charge gas fee this in case.
-    // 3. Sender is the oracle contract. Validators supply Pyth price feeds by
-    //    using the oracle contract as sender during `PrepareProposal`.
+    // 2. Sender is one of the following contracts:
+    //    a. account factory: this happens during a new user
+    //        onboarding. We don't charge gas fee this in case;
+    //    b. oracle: validators supply Pyth price feeds by
+    //        using the oracle contract as sender during `PrepareProposal`;
+    //    c. bitcoin: guardians use the bitcoin contract as sender during
+    //        deposit (`ObserveInbound`) and withdrawal (`AuthorizeOutbound`).
     let withhold_amount = if ctx.mode == AuthMode::Simulate || {
         let app_cfg = ctx.querier.query_dango_config()?;
-        tx.sender == app_cfg.addresses.account_factory || tx.sender == app_cfg.addresses.oracle
+        tx.sender == app_cfg.addresses.account_factory
+            || tx.sender == app_cfg.addresses.oracle
+            || tx.sender == app_cfg.addresses.bitcoin
     } {
         Uint128::ZERO
     } else {
