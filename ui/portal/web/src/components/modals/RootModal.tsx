@@ -170,6 +170,16 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.EditUsername]: {
+    component: lazy(() =>
+      import("./EditUsername").then(({ EditUsername }) => ({
+        default: EditUsername,
+      })),
+    ),
+    options: {
+      disableClosing: true,
+    },
+  },
 };
 
 type ModalDefinition = {
