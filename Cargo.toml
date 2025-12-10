@@ -162,8 +162,8 @@ roaring                     = "0.11"
 rocksdb                     = "0.23"
 sea-orm                     = { version = "1", features = ["runtime-tokio-rustls", "sea-orm-internal", "sqlx-postgres", "sqlx-sqlite", "with-bigdecimal", "with-chrono", "with-json", "with-time", "with-uuid"] }
 sea-orm-migration           = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"] }
-sentry                      = { version = "0.38", features = ["log", "tracing"] }
-sentry-actix                = "0.38"
+sentry                      = { version = "=0.42", features = ["log", "logs", "tracing"] }
+sentry-actix                = "=0.42"
 serde                       = "1"
 serde_json                  = "1"
 serde_with                  = "3"
@@ -184,9 +184,10 @@ tokio-stream                = { version = "0.1", features = ["sync"] }
 toml                        = "0.8"
 tower                       = "0.5"
 tower-abci                  = "0.19"
-tracing                     = "0.1"
+tracing                     = { version = "=0.1.41" }
+tracing-attributes          = { version = "=0.1.28" }
 tracing-opentelemetry       = "0.32"
-tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+tracing-subscriber          = { version = "=0.3.19", features = ["env-filter", "fmt", "json"] }
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "6"
