@@ -179,7 +179,7 @@ jobs:
           IMAGE="${IMAGE_BASE}:${HYP_SHA}-${SUFFIX}"
           echo "Ensuring image works for ${IMAGE}"
 
-          docker run --rm "${IMAGE}" || true
+          docker run --rm "${IMAGE}" > /dev/null 2>&1 || true
 
   push-manifest:
     name: Publish multi-arch manifest
