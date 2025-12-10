@@ -16,4 +16,12 @@
         endpoint_url: "{{ s3_endpoint }}"
         aws_access_key: "{{ s3_access_key }}"
         aws_secret_key: "{{ s3_secret_key }}"
+
+    - name: Install b2 delete buckets script
+      become: true
+      become_user: root
+      copy:
+        src: delete_b2_buckets.sh
+        dest: /usr/local/bin/delete_b2_buckets.sh
+        mode: '0755'
   run_once: true
