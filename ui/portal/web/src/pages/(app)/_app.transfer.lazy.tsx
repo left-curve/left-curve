@@ -9,7 +9,6 @@ import {
   useAccount,
   useBalances,
   useConfig,
-  usePrices,
   useSigningClient,
   useSubmitTx,
 } from "@left-curve/store";
@@ -57,7 +56,7 @@ function TransferApplet() {
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
 
-  const { refetch: refreshBalances } = useBalances({
+  const { refetch: refreshBalances, data: balances = {} } = useBalances({
     address: account?.address,
   });
 
@@ -133,6 +132,7 @@ function TransferApplet() {
                   name="amount"
                   label="You're sending"
                   asset={selectedCoin}
+                  balances={balances}
                   controllers={controllers}
                   isDisabled={isPending}
                   shouldValidate

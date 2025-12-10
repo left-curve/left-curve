@@ -5,26 +5,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
 import { useAccount } from "./useAccount.js";
 import { useSigningClient } from "./useSigningClient.js";
+import { useExternalBalances, type UseExternalBalancesParameters } from "./useExternalBalances.js";
 
 import hyperlaneConfig from "../../../../dango/hyperlane-deployment/config.json" with {
   type: "json",
 };
 
+import { chains } from "../hyperlane.js";
 import { ERC20_ABI, HYPERLANE_ROUTER_ABI } from "@left-curve/dango/hyperlane";
 import { createPublicClient, createWalletClient, custom, http } from "viem";
-import { sepolia, mainnet, base, arbitrum } from "viem/chains";
 import { parseUnits } from "@left-curve/dango/utils";
 
 import type { EIP1193Provider } from "../types/eip1193.js";
 import type { MailBoxConfig } from "@left-curve/dango/types";
 import type { AnyCoin } from "../types/coin.js";
-
-const chains = {
-  sepolia,
-  ethereum: mainnet,
-  base,
-  arbitrum,
-};
+import type { Chain as ViemChain } from "viem";
 
 export type UseBridgeStateParameters = {
   action: "deposit" | "withdraw";
@@ -56,6 +51,23 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     [connectorId, connectors],
   );
 
+  const walletAddress = useQuery({
+    enabled: action === "deposit" && !!connector,
+    queryKey: ["bridge", "connectedAddress", connectorId],
+    queryFn: async () => {
+      const provider = await (
+        connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
+      ).getProvider();
+      const [account] = await provider.request({ method: "eth_requestAccounts" });
+      return account;
+    },
+  });
+
+  const { data: externalBalances = {} } = useExternalBalances({
+    network: network as UseExternalBalancesParameters["network"],
+    address: walletAddress?.data,
+  });
+
   const coins = useMemo(() => {
     return Object.values(allCoins.byDenom).filter((c) =>
       ["USDC", "ETH", "USDT"].includes(c.symbol),
@@ -67,7 +79,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
       mutationFn: async () => {
         if (!coin) throw new Error("Coin not selected");
 
-        const originChain = chains[network as keyof typeof chains];
+        const originChain = chains[network as keyof typeof chains] as ViemChain;
         if (!originChain) throw new Error(`Chain ${network} not configured`);
 
         const originConfig = hyperlaneConfig.evm[network as keyof typeof hyperlaneConfig.evm];
@@ -92,7 +104,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
         ).getProvider();
 
         const walletClient = createWalletClient({
-          chain: chains[network as keyof typeof chains],
+          chain: originChain,
           transport: custom(provider),
         });
 
@@ -167,19 +179,6 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     },
   });
 
-  const walletAddress = useQuery({
-    enabled: action === "deposit" && !!connector,
-    queryKey: ["bridge", "connectedAddress", connectorId],
-    queryFn: async () => {
-      if (!connector) return null;
-      const provider = await (
-        connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
-      ).getProvider();
-      const [account] = await provider.request({ method: "eth_requestAccounts" });
-      return account;
-    },
-  });
-
   useEffect(() => {
     setCoin(null);
     setNetwork(null);
@@ -205,5 +204,6 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     depositAddress,
     walletAddress,
     getAmount,
+    externalBalances,
   };
 }
