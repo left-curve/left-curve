@@ -32,7 +32,7 @@ const UsernameSection: React.FC = () => {
   const { username, isConnected, account } = useAccount();
   const { showModal } = useApp();
 
-  const hasntChangeUsername = username === `User #${account?.index}`;
+  const hasNotChangedUsername = username === `User #${account?.index}`;
 
   if (!isConnected) return null;
 
@@ -46,10 +46,10 @@ const UsernameSection: React.FC = () => {
       </div>
       <div
         className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-end md:justify-center gap-1"
-        onClick={() => hasntChangeUsername && showModal(Modals.EditUsername)}
+        onClick={() => hasNotChangedUsername && showModal(Modals.EditUsername)}
       >
         <p>{username}</p>
-        {hasntChangeUsername && <IconEdit className="w-5 h-5" />}
+        {hasNotChangedUsername && <IconEdit className="w-5 h-5" />}
       </div>
     </div>
   );
