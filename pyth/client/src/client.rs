@@ -99,8 +99,8 @@ impl PythClient {
         counter!(pyth_types::metrics::PYTH_RECONNECTION_ATTEMPTS).increment(1);
 
         info!(
-            "Sending subscription with {} requests",
-            subscribe_requests.len()
+            subscribe_requests = subscribe_requests.len(),
+            "Sending subscription requests",
         );
 
         for subscription in subscribe_requests {
@@ -120,18 +120,20 @@ impl PythClient {
         // Create the subscribe requests.
         let subscribe_requests = ids_per_channel
             .into_iter()
-            .map(|(channel, (subscribe_id, feed_ids))| {
+            .map(|(channel, (subscription_id, feed_ids))| {
                 info!(
-                    "Subscription ID: {} to channel: {} with feed IDs: {:?}",
-                    subscribe_id, channel, feed_ids
+                    subscription_id,
+                    channel=%channel,
+                    feed_ids=?feed_ids,
+                    "Subscription sent to Pyth Lazer",
                 );
 
                 let params = Self::subscription_params(feed_ids, channel)?;
 
-                subscription_ids.push(subscribe_id);
+                subscription_ids.push(subscription_id);
 
                 Ok(SubscribeRequest {
-                    subscription_id: SubscriptionId(subscribe_id),
+                    subscription_id: SubscriptionId(subscription_id),
                     params,
                 })
             })
@@ -254,8 +256,8 @@ impl PythClient {
                     },
                     AnyResponse::Json(WsResponse::Subscribed(subscription_response)) => {
                         info!(
-                            "Subscription confirmed, ID: {}",
-                            subscription_response.subscription_id.0
+                            subscription_id = subscription_response.subscription_id.0,
+                            "Subscription confirmed",
                         );
                     },
                     AnyResponse::Json(WsResponse::SubscribedWithInvalidFeedIdsIgnored(
@@ -269,22 +271,25 @@ impl PythClient {
                             .is_empty()
                         {
                             info!(
-                                "Subscribed with ID: {}",
-                                subscription_response.subscription_id.0
+                                subscription_id = subscription_response.subscription_id.0,
+                                "Subscription confirmed",
                             );
                         } else {
                             warn!(
-                                "Subscribed with ID: {}, but some feed ids were ignored: {:#?}",
-                                subscription_response.subscription_id.0,
-                                subscription_response.ignored_invalid_feed_ids
+                                subscription_id = subscription_response.subscription_id.0,
+                                ignored_feeds = ?subscription_response.ignored_invalid_feed_ids,
+                                "Subscription confirmed, but some feed ids were ignored",
                             );
                         }
                     },
                     AnyResponse::Json(WsResponse::Unsubscribed(unsubscribed_response)) => {
-                        warn!(
-                            "Unsubscribed with ID: {}",
-                            unsubscribed_response.subscription_id.0
-                        );
+                        // If this is a response from a previous connection, it can be ignored.
+                        if subscription_ids.contains(&unsubscribed_response.subscription_id.0) {
+                            error!(
+                                subscription_id = unsubscribed_response.subscription_id.0,
+                                "Received unsubscribe response during connection",
+                            );
+                        }
                     },
                     AnyResponse::Json(WsResponse::StreamUpdated(_)) => {
                         error!("Received Lazer data in json format, only support Binary");
@@ -455,7 +460,10 @@ impl PythClientTrait for PythClient {
                     #[cfg(feature = "metrics")]
                     histogram!(pyth_types::metrics::PYTH_UPTIME).record(uptime.as_secs_f64());
 
-                    info!("Uptime: {} seconds; resubscribing to Pyth Lazer...", uptime.as_secs());
+                    info!(
+                        uptime_s = uptime.as_secs(),
+                        "Resubscribing to Pyth Lazer..."
+                    );
 
                     let start_reconnection = Instant::now();
                     let mut backoff = ExponentialBackoff::new(
@@ -466,13 +474,19 @@ impl PythClientTrait for PythClient {
                     );
 
                     loop {
-                        match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await {
+                        match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone())
+                            .await
+                        {
                             Ok(()) => {
                                 let reconnection_time = start_reconnection.elapsed();
-                                info!("Resubscribed successfully after {} ms", reconnection_time.as_millis());
+                                info!(
+                                    reconnection_time_ms = reconnection_time.as_millis(),
+                                    "Resubscribed successfully",
+                                );
 
                                 #[cfg(feature = "metrics")]
-                                histogram!(pyth_types::metrics::PYTH_RECONNECTION_TIME).record(reconnection_time.as_secs_f64());
+                                histogram!(pyth_types::metrics::PYTH_RECONNECTION_TIME)
+                                    .record(reconnection_time.as_secs_f64());
 
                                 start_uptime = Instant::now();
 
@@ -490,9 +504,14 @@ impl PythClientTrait for PythClient {
                                 }
 
                                 // If the subscription fails, wait for a while and try again.
-                                let next_delay = backoff.next_delay().unwrap_or(Duration::from_secs(1));
+                                let next_delay =
+                                    backoff.next_delay().unwrap_or(Duration::from_secs(1));
 
-                                error!("Failed to reconnect: {}; retrying in {:?}", err.to_string(), next_delay);
+                                error!(
+                                    error=%err,
+                                    retry_ms=next_delay.as_millis(),
+                                    "Failed to reconnect",
+                                );
                                 sleep(next_delay).await;
 
                                 continue;
@@ -539,22 +558,23 @@ impl PythClientTrait for PythClient {
 
                 // Yield the current data.
                 if !subscriptions_data.is_empty() {
-                    let send_data = subscriptions_data
-                        .clone()
-                        .into_values()
-                        .collect::<Vec<_>>();
+                    let send_data = subscriptions_data.clone().into_values().collect::<Vec<_>>();
                     yield NonEmpty::new_unchecked(send_data);
                 }
             }
 
             // If the code reaches here, it means the stream needs to be closed.
-            for id in subscription_ids {
-                match client.unsubscribe(SubscriptionId(id)).await {
+            for subscription_id in subscription_ids {
+                match client.unsubscribe(SubscriptionId(subscription_id)).await {
                     Ok(_) => {
-                        info!("Unsubscribed stream id {id} successfully");
+                        info!(subscription_id, "Unsubscribed stream successfully");
                     },
-                    Err(e) => {
-                        error!("Failed to unsubscribe stream id {id}: {e:?}");
+                    Err(err) => {
+                        error!(
+                            subscription_id,
+                            error=%err,
+                            "Failed to unsubscribe stream"
+                        );
                     },
                 };
             }
