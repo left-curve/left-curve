@@ -110,7 +110,7 @@ export const EditUsername = forwardRef((_props, _ref) => {
             strategy: "onChange",
             validate: (value) => {
               if (!value || value.length > 15 || !/^[a-z0-9_]+$/.test(value)) {
-                return "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore";
+                return m["errors.validations.usernameRule"]();
               }
               return true;
             },
