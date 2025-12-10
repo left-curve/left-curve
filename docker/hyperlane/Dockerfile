@@ -101,8 +101,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends openssl ca-certificates tini libcurl4 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    chmod 777 /app && \
-    mkdir -p /usr/share/hyperlane && chmod 1000 /usr/share/hyperlane && \
+    chmod 755 /app && \
+    mkdir -p /usr/share/hyperlane && chmod 755 /usr/share/hyperlane && \
     mkdir -p /data && chown -R 1000 /data
 
 # Run as non-root user for improved security

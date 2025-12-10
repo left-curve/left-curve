@@ -163,6 +163,23 @@ jobs:
             -t "${IMAGE_BASE}:${HYP_SHA}-${SUFFIX}" \
             -f docker/hyperlane/Dockerfile \
             .
+      - name: Ensure image works
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+            SUFFIX="amd64"
+          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            SUFFIX="arm64"
+          else
+            echo "Unsupported arch: ${{ matrix.arch }}"
+            exit 1
+          fi
+
+          IMAGE="${IMAGE_BASE}:${HYP_SHA}-${SUFFIX}"
+          echo "Ensuring image works for ${IMAGE}"
+
+          docker run --rm "${IMAGE}" || true
 
   push-manifest:
     name: Publish multi-arch manifest
