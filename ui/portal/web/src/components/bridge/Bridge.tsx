@@ -1,4 +1,4 @@
-import { useAccount, useBridgeState, usePrices } from "@left-curve/store";
+import { useAccount, useBalances, useBridgeState, usePrices } from "@left-curve/store";
 import {
   AssetInputWithRange,
   ConnectWalletWithModal,
@@ -40,147 +40,6 @@ const networks = [
   /*       { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
           { name: "Solana Network", id: "solana", time: "2-10 mins" }, */
 ];
-
-interface TokenConfig {
-  symbol: string;
-  address: string;
-  decimals: number;
-}
-
-interface ChainConfig {
-  name: string;
-  rpcUrl: string;
-  tokens: TokenConfig[];
-}
-
-interface TokenBalanceResult {
-  chain: string;
-  symbol: string;
-  balanceRaw: string;
-  balanceFormatted: number;
-}
-
-const CHAINS: Record<string, ChainConfig> = {
-  ethereum: {
-    name: "Ethereum Mainnet",
-    rpcUrl: "https://rpc.ankr.com/eth",
-    tokens: [
-      {
-        symbol: "USDT",
-        address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        decimals: 6,
-      },
-      {
-        symbol: "USDC",
-        address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        decimals: 6,
-      },
-    ],
-  },
-  base: {
-    name: "Base Mainnet",
-    rpcUrl: "https://mainnet.base.org",
-    tokens: [
-      {
-        symbol: "USDC",
-        address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        decimals: 6,
-      },
-      {
-        symbol: "WETH",
-        address: "0x4200000000000000000000000000000000000006",
-        decimals: 18,
-      },
-    ],
-  },
-  arbitrum: {
-    name: "Arbitrum One",
-    rpcUrl: "https://arb1.arbitrum.io/rpc",
-    tokens: [
-      {
-        symbol: "USDT",
-        address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
-        decimals: 6,
-      },
-      {
-        symbol: "USDC",
-        address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-        decimals: 6,
-      },
-    ],
-  },
-};
-
-function encodeBalanceOf(walletAddress: string): string {
-  const FUNCTION_SELECTOR = "0x70a08231";
-  const cleanAddress = walletAddress.replace(/^0x/, "");
-  const paddedAddress = cleanAddress.padStart(64, "0");
-  return FUNCTION_SELECTOR + paddedAddress;
-}
-
-async function getErc20Balance(
-  chainKey: string,
-  token: TokenConfig,
-  walletAddress: string,
-): Promise<TokenBalanceResult | null> {
-  const chain = CHAINS[chainKey];
-  const payload = {
-    jsonrpc: "2.0",
-    id: 1,
-    method: "eth_call",
-    params: [
-      {
-        to: token.address,
-        data: encodeBalanceOf(walletAddress),
-      },
-      "latest",
-    ],
-  };
-
-  try {
-    const response = await fetch(chain.rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error(`Error RPC ${chain.name}:`, data.error);
-      return null;
-    }
-
-    const hexVal = data.result;
-    const bigIntVal = BigInt(hexVal);
-
-    const formatted = Number(bigIntVal) / 10 ** token.decimals;
-
-    return {
-      chain: chainKey,
-      symbol: token.symbol,
-      balanceRaw: bigIntVal.toString(),
-      balanceFormatted: formatted,
-    };
-  } catch (err) {
-    console.error(`${chainKey}:`, err);
-    return null;
-  }
-}
-
-export async function getAllBalances(walletAddress: string) {
-  const tasks: Promise<TokenBalanceResult | null>[] = [];
-
-  for (const [chainKey, config] of Object.entries(CHAINS)) {
-    for (const token of config.tokens) {
-      tasks.push(getErc20Balance(chainKey, token, walletAddress));
-    }
-  }
-
-  const results = await Promise.all(tasks);
-
-  return results.filter((r): r is TokenBalanceResult => r !== null);
-}
 
 const [BridgeProvider, useBridge] = createContext<{
   state: ReturnType<typeof useBridgeState>;
@@ -241,6 +100,7 @@ const BridgeDeposit: React.FC = () => {
     depositAddress,
     walletAddress,
     getAmount,
+    externalBalances,
   } = state;
 
   if (action !== "deposit") return null;
@@ -285,8 +145,10 @@ const BridgeDeposit: React.FC = () => {
           <AssetInputWithRange
             name="amount"
             asset={coin}
+            balances={externalBalances}
             controllers={controllers}
             showRange
+            shouldValidate
             label={
               <div className="flex justify-between w-full items-center">
                 <p className="exposure-sm-italic text-ink-secondary-700">
@@ -359,8 +221,9 @@ const BridgeDeposit: React.FC = () => {
 const BridgeWithdraw: React.FC = () => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { isConnected } = useAccount();
+  const { isConnected, account } = useAccount();
   const { state, controllers } = useBridge();
+  const { data: balances = {} } = useBalances({ address: account?.address });
   const { getPrice } = usePrices();
   const { action, coins, coin, changeCoin, network, setNetwork, getAmount, withdraw } = state;
   const { register } = controllers;
@@ -393,6 +256,7 @@ const BridgeWithdraw: React.FC = () => {
           <AssetInputWithRange
             name="amount"
             asset={coin}
+            balances={balances}
             controllers={controllers}
             showRange
             label={m["bridge.youWithdraw"]()}
