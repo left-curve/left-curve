@@ -22,6 +22,7 @@ export const Modals = {
   SignupReminder: "signup-reminder",
   WalletSelector: "wallet-selector",
   Authenticate: "authenticate",
+  EditUsername: "edit-username",
 };
 
 export type ModalRef = {
