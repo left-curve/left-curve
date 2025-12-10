@@ -130,6 +130,12 @@ impl Duration {
 
 #[cfg(feature = "chrono")]
 impl Timestamp {
+    /// Convert the `grug::Timestamp` to a `chrono::DateTime<Utc>`.
+    ///
+    /// ## Panics
+    ///
+    /// Panics when the timestamp, expressed in nanoseconds, overflows the `i64`
+    /// range. This event will happen at 2262-04-11 23:47:16.854775807 UTC.
     pub fn to_utc_date_time(self) -> DateTime<Utc> {
         DateTime::from_timestamp_nanos(self.into_nanos() as i64)
     }
