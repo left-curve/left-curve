@@ -62,10 +62,11 @@ impl<'a> OracleQuerier<'a> {
                 if let Some(no_older_than) = self.no_older_than {
                     ensure!(
                         price.timestamp >= no_older_than,
-                        "price is too old! denom: {}, timestamp: {}, must be no older than: {}",
+                        "price is too old! denom: {}, timestamp: {}, must be no older than: {}, delta: {}",
                         denom,
-                        price.timestamp.into_nanos(),
-                        no_older_than.into_nanos()
+                        price.timestamp.to_rfc3339_string(),
+                        no_older_than.to_rfc3339_string(),
+                        humantime::format_duration((no_older_than - price.timestamp).into_std())
                     );
                 }
 

@@ -18,8 +18,9 @@ library = []
 anyhow        = { workspace = true }
 dango-lending = { workspace = true, features = ["library"] }
 dango-types   = { workspace = true }
-grug          = { workspace = true }
+grug          = { workspace = true, features = ["chrono"] }
 hex           = { workspace = true }
+humantime     = { workspace = true }
 pyth-types    = { workspace = true }
 
 [dev-dependencies]
