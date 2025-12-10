@@ -10,6 +10,7 @@ COPY ./pnpm-lock.yaml /app/pnpm-lock.yaml
 COPY ./pnpm-workspace.yaml /app/pnpm-workspace.yaml
 COPY ./turbo.json /app/turbo.json
 COPY ./.npmrc /app/.npmrc
+COPY ./dango /app/dango
 
 WORKDIR /app
 
@@ -57,6 +58,6 @@ COPY docker/dango-frontend/default.conf /etc/nginx/conf.d/default.conf
 COPY docker/dango-frontend/10-logs.sh /docker-entrypoint.d/10-logs.sh
 COPY docker/dango-frontend/20-config.sh /docker-entrypoint.d/20-config.sh
 RUN chmod +x /docker-entrypoint.d/10-logs.sh \
-    && chmod +x /docker-entrypoint.d/20-config.sh
+  && chmod +x /docker-entrypoint.d/20-config.sh
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
