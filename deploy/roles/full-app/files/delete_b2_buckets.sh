@@ -5,7 +5,7 @@ b2 bucket list --json \
   | while read -r b; do
       echo "Checking $b..."
 
-      # timeout after 3s → assume non-empty
+      # timeout after 5s → assume non-empty
       json=$(timeout 5 b2 bucket get --show-size "$b" 2>/dev/null)
 
       if [ $? -ne 0 ] || [ -z "$json" ]; then
