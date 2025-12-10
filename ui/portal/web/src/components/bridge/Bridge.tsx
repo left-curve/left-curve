@@ -25,7 +25,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import type React from "react";
-import { useEffect, type PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 
 const masks = {
   ethereum: ethAddressMask,
@@ -35,6 +35,7 @@ const masks = {
 
 const networks = [
   { name: "Ethereum Network", id: "ethereum", time: "16 blocks | 5-30 mins" },
+  { name: "Sepolia Network", id: "sepolia", time: "16 blocks | 5-30 mins" },
   { name: "Base Network", id: "base", time: "5-30 mins" },
   { name: "Arbitrum Network", id: "arbitrum", time: "5-30 mins" },
   /*       { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
@@ -201,10 +202,6 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
 }) => {
   const controllers = useInputs();
   const state = useBridgeState({ action, controllers });
-
-  useEffect(() => {
-    getAllBalances("0x76858f241fe4d17b921f1f9f270a977f7cc9c2a7").then(console.log);
-  }, []);
 
   return (
     <BridgeProvider value={{ state, controllers }}>
