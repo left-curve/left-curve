@@ -66,7 +66,7 @@ pub mod evm {
         let infura_api_key = env::var("INFURA_API_KEY")?;
         let url = reqwest::Url::parse(infura_rpc_url)?.join(&infura_api_key)?;
 
-        let mnemonic = env::var("SEPOLIA_MNEMONIC")?;
+        let mnemonic = env::var("EVM_MNEMONIC")?;
         let signer = MnemonicBuilder::<English>::default()
             .phrase(&mnemonic)
             .build()?;
