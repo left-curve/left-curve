@@ -81,6 +81,24 @@ export function createConfig<
     return collection;
   });
 
+  async function getUserIndexAndName(): Promise<{ index: number; name: string } | undefined> {
+    const { userIndexAndName } = store.getState();
+    if (!userIndexAndName) return undefined;
+    const client = getClient() as PublicClient;
+    const username = await client.getUsernameByIndex({ index: userIndexAndName.index });
+
+    const response = {
+      index: userIndexAndName.index,
+      name: username ?? `User #${userIndexAndName.index}`,
+    };
+
+    if (response.name !== userIndexAndName.name) {
+      store.setState((x) => ({ ...x, userIndexAndName: response }));
+    }
+
+    return response;
+  }
+
   function setup(connectorFn: CreateConnectorFn): Connector {
     // Set up emitter with uid and add to connector so they are "linked" together.
     const emitter = createEmitter<ConnectorEventMap>(uid());
@@ -90,23 +108,7 @@ export function createConfig<
         chain: rest.chain,
         transport: rest.transport,
         storage,
-        getUserIndexAndName: async () => {
-          const { userIndexAndName } = store.getState();
-          if (!userIndexAndName) return undefined;
-          const client = getClient() as PublicClient;
-          const username = await client.getUsernameByIndex({ index: userIndexAndName.index });
-
-          const response = {
-            index: userIndexAndName.index,
-            name: username ?? `User #${userIndexAndName.index}`,
-          };
-
-          if (response.name !== userIndexAndName.name) {
-            store.setState((x) => ({ ...x, userIndexAndName: response }));
-          }
-
-          return response;
-        },
+        getUserIndexAndName,
       }),
       emitter,
       uid: emitter.uid,
