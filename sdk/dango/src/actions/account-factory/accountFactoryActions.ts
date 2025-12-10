@@ -99,6 +99,12 @@ import {
   type GetUsernameByIndexReturnType,
 } from "./queries/getUsernameByIndex.js";
 
+import {
+  updateUsername,
+  type UpdateUsernameParameters,
+  type UpdateUsernameReturnType,
+} from "./mutations/updateUsername.js";
+
 export type AccountFactoryQueryActions = {
   forgotUsername: (args: ForgotUsernameParameters) => ForgotUsernameReturnType;
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
@@ -129,6 +135,7 @@ export type AccountFactoryMutationActions = {
     txArgs?: TxParameters,
   ) => RegisterUserReturnType;
   createSession: (args: CreateSessionParameters) => CreateSessionReturnType;
+  updateUsername: (args: UpdateUsernameParameters) => UpdateUsernameReturnType;
 };
 
 export function accountFactoryQueryActions<transport extends Transport = Transport>(
@@ -161,5 +168,6 @@ export function accountFactoryMutationActions<transport extends Transport = Tran
     updateKey: (...args) => updateKey(client, ...args),
     registerAccount: (...args) => registerAccount(client, ...args),
     createSession: (...args) => createSession(client, ...args),
+    updateUsername: (...args) => updateUsername(client, ...args),
   };
 }
