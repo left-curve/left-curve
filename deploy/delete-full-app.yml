@@ -152,7 +152,7 @@
 
     - block:
         - name: Install pipx
-          ansible.builtin.apt:
+          apt:
             name: pipx
             state: present
             update_cache: yes
@@ -160,7 +160,7 @@
           become_user: root
 
         - name: Install Backblaze b2 via pipx
-          ansible.builtin.command: pipx install b2
+          command: pipx install b2
           args:
             creates: "{{ ansible_env.HOME }}/.local/bin/b2"
 
@@ -172,7 +172,7 @@
             hide_after_days: 1
             delete_after_days: 1
             lifecycle_prefix: ""
-          ansible.builtin.command: >
+          command: >
             $HOME/.local/bin/b2 bucket update
             "{{ s3_bucket }}"
             allPrivate
