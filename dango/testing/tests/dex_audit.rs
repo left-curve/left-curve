@@ -939,9 +939,12 @@ fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
             //
             // Time of the oracle feed is zero, stringifying to 1970-01-01 00:00:00.000000000
             //
+            // Delta = 31536000000000000 - 31536000000000000
+            // which stringifies to: 11months 30days 3h 50m 24s
+            //
             // USDC denom (`bridge/usdc`) < DANGO denom (`dango`), so the error
             // message should say the USDC feed is too old.
-            "price is too old! denom: bridge/usdc, timestamp: 1970-01-01T00:00:00.000000000Z, must be no older than: 1971-01-01T00:00:00.000000000Z",
+            "price is too old! denom: bridge/usdc, timestamp: 1970-01-01T00:00:00.000000000Z, must be no older than: 1971-01-01T00:00:00.000000000Z, delta: 11months 30days 3h 50m 24s",
         );
 }
 

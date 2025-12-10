@@ -116,13 +116,21 @@ impl Duration {
     pub fn into_weeks(self) -> u128 {
         self.into_days() / DAYS_PER_WEEK
     }
+
+    /// Convert the `grug::Duration` to a `std::time::Duration`.
+    ///
+    /// ## Panics
+    ///
+    /// Panics when the duration, expressed in nanoseconds, overflows the `u64`
+    /// range. This event will happen at 2554-07-21 23:34:33.709551615 UTC.
+    pub fn into_std(self) -> std::time::Duration {
+        std::time::Duration::from_nanos(self.into_nanos() as u64)
+    }
 }
 
 #[cfg(feature = "chrono")]
 impl Timestamp {
     pub fn to_utc_date_time(self) -> DateTime<Utc> {
-        // This panics if the timestamp (as nanoseconds) overflows `i64` range.
-        // But that'd be 500 years or so from now...
         DateTime::from_timestamp_nanos(self.into_nanos() as i64)
     }
 
