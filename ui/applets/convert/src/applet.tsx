@@ -1,4 +1,4 @@
-import { useAccount, useConvertState } from "@left-curve/store";
+import { useAccount, useBalances, useConvertState } from "@left-curve/store";
 import { useState } from "react";
 
 import {
@@ -121,6 +121,7 @@ const ConvertHeader: React.FC = () => {
 };
 
 const ConvertForm: React.FC = () => {
+  const { account } = useAccount();
   const { state, controllers } = useConvert();
   const { revalidate } = controllers;
   const [activeInput, setActiveInput] = useState<"from" | "to">("from");
@@ -128,6 +129,8 @@ const ConvertForm: React.FC = () => {
   const { isReverse, fromCoin, toCoin, changePair, toggleDirection, submission } = state;
 
   const { simulation } = state;
+
+  const { data: balances = {} } = useBalances({ address: account?.address });
 
   const simulate = useDebounceFn(simulation.mutateAsync, 300);
 
@@ -144,6 +147,7 @@ const ConvertForm: React.FC = () => {
         name="from"
         label={m["dex.convert.youSwap"]()}
         asset={fromCoin}
+        balances={balances}
         controllers={controllers}
         isDisabled={submission.isPending}
         isLoading={activeInput !== "from" ? simulation.isPending : false}
@@ -173,6 +177,7 @@ const ConvertForm: React.FC = () => {
         name="to"
         label={m["dex.convert.youGet"]()}
         asset={toCoin}
+        balances={balances}
         controllers={controllers}
         isDisabled={submission.isPending}
         isLoading={activeInput !== "to" ? simulation.isPending : false}
