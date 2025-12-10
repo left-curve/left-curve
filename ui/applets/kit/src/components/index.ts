@@ -124,3 +124,4 @@ export { IconTelegram } from "./icons/IconTelegram";
 export { IconShare } from "./icons/IconShare";
 export { IconDisconnect } from "./icons/IconDisconnect";
 export { IconDango } from "./icons/IconDango";
+export { IconEdit } from "./icons/IconEdit";
