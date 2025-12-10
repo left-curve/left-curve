@@ -81,6 +81,7 @@ impl Context {
         }
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn preload_cache(&self) -> crate::error::Result<()> {
         let all_pairs = PairPrice::all_pairs(self.clickhouse_client()).await?;
 
@@ -98,6 +99,7 @@ impl Context {
     }
 
     #[cfg(feature = "async-graphql")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn start_cache(&self) -> crate::error::Result<()> {
         self.preload_cache().await
     }
