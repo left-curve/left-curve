@@ -28,7 +28,7 @@ export function getConnectorClientQueryOptions<config extends Config>(
       const { scopeKey: _, scopeKey: _s, ...parameters } = queryKey[1];
       return getConnectorClient(config, parameters);
     },
-    queryKey: getConnectorClientQueryKey(options),
+    queryKey: getConnectorClientQueryKey(config, options),
   } as const satisfies QueryOptions<
     GetConnectorClientFnData,
     GetConnectorClientErrorType,
@@ -41,9 +41,15 @@ export type GetConnectorClientFnData = GetConnectorClientReturnType;
 
 export type GetConnectorClientData = GetConnectorClientFnData;
 
-export function getConnectorClientQueryKey(options: GetConnectorClientOptions = {}) {
+export function getConnectorClientQueryKey(
+  config: Config,
+  options: GetConnectorClientOptions = {},
+) {
   const { connectorUId, ...parameters } = options;
-  return ["connectorClient", { ...filterQueryOptions(parameters), connectorUId }] as const;
+  return [
+    "connectorClient",
+    { ...filterQueryOptions(parameters), connectorUId, state: config.state },
+  ] as const;
 }
 
 export type GetConnectorClientQueryKey = ReturnType<typeof getConnectorClientQueryKey>;

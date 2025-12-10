@@ -1,13 +1,14 @@
 import { getConnector } from "./getConnector.js";
 import { getConnectorClient } from "./getConnectorClient.js";
 
-import type { AccountTypes, Username } from "@left-curve/dango/types";
+import type { UserIndexAndName } from "@left-curve/dango/types";
 import type { Address, UID } from "@left-curve/dango/types";
 
 import type { Config } from "../types/store.js";
+import { toAccount } from "@left-curve/dango";
 
 export type RefreshAccountsParameters = {
-  username: Username;
+  userIndexAndName: UserIndexAndName;
   connectorUId?: UID;
 };
 
@@ -17,7 +18,7 @@ export async function refreshAccounts<config extends Config>(
   config: config,
   parameters: RefreshAccountsParameters,
 ): Promise<RefreshAccountsReturnType> {
-  const { username } = parameters;
+  const { userIndexAndName } = parameters;
 
   const connectorUId = (() => {
     if (parameters.connectorUId) return parameters.connectorUId;
@@ -27,7 +28,7 @@ export async function refreshAccounts<config extends Config>(
 
   const client = await getConnectorClient(config, { connectorUId: connectorUId });
 
-  const accounts = await client.getAccountsByUsername({ username });
+  const accountsInfo = await client.getAccountsByUsername({ userIndexOrName: userIndexAndName });
 
   config.setState((x) => {
     const connector = x.connectors.get(connectorUId);
@@ -36,17 +37,9 @@ export async function refreshAccounts<config extends Config>(
       ...x,
       connectors: new Map(x.connectors).set(connectorUId, {
         ...connector,
-        accounts: Object.entries(accounts).map(([address, accountInfo]) => {
-          const { index, params } = accountInfo;
-          const type = Object.keys(params)[0] as AccountTypes;
-          return {
-            index,
-            params,
-            address: address as Address,
-            username,
-            type: type,
-          };
-        }),
+        accounts: Object.entries(accountsInfo).map(([address, accountInfo]) =>
+          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
+        ),
       }),
     };
   });

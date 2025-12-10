@@ -126,6 +126,8 @@
     else
       awk '$2 == "cosign-linux-{{ cosign_download_arch }}" { print $1 }' "{{ cosign_tmp_dir.path }}/checksums.txt"
     fi
+  args:
+    executable: /bin/bash
   register: cosign_expected_checksum
   changed_when: false
 

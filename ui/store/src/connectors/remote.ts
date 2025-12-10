@@ -8,22 +8,24 @@ import type { KeyHash, ArbitrarySignatureOutcome, SignatureOutcome } from "@left
 import type { Address } from "@left-curve/dango/types";
 
 export function remote() {
-  return createConnector<undefined>(({ transport, getUsername, emitter, chain }) => {
+  return createConnector<undefined>(({ transport, getUserIndexAndName, emitter, chain }) => {
     return {
       id: "remote",
       name: "Remote",
       icon: undefined,
       type: "remote",
-      async connect({ username, chainId, keyHash: _keyHash_ }) {
+      async connect({ userIndexAndName, chainId, keyHash: _keyHash_ }) {
         const client = createSignerClient({
           signer: this,
           type: "remote",
           transport,
         });
 
-        const accountsInfo = await getAccountsByUsername(client, { username });
+        const accountsInfo = await getAccountsByUsername(client, {
+          userIndexOrName: userIndexAndName,
+        });
         const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
-          toAccount({ username, address: address as Address, info: accountInfo }),
+          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
         );
 
         const keyHash = await (async () => {
@@ -31,11 +33,11 @@ export function remote() {
           return await this.getKeyHash();
         })();
 
-        const keys = await getKeysByUsername(client, { username });
+        const keys = await getKeysByUsername(client, { userIndexOrName: userIndexAndName });
 
         if (!keys[keyHash]) throw new Error("Not authorized");
 
-        emitter.emit("connect", { accounts, chainId, username, keyHash });
+        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash });
       },
       async disconnect() {
         emitter.emit("disconnect");
@@ -59,12 +61,12 @@ export function remote() {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const username = getUsername();
-        if (!username) throw new Error("remote: username not found");
+        const userIndexAndName = await getUserIndexAndName();
+        if (!userIndexAndName) throw new Error("remote: user index not found");
 
-        const accounts = await getAccountsByUsername(client, { username });
+        const accounts = await getAccountsByUsername(client, { userIndexOrName: userIndexAndName });
         return Object.entries(accounts).map(([address, accountInfo]) =>
-          toAccount({ username, address: address as Address, info: accountInfo }),
+          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
         );
       },
       async isAuthorized() {

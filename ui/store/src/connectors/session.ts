@@ -4,7 +4,7 @@ import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/dango/enc
 
 import { createConnector } from "./createConnector.js";
 
-import type { AccountTypes, SigningSession } from "@left-curve/dango/types";
+import type { SigningSession } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
 
 import { createStorage } from "../storages/createStorage.js";
@@ -27,7 +27,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
 
   const { id = "session", name = "Session Provider", icon } = target || {};
 
-  return createConnector<SigningSession>(({ transport, emitter, getUsername, chain }) => {
+  return createConnector<SigningSession>(({ transport, emitter, getUserIndexAndName, chain }) => {
     return {
       id,
       name,
@@ -36,7 +36,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
       async setup() {
         _provider_ = parameters.target?.provider || (async () => await storage.getItem("session"));
       },
-      async connect({ username, chainId, challenge }) {
+      async connect({ userIndexAndName, chainId, challenge }) {
         const client = createSignerClient({
           signer: this,
           type: "session",
@@ -46,16 +46,18 @@ export function session(parameters: SessionConnectorParameters = {}) {
         if (!challenge) throw new Error("challenge is required to recover the session");
 
         const session = deserializeJson<SigningSession>(decodeUtf8(decodeBase64(challenge)));
-        const keys = await getKeysByUsername(client, { username });
+        const keys = await getKeysByUsername(client, { userIndexOrName: userIndexAndName });
 
         if (!keys[session.keyHash]) throw new Error("Not authorized");
         storage.setItem("session", session);
-        const accountsInfo = await getAccountsByUsername(client, { username });
+        const accountsInfo = await getAccountsByUsername(client, {
+          userIndexOrName: userIndexAndName,
+        });
         const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
-          toAccount({ username, address: address as Address, info: accountInfo }),
+          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
         );
 
-        emitter.emit("connect", { accounts, chainId, username, keyHash: session.keyHash });
+        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash: session.keyHash });
       },
       async disconnect() {
         storage.removeItem("session");
@@ -80,20 +82,15 @@ export function session(parameters: SessionConnectorParameters = {}) {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const username = getUsername();
-        if (!username) throw new Error("session: username not found");
-        const accounts = await getAccountsByUsername(client, { username });
-        return Object.entries(accounts).map(([address, accountInfo]) => {
-          const { index, params } = accountInfo;
-          const type = Object.keys(params)[0] as AccountTypes;
-          return {
-            index,
-            params,
-            address: address as Address,
-            username,
-            type: type,
-          };
+        const userIndexAndName = await getUserIndexAndName();
+        if (!userIndexAndName) throw new Error("session: user index not found");
+        const accountsInfo = await getAccountsByUsername(client, {
+          userIndexOrName: userIndexAndName,
         });
+        const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
+          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
+        );
+        return accounts;
       },
       async isAuthorized() {
         const accounts = await this.getAccounts();

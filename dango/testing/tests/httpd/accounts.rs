@@ -426,8 +426,14 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 .map(|a| a.created_block_height as u64)
                 .collect::<Vec<_>>();
 
+                // Nonce 1: register first user
+                // Nonce 2: fund first user
+                // Nonce 3: register second user
+                // Nonce 4: fund second user
+                // etc...
+                // The expected nonces where the accounts are created are 1, 3, 5, 7, ...
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2).rev().collect::<Vec<_>>());
+                    .is_equal_to((1..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
@@ -444,7 +450,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 .collect::<Vec<_>>();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2).collect::<Vec<_>>());
+                    .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 3. last with descending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
@@ -461,7 +467,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 .collect::<Vec<_>>();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2).collect::<Vec<_>>());
+                    .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 4. last with ascending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
@@ -478,7 +484,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 .collect::<Vec<_>>();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2).rev().collect::<Vec<_>>());
+                    .is_equal_to((1..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -552,7 +558,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                         .map(|t| t.created_block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![2]);
+                .is_equal_to(vec![1]);
 
                 create_account_tx.send(2).await.unwrap();
 
@@ -570,7 +576,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                         .map(|t| t.created_block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![4]);
+                .is_equal_to(vec![3]);
 
                 Ok::<(), anyhow::Error>(())
             })

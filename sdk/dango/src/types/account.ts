@@ -9,6 +9,10 @@ export type User = {
 
 export type Username = string;
 
+export type UserIndexAndName = { index: number; name?: string };
+
+export type UserIndexOrName = { index: number } | { name: string };
+
 export type AccountTypes = (typeof AccountType)[keyof typeof AccountType];
 
 export const AccountType = {
