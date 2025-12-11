@@ -1,5 +1,5 @@
 services:
-  relayer:
+  validator:
     image: ghcr.io/left-curve/left-curve/hyperlane-agents:latest
     container_name: ${NETWORK}-validator
     env_file:
