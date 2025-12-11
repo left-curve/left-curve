@@ -155,8 +155,8 @@ proc-macro2                 = "1"
 prometheus                  = "0.13"
 proptest                    = "1"
 prost                       = "0.13"
-pyth-lazer-client           = "=8.4.1"
-pyth-lazer-protocol         = "=0.18.1"
+pyth-lazer-client           = "15.0.0"
+pyth-lazer-protocol         = "0.26.0"
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                     = { version = "0.12", features = ["stream"] }
