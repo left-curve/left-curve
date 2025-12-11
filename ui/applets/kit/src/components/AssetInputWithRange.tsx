@@ -1,4 +1,4 @@
-import { useAccount, useBalances, usePrices } from "@left-curve/store";
+import { useAccount, usePrices } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
@@ -12,6 +12,7 @@ import { Skeleton } from "./Skeleton";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import type { useInputs } from "@left-curve/foundation";
+import type { Coins } from "@left-curve/dango/types";
 
 type AssetInputWithRangeProps = {
   name: string;
@@ -23,6 +24,7 @@ type AssetInputWithRangeProps = {
   showCoinSelector?: boolean;
   shouldValidate?: boolean;
   showRange?: boolean;
+  balances: Coins;
   onFocus?: () => void;
   onSelectCoin?: (denom: string) => void;
   triggerSimulation?: (reverse?: boolean) => void;
@@ -34,9 +36,8 @@ type AssetInputWithRangeProps = {
 };
 
 export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) => {
-  const { isConnected, account } = useAccount();
+  const { isConnected } = useAccount();
   const { getPrice } = usePrices();
-  const { data: balances = {} } = useBalances({ address: account?.address });
 
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
@@ -51,6 +52,7 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
     controllers,
     showRange,
     showCoinSelector,
+    balances,
     onFocus,
     onSelectCoin,
     triggerSimulation,

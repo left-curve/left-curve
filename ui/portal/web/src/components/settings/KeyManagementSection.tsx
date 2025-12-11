@@ -27,7 +27,7 @@ const KeyTranslation = {
 };
 
 export const KeyManagementSection: React.FC = () => {
-  const { status, username, keyHash: currentKeyHash } = useAccount();
+  const { status, account, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { showModal, settings } = useApp();
   const { isMd } = useMediaQuery();
@@ -35,9 +35,9 @@ export const KeyManagementSection: React.FC = () => {
   const { timeFormat, dateFormat } = settings;
 
   const { data: keys = [], isPending } = useQuery({
-    enabled: !!signingClient && !!username,
-    queryKey: ["user_keys", username],
-    queryFn: async () => await signingClient?.getUserKeys({ username: username as string }),
+    enabled: !!signingClient && !!account,
+    queryKey: ["user_keys", account?.index],
+    queryFn: async () => await signingClient?.getUserKeys({ userIndex: account!.index }),
   });
 
   if (status !== ConnectionStatus.Connected) return null;

@@ -5,6 +5,7 @@
   "module": "./build/index.js",
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
+  "type": "module",
   "exports": {
     "./fonts/*": "./fonts/*",
     "./images/*": "./images/*",

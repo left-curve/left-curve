@@ -13,7 +13,6 @@ import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 
 import { createConnector } from "./createConnector.js";
 
-import type { AccountTypes } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
 
 type PasskeyConnectorParameters = {
@@ -23,17 +22,16 @@ type PasskeyConnectorParameters = {
 export function passkey(parameters: PasskeyConnectorParameters = {}) {
   const { icon } = parameters;
 
-  return createConnector<undefined>(({ transport, emitter, getUsername, chain }) => {
+  return createConnector<undefined>(({ transport, emitter, getUserIndexAndName, chain }) => {
     return {
       id: "passkey",
       name: "Passkey",
       type: "passkey",
       icon,
-      async connect({ username, chainId, challenge, keyHash: _keyHash_ }) {
+      async connect({ userIndexAndName, chainId, challenge, keyHash: _keyHash_ }) {
         const client = createSignerClient({
           signer: this,
           type: "passkey",
-          username,
           transport,
         });
 
@@ -49,16 +47,18 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           return createKeyHash(credentialId);
         })();
 
-        const keys = await getKeysByUsername(client, { username });
+        const keys = await getKeysByUsername(client, { userIndexOrName: userIndexAndName });
 
         if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
 
-        const accountsInfo = await getAccountsByUsername(client, { username });
+        const accountsInfo = await getAccountsByUsername(client, {
+          userIndexOrName: userIndexAndName,
+        });
         const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
-          toAccount({ username, address: address as Address, info: accountInfo }),
+          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
         );
 
-        emitter.emit("connect", { accounts, chainId, username, keyHash });
+        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash });
       },
       async disconnect() {
         emitter.emit("disconnect");
@@ -104,20 +104,15 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const username = getUsername();
-        if (!username) throw new Error("passkey: username not found");
-        const accounts = await getAccountsByUsername(client, { username });
-        return Object.entries(accounts).map(([address, accountInfo]) => {
-          const { index, params } = accountInfo;
-          const type = Object.keys(params)[0] as AccountTypes;
-          return {
-            index,
-            params,
-            address: address as Address,
-            username,
-            type: type,
-          };
+        const userIndexAndName = await getUserIndexAndName();
+        if (!userIndexAndName) throw new Error("passkey: user index not found");
+        const accountsInfo = await getAccountsByUsername(client, {
+          userIndexOrName: userIndexAndName,
         });
+        const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
+          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
+        );
+        return accounts;
       },
       async isAuthorized() {
         const accounts = await this.getAccounts();

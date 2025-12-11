@@ -45,6 +45,16 @@
     state: present
     create_home: yes
 
+- name: Ensure direnv hook is present in .bashrc
+  lineinfile:
+    path: "/home/{{ deploy_user }}/.bashrc"
+    line: 'eval "$(direnv hook bash)"'
+    state: present
+    insertafter: EOF
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: '0644'
+
 - name: Copy deploy ssh keys
   include_tasks: add_ssh_keys.yml
   vars:

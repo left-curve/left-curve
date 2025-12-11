@@ -1,0 +1,62 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-hyperlane-deployment"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[[bin]]
+name = "evm_query"
+path = "src/bin/evm/query.rs"
+
+[[bin]]
+name = "evm_deploy"
+path = "src/bin/evm/deploy.rs"
+
+[[bin]]
+name = "evm_deploy_hwr_sepolia"
+path = "src/bin/evm/deploy_hwr.rs"
+
+[[bin]]
+name = "evm_warp_to_dango"
+path = "src/bin/evm/warp_to_dango.rs"
+
+[[bin]]
+name = "evm_enroll_dango_domain"
+path = "src/bin/evm/enroll_dango_domain_in_remote_hwr.rs"
+
+[[bin]]
+name = "evm_set_ism"
+path = "src/bin/evm/set_ism.rs"
+
+[[bin]]
+name = "dango_set_routes"
+path = "src/bin/dango/set_routes.rs"
+
+[[bin]]
+name = "dango_set_ism_validator_set"
+path = "src/bin/dango/dango_set_ism_validator_set.rs"
+
+[[bin]]
+name = "dango_warp_to_remote"
+path = "src/bin/dango/warp_to_remote.rs"
+
+[dependencies]
+alloy           = { workspace = true, features = ["contract", "full", "signer-mnemonic"] }
+anyhow          = { workspace = true }
+clap            = { workspace = true }
+dango-client    = { workspace = true }
+dango-types     = { workspace = true }
+dotenvy         = { workspace = true }
+grug            = { workspace = true }
+hex-literal     = { workspace = true }
+hyperlane-types = { workspace = true }
+indexer-client  = { workspace = true }
+reqwest         = { workspace = true }
+serde           = { workspace = true, features = ["derive"] }
+serde_json      = { workspace = true }
+tokio           = { workspace = true }

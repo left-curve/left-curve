@@ -2,7 +2,7 @@ import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
 
 import { getAction } from "@left-curve/sdk/actions";
 import type { Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
-import type { AppConfig, KeyHash, Username } from "../../../types/index.js";
+import type { AppConfig, KeyHash, UserIndexAndName, Username } from "../../../types/index.js";
 
 export type ForgotUsernameParameters = {
   keyHash: KeyHash;
@@ -11,7 +11,7 @@ export type ForgotUsernameParameters = {
   height?: number;
 };
 
-export type ForgotUsernameReturnType = Promise<Username[]>;
+export type ForgotUsernameReturnType = Promise<UserIndexAndName[]>;
 /**
  * Given a key hash, get the username(s) associated with it.
  * @param parameters
@@ -35,13 +35,9 @@ export async function forgotUsername<
 
   const { addresses } = await action<AppConfig>({});
 
-  const response = await queryWasmSmart(client, {
+  return await queryWasmSmart(client, {
     contract: addresses.accountFactory,
     msg,
     height,
   });
-
-  return (response as { index: number; name?: string }[]).map(
-    ({ index, name }) => name ?? `user #${index}`,
-  );
 }

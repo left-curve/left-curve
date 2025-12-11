@@ -93,6 +93,18 @@ import {
   type GetUserKeysReturnType,
 } from "./queries/getUserKeys.js";
 
+import {
+  getUsernameByIndex,
+  type GetUsernameByIndexParameters,
+  type GetUsernameByIndexReturnType,
+} from "./queries/getUsernameByIndex.js";
+
+import {
+  updateUsername,
+  type UpdateUsernameParameters,
+  type UpdateUsernameReturnType,
+} from "./mutations/updateUsername.js";
+
 export type AccountFactoryQueryActions = {
   forgotUsername: (args: ForgotUsernameParameters) => ForgotUsernameReturnType;
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
@@ -112,6 +124,7 @@ export type AccountFactoryQueryActions = {
   getUser: (args: GetUserParameters) => GetUserReturnType;
   getUserKeys: (args: GetUserKeysParameters) => GetUserKeysReturnType;
   getUsersByKeyHash: (args: GetUsersByKeyhashParameters) => GetUsersByKeyHashReturnType;
+  getUsernameByIndex: (args: GetUsernameByIndexParameters) => GetUsernameByIndexReturnType;
 };
 
 export type AccountFactoryMutationActions = {
@@ -122,6 +135,7 @@ export type AccountFactoryMutationActions = {
     txArgs?: TxParameters,
   ) => RegisterUserReturnType;
   createSession: (args: CreateSessionParameters) => CreateSessionReturnType;
+  updateUsername: (args: UpdateUsernameParameters) => UpdateUsernameReturnType;
 };
 
 export function accountFactoryQueryActions<transport extends Transport = Transport>(
@@ -142,6 +156,7 @@ export function accountFactoryQueryActions<transport extends Transport = Transpo
     getUser: (args) => getUser(client, args),
     getUserKeys: (args) => getUserKeys(client, args),
     getUsersByKeyHash: (args) => getUsersByKeyHash(client, args),
+    getUsernameByIndex: (args) => getUsernameByIndex(client, args),
   };
 }
 
@@ -153,5 +168,6 @@ export function accountFactoryMutationActions<transport extends Transport = Tran
     updateKey: (...args) => updateKey(client, ...args),
     registerAccount: (...args) => registerAccount(client, ...args),
     createSession: (...args) => createSession(client, ...args),
+    updateUsername: (...args) => updateUsername(client, ...args),
   };
 }
