@@ -169,7 +169,7 @@ const UsernamesSection: React.FC = () => {
   const existUsernames = usersIndexAndName.length > 0;
 
   return (
-    <div className="flex flex-col gap-6 w-full items-center text-center">
+    <View className="flex flex-col gap-6 w-full items-center text-center">
       {existUsernames ? (
         <View className="flex flex-col gap-4 w-full items-center">
           <GlobalText>Usernames List</GlobalText>
@@ -195,7 +195,7 @@ const UsernamesSection: React.FC = () => {
           <GlobalText className="leading-none pt-[2px]">{m["common.back"]()}</GlobalText>
         </Button>
       )}
-    </div>
+    </View>
   );
 };
 

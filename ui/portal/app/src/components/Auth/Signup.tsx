@@ -62,7 +62,7 @@ const Header: React.FC = () => {
 
   if (screen === "email") {
     return (
-      <View className="flex flex-row gap-1 items-cente text-center">
+      <View className="flex flex-row gap-1 items-center text-center">
         <GlobalText className="text-ink-tertiary-500">
           {m["signin.sentVerificationCode"]()}
         </GlobalText>
@@ -189,23 +189,27 @@ const Deposit: React.FC = () => {
   if (screen !== "deposit") return null;
 
   return (
-    <div className="flex flex-col gap-6 w-full items-center">
-      <div className="flex items-center flex-col gap-5">
-        <img
+    <View className="flex flex-col gap-6 w-full items-center">
+      <View className="flex items-center flex-col gap-5">
+        {/* <img
           src="/images/account-creation/deposit.svg"
           alt="deposit-bag"
           className="w-[60px] h-[60px]"
-        />
-        <div className="flex flex-col w-full items-center gap-1">
-          <h2 className="h4-bold text-ink-secondary-700">{m["signup.deposit.title"]()}</h2>
-          <p className="diatype-m-regular">{m["signup.deposit.description"]()}</p>
-          <p className="diatype-m-regular">{m["signup.deposit.description2"]()}</p>
-        </div>
-      </div>
+        /> */}
+        <View className="flex flex-col w-full items-center gap-1">
+          <GlobalText className="h4-bold text-ink-secondary-700">
+            {m["signup.deposit.title"]()}
+          </GlobalText>
+          <GlobalText className="diatype-m-regular">{m["signup.deposit.description"]()}</GlobalText>
+          <GlobalText className="diatype-m-regular">
+            {m["signup.deposit.description2"]()}
+          </GlobalText>
+        </View>
+      </View>
       <Button className="min-w-[11.25rem]" onPress={() => navigate("/bridge")}>
         {m["signup.deposit.cta"]()}
       </Button>
-    </div>
+    </View>
   );
 };
 

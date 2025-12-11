@@ -141,7 +141,7 @@ const inputVariants = tv(
     slots: {
       base: "flex flex-col gap-1 relative text-ink-secondary-700",
       inputWrapper:
-        "relative w-full flex flex-row items-center gap-2 px-2 py-[6fspx] rounded-lg h-[46px] bg-surface-secondary-rice border border-transparent",
+        "relative w-full flex flex-row items-center gap-2 px-2 py-[6px] rounded-lg h-[46px] bg-surface-secondary-rice border border-transparent",
       inputParent: "w-full flex flex-row items-center gap-2",
       input:
         "border-0 flex-1 diatype-m-regular bg-transparent text-ink-secondary-700 placeholder:text-ink-tertiary-500",
