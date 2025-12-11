@@ -11,7 +11,7 @@ use {
         response::IntoResponse,
         routing::get,
     },
-    grug::NonEmpty,
+    grug::{NonEmpty, setup_tracing_subscriber},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
@@ -24,10 +24,14 @@ use {
     },
     rand::Rng,
     reqwest::StatusCode,
-    std::{net::SocketAddr, sync::Arc, time::Duration},
+    std::{
+        net::SocketAddr,
+        sync::Arc,
+        time::{Duration, Instant},
+    },
     tokio::{select, sync::Mutex, time::sleep},
     tokio_stream::StreamExt,
-    tracing::{error, info},
+    tracing::{Level, error, info},
 };
 
 const TOKEN: &str = "inser_lazer_token_here";
@@ -311,5 +315,45 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
             "Connection closed, remaining connections: {:#?}",
             *connections
         );
+    }
+}
+
+#[ignore = "manual performance test"]
+#[tokio::test]
+async fn test_performance() {
+    setup_tracing_subscriber(Level::INFO);
+    // Load the .env file
+    dotenvy::dotenv().ok();
+
+    let key = std::env::var("PYTH__ACCESS_TOKEN").expect("env var not set");
+
+    let mut client = PythClient::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), key).unwrap();
+    let mut stream = client
+        .stream(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
+        .await
+        .unwrap();
+
+    let mut last = Instant::now();
+    let mut counter = 0;
+
+    // Average over 10 seconds
+    let avg_seconds = 10;
+
+    loop {
+        // Wait for the next batch from your stream
+        if let Some(price_update) = stream.next().await {
+            // Increment the counter for how many updates you've received
+            counter += price_update.len();
+
+            let elapsed = last.elapsed();
+
+            if elapsed >= Duration::from_secs(avg_seconds) {
+                info!("updates/sec = {}", counter / avg_seconds as usize);
+
+                // Reset
+                counter = 0;
+                last = Instant::now();
+            }
+        }
     }
 }
