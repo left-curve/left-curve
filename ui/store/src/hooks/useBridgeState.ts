@@ -12,9 +12,10 @@ import hyperlaneConfig from "../../../../dango/hyperlane-deployment/config.json"
 };
 
 import { chains } from "../hyperlane.js";
-import { ERC20_ABI, HYPERLANE_ROUTER_ABI } from "@left-curve/dango/hyperlane";
+import { ERC20_ABI, HYPERLANE_ROUTER_ABI, toAddr32 } from "@left-curve/dango/hyperlane";
 import { createPublicClient, createWalletClient, custom, http } from "viem";
 import { parseUnits } from "@left-curve/dango/utils";
+import { transferRemote } from "@left-curve/dango/actions";
 
 import type { EIP1193Provider } from "../types/eip1193.js";
 import type { MailBoxConfig } from "@left-curve/dango/types";
@@ -78,6 +79,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     mutation: {
       mutationFn: async () => {
         if (!coin) throw new Error("Coin not selected");
+        if (!account) throw new Error("Account not connected");
 
         const originChain = chains[network as keyof typeof chains] as ViemChain;
         if (!originChain) throw new Error(`Chain ${network} not configured`);
@@ -121,7 +123,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
         const destinationDomain = mailboxConfig.localDomain;
         const protocolFee = BigInt(originConfig.hyperlane_protocol_fee);
         const routerAddress = routeConfig.proxy_address as `0x${string}`;
-        const recipientAddress = `0x${account!.address.slice(2).padStart(64, "0")}` as const;
+        const recipientAddress = toAddr32(account.address);
 
         const value = await (async () => {
           if (typeof routeConfig.warp_route_type !== "string") {
@@ -167,7 +169,33 @@ export function useBridgeState(params: UseBridgeStateParameters) {
 
   const withdraw = useSubmitTx({
     mutation: {
-      mutationFn: async () => {},
+      mutationFn: async () => {
+        if (!account) throw new Error("Account not connected");
+        if (!coin) throw new Error("Coin not selected");
+
+        const targetChain = chains[network as keyof typeof chains] as ViemChain;
+        if (!targetChain) throw new Error(`Chain ${network} not configured`);
+
+        const targetConfig = hyperlaneConfig.evm[network as keyof typeof hyperlaneConfig.evm];
+        if (!targetConfig) throw new Error(`Hyperlane config not found for ${network}`);
+
+        const routeConfig = targetConfig.warp_routes.find((r) =>
+          r.symbol.toLowerCase().includes(coin.symbol.toLowerCase()),
+        );
+
+        if (!routeConfig) throw new Error(`Warp route not found for ${coin.symbol} on ${network}`);
+
+        await transferRemote(signingClient!, {
+          sender: account.address,
+          recipient: toAddr32(account.address),
+          remote: {
+            warp: {
+              domain: targetConfig.hyperlane_domain,
+              contract: toAddr32(routeConfig.proxy_address as `0x${string}`),
+            },
+          },
+        });
+      },
     },
   });
 

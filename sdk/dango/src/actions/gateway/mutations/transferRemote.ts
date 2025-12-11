@@ -1,6 +1,6 @@
 import { getAppConfig } from "@left-curve/sdk";
-import type { Address, Transport } from "@left-curve/sdk/types";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
+import type { Address, Transport } from "@left-curve/sdk/types";
 
 import { getAction } from "@left-curve/sdk/actions";
 
