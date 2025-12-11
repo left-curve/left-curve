@@ -1,5 +1,5 @@
-import { Keccak256 } from "../crypto/index.js";
-import { decodeHex } from "../encoding/index.js";
+import { Keccak256 } from "@left-curve/sdk/crypto";
+import { decodeHex } from "@left-curve/sdk/encoding";
 
 const TREE_DEPTH = 32;
 const MAX_LEAVES = (1n << BigInt(TREE_DEPTH)) - 1n;
