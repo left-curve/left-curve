@@ -17,6 +17,7 @@ export { Tab } from "./Tabs";
 export { Activities } from "./activities/Activities";
 export { PairAssets } from "./PairAssets";
 export { ShadowContainer } from "./ShadowContainer";
+export { Input } from "./Input";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -46,3 +47,8 @@ export { IconLanguage } from "./icons/IconLanguage";
 export { IconFormatNumber } from "./icons/IconFormatNumber";
 export { IconDepth } from "./icons/IconDepth";
 export { IconCalendar } from "./icons/IconCalendar";
+export { IconKey } from "./icons/IconKey";
+export { IconGoogle } from "./icons/IconGoogle";
+export { IconTwitter } from "./icons/IconTwitter";
+export { IconLeft } from "./icons/IconLeft";
+export { IconQR } from "./icons/IconQR";
