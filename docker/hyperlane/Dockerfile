@@ -102,8 +102,9 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     chmod 755 /app && \
+    chown -R 1000:1000 /app && \
     mkdir -p /usr/share/hyperlane && chmod 755 /usr/share/hyperlane && \
-    mkdir -p /data && chown -R 1000 /data
+    mkdir -p /data && chown -R 1000:1000 /data
 
 # Run as non-root user for improved security
 USER 1000
