@@ -1,15 +1,9 @@
-import {
-  type KeyPair,
-  Secp256k1,
-  domainHash,
-  ethHashMessage,
-  keccak256,
-  multisigHash,
-} from "../crypto/index.js";
-import { encodeHex } from "../encoding/index.js";
+import { type KeyPair, Secp256k1, ethHashMessage, keccak256 } from "@left-curve/sdk/crypto";
+import { encodeEndian32, encodeHex, encodeUtf8 } from "@left-curve/sdk/encoding";
 import { Addr32 } from "./addr32.js";
-import type { IncrementalMerkleTree } from "./merkletree.js";
 import { Metadata } from "./multisig.js";
+
+import type { IncrementalMerkleTree } from "./merkletree.js";
 
 const HYPERLANE_DOMAIN_KEY = "HYPERLANE";
 const MOCK_REMOTE_MERKLE_TREE = new Uint8Array(32);
@@ -76,4 +70,29 @@ export function mockValidatorSign(
       return 1;
     }),
   });
+}
+
+export function multisigHash(
+  domainHash: Uint8Array,
+  merkleRoot: Uint8Array,
+  merkleIndex: number,
+  messageId: Uint8Array,
+): Uint8Array {
+  const bytes: number[] = [];
+  bytes.push(...domainHash);
+  bytes.push(...merkleRoot);
+  bytes.push(...encodeEndian32(Number(merkleIndex)));
+  bytes.push(...messageId);
+  return keccak256(new Uint8Array(bytes));
+}
+
+export function domainHash(domain: number, address: Uint8Array, key: string) {
+  let offset = 0;
+  const buff = new Uint8Array(36 + key.length);
+  buff.set(encodeEndian32(domain), offset);
+  offset += 4;
+  buff.set(address, offset);
+  offset += 32;
+  buff.set(encodeUtf8(key), offset);
+  return keccak256(buff);
 }

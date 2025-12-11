@@ -50,9 +50,9 @@
       "default": "./build/encoding.cjs"
     },
     "./hyperlane": {
-      "types": "./build/hyperlane.d.ts",
-      "import": "./build/hyperlane.js",
-      "default": "./build/hyperlane.cjs"
+      "types": "./build/hyperlane/index.d.ts",
+      "import": "./build/hyperlane/index.js",
+      "default": "./build/hyperlane/index.cjs"
     },
     "./utils": {
       "types": "./build/utils/index.d.ts",
