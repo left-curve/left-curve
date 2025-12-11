@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ethHashMessage } from "@left-curve/sdk/crypto";
-import { decodeHex, encodeHex } from "@left-curve/sdk/encoding";
+import { ethHashMessage } from "../crypto.js";
+import { decodeHex, encodeHex } from "../encoding.js";
 import { IncrementalMerkleTree } from "./merkletree.js";
 
 import cases from "../../../../hyperlane/types/testdata/merkle.json" with { type: "json" };
