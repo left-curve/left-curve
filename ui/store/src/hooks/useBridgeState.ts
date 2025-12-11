@@ -170,6 +170,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   const withdraw = useSubmitTx({
     mutation: {
       mutationFn: async () => {
+        if (!signingClient) throw new Error("Signing client not initialized");
         if (!account) throw new Error("Account not connected");
         if (!coin) throw new Error("Coin not selected");
 
@@ -185,7 +186,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
 
         if (!routeConfig) throw new Error(`Warp route not found for ${coin.symbol} on ${network}`);
 
-        await transferRemote(signingClient!, {
+        await transferRemote(signingClient, {
           sender: account.address,
           recipient: toAddr32(account.address),
           remote: {
