@@ -1,13 +1,13 @@
 - name: Install docker health checker
   become: true
   become_user: root
-  ansible.builtin.copy:
+  copy:
     src: check_docker.sh
     dest: /usr/local/bin/check_docker.sh
     mode: '0755'
 
 - name: Wait up to 10s for containers to be healthy/running
-  ansible.builtin.command:
+  command:
     argv:
       - /usr/local/bin/check_docker.sh
       - "{{ deployment_name }}"
@@ -40,7 +40,7 @@
     - lookup('env', 'GITHUB_STEP_SUMMARY') != ''
 
 - name: Fail if containers are not healthy after retries
-  ansible.builtin.fail:
+  fail:
     msg: >-
       Some containers are unhealthy or not running after waiting. See the Container Health summary above for details.
   when: health.rc != 0

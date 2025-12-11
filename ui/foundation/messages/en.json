@@ -426,6 +426,12 @@
       "title": "Register Not Available!",
       "description": "Unfortunately, sign-up is not supported on mobile devices. Please use a desktop to complete your sign-up."
     },
+    "deposit": {
+      "title": "Activate Account",
+      "description": "Your account is almost ready!",
+      "description2": "Activate it by making your first deposit.",
+      "cta": "Deposit now"
+    },
     "createAccount": "Create Account",
     "doThisLater": "Do this later",
     "alreadyHaveAccount": "Already have an account?",
@@ -453,42 +459,13 @@
         }
       ]
     },
-    "stepper": {
-      "steps": [
-        {
-          "declarations": ["input step"],
-          "selectors": ["step"],
-          "match": {
-            "step=0": "Credential",
-            "step=1": "Fund",
-            "step=2": "Username",
-            "step=3": "Log in"
-          }
-        }
-      ],
-      "title": [
-        {
-          "declarations": ["input step"],
-          "selectors": ["step"],
-          "match": {
-            "step=0": "Create Your Account",
-            "step=1": "Fund Your Account",
-            "step=2": "Select a Username"
-          }
-        }
-      ],
-      "description": [
-        {
-          "declarations": ["input step"],
-          "selectors": ["step"],
-          "match": {
-            "step=0": "Choose a log in credential. You can add or remove credentials afterwards.",
-            "step=1": "Click the button below to request funds from the faucet for this testnet",
-            "step=2": "Your username will be public on-chain and cannot be changed afterwards.",
-            "step=3": "Your user was created and now you can log in with your new account."
-          }
-        }
-      ]
+    "accountCreated": {
+      "title": "Account Created",
+      "description": "Your user was created and now you can log in with your new account."
+    },
+    "title": "Create your account",
+    "options": {
+      "description": "Choose a log in credential. You can add or remove credentials afterwards."
     },
     "errors": {
       "couldntCompleteRequest": "Couldn’t complete request",
@@ -737,7 +714,12 @@
         "latestBlockTime": "Latest Block Time",
         "endpoint": "Endpoint"
       },
-      "time": { "hours": "h", "minutes": "m", "seconds": "s" }
+      "time": { "hours": "h", "minutes": "m", "seconds": "s" },
+      "username": {
+        "editUsername": "Edit Username",
+        "editDescription": "You can change your username only once. After that, it can’t be updated.",
+        "save":"Save"
+      }
     },
     "chartEngines": [
       {
@@ -928,7 +910,8 @@
       "amountIsRequired": "Amount is required",
       "amountIsZero": "Amount must be greater than 0",
       "insufficientFunds": "Insufficient funds",
-      "invalidAddress": "Invalid address"
+      "invalidAddress": "Invalid address",
+      "usernameRule": "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore"
     },
     "failureRequest": "Couldn't complete the request"
   },

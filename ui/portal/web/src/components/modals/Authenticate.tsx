@@ -20,9 +20,9 @@ export const Authenticate = forwardRef<unknown, AuthenticateProps>(({ action = "
   const AuthView = views[view as keyof typeof views];
 
   return (
-    <div className="flex flex-col justify-start items-center bg-surface-primary-rice text-ink-primary-900 md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:w-[40rem] md:h-[40rem]">
+    <div className="flex flex-col justify-start items-center bg-surface-primary-rice text-ink-primary-900 md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative px-6 py-8 md:py-6 gap-5 md:w-[30rem] md:h-fit">
       <p className="text-ink-primary-900 diatype-lg-medium w-full text-center" />
-      <AuthView goTo={(view) => setView(view)} />
+      <AuthView goTo={(view) => setView(view)} onFinish={hideModal} />
       <IconButton
         className="hidden md:block absolute right-4 top-4"
         variant="link"

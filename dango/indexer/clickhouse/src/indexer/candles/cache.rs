@@ -388,6 +388,7 @@ impl CandleCache {
     }
 
     /// Preloads candles in parallel.
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn preload_pairs(
         &mut self,
         pairs: &[PairId],
@@ -440,13 +441,13 @@ impl CandleCache {
                             && candle.max_block_height < highest_block_height
                         {
                             #[cfg(feature = "tracing")]
-                            tracing::error!(
+                            tracing::info!(
                                 %candle.max_block_height,
                                 %highest_block_height,
                                 %key.base_denom,
                                 %key.quote_denom,
                                 %key.interval,
-                                "Candle is older than latest price, process was not properly shutdown before."
+                                "Candle is older than latest price."
                             );
                         }
 

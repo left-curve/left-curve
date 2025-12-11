@@ -10,6 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
+chrono  = ["grug-types/chrono"]
 metrics = ["grug-types/metrics"]
 
 [dependencies]

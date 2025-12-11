@@ -40,8 +40,9 @@
         - { src: "config/dango/app.toml", dest: "{{ dango_directory }}/config/app.toml" }
         - { src: "docker-compose.yml", dest: "{{ deployment_dir }}/docker-compose.yml" }
         - { src: "env.j2", dest: "{{ deployment_dir }}/.env" }
+        - { src: "envrc.j2", dest: "{{ deployment_dir }}/.envrc" }
 
-- name: Deploy configuration files
+- name: Deploy Cloudflare configuration files
   become: true
   become_user: root
   block:
@@ -54,7 +55,7 @@
         - { src: "cloudflared/config.yml", dest: "{{ deployment_dir }}/cloudflared/config.yml", mode: "0644" }
   when: cloudflare_tunnel_enabled
 
-- name: Deploy clickhouse configuration files
+- name: Deploy Clickhouse configuration files
   become: true
   become_user: root
   block:

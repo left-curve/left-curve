@@ -14,6 +14,8 @@ export {
 
 export { requestRemote, type WindowDangoStore } from "./remote.js";
 
+export * as hyperlane from "./hyperlane.js";
+
 export { local, devnet, testnet, http, graphql } from "@left-curve/dango";
 
 /* -------------------------------------------------------------------------- */
@@ -171,6 +173,11 @@ export {
   type ActivityRecord,
   type Activities,
 } from "./hooks/useActivities.js";
+
+export {
+  useExternalBalances,
+  type UseExternalBalancesParameters,
+} from "./hooks/useExternalBalances.js";
 
 export { useFavApplets } from "./hooks/useFavApplets.js";
 export { useFavPairs } from "./hooks/useFavPairs.js";

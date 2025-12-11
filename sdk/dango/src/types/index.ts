@@ -27,6 +27,8 @@ export type {
   AccountTypes,
   User,
   Username,
+  UserIndexAndName,
+  UserIndexOrName,
 } from "./account.js";
 
 export type { AppConfig } from "./app.js";
@@ -152,6 +154,8 @@ export type {
   LiquidityDepth,
   LiquidityDepthResponse,
 } from "./dex.js";
+
+export type { MailBoxConfig } from "./hyperlane.js";
 
 export type { WithPrice } from "./utils.js";
 

@@ -16,9 +16,15 @@ type StepInputEmailProps = {
   value?: string;
   onChange: (email: string) => void;
   defaultValue?: string;
+  onSubmit: () => void;
 };
 
-const StepInputEmail: React.FC<StepInputEmailProps> = ({ value, defaultValue, onChange }) => {
+const StepInputEmail: React.FC<StepInputEmailProps> = ({
+  value,
+  defaultValue,
+  onChange,
+  onSubmit,
+}) => {
   const connectors = useConnectors();
   const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
   const [email, setEmail] = useControlledState(value, onChange, defaultValue);
@@ -28,6 +34,7 @@ const StepInputEmail: React.FC<StepInputEmailProps> = ({ value, defaultValue, on
       await connector.privy.auth.email.sendCode(email);
       setEmail(email);
     },
+    onSuccess: () => onSubmit(),
   });
 
   return (

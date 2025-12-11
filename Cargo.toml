@@ -11,6 +11,7 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
+  "dango/hyperlane-deployment",
   "dango/indexer/clickhouse",
   "dango/indexer/httpd",
   "dango/indexer/sql",
@@ -122,6 +123,7 @@ criterion                   = "0.6"
 data-encoding               = "2"
 dialoguer                   = "0.11"
 digest                      = "0.10"
+dotenvy                     = "0.15.7"
 dotenvy                     = "0.15"
 dyn-clone                   = "1"
 ed25519-dalek               = "2"
@@ -133,6 +135,7 @@ hex                         = "0.4"
 hex-literal                 = "1"
 home                        = "0.5"
 http                        = "1"
+humantime                   = "2"
 ics23                       = "0.12"
 itertools                   = "0.14"
 k256                        = "0.13"
@@ -163,8 +166,8 @@ roaring                     = "0.11"
 rocksdb                     = "0.23"
 sea-orm                     = { version = "1", features = ["runtime-tokio-rustls", "sea-orm-internal", "sqlx-postgres", "sqlx-sqlite", "with-bigdecimal", "with-chrono", "with-json", "with-time", "with-uuid"] }
 sea-orm-migration           = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"] }
-sentry                      = { version = "0.38", features = ["log", "tracing"] }
-sentry-actix                = "0.38"
+sentry                      = { version = "=0.42", features = ["log", "logs", "tracing"] }
+sentry-actix                = "=0.42"
 serde                       = "1"
 serde_json                  = "1"
 serde_with                  = "3"
@@ -185,9 +188,10 @@ tokio-stream                = { version = "0.1", features = ["sync"] }
 toml                        = "0.8"
 tower                       = "0.5"
 tower-abci                  = "0.19"
-tracing                     = "0.1"
+tracing                     = { version = "=0.1.41" }
+tracing-attributes          = { version = "=0.1.28" }
 tracing-opentelemetry       = "0.32"
-tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+tracing-subscriber          = { version = "=0.3.19", features = ["env-filter", "fmt", "json"] }
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "6"
@@ -211,6 +215,7 @@ dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
 dango-httpd                 = { path = "dango/indexer/httpd" }
+dango-hyperlane-deployment  = { path = "dango/hyperlane-deployment" }
 dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }

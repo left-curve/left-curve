@@ -9,8 +9,10 @@ import type {
   Flatten,
   Hex,
   PairUpdate,
+  Require,
   Transport,
   UID,
+  UserIndexAndName,
 } from "@left-curve/dango/types";
 
 import type { AnyCoin } from "./coin.js";
@@ -32,7 +34,7 @@ export type State = {
   chainId: ChainId;
   isMipdLoaded: boolean;
   current: UID | null;
-  username: string | undefined;
+  userIndexAndName: Require<UserIndexAndName, "name"> | undefined;
   connectors: Map<UID, Connection>;
   status: ConnectionStatusType;
 };

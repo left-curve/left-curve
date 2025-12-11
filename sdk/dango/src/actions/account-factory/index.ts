@@ -75,6 +75,12 @@ export {
 } from "./queries/getUsersByKeyHash.js";
 
 export {
+  type GetUsernameByIndexParameters,
+  type GetUsernameByIndexReturnType,
+  getUsernameByIndex,
+} from "./queries/getUsernameByIndex.js";
+
+export {
   type ForgotUsernameParameters,
   type ForgotUsernameReturnType,
   forgotUsername,

@@ -106,6 +106,14 @@
             builder_cache: yes
       when: deployment_dir.stat.exists
 
+    - name: Remove lock file
+      file:
+        path: "{{ deploy_lock_file }}"
+        state: absent
+      vars:
+        deploy_lock_file: "{{ ansible_env.HOME }}/deployments/.{{ deployment_name }}.deploy.lock"
+      ignore_errors: true
+
     - name: Delete Postgres Dango production database
       when: delete_postgres_database_at_merge
       community.postgresql.postgresql_db:
@@ -144,7 +152,7 @@
 
     - block:
         - name: Install pipx
-          ansible.builtin.apt:
+          apt:
             name: pipx
             state: present
             update_cache: yes
@@ -152,7 +160,7 @@
           become_user: root
 
         - name: Install Backblaze b2 via pipx
-          ansible.builtin.command: pipx install b2
+          command: pipx install b2
           args:
             creates: "{{ ansible_env.HOME }}/.local/bin/b2"
 
@@ -164,7 +172,7 @@
             hide_after_days: 1
             delete_after_days: 1
             lifecycle_prefix: ""
-          ansible.builtin.command: >
+          command: >
             $HOME/.local/bin/b2 bucket update
             "{{ s3_bucket }}"
             allPrivate

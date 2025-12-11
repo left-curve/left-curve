@@ -109,11 +109,15 @@ export function getAccount<
   };
 
   const refreshAccounts = async () => {
-    refreshAccountsAction(config, { connectorUId, username: config.state.username as Username });
+    if (!config.state.userIndexAndName) return;
+    refreshAccountsAction(config, {
+      connectorUId,
+      userIndexAndName: config.state.userIndexAndName,
+    });
   };
 
   const { accounts, connector, account: acc, keyHash } = connection;
-  const username = config.state.username;
+  const username = config.state.userIndexAndName?.name;
   const account = acc as Account<accountType>;
   switch (status) {
     case "connected":
