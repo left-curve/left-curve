@@ -52,6 +52,32 @@ running ansible-playbook, else you'll get `Permission denied (publickey)`.
 
 You must rerun `ssh-add` after you rebooted.
 
+### Root access
+
+No one should need debian/sudo access to the servers, this is a critical
+access. But here is the process.
+
+Add debian password to Keychain:
+
+```bash
+security add-generic-password \
+  -a ansible \
+  -s ansible-debian/default \
+  -w 'ASK_TEAM_FOR_PASSWORD'
+```
+
+This shows you have the right password:
+
+```bash
+❯ ./debian-password.sh|sha256
+b82a3865821fb1c7072cf58ca641811fd814c892109963f54fce675e7e9cfca5
+```
+
+Make also sure you have ssh-agent and added your key with ssh-add before
+running ansible-playbook, else you'll get `Permission denied (publickey)`.
+
+You must rerun `ssh-add` after you rebooted.
+
 ## Using the deploy key (vaulted)
 
 The private key is encrypted in `group_vars/all/deploy_key.vault`, load it

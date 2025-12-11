@@ -32,6 +32,12 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 [full-app]
 100.96.253.40 ansible_user=debian
 100.107.248.71 ansible_user=debian
+64.20.47.178 hostname=inter1 ansible_user=debian
+162.220.12.6 hostname=inter2 ansible_user=debian
+# 157.180.10.36 hostname=hetzner1
+# 157.180.0.111 hostname=hetzner2
+# 148.251.138.80 hostname=hetzner3
+# 46.4.71.60 hostname=hetzner4
 
 [traefik]
 100.96.253.40 ansible_user=debian
