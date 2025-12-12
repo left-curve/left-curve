@@ -340,8 +340,10 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    // Create 10 transfers to paginate through
-    for _ in 0..10 {
+    // Create 9 transfers to paginate through.
+    // We have a limit of 10 accounts per user. 1 was already created during
+    // genesis, so we create 9 more here.
+    for _ in 0..9 {
         // Copied from benchmarks.rs
         let msgs = vec![Message::execute(
             contracts.account_factory,
@@ -413,7 +415,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                         .unique()
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                .is_equal_to((1..=9).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
                 let block_heights = paginate_models::<entity::transfers::Model>(
@@ -436,7 +438,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                         .unique()
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to((1..=10).collect::<Vec<_>>());
+                .is_equal_to((1..=9).collect::<Vec<_>>());
 
                 // 3. last with descending order
                 let block_heights = paginate_models::<entity::transfers::Model>(
@@ -459,7 +461,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                         .unique()
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to((1..=10).collect::<Vec<_>>());
+                .is_equal_to((1..=9).collect::<Vec<_>>());
 
                 // 4. last with ascending order
                 let block_heights = paginate_models::<entity::transfers::Model>(
@@ -482,7 +484,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                         .unique()
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                .is_equal_to((1..=9).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })
