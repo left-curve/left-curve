@@ -437,7 +437,7 @@ fn enforcing_max_account_per_user() {
             Coins::new(),
         )
         .should_fail_with_error(format!(
-            "user {user_index} has too many account! max allowed: {MAX_ACCOUNTS_PER_USER}"
+            "user {user_index} has too many accounts! max allowed: {MAX_ACCOUNTS_PER_USER}"
         ));
 
     // Attempt to register a multi-sig. For now, this is allowed.

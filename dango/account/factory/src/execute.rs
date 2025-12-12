@@ -256,7 +256,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
                     let (_, count) = ACCOUNT_COUNT_BY_USER.increment(ctx.storage, params.owner)?;
                     count <= MAX_ACCOUNTS_PER_USER
                 },
-                "user {} has too many account! max allowed: {}",
+                "user {} has too many accounts! max allowed: {}",
                 params.owner,
                 MAX_ACCOUNTS_PER_USER
             );
