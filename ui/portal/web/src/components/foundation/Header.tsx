@@ -1,9 +1,16 @@
-import { useAccount } from "@left-curve/store";
+import { useAccount, usePublicClient } from "@left-curve/store";
 import { useRouterState } from "@tanstack/react-router";
-import { Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import {
+  IconClose,
+  IconWalletWithCross,
+  Modals,
+  useApp,
+  useMediaQuery,
+} from "@left-curve/applets-kit";
 
 import { Button, IconButton, IconWallet, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { AccountMenu } from "./AccountMenu";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
@@ -17,6 +24,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected } = useAccount();
+  const client = usePublicClient();
 
   const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
@@ -26,8 +34,15 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
 
   const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
 
+  const { data: accountStatus } = useQuery({
+    enabled: isConnected && !!client && !!account,
+    queryKey: ["account-status", account?.address],
+    queryFn: async () => client.getAccountStatus({ address: account!.address }),
+  });
+
   return (
     <header
+      data-account-status={accountStatus ?? undefined}
       className={twMerge(
         "fixed bottom-0 lg:top-0 left-0 right-0 bg-transparent z-50 transition-[background,box-shadow] w-full",
         isScrolled
@@ -72,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               type="button"
               className="shadow-account-card lg:hidden"
             >
-              <TxIndicator icon={<IconWallet className="w-6 h-6" />} />
+              icon={<IconWalletWithCross isCrossVisible={isConnected && !accountStatus} />}
             </IconButton>
           ) : null}
         </div>
@@ -87,7 +102,9 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           >
             {isConnected ? (
               <div className="flex items-center justify-center gap-2">
-                <TxIndicator icon={<IconWallet className="w-6 h-6" />} />
+                <TxIndicator
+                  icon={<IconWalletWithCross isCrossVisible={isConnected && !accountStatus} />}
+                />
                 <span className="italic font-exposure font-bold capitalize">
                   {m["common.account"]()} #{account?.index}
                 </span>
