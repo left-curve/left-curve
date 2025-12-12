@@ -1,7 +1,6 @@
 [workspace]
 members = [
   "dango/account/factory",
-  "dango/account/margin",
   "dango/account/multi",
   "dango/account/spot",
   "dango/auth",
@@ -16,7 +15,6 @@ members = [
   "dango/indexer/httpd",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
-  "dango/lending",
   "dango/mocks/httpd",
   "dango/oracle",
   "dango/proposal-preparer",
@@ -203,7 +201,6 @@ aws-sdk-s3           = "1"
 
 # Left curve packages
 dango-account-factory       = { path = "dango/account/factory" }
-dango-account-margin        = { path = "dango/account/margin" }
 dango-account-multi         = { path = "dango/account/multi" }
 dango-account-spot          = { path = "dango/account/spot" }
 dango-amm                   = { path = "dango/amm" }
@@ -218,7 +215,6 @@ dango-hyperlane-deployment  = { path = "dango/hyperlane-deployment" }
 dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
-dango-lending               = { path = "dango/lending" }
 dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }

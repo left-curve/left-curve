@@ -23,14 +23,6 @@ impl GenesisCodes for RustVm {
             .with_authenticate(Box::new(dango_account_factory::authenticate))
             .build();
 
-        let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
-            .with_execute(Box::new(dango_account_margin::execute))
-            .with_authenticate(Box::new(dango_account_margin::authenticate))
-            .with_backrun(Box::new(dango_account_margin::backrun))
-            .with_receive(Box::new(dango_account_margin::receive))
-            .with_query(Box::new(dango_account_margin::query))
-            .build();
-
         let account_multi = ContractBuilder::new(Box::new(dango_account_multi::instantiate))
             .with_authenticate(Box::new(dango_account_multi::authenticate))
             .with_receive(Box::new(dango_account_multi::receive))
@@ -85,11 +77,6 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_oracle::query))
             .build();
 
-        let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
-            .with_execute(Box::new(dango_lending::execute))
-            .with_query(Box::new(dango_lending::query))
-            .build();
-
         let taxman = ContractBuilder::new(Box::new(dango_taxman::instantiate))
             .with_execute(Box::new(dango_taxman::execute))
             .with_query(Box::new(dango_taxman::query))
@@ -115,14 +102,12 @@ impl GenesisCodes for RustVm {
 
         Codes {
             account_factory,
-            account_margin,
             account_multi,
             account_spot,
             bank,
             dex,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
-            lending,
             oracle,
             taxman,
             vesting,

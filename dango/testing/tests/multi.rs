@@ -664,7 +664,7 @@ fn unauthorized_messages() {
     suite
         .execute(
             multi.with_signer(&accounts.user1),
-            contracts.lending,
+            contracts.bank,
             &Empty {}, // the message doesn't matter
             Coins::new(),
         )

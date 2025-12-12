@@ -331,7 +331,6 @@ mod tests {
                     // the other addresses don't matter
                     ..Default::default()
                 },
-                collateral_powers: Default::default(),
                 ..Default::default()
             })
             .unwrap();
@@ -391,7 +390,6 @@ mod tests {
                     // the other addresses don't matter
                     ..Default::default()
                 },
-                collateral_powers: Default::default(),
                 ..Default::default()
             })
             .unwrap();

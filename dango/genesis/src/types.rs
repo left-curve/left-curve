@@ -5,7 +5,6 @@ use {
         config::Hyperlane,
         dex::PairUpdate,
         gateway::{Origin, RateLimit, Remote, WithdrawalFee},
-        lending::InterestRateModel,
         oracle::PriceSource,
         taxman,
     },
@@ -21,7 +20,6 @@ pub struct Contracts {
     pub dex: Addr,
     pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
-    pub lending: Addr,
     pub oracle: Addr,
     pub taxman: Addr,
     pub vesting: Addr,
@@ -31,14 +29,12 @@ pub struct Contracts {
 #[derive(Clone, Copy)]
 pub struct Codes<T> {
     pub account_factory: T,
-    pub account_margin: T,
     pub account_multi: T,
     pub account_spot: T,
     pub bank: T,
     pub dex: T,
     pub gateway: T,
     pub hyperlane: Hyperlane<T>,
-    pub lending: T,
     pub oracle: T,
     pub taxman: T,
     pub vesting: T,
@@ -56,7 +52,6 @@ pub struct GenesisOption {
     pub dex: DexOption,
     pub gateway: GatewayOption,
     pub hyperlane: HyperlaneOption,
-    pub lending: LendingOption,
     pub oracle: OracleOption,
     pub vesting: VestingOption,
 }
@@ -107,11 +102,6 @@ pub struct HyperlaneOption {
     pub ism_validator_sets: BTreeMap<Domain, ValidatorSet>,
     /// Hyperlane validator announce fee rate.
     pub va_announce_fee_per_byte: Coin,
-}
-
-pub struct LendingOption {
-    /// Initial Dango lending markets.
-    pub markets: BTreeMap<Denom, InterestRateModel>,
 }
 
 pub struct OracleOption {

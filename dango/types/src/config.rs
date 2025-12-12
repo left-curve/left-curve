@@ -1,10 +1,6 @@
 use {
-    crate::{account::margin::CollateralPower, constants::usdc},
-    grug::{
-        Addr, Bounded, Coins, Denom, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
-        coins,
-    },
-    std::collections::BTreeMap,
+    crate::constants::usdc,
+    grug::{Addr, Bounded, Coins, Udec128, ZeroInclusiveOneExclusive, coins},
 };
 
 /// Application-specific configurations of the Dango chain.
@@ -14,23 +10,6 @@ pub struct AppConfig {
     pub addresses: AppAddresses,
     /// The minimum deposit required to onboard a user.
     pub minimum_deposit: Coins,
-    /// The powers of all collateral tokens. This is the adjustment factor for
-    /// the collateral value of a given collateral token. Meaning, if the
-    /// collateral token has a power of 0.9, then the value of the collateral
-    /// token is 90% of its actual value.
-    pub collateral_powers: BTreeMap<Denom, CollateralPower>,
-    /// The minimum liquidation bonus that liquidators receive when liquidating an
-    /// undercollateralized margin account.
-    /// The liquidation bonus is defined as a percentage of the repaid debt value.
-    pub min_liquidation_bonus: Bounded<Udec128, ZeroInclusiveOneExclusive>,
-    /// The maximum liquidation bonus that liquidators receive when liquidating an
-    /// undercollateralized margin account.
-    pub max_liquidation_bonus: Bounded<Udec128, ZeroExclusiveOneExclusive>,
-    /// The margin account utilization rate down to which an account can be liquidated.
-    /// E.g. if this is set to 0.9, then as soon as the account's utilization rate reaches 1.0
-    /// and becomes liquidatable, liquidators can pay off the accounts debts (in return for some of
-    /// its collateral) until the account's utilization rate is at this value.
-    pub target_utilization_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
     /// The maker fee for the DEX.
     pub maker_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
     /// The taker fee for the DEX.
@@ -42,10 +21,6 @@ impl Default for AppConfig {
         AppConfig {
             addresses: Default::default(),
             minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 }, // 10 USDC
-            collateral_powers: Default::default(),
-            target_utilization_rate: Bounded::new(Udec128::new_percent(90)).unwrap(),
-            min_liquidation_bonus: Bounded::new(Udec128::new_percent(2)).unwrap(),
-            max_liquidation_bonus: Bounded::new(Udec128::new_percent(20)).unwrap(),
             maker_fee_rate: Bounded::new(Udec128::new_bps(25)).unwrap(),
             taker_fee_rate: Bounded::new(Udec128::new_bps(40)).unwrap(),
         }
@@ -59,7 +34,6 @@ pub struct AppAddresses {
     pub dex: Addr,
     pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
-    pub lending: Addr,
     pub oracle: Addr,
     pub taxman: Addr,
     pub warp: Addr,
@@ -74,7 +48,6 @@ impl Default for AppAddresses {
             dex: Addr::mock(0),
             gateway: Addr::mock(0),
             hyperlane: Hyperlane::default(),
-            lending: Addr::mock(0),
             oracle: Addr::mock(0),
             taxman: Addr::mock(0),
             warp: Addr::mock(0),

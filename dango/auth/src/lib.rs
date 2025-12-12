@@ -525,8 +525,7 @@ mod tests {
         super::*,
         dango_types::config::{AppAddresses, AppConfig},
         grug::{
-            Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr,
-            btree_map, hash,
+            Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr, hash,
         },
         hex_literal::hex,
         std::str::FromStr,
@@ -811,7 +810,6 @@ mod tests {
                     account_factory: ACCOUNT_FACTORY,
                     ..Default::default()
                 },
-                collateral_powers: btree_map! {},
                 ..Default::default()
             })
             .unwrap()
@@ -894,7 +892,6 @@ mod tests {
                     account_factory: ACCOUNT_FACTORY,
                     ..Default::default()
                 },
-                collateral_powers: btree_map! {},
                 ..Default::default()
             })
             .unwrap()
@@ -976,7 +973,6 @@ mod tests {
                     account_factory: ACCOUNT_FACTORY,
                     ..Default::default()
                 },
-                collateral_powers: btree_map! {},
                 ..Default::default()
             })
             .unwrap()

@@ -3822,18 +3822,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-account-margin"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-auth",
- "dango-lending",
- "dango-oracle",
- "dango-types",
- "grug",
-]
-
-[[package]]
 name = "dango-account-multi"
 version = "0.0.0"
 dependencies = [
@@ -3984,13 +3972,11 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-account-factory",
- "dango-account-margin",
  "dango-account-multi",
  "dango-account-spot",
  "dango-bank",
  "dango-dex",
  "dango-gateway",
- "dango-lending",
  "dango-oracle",
  "dango-taxman",
  "dango-types",
@@ -4133,16 +4119,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-lending"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-account-factory",
- "dango-types",
- "grug",
-]
-
-[[package]]
 name = "dango-mock-httpd"
 version = "0.0.0"
 dependencies = [
@@ -4173,7 +4149,6 @@ name = "dango-oracle"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "dango-lending",
  "dango-types",
  "grug",
  "hex",
@@ -4259,7 +4234,6 @@ dependencies = [
  "dango-httpd",
  "dango-indexer-clickhouse",
  "dango-indexer-sql",
- "dango-lending",
  "dango-mock-httpd",
  "dango-oracle",
  "dango-proposal-preparer",
