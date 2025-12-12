@@ -1,19 +1,22 @@
 use {
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
-        Factory, HyperlaneTestSuite, Preset, TestAccount, setup_test_naive,
+        Factory, HyperlaneTestSuite, Multi, Preset, TestAccount, setup_test_naive,
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
-        account::{single, spot},
-        account_factory::{self, Account, AccountParams, RegisterUserData, UserIndexOrName},
+        account::{multi, single, spot},
+        account_factory::{
+            self, Account, AccountParams, QueryAccountsByUserRequest, RegisterUserData, Salt,
+            UserIndexOrName,
+        },
         auth::AccountStatus,
         bank,
         constants::usdc,
     },
     grug::{
-        Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
-        Signer, Uint128, btree_map, coins,
+        Addr, Addressable, Coins, Duration, HashExt, JsonSerExt, Message, NonEmpty, NonZero, Op,
+        QuerierExt, ResultExt, Signer, Uint128, btree_map, coins,
     },
     hyperlane_types::constants::solana,
 };
@@ -393,4 +396,87 @@ fn update_key() {
             },
         )
         .should_succeed_and_equal(btree_map! { key_hash => pk });
+}
+
+#[test]
+fn authorized_create_account_for_another_user() {
+    let (mut suite, mut accounts, codes, contracts, _) = setup_test_naive(Default::default());
+
+    let user_index_1 = accounts.user1.user_index();
+    let user_index_2 = accounts.user2.user_index();
+
+    // User1 creates a multisig containing himself and user2 (without user2's consent).
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Multi(multi::Params {
+                    members: btree_map! {
+                        user_index_1 => NonZero::new_unchecked(1),
+                        user_index_2 => NonZero::new_unchecked(1),
+                    },
+                    voting_period: NonZero::new_unchecked(Duration::from_days(1)),
+                    threshold: NonZero::new_unchecked(1),
+                    timelock: None,
+                }),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let multi_address = Addr::derive(
+        contracts.account_factory,
+        codes.account_multi.to_bytes().hash256(),
+        Salt { index: 10 }.into_bytes().as_slice(),
+    );
+    let mut multi = Multi::new(multi_address);
+
+    // User1 creates a proposal to create an account for user 2 (without user2's consent).
+    suite
+        .execute(
+            multi.with_signer(&accounts.user1),
+            multi_address,
+            &dango_types::account::multi::ExecuteMsg::Propose {
+                title: "create an account for user2".to_string(),
+                description: None,
+                messages: vec![
+                    Message::execute(
+                        contracts.account_factory,
+                        &account_factory::ExecuteMsg::RegisterAccount {
+                            params: AccountParams::Spot(single::Params::new(user_index_2)),
+                        },
+                        Coins::new(),
+                    )
+                    .unwrap(),
+                ],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User1 votes and executes the proposal.
+    suite
+        .execute(
+            multi.with_signer(&accounts.user1),
+            multi_address,
+            &dango_types::account::multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: user_index_1,
+                vote: multi::Vote::Yes,
+                execute: true,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User2 now has three accounts:
+    // - the spot account of his own, created during genesis;
+    // - the multisig;
+    // - the spot account created by user1 through the multisig.
+    suite
+        .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
+            user: UserIndexOrName::Index(user_index_2),
+        })
+        .should_succeed_and(|accounts| accounts.len() == 3);
 }
