@@ -1,19 +1,20 @@
 use {
+    dango_account_factory::MAX_ACCOUNTS_PER_USER,
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
         Factory, HyperlaneTestSuite, Preset, TestAccount, setup_test_naive,
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
-        account::{single, spot},
+        account::{multi, single, spot},
         account_factory::{self, Account, AccountParams, RegisterUserData, UserIndexOrName},
         auth::AccountStatus,
         bank,
         constants::usdc,
     },
     grug::{
-        Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
-        Signer, Uint128, btree_map, coins,
+        Addressable, BorshSerExt, Coins, Duration, HashExt, JsonSerExt, Message, NonEmpty, NonZero,
+        Op, QuerierExt, ResultExt, Signer, Uint128, btree_map, coins,
     },
     hyperlane_types::constants::solana,
 };
@@ -393,4 +394,68 @@ fn update_key() {
             },
         )
         .should_succeed_and_equal(btree_map! { key_hash => pk });
+}
+
+/// Ensure that a user cannot register more than `MAX_ACCOUNTS_PER_USER` accounts.
+#[test]
+fn enforcing_max_account_per_user() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let user_index = accounts.user1.user_index();
+
+    // Register `MAX_ACCOUNTS_PER_USER - 1` accounts. Plus one that was registered
+    // during genesis, the user should have `MAX_ACCOUNT_PER_USER` accounts.
+    for _ in 0..(MAX_ACCOUNTS_PER_USER - 1) {
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::RegisterAccount {
+                    params: AccountParams::Spot(single::Params::new(user_index)),
+                },
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Read the account count of user1. Should be `MAX_ACCOUNT_PER_USER`.
+    suite
+        .query_wasm_raw(
+            contracts.account_factory,
+            dango_account_factory::ACCOUNT_COUNT_BY_USER.path(user_index),
+        )
+        .should_succeed_and_equal(Some(MAX_ACCOUNTS_PER_USER.to_borsh_vec().unwrap().into()));
+
+    // Attempt to register another account. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Spot(single::Params::new(user_index)),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "user {user_index} has too many account! max allowed: {MAX_ACCOUNTS_PER_USER}"
+        ));
+
+    // Attempt to register a multi-sig. For now, this is allowed.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Multi(multi::Params {
+                    members: btree_map! {
+                        user_index => NonZero::new_unchecked(1),
+                    },
+                    voting_period: NonZero::new_unchecked(Duration::from_days(1)),
+                    threshold: NonZero::new_unchecked(1),
+                    timelock: None,
+                }),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 }

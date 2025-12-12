@@ -1,7 +1,8 @@
 use {
     crate::{
-        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
-        USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
+        ACCOUNT_COUNT_BY_USER, ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS,
+        MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USER_INDEXES_BY_NAME,
+        USER_NAMES_BY_INDEX, USERS_BY_KEY,
     },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
@@ -202,8 +203,12 @@ fn onboard_new_user(
         params: AccountParams::Spot(single::Params::new(user_index)),
     };
 
+    // Save the account information.
     ACCOUNTS.save(storage, address, &account)?;
     ACCOUNTS_BY_USER.insert(storage, (user_index, address))?;
+
+    // Increment the user's account count.
+    ACCOUNT_COUNT_BY_USER.increment(storage, user_index)?;
 
     Ok((
         Message::instantiate(
@@ -243,12 +248,27 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
                 ACCOUNTS_BY_USER.has(ctx.storage, (params.owner, ctx.sender)),
                 "can't register account for another user"
             );
+
+            // Increment the user's account count.
+            // Throw error if the user has too many accounts.
+            ensure!(
+                {
+                    let (_, count) = ACCOUNT_COUNT_BY_USER.increment(ctx.storage, params.owner)?;
+                    count <= MAX_ACCOUNTS_PER_USER
+                },
+                "user {} has too many account! max allowed: {}",
+                params.owner,
+                MAX_ACCOUNTS_PER_USER
+            );
         },
         AccountParams::Multi(params) => {
             ensure!(
                 params.threshold.into_inner() <= params.total_power(),
                 "threshold can't be greater than total power"
             );
+
+            // No need to increment the members' account counts.
+            // For now, we exempt multi-signature accounts from this.
         },
     }
 

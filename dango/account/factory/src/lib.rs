@@ -4,3 +4,7 @@ mod query;
 mod state;
 
 pub use {account_querier::*, execute::*, query::*, state::*};
+
+/// The maximum number of accounts (excluding multi-signature accounts) allowed
+/// for each user.
+pub const MAX_ACCOUNTS_PER_USER: u8 = 10;
