@@ -6,16 +6,10 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
 import { View } from "react-native";
-import {
-  Button,
-  GlobalText,
-  IconGoogle,
-  IconKey,
-  IconTwitter,
-  IconWallet,
-  Input,
-} from "../foundation";
+import { Button, GlobalText, IconGoogle, IconKey, IconTwitter, IconWallet } from "../foundation";
 import { useRouter } from "expo-router";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
+import { EmailCredential } from "./EmailCredential";
 
 const [SignupProvider, useSignup] = createContext<ReturnType<typeof useSignupState>>({
   name: "SignupContext",
@@ -27,7 +21,7 @@ type SignupProps = {
 
 export const Signup: React.FC<SignupProps> = ({ goTo }) => {
   const state = useSignupState({
-    expiration: 24 * 60 * 60 * 1000, // 24 hours
+    expiration: DEFAULT_SESSION_EXPIRATION,
     register: {
       onError: (e) => console.log("Toast error:", ensureErrorMessage(e)),
     },
@@ -87,11 +81,20 @@ const Header: React.FC = () => {
 };
 
 const Email: React.FC = () => {
-  const { screen } = useSignup();
+  const { screen, setScreen, email, setEmail, register } = useSignup();
 
   if (screen !== "email") return null;
 
-  return <GlobalText>OTP Input</GlobalText>;
+  return (
+    <EmailCredential.OTP
+      email={email}
+      onSuccess={() => register.mutateAsync("privy")}
+      goBack={() => {
+        setScreen("options");
+        setEmail("");
+      }}
+    />
+  );
 };
 
 const Wallets: React.FC = () => {
@@ -109,9 +112,10 @@ const Credentials: React.FC = () => {
 
   return (
     <View className="flex flex-col gap-6 w-full">
-      <Input
-        className="border border-ink-secondary-500 rounded-md p-2 w-full"
-        placeholder="Email"
+      <EmailCredential.Email
+        value={email}
+        onChange={setEmail}
+        onSubmit={() => setScreen("email")}
       />
 
       <View className="w-full flex-row items-center justify-center gap-3">

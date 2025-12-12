@@ -16,6 +16,8 @@ import {
   IconTwitter,
   Input,
 } from "../foundation";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
+import { EmailCredential } from "./EmailCredential";
 
 const [SigninProvider, useSignin] = createContext<ReturnType<typeof useSigninState>>({
   name: "SigninContext",
@@ -29,7 +31,7 @@ export const Signin: React.FC<SignInProps> = ({ goTo }) => {
   const { settings } = useApp();
 
   const state = useSigninState({
-    expiration: 24 * 60 * 60 * 1000, // 24 hours
+    expiration: DEFAULT_SESSION_EXPIRATION,
     session: settings.useSessionKey,
     connect: {
       error: () => console.error("Error during signin"),
@@ -99,23 +101,34 @@ const Email: React.FC = () => {
 };
 
 const Wallets: React.FC = () => {
-  const { screen } = useSignin();
+  const { screen, setScreen, email, setEmail, connect } = useSignin();
 
-  if (screen !== "wallets") return null;
+  if (screen !== "email") return null;
 
-  return <GlobalText>Wallet Connect Options</GlobalText>;
+  return (
+    <EmailCredential.OTP
+      email={email}
+      disableSignup
+      onSuccess={() => connect.mutateAsync("privy")}
+      goBack={() => {
+        setScreen("options");
+        setEmail("");
+      }}
+    />
+  );
 };
 
 const Credentials: React.FC = () => {
-  const { screen } = useSignin();
+  const { screen, setScreen, setEmail, email } = useSignin();
 
   if (screen !== "options") return null;
 
   return (
     <View className="flex items-center justify-center flex-col gap-8 px-2 w-full">
-      <Input
-        className="border border-ink-secondary-500 rounded-md p-2 w-full"
-        placeholder="Email"
+      <EmailCredential.Email
+        value={email}
+        onChange={setEmail}
+        onSubmit={() => setScreen("email")}
       />
 
       <View className="w-full flex-row items-center justify-center gap-3">

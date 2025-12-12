@@ -18,6 +18,7 @@ export { Activities } from "./activities/Activities";
 export { PairAssets } from "./PairAssets";
 export { ShadowContainer } from "./ShadowContainer";
 export { Input } from "./Input";
+export { OtpInput } from "./OtpInput";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -52,3 +53,4 @@ export { IconGoogle } from "./icons/IconGoogle";
 export { IconTwitter } from "./icons/IconTwitter";
 export { IconLeft } from "./icons/IconLeft";
 export { IconQR } from "./icons/IconQR";
+export { IconEmail } from "./icons/IconEmail";
