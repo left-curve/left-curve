@@ -2,7 +2,7 @@
 members = [
   "dango/account/factory",
   "dango/account/multi",
-  "dango/account/spot",
+  "dango/account/single",
   "dango/auth",
   "dango/bank",
   "dango/cli",
@@ -202,7 +202,7 @@ aws-sdk-s3           = "1"
 # Left curve packages
 dango-account-factory       = { path = "dango/account/factory" }
 dango-account-multi         = { path = "dango/account/multi" }
-dango-account-spot          = { path = "dango/account/spot" }
+dango-account-single        = { path = "dango/account/single" }
 dango-amm                   = { path = "dango/amm" }
 dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }

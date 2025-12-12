@@ -30,10 +30,10 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_account_multi::query))
             .build();
 
-        let account_spot = ContractBuilder::new(Box::new(dango_account_spot::instantiate))
-            .with_authenticate(Box::new(dango_account_spot::authenticate))
-            .with_receive(Box::new(dango_account_spot::receive))
-            .with_query(Box::new(dango_account_spot::query))
+        let account_single = ContractBuilder::new(Box::new(dango_account_single::instantiate))
+            .with_authenticate(Box::new(dango_account_single::authenticate))
+            .with_receive(Box::new(dango_account_single::receive))
+            .with_query(Box::new(dango_account_single::query))
             .build();
 
         let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
@@ -103,7 +103,7 @@ impl GenesisCodes for RustVm {
         Codes {
             account_factory,
             account_multi,
-            account_spot,
+            account_single,
             bank,
             dex,
             gateway,

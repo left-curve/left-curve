@@ -29,7 +29,7 @@ where
     // Upload all the codes and compute code hashes.
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
     let account_multi_code_hash = upload(&mut msgs, codes.account_multi);
-    let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
+    let account_single_code_hash = upload(&mut msgs, codes.account_single);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let dex_code_hash = upload(&mut msgs, codes.dex);
     let gateway_code_hash = upload(&mut msgs, codes.gateway);
@@ -64,7 +64,7 @@ where
         .iter()
         .map(|user| {
             let salt = user.salt.to_bytes();
-            Addr::derive(account_factory, account_spot_code_hash, &salt)
+            Addr::derive(account_factory, account_single_code_hash, &salt)
         })
         .collect::<Vec<_>>();
 
@@ -78,7 +78,7 @@ where
         &account_factory::InstantiateMsg {
             code_hashes: btree_map! {
                 AccountType::Multi => account_multi_code_hash,
-                AccountType::Spot  => account_spot_code_hash,
+                AccountType::Single => account_single_code_hash,
             },
             users,
         },

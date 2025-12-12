@@ -53,8 +53,8 @@ pub mod account {
 
     /// The most recent nonces that have been used to send transactions.
     ///
-    /// All three account types (spot, margin, multi) stores their nonces in this
-    /// same storage slot.
+    /// Both account types (single, multi) stores their nonces in this same
+    /// storage slot.
     pub const SEEN_NONCES: Item<BTreeSet<Nonce>> = Item::new("seen_nonces");
 }
 
@@ -170,7 +170,7 @@ fn is_sufficient(deposit: &Coins, minimum: &Coins) -> bool {
 /// - the nonce is acceptible;
 /// - the signature is authentic.
 ///
-/// This logic is used by single-signature accounts (Spot and Margin).
+/// This logic is used by single-signature accounts.
 pub fn authenticate_tx(
     ctx: AuthCtx,
     tx: Tx,

@@ -30,7 +30,7 @@ pub struct Contracts {
 pub struct Codes<T> {
     pub account_factory: T,
     pub account_multi: T,
-    pub account_spot: T,
+    pub account_single: T,
     pub bank: T,
     pub dex: T,
     pub gateway: T,
@@ -57,7 +57,7 @@ pub struct GenesisOption {
 }
 
 pub struct GrugOption {
-    /// A user index whose genesis spot account is to be appointed as the owner.
+    /// A user index whose genesis account is to be appointed as the owner.
     /// We expect to transfer ownership to a multisig account afterwards.
     pub owner_index: UserIndex,
     /// Gas fee configuration.
@@ -70,7 +70,7 @@ pub struct GrugOption {
 
 pub struct AccountOption {
     /// Initial users and their balances.
-    /// For each genesis user will be created a spot account.
+    /// For each genesis user will be created a single-signature account.
     pub genesis_users: Vec<GenesisUser>,
     /// The minimum deposit required to onboard a user.
     pub minimum_deposit: Coins,

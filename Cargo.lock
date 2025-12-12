@@ -3834,7 +3834,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-account-spot"
+name = "dango-account-single"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -3973,7 +3973,7 @@ dependencies = [
  "anyhow",
  "dango-account-factory",
  "dango-account-multi",
- "dango-account-spot",
+ "dango-account-single",
  "dango-bank",
  "dango-dex",
  "dango-gateway",

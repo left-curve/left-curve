@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "dango-account-spot"
+name          = "dango-account-single"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }

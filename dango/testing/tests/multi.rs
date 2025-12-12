@@ -98,11 +98,11 @@ fn multi_creation() {
                 user: UserIndexOrName::Index(member.user_index()),
             })
             .should_succeed_and_equal(btree_map! {
-                // Query response should include the user's own spot account as
-                // well as the multisig.
+                // Query response should include the user's own single-signature
+                // account as well as the multisig.
                 member.address() => Account {
                     index,
-                    params: AccountParams::Spot(single::Params::new(
+                    params: AccountParams::Single(single::Params::new(
                         member.user_index()
                     )),
                 },
