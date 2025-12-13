@@ -49,7 +49,7 @@ pub fn add_account_with_existing_user(
         .register_new_account(
             suite.deref_mut(),
             contracts.account_factory,
-            AccountParams::Spot(Params::new(test_account.user_index())),
+            AccountParams::Single(Params::new(test_account.user_index())),
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(), // Make sure this is bigger than the minimum deposit.
         )
         .unwrap()
@@ -64,11 +64,11 @@ pub fn create_user_and_account(
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         0,
-        codes.account_spot.to_bytes().hash256(),
+        codes.account_single.to_bytes().hash256(),
         true,
     );
 
-    // Create the user and its first spot account.
+    // Create the user and its first single-signature account.
     user.register_user(suite.deref_mut(), contracts.account_factory, Coins::new());
 
     // Make the initial deposit.

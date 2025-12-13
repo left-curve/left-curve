@@ -78,7 +78,7 @@ fn main() -> anyhow::Result<()> {
         .ok_or_else(|| anyhow!("owner {OWNER} is not a single signature account"))?;
 
     let owner_nonce = suite
-        .query_wasm_smart(OWNER, account::spot::QuerySeenNoncesRequest {})
+        .query_wasm_smart(OWNER, account::single::QuerySeenNoncesRequest {})
         .should_succeed()
         .pop_last()
         .unwrap_or(0);

@@ -61,7 +61,6 @@ dango-bank                  = { workspace = true, features = ["library"] }
 dango-dex                   = { workspace = true, features = ["library"] }
 dango-gateway               = { workspace = true, features = ["library"] }
 dango-httpd                 = { workspace = true, features = ["metrics"] }
-dango-lending               = { workspace = true, features = ["library"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
 dango-taxman                = { workspace = true, features = ["library"] }

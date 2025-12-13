@@ -50,19 +50,11 @@ Types of accounts the protocol supports.
 """
 enum AccountType {
 	"""
-	A single-signature account that cannot borrow margin loans.
+	A single-signature account.
 	"""
-	spot
+	single
 	"""
-	A single-signature account that can borrow margin loans.
-	
-	The loans are collateralized by assets held in the account. The account
-	is capable of rejecting transactions that may cause it to become
-	insolvent, and carrying out liquidations if necessary.
-	"""
-	margin
-	"""
-	A multi-signature account. Cannot borrow margin loans.
+	A multi-signature account.
 	"""
 	multi
 }

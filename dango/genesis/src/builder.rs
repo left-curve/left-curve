@@ -5,7 +5,7 @@ use {
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         constants::dango,
-        dex, gateway, lending, oracle, taxman, vesting, warp,
+        dex, gateway, oracle, taxman, vesting, warp,
     },
     grug::{
         Addr, Binary, Coins, Config, Duration, GENESIS_SENDER, GenesisState, Hash256, HashExt,
@@ -28,16 +28,14 @@ where
 
     // Upload all the codes and compute code hashes.
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
-    let account_margin_code_hash = upload(&mut msgs, codes.account_margin);
     let account_multi_code_hash = upload(&mut msgs, codes.account_multi);
-    let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
+    let account_single_code_hash = upload(&mut msgs, codes.account_single);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let dex_code_hash = upload(&mut msgs, codes.dex);
     let gateway_code_hash = upload(&mut msgs, codes.gateway);
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
-    let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
@@ -66,7 +64,7 @@ where
         .iter()
         .map(|user| {
             let salt = user.salt.to_bytes();
-            Addr::derive(account_factory, account_spot_code_hash, &salt)
+            Addr::derive(account_factory, account_single_code_hash, &salt)
         })
         .collect::<Vec<_>>();
 
@@ -79,9 +77,8 @@ where
         account_factory_code_hash,
         &account_factory::InstantiateMsg {
             code_hashes: btree_map! {
-                AccountType::Margin => account_margin_code_hash,
-                AccountType::Multi  => account_multi_code_hash,
-                AccountType::Spot   => account_spot_code_hash,
+                AccountType::Multi => account_multi_code_hash,
+                AccountType::Single => account_single_code_hash,
             },
             users,
         },
@@ -161,18 +158,6 @@ where
         owner,
     )?;
 
-    // Instantiate the lending pool contract.
-    let lending = instantiate(
-        &mut msgs,
-        lending_code_hash,
-        &lending::InstantiateMsg {
-            markets: opt.lending.markets,
-        },
-        "dango/lending",
-        "dango/lending",
-        owner,
-    )?;
-
     // Instantiate the gateway contract.
     let gateway = instantiate(
         &mut msgs,
@@ -218,7 +203,6 @@ where
             namespaces: btree_map! {
                 dex::NAMESPACE.clone()     => dex,
                 gateway::NAMESPACE.clone() => gateway,
-                lending::NAMESPACE.clone() => lending,
             },
             metadatas: opt.bank.metadatas,
         },
@@ -271,7 +255,6 @@ where
         dex,
         gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
-        lending,
         oracle,
         taxman,
         vesting,
@@ -299,7 +282,6 @@ where
             dex,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
-            lending,
             oracle,
             taxman,
             warp,

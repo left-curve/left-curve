@@ -214,7 +214,7 @@ pub(crate) async fn save_accounts(
                 .await?;
 
             match account_registered_event.params {
-                AccountParams::Spot(params) | AccountParams::Margin(params) => {
+                AccountParams::Single(params) => {
                     let user_index = params.owner;
 
                     if let Some(user_id) = entity::users::Entity::find()

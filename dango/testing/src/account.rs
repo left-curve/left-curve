@@ -2,7 +2,7 @@ use {
     crate::{TestSuite, create_signature},
     dango_types::{
         DangoQuerier,
-        account::{single, spot},
+        account::single,
         account_factory::{
             self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
             QueryNextAccountIndexRequest, RegisterUserData, Salt, UserIndex,
@@ -190,7 +190,7 @@ where
         self,
         factory: Addr,
         seed: u32,
-        spot_code_hash: Hash256,
+        code_hash: Hash256,
         new_user_salt: bool,
     ) -> TestAccount<I, Defined<Addr>> {
         let (_, key) = &self.keys[&self.sign_with];
@@ -205,7 +205,7 @@ where
             todo!("implement address prediction for not new users");
         };
 
-        let address = Addr::derive(factory, spot_code_hash, &salt);
+        let address = Addr::derive(factory, code_hash, &salt);
 
         self.set_address(address)
     }
@@ -368,13 +368,9 @@ where
     {
         // If registering a single account, ensure the supplied username matches this account's username.
         let account_type = match &params {
-            AccountParams::Spot(single::Params { owner, .. }) => {
+            AccountParams::Single(single::Params { owner, .. }) => {
                 assert_eq!(owner, self.user_index.inner());
-                AccountType::Spot
-            },
-            AccountParams::Margin(single::Params { owner, .. }) => {
-                assert_eq!(owner, self.user_index.inner());
-                AccountType::Margin
+                AccountType::Single
             },
             AccountParams::Multi(_) => AccountType::Multi,
         };
@@ -472,7 +468,7 @@ impl SequencedSigner for TestAccount {
         let nonce = client
             .query_wasm_smart(
                 self.address.into_inner(),
-                spot::QuerySeenNoncesRequest {},
+                single::QuerySeenNoncesRequest {},
                 None,
             )
             .await?

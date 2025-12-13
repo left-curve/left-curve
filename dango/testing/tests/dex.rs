@@ -3144,7 +3144,7 @@ fn volume_tracking_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Spot(Params::new(user1_addr_1.user_index())),
+            AccountParams::Single(Params::new(user1_addr_1.user_index())),
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap();
@@ -3154,7 +3154,7 @@ fn volume_tracking_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Spot(Params::new(user2_addr_1.user_index())),
+            AccountParams::Single(Params::new(user2_addr_1.user_index())),
             Coins::one(dango::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap();

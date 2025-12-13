@@ -53,7 +53,7 @@ fn query_trusted_signers(
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
-    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage, ctx.querier);
+    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage);
     oracle_querier.query_price(&denom, None)
 }
 
@@ -62,7 +62,7 @@ fn query_prices(
     start_after: Option<Denom>,
     limit: Option<u32>,
 ) -> anyhow::Result<BTreeMap<Denom, PrecisionedPrice>> {
-    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage, ctx.querier);
+    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage);
 
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;

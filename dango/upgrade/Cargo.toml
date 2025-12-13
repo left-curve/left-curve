@@ -9,8 +9,6 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 
 [dependencies]
-dango-dex   = { workspace = true }
-dango-types = { workspace = true }
-grug        = { workspace = true }
-grug-app    = { workspace = true }
-tracing     = { workspace = true }
+grug     = { workspace = true }
+grug-app = { workspace = true }
+tracing  = { workspace = true }

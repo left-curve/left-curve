@@ -8,7 +8,7 @@ use {
     },
     dango_genesis::{
         AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
-        GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption,
+        GrugOption, HyperlaneOption, OracleOption, VestingOption,
     },
     dango_types::{
         account_factory::NewUserSalt,
@@ -20,7 +20,6 @@ use {
         },
         dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
         gateway::{Origin, Remote, WithdrawalFee},
-        lending::InterestRateModel,
         taxman,
     },
     grug::{
@@ -178,7 +177,6 @@ impl Preset for GenesisOption {
             dex: Preset::preset_test(),
             gateway: Preset::preset_test(),
             hyperlane: Preset::preset_test(),
-            lending: Preset::preset_test(),
             oracle: Preset::preset_test(),
             vesting: Preset::preset_test(),
         }
@@ -613,17 +611,6 @@ impl Preset for HyperlaneOption {
             va_announce_fee_per_byte: Coin {
                 denom: usdc::DENOM.clone(),
                 amount: Uint128::new(100),
-            },
-        }
-    }
-}
-
-impl Preset for LendingOption {
-    fn preset_test() -> Self {
-        LendingOption {
-            markets: btree_map! {
-                usdc::DENOM.clone() => InterestRateModel::mock(),
-                eth::DENOM.clone() => InterestRateModel::mock(),
             },
         }
     }

@@ -1,6 +1,6 @@
 use {
     dango_auth::{query_seen_nonces, query_status},
-    dango_types::account::spot::QueryMsg,
+    dango_types::account::single::QueryMsg,
     grug::{ImmutableCtx, Json, JsonSerExt, StdResult},
 };
 

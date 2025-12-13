@@ -47,7 +47,7 @@ where
             Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
+                    params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
                 },
                 if i < 100 {
                     coins! { usdc::DENOM.clone() => 100_000_000 }
@@ -70,21 +70,21 @@ where
 
     // Make a block that contains 100 transactions.
     // The i-th transaction is the i-th sender sending coins to the i-receiver.
-    let code_account_spot = codes.account_spot.into().hash256();
+    let code_account_single = codes.account_single.into().hash256();
     (0..100)
         .map(|i| {
             // Predict the sender address.
             // During genesis we created 3 accounts, so offset i by 3.
             let sender = Addr::derive(
                 contracts.account_factory,
-                code_account_spot,
+                code_account_single,
                 Salt { index: i + 3 }.into_bytes().as_slice(),
             );
 
             // Predict the receiver address.
             let receiver = Addr::derive(
                 contracts.account_factory,
-                code_account_spot,
+                code_account_single,
                 Salt { index: i + 103 }.into_bytes().as_slice(),
             );
 
