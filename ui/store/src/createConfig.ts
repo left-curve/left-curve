@@ -182,6 +182,7 @@ export function createConfig<
       connectors: new Map(),
       current: null,
       userIndexAndName: undefined,
+      userStatus: undefined,
       status: ConnectionStatus.Disconnected,
     };
   }
@@ -304,6 +305,7 @@ export function createConfig<
       return {
         ...x,
         current: data.uid,
+        userStatus: data.userStatus,
         userIndexAndName: { index, name: name ?? `User #${index}` },
         connectors: new Map(x.connectors).set(data.uid, {
           keyHash: data.keyHash,
@@ -345,6 +347,7 @@ export function createConfig<
           username: undefined,
           connectors: new Map(),
           current: null,
+          userStatus: undefined,
           status: ConnectionStatus.Disconnected,
         };
       }

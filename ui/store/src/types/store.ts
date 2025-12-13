@@ -13,6 +13,7 @@ import type {
   Transport,
   UID,
   UserIndexAndName,
+  UserStatus,
 } from "@left-curve/dango/types";
 
 import type { AnyCoin } from "./coin.js";
@@ -35,6 +36,7 @@ export type State = {
   isMipdLoaded: boolean;
   current: UID | null;
   userIndexAndName: Require<UserIndexAndName, "name"> | undefined;
+  userStatus: UserStatus | undefined;
   connectors: Map<UID, Connection>;
   status: ConnectionStatusType;
 };

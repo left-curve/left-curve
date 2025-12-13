@@ -80,7 +80,10 @@ export function privy(parameters: PrivyConnectorParameters) {
 
         if (!keys[keyHash]) throw new Error("Not authorized");
 
-        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash });
+        const account = accounts[0];
+        const userStatus = await client.getAccountStatus({ address: account.address });
+
+        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash, userStatus });
       },
       async disconnect() {
         emitter.emit("disconnect");

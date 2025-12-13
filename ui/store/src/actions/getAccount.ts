@@ -1,7 +1,14 @@
 import { changeAccount as changeAccountAction } from "./changeAccount.js";
 import { refreshAccounts as refreshAccountsAction } from "./refreshAccounts.js";
 
-import type { Account, AccountTypes, Address, KeyHash, Username } from "@left-curve/dango/types";
+import type {
+  Account,
+  AccountTypes,
+  Address,
+  KeyHash,
+  Username,
+  UserStatus,
+} from "@left-curve/dango/types";
 import type { Chain, ChainId } from "@left-curve/dango/types";
 
 import type { Connector } from "../types/connector.js";
@@ -16,6 +23,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       chain: Chain | undefined;
       chainId: ChainId;
       connector: Connector;
+      userStatus: UserStatus | undefined;
       isConnected: true;
       isConnecting: false;
       isDisconnected: false;
@@ -32,6 +40,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       chain: Chain | undefined;
       chainId: ChainId | undefined;
       connector: Connector | undefined;
+      userStatus: UserStatus | undefined;
       isConnected: boolean;
       isConnecting: false;
       isDisconnected: false;
@@ -48,6 +57,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       chain: Chain | undefined;
       chainId: ChainId | undefined;
       connector: Connector | undefined;
+      userStatus: UserStatus | undefined;
       isConnected: false;
       isReconnecting: false;
       isConnecting: true;
@@ -64,6 +74,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       chain: undefined;
       chainId: undefined;
       connector: undefined;
+      userStatus: UserStatus | undefined;
       isConnected: false;
       isReconnecting: false;
       isConnecting: false;
@@ -81,6 +92,7 @@ const disconnected = {
   chain: undefined,
   chainId: undefined,
   connector: undefined,
+  userStatus: undefined,
   isConnected: false,
   isConnecting: false,
   isDisconnected: true,
@@ -94,7 +106,7 @@ export function getAccount<
   accountType extends AccountTypes = AccountTypes,
   config extends Config = Config,
 >(config: config): GetAccountReturnType<accountType> {
-  const { chainId, connectors, status } = config.state;
+  const { chainId, connectors, status, userStatus } = config.state;
   const connectorUId = config.state.current!;
   const connection = connectors.get(connectorUId);
 
@@ -129,6 +141,7 @@ export function getAccount<
         chain,
         chainId,
         connector,
+        userStatus,
         isConnected: true,
         isConnecting: false,
         isDisconnected: false,
@@ -146,6 +159,7 @@ export function getAccount<
         chain,
         chainId,
         connector,
+        userStatus,
         isConnected: false,
         isConnecting: false,
         isDisconnected: false,
@@ -163,6 +177,7 @@ export function getAccount<
         chain,
         chainId,
         connector,
+        userStatus,
         isConnected: false,
         isConnecting: true,
         isDisconnected: false,
