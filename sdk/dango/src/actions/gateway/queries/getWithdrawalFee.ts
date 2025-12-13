@@ -6,13 +6,13 @@ import type { Chain, Signer } from "@left-curve/sdk/types";
 import type { AppConfig } from "../../../types/app.js";
 import type { Remote } from "../../../types/hyperlane.js";
 
-export type GetWithdrawlFeeParameters = {
+export type GetWithdrawalFeeParameters = {
   denom: Denom;
   remote: Remote;
   height?: number;
 };
 
-export type GetWithdrawlFeeReturnType = Promise<string>;
+export type GetWithdrawalFeeReturnType = Promise<string>;
 
 /**
  * Query the withdrawal fee for a given denom and remote.
@@ -22,13 +22,13 @@ export type GetWithdrawlFeeReturnType = Promise<string>;
  * @param parameters.height The height at which to query the withdrawal fee.
  * @returns The withdrawal fee.
  */
-export async function getWithdrawlFee<
+export async function getWithdrawalFee<
   chain extends Chain | undefined,
   signer extends Signer | undefined,
 >(
   client: Client<Transport, chain, signer>,
-  parameters: GetWithdrawlFeeParameters,
-): GetWithdrawlFeeReturnType {
+  parameters: GetWithdrawalFeeParameters,
+): GetWithdrawalFeeReturnType {
   const { height = 0, denom, remote } = parameters;
 
   const action = getAction(client, getAppConfig, "getAppConfig");

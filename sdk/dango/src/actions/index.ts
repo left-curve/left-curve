@@ -156,9 +156,9 @@ export {
 /* --------------------------------- queries -------------------------------- */
 
 export {
-  type GetWithdrawlFeeParameters,
-  type GetWithdrawlFeeReturnType,
-  getWithdrawlFee,
+  type GetWithdrawalFeeParameters,
+  type GetWithdrawalFeeReturnType,
+  getWithdrawalFee,
 } from "./gateway/queries/getWithdrawalFee.js";
 
 /* -------------------------------- mutations ------------------------------- */

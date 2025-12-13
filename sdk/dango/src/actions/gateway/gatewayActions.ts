@@ -8,14 +8,14 @@ import {
 } from "./mutations/transferRemote.js";
 
 import {
-  getWithdrawlFee,
-  type GetWithdrawlFeeParameters,
-  type GetWithdrawlFeeReturnType,
+  getWithdrawalFee,
+  type GetWithdrawalFeeParameters,
+  type GetWithdrawalFeeReturnType,
 } from "./queries/getWithdrawalFee.js";
 
 export type GatewayQueryActions = {
   gateway: {
-    getWithdrawalFee: (parameters: GetWithdrawlFeeParameters) => GetWithdrawlFeeReturnType;
+    getWithdrawalFee: (parameters: GetWithdrawalFeeParameters) => GetWithdrawalFeeReturnType;
   };
 };
 
@@ -24,7 +24,7 @@ export function gatewayQueryActions<transport extends Transport = Transport>(
 ): GatewayQueryActions {
   return {
     gateway: {
-      getWithdrawalFee: (...args) => getWithdrawlFee(client, ...args),
+      getWithdrawalFee: (...args) => getWithdrawalFee(client, ...args),
     },
   };
 }

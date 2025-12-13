@@ -4,7 +4,7 @@ import type { AnyCoin } from "../types/coin.js";
 import type { useBridgeState } from "./useBridgeState.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 import { useSigningClient } from "./useSigningClient.js";
-import { getWithdrawlFee, transferRemote } from "@left-curve/dango/actions";
+import { getWithdrawalFee, transferRemote } from "@left-curve/dango/actions";
 import { usePublicClient } from "./usePublicClient.js";
 import { useAccount } from "./useAccount.js";
 import { toAddr32 } from "@left-curve/dango/hyperlane";
@@ -28,7 +28,7 @@ export function useBridgeWithdraw(parameters: UseBridgeWithdrawParameters) {
     queryKey: ["withdrawFee", config],
     queryFn: async () => {
       if (!coin || !config?.router) return;
-      return await getWithdrawlFee(publicClient, {
+      return await getWithdrawalFee(publicClient, {
         denom: coin.denom,
         remote: config.router.remote,
       });
