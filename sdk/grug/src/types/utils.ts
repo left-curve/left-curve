@@ -137,3 +137,10 @@ export type ValueFunction<TValue, TArg> = (arg: TArg) => TValue;
 export type ValueOrFunction<TValue, TArg> = TValue | ValueFunction<TValue, TArg>;
 
 export type StdResult<R, E = Error> = { Ok: R } | { Err: E };
+
+export type NonNullableProperties<T> = {
+  [P in keyof T]-?: NonNullable<T[P]>;
+};
+
+export type NonNullablePropertiesBy<T, K extends keyof T> = Omit<T, K> &
+  NonNullableProperties<Pick<T, K>>;

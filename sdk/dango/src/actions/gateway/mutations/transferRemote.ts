@@ -1,9 +1,8 @@
 import { getAppConfig } from "@left-curve/sdk";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
-import type { Address, Transport } from "@left-curve/sdk/types";
-
 import { getAction } from "@left-curve/sdk/actions";
 
+import type { Address, Coins, Transport } from "@left-curve/sdk/types";
 import type {
   AppConfig,
   DangoClient,
@@ -17,6 +16,7 @@ export type TransferRemoteParameters = {
   remote: Remote;
   recipient: Addr32;
   sender: Address;
+  funds: Coins;
 };
 
 export type TransferRemoteReturnType = ExecuteReturnType;
@@ -25,7 +25,7 @@ export async function transferRemote<transport extends Transport>(
   client: DangoClient<transport, Signer>,
   parameters: TransferRemoteParameters,
 ): TransferRemoteReturnType {
-  const { remote, recipient, sender } = parameters;
+  const { remote, recipient, sender, funds } = parameters;
 
   const getter = getAction(client, getAppConfig, "getAppConfig");
 
@@ -64,6 +64,7 @@ export async function transferRemote<transport extends Transport>(
       contract: addresses.gateway,
       msg,
       typedData,
+      funds,
     },
     sender,
   });

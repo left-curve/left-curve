@@ -10,7 +10,7 @@ export function useControlledState<T>(
 
   const [internalValue, setInternalValue] = useState<T>((value ?? resolvedDefaultValue) as T);
 
-  const isControlled = value !== undefined;
+  const isControlled = typeof onChange === "function";
 
   const handleChange = (newValue: T) => {
     if (!isControlled) {

@@ -689,6 +689,7 @@
     "networkName": "{network} Network",
     "onlyCanReceiveOn": "This address can only receive assets on",
     "deposit": "Deposit",
+    "allow": "Allow",
     "youDeposit": "You deposit",
     "youGet": "You get",
     "withdraw": "Withdraw",
@@ -718,7 +719,7 @@
       "username": {
         "editUsername": "Edit Username",
         "editDescription": "You can change your username only once. After that, it can’t be updated.",
-        "save":"Save"
+        "save": "Save"
       }
     },
     "chartEngines": [
