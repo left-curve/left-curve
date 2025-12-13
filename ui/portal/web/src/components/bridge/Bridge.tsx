@@ -285,7 +285,7 @@ const BridgeWithdraw: React.FC = () => {
             label={m["bridge.youWithdraw"]()}
           />
           <Input
-            {...register("withdrawAddress", { mask: masks[network as keyof typeof masks] })}
+            {...register("recipient", { mask: masks[network as keyof typeof masks] })}
             label={m["bridge.withdrawAddress"]()}
             placeholder={m["bridge.placeholderWithdrawAddress"]({ network: capitalize(network) })}
           />

@@ -97,16 +97,19 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   const withdraw = useSubmitTx({
     mutation: {
       mutationFn: async () => {
+        const recipient = controllers.inputs.recipient?.value;
+        const amount = controllers.inputs.amount?.value;
+
+        if (!recipient) throw new Error("Recipient address not provided");
+        if (!amount) throw new Error("Amount not provided");
         if (!signingClient) throw new Error("Signing client not initialized");
         if (!config || !config.router) throw new Error("Bridge config not available");
         if (!account) throw new Error("Account not connected");
         if (!coin) throw new Error("Coin not selected");
 
-        const amount = controllers.inputs.amount?.value || "0";
-
         await transferRemote(signingClient, {
           sender: account.address,
-          recipient: toAddr32(account.address),
+          recipient: toAddr32(recipient as `0x${string}`),
           remote: {
             warp: {
               domain: config.router.domain,
