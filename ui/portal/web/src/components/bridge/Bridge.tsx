@@ -1,4 +1,13 @@
-import { useAccount, useBalances, useBridgeState, usePrices } from "@left-curve/store";
+import {
+  useAccount,
+  useBalances,
+  useBridgeEvmDeposit,
+  useBridgeState,
+  useBridgeWithdraw,
+  useEvmBalances,
+  usePrices,
+} from "@left-curve/store";
+
 import {
   AssetInputWithRange,
   ConnectWalletWithModal,
@@ -12,7 +21,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { capitalize } from "@left-curve/dango/utils";
+import { capitalize, parseUnits } from "@left-curve/dango/utils";
 
 import {
   Button,
@@ -26,21 +35,15 @@ import {
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import type { AnyCoin } from "@left-curve/store/types";
+import type { NonNullablePropertiesBy } from "@left-curve/dango/types";
 
 const masks = {
   ethereum: ethAddressMask,
   base: ethAddressMask,
   arbitrum: ethAddressMask,
+  sepolia: ethAddressMask,
 };
-
-const networks = [
-  { name: "Ethereum Network", id: "ethereum", time: "16 blocks | 5-30 mins" },
-  { name: "Sepolia Network", id: "sepolia", time: "16 blocks | 5-30 mins" },
-  { name: "Base Network", id: "base", time: "5-30 mins" },
-  { name: "Arbitrum Network", id: "arbitrum", time: "5-30 mins" },
-  /*       { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
-          { name: "Solana Network", id: "solana", time: "2-10 mins" }, */
-];
 
 const [BridgeProvider, useBridge] = createContext<{
   state: ReturnType<typeof useBridgeState>;
@@ -82,29 +85,27 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
 };
 
 const BridgeDeposit: React.FC = () => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-  const { state, controllers } = useBridge();
-  const { isConnected } = useAccount();
-  const { getPrice } = usePrices();
-
-  const {
-    action,
-    coins,
-    coin,
-    changeCoin,
-    network,
-    setNetwork,
-    connector,
-    setConnectorId,
-    deposit,
-    depositAddress,
-    walletAddress,
-    getAmount,
-    externalBalances,
-  } = state;
+  const { state } = useBridge();
+  const { action, network } = state;
 
   if (action !== "deposit") return null;
+
+  return (
+    <>
+      <BridgeSelectors />
+
+      {network === "bitcoin" && <BitcoinDeposit />}
+
+      {network && !["bitcoin", "solana"].includes(network) && <EvmDeposit />}
+    </>
+  );
+};
+
+const BridgeSelectors: React.FC = () => {
+  const { isConnected } = useAccount();
+
+  const { state } = useBridge();
+  const { coin, changeCoin, coins, network, setNetwork, networks } = state;
 
   return (
     <>
@@ -114,8 +115,8 @@ const BridgeDeposit: React.FC = () => {
         placeholder={m["bridge.selectCoin"]()}
         variant="boxed"
         classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
-        value={coin ? coin.denom : undefined}
-        onChange={(denom) => changeCoin(denom)}
+        value={coin?.denom}
+        onChange={changeCoin}
         coins={coins}
         withName
         withPrice
@@ -130,127 +131,165 @@ const BridgeDeposit: React.FC = () => {
         onNetworkChange={({ id }) => setNetwork(id)}
         networks={networks}
       />
-
-      {depositAddress && <DepositAddressBox address={depositAddress} network={network as string} />}
-
-      {coin && network && !connector && (
-        <ConnectWalletWithModal
-          fullWidth
-          isDisabled={!coin || !network}
-          onWalletSelected={(id) => setConnectorId(id)}
-        />
-      )}
-
-      {coin && connector && (
-        <div className="flex flex-col items-center justify-center gap-6">
-          <AssetInputWithRange
-            name="amount"
-            asset={coin}
-            balances={externalBalances}
-            controllers={controllers}
-            showRange
-            shouldValidate
-            label={
-              <div className="flex justify-between w-full items-center">
-                <p className="exposure-sm-italic text-ink-secondary-700">
-                  {m["bridge.youDeposit"]()}
-                </p>
-
-                <div className="flex gap-2 items-center">
-                  <img src={connector.icon} alt={connector.name} className="w-4 h-4 inline-block" />
-                  <TruncateText
-                    start={4}
-                    end={4}
-                    text={walletAddress.data || ""}
-                    className="diatype-sm-medium text-ink-tertiary-500"
-                  />
-                  <IconDisconnect
-                    className="w-4 h-4 inline-block text-ink-tertiary-500 hover:cursor-pointer hover:text-ink-primary-900"
-                    onClick={() => setConnectorId(null)}
-                  />
-                </div>
-              </div>
-            }
-          />
-          <div className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5 cursor-pointer">
-            <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
-          </div>
-          <Input
-            placeholder="0"
-            label={m["bridge.youGet"]()}
-            value={getAmount}
-            classNames={{
-              base: "z-20",
-              inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
-              inputParent: "h-[34px] h3-bold",
-              input: "!h3-bold",
-            }}
-            startText="right"
-            startContent={
-              <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
-                <div className="flex gap-2 items-center font-semibold">
-                  <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
-                  <p>{coin.symbol}</p>
-                </div>
-              </div>
-            }
-            insideBottomComponent={
-              <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-                <p>
-                  {getPrice(getAmount, coin.denom, {
-                    format: true,
-                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
-                  })}
-                </p>
-              </div>
-            }
-          />
-
-          <Button
-            fullWidth
-            onClick={() => deposit.mutate()}
-            isLoading={deposit.isPending}
-            className="mt-4"
-          >
-            {m["bridge.deposit"]()}
-          </Button>
-        </div>
-      )}
     </>
   );
 };
+
+const BitcoinDeposit: React.FC = () => {
+  const depositAddress = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
+  return <DepositAddressBox address={depositAddress} network="bitcoin" />;
+};
+
+const EvmDeposit: React.FC = () => {
+  const { getPrice } = usePrices();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+
+  const { controllers, state } = useBridge();
+  const { inputs } = controllers;
+
+  const { coin, connector, setConnectorId, config } = state as NonNullablePropertiesBy<
+    typeof state,
+    "coin" | "config"
+  >;
+
+  const amount = inputs.amount?.value || "0";
+  const parsedAmount = BigInt(parseUnits(amount, coin.decimals));
+
+  const { wallet, allowanceQuery, allowanceMutation, deposit } = useBridgeEvmDeposit({
+    config,
+    connector,
+    coin,
+    amount,
+  });
+
+  const requiresAllowance = allowanceQuery.data < parsedAmount;
+
+  const evmAddress = wallet.data?.account.address;
+
+  const { data: balances = {} } = useEvmBalances({
+    chain: config.chain,
+    address: evmAddress,
+  });
+
+  if (!connector || !coin) {
+    return <ConnectWalletWithModal fullWidth onWalletSelected={(id) => setConnectorId(id)} />;
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-6">
+      <AssetInputWithRange
+        name="amount"
+        asset={coin}
+        balances={balances}
+        controllers={controllers}
+        showRange
+        shouldValidate
+        label={
+          <div className="flex justify-between w-full items-center">
+            <p className="exposure-sm-italic text-ink-secondary-700">{m["bridge.youDeposit"]()}</p>
+
+            <div className="flex gap-2 items-center">
+              <img src={connector.icon} alt={connector.name} className="w-4 h-4 inline-block" />
+              <TruncateText
+                start={4}
+                end={4}
+                text={evmAddress || ""}
+                className="diatype-sm-medium text-ink-tertiary-500"
+              />
+              <IconDisconnect
+                className="w-4 h-4 inline-block text-ink-tertiary-500 hover:cursor-pointer hover:text-ink-primary-900"
+                onClick={() => setConnectorId(null)}
+              />
+            </div>
+          </div>
+        }
+      />
+      <div className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5 cursor-pointer">
+        <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
+      </div>
+      <Input
+        placeholder="0"
+        readOnly
+        label={m["bridge.youGet"]()}
+        value={amount}
+        classNames={{
+          base: "z-20",
+          inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
+          inputParent: "h-[34px] h3-bold",
+          input: "!h3-bold",
+        }}
+        startText="right"
+        startContent={
+          <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
+            <div className="flex gap-2 items-center font-semibold">
+              <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
+              <p>{coin.symbol}</p>
+            </div>
+          </div>
+        }
+        insideBottomComponent={
+          <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
+            <p>
+              {getPrice(amount, coin.denom, {
+                format: true,
+                formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
+              })}
+            </p>
+          </div>
+        }
+      />
+
+      {requiresAllowance && (
+        <Button
+          fullWidth
+          onClick={() => allowanceMutation.mutate()}
+          isLoading={allowanceMutation.isPending || allowanceQuery.isLoading}
+          className="mt-4"
+        >
+          {m["bridge.allow"]()}
+        </Button>
+      )}
+      {!requiresAllowance && (
+        <Button
+          fullWidth
+          onClick={() => deposit.mutate()}
+          isLoading={deposit.isPending}
+          isDisabled={amount === "0"}
+          className="mt-4"
+        >
+          {m["bridge.deposit"]()}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 const BridgeWithdraw: React.FC = () => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { isConnected, account } = useAccount();
+  const { account } = useAccount();
   const { state, controllers } = useBridge();
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { getPrice } = usePrices();
-  const { action, coins, coin, changeCoin, network, setNetwork, getAmount, withdraw } = state;
-  const { register } = controllers;
+  const { action, coin, network, config } = state;
+  const { register, inputs } = controllers;
+
+  const amount = inputs.amount?.value || "0";
+  const recipient = inputs.recipient?.value || "";
+
+  const { withdraw } = useBridgeWithdraw({
+    coin: coin as AnyCoin,
+    config: config as NonNullable<typeof config>,
+    amount,
+    recipient,
+  });
 
   if (action !== "withdraw") return null;
+
   return (
     <>
-      <CoinSelector
-        label={m["bridge.selectCoin"]()}
-        placeholder={m["bridge.selectCoin"]()}
-        isDisabled={!isConnected}
-        variant="boxed"
-        classNames={{ base: "w-full", trigger: "h-[56px]" }}
-        value={coin ? coin.denom : undefined}
-        onChange={(denom) => changeCoin(denom)}
-        coins={coins}
-      />
-      <NetworkSelector
-        label={m["bridge.selectNetwork"]()}
-        placeholder={m["bridge.selectNetwork"]()}
-        classNames={{ trigger: "h-[56px]" }}
-        isDisabled={!coin}
-        value={network ? network : undefined}
-        onNetworkChange={({ id }) => setNetwork(id)}
-        networks={networks}
-      />
+      <BridgeSelectors />
 
       {coin && network && (
         <div className="flex flex-col items-center justify-center gap-6">
@@ -263,14 +302,15 @@ const BridgeWithdraw: React.FC = () => {
             label={m["bridge.youWithdraw"]()}
           />
           <Input
-            {...register("withdrawAddress", { mask: masks[network as keyof typeof masks] })}
+            {...register("recipient", { mask: masks[network as keyof typeof masks] })}
             label={m["bridge.withdrawAddress"]()}
             placeholder={m["bridge.placeholderWithdrawAddress"]({ network: capitalize(network) })}
           />
           <Input
             placeholder="0"
+            readOnly
             label={m["bridge.youGet"]()}
-            value={getAmount}
+            value={amount}
             classNames={{
               base: "z-20",
               inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
@@ -289,7 +329,7 @@ const BridgeWithdraw: React.FC = () => {
             insideBottomComponent={
               <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
                 <p>
-                  {getPrice(getAmount, coin.denom, {
+                  {getPrice(amount, coin.denom, {
                     format: true,
                     formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
                   })}

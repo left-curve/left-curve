@@ -23,7 +23,6 @@ export interface CoinSelectorProps extends Omit<SelectProps, "children"> {
 
 export const CoinSelector: React.FC<CoinSelectorProps> = ({
   coins,
-  defaultValue,
   classNames,
   variant = "plain",
   withName,
@@ -35,7 +34,6 @@ export const CoinSelector: React.FC<CoinSelectorProps> = ({
   const { getPrice } = usePrices();
   return (
     <Select
-      defaultValue={defaultValue}
       classNames={{
         base: `${classNames?.base}`,
         listboxWrapper: `top-12 ${classNames?.listboxWrapper}`,
