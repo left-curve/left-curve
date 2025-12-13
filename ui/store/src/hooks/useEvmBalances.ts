@@ -6,44 +6,30 @@ import { ERC20_ABI } from "@left-curve/dango/hyperlane";
 import type { Chain } from "viem";
 import type { Address } from "@left-curve/dango/types";
 
-type ExternalNetworks = "bitcoin" | "ethereum" | "arbitrum" | "base" | "solana";
-
-export type UseExternalBalancesParameters = {
-  network: ExternalNetworks | null;
+export type UseEvmBalancesParameters = {
+  network: keyof typeof chains;
   address?: Address;
 };
 
-const evmChains = ["ethereum", "arbitrum", "base"];
-
-export function useExternalBalances(parameters: UseExternalBalancesParameters) {
+export function useEvmBalances(parameters: UseEvmBalancesParameters) {
   const { network, address } = parameters;
-
-  const { data: evmClient } = useQuery({
-    enabled: evmChains.includes(network as string),
-    queryKey: ["evmClient", network],
-    queryFn: async () => {
-      if (!evmChains.includes(network as string)) return null;
-      const { createPublicClient, http } = await import("viem");
-      return createPublicClient({
-        chain: chains[network as keyof typeof chains] as Chain,
-        transport: http(undefined, { batch: true }),
-      });
-    },
-  });
 
   return useQuery({
     enabled: !!address && !!network,
     queryKey: ["external-balances", network, address],
     queryFn: async () => {
-      if (!address || !network) return {};
-      if (network === "bitcoin") return {};
-      if (network === "solana") return {};
+      if (!address) return {};
+      const { createPublicClient, http } = await import("viem");
 
-      if (!evmClient) return {};
+      const evmClient = createPublicClient({
+        chain: chains[network as keyof typeof chains] as Chain,
+        transport: http(undefined, { batch: true }),
+      });
 
       const nativeBalance = await evmClient.getBalance({ address });
 
       const { contracts } = chains[network as keyof typeof chains];
+
       const erc20Balances = await Promise.all(
         contracts.erc20.map(async (token) => {
           const balance = await evmClient.readContract({
