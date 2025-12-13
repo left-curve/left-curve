@@ -184,6 +184,11 @@ export {
   type UseBridgeEvmDepositParameters,
 } from "./hooks/useBridgeEvmDeposit.js";
 
+export {
+  useBridgeWithdraw,
+  type UseBridgeWithdrawParameters,
+} from "./hooks/useBridgeWithdraw.js";
+
 export { useFavApplets } from "./hooks/useFavApplets.js";
 export { useFavPairs } from "./hooks/useFavPairs.js";
 

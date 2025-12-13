@@ -2,10 +2,9 @@ import {
   useAccount,
   useBalances,
   useBridgeEvmDeposit,
-  type UseBridgeEvmDepositParameters,
   useBridgeState,
+  useBridgeWithdraw,
   useEvmBalances,
-  type UseEvmBalancesParameters,
   usePrices,
 } from "@left-curve/store";
 
@@ -22,7 +21,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { capitalize } from "@left-curve/dango/utils";
+import { capitalize, parseUnits } from "@left-curve/dango/utils";
 
 import {
   Button,
@@ -36,6 +35,8 @@ import {
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import type { AnyCoin } from "@left-curve/store/types";
+import type { NonNullablePropertiesBy } from "@left-curve/dango/types";
 
 const masks = {
   ethereum: ethAddressMask,
@@ -147,22 +148,27 @@ const EvmDeposit: React.FC = () => {
   const { controllers, state } = useBridge();
   const { inputs } = controllers;
 
-  const { coin, connector, setConnectorId, network, config } = state;
+  const { coin, connector, setConnectorId, config } = state as NonNullablePropertiesBy<
+    typeof state,
+    "coin" | "config"
+  >;
 
   const amount = inputs.amount?.value || "0";
+  const parsedAmount = BigInt(parseUnits(amount, coin.decimals));
 
   const { wallet, allowanceQuery, allowanceMutation, deposit } = useBridgeEvmDeposit({
     config,
     connector,
-    network: network as UseBridgeEvmDepositParameters["network"],
-    coin: coin as UseBridgeEvmDepositParameters["coin"],
+    coin,
     amount,
   });
 
+  const requiresAllowance = allowanceQuery.data < parsedAmount;
+
   const evmAddress = wallet.data?.account.address;
 
-  const { data: balances } = useEvmBalances({
-    network: network as UseEvmBalancesParameters["network"],
+  const { data: balances = {} } = useEvmBalances({
+    chain: config.chain,
     address: evmAddress,
   });
 
@@ -204,6 +210,7 @@ const EvmDeposit: React.FC = () => {
       </div>
       <Input
         placeholder="0"
+        readOnly
         label={m["bridge.youGet"]()}
         value={amount}
         classNames={{
@@ -233,7 +240,7 @@ const EvmDeposit: React.FC = () => {
         }
       />
 
-      {allowanceQuery.data && (
+      {requiresAllowance && (
         <Button
           fullWidth
           onClick={() => allowanceMutation.mutate()}
@@ -243,11 +250,12 @@ const EvmDeposit: React.FC = () => {
           {m["bridge.allow"]()}
         </Button>
       )}
-      {!allowanceQuery.data && (
+      {!requiresAllowance && (
         <Button
           fullWidth
           onClick={() => deposit.mutate()}
           isLoading={deposit.isPending}
+          isDisabled={amount === "0"}
           className="mt-4"
         >
           {m["bridge.deposit"]()}
@@ -264,12 +272,21 @@ const BridgeWithdraw: React.FC = () => {
   const { state, controllers } = useBridge();
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { getPrice } = usePrices();
-  const { action, coin, network, withdraw } = state;
+  const { action, coin, network, config } = state;
   const { register, inputs } = controllers;
 
-  const withdrawAmount = inputs.amount?.value || "0";
+  const amount = inputs.amount?.value || "0";
+  const recipient = inputs.recipient?.value || "";
+
+  const { withdraw } = useBridgeWithdraw({
+    coin: coin as AnyCoin,
+    config: config as NonNullable<typeof config>,
+    amount,
+    recipient,
+  });
 
   if (action !== "withdraw") return null;
+
   return (
     <>
       <BridgeSelectors />
@@ -291,8 +308,9 @@ const BridgeWithdraw: React.FC = () => {
           />
           <Input
             placeholder="0"
+            readOnly
             label={m["bridge.youGet"]()}
-            value={withdrawAmount}
+            value={amount}
             classNames={{
               base: "z-20",
               inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
@@ -311,7 +329,7 @@ const BridgeWithdraw: React.FC = () => {
             insideBottomComponent={
               <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
                 <p>
-                  {getPrice(withdrawAmount, coin.denom, {
+                  {getPrice(amount, coin.denom, {
                     format: true,
                     formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
                   })}

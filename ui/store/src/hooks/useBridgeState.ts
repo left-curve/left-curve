@@ -1,19 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConnectors } from "./useConnectors.js";
-import { useSubmitTx } from "./useSubmitTx.js";
 import { useConfig } from "./useConfig.js";
-import { useAccount } from "./useAccount.js";
-import { useSigningClient } from "./useSigningClient.js";
 import { useStorage } from "./useStorage.js";
 
-import { transferRemote } from "@left-curve/dango/actions";
 import { chains } from "../hyperlane.js";
 import { toAddr32 } from "@left-curve/dango/hyperlane";
 import config from "../../../../dango/hyperlane-deployment/config.json" with { type: "json" };
 const { evm } = config;
 
 import type { AnyCoin } from "../types/coin.js";
-import { parseUnits } from "@left-curve/dango/utils";
 
 export type UseBridgeStateParameters = {
   action: "deposit" | "withdraw";
@@ -26,14 +21,11 @@ export type UseBridgeStateParameters = {
 
 export function useBridgeState(params: UseBridgeStateParameters) {
   const { coins: allCoins, chain: dangoChain } = useConfig();
-  const { data: signingClient } = useSigningClient();
-  const { account } = useAccount();
 
   const { action, controllers } = params;
 
   const { current: networks } = useRef([
     { name: "Ethereum Network", id: "ethereum", time: "16 blocks | 5-30 mins" },
-    { name: "Sepolia Network", id: "sepolia", time: "16 blocks | 5-30 mins" },
     { name: "Base Network", id: "base", time: "5-30 mins" },
     { name: "Arbitrum Network", id: "arbitrum", time: "5-30 mins" },
     /*       { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
@@ -81,6 +73,12 @@ export function useBridgeState(params: UseBridgeStateParameters) {
         if (!router) return undefined;
 
         return {
+          remote: {
+            warp: {
+              domain: bridger.hyperlane_domain,
+              contract: toAddr32(router.proxy_address as `0x${string}`),
+            },
+          },
           domain: bridger.hyperlane_domain,
           address: router.proxy_address as `0x${string}`,
           coin:
@@ -93,36 +91,6 @@ export function useBridgeState(params: UseBridgeStateParameters) {
 
     return { chain, bridger, router };
   }, [network, coin]);
-
-  const withdraw = useSubmitTx({
-    mutation: {
-      mutationFn: async () => {
-        const recipient = controllers.inputs.recipient?.value;
-        const amount = controllers.inputs.amount?.value;
-
-        if (!recipient) throw new Error("Recipient address not provided");
-        if (!amount) throw new Error("Amount not provided");
-        if (!signingClient) throw new Error("Signing client not initialized");
-        if (!config || !config.router) throw new Error("Bridge config not available");
-        if (!account) throw new Error("Account not connected");
-        if (!coin) throw new Error("Coin not selected");
-
-        await transferRemote(signingClient, {
-          sender: account.address,
-          recipient: toAddr32(recipient as `0x${string}`),
-          remote: {
-            warp: {
-              domain: config.router.domain,
-              contract: toAddr32(config.router.address),
-            },
-          },
-          funds: {
-            [coin.denom]: parseUnits(amount, coin.decimals),
-          },
-        });
-      },
-    },
-  });
 
   useEffect(() => {
     setConnectorId(null);
@@ -142,6 +110,5 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     networks,
     connector,
     setConnectorId,
-    withdraw,
   };
 }

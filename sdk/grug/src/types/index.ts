@@ -129,6 +129,8 @@ export type {
   ValueOrFunction,
   Require,
   StdResult,
+  NonNullableProperties,
+  NonNullablePropertiesBy,
 } from "./utils.js";
 
 export type {
