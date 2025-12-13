@@ -29,6 +29,7 @@ export type {
   Username,
   UserIndexAndName,
   UserIndexOrName,
+  UserStatus,
 } from "./account.js";
 
 export type { AppConfig } from "./app.js";
@@ -179,3 +180,5 @@ export { PoolType } from "./pool.js";
 export { Vote } from "./safe.js";
 
 export { Direction, CandleInterval, TimeInForceOption, OrderType } from "./dex.js";
+
+export { UserState } from "./account.js";
