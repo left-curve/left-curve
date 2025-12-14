@@ -49,7 +49,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
   isSelectorActive,
 }) => {
   const { address, type } = account;
-  const name = `Account #${account?.index}`;
+  const name = `${m["common.account"]()} #${account?.index}`;
 
   const { bgColor, badge, img, imgClassName, text } = AccountCardOptions[type];
 

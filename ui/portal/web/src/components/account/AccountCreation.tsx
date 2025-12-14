@@ -166,7 +166,7 @@ export const Deposit: React.FC = () => {
         <Button type="submit" fullWidth isLoading={isPending} isDisabled={!!error}>
           {m["common.continue"]()}
         </Button>
-      </div>{" "}
+      </div>
     </form>
   );
 };
