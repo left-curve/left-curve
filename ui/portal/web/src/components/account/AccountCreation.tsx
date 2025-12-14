@@ -1,4 +1,4 @@
-import { Modals, useApp, useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
+import { Modals, useApp, useInputs, useMediaQuery } from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -7,7 +7,7 @@ import {
   useSubmitTx,
 } from "@left-curve/store";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { Decimal, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -15,21 +15,14 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   Button,
   IconButton,
-  IconCheckedCircle,
   IconChevronDown,
   Input,
   ResizerContainer,
-  Stepper,
 } from "@left-curve/applets-kit";
-import { twMerge } from "@left-curve/applets-kit";
-import { AccountType } from "@left-curve/dango/types";
-import { Link } from "@tanstack/react-router";
 
-import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
 
 export const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const { activeStep } = useWizard();
   const { isMd } = useMediaQuery();
   const { history } = useRouter();
 
@@ -50,15 +43,9 @@ export const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
             <span className="h2-heavy">{m["accountCreation.title"]()}</span>
           </h2>
           <p className="text-ink-tertiary-500 diatype-m-medium">
-            {m["accountCreation.stepper.description"]({ step: activeStep })}
+            {m["accountCreation.description"]()}
           </p>
         </div>
-        <Stepper
-          steps={Array.from({ length: 2 }).map((_, step) =>
-            m["accountCreation.stepper.title"]({ step }),
-          )}
-          activeStep={activeStep}
-        />
       </div>
       <ResizerContainer layoutId="create-account" className="w-full max-w-[22.5rem]">
         {children}
@@ -67,88 +54,7 @@ export const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   );
 };
 
-const TypeSelector: React.FC = () => {
-  const { isConnected } = useAccount();
-  const { nextStep, setData } = useWizard();
-  const [selectedAccount, setSelectedAccount] = useState<AccountTypes>(AccountType.Spot);
-
-  return (
-    <div className="flex w-full flex-col gap-8">
-      <div className="flex flex-col gap-6 w-full">
-        <AccountTypeSelector
-          accountType={AccountType.Spot}
-          onClick={() => setSelectedAccount(AccountType.Spot)}
-          isSelected={selectedAccount === AccountType.Spot}
-        />
-        <AccountTypeSelector
-          accountType={AccountType.Margin}
-          onClick={() => setSelectedAccount(AccountType.Margin)}
-          isSelected={selectedAccount === AccountType.Margin}
-        />
-      </div>
-      {isConnected ? (
-        <Button fullWidth onClick={() => [nextStep(), setData({ accountType: selectedAccount })]}>
-          {m["common.continue"]()}
-        </Button>
-      ) : (
-        <Button as={Link} fullWidth to="/signin">
-          {m["common.signin"]()}
-        </Button>
-      )}
-    </div>
-  );
-};
-
-type AccountTypeSelectorProps = {
-  accountType: AccountTypes;
-  onClick?: () => void;
-  isSelected?: boolean;
-};
-
-const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
-  accountType,
-  isSelected,
-  onClick,
-}) => {
-  return (
-    <div
-      className={twMerge(
-        "min-h-[9.125rem] w-full max-w-[22.5rem] border border-transparent text-start rounded-md overflow-hidden relative p-4 flex flex-col gap-4 transition-all shadow-account-card items-start justify-start",
-        { "cursor-pointer": onClick },
-        { " border border-primitives-red-light-400": isSelected },
-        {
-          "bg-account-card-red-2": accountType === "spot",
-        },
-        {
-          "bg-account-card-green-2": accountType === "margin",
-        },
-      )}
-      onClick={onClick}
-    >
-      <p className="capitalize exposure-m-italic">
-        {m["accountCreation.accountType.title"]({ accountType })}
-      </p>
-      <p className="diatype-sm-medium text-ink-tertiary-500 relative max-w-[15.5rem] z-10">
-        {m["accountCreation.accountType.description"]({ accountType })}
-      </p>
-      <img
-        src={`/images/account-creation/${accountType}.svg`}
-        alt={`create-account-${accountType}`}
-        className={twMerge("absolute right-0 bottom-0  drag-none select-none", {
-          "right-2": accountType === "margin",
-        })}
-      />
-      <IconCheckedCircle
-        className={twMerge("w-5 h-5 absolute right-3 top-3 opacity-0 transition-all text-red-400", {
-          "opacity-1": isSelected,
-        })}
-      />
-    </div>
-  );
-};
-
 export const Deposit: React.FC = () => {
-  const { previousStep, data } = useWizard<{ accountType: AccountTypes }>();
   const { register, inputs } = useInputs();
   const navigate = useNavigate();
 
@@ -164,7 +70,6 @@ export const Deposit: React.FC = () => {
     address: account?.address,
   });
 
-  const { accountType } = data;
   const coinInfo = coins.byDenom["bridge/usdc"];
   const humanBalance = formatUnits(balances["bridge/usdc"] || 0, coinInfo.decimals);
 
@@ -190,7 +95,7 @@ export const Deposit: React.FC = () => {
 
         await signingClient.registerAccount({
           sender: account!.address,
-          config: { [accountType as "spot"]: { owner: account!.username } },
+          config: { single: { owner: account!.username } },
           ...(Decimal(funds).gt(0) ? { funds: { "bridge/usdc": parsedAmount.toString() } } : {}),
         });
       },
@@ -198,9 +103,9 @@ export const Deposit: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!username) return;
+    if (!account) return;
     return subscriptions.subscribe("account", {
-      params: { username },
+      params: { userIndex: account.index },
       listener: async ({ accounts }) => {
         const account = accounts.at(0)!;
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
@@ -258,18 +163,14 @@ export const Deposit: React.FC = () => {
         }
       />
       <div className="flex gap-4">
-        <Button type="button" fullWidth onClick={() => previousStep()} isDisabled={isPending}>
-          {m["common.back"]()}
-        </Button>
         <Button type="submit" fullWidth isLoading={isPending} isDisabled={!!error}>
           {m["common.continue"]()}
         </Button>
-      </div>
+      </div>{" "}
     </form>
   );
 };
 
 export const AccountCreation = Object.assign(Container, {
-  TypeSelector,
   Deposit,
 });

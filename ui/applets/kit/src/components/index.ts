@@ -26,7 +26,6 @@ export { OtpInput } from "./OtpInput";
 export { Stepper } from "./Stepper";
 export { Carousel } from "./Carousel";
 export { ResizerContainer } from "./ResizerContainer";
-export { SelectorCreateAccount } from "./SelectorCreateAccount";
 export { AccountSearchInput } from "./AccountSearchInput";
 export { TextLoop } from "./TextLoop";
 export { AccordionItem } from "./AccordionItem";
