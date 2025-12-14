@@ -5,15 +5,31 @@
     update_cache: yes
     cache_valid_time: 86400
 
-- name: Add Docker GPG Key
+- name: Add Docker GPG key
   become: true
-  apt_key:
+  get_url:
     url: https://download.docker.com/linux/debian/gpg
+    dest: /usr/share/keyrings/docker.gpg
+    mode: '0644'
 
-- name: Add Docker Repository
+# - name: Install Docker repo key (dearmored)
+#   become: true
+#   shell: |
+#     curl -fsSL https://download.docker.com/linux/debian/gpg \
+#       | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+#   args:
+#     creates: /etc/apt/keyrings/docker.gpg
+
+- name: Add Docker APT repo
   become: true
-  shell:
-    cmd: echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  apt_repository:
+    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+    filename: docker
+
+# - name: Add Docker Repository
+#   become: true
+#   shell:
+#     cmd: echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 - name: Update and upgrade apt packages
   become: true

@@ -2,56 +2,68 @@
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [github_runners]
-100.114.160.24 hostname=ovh4 ansible_user=debian
-100.75.192.25 hostname=ovh5 ansible_user=debian
-100.64.79.112 hostname=ovh6 ansible_user=debian
-100.112.48.112 hostname=ovh7 ansible_user=debian
+100.114.160.24 hostname=ovh4
+100.75.192.25 hostname=ovh5
+100.64.79.112 hostname=ovh6
+100.112.48.112 hostname=ovh7
 
 [dozzle]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
-100.122.37.57 ansible_user=debian
-100.114.160.24 ansible_user=debian
-100.75.192.25 ansible_user=debian
-100.64.79.112 ansible_user=debian
-100.112.48.112 ansible_user=debian
+100.96.253.40
+100.107.248.71
+100.122.37.57
+100.114.160.24
+100.75.192.25
+100.64.79.112
+100.112.48.112
+100.90.163.19
+100.76.197.30
+100.109.200.70
 
 [clickhouse]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
+100.96.253.40
+100.107.248.71
+100.90.163.19
+100.76.197.30
+100.109.200.70
 
 [db]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
-100.122.37.57 ansible_user=debian
+100.96.253.40
+100.107.248.71
+100.122.37.57
+100.90.163.19
+100.76.197.30
+100.109.200.70
 
 [bots]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
+100.96.253.40
+100.107.248.71
 
 [full-app]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
-64.20.47.178 hostname=inter1 ansible_user=debian
-162.220.12.6 hostname=inter2 ansible_user=debian
-# 157.180.10.36 hostname=hetzner1
-# 157.180.0.111 hostname=hetzner2
-# 148.251.138.80 hostname=hetzner3
-# 46.4.71.60 hostname=hetzner4
+# 100.96.253.40
+# 100.107.248.71
+100.89.7.33
+100.66.234.16
+100.126.8.2
+100.90.163.19
+100.76.197.30
+100.109.200.70
 
 [traefik]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
-100.122.37.57 ansible_user=debian
+100.96.253.40
+100.107.248.71
+100.122.37.57
+100.90.163.19
+100.76.197.30
+100.109.200.70
 
 [uptimekuma]
 100.122.37.57
 
 [monitoring]
-100.122.37.57 ansible_user=debian
+100.122.37.57
 
 [minio]
-100.122.37.57 ansible_user=debian
+100.122.37.57
 
 [homer]
-100.96.253.40 ansible_user=debian
+100.96.253.40

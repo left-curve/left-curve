@@ -3,6 +3,9 @@
   vars:
     swap_file_path: /swapfile
     swap_file_size_mb: '32768'
+    ansible_ssh_common_args: >-
+      -o IdentitiesOnly=yes
+      -o IdentityFile=roles/users/files/authorized_keys/debian.pub
   collections:
     - community.docker
     - community.general
@@ -10,6 +13,18 @@
     - common
     - users
     - docker
+    - geerlingguy.swap
+
+- hosts: all
+  become: true
+  become_user: "{{ deploy_user }}"
+  vars:
+    ansible_ssh_common_args: >-
+      -o IdentitiesOnly=yes
+      -o IdentityFile=roles/users/files/authorized_keys/debian.pub
+  collections:
+    - community.docker
+    - community.general
+  roles:
     - node-exporter
     - promtail
-    - geerlingguy.swap
