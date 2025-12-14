@@ -27,7 +27,7 @@ export async function getAccountInfo<config extends Config>(
 
   const type = Object.keys(account.params).at(0) as AccountTypes;
 
-  const username = ["margin", "spot"].includes(type)
+  const username = ["margin", "single"].includes(type)
     ? (account.params as { [key: string]: { owner: string } })[type].owner
     : "";
 

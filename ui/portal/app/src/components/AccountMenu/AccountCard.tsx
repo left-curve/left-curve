@@ -33,7 +33,7 @@ export const CARD_IMAGES = {
 
 export const AccountCardOptions = {
   [AccountType.Single]: {
-    text: "Spot",
+    text: "Single",
     badge: "blue" as const,
     Image: CARD_IMAGES.dog.default,
     imageClassName: "opacity-60 right-[-6rem] bottom-[-20rem] scale-x-[-1] w-[17rem]",
