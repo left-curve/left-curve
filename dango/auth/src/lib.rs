@@ -53,7 +53,7 @@ pub mod account {
 
     /// The most recent nonces that have been used to send transactions.
     ///
-    /// Both account types (single, multi) stores their nonces in this same
+    /// Both account types (single, multi) store their nonces in this same
     /// storage slot.
     pub const SEEN_NONCES: Item<BTreeSet<Nonce>> = Item::new("seen_nonces");
 }

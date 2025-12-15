@@ -39,7 +39,7 @@ fn onboarding_without_deposit() {
     //
     // The reason of this is when the chain does `CheckTx`, it does it under the
     // state of the _last finalized block_. Without advancing the block here,
-    // that would be block 0, in other words the genesis block. The signle-signature
+    // that would be block 0, in other words the genesis block. The single-signature
     // account won't claim orphaned transfers during genesis. For a realistic test,
     // we do `CheckTx` at a post-genesis block.
     suite.make_empty_block();

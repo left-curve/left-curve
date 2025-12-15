@@ -121,7 +121,7 @@ impl AccountParams {
 
     pub fn ty(&self) -> AccountType {
         match self {
-            AccountParams::Single { .. } => AccountType::Single,
+            AccountParams::Single(_) => AccountType::Single,
             AccountParams::Multi(_) => AccountType::Multi,
         }
     }
