@@ -32,11 +32,11 @@ jobs:
       - name: Linter checks
         run: pnpm lint:sdk
 
-      - name: Test checks
-        run: pnpm test:sdk
-
       - name: Build checks
         run: pnpm build:sdk
+
+      - name: Test checks
+        run: pnpm test:sdk
 
       - name: Doc Build Check
         run: pnpm doc

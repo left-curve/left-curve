@@ -689,6 +689,7 @@
     "networkName": "{network} Network",
     "onlyCanReceiveOn": "This address can only receive assets on",
     "deposit": "Deposit",
+    "allow": "Allow",
     "youDeposit": "You deposit",
     "youGet": "You get",
     "withdraw": "Withdraw",
@@ -714,7 +715,12 @@
         "latestBlockTime": "Latest Block Time",
         "endpoint": "Endpoint"
       },
-      "time": { "hours": "h", "minutes": "m", "seconds": "s" }
+      "time": { "hours": "h", "minutes": "m", "seconds": "s" },
+      "username": {
+        "editUsername": "Edit Username",
+        "editDescription": "You can change your username only once. After that, it can’t be updated.",
+        "save": "Save"
+      }
     },
     "chartEngines": [
       {
@@ -905,7 +911,8 @@
       "amountIsRequired": "Amount is required",
       "amountIsZero": "Amount must be greater than 0",
       "insufficientFunds": "Insufficient funds",
-      "invalidAddress": "Invalid address"
+      "invalidAddress": "Invalid address",
+      "usernameRule": "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore"
     },
     "failureRequest": "Couldn't complete the request"
   },

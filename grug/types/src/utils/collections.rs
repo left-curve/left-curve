@@ -44,7 +44,6 @@ macro_rules! hash_set {
 
 #[cfg(test)]
 mod tests {
-    use crate::{btree_map, btree_set};
 
     #[test]
     fn btreemap_macro_works() {

@@ -9,7 +9,7 @@
 **/.DS_Store
 
 # Envs
-**/.env
+**/*.env
 **/*.vars
 .envrc
 .envrc-old

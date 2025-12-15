@@ -265,6 +265,9 @@ mod test {
         let time_start: DateTime<Utc> = "1971-01-01T00:00:00.500Z".parse().unwrap();
 
         let time_start = Timestamp::from(time_start);
-        assert_eq!(time_start.to_rfc3339_string(), "1971-01-01T00:00:00.500Z");
+        assert_eq!(
+            time_start.to_rfc3339_string(),
+            "1971-01-01T00:00:00.500000000Z" /* All digits are shown, despite the trailing digits are all zero. */
+        );
     }
 }

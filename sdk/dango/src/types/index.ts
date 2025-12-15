@@ -155,6 +155,15 @@ export type {
   LiquidityDepthResponse,
 } from "./dex.js";
 
+export type {
+  MailBoxConfig,
+  Addr32,
+  BitcoinRemote,
+  Domain,
+  Remote,
+  WarpRemote,
+} from "./hyperlane.js";
+
 export type { WithPrice } from "./utils.js";
 
 export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";

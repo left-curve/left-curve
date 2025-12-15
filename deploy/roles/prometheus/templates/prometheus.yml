@@ -26,6 +26,7 @@ scrape_configs:
     static_configs:
       - targets: ['ovh1:8888']
       - targets: ['ovh2:8888']
+      - targets: ['ovh3:8888']
 
   - job_name: 'alertmanager'
     static_configs:

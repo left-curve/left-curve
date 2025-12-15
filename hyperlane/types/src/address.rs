@@ -43,6 +43,12 @@ impl From<Addr> for Addr32 {
     }
 }
 
+impl From<[u8; 32]> for Addr32 {
+    fn from(inner: [u8; 32]) -> Self {
+        Self::from_inner(inner)
+    }
+}
+
 impl TryFrom<Addr32> for Addr {
     type Error = anyhow::Error;
 
