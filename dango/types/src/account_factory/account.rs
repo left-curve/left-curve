@@ -37,17 +37,10 @@ pub struct Account {
     sea_orm(rs_type = "i16", db_type = "SmallInteger")
 )]
 pub enum AccountType {
-    /// A single-signature account that cannot borrow margin loans.
+    /// A single-signature account.
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
-    Spot,
-    /// A single-signature account that can borrow margin loans.
-    ///
-    /// The loans are collateralized by assets held in the account. The account
-    /// is capable of rejecting transactions that may cause it to become
-    /// insolvent, and carrying out liquidations if necessary.
-    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 1))]
-    Margin,
-    /// A multi-signature account. Cannot borrow margin loans.
+    Single,
+    /// A multi-signature account.
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 2))]
     Multi,
 }
@@ -61,18 +54,16 @@ impl PrimaryKey for AccountType {
 
     fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let index = match self {
-            AccountType::Spot => 0,
-            AccountType::Margin => 1,
-            AccountType::Multi => 2,
+            AccountType::Single => 0,
+            AccountType::Multi => 1,
         };
         vec![RawKey::Fixed8([index])]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         match u8::from_be_bytes(bytes.try_into()?) {
-            0 => Ok(Self::Spot),
-            1 => Ok(Self::Margin),
-            2 => Ok(Self::Multi),
+            0 => Ok(Self::Single),
+            1 => Ok(Self::Multi),
             i => Err(StdError::deserialize::<Self, _, Binary>(
                 "index",
                 format!("unknown account type index: {i}"),
@@ -85,8 +76,7 @@ impl PrimaryKey for AccountType {
 impl Display for AccountType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AccountType::Spot => write!(f, "spot"),
-            AccountType::Margin => write!(f, "margin"),
+            AccountType::Single => write!(f, "single"),
             AccountType::Multi => write!(f, "multi"),
         }
     }
@@ -97,8 +87,7 @@ impl Display for AccountType {
 /// Parameters of an account.
 #[grug::derive(Serde, Borsh)]
 pub enum AccountParams {
-    Spot(single::Params),
-    Margin(single::Params),
+    Single(single::Params),
     Multi(multi::Params),
 }
 
@@ -126,15 +115,13 @@ macro_rules! generate_downcast {
 
 impl AccountParams {
     generate_downcast! {
-        Spot   => single::Params,
-        Margin => single::Params,
-        Multi  => multi::Params,
+        Single => single::Params,
+        Multi => multi::Params,
     }
 
     pub fn ty(&self) -> AccountType {
         match self {
-            AccountParams::Spot { .. } => AccountType::Spot,
-            AccountParams::Margin { .. } => AccountType::Margin,
+            AccountParams::Single(_) => AccountType::Single,
             AccountParams::Multi(_) => AccountType::Multi,
         }
     }
@@ -144,7 +131,7 @@ impl AccountParams {
     /// Returns `None` for multisig accounts.
     pub fn owner(&self) -> Option<UserIndex> {
         match self {
-            AccountParams::Spot(params) | AccountParams::Margin(params) => Some(params.owner),
+            AccountParams::Single(params) => Some(params.owner),
             AccountParams::Multi(_) => None,
         }
     }

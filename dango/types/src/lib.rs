@@ -6,7 +6,6 @@ pub mod config;
 pub mod constants;
 pub mod dex;
 pub mod gateway;
-pub mod lending;
 pub mod oracle;
 mod querier;
 pub mod signer;

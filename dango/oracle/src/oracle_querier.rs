@@ -1,17 +1,10 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES},
     anyhow::{anyhow, ensure},
-    dango_types::{
-        DangoQuerier,
-        lending::{NAMESPACE, SUBNAMESPACE},
-        oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
-    },
-    grug::{
-        Addr, Cache, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp,
-        Udec128,
-    },
+    dango_types::oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
+    grug::{Addr, Cache, Denom, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp},
     pyth_types::PythId,
-    std::{cell::OnceCell, collections::HashMap},
+    std::collections::HashMap,
 };
 
 pub struct OracleQuerier<'a> {
@@ -23,7 +16,7 @@ impl<'a> OracleQuerier<'a> {
     /// Create a new `OracleQuerier` for in another contract, with caching.
     pub fn new_remote(address: Addr, querier: QuerierWrapper<'a>) -> Self {
         let ctx = OracleContext::Remote { address, querier };
-        let no_cache_querier = OracleQuerierNoCache::new(ctx, querier);
+        let no_cache_querier = OracleQuerierNoCache::new(ctx);
 
         Self {
             cache: Cache::new(move |denom, price_source| {
@@ -78,21 +71,17 @@ impl<'a> OracleQuerier<'a> {
 
 pub(crate) struct OracleQuerierNoCache<'a> {
     ctx: OracleContext<'a>,
-    lending: RemoteLending<'a>,
 }
 
 impl<'a> OracleQuerierNoCache<'a> {
     /// Create a new `OracleQuerierNoCache` for use inside the oracle contract
     /// itself.
-    pub fn new_local(storage: &'a dyn Storage, querier: QuerierWrapper<'a>) -> Self {
-        Self::new(OracleContext::Local { storage }, querier)
+    pub fn new_local(storage: &'a dyn Storage) -> Self {
+        Self::new(OracleContext::Local { storage })
     }
 
-    fn new(ctx: OracleContext<'a>, querier: QuerierWrapper<'a>) -> Self {
-        Self {
-            ctx,
-            lending: RemoteLending::new(querier),
-        }
+    fn new(ctx: OracleContext<'a>) -> Self {
+        Self { ctx }
     }
 
     pub fn query_price(
@@ -116,30 +105,6 @@ impl<'a> OracleQuerierNoCache<'a> {
             PriceSource::Pyth { id, precision, .. } => {
                 let price = self.ctx.get_price(id)?;
                 Ok(price.with_precision(precision))
-            },
-            PriceSource::LendingLiquidity => {
-                // Get the underlying denom.
-                let underlying_denom =
-                    denom.strip(&[&NAMESPACE, &SUBNAMESPACE]).ok_or_else(|| {
-                        anyhow!(
-                            "not a lending pool token: `{denom}`! must start with `{}/{}`",
-                            NAMESPACE.as_ref(),
-                            SUBNAMESPACE.as_ref()
-                        )
-                    })?;
-
-                // Get the price of the underlying asset.
-                let underlying_price = self.query_price(&underlying_denom, None)?;
-
-                // Get supply index of the LP token.
-                let supply_index = self.lending.get_supply_index(&underlying_denom)?;
-
-                // Calculate the price of the LP token.
-                Ok(PrecisionedPrice::new(
-                    underlying_price.humanized_price.checked_mul(supply_index)?,
-                    underlying_price.timestamp,
-                    underlying_price.precision(),
-                ))
             },
         }
     }
@@ -180,40 +145,6 @@ impl OracleContext<'_> {
     }
 }
 
-struct RemoteLending<'a> {
-    // TODO: Change this to a `OnceCell<Addr>` and use `get_or_try_init` when
-    // the feature is stablized.
-    address: OnceCell<StdResult<Addr>>,
-    querier: QuerierWrapper<'a>,
-}
-
-impl<'a> RemoteLending<'a> {
-    pub fn new(querier: QuerierWrapper<'a>) -> Self {
-        Self {
-            address: OnceCell::new(),
-            querier,
-        }
-    }
-
-    pub fn get_address(&self) -> StdResult<Addr> {
-        self.address
-            .get_or_init(|| {
-                let cfg = self.querier.query_dango_config()?;
-                Ok(cfg.addresses.lending)
-            })
-            .clone()
-    }
-
-    pub fn get_supply_index(&self, underlying_denom: &Denom) -> StdResult<Udec128> {
-        self.querier
-            .query_wasm_path(
-                self.get_address()?,
-                &dango_lending::MARKETS.path(underlying_denom),
-            )
-            .map(|market| market.supply_index)
-    }
-}
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -221,7 +152,7 @@ mod tests {
     use {
         super::*,
         dango_types::constants::{eth, usdc},
-        grug::{ResultExt, Timestamp, hash_map},
+        grug::{ResultExt, Timestamp, Udec128, hash_map},
         test_case::test_case,
     };
 
