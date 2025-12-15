@@ -59,4 +59,7 @@ pub enum QueryMsg {
     /// Given a `(bridge, remote)` tuple, find the reserve amount.
     #[returns(Uint128)]
     Reserve { bridge: Addr, remote: Remote },
+    /// Given a `(denom, remote)` tuple, find the withdrawal fee.
+    #[returns(Uint128)]
+    WithdrawalFee { denom: Denom, remote: Remote },
 }

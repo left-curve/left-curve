@@ -25,4 +25,3 @@ export {
 } from "./keys/index.js";
 
 export { ethHashMessage } from "./signature/index.js";
-export { domainHash, multisigHash } from "./hyperlane.js";

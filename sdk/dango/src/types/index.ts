@@ -155,7 +155,14 @@ export type {
   LiquidityDepthResponse,
 } from "./dex.js";
 
-export type { MailBoxConfig } from "./hyperlane.js";
+export type {
+  MailBoxConfig,
+  Addr32,
+  BitcoinRemote,
+  Domain,
+  Remote,
+  WarpRemote,
+} from "./hyperlane.js";
 
 export type { WithPrice } from "./utils.js";
 

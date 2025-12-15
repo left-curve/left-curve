@@ -39,6 +39,11 @@ export {
 } from "./safe/index.js";
 
 export {
+  type GatewayMutationActions,
+  gatewayMutationActions,
+} from "./gateway/gatewayActions.js";
+
+export {
   type GrugActions,
   grugActions,
 } from "@left-curve/sdk";
@@ -143,6 +148,26 @@ export {
   type CreateSessionReturnType,
   createSession,
 } from "./account-factory/index.js";
+
+/* -------------------------------------------------------------------------- */
+/*                               Gateway Actions                              */
+/* -------------------------------------------------------------------------- */
+
+/* --------------------------------- queries -------------------------------- */
+
+export {
+  type GetWithdrawalFeeParameters,
+  type GetWithdrawalFeeReturnType,
+  getWithdrawalFee,
+} from "./gateway/queries/getWithdrawalFee.js";
+
+/* -------------------------------- mutations ------------------------------- */
+
+export {
+  type TransferRemoteParameters,
+  type TransferRemoteReturnType,
+  transferRemote,
+} from "./gateway/mutations/transferRemote.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                Safe Actions                                */

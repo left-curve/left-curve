@@ -1,6 +1,10 @@
-import { decodeHex, encodeHex } from "../encoding/hex.js";
-import type { Address } from "../types/address.js";
-import type { Encoder } from "../types/encoding.js";
+import { decodeHex, encodeHex } from "@left-curve/sdk/encoding";
+
+import type { Address, Encoder } from "@left-curve/sdk/types";
+
+export function toAddr32(address: `0x${string}`): `0x${string}` {
+  return `0x${address.slice(2).padStart(64, "0")}` as `0x${string}`;
+}
 
 export class Addr32 implements Encoder {
   #address: Uint8Array;
