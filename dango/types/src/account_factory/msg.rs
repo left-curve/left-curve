@@ -55,13 +55,14 @@ pub struct InstantiateMsg {
     pub code_hashes: BTreeMap<AccountType, Hash256>,
     /// Users with associated key to set up during genesis.
     /// Each genesis user is to be associated with exactly one key.
-    /// A spot account will be created for each genesis user.
+    /// A single-signature account will be created for each genesis user.
     pub users: Vec<NewUserSalt>,
 }
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    /// Create a new user, following an initial deposit. Creates a spot account too.
+    /// Create a new user, following an initial deposit. Creates a single-signature
+    /// account too.
     ///
     /// This is the second of the two-step user onboarding process.
     RegisterUser {

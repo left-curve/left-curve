@@ -426,7 +426,6 @@ fn query_namespace_owners_works() {
         })
         .should_succeed_and_equal(btree_map! {
             Part::new_unchecked("dex") => contracts.dex,
-            Part::new_unchecked("lending") => contracts.lending,
             Part::new_unchecked("bridge") => contracts.gateway,
         });
 
@@ -437,7 +436,6 @@ fn query_namespace_owners_works() {
             limit: None,
         })
         .should_succeed_and_equal(btree_map! {
-            Part::new_unchecked("lending") => contracts.lending,
             Part::new_unchecked("dex") => contracts.dex,
         });
 
