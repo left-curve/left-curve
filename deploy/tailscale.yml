@@ -1,5 +1,6 @@
 - hosts: all
   become: true
+  remote_user: debian
   collections:
     - artis3n.tailscale
   vars:

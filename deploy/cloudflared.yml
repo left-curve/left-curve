@@ -1,6 +1,5 @@
 - hosts: full-app
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   vars:
     monitor_defs:
       - { name: "graphiql",    path: "/",       expect: "200" }

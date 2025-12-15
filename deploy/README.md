@@ -19,7 +19,7 @@ ssh-copy-id -i ~/.ssh/debian_deploy.pub username@public_ip
 - Add the host in `inventory` using its public IP
 
   ```bash
-  ansible-playbook init-debian-user.yml --limit <public IP>
+  ansible-playbook init-debian-user.yml --limit <public IP> -e ansible_user=<your remote user account>
   ansible-playbook common.yml --limit <public IP>
   ansible-playbook tailscale.yml --limit <public IP>
   ```

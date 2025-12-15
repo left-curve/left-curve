@@ -1,5 +1,6 @@
 - hosts: all
   become: true
+  remote_user: debian
   vars:
     swap_file_path: /swapfile
     swap_file_size_mb: '32768'

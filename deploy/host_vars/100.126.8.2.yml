@@ -1,4 +1,4 @@
 ---
-tailscale_ip: "100.126.8.2.yml"
+tailscale_ip: "100.126.8.2"
 hostname: "hetzner1"
 wireguard_ip: "10.99.0.8"

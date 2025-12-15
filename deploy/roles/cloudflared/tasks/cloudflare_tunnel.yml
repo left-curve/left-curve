@@ -71,24 +71,18 @@
     mode: '0755'
 
 - name: Copy cloudflared templates
-  become: true
-  become_user: root
   template:
     src: "{{ item.src }}"
     dest: "{{ cloudflared_dir }}/{{ item.dest }}"
-    owner: "{{ deploy_user }}"
     mode: "{{ item.mode }}"
   loop:
     - { src: "env.j2", dest: ".env", mode: "0600" }
     - { src: "docker-compose.yml", dest: "docker-compose.yml", mode: "0644" }
 
 - name: Copy cloudflared config (default then host override)
-  become: true
-  become_user: root
   template:
     src: "{{ item }}"
     dest: "{{ cloudflared_dir }}/config.yml"
-    owner: "{{ deploy_user }}"
     mode: "0644"
   loop:
     - "config.yml"
