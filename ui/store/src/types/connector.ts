@@ -7,6 +7,7 @@ import type {
   Transport,
   UID,
   UserIndexAndName,
+  UserStatus,
 } from "@left-curve/dango/types";
 import type { Emitter, EventData } from "./emitter.js";
 
@@ -52,12 +53,14 @@ export type ConnectorParameter = {
 
 export type ConnectorEventMap = {
   change: {
+    userStatus: UserStatus | undefined;
     userIndexAndName: UserIndexAndName;
     accounts?: readonly Account[] | undefined;
     chainId?: string;
     keyHash: KeyHash;
   };
   connect: {
+    userStatus: UserStatus | undefined;
     userIndexAndName: UserIndexAndName;
     accounts: readonly Account[];
     chainId: string;
