@@ -49,3 +49,7 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [homer]
 100.96.253.40 ansible_user=debian
+
+[hyperlane]
+; testnet-relayer ansible_host=localhost ansible_user=debian
+testnet-relayer ansible_host=localhost ansible_port=2222 ansible_user=debian ansible_ssh_pass=test deploy_user=debian ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'

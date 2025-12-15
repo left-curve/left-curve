@@ -1,0 +1,44 @@
+services:
+{% if hyperlane_agent_type == 'relayer' %}
+  relayer:
+    image: "{{ hyperlane_agents_image }}:{{ hyperlane_agents_tag }}"
+    container_name: "{{ hyperlane_instance_name }}"
+    env_file:
+      - "{{ hyperlane_agents_env_file }}"
+    volumes:
+      # RocksDB per il relayer (istanza specifica)
+      - "{{ hyperlane_agents_data_dir }}:/app/hyperlane_db"
+      # Config condivisa e specifiche per relayer
+      - "{{ hyperlane_agents_shared_config }}:/config/config.json:ro"
+      - "{{ hyperlane_agents_relayer_config }}:/config/relayer-config.json:ro"
+{% if relayer_network_config_stat is defined and relayer_network_config_stat.stat.exists %}
+      - "{{ hyperlane_agents_relayer_network_config }}:/config/relayer-{{ hyperlane_agents_network }}-config.json:ro"
+{% endif %}
+    environment:
+      CONFIG_FILES: >-
+        /config/config.json,/config/relayer-config.json{% if relayer_network_config_stat is defined and relayer_network_config_stat.stat.exists %},/config/relayer-{{ hyperlane_agents_network }}-config.json{% endif %}
+
+    command: ["./relayer"]
+    restart: "{{ hyperlane_agents_restart_policy }}"
+{% elif hyperlane_agent_type == 'validator' %}
+  validator:
+    image: "{{ hyperlane_agents_image }}:{{ hyperlane_agents_tag }}"
+    container_name: "{{ hyperlane_instance_name }}"
+    env_file:
+      - "{{ hyperlane_agents_env_file }}"
+    volumes:
+      # RocksDB per il validator (istanza specifica)
+      - "{{ hyperlane_agents_data_dir }}:/app/hyperlane_db"
+      # Config condivisa + specifiche per validator
+      - "{{ hyperlane_agents_shared_config }}:/config/config.json:ro"
+      - "{{ hyperlane_agents_validator_config }}:/config/validator-config.json:ro"
+{% if validator_network_config_stat is defined and validator_network_config_stat.stat.exists %}
+      - "{{ hyperlane_agents_validator_network_config }}:/config/validator-{{ hyperlane_agents_network }}-config.json:ro"
+{% endif %}
+    environment:
+      CONFIG_FILES: >-
+        /config/config.json,/config/validator-config.json{% if validator_network_config_stat is defined and validator_network_config_stat.stat.exists %},/config/validator-{{ hyperlane_agents_network }}-config.json{% endif %}
+
+    command: ["./validator"]
+    restart: "{{ hyperlane_agents_restart_policy }}"
+{% endif %}

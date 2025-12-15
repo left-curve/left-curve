@@ -1,0 +1,106 @@
+---
+- name: Ensure hyperlane base directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ hyperlane_agents_dir }}"
+    - "{{ hyperlane_instance_dir }}"
+    - "{{ hyperlane_agents_data_dir }}"
+
+# Config files
+
+- name: Copy shared hyperlane config
+  copy:
+    src: config.json
+    dest: "{{ hyperlane_agents_shared_config }}"
+    owner: "{{ deploy_user }}"
+    mode: "0644"
+
+# Relayer config
+
+- name: Copy relayer base config
+  copy:
+    src: relayer-config.json
+    dest: "{{ hyperlane_agents_relayer_config }}"
+    owner: "{{ deploy_user }}"
+    mode: "0644"
+  when: hyperlane_agent_type == 'relayer'
+
+- name: Check if relayer network config exists
+  stat:
+    path: "{{ role_path }}/files/relayer-{{ hyperlane_agents_network }}-config.json"
+  register: relayer_network_config_stat
+  when: hyperlane_agent_type == 'relayer'
+
+- name: Copy relayer network config
+  copy:
+    src: "relayer-{{ hyperlane_agents_network }}-config.json"
+    dest: "{{ hyperlane_agents_relayer_network_config }}"
+    owner: "{{ deploy_user }}"
+    mode: "0644"
+  when:
+    - hyperlane_agent_type == 'relayer'
+    - relayer_network_config_stat.stat.exists
+
+# Validator config
+
+- name: Copy validator base config
+  copy:
+    src: validator-config.json
+    dest: "{{ hyperlane_agents_validator_config }}"
+    owner: "{{ deploy_user }}"
+    mode: "0644"
+  when: hyperlane_agent_type == 'validator'
+
+- name: Check if validator network config exists
+  stat:
+    path: "{{ role_path }}/files/validator-{{ hyperlane_agents_network }}-config.json"
+  register: validator_network_config_stat
+  when: hyperlane_agent_type == 'validator'
+
+- name: Copy validator network config
+  copy:
+    src: "validator-{{ hyperlane_agents_network }}-config.json"
+    dest: "{{ hyperlane_agents_validator_network_config }}"
+    owner: "{{ deploy_user }}"
+    mode: "0644"
+  when:
+    - hyperlane_agent_type == 'validator'
+    - validator_network_config_stat.stat.exists
+
+# --- .env per l'agente ---
+
+- name: Render relayer env file
+  template:
+    src: relayer.env.j2
+    dest: "{{ hyperlane_agents_env_file }}"
+    owner: "{{ deploy_user }}"
+    mode: "0600"
+  when: hyperlane_agent_type == 'relayer'
+
+- name: Render validator env file
+  template:
+    src: validator.env.j2
+    dest: "{{ hyperlane_agents_env_file }}"
+    owner: "{{ deploy_user }}"
+    mode: "0600"
+  when: hyperlane_agent_type == 'validator'
+
+- name: Deploy Hyperlane docker-compose for this instance
+  become: true
+  template:
+    src: "docker-compose.yml.j2"
+    dest: "{{ hyperlane_instance_dir }}/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+    mode: "0644"
+
+- name: Launch Hyperlane stack for this instance
+  become: true
+  community.docker.docker_compose_v2:
+    project_src: "{{ hyperlane_instance_dir }}"
+    pull: "{{ hyperlane_agents_pull_policy }}"
+    state: present
+    recreate: always
+  register: hyperlane_agents_compose

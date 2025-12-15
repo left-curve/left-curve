@@ -1,0 +1,5 @@
+---
+- hosts: hyperlane
+  become: true
+  roles:
+    - role: hyperlane
