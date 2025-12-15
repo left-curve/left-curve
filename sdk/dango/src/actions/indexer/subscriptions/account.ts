@@ -5,13 +5,12 @@ import type {
   Signer,
   SubscriptionCallbacks,
   Transport,
-  Username,
 } from "../../../types/index.js";
 
 export type AccountSubscriptionParameters = SubscriptionCallbacks<{
   accounts: IndexedAccountEvent[];
 }> & {
-  username: Username;
+  userIndex: number;
   sinceBlockHeight?: number;
 };
 
@@ -32,11 +31,11 @@ export function accountSubscription<
 ): AccountSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
-  const { username, sinceBlockHeight, ...callbacks } = parameters;
+  const { userIndex, sinceBlockHeight, ...callbacks } = parameters;
 
   const query = /* GraphQL */ `
-    subscription AccountsSubscription ($username: String, $sinceBlockHeight: Int) {
-      accounts(username: $username, sinceBlockHeight: $sinceBlockHeight) {
+    subscription AccountsSubscription ($userIndex: Int, $sinceBlockHeight: Int) {
+      accounts(userIndex: $userIndex, sinceBlockHeight: $sinceBlockHeight) {
         accountIndex
         address
         accountType
@@ -46,5 +45,5 @@ export function accountSubscription<
     }
   `;
 
-  return client.subscribe({ query, variables: { username, sinceBlockHeight } }, callbacks);
+  return client.subscribe({ query, variables: { userIndex, sinceBlockHeight } }, callbacks);
 }
