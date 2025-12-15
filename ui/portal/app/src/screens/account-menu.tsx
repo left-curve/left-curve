@@ -23,13 +23,13 @@ export default function AccountMenuScreen() {
           account={{
             index: 10,
             params: {
-              spot: {
+              single: {
                 owner: "cookie",
               },
             },
             address: "0x75b89bd4a0e12b45dd12a6e12550aed2b8fd858f",
             username: "cookie",
-            type: "spot",
+            type: "single",
           }}
           balance={"120"}
         />

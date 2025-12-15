@@ -27,7 +27,7 @@ export type SubscriptionSchema = [
   },
   {
     key: "account";
-    params: { username: Username; sinceBlockHeight?: number };
+    params: { userIndex: number; sinceBlockHeight?: number };
     listener: (event: { accounts: IndexedAccountEvent[] }) => void;
   },
   {

@@ -89,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               <div className="flex items-center justify-center gap-2">
                 <TxIndicator icon={<IconWallet className="w-6 h-6" />} />
                 <span className="italic font-exposure font-bold capitalize">
-                  {account?.type} # {account?.index}
+                  {m["common.account"]()} #{account?.index}
                 </span>
               </div>
             ) : (

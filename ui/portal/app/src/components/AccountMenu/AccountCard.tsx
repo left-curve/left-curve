@@ -12,23 +12,14 @@ import type React from "react";
 import type { Account, AccountTypes } from "@left-curve/dango/types";
 import type { PropsWithChildren } from "react";
 import { TextCopy } from "../foundation/TextCopy";
-
-export enum AccountType {
-  Spot = "spot",
-  Margin = "margin",
-  Multi = "multi",
-}
+import { AccountType } from "@left-curve/dango/types";
 
 const CARD_GRADIENTS = {
   [AccountType.Multi]: {
     light: ["#F6F6FB", "#DDDCEE", "#F6F6FB"],
     dark: ["#373634", "#6E6D77", "#373634"],
   },
-  [AccountType.Margin]: {
-    light: ["#F8F9EF", "#EFF0C3", "#F8F9EF"],
-    dark: ["#373634", "#666654", "#373634"],
-  },
-  [AccountType.Spot]: {
+  [AccountType.Single]: {
     light: ["#FFFBF5", "#F9E2E2", "#FFFBF4"],
     dark: ["#494443", "#584D4E", "#322F2F"],
   },
@@ -41,8 +32,8 @@ export const CARD_IMAGES = {
 };
 
 export const AccountCardOptions = {
-  [AccountType.Spot]: {
-    text: "Spot",
+  [AccountType.Single]: {
+    text: "Single",
     badge: "blue" as const,
     Image: CARD_IMAGES.dog.default,
     imageClassName: "opacity-60 right-[-6rem] bottom-[-20rem] scale-x-[-1] w-[17rem]",
@@ -52,13 +43,6 @@ export const AccountCardOptions = {
     badge: "green" as const,
     Image: CARD_IMAGES.puppy.default,
     imageClassName: "opacity-50 right-[-3rem] bottom-[-25rem] w-[21rem]",
-  },
-  [AccountType.Margin]: {
-    text: "Margin",
-    badge: "red" as const,
-    bgColor: "bg-account-card-green",
-    Image: CARD_IMAGES.froggo.default,
-    imageClassName: "opacity-60 right-[-4rem] bottom-[-27rem] w-[19rem]",
   },
 } as const;
 
@@ -133,18 +117,12 @@ export const AccountCard: React.FC<AccountCardProps> = ({
         </View>
       </View>
 
-      {type === AccountType.Margin ? (
-        <View>Borrowbar</View>
-      ) : (
-        <View className="flex-row gap-2 items-center relative z-10">
-          <GlobalText className="h2-medium">${balance}</GlobalText>
-          {!!balanceChange && (
-            <GlobalText className="text-sm font-bold text-status-success">
-              {balanceChange}
-            </GlobalText>
-          )}
-        </View>
-      )}
+      <View className="flex-row gap-2 items-center relative z-10">
+        <GlobalText className="h2-medium">${balance}</GlobalText>
+        {!!balanceChange && (
+          <GlobalText className="text-sm font-bold text-status-success">{balanceChange}</GlobalText>
+        )}
+      </View>
     </AccountCardContainer>
   );
 };

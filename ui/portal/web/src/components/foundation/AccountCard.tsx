@@ -1,12 +1,12 @@
 import { useBalances, usePrices } from "@left-curve/store";
 
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { type Account, AccountType, type AccountTypes } from "@left-curve/dango/types";
 
 import { AnimatePresence, motion } from "framer-motion";
 
 import {
   Badge,
-  BorrowBar,
   IconButton,
   IconChevronDownFill,
   IconClose,
@@ -17,8 +17,8 @@ import {
 } from "@left-curve/applets-kit";
 
 export const AccountCardOptions = {
-  [AccountType.Spot]: {
-    text: "Spot",
+  [AccountType.Single]: {
+    text: "Single",
     badge: "blue",
     bgColor: "bg-account-card-red",
     img: "/images/characters/dog.svg",
@@ -30,13 +30,6 @@ export const AccountCardOptions = {
     bgColor: "bg-account-card-blue",
     img: "/images/characters/puppy.svg",
     imgClassName: "opacity-50 right-[-1rem] bottom-[-4.3rem] w-[15.4rem]",
-  },
-  [AccountType.Margin]: {
-    text: "Margin",
-    badge: "red",
-    bgColor: "bg-account-card-green",
-    img: "/images/characters/froggo.svg",
-    imgClassName: "opacity-60 w-[15rem] bottom-[-5rem] right-[-0.5rem]",
   },
 } as const;
 
@@ -56,7 +49,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
   isSelectorActive,
 }) => {
   const { address, type } = account;
-  const name = `${account?.type} #${account?.index}`;
+  const name = `${m["common.account"]()} #${account?.index}`;
 
   const { bgColor, badge, img, imgClassName, text } = AccountCardOptions[type];
 
@@ -111,14 +104,10 @@ const AccountCard: React.FC<AccountCardProps> = ({
           <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
         </div>
       </div>
-      {type === AccountType.Margin ? (
-        <BorrowBar borrow={0} borrowed={0} total={0} />
-      ) : (
-        <div className="flex gap-2 items-center relative z-10">
-          <p className="h4-regular">{balance}</p>
-          <p className="text-sm font-bold text-status-success">{balanceChange}</p>
-        </div>
-      )}
+      <div className="flex gap-2 items-center relative z-10">
+        <p className="h4-regular">{balance}</p>
+        <p className="text-sm font-bold text-status-success">{balanceChange}</p>
+      </div>
     </div>
   );
 };
@@ -132,7 +121,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
   const { address } = account;
 
   const type = account?.type as AccountTypes;
-  const name = `${type} #${account?.index}`;
+  const name = `${m["common.account"]()} #${account?.index}`;
 
   const { bgColor, badge, text } = AccountCardOptions[type];
 

@@ -115,7 +115,7 @@ export function useActivities() {
     const sinceBlockHeight = lastKnownBlockHeight + 1;
 
     const unsubscribeAccount = subscriptions.subscribe("account", {
-      params: { username },
+      params: { userIndex: account.index },
       listener: ({ accounts }) => {
         for (const account of accounts) {
           const { address, accountType, accountIndex, createdAt, createdBlockHeight } = account;
