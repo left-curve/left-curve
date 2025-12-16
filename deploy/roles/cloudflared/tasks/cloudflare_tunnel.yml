@@ -79,15 +79,26 @@
     - { src: "env.j2", dest: ".env", mode: "0600" }
     - { src: "docker-compose.yml", dest: "docker-compose.yml", mode: "0644" }
 
-- name: Copy cloudflared config (default then host override)
+- name: Check host override template exists
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ role_path }}/templates/config-{{ hostname }}.yml"
+  register: cf_override
+
+- name: Copy default cloudflared config
+  when: not cf_override.stat.exists
   template:
-    src: "{{ item }}"
+    src: config.yml
     dest: "{{ cloudflared_dir }}/config.yml"
     mode: "0644"
-  loop:
-    - "config.yml"
-    - "config-{{ hostname }}.yml"
-  ignore_errors: yes
+
+- name: Copy host override cloudflared config
+  template:
+    src: "config-{{ hostname }}.yml"
+    dest: "{{ cloudflared_dir }}/config.yml"
+    mode: "0644"
+  when: cf_override.stat.exists
 
 - name: Create cloudflare network
   community.docker.docker_network:
