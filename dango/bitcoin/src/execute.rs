@@ -430,11 +430,9 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     // Keep creating transactions until there are no more outputs left.
     while iter.len() > 0 {
         let mut tx_output = BTreeMap::new();
-        let mut withdraw_amount = Uint128::ZERO;
 
         for (k, v) in iter.by_ref() {
             tx_output.insert(k, v);
-            withdraw_amount += v;
 
             // Check if the maximum number of outputs is reached for this tx.
             if tx_output.len() == cfg.max_output_per_tx {
@@ -713,6 +711,9 @@ impl TransactionBuilder {
     }
 
     /// Calculate the fee for the current transaction in satoshis.
+    /// At this point, the transaction does not include signatures yet.
+    /// To calculate the fee, we consider the size of the transaction +
+    /// the size of the signatures + 1 output (for change back to the vault).
     pub fn fee(&self) -> Uint128 {
         let signatures_size =
             Uint128::new(self.inputs.len() as u128) * self.signature_size_per_input;
