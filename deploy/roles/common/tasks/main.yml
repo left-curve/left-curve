@@ -77,6 +77,7 @@
       - python3-boto3
       - python3-botocore
       - python3-psycopg2
+      - python3-clickhouse-driver
     state: present
     update_cache: yes
 
