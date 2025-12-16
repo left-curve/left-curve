@@ -83,6 +83,8 @@ deploy_user="deploy"
 100.96.253.40  # ovh1
 
 [cloudflared]
+100.96.253.40  # ovh1
+100.107.248.71 # ovh2
 100.89.7.33    # inter1
 100.66.234.16  # inter2
 100.126.8.2    # hetzner1

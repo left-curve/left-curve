@@ -258,7 +258,7 @@
   become_user: "{{ deploy_user }}"
   tags: monitoring
   vars:
-      deployment_name: "{{ hostvars[groups['full-app'][0]]['deployment_name'] }}"
+      deployment_name: "{{ hostvars[ansible_play_hosts[0]]['deployment_name'] }}"
   tasks:
     - name: Load prometheus vars
       include_vars: roles/prometheus/defaults/main.yml

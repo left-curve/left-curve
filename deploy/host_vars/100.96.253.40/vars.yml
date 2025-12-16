@@ -6,3 +6,4 @@ s3_enabled: true
 reboot_time: "11:00"
 dango_networks:
   - devnet
+cloudflare_lb_enabled: false

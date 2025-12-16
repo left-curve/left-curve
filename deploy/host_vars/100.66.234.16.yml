@@ -4,3 +4,4 @@ hostname: "inter2"
 wireguard_ip: "10.99.0.13"
 dango_networks:
   - mainnet
+cloudflare_lb_enabled: true
