@@ -1,6 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common": {
+    "account": "Account",
     "connect": "Connect",
     "assets": "Assets",
     "fund": "Fund",
@@ -492,6 +493,7 @@
   "accountCreation": {
     "accountCreated": "Account Created",
     "title": "Create New Account",
+    "description": "Create a new subaccount to start trading and managing your assets.",
     "stepper": {
       "title": [
         {

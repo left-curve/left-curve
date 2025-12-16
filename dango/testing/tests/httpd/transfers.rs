@@ -30,7 +30,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
     let msgs = vec![Message::execute(
         contracts.account_factory,
         &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
+            params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
         },
         Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
@@ -346,7 +346,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
         let msgs = vec![Message::execute(
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
+                params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
             },
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )?];
@@ -500,7 +500,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     let msgs = vec![Message::execute(
         contracts.account_factory,
         &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
+            params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
         },
         Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
@@ -638,7 +638,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     let msgs = vec![Message::execute(
         contracts.account_factory,
         &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
+            params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
         },
         Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
@@ -686,7 +686,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
             let msgs = vec![Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Spot(single::Params::new(accounts.user1.user_index())),
+                    params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
                 },
                 Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
             )?];

@@ -54,6 +54,9 @@ deploy-devnet:
 deploy-preview-latest:
   ansible-playbook full-app.yml -e '{"expose_ports": true, "dex_bot_enabled":true, "cometbft_generate_keys":true}' -e deploy_env=preview -e dango_image_tag=latest -e dango_network=previewnet -e frontend_image_tag=latest -e chain_id=preview --limit 100.96.253.40,100.107.248.71
 
+delete-pr number:
+  ansible-playbook delete-full-app.yml -e deployment_name=pr-{{number}}
+
 deploy-dozzle:
   ansible-playbook dozzle.yml
 

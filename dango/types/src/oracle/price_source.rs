@@ -28,6 +28,4 @@ pub enum PriceSource {
         /// The channel of the Pyth Lazer price feed.
         channel: Channel,
     },
-    /// A price source for an LP token of the lending pool.
-    LendingLiquidity,
 }
