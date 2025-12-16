@@ -221,6 +221,12 @@
       fail:
         msg: "Active deployment lock found at {{ deploy_lock_file }}. Remove manually to override."
 
+    - name: Ensure deployments directories exist
+      file:
+        path: "{{ ansible_facts['env']['HOME'] }}/deployments/"
+        state: directory
+        mode: '0755'
+
     - name: Create or refresh deployment lock
       file:
         path: "{{ deploy_lock_file }}"

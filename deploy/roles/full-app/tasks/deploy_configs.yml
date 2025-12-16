@@ -24,13 +24,10 @@
   when: cloudflare_tunnel_enabled
 
 - name: Deploy configuration files
-  become: true
-  become_user: root
   block:
     - template:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
-        owner: "{{ deploy_user }}"
         mode: "{{ item.mode | default('0600') }}"
       loop:
         - { src: "config/cometbft/config.toml.j2", dest: "{{ cometbft_directory }}/config/config.toml" }
@@ -43,26 +40,20 @@
         - { src: "envrc.j2", dest: "{{ deployment_dir }}/.envrc" }
 
 - name: Deploy Cloudflare configuration files
-  become: true
-  become_user: root
   block:
     - template:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
-        owner: "{{ deploy_user }}"
         mode: "{{ item.mode | default('0600') }}"
       loop:
         - { src: "cloudflared/config.yml", dest: "{{ deployment_dir }}/cloudflared/config.yml", mode: "0644" }
   when: cloudflare_tunnel_enabled
 
 - name: Deploy Clickhouse configuration files
-  become: true
-  become_user: root
   block:
     - template:
         src: "{{ item.src }}"
         dest: "{{ deployment_dir }}/{{ item.dest }}"
-        owner: "{{ deploy_user }}"
       loop:
         - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
         - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }
