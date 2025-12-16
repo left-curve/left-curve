@@ -1,4 +1,4 @@
-import { Children, isValidElement, useContext, useId, useRef, useState } from "react";
+import { Children, isValidElement, useId, useRef, useState } from "react";
 
 import { useClickAway } from "../hooks/useClickAway.js";
 import { createContext, useControlledState } from "@left-curve/foundation";

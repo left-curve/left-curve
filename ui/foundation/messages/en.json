@@ -1,6 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common": {
+    "account": "Account",
     "connect": "Connect",
     "assets": "Assets",
     "fund": "Fund",
@@ -492,6 +493,7 @@
   "accountCreation": {
     "accountCreated": "Account Created",
     "title": "Create New Account",
+    "description": "Create a new subaccount to start trading and managing your assets.",
     "stepper": {
       "title": [
         {
@@ -689,6 +691,7 @@
     "networkName": "{network} Network",
     "onlyCanReceiveOn": "This address can only receive assets on",
     "deposit": "Deposit",
+    "allow": "Allow",
     "youDeposit": "You deposit",
     "youGet": "You get",
     "withdraw": "Withdraw",
@@ -718,7 +721,7 @@
       "username": {
         "editUsername": "Edit Username",
         "editDescription": "You can change your username only once. After that, it can’t be updated.",
-        "save":"Save"
+        "save": "Save"
       }
     },
     "chartEngines": [

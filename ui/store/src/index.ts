@@ -175,9 +175,19 @@ export {
 } from "./hooks/useActivities.js";
 
 export {
-  useExternalBalances,
-  type UseExternalBalancesParameters,
-} from "./hooks/useExternalBalances.js";
+  useEvmBalances,
+  type UseEvmBalancesParameters,
+} from "./hooks/useEvmBalances.js";
+
+export {
+  useBridgeEvmDeposit,
+  type UseBridgeEvmDepositParameters,
+} from "./hooks/useBridgeEvmDeposit.js";
+
+export {
+  useBridgeWithdraw,
+  type UseBridgeWithdrawParameters,
+} from "./hooks/useBridgeWithdraw.js";
 
 export { useFavApplets } from "./hooks/useFavApplets.js";
 export { useFavPairs } from "./hooks/useFavPairs.js";

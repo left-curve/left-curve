@@ -1,5 +1,5 @@
 use {
-    dango_types::account::spot::InstantiateMsg,
+    dango_types::account::InstantiateMsg,
     grug::{AuthCtx, AuthResponse, MutableCtx, Response, Tx},
 };
 

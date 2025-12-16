@@ -2,7 +2,7 @@ use {
     crate::Secret,
     anyhow::anyhow,
     dango_types::{
-        account::spot,
+        account::single,
         account_factory::{self, UserIndex},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
         signer::SequencedSigner,
@@ -16,7 +16,7 @@ use {
 pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 
 /// Utility for signing transactions in the format by Dango's single-signature
-/// accounts, i.e. spot and margin accounts.
+/// accounts.
 #[derive(Debug)]
 pub struct SingleSigner<S, I = Defined<UserIndex>, N = Defined<Nonce>>
 where
@@ -69,7 +69,7 @@ where
         // If the account hasn't sent any transaction yet, use 0 as nonce.
         // Otherwise, use the latest seen nonce + 1.
         let nonce = client
-            .query_wasm_smart(self.address, spot::QuerySeenNoncesRequest {}, None)
+            .query_wasm_smart(self.address, single::QuerySeenNoncesRequest {}, None)
             .await?
             .last()
             .map(|newest_nonce| newest_nonce + 1)
@@ -331,7 +331,6 @@ mod tests {
                     // the other addresses don't matter
                     ..Default::default()
                 },
-                collateral_powers: Default::default(),
                 ..Default::default()
             })
             .unwrap();
@@ -391,7 +390,6 @@ mod tests {
                     // the other addresses don't matter
                     ..Default::default()
                 },
-                collateral_powers: Default::default(),
                 ..Default::default()
             })
             .unwrap();

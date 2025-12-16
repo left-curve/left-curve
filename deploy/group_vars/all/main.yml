@@ -16,12 +16,12 @@ dango:
     # NOTE: those are public from the genesis file
     # Dex bot signer: the account that will open orders on the DEX
     username: "user8"
-    address: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
-    dex_address: "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+    address: "0x7f360aa0806f41aabe9fc43bfc1254e5bafe7583"
+    dex_address: "0xda32476efe31e535207f0ad690d337a4ebf54a22"
     private_key: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
     # The account that will provide liquidity on the DEX and mint tokens to dex signer
     minter_username: "user9"
-    minter_address: "0x6f95c4f169f38f598dd571084daa5c799c5743de"
+    minter_address: "0x3792b060a077fceca337334adf53f695e1362397"
     minter_private_key: "c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3"
     mint_amount: 1000000000
     liquidity_amount: 1000000000

@@ -1,26 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConnectors } from "./useConnectors.js";
-import { useSubmitTx } from "./useSubmitTx.js";
-import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
-import { useAccount } from "./useAccount.js";
-import { useSigningClient } from "./useSigningClient.js";
-import { useExternalBalances, type UseExternalBalancesParameters } from "./useExternalBalances.js";
-
-import hyperlaneConfig from "../../../../dango/hyperlane-deployment/config.json" with {
-  type: "json",
-};
+import { useStorage } from "./useStorage.js";
 
 import { chains } from "../hyperlane.js";
-import { ERC20_ABI, HYPERLANE_ROUTER_ABI, toAddr32 } from "@left-curve/dango/hyperlane";
-import { createPublicClient, createWalletClient, custom, http } from "viem";
-import { parseUnits } from "@left-curve/dango/utils";
-import { transferRemote } from "@left-curve/dango/actions";
+import { toAddr32 } from "@left-curve/dango/hyperlane";
+import config from "../../../../dango/hyperlane-deployment/config.json" with { type: "json" };
+const { evm } = config;
 
-import type { EIP1193Provider } from "../types/eip1193.js";
-import type { MailBoxConfig } from "@left-curve/dango/types";
 import type { AnyCoin } from "../types/coin.js";
-import type { Chain as ViemChain } from "viem";
 
 export type UseBridgeStateParameters = {
   action: "deposit" | "withdraw";
@@ -32,42 +20,35 @@ export type UseBridgeStateParameters = {
 };
 
 export function useBridgeState(params: UseBridgeStateParameters) {
+  const { coins: allCoins, chain: dangoChain } = useConfig();
+
   const { action, controllers } = params;
-  const { account } = useAccount();
-  const { coins: allCoins, getAppConfig } = useConfig();
-  const [coin, setCoin] = useState<AnyCoin | null>(null);
-  const [network, setNetwork] = useState<string | null>(null);
-  const [connectorId, setConnectorId] = useState<string | null>(null);
-  const [getAmount, setGetAmount] = useState<string>("0");
-  const connectors = useConnectors();
-  const { data: signingClient } = useSigningClient();
-  const { inputs } = controllers;
 
-  const operationAmount = inputs.amount?.value || "0";
+  const { current: networks } = useRef([
+    { name: "Ethereum Network", id: "ethereum", time: "16 blocks | 5-30 mins" },
+    { name: "Base Network", id: "base", time: "5-30 mins" },
+    { name: "Arbitrum Network", id: "arbitrum", time: "5-30 mins" },
+    /*       { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
+          { name: "Solana Network", id: "solana", time: "2-10 mins" }, */
+    ...(["Devnet", "Dango"].includes(dangoChain.name)
+      ? [{ name: "Sepolia Network", id: "sepolia", time: "5-30 mins" }]
+      : []),
+  ]);
 
+  const [network, setNetwork] = useState<string>();
+
+  const [coin, setCoin] = useState<AnyCoin>();
   const changeCoin = useCallback((denom: string) => setCoin(allCoins.byDenom[denom]), [allCoins]);
 
+  const connectors = useConnectors();
+  const [connectorId, setConnectorId] = useStorage<string | null>("bridge_connector", {
+    enabled: true,
+    sync: true,
+  });
   const connector = useMemo(
     () => connectors.find((c) => c.id === connectorId),
     [connectorId, connectors],
   );
-
-  const walletAddress = useQuery({
-    enabled: action === "deposit" && !!connector,
-    queryKey: ["bridge", "connectedAddress", connectorId],
-    queryFn: async () => {
-      const provider = await (
-        connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
-      ).getProvider();
-      const [account] = await provider.request({ method: "eth_requestAccounts" });
-      return account;
-    },
-  });
-
-  const { data: externalBalances = {} } = useExternalBalances({
-    network: network as UseExternalBalancesParameters["network"],
-    address: walletAddress?.data,
-  });
 
   const coins = useMemo(() => {
     return Object.values(allCoins.byDenom).filter((c) =>
@@ -75,164 +56,59 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     );
   }, [allCoins]);
 
-  const deposit = useSubmitTx({
-    mutation: {
-      mutationFn: async () => {
-        if (!coin) throw new Error("Coin not selected");
-        if (!account) throw new Error("Account not connected");
+  const config = useMemo(() => {
+    if (!network || !coin) return undefined;
+    const chain = chains[network as keyof typeof chains];
+    const bridger = (() => {
+      if (network === "bitcoin") return undefined;
+      if (network === "solana") return undefined;
+      return evm[network as keyof typeof evm];
+    })();
 
-        const originChain = chains[network as keyof typeof chains] as ViemChain;
-        if (!originChain) throw new Error(`Chain ${network} not configured`);
-
-        const originConfig = hyperlaneConfig.evm[network as keyof typeof hyperlaneConfig.evm];
-        if (!originConfig) throw new Error(`Hyperlane config not found for ${network}`);
-
-        const routeConfig = originConfig.warp_routes.find((r) =>
+    const router = (() => {
+      if (bridger && "hyperlane_domain" in bridger) {
+        const router = bridger.warp_routes.find((r) =>
           r.symbol.toLowerCase().includes(coin.symbol.toLowerCase()),
         );
+        if (!router) return undefined;
 
-        if (!routeConfig) throw new Error(`Warp route not found for ${coin.symbol} on ${network}`);
-
-        const appConfig = await getAppConfig();
-        const mailboxConfig: MailBoxConfig | undefined = await signingClient?.queryWasmSmart({
-          contract: appConfig.addresses.mailbox,
-          msg: { config: {} },
-        });
-
-        if (!mailboxConfig) throw new Error("Mailbox config not found");
-
-        const provider = await (
-          connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
-        ).getProvider();
-
-        const walletClient = createWalletClient({
-          chain: originChain,
-          transport: custom(provider),
-        });
-
-        await walletClient.switchChain({ id: originChain.id });
-
-        const publicClient = createPublicClient({
-          chain: originChain,
-          transport: http(),
-        });
-
-        const [evmAddress] = await walletClient.requestAddresses();
-
-        const amount = BigInt(parseUnits(operationAmount, coin.decimals));
-        const destinationDomain = mailboxConfig.localDomain;
-        const protocolFee = BigInt(originConfig.hyperlane_protocol_fee);
-        const routerAddress = routeConfig.proxy_address as `0x${string}`;
-        const recipientAddress = toAddr32(account.address);
-
-        const value = await (async () => {
-          if (typeof routeConfig.warp_route_type !== "string") {
-            const tokenAddress = routeConfig.warp_route_type.erc20_collateral as `0x${string}`;
-
-            const allowance = await publicClient.readContract({
-              address: tokenAddress,
-              abi: ERC20_ABI,
-              functionName: "allowance",
-              args: [evmAddress, routerAddress],
-            });
-
-            if (allowance < amount) {
-              const approveHash = await walletClient.writeContract({
-                address: tokenAddress,
-                abi: ERC20_ABI,
-                functionName: "approve",
-                args: [routerAddress, amount],
-                account: evmAddress,
-              });
-
-              await publicClient.waitForTransactionReceipt({ hash: approveHash });
-            }
-            return protocolFee;
-          }
-
-          return amount + protocolFee;
-        })();
-
-        const txHash = await walletClient.writeContract({
-          address: routerAddress,
-          abi: HYPERLANE_ROUTER_ABI,
-          functionName: "transferRemote",
-          args: [destinationDomain, recipientAddress, amount],
-          value,
-          account: evmAddress,
-        });
-
-        await publicClient.waitForTransactionReceipt({ hash: txHash });
-      },
-    },
-  });
-
-  const withdraw = useSubmitTx({
-    mutation: {
-      mutationFn: async () => {
-        if (!signingClient) throw new Error("Signing client not initialized");
-        if (!account) throw new Error("Account not connected");
-        if (!coin) throw new Error("Coin not selected");
-
-        const targetChain = chains[network as keyof typeof chains] as ViemChain;
-        if (!targetChain) throw new Error(`Chain ${network} not configured`);
-
-        const targetConfig = hyperlaneConfig.evm[network as keyof typeof hyperlaneConfig.evm];
-        if (!targetConfig) throw new Error(`Hyperlane config not found for ${network}`);
-
-        const routeConfig = targetConfig.warp_routes.find((r) =>
-          r.symbol.toLowerCase().includes(coin.symbol.toLowerCase()),
-        );
-
-        if (!routeConfig) throw new Error(`Warp route not found for ${coin.symbol} on ${network}`);
-
-        await transferRemote(signingClient, {
-          sender: account.address,
-          recipient: toAddr32(account.address),
+        return {
           remote: {
             warp: {
-              domain: targetConfig.hyperlane_domain,
-              contract: toAddr32(routeConfig.proxy_address as `0x${string}`),
+              domain: bridger.hyperlane_domain,
+              contract: toAddr32(router.proxy_address as `0x${string}`),
             },
           },
-        });
-      },
-    },
-  });
+          domain: bridger.hyperlane_domain,
+          address: router.proxy_address as `0x${string}`,
+          coin:
+            typeof router.warp_route_type === "string"
+              ? ("native" as const)
+              : (router.warp_route_type.erc20_collateral as `0x${string}`),
+        };
+      }
+    })();
 
-  const { data: depositAddress } = useQuery({
-    queryKey: ["bridge", "depositAddress", network],
-    queryFn: async () => {
-      if (!["bitcoin"].includes(network as string)) return null;
-      return "address";
-    },
-  });
+    return { chain, bridger, router };
+  }, [network, coin]);
 
   useEffect(() => {
-    setCoin(null);
-    setNetwork(null);
     setConnectorId(null);
+    setCoin(undefined);
+    setNetwork(undefined);
     controllers.reset();
   }, [action]);
 
-  useEffect(() => {
-    setGetAmount(operationAmount);
-  }, [operationAmount]);
-
   return {
     action,
-    coins,
+    config,
     coin,
     changeCoin,
+    coins,
     network,
     setNetwork,
+    networks,
     connector,
     setConnectorId,
-    withdraw,
-    deposit,
-    depositAddress,
-    walletAddress,
-    getAmount,
-    externalBalances,
   };
 }

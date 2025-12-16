@@ -153,8 +153,17 @@ export {
 /*                               Gateway Actions                              */
 /* -------------------------------------------------------------------------- */
 
+/* --------------------------------- queries -------------------------------- */
+
 export {
-  // mutations
+  type GetWithdrawalFeeParameters,
+  type GetWithdrawalFeeReturnType,
+  getWithdrawalFee,
+} from "./gateway/queries/getWithdrawalFee.js";
+
+/* -------------------------------- mutations ------------------------------- */
+
+export {
   type TransferRemoteParameters,
   type TransferRemoteReturnType,
   transferRemote,
