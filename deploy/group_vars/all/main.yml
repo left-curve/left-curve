@@ -25,6 +25,17 @@ dango:
     minter_private_key: "c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3"
     mint_amount: 1000000000
     liquidity_amount: 1000000000
+
+    app_settings__sleep__min: 0s
+    app_settings__sleep__max: 0s
+    app_settings__size_percent__min: 0.005
+    app_settings__size_percent__max: 0.03
+    app_settings__price_percent__min: 0.05
+    app_settings__price_percent__max: 0.2
+    app_settings__order_number__min: 100
+    app_settings__order_number__max: 100
+    app_settings__order_type: market
+
 ports:
   dango_port: 8080
   dango_frontend_port: 8081
@@ -55,7 +66,6 @@ traefik:
       graphiql_port: 8056
       cometbft_p2p_port: 36656
       cometbft_rpc_port: 36657
-
 # in summary cometbft needs to expose:
 # 26656, to anyone
 # 26657, to tailscale
