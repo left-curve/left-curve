@@ -2,3 +2,5 @@
 tailscale_ip: "100.89.7.33"
 hostname: "inter1"
 wireguard_ip: "10.99.0.12"
+dango_networks:
+  - mainnet

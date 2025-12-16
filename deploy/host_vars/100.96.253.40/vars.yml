@@ -4,3 +4,5 @@ hostname: ovh1
 wireguard_ip: "10.99.0.1"
 s3_enabled: true
 reboot_time: "11:00"
+dango_networks:
+  - devnet

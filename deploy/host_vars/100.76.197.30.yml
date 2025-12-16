@@ -2,3 +2,5 @@
 tailscale_ip: "100.76.197.30"
 hostname: "hetzner3"
 wireguard_ip: "10.99.0.10"
+dango_networks:
+  - mainnet
