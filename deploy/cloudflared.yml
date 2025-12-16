@@ -1,4 +1,4 @@
-- hosts: full-app
+- hosts: cloudflared
   remote_user: "{{ deploy_user }}"
   vars:
     monitor_defs:
