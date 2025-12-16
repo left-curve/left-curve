@@ -338,10 +338,6 @@
 
   tasks:
     - block:
-        - name: Run cosign role
-          import_role:
-            name: cosign
-
         - name: Run full-app role
           import_role:
             name: full-app

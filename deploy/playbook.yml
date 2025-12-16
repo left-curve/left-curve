@@ -29,3 +29,13 @@
   roles:
     - node-exporter
     - promtail
+
+- hosts: full-app
+  become: true
+  remote_user: debian
+  vars:
+    ansible_ssh_common_args: >-
+      -o IdentitiesOnly=yes
+      -o IdentityFile=roles/users/files/authorized_keys/debian.pub
+  roles:
+    - cosign
