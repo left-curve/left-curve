@@ -267,8 +267,8 @@ services:
       app_settings__size_percent__max: "0.00003"
       app_settings__price_percent__min: 0.05
       app_settings__price_percent__max: 0.2
-      app_settings__order_number__min: 50
-      app_settings__order_number__max: 50
+      app_settings__order_number__min: 100
+      app_settings__order_number__max: 100
       app_settings__order_type: market
       app_settings__healthcheck_file: /tmp/dango_dex_app_healthcheck
     healthcheck:
