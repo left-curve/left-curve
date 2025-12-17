@@ -3,10 +3,10 @@
     "dangotestnet": {
       "chain_id": "dev-6",
       "httpd_urls": ["https://api-testnet.dango.zone"],
-      "mailbox": "0x51e5de0593d0ea0647a93925c91dafb98c36738f",
+      "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7",
       "interchainGasPaymaster": "0x0000000000000000000000000000000000000000",
-      "validatorAnnounce": "0x0594aa774b588f9db00dfbdb1e2b0ef2a3b9329b",
-      "merkleTreeHook": "0x51e5de0593d0ea0647a93925c91dafb98c36738f",
+      "validatorAnnounce": "0x75f38c6fcfc2fb8333e5c3ef89d13b7036abe3ff",
+      "merkleTreeHook": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7",
       "index": {
         "chunk": 50,
         "from": 2200135
