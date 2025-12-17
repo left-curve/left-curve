@@ -32,13 +32,13 @@
 - name: Ensure CometBFT has full peer connections
   assert:
     that:
-      - cometbft_net_info.json.result.n_peers | int == (groups['full-app'] | length) - 1
+      - cometbft_net_info.json.result.n_peers | int == (ansible_play_hosts | length) - 1
     fail_msg: >-
       {{ inventory_hostname }} has only
       {{ cometbft_net_info.json.result.n_peers }} peers,
-      expected {{ (groups['full-app'] | length) - 1 }}.
+      expected {{ (ansible_play_hosts | length) - 1 }}.
     success_msg: >-
-      {{ inventory_hostname }} connected to all {{ (groups['full-app'] | length) - 1 }} peers.
+      {{ inventory_hostname }} connected to all {{ (ansible_play_hosts | length) - 1 }} peers.
 
 - name: Wait until service reports is_running=true
   ansible.builtin.uri:
