@@ -133,17 +133,17 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
 
             PYTH_PRICES.may_update(ctx.storage, id, |current| -> anyhow::Result<_> {
                 match current {
-                    Some(current_price) if current_price.timestamp > timestamp => {
+                    Some(current_price) if current_price.timestamp > timestamp => Ok(current_price),
+                    _ => {
                         #[cfg(feature = "metrics")]
                         metrics::histogram!(
                             crate::metrics::LABEL_PRICE,
                             "id" => id.to_string(),
                         )
-                        .record(current_price.humanized_price.to_string().parse::<f64>()?);
+                        .record(price.humanized_price.to_string().parse::<f64>()?);
 
-                        Ok(current_price)
+                        Ok(price)
                     },
-                    _ => Ok(price),
                 }
             })?;
         }
@@ -241,5 +241,28 @@ mod tests {
             .unwrap();
 
         verify_pyth_lazer_message(&storage, current_time, &api, &message).should_succeed();
+    }
+
+    #[test]
+    fn test() {
+        let payload = Binary::from_str(
+            "ddPHk4Bp8MUnRgYAAwYsAAAAAgB1xiIMAAAAAAT4/xgAAAACAC8y2AkNAAAABPj/DwAAAAIAp+8pChQAAAAE+P8NAAAAAgD30cgAAAAAAAT4/xoAAAACAOLRj9cBAAAABPj/DgAAAAIAn6Z8CwAAAAAE+P8=",
+        ).unwrap();
+
+        // Deserialize the payload.
+        let payload = PayloadData::deserialize_slice_le(payload.inner()).unwrap();
+        let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
+
+        // Store the prices from each feed.
+        for feed in payload.feeds {
+            let id = feed.feed_id.0;
+            let price = PrecisionlessPrice::try_from((feed, timestamp)).unwrap();
+
+            println!(
+                "Feed ID: {}, Price: {:?}",
+                id,
+                price.humanized_price.to_string().parse::<f64>()
+            );
+        }
     }
 }
