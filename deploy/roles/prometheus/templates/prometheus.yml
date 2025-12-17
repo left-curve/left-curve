@@ -172,13 +172,13 @@ scrape_configs:
 
   - job_name: 'dango'
     static_configs:
-      - targets: ['ovh1:8053']
+      - targets: ['hetzner2:8053']
         labels:
           service: 'dango'
           environment: 'production'
           network: 'testnet'
           dango_network: 'testnet'
-      - targets: ['ovh2:8053']
+      - targets: ['hetzner4:8053']
         labels:
           service: 'dango'
           environment: 'production'
@@ -209,12 +209,12 @@ scrape_configs:
           environment: 'production'
           network: 'devnet'
           dango_network: 'devnet'
-      - targets: ['ovh1:36660']
+      - targets: ['hetzner2:36660']
         labels:
           environment: 'production'
           network: 'testnet'
           dango_network: 'testnet'
-      - targets: ['ovh2:36660']
+      - targets: ['hetzner4:36660']
         labels:
           environment: 'production'
           network: 'testnet'
