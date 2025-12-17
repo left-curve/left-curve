@@ -244,7 +244,7 @@ mod tests {
     }
 
     #[test]
-    fn test() {
+    fn test_conversion() {
         let payload = Binary::from_str(
             "ddPHk4Bp8MUnRgYAAwYsAAAAAgB1xiIMAAAAAAT4/xgAAAACAC8y2AkNAAAABPj/DwAAAAIAp+8pChQAAAAE+P8NAAAAAgD30cgAAAAAAAT4/xoAAAACAOLRj9cBAAAABPj/DgAAAAIAn6Z8CwAAAAAE+P8=",
         ).unwrap();
@@ -253,15 +253,14 @@ mod tests {
         let payload = PayloadData::deserialize_slice_le(payload.inner()).unwrap();
         let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
 
-        // Store the prices from each feed.
         for feed in payload.feeds {
             let id = feed.feed_id.0;
-            let price = PrecisionlessPrice::try_from((feed, timestamp)).unwrap();
+            let price = PrecisionlessPrice::try_from((feed.clone(), timestamp)).unwrap();
 
             println!(
                 "Feed ID: {}, Price: {:?}",
                 id,
-                price.humanized_price.to_string().parse::<f64>()
+                price.humanized_price.to_string().parse::<f64>().unwrap()
             );
         }
     }
