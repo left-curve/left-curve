@@ -1,0 +1,52 @@
+---
+# Base directory on the target host where Hyperlane instances live.
+# Uses deploy_user if defined, otherwise ansible_user (the SSH user Ansible connects as).
+hyperlane_agents_dir: "/home/{{ deploy_user | default(ansible_user) }}/hyperlane-agents"
+
+# Network / environment name (e.g. testnet, mainnet)
+hyperlane_agents_network: ""
+
+# Agent type to run: "relayer" or "validator"
+hyperlane_agent_type: ""
+
+# Validator index (only if hyperlane_agent_type == "validator")
+# Examples: "1", "2", "3" -> instance name: {{ network }}-validator-1, etc.
+hyperlane_validator_index: ""
+
+# Logical instance name used for directory and container_name:
+# - relayer:   "{{ network }}-relayer"
+# - validator: "{{ network }}-validator-1"
+hyperlane_instance_name: >-
+  {{ hyperlane_agents_network }}-{{ hyperlane_agent_type }}{{ ('-' ~ hyperlane_validator_index)
+    if hyperlane_agent_type == 'validator' and (hyperlane_validator_index | default('') | length) > 0 else '' }}
+
+# Base directory for this specific instance
+hyperlane_instance_dir: "{{ hyperlane_agents_dir }}/{{ hyperlane_instance_name }}"
+
+# Docker image and tag (CI-aligned)
+hyperlane_agents_image: "ghcr.io/left-curve/left-curve/hyperlane-agents"
+hyperlane_agents_tag: "latest"
+
+# Path to the per-instance .env file
+hyperlane_agents_env_file: "{{ hyperlane_instance_dir }}/.env"
+
+# Shared config across all agents on the host
+hyperlane_agents_shared_config: "{{ hyperlane_agents_dir }}/config.json"
+
+# Base config per agent type (shared by all instances of that type)
+hyperlane_agents_relayer_config: "{{ hyperlane_agents_dir }}/relayer-config.json"
+hyperlane_agents_validator_config: "{{ hyperlane_agents_dir }}/validator-config.json"
+
+# Optional network-specific config per agent type, e.g.:
+#  - relayer-testnet-config.json
+#  - validator-testnet-config.json
+hyperlane_agents_relayer_network_config: "{{ hyperlane_agents_dir }}/relayer-{{ hyperlane_agents_network }}-config.json"
+hyperlane_agents_validator_network_config: "{{ hyperlane_agents_dir }}/validator-{{ hyperlane_agents_network }}-config.json"
+
+# RocksDB data directory for this instance
+hyperlane_agents_data_dir: "{{ hyperlane_instance_dir }}/hyperlane_db"
+
+# Docker Compose options
+# Use "always" to ensure the latest tag is pulled on every deploy.
+hyperlane_agents_pull_policy: "always"
+hyperlane_agents_restart_policy: "unless-stopped"

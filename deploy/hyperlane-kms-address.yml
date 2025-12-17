@@ -1,0 +1,57 @@
+---
+- name: Compute Hyperlane validator KMS address
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - group_vars/hyperlane/vault.yml
+
+  vars:
+    hyperlane_agents_network: "{{ hyperlane_agents_network | default('') }}"
+    hyperlane_validator_index: "{{ hyperlane_validator_index | default('') }}"
+
+  tasks:
+    - name: Validate required inputs
+      assert:
+        that:
+          - hyperlane_agents_network | length > 0
+          - hyperlane_validator_index | length > 0
+          - validator is defined
+          - validator[hyperlane_agents_network] is defined
+          - validator[hyperlane_agents_network][hyperlane_validator_index] is defined
+        fail_msg: >-
+          Missing inputs or vault keys. Expected:
+          validator[{{ hyperlane_agents_network }}][{{ hyperlane_validator_index }}]
+
+    - name: Compute address from AWS KMS key via cast
+      command:
+        argv:
+          - cast
+          - wallet
+          - address
+          - --aws
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ validator[hyperlane_agents_network][hyperlane_validator_index].aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ validator[hyperlane_agents_network][hyperlane_validator_index].aws_secret_access_key }}"
+        AWS_KMS_KEY_ID: "{{ validator[hyperlane_agents_network][hyperlane_validator_index].validator_id }}"
+        AWS_REGION: "{{ validator[hyperlane_agents_network][hyperlane_validator_index].aws_region | default('eu-north-1') }}"
+      register: cast_address
+      changed_when: false
+      failed_when: false
+
+    - name: Show cast error (if any)
+      when: cast_address.rc != 0
+      debug:
+        msg:
+          - "cast failed (rc={{ cast_address.rc }})"
+          - "stdout: {{ cast_address.stdout | default('') | trim }}"
+          - "stderr: {{ cast_address.stderr | default('') | trim }}"
+
+    - name: Fail if cast failed
+      when: cast_address.rc != 0
+      fail:
+        msg: "cast wallet address --aws failed (see previous task output)"
+
+    - name: Print address
+      debug:
+        msg: "{{ cast_address.stdout | trim }}"

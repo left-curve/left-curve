@@ -49,3 +49,6 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [homer]
 100.96.253.40 ansible_user=debian
+
+[hyperlane]
+localhost ansible_connection=local
