@@ -19,6 +19,9 @@
       "index": {
         "chunk": 20,
         "from": 9817880
+      },
+      "signer": {
+        "type": "hexKey"
       }
     }
   },

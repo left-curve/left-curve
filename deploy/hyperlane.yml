@@ -1,5 +1,6 @@
 ---
 - hosts: hyperlane
-  become: true
+  become: "{{ ansible_become | default(true) }}"
+  become_user: "{{ deploy_user | default(ansible_user) }}"
   roles:
     - role: hyperlane

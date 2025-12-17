@@ -6,9 +6,7 @@ services:
     env_file:
       - "{{ hyperlane_agents_env_file }}"
     volumes:
-      # RocksDB per il relayer (istanza specifica)
       - "{{ hyperlane_agents_data_dir }}:/app/hyperlane_db"
-      # Config condivisa e specifiche per relayer
       - "{{ hyperlane_agents_shared_config }}:/config/config.json:ro"
       - "{{ hyperlane_agents_relayer_config }}:/config/relayer-config.json:ro"
 {% if relayer_network_config_stat is defined and relayer_network_config_stat.stat.exists %}
@@ -27,9 +25,7 @@ services:
     env_file:
       - "{{ hyperlane_agents_env_file }}"
     volumes:
-      # RocksDB per il validator (istanza specifica)
       - "{{ hyperlane_agents_data_dir }}:/app/hyperlane_db"
-      # Config condivisa + specifiche per validator
       - "{{ hyperlane_agents_shared_config }}:/config/config.json:ro"
       - "{{ hyperlane_agents_validator_config }}:/config/validator-config.json:ro"
 {% if validator_network_config_stat is defined and validator_network_config_stat.stat.exists %}

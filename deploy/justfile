@@ -7,6 +7,16 @@ default:
 edit-secrets:
   ansible-vault edit group_vars/all/vault.yml
 
+edit-hyperlane-secrets:
+  EDITOR="cursor --wait" ansible-vault edit group_vars/hyperlane/vault.yml
+
+# Print validator address from AWS KMS (cast)
+# Usage: just hyperlane-kms-address testnet 1
+hyperlane-kms-address network index:
+  ansible-playbook hyperlane-kms-address.yml \
+    -e hyperlane_agents_network={{network}} \
+    -e hyperlane_validator_index={{index}}
+
 cold-provision:
   ansible-playbook playbook.yml
 
@@ -59,6 +69,15 @@ deploy-db:
 
 deploy-clickhouse:
   ansible-playbook clickhouse.yml
+
+hyperlane-local network agent index="":
+  ansible-playbook -i inventory hyperlane.yml --limit localhost \
+    -e ansible_become=false \
+    -e deploy_user={{env_var("USER")}} \
+    -e hyperlane_agents_dir="{{invocation_directory()}}/../.hyperlane-agents" \
+    -e hyperlane_agents_network={{network}} \
+    -e hyperlane_agent_type={{agent}} \
+    -e hyperlane_validator_index={{index}}
 
 add-deploy-key:
   ./deploy-key.sh | ssh-add - >/dev/null

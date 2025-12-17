@@ -1,4 +1,8 @@
 ---
+# ------------------------------------------------------------------------------
+# Directories
+# ------------------------------------------------------------------------------
+
 - name: Ensure hyperlane base directories exist
   file:
     path: "{{ item }}"
@@ -9,7 +13,109 @@
     - "{{ hyperlane_instance_dir }}"
     - "{{ hyperlane_agents_data_dir }}"
 
+# ------------------------------------------------------------------------------
+# Input validation (fail fast before writing files)
+# ------------------------------------------------------------------------------
+
+- name: Validate required inputs
+  assert:
+    that:
+      - (hyperlane_agents_network | default('') | string | length) > 0
+      - (hyperlane_agent_type | default('') | string) in ['relayer', 'validator']
+    fail_msg: >-
+      Missing or invalid inputs. Required:
+      - hyperlane_agents_network (e.g. testnet/mainnet)
+      - hyperlane_agent_type (relayer|validator)
+
+- name: Validate validator index is provided (validator only)
+  assert:
+    that:
+      - (hyperlane_validator_index | default('') | string | length) > 0
+    fail_msg: >-
+      hyperlane_validator_index is required when hyperlane_agent_type=validator.
+      Example: -e hyperlane_validator_index=1
+  when: hyperlane_agent_type == 'validator'
+
+# ------------------------------------------------------------------------------
+# Environment (.env) files (validated & rendered before configs)
+# ------------------------------------------------------------------------------
+
+#    ---------------------------------------------------------------------------
+#    Relayer
+#    ---------------------------------------------------------------------------
+
+- name: Validate relayer secrets exist in vault
+  assert:
+    that:
+      - relayer is defined
+      - relayer[hyperlane_agents_network] is defined
+    fail_msg: >-
+      Missing relayer secrets in vault. Expected:
+      relayer[{{ hyperlane_agents_network }}]
+  when: hyperlane_agent_type == 'relayer'
+
+- name: Check if relayer env template exists for this network
+  stat:
+    path: "{{ role_path }}/templates/relayer-{{ hyperlane_agents_network }}.env.j2"
+  register: relayer_env_template_stat
+  when: hyperlane_agent_type == 'relayer'
+
+- name: Validate relayer env template exists for this network
+  assert:
+    that:
+      - relayer_env_template_stat.stat.exists
+    fail_msg: >-
+      Missing relayer env template: relayer-{{ hyperlane_agents_network }}.env.j2
+  when: hyperlane_agent_type == 'relayer'
+
+- name: Render relayer env file
+  template:
+    src: "relayer-{{ hyperlane_agents_network }}.env.j2"
+    dest: "{{ hyperlane_agents_env_file }}"
+    owner: "{{ deploy_user }}"
+    mode: "0600"
+  when: hyperlane_agent_type == 'relayer'
+
+#    ---------------------------------------------------------------------------
+#    Validator
+#    ---------------------------------------------------------------------------
+
+- name: Validate validator secrets exist in vault
+  assert:
+    that:
+      - validator is defined
+      - validator[hyperlane_agents_network] is defined
+      - validator[hyperlane_agents_network][hyperlane_validator_index] is defined
+    fail_msg: >-
+      Missing validator secrets in vault. Expected:
+      validator[{{ hyperlane_agents_network }}][{{ hyperlane_validator_index }}]
+  when: hyperlane_agent_type == 'validator'
+
+- name: Check if validator env template exists for this network
+  stat:
+    path: "{{ role_path }}/templates/validator-{{ hyperlane_agents_network }}.env.j2"
+  register: validator_env_template_stat
+  when: hyperlane_agent_type == 'validator'
+
+- name: Validate validator env template exists for this network
+  assert:
+    that:
+      - validator_env_template_stat.stat.exists
+    fail_msg: >-
+      Missing validator env template: validator-{{ hyperlane_agents_network }}.env.j2
+  when: hyperlane_agent_type == 'validator'
+
+- name: Render validator env file
+  template:
+    src: "validator-{{ hyperlane_agents_network }}.env.j2"
+    dest: "{{ hyperlane_agents_env_file }}"
+    owner: "{{ deploy_user }}"
+    mode: "0600"
+  when: hyperlane_agent_type == 'validator'
+
+# ------------------------------------------------------------------------------
 # Config files
+# ------------------------------------------------------------------------------
 
 - name: Copy shared hyperlane config
   copy:
@@ -18,7 +124,9 @@
     owner: "{{ deploy_user }}"
     mode: "0644"
 
-# Relayer config
+#    ---------------------------------------------------------------------------
+#    Relayer
+#    ---------------------------------------------------------------------------
 
 - name: Copy relayer base config
   copy:
@@ -44,7 +152,9 @@
     - hyperlane_agent_type == 'relayer'
     - relayer_network_config_stat.stat.exists
 
-# Validator config
+#    ---------------------------------------------------------------------------
+#    Validator
+#    ---------------------------------------------------------------------------
 
 - name: Copy validator base config
   copy:
@@ -70,26 +180,11 @@
     - hyperlane_agent_type == 'validator'
     - validator_network_config_stat.stat.exists
 
-# --- .env per l'agente ---
-
-- name: Render relayer env file
-  template:
-    src: relayer.env.j2
-    dest: "{{ hyperlane_agents_env_file }}"
-    owner: "{{ deploy_user }}"
-    mode: "0600"
-  when: hyperlane_agent_type == 'relayer'
-
-- name: Render validator env file
-  template:
-    src: validator.env.j2
-    dest: "{{ hyperlane_agents_env_file }}"
-    owner: "{{ deploy_user }}"
-    mode: "0600"
-  when: hyperlane_agent_type == 'validator'
+# ------------------------------------------------------------------------------
+# Docker Compose
+# ------------------------------------------------------------------------------
 
 - name: Deploy Hyperlane docker-compose for this instance
-  become: true
   template:
     src: "docker-compose.yml.j2"
     dest: "{{ hyperlane_instance_dir }}/docker-compose.yml"
@@ -97,7 +192,6 @@
     mode: "0644"
 
 - name: Launch Hyperlane stack for this instance
-  become: true
   community.docker.docker_compose_v2:
     project_src: "{{ hyperlane_instance_dir }}"
     pull: "{{ hyperlane_agents_pull_policy }}"
