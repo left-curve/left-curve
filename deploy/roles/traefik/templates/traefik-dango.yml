@@ -74,6 +74,16 @@ entryPoints:
     address: ":{{ traefik.testnet.ports.graphiql_port }}"
   testnet-cometbft_p2p:
     address: ":{{ traefik.testnet.ports.cometbft_p2p_port }}"
+  mainnet-dango:
+    address: ":{{ traefik.mainnet.ports.dango_port }}"
+  mainnet-frontend:
+    address: ":{{ traefik.mainnet.ports.dango_frontend_port }}"
+  mainnet-faucet_bot:
+    address: ":{{ traefik.mainnet.ports.faucet_port }}"
+  mainnet-graphiql:
+    address: ":{{ traefik.mainnet.ports.graphiql_port }}"
+  mainnet-cometbft_p2p:
+    address: ":{{ traefik.mainnet.ports.cometbft_p2p_port }}"
 
   # Tailscale/VPN only
   traefik:
@@ -98,6 +108,16 @@ entryPoints:
     address: :36657
   testnet-cometbft_metrics:
     address: :36660
+  mainnet-dango-metrics:
+    address: :8033
+  mainnet-db-metrics:
+    address: :8034
+  mainnet-clickhouse-metrics:
+    address: :8035
+  mainnet-cometbft_rpc:
+    address: :46657
+  mainnet-cometbft_metrics:
+    address: :46660
 
 metrics:
   prometheus: {}

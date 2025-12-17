@@ -56,6 +56,14 @@ traefik:
       graphiql_port: 8056
       cometbft_p2p_port: 36656
       cometbft_rpc_port: 36657
+  mainnet:
+    ports:
+      dango_port: 8030
+      dango_frontend_port: 8031
+      faucet_port: 8032
+      graphiql_port: 8036
+      cometbft_p2p_port: 46656
+      cometbft_rpc_port: 46657
 
 # in summary cometbft needs to expose:
 # 26656, to anyone
