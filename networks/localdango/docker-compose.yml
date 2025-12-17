@@ -150,8 +150,8 @@ services:
       minter_private_key: ${DEX_BOT_MINTER_PRIVATE_KEY}
       app_settings__sleep__min: 0s
       app_settings__sleep__max: 0s
-      app_settings__size_percent__min: 0.00005
-      app_settings__size_percent__max: 0.0003
+      app_settings__size_percent__min: "0.00005"
+      app_settings__size_percent__max: "0.0003"
       app_settings__price_percent__min: 0.05
       app_settings__price_percent__max: 0.2
       app_settings__order_number__min: 100
