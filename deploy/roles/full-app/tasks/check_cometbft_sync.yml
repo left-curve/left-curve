@@ -59,10 +59,10 @@
       indexed: {{ dango_up.json.indexed_block_height }}
       git: {{ dango_up.json.git_commit }}
 
-# - name: Assert indexing lag ≤ 3 blocks
-#   ansible.builtin.assert:
-#     that:
-#       - (dango_up.json.block.height | int) - (dango_up.json.indexed_block_height | int) <= 3
-#     fail_msg: >-
-#       Index lag too high: height={{ dango_up.json.block.height }},
-#       indexed={{ dango_up.json.indexed_block_height }}
+- name: Assert indexing lag ≤ 3 blocks
+  ansible.builtin.assert:
+    that:
+      - (dango_up.json.block.height | int) - (dango_up.json.indexed_block_height | int) <= 3
+    fail_msg: >-
+      Index lag too high: height={{ dango_up.json.block.height }},
+      indexed={{ dango_up.json.indexed_block_height }}
