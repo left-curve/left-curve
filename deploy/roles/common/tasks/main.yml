@@ -78,6 +78,7 @@
       - python3-botocore
       - python3-psycopg2
       - python3-clickhouse-driver
+      - pipx
     state: present
     update_cache: yes
 
