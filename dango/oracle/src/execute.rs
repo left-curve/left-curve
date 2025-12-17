@@ -133,7 +133,16 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
 
             PYTH_PRICES.may_update(ctx.storage, id, |current| -> anyhow::Result<_> {
                 match current {
-                    Some(current_price) if current_price.timestamp > timestamp => Ok(current_price),
+                    Some(current_price) if current_price.timestamp > timestamp => {
+                        #[cfg(feature = "metrics")]
+                        metrics::histogram!(
+                            crate::metrics::LABEL_PRICE,
+                            "id" => id.to_string(),
+                        )
+                        .record(current_price.humanized_price.to_string().parse::<f64>()?);
+
+                        Ok(current_price)
+                    },
                     _ => Ok(price),
                 }
             })?;
