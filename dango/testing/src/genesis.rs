@@ -607,22 +607,28 @@ impl Preset for OracleOption {
     }
 }
 
+impl Preset for PerpsMarketParams {
+    fn preset_test() -> Self {
+        PerpsMarketParams {
+            denom: dango::DENOM.clone(),
+            trading_enabled: true,
+            max_long_oi: Uint128::new(1_000_000_000),
+            max_short_oi: Uint128::new(1_000_000_000),
+            maker_fee: Bounded::new(Udec128::new_bps(20)).unwrap(),
+            taker_fee: Bounded::new(Udec128::new_bps(20)).unwrap(),
+            min_position_size: Uint128::new(100),
+            skew_scale: Uint128::new(5_000_000_000),
+            max_funding_velocity: Udec128::new_percent(3),
+        }
+    }
+}
+
 impl Preset for PerpsOption {
     fn preset_test() -> Self {
         PerpsOption {
             perps_vault_denom: usdc::DENOM.clone(),
             perps_market_params: btree_map! {
-                dango::DENOM.clone() => PerpsMarketParams {
-                    denom: dango::DENOM.clone(),
-                    trading_enabled: true,
-                    max_long_oi: Uint128::new(1_000_000_000),
-                    max_short_oi: Uint128::new(1_000_000_000),
-                    maker_fee: Bounded::new(Udec128::new_bps(20)).unwrap(),
-                    taker_fee: Bounded::new(Udec128::new_bps(20)).unwrap(),
-                    min_position_size: Uint128::new(100),
-                    skew_scale: Uint128::new(5_000_000_000),
-                    max_funding_velocity: Udec128::new_percent(3),
-                },
+                dango::DENOM.clone() => Preset::preset_test(),
             },
         }
     }
