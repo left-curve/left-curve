@@ -272,7 +272,7 @@
           "msg": {
             "config": {
               "default_ism": "0xdc68d6c82f5e4386294e7fda27317ab6ae8ff54c",
-              "local_domain": 88888888
+              "local_domain": 88888887
             }
           },
           "salt": "aHlwZXJsYW5lL21haWxib3g="
