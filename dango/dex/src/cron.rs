@@ -665,7 +665,7 @@ fn clear_orders_of_pair(
 
     // Update the pool reserve.
     if inflows.is_non_empty() || outflows.is_non_empty() {
-        RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
+        let reserve = RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
             for inflow in inflows.into_coins_floor() {
                 reserve.checked_add(&inflow)?;
             }
@@ -674,20 +674,42 @@ fn clear_orders_of_pair(
                 reserve.checked_sub(&outflow)?;
             }
 
-            #[cfg(feature = "metrics")]
-            {
-                for coin in [reserve.first(), reserve.second()] {
-                    metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
-                        "base_denom" => base_denom.to_string(),
-                        "quote_denom" => quote_denom.to_string(),
-                        "token" => coin.denom.to_string()
-                    )
-                    .set(coin.amount.into_inner() as f64);
-                }
-            }
-
             Ok::<_, StdError>(reserve)
         })?;
+
+        #[cfg(feature = "metrics")]
+        {
+            for coin in reserve.into_iter() {
+                let price = oracle_querier.query_price(&base_denom, None)?;
+
+                // Divide the amount by 10^precision to get the human-readable amount.
+                let amount_f64: f64 = Udec128_6::checked_from_ratio(
+                    coin.amount,
+                    10u128.pow(price.precision() as u32),
+                )?
+                .to_string()
+                .parse()?;
+
+                // Amount of tokens in reserve.
+                metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
+                    "base_denom" => base_denom.to_string(),
+                    "quote_denom" => quote_denom.to_string(),
+                    "token" => coin.denom.to_string()
+                )
+                .set(amount_f64);
+
+                // Value of tokens in reserve (USD).
+                let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
+                let value_f64: f64 = value.to_string().parse()?;
+
+                metrics::gauge!(crate::metrics::LABEL_RESERVE_VALUE,
+                    "base_denom" => base_denom.to_string(),
+                    "quote_denom" => quote_denom.to_string(),
+                    "token" => coin.denom.to_string()
+                )
+                .set(value_f64);
+            }
+        }
     }
 
     #[cfg(feature = "tracing")]
