@@ -18,6 +18,7 @@ dango_network: "devnet"
 traefik_enabled: false
 expose_ports: false
 dex_bot_enabled: false
+faucet_bot_enabled: false
 github_deployments_enabled: false
 deploy_includes_postgres: true
 delete_postgres_database_at_merge: false
