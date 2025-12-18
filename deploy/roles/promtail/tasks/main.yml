@@ -6,13 +6,10 @@
   loop: ["{{ promtail_dir }}/config"]
 
 - name: Copy files
-  become: true
-  become_user: root
   block:
     - template:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
-        owner: "{{ deploy_user }}"
       loop:
         - { src: "{{ playbook_dir }}/roles/promtail/templates/promtail-config.yml", dest: "{{ promtail_dir }}/config/promtail-config.yml" }
         - { src: "{{ playbook_dir }}/roles/promtail/templates/docker-compose.yml", dest: "{{ promtail_dir }}/docker-compose.yml" }
@@ -24,19 +21,3 @@
     state: present
     recreate: always
 
-- name: Install systemd unit for Promtail compose
-  become: true
-  become_user: root
-  template:
-    src: promtail-compose.service.j2
-    dest: /etc/systemd/system/promtail-compose.service
-    mode: '0644'
-  notify: Reload systemd
-
-- name: Enable and start promtail-compose service
-  become: true
-  become_user: root
-  systemd:
-    name: promtail-compose.service
-    enabled: true
-    state: started

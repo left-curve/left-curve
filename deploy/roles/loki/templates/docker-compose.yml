@@ -4,6 +4,9 @@ services:
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      monitoring:
+        ipv4_address: 172.23.0.100
     ports:
       - "{{ tailscale_ip }}:{{ loki_port }}:3100"
       - "{{ wireguard_ip }}:{{ loki_port }}:3100"
@@ -19,6 +22,6 @@ services:
       retries: 3
 
 networks:
-  default:
+  monitoring:
     name: monitoring
     external: true
