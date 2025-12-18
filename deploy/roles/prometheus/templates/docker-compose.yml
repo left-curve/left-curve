@@ -11,6 +11,7 @@ x-wireguard-hosts: &wg-hosts
 {%   for item in wg_hosts | sort(attribute='name') %}
   - "{{ item.name }}:{{ item.ip }}"
 {%   endfor %}
+  - "loki:172.23.0.100"
 {% endif %}
 
 services:

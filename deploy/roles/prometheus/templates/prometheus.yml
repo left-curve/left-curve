@@ -18,6 +18,10 @@ remote_write:
       batch_send_deadline: 5s
 
 scrape_configs:
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']

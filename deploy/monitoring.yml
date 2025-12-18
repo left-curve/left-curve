@@ -10,8 +10,8 @@
         name: monitoring
         state: present
   roles:
-    - prometheus
     - loki
+    - prometheus
     - promtail
     - node-exporter
     - tempo
