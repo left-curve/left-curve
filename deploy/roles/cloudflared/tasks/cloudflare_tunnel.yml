@@ -136,7 +136,7 @@
   retries: 3
   delay: 5
 
-# NOTE: There is no support for round robbin for CNAME so we point at a single
+# NOTE: There is no support for round-robin for CNAME so we point at a single
 # server.
 - name: Create DNS for services (when LB disabled)
   community.general.cloudflare_dns:
