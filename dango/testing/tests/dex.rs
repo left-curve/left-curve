@@ -12,8 +12,8 @@ use {
         config::AppConfig,
         constants::{atom, dango, eth, usdc, xrp},
         dex::{
-            self, CancelOrderRequest, CreateOrderRequest, Direction, Geometric, OrderId,
-            OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity, Price,
+            self, CancelOrderRequest, CreateOrderRequest, Direction, Geometric, MaxSlippage,
+            OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity, Price,
             QueryLiquidityDepthRequest, QueryOrdersByPairRequest, QueryOrdersRequest,
             QueryReserveRequest, QueryRestingOrderBookStateRequest, RestingOrderBookState, Xyk,
         },
@@ -29,9 +29,11 @@ use {
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
     pyth_types::constants::USDC_USD_ID,
+    rand::Rng,
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
+        time::SystemTime,
     },
     test_case::test_case,
 };
@@ -7729,4 +7731,107 @@ fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
             })
             .unwrap(),
         ));
+}
+
+#[test_case(100)]
+#[test_case(1000)]
+#[test_case(2000)]
+#[test_case(3000)]
+#[test_case(4000)]
+#[test_case(5000)]
+fn test_matching_time_complexity(num_orders: u32) {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Provide liquidity
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 100_000_000,
+                usdc::DENOM.clone() => 100_000_000,
+            },
+        )
+        .should_succeed();
+
+    // make block and add orders to the block
+    let mut txs = Vec::new();
+    for _ in 0..num_orders {
+        // Random amount between 1000 and 1000000
+        let amount_base = Uint128::new(rand::thread_rng().gen_range(1000..10000));
+
+        // Random direction
+        let direction = rand::thread_rng().gen_range(0..2);
+        let direction = if direction == 0 {
+            Direction::Bid
+        } else {
+            Direction::Ask
+        };
+
+        // Random price between 100 and 1000000
+        let price = rand::thread_rng().gen_range(100000..1000000);
+        let price = Price::checked_from_ratio(price, 100000).unwrap();
+
+        // Compute amount and funds
+        let (amount, funds) = match direction {
+            Direction::Bid => {
+                let amount_quote = amount_base.checked_mul_dec_ceil(price).unwrap();
+                let funds = Coins::one(usdc::DENOM.clone(), amount_quote).unwrap();
+                (amount_quote, funds)
+            },
+            Direction::Ask => {
+                let funds = Coins::one(dango::DENOM.clone(), amount_base).unwrap();
+                (amount_base, funds)
+            },
+        };
+
+        // Random slippage between 0.5% and 50%
+        let slippage = rand::thread_rng().gen_range(5..500);
+        let max_slippage =
+            MaxSlippage::new_unchecked(Udec128::checked_from_ratio(slippage, 1000).unwrap());
+
+        let msg = Message::execute(
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateOrderRequest::new_market(
+                    dango::DENOM.clone(),
+                    usdc::DENOM.clone(),
+                    direction,
+                    max_slippage,
+                    NonZero::new_unchecked(amount),
+                )],
+                cancels: None,
+            },
+            funds,
+        )
+        .unwrap();
+
+        let tx = accounts
+            .user1
+            .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
+            .unwrap();
+        txs.push(tx);
+    }
+
+    // Save start time
+    let start_time = SystemTime::now();
+
+    // Submit the orders in a single block.
+    suite
+        .make_block(txs)
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    let end_time = SystemTime::now();
+    let duration = end_time.duration_since(start_time).unwrap();
+    println!("Time taken for {} orders: {:?}", num_orders, duration);
 }
