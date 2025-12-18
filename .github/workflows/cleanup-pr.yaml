@@ -9,6 +9,7 @@ jobs:
     runs-on: [self-hosted]
     env:
       ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+      ANSIBLE_DEBIAN_PASSWORD: ${{ secrets.ANSIBLE_DEBIAN_PASSWORD }}
     permissions:
       packages: write
       deployments: write
