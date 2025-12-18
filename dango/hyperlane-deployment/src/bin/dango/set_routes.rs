@@ -39,7 +39,6 @@ async fn main() -> anyhow::Result<()> {
 
     set_warp_routes(
         &dango_client,
-        &config.dango,
         &mut dango_owner,
         evm_config.hyperlane_domain,
         ROUTES
