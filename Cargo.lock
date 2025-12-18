@@ -4153,6 +4153,7 @@ dependencies = [
  "grug",
  "hex",
  "humantime",
+ "metrics",
  "pyth-types",
  "test-case",
 ]
