@@ -62,8 +62,6 @@ entryPoints:
     address: ":{{ traefik.devnet.ports.faucet_port }}"
   devnet-graphiql:
     address: ":{{ traefik.devnet.ports.graphiql_port }}"
-  devnet-cometbft_p2p:
-    address: ":{{ traefik.devnet.ports.cometbft_p2p_port }}"
   testnet-dango:
     address: ":{{ traefik.testnet.ports.dango_port }}"
   testnet-frontend:
@@ -72,8 +70,6 @@ entryPoints:
     address: ":{{ traefik.testnet.ports.faucet_port }}"
   testnet-graphiql:
     address: ":{{ traefik.testnet.ports.graphiql_port }}"
-  testnet-cometbft_p2p:
-    address: ":{{ traefik.testnet.ports.cometbft_p2p_port }}"
   mainnet-dango:
     address: ":{{ traefik.mainnet.ports.dango_port }}"
   mainnet-frontend:
@@ -82,8 +78,6 @@ entryPoints:
     address: ":{{ traefik.mainnet.ports.faucet_port }}"
   mainnet-graphiql:
     address: ":{{ traefik.mainnet.ports.graphiql_port }}"
-  mainnet-cometbft_p2p:
-    address: ":{{ traefik.mainnet.ports.cometbft_p2p_port }}"
 
   # Tailscale/VPN only
   traefik:
