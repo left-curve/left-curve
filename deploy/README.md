@@ -10,21 +10,35 @@
 
 ## Install a new server
 
+- Add the debian-deploy key:
+
+```bash
+ssh-copy-id -i ~/.ssh/debian_deploy.pub username@public_ip
+```
+
 - Add the host in `inventory` using its public IP
 
   ```bash
-  ansible-playbook playbook.yml --limit <public IP>
+  ansible-playbook init-debian-user.yml --limit <public IP> -e ansible_user=<your remote user account>
+  ansible-playbook common.yml --limit <public IP>
   ansible-playbook tailscale.yml --limit <public IP>
   ```
 
 - Ensure tailscale IP is up and you can see the server
 
-- Replace the public IP with the private IP in `inventory`
+- Replace the public IP with the private IP in `inventory`, create a file
+`host_vars/<tailscale IP>.yml` and `hostname`, `wireguard_ip`, `tailscale_ip`.
 
-- Install default packages, users, tailscale and things like docker using:
+- Enable Wireguard on all hosts
 
   ```bash
-  ansible-playbook playbook.yml --limit <private IP>
+  ansible-playbook wireguard.yml
+  ```
+
+- Install default packages, users, and things like docker using:
+
+  ```bash
+  ansible-playbook playbook.yml --limit <tailscale IP>
   ```
 
 ## Setup Ansible Vault
@@ -45,6 +59,32 @@ This shows you have the right password:
 ```bash
 ❯ ./vault-password.sh|sha256
 2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
+```
+
+Make also sure you have ssh-agent and added your key with ssh-add before
+running ansible-playbook, else you'll get `Permission denied (publickey)`.
+
+You must rerun `ssh-add` after you rebooted.
+
+### Root access
+
+No one should need debian/sudo access to the servers, this is a critical
+access. But here is the process.
+
+Add debian password to Keychain:
+
+```bash
+security add-generic-password \
+  -a ansible \
+  -s ansible-debian/default \
+  -w 'ASK_TEAM_FOR_PASSWORD'
+```
+
+This shows you have the right password:
+
+```bash
+❯ ./debian-password.sh|sha256
+b82a3865821fb1c7072cf58ca641811fd814c892109963f54fce675e7e9cfca5
 ```
 
 Make also sure you have ssh-agent and added your key with ssh-add before

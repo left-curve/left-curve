@@ -1,15 +1,13 @@
 - name: Install docker health checker
-  become: true
-  become_user: root
   copy:
     src: check_docker.sh
-    dest: /usr/local/bin/check_docker.sh
+    dest: "{{ ansible_facts['env']['HOME'] }}/check_docker.sh"
     mode: '0755'
 
 - name: Wait up to 10s for containers to be healthy/running
   command:
     argv:
-      - /usr/local/bin/check_docker.sh
+      - "{{ ansible_facts['env']['HOME'] }}/check_docker.sh"
       - "{{ deployment_name }}"
   register: health
   changed_when: false

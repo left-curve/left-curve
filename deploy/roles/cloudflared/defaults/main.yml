@@ -1,2 +1,2 @@
 ---
-cloudflared_dir: "{{ ansible_env.HOME }}/cloudflared"
+cloudflared_dir: "{{ ansible_facts['env']['HOME'] }}/cloudflared"

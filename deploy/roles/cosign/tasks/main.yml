@@ -104,8 +104,6 @@
     mode: "0644"
 
 - name: Download cosign binary
-  become: true
-  become_user: root
   when:
     - cosign_verify_checksums | default(true)
     - cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version

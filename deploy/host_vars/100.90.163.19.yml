@@ -1,0 +1,8 @@
+---
+tailscale_ip: "100.90.163.19"
+hostname: "hetzner2"
+wireguard_ip: "10.99.0.9"
+dango_networks:
+  - testnet
+cloudflare_lb_enabled: true
+s3_enabled: true

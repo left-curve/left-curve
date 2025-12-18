@@ -1,9 +1,10 @@
-- name: Change password for the Ansible‐connected user
-  ansible.builtin.user:
-    name: "{{ ansible_user_id }}"
-    password: "{{ ansible_user_password | password_hash('sha512') }}"
-    update_password: always
-  when: ansible_user_password != ''
+# Find a way to change password for root/debian but store that securely
+# - name: Change password for the Ansible‐connected user
+#   user:
+#     name: "{{ ansible_user_id }}"
+#     password: "{{ ansible_user_password | password_hash('sha512') }}"
+#     update_password: always
+#   when: ansible_user_password != ''
 
 - name: Install locales package
   apt:
@@ -73,6 +74,11 @@
       - clang
       - pkg-config
       - direnv
+      - python3-boto3
+      - python3-botocore
+      - python3-psycopg2
+      - python3-clickhouse-driver
+      - pipx
     state: present
     update_cache: yes
 
@@ -117,6 +123,14 @@
     src: "jail.local"
     dest: /etc/fail2ban/
     mode: '0644'
+
+- name: Whitelist Tailscale IP range in fail2ban (sshd)
+  become: true
+  lineinfile:
+    path: /etc/fail2ban/jail.local
+    insertafter: '^\[sshd\]'
+    regexp: '^ignoreip\s*='
+    line: 'ignoreip = 127.0.0.1/8 ::1 100.64.0.0/10 10.99.0.0/28'
 
 - name: Restart fail2ban
   service:
@@ -172,3 +186,42 @@
     content: |
       APT::Periodic::Update-Package-Lists "1";
       APT::Periodic::Unattended-Upgrade "1";
+
+- name: SSH hardening drop-in
+  copy:
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Auth: keys only
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      ChallengeResponseAuthentication no
+      PermitEmptyPasswords no
+      PubkeyAuthentication yes
+
+      PermitRootLogin no
+
+      # Reduce brute force surface
+      MaxAuthTries 3
+      LoginGraceTime 20
+      MaxSessions 5
+
+      # trusted networks (Tailscale + WireGuard)
+      Match Address 100.64.0.0/10,10.99.0.0/28
+        MaxAuthTries 20
+
+      # Safer defaults
+      X11Forwarding no
+      AllowAgentForwarding no
+      AllowTcpForwarding no
+      PermitTunnel no
+
+      # Optional: restrict who can SSH
+      # AllowUsers debian
+  notify: reload ssh
+
+- name: Validate sshd config before reload
+  command: sshd -t
+  changed_when: false

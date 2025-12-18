@@ -1,6 +1,5 @@
 - hosts: full-app
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   collections:
     - community.docker
     - community.general
@@ -19,8 +18,6 @@
       file:
         path: "{{ traefik_dir }}/config/{{ deployment_name }}.yml"
         state: absent
-      become: true
-      become_user: root
 
     - name: Check if deployment already exists
       stat:
@@ -91,8 +88,6 @@
           ignore_errors: true
 
         - name: Remove deployment directory
-          become: true
-          become_user: root
           file:
             path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
             state: absent
@@ -151,19 +146,6 @@
       when: delete_clickhouse_database_at_merge
 
     - block:
-        - name: Install pipx
-          apt:
-            name: pipx
-            state: present
-            update_cache: yes
-          become: true
-          become_user: root
-
-        - name: Install Backblaze b2 via pipx
-          command: pipx install b2
-          args:
-            creates: "{{ ansible_env.HOME }}/.local/bin/b2"
-
         # NOTE: doing this because you can't delete a bucket which has files,
         # and removing files takes forever. So I set files to be deleted, and
         # we'll write a cron job to remove any empty buckets.
@@ -254,16 +236,13 @@
       become: false
 
 - hosts: monitoring
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   tags: monitoring
   vars:
-      deployment_name: "{{ hostvars[groups['full-app'][0]]['deployment_name'] }}"
+      deployment_name: "{{ hostvars[ansible_play_hosts[0]]['deployment_name'] }}"
   tasks:
     - name: Load prometheus vars
       include_vars: roles/prometheus/defaults/main.yml
     - name: Remove deployment targets
-      become: true
-      become_user: root
       shell: rm -f {{ prometheus_dir }}/targets/{{ deployment_name }}-*
       ignore_errors: true

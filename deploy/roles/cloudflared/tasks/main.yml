@@ -5,3 +5,4 @@
   loop: "{{ dango_networks }}"
   loop_control:
     loop_var: dango_network
+  when: cloudflare_lb_enabled

@@ -1,15 +1,16 @@
-traefik_dir: "{{ ansible_env.HOME }}/traefik"
+traefik_dir: "{{ ansible_facts['env']['HOME'] }}/traefik"
 discord_username: "Deploy"
 discord_avatar_url: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ansible-light.svg"
 github_repo: "left-curve/left-curve"
 ssh_users:
   - penso
-  - rhaki
   - larry
-  - zexsor
-  - j0nl1
-  - michael
-deploy_user: deploy
+  # - rhaki
+  # - zexsor
+  # - j0nl1
+  # - michael
+sudo_users:
+  - penso
 dango_domain: "dango.zone"
 dango:
   dex_bot:
@@ -45,23 +46,34 @@ traefik:
       dango_frontend_port: 8081
       faucet_port: 8082
       graphiql_port: 8086
-      cometbft_p2p_port: 26656
       cometbft_rpc_port: 26657
+      # keep p2p port here but this is direct connection without traefik
+      cometbft_p2p_port: 26656
   testnet:
     ports:
       dango_port: 8050
       dango_frontend_port: 8051
       faucet_port: 8052
       graphiql_port: 8056
-      cometbft_p2p_port: 36656
       cometbft_rpc_port: 36657
+      # keep p2p port here but this is direct connection without traefik
+      cometbft_p2p_port: 36656
+  mainnet:
+    ports:
+      dango_port: 8030
+      dango_frontend_port: 8031
+      faucet_port: 8032
+      graphiql_port: 8036
+      cometbft_rpc_port: 46657
+      # keep p2p port here but this is direct connection without traefik
+      cometbft_p2p_port: 46656
 
 # in summary cometbft needs to expose:
-# 26656, to anyone
-# 26657, to tailscale
-# 26658, to dango container only
+# 26656, to wireguard (p2p)
+# 26657, to wireguard (rpc)
+# 26658, to dango container only (abci)
 # 26660, to tailscale (metrics)
 # dango needs to expose:
 # 8080, to anyone
 # 9191, to tailscale (metrics)
-# 26658, to cometbft container only
+# 26658, to cometbft container only (abci)
