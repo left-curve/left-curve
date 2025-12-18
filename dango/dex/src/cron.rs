@@ -665,6 +665,7 @@ fn clear_orders_of_pair(
 
     // Update the pool reserve.
     if inflows.is_non_empty() || outflows.is_non_empty() {
+        #[allow(unused_variables)]
         let reserve = RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
             for inflow in inflows.into_coins_floor() {
                 reserve.checked_add(&inflow)?;
