@@ -17,10 +17,12 @@ use {
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
-    dango_auth::create_account(ctx)?;
+pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
+    bail!("creation of multisig accounts are temporarily disabled");
 
-    Ok(Response::new())
+    // dango_auth::create_account(ctx)?;
+
+    // Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
