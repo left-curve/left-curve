@@ -299,6 +299,7 @@ mod tests {
     /// Address of the multisig for use in the following tests.
     const MULTI: Addr = Addr::mock(255);
 
+    #[ignore = "multisig accounts are temporarily disabled"]
     #[test]
     fn only_factory_can_instantiate() {
         let querier = MockQuerier::new()
