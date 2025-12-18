@@ -27,7 +27,7 @@ const WARP_ROUTE_TYPE: WarpRouteType = WarpRouteType::Native;
 // The symbol to use as subdenom for the token on Dango.
 const SYMBOL: &str = "sepoliaETH";
 
-const EVM_NETWORK: &str = "sepolia";
+const EVM_NETWORK: &str = "11155111";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

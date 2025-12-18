@@ -33,7 +33,7 @@ const WARP_ROUTE_PROXY_ADDRESS: Address = address!("0xab4d0e03d8ee1daf635826f200
 
 const DANGO_RECIPIENT: Addr = addr!("a20a0e1a71b82d50fc046bc6e3178ad0154fd184");
 
-const EVM_NETWORK: &str = "sepolia";
+const EVM_NETWORK: &str = "11155111";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

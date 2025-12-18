@@ -19,15 +19,17 @@ use {
     dotenvy::dotenv,
 };
 
+const EVM_NETWORK: &str = "11155111";
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
     let config = config::load_config()?;
-    let evm_config = config.evm.get("sepolia").unwrap();
+    let evm_config = config.evm.get(EVM_NETWORK).unwrap();
 
     let deployments = config::load_deployments()?;
-    let evm_deployment = deployments.evm.get("sepolia").unwrap();
+    let evm_deployment = deployments.evm.get(EVM_NETWORK).unwrap();
 
     let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
