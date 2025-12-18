@@ -18,7 +18,7 @@ use {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
-    bail!("creation of multisig accounts are temporarily disabled");
+    bail!("creation of multisig accounts is temporarily disabled");
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
