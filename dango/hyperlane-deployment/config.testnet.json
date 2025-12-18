@@ -1,7 +1,6 @@
 {
   "dango": {
     "api_url": "https://api-testnet.dango.zone/",
-    "chain_id": "dev-6",
     "isms": [
       [
         11155111,

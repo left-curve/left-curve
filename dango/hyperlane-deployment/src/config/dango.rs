@@ -12,7 +12,6 @@ pub struct Route {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct DangoConfig {
     pub api_url: String,
-    pub chain_id: String,
     pub isms: Vec<(u32, ValidatorSet)>,
 }
 
