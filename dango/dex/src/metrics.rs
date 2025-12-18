@@ -12,6 +12,12 @@ pub const LABEL_VOLUME_PER_TRADE: &str = "dango.contract.dex.volume_per_trade";
 
 pub const LABEL_VOLUME_PER_BLOCK: &str = "dango.contract.dex.volume_per_block";
 
+pub const LABEL_BEST_PRICE: &str = "dango.contract.dex.best_price";
+
+pub const LABEL_SPREAD_ABSOLUTE: &str = "dango.contract.dex.spread_absolute";
+
+pub const LABEL_SPREAD_PERCENTAGE: &str = "dango.contract.dex.spread_percentage";
+
 pub const LABEL_DURATION_AUCTION: &str = "dango.contract.dex.auction.duration";
 
 pub const LABEL_DURATION_REFLECT_CURVE: &str = "dango.contract.dex.reflect_curve.duration";
@@ -51,6 +57,15 @@ pub fn init_metrics() {
         describe_histogram!(LABEL_VOLUME_PER_TRADE, "Volume per trade");
 
         describe_histogram!(LABEL_VOLUME_PER_BLOCK, "Volume per block");
+
+        describe_gauge!(LABEL_BEST_PRICE, "Best price available in order book");
+
+        describe_gauge!(LABEL_SPREAD_ABSOLUTE, "Absolute spread between bid and ask");
+
+        describe_gauge!(
+            LABEL_SPREAD_PERCENTAGE,
+            "Percentage spread between bid and ask"
+        );
 
         describe_histogram!(
             LABEL_DURATION_AUCTION,

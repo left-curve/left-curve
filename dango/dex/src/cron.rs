@@ -835,6 +835,63 @@ fn clear_orders_of_pair(
         (None, None) => None,
     };
 
+    #[cfg(feature = "metrics")]
+    {
+        if let Some(bid) = best_bid_price {
+            let bid_price_f64: f64 = bid.to_string().parse()?;
+
+            metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "type" => "bid",
+            )
+            .set(bid_price_f64);
+        }
+
+        if let Some(ask) = best_ask_price {
+            let ask_price_f64: f64 = ask.to_string().parse()?;
+
+            metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "type" => "ask",
+            )
+            .set(ask_price_f64);
+        }
+
+        if let Some(mid) = mid_price {
+            let mid_price_f64: f64 = mid.to_string().parse()?;
+
+            metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "type" => "mid",
+            )
+            .set(mid_price_f64);
+        }
+
+        if let (Some(bid), Some(ask), Some(mid)) = (best_bid_price, best_ask_price, mid_price) {
+            let spread_absolute = ask - bid;
+
+            let spread_absolute_f64: f64 = spread_absolute.to_string().parse()?;
+
+            let spread_percentage_f64: f64 =
+                spread_absolute.checked_div(mid)?.to_string().parse()?;
+
+            metrics::gauge!(crate::metrics::LABEL_SPREAD_ABSOLUTE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+            )
+            .set(spread_absolute_f64);
+
+            metrics::gauge!(crate::metrics::LABEL_SPREAD_PERCENTAGE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+            )
+            .set(spread_percentage_f64);
+        }
+    }
+
     RESTING_ORDER_BOOK.save(
         storage,
         (&base_denom, &quote_denom),
