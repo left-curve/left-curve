@@ -680,7 +680,7 @@ fn clear_orders_of_pair(
         #[cfg(feature = "metrics")]
         {
             for coin in reserve.into_iter() {
-                let price = oracle_querier.query_price(&base_denom, None)?;
+                let price = oracle_querier.query_price(&coin.denom, None)?;
 
                 // Divide the amount by 10^precision to get the human-readable amount.
                 let amount_f64: f64 = Udec128_6::checked_from_ratio(
