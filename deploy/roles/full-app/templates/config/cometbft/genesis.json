@@ -885,7 +885,7 @@
   "genesis_time": "1971-01-01T00:00:00Z",
   "initial_height": "0",
   "validators": [
-      {%- for h in (groups['full-app'] | sort) if hostvars[h].cometbft_validator_public_key is defined -%}
+      {%- for h in (ansible_play_hosts_all | sort) if hostvars[h].cometbft_validator_public_key is defined -%}
     {
       "address": "{{ hostvars[h].cometbft_validator_address }}",
       "name": "{{ h }}",
