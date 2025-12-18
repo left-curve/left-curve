@@ -343,12 +343,12 @@
             name: full-app
 
       rescue:
-        - name: Stop and remove stack
-          community.docker.docker_compose_v2:
-            project_name: "{{ deployment_name }}"
-            project_src: "{{ deployment_dir }}"
-            state: absent
-          ignore_errors: true
+        # - name: Stop and remove stack
+        #   community.docker.docker_compose_v2:
+        #     project_name: "{{ deployment_name }}"
+        #     project_src: "{{ deployment_dir }}"
+        #     state: stopped
+        #   ignore_errors: true
 
         # I want to keep files if I need to dig further using `docker compose logs`
         # - name: Remove deployment directory

@@ -1,15 +1,18 @@
-tcp:
-  services:
-    {{ dango_network }}-cometbft_p2p:
-      loadBalancer:
-        servers:
-          - address: "{{ deployment_name }}-cometbft-1:26656"
-  routers:
-    {{ dango_network }}-cometbft_p2p:
-      rule: "HostSNI(`*`)"
-      entryPoints:
-        - "{{ dango_network }}-cometbft_p2p"
-      service: "{{ dango_network }}-cometbft_p2p"
+# I can't use traefik for TCP nodes, the internal cometbft deduplication is broken because
+# it sees all inbound through the same traefik internal IP and reject connections
+# This breaks if > 2 cometbft nodes.
+# tcp:
+#   services:
+#     {{ dango_network }}-cometbft_p2p:
+#       loadBalancer:
+#         servers:
+#           - address: "{{ deployment_name }}-cometbft-1:26656"
+#   routers:
+#     {{ dango_network }}-cometbft_p2p:
+#       rule: "HostSNI(`*`)"
+#       entryPoints:
+#         - "{{ dango_network }}-cometbft_p2p"
+#       service: "{{ dango_network }}-cometbft_p2p"
 
 http:
   middlewares:

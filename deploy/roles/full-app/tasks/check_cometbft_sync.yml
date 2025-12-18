@@ -19,6 +19,10 @@
     url: "http://{{ wireguard_ip }}:{{ cometbft_rpc_port }}/net_info"
     return_content: yes
   register: cometbft_net_info
+  until: cometbft_net_info is defined and cometbft_net_info.json is defined and cometbft_net_info.json.result.n_peers | int == (ansible_play_hosts | length) - 1
+  retries: 30
+  delay: 10
+  failed_when: false  # Don't fail on timeout, let assert handle it
 
 - name: Display sync info
   debug:
