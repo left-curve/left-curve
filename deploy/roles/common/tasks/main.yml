@@ -86,8 +86,9 @@
   setup:
     gather_subset:
       - network
-- ufw: state=reset
-  tags: setup
+# Must rerun all roles when reset
+# - ufw: state=reset
+#   tags: setup
 - ufw: default=allow direction=outgoing
   tags: setup
 - ufw: default=deny direction=incoming
