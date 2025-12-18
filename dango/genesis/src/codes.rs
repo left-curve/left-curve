@@ -97,6 +97,7 @@ impl GenesisCodes for RustVm {
         #[cfg(feature = "metrics")]
         {
             dango_dex::metrics::init_metrics();
+            dango_oracle::metrics::init_metrics();
             // TODO: add other contracts that emit metrics
         }
 
