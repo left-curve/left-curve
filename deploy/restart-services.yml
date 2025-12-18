@@ -1,7 +1,6 @@
 - name: Restart services
   hosts: full-app
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   gather_facts: yes
   vars:
     services:
