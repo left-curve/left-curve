@@ -14,7 +14,7 @@
         - name: Install Backblaze b2 via pipx
           command: pipx install b2
           args:
-            creates: "{{ ansible_env.HOME }}/.local/bin/b2"
+            creates: "{{ ansible_facts['env']['HOME'] }}/.local/bin/b2"
 
         # NOTE: doing this because you can't delete a bucket which has files,
         # and removing files takes forever. So I set files to be deleted, and

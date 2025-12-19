@@ -21,12 +21,12 @@
 
     - name: Check if deployment already exists
       stat:
-        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+        path: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}/.env"
       register: env_file_exists
 
     - name: Read .env values
       shell: |
-        grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE|DELETE_S3_BACKUP_AT_MERGE|S3_BUCKET|DELETE_POSTGRES_DATABASE_AT_MERGE|DELETE_CLICKHOUSE_DATABASE_AT_MERGE)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+        grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE|DELETE_S3_BACKUP_AT_MERGE|S3_BUCKET|DELETE_POSTGRES_DATABASE_AT_MERGE|DELETE_CLICKHOUSE_DATABASE_AT_MERGE)=' {{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}/.env | \
         awk -F= '{print tolower($1) "=" $2}'
       register: existing_env_variables
       when: env_file_exists.stat.exists
@@ -62,7 +62,7 @@
 
     - name: Check if deployment directory exists
       stat:
-        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+        path: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}"
       register: deployment_dir
 
     - name: Delete CNAME records
@@ -81,7 +81,7 @@
         - name: Stop and remove stack
           community.docker.docker_compose_v2:
             project_name: "{{ deployment_name }}"
-            project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+            project_src: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}"
             state: absent
             remove_orphans: yes
             remove_volumes: yes
@@ -106,7 +106,7 @@
         path: "{{ deploy_lock_file }}"
         state: absent
       vars:
-        deploy_lock_file: "{{ ansible_env.HOME }}/deployments/.{{ deployment_name }}.deploy.lock"
+        deploy_lock_file: "{{ ansible_facts['env']['HOME'] }}/deployments/.{{ deployment_name }}.deploy.lock"
       ignore_errors: true
 
     - name: Delete Postgres Dango production database

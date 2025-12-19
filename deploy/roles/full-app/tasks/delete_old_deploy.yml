@@ -1,7 +1,7 @@
 - name: Check if current_deployment directory exists
   when: current_deployment is defined
   stat:
-    path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
+    path: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ current_deployment }}"
   register: current_deploy_path
   changed_when: false
   failed_when: false
@@ -14,7 +14,7 @@
     - name: Clean up old deployment
       community.docker.docker_compose_v2:
         project_name: "{{ current_deployment }}"
-        project_src: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
+        project_src: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ current_deployment }}"
         state: absent
         remove_orphans: yes
         remove_volumes: yes
