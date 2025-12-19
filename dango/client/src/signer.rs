@@ -3,8 +3,9 @@ use {
     anyhow::anyhow,
     dango_types::{
         account::single,
-        account_factory::{self, UserIndex},
+        account_factory::{self, UserIndex, UserIndexOrName},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
+        config::AppConfig,
         signer::SequencedSigner,
     },
     grug::{
@@ -91,6 +92,64 @@ where
             user_index: Undefined::new(),
             nonce: Undefined::new(),
         }
+    }
+
+    pub async fn new_first_address_available<C>(
+        client: &C,
+        secret: S,
+        cfg: Option<&AppConfig>,
+    ) -> anyhow::Result<SingleSigner<S, Defined<UserIndex>, Undefined<Nonce>>>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        let factory_addr = match cfg {
+            Some(cfg) => cfg.addresses.account_factory,
+            None => {
+                client
+                    .query_app_config::<AppConfig>(None)
+                    .await?
+                    .addresses
+                    .account_factory
+            },
+        };
+
+        let key_hash = secret.key_hash();
+
+        let user_index = client
+            .query_wasm_smart(
+                factory_addr,
+                account_factory::QueryForgotUsernameRequest {
+                    key_hash,
+                    start_after: None,
+                    limit: Some(1),
+                },
+                None,
+            )
+            .await?
+            .first()
+            .ok_or_else(|| anyhow!("no user index found for key hash {}", key_hash))?
+            .index;
+
+        let address = *client
+            .query_wasm_smart(
+                factory_addr,
+                account_factory::QueryAccountsByUserRequest {
+                    user: UserIndexOrName::Index(user_index),
+                },
+                None,
+            )
+            .await?
+            .first_key_value()
+            .ok_or_else(|| anyhow!("no address found for user index {}", user_index))?
+            .0;
+
+        Ok(SingleSigner {
+            address,
+            secret,
+            user_index: Defined::new(user_index),
+            nonce: Undefined::new(),
+        })
     }
 }
 
