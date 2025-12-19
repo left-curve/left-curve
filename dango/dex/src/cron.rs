@@ -734,16 +734,6 @@ fn clear_orders_of_pair(
 
     #[cfg(feature = "metrics")]
     {
-        for ((bd, qd, token), amount) in &metric_volume {
-            metrics::histogram!(
-                crate::metrics::LABEL_VOLUME_AMOUNT_PER_BLOCK,
-                "base_denom" => bd.to_string(),
-                "quote_denom" => qd.to_string(),
-                "token" => token.to_string(),
-            )
-            .record(amount.into_inner() as f64);
-        }
-
         if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price) {
             for ((bd, qd, token), amount) in metric_volume {
                 let price = if token == &base_denom {
@@ -752,8 +742,21 @@ fn clear_orders_of_pair(
                     &quote_price
                 };
 
+                let amount_f64: f64 =
+                    Udec128_6::checked_from_ratio(amount, 10u128.pow(price.precision() as u32))?
+                        .to_string()
+                        .parse()?;
+
                 let value: Udec128_6 = price.value_of_unit_amount(amount)?;
                 let value_f64: f64 = value.to_string().parse()?;
+
+                metrics::histogram!(
+                    crate::metrics::LABEL_VOLUME_AMOUNT_PER_BLOCK,
+                    "base_denom" => bd.to_string(),
+                    "quote_denom" => qd.to_string(),
+                    "token" => token.to_string(),
+                )
+                .record(amount_f64);
 
                 metrics::histogram!(
                     crate::metrics::LABEL_VOLUME_VALUE_PER_BLOCK,
