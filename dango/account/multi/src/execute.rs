@@ -320,7 +320,7 @@ mod tests {
 
         // Attempt to instantiate with a random address as sender. Should fail.
         {
-            let res = instantiate(ctx.as_mutable(), InstantiateMsg {});
+            let res = instantiate(ctx.as_mutable(), InstantiateMsg { activate: true });
             assert!(res.is_err_and(|err| err.to_string().contains("you don't have the right")));
         }
 
@@ -328,7 +328,7 @@ mod tests {
         {
             ctx = ctx.with_sender(ACCOUNT_FACTORY);
 
-            let res = instantiate(ctx.as_mutable(), InstantiateMsg {});
+            let res = instantiate(ctx.as_mutable(), InstantiateMsg { activate: true });
             assert!(res.is_ok());
         }
     }

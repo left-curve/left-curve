@@ -13,7 +13,7 @@ use {
     },
     grug::{
         Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
-        Signer, Uint128, btree_map, coins,
+        Signer, StorageQuerier, Uint128, btree_map, coins,
     },
     hyperlane_types::constants::solana,
 };
@@ -111,6 +111,38 @@ fn onboarding_without_deposit() {
 
     // Try again, should succeed.
     suite.check_tx(tx).should_succeed();
+
+    // User opens a new account. While his first account required an initial
+    // deposit, any subsequent account should be activated by default.
+    let user_index = user.user_index();
+    suite
+        .execute(
+            &mut user,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Single(single::Params::new(user_index)),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Ensure the user now has two accounts and they are both active.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryAccountsByUserRequest {
+                user: UserIndexOrName::Index(user_index),
+            },
+        )
+        .should_succeed_and(|accounts| {
+            accounts.len() == 2
+                && accounts.iter().all(|(address, _)| {
+                    suite
+                        .query_wasm_path(*address, dango_auth::account::STATUS.path())
+                        .unwrap()
+                        .is_active()
+                })
+        });
 }
 
 /// If minimum deposit is zero, then the account is automatically activated.
