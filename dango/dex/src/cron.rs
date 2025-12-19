@@ -29,6 +29,9 @@ use {
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
+#[cfg(feature = "metrics")]
+use grug::Exponentiate;
+
 /// Match and fill orders using the uniform price auction strategy.
 ///
 /// Implemented according to:
@@ -226,6 +229,10 @@ fn clear_orders_of_pair(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "metrics")]
     let mut now = std::time::Instant::now();
+    #[cfg(feature = "metrics")]
+    let oracle_base_price = oracle_querier.query_price_ignore_staleness(&base_denom, None)?;
+    #[cfg(feature = "metrics")]
+    let oracle_quote_price = oracle_querier.query_price_ignore_staleness(&quote_denom, None)?;
 
     // --------------------- 1. Update passive pool orders ---------------------
 
@@ -681,7 +688,11 @@ fn clear_orders_of_pair(
         #[cfg(feature = "metrics")]
         {
             for coin in reserve.into_iter() {
-                let price = oracle_querier.query_price(&coin.denom, None)?;
+                let price = if coin.denom == base_denom {
+                    &oracle_base_price
+                } else {
+                    &oracle_quote_price
+                };
 
                 // Divide the amount by 10^precision to get the human-readable amount.
                 let amount_f64: f64 = Udec128_6::checked_from_ratio(
@@ -873,7 +884,14 @@ fn clear_orders_of_pair(
         if let (Some(bid), Some(ask), Some(mid)) = (best_bid_price, best_ask_price, mid_price) {
             let spread_absolute = ask - bid;
 
-            let spread_absolute_f64: f64 = spread_absolute.to_string().parse()?;
+            // The spread absolute needs to be adjusted according to difference in the tokens's precision.
+            let spread_absolute_f64: f64 = Price::TEN
+                .checked_pow(
+                    (oracle_base_price.precision() - oracle_quote_price.precision()) as u32,
+                )?
+                .checked_mul(spread_absolute)?
+                .to_string()
+                .parse()?;
 
             let spread_percentage_f64: f64 =
                 spread_absolute.checked_div(mid)?.to_string().parse()?;

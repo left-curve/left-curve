@@ -44,6 +44,9 @@ impl<'a> OracleQuerier<'a> {
         self
     }
 
+    /// Query the price for a given denom, optionally specifying the price source.
+    /// If `no_older_than` is set, the returned price's timestamp must be no older
+    /// than the specified timestamp. Otherwise, an error is returned.
     pub fn query_price(
         &mut self,
         denom: &Denom,
@@ -66,6 +69,15 @@ impl<'a> OracleQuerier<'a> {
                 Ok(price)
             })
             .cloned()
+    }
+
+    /// Query the price for a given denom, optionally specifying the price source.
+    pub fn query_price_ignore_staleness(
+        &mut self,
+        denom: &Denom,
+        price_source: Option<PriceSource>,
+    ) -> anyhow::Result<PrecisionedPrice> {
+        self.cache.get_or_fetch(denom, price_source).cloned()
     }
 }
 
