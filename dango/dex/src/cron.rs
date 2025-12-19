@@ -29,9 +29,6 @@ use {
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
-#[cfg(feature = "metrics")]
-use grug::Exponentiate;
-
 /// Match and fill orders using the uniform price auction strategy.
 ///
 /// Implemented according to:
@@ -887,9 +884,8 @@ fn clear_orders_of_pair(
             let mut spread_absolute_f64: f64 = spread_absolute.to_string().parse()?;
 
             // The spread absolute needs to be adjusted according to difference in the tokens's precision.
-            spread_absolute_f64 = spread_absolute_f64
-                * 10.0_f64
-                    .powi((oracle_base_price.precision() - oracle_quote_price.precision()) as i32);
+            spread_absolute_f64 *= 10.0_f64
+                .powi((oracle_base_price.precision() - oracle_quote_price.precision()) as i32);
 
             let spread_percentage_f64: f64 =
                 spread_absolute.checked_div(mid)?.to_string().parse()?;
