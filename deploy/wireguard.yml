@@ -2,6 +2,6 @@
   become: true
   remote_user: debian
   vars_files:
-    - group_vars/debian/root_vault.yml
+    - vaults/debian/root_vault.yml
   roles:
     - wireguard

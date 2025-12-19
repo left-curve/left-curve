@@ -13,7 +13,7 @@
   remote_user: debian
   become: true
   vars_files:
-    - group_vars/debian/root_vault.yml
+    - vaults/debian/root_vault.yml
     - roles/node-exporter/defaults/main.yml
     - roles/promtail/defaults/main.yml
   tasks:
