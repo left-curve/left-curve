@@ -227,9 +227,9 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     let mut now = std::time::Instant::now();
     #[cfg(feature = "metrics")]
-    let oracle_base_price = oracle_querier.query_price_ignore_staleness(&base_denom, None)?;
+    let maybe_base_price = oracle_querier.query_price_ignore_staleness(&base_denom, None);
     #[cfg(feature = "metrics")]
-    let oracle_quote_price = oracle_querier.query_price_ignore_staleness(&quote_denom, None)?;
+    let maybe_quote_price = oracle_querier.query_price_ignore_staleness(&quote_denom, None);
 
     // --------------------- 1. Update passive pool orders ---------------------
 
@@ -684,39 +684,41 @@ fn clear_orders_of_pair(
 
         #[cfg(feature = "metrics")]
         {
-            for coin in reserve.into_iter() {
-                let price = if coin.denom == base_denom {
-                    &oracle_base_price
-                } else {
-                    &oracle_quote_price
-                };
+            if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price) {
+                for coin in reserve.into_iter() {
+                    let price = if coin.denom == base_denom {
+                        &base_price
+                    } else {
+                        &quote_price
+                    };
 
-                // Divide the amount by 10^precision to get the human-readable amount.
-                let amount_f64: f64 = Udec128_6::checked_from_ratio(
-                    coin.amount,
-                    10u128.pow(price.precision() as u32),
-                )?
-                .to_string()
-                .parse()?;
+                    // Divide the amount by 10^precision to get the human-readable amount.
+                    let amount_f64: f64 = Udec128_6::checked_from_ratio(
+                        coin.amount,
+                        10u128.pow(price.precision() as u32),
+                    )?
+                    .to_string()
+                    .parse()?;
 
-                // Amount of tokens in reserve.
-                metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
-                    "base_denom" => base_denom.to_string(),
-                    "quote_denom" => quote_denom.to_string(),
-                    "token" => coin.denom.to_string()
-                )
-                .set(amount_f64);
+                    // Amount of tokens in reserve.
+                    metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
+                        "base_denom" => base_denom.to_string(),
+                        "quote_denom" => quote_denom.to_string(),
+                        "token" => coin.denom.to_string()
+                    )
+                    .set(amount_f64);
 
-                // Value of tokens in reserve (USD).
-                let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
-                let value_f64: f64 = value.to_string().parse()?;
+                    // Value of tokens in reserve (USD).
+                    let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
+                    let value_f64: f64 = value.to_string().parse()?;
 
-                metrics::gauge!(crate::metrics::LABEL_RESERVE_VALUE,
-                    "base_denom" => base_denom.to_string(),
-                    "quote_denom" => quote_denom.to_string(),
-                    "token" => coin.denom.to_string()
-                )
-                .set(value_f64);
+                    metrics::gauge!(crate::metrics::LABEL_RESERVE_VALUE,
+                        "base_denom" => base_denom.to_string(),
+                        "quote_denom" => quote_denom.to_string(),
+                        "token" => coin.denom.to_string()
+                    )
+                    .set(value_f64);
+                }
             }
         }
     }
@@ -878,14 +880,20 @@ fn clear_orders_of_pair(
             .set(mid_price_f64);
         }
 
-        if let (Some(bid), Some(ask), Some(mid)) = (best_bid_price, best_ask_price, mid_price) {
+        if let (Some(bid), Some(ask), Some(mid), Ok(base_price), Ok(quote_price)) = (
+            best_bid_price,
+            best_ask_price,
+            mid_price,
+            maybe_base_price,
+            maybe_quote_price,
+        ) {
             let spread_absolute = ask - bid;
 
             let mut spread_absolute_f64: f64 = spread_absolute.to_string().parse()?;
 
             // The spread absolute needs to be adjusted according to difference in the tokens's precision.
-            spread_absolute_f64 *= 10.0_f64
-                .powi((oracle_base_price.precision() - oracle_quote_price.precision()) as i32);
+            spread_absolute_f64 *=
+                10.0_f64.powi((base_price.precision() - quote_price.precision()) as i32);
 
             let spread_percentage_f64: f64 =
                 spread_absolute.checked_div(mid)?.to_string().parse()?;
