@@ -420,6 +420,7 @@
 
       always:
         - import_tasks: roles/full-app/tasks/resume_kuma.yml
+          when: system_wide_directories
 
         - name: Log deployment finished
           syslogger:
