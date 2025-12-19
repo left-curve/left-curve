@@ -73,6 +73,7 @@ fn setup_multi_test<'a>() -> (
     (suite, accounts, contracts, multi, params)
 }
 
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn multi_creation() {
     let (suite, accounts, contracts, multi, params) = setup_multi_test();
@@ -119,6 +120,7 @@ fn multi_creation() {
         .should_succeed_and_equal(Uint128::new(5_000_000));
 }
 
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn proposal_passing_with_auto_execution() {
     let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
@@ -187,6 +189,7 @@ fn proposal_passing_with_auto_execution() {
         .should_succeed_and_equal(Uint128::new(100_000_888_888));
 }
 
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn proposal_passing_with_manual_execution() {
     let (mut suite, accounts, contracts, mut multi, mut params) = setup_multi_test();
@@ -293,6 +296,7 @@ fn proposal_passing_with_manual_execution() {
         .should_succeed_and(|accounts| !accounts.contains_key(&multi.address()));
 }
 
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn proposal_failing() {
     let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
@@ -356,6 +360,7 @@ fn proposal_failing() {
 ///    created at a time when this user wasn't a member.
 ///
 /// This test tests #1.
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn unauthorized_voting_via_impersonation_by_a_non_member() {
     let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
@@ -467,6 +472,7 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
 }
 
 /// This tests the scenario #2 in authorized voting.
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn unauthorized_voting_via_impersonation_by_a_member() {
     let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
@@ -645,6 +651,7 @@ fn unauthorized_voting_via_impersonation<'a>(
 
 /// Any action a multisig account does must be though a passed proposal.
 /// Attempting otherwise should be rejected.
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn unauthorized_messages() {
     let (mut suite, accounts, contracts, mut multi, _) = setup_multi_test();
@@ -673,6 +680,7 @@ fn unauthorized_messages() {
 
 /// When creating, voting for, or executing a proposal, the member must use the
 /// multisig account has the transaction's `sender`.
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn unauthorized_execute() {
     let (mut suite, mut accounts, _, multi, _) = setup_multi_test();
@@ -710,6 +718,7 @@ fn unauthorized_execute() {
 /// - The user attempts to vote.
 ///
 /// This transaction should be REJECT, despite the user IS a current member.
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn vote_edge_cases() {
     let (mut suite, accounts, contracts, mut multi, _) = setup_multi_test();
@@ -857,6 +866,7 @@ fn vote_edge_cases() {
         .should_succeed_and_equal(None);
 }
 
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn non_member_cannot_create_proposal() {
     let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
@@ -884,6 +894,7 @@ fn non_member_cannot_create_proposal() {
 /// involving nonces.
 ///
 /// See the comments of `dango_auth::MAX_NONCE_INCREASE` for more details.
+#[ignore = "multisig accounts are temporarily disabled"]
 #[test]
 fn max_nonce_dos_attack() {
     let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
