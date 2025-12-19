@@ -119,7 +119,7 @@ pub fn create_account(ctx: MutableCtx, activate: bool) -> anyhow::Result<()> {
     // default to `Inactive`. This is an intentional optimization to minimize
     // disk writes.
     //
-    // Rxceptions to this are:
+    // Exceptions to this are:
     // 1. account factory has specified in the instantiate message that the
     //    account is to be activated upon instantiation;
     // 2. during genesis (genesis accounts are always activated);
