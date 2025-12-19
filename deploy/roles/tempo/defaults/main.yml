@@ -1,5 +1,5 @@
 ---
-tempo_dir: "{{ ansible_env.HOME }}/tempo"
+tempo_dir: "{{ ansible_facts['env']['HOME'] }}/tempo"
 tempo_port: 3200
 tempo_otlp_grpc_port: 4317
 tempo_otlp_http_port: 4318

@@ -1,6 +1,6 @@
 - name: Check if liquidity setup already done (current deployment)
   stat:
-    path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}/bot_liquidity_setup_done"
+    path: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ current_deployment }}/bot_liquidity_setup_done"
   register: current_liquidity_setup_flag
   when: current_deployment is defined and system_wide_directories
   run_once: true

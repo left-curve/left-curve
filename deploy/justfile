@@ -8,10 +8,10 @@ edit-secrets:
   ansible-vault edit group_vars/all/vault.yml
 
 edit-root-key:
-  ansible-vault edit group_vars/all/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
+  ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
 
 edit-root-secrets:
-  ansible-vault edit group_vars/all/root_vault.yml --vault-id debian@debian-password.sh --encrypt-vault-id debian
+  ansible-vault edit vaults/debian/root_vault.yml --vault-id debian@debian-password.sh --encrypt-vault-id debian
 
 cold-provision:
   ansible-playbook playbook.yml

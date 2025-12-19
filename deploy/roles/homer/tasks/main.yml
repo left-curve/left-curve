@@ -24,7 +24,7 @@
         dest: "{{ item.dest }}"
         owner: "{{ deploy_user }}"
       loop:
-        - { src: "traefik-services.yml", dest: "{{ ansible_env.HOME }}/traefik/config/homer.yml" }
+        - { src: "traefik-services.yml", dest: "{{ ansible_facts['env']['HOME'] }}/traefik/config/homer.yml" }
 
 - name: Start docker compose
   community.docker.docker_compose_v2:

@@ -1,0 +1,33 @@
+- name: Create user venv for kuma
+  command: python3 -m venv {{ ansible_facts['env']['HOME'] }}/.venvs/kuma
+  args:
+    creates: "{{ ansible_facts['env']['HOME'] }}/.venvs/kuma/bin/python"
+
+- name: Install uptime-kuma-api
+  pip:
+    name: uptime-kuma-api
+    virtualenv: "{{ ansible_facts['env']['HOME'] }}/.venvs/kuma"
+
+- name: Pause Uptime Kuma monitor
+  run_once: true
+  no_log: true
+  shell: |
+    set -euo pipefail
+    {{ ansible_facts['env']['HOME'] }}/.venvs/kuma/bin/python - <<'PY'
+    import os
+    from uptime_kuma_api import UptimeKumaApi
+
+    ids = [int(x) for x in os.environ["KUMA_MONITOR_IDS"].split(",") if x]
+    api = UptimeKumaApi(os.environ["KUMA_URL"])
+    api.login(os.environ["KUMA_USER"], os.environ["KUMA_PASS"])
+    for mid in ids:
+      api.pause_monitor(mid)
+      print("paused", mid)
+    PY
+  args:
+    executable: /bin/bash
+  environment:
+    KUMA_URL: "{{ KUMA_URL }}"
+    KUMA_USER: "{{ KUMA_LOGIN }}"
+    KUMA_PASS: "{{ KUMA_PASSWORD }}"
+    KUMA_MONITOR_IDS: "{{ (kuma[dango_network] | map('string') | list) | join(',') }}"

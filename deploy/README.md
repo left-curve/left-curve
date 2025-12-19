@@ -66,6 +66,10 @@ running ansible-playbook, else you'll get `Permission denied (publickey)`.
 
 You must rerun `ssh-add` after you rebooted.
 
+Debian-only secrets live in `vaults/debian/root_vault.yml`. You should not
+need the debian password for normal deploy workflows; only debian/root
+playbooks will try to decrypt that vault, and no extra CLI flags are needed.
+
 ### Root access
 
 No one should need debian/sudo access to the servers, this is a critical

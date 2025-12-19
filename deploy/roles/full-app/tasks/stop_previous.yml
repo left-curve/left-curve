@@ -2,6 +2,6 @@
   when: current_deployment is defined and system_wide_directories
   community.docker.docker_compose_v2:
     project_name: "{{ current_deployment }}"
-    project_src: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
+    project_src: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ current_deployment }}"
     state: stopped
   ignore_errors: true

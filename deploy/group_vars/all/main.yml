@@ -39,6 +39,10 @@ ports:
   db_metrics_port: 9187
   dango_metrics_port: 9191
   graphiql_port: 4000
+kuma:
+  devnet: [1, 16, 19, 17, 18, 24, 25, 2, 3, 4, 5, 6, 7, 8]
+  testnet: [9, 20, 21, 22, 23, 27, 26, 10, 11, 12, 13, 14]
+  mainnet: [28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]
 traefik:
   devnet:
     ports:
