@@ -2,6 +2,8 @@
   become: true
   become_user: "{{ deploy_user }}"
   remote_user: "debian"
+  vars_files:
+    - group_vars/debian/root_vault.yml
   vars:
     loki_url: "http://loki:3100"
   pre_tasks:

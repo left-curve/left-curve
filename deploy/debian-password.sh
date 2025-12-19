@@ -7,7 +7,6 @@ elif command -v security >/dev/null 2>&1; then
   # macOS - use Keychain
   security find-generic-password -a ansible -s ansible-debian/default -w
 else
-  # Need to find some for Linux
-  echo "Error: No debian password source available" >&2
-  exit 1
+  # No password source available; leave empty so non-debian playbooks still run.
+  exit 0
 fi

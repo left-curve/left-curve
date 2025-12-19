@@ -1,6 +1,8 @@
 - hosts: all
   become: true
   remote_user: debian
+  vars_files:
+    - group_vars/debian/root_vault.yml
   collections:
     - artis3n.tailscale
   vars:

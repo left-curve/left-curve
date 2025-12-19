@@ -8,6 +8,8 @@
 
 - hosts: clickhouse
   remote_user: "debian"
+  vars_files:
+    - group_vars/debian/root_vault.yml
   tasks:
     - name: Configure kernel parameters for memory optimization
       sysctl:
