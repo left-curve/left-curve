@@ -93,12 +93,19 @@ where
             nonce: Undefined::new(),
         }
     }
+}
 
+impl<S> SingleSigner<S, Defined<UserIndex>, Undefined<Nonce>>
+where
+    S: Secret,
+{
+    /// Create a new `SingleSigner` with the given secret key, using the first
+    /// user index and account associated with this key.
     pub async fn new_first_address_available<C>(
         client: &C,
         secret: S,
         cfg: Option<&AppConfig>,
-    ) -> anyhow::Result<SingleSigner<S, Defined<UserIndex>, Undefined<Nonce>>>
+    ) -> anyhow::Result<Self>
     where
         C: QueryClient,
         anyhow::Error: From<C::Error>,
@@ -128,7 +135,7 @@ where
             )
             .await?
             .first()
-            .ok_or_else(|| anyhow!("no user index found for key hash {}", key_hash))?
+            .ok_or_else(|| anyhow!("no user index found for key hash {key_hash}"))?
             .index;
 
         let address = *client
@@ -141,7 +148,7 @@ where
             )
             .await?
             .first_key_value()
-            .ok_or_else(|| anyhow!("no address found for user index {}", user_index))?
+            .ok_or_else(|| anyhow!("no address found for user index {user_index}"))?
             .0;
 
         Ok(SingleSigner {
