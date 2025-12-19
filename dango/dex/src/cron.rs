@@ -884,14 +884,12 @@ fn clear_orders_of_pair(
         if let (Some(bid), Some(ask), Some(mid)) = (best_bid_price, best_ask_price, mid_price) {
             let spread_absolute = ask - bid;
 
+            let mut spread_absolute_f64: f64 = spread_absolute.to_string().parse()?;
+
             // The spread absolute needs to be adjusted according to difference in the tokens's precision.
-            let spread_absolute_f64: f64 = Price::TEN
-                .checked_pow(
-                    (oracle_base_price.precision() - oracle_quote_price.precision()) as u32,
-                )?
-                .checked_mul(spread_absolute)?
-                .to_string()
-                .parse()?;
+            spread_absolute_f64 = spread_absolute_f64
+                * 10.0_f64
+                    .powi((oracle_base_price.precision() - oracle_quote_price.precision()) as i32);
 
             let spread_percentage_f64: f64 =
                 spread_absolute.checked_div(mid)?.to_string().parse()?;
