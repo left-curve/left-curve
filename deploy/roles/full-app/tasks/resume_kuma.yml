@@ -1,0 +1,18 @@
+- name: Pause Uptime Kuma monitor
+  no_log: true
+  command: >
+    python3 - <<'PY'
+    import os
+    from uptime_kuma_api import UptimeKumaApi
+
+    api = UptimeKumaApi(os.environ["KUMA_URL"])
+    api.login(os.environ["KUMA_USER"], os.environ["KUMA_PASS"])
+    api.resume_monitor(int(os.environ["KUMA_MONITOR_ID"]))
+    print("resumed")
+    PY
+  environment:
+    KUMA_URL: "{{ KUMA_URL }}"
+    KUMA_USER: "{{ KUMA_LOGIN }}"
+    KUMA_PASS: "{{ KUMA_PASSWORD }}"
+    KUMA_MONITOR_ID: "{{ item }}"
+  loop: "{{ kuma[dango_network] }}"
