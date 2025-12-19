@@ -10,7 +10,9 @@ pub const LABEL_TRADES_PER_BLOCK: &str = "dango.contract.dex.trades_per_block";
 
 pub const LABEL_VOLUME_PER_TRADE: &str = "dango.contract.dex.volume_per_trade";
 
-pub const LABEL_VOLUME_PER_BLOCK: &str = "dango.contract.dex.volume_per_block";
+pub const LABEL_VOLUME_AMOUNT_PER_BLOCK: &str = "dango.contract.dex.volume_amount_per_block";
+
+pub const LABEL_VOLUME_VALUE_PER_BLOCK: &str = "dango.contract.dex.volume_value_per_block";
 
 pub const LABEL_BEST_PRICE: &str = "dango.contract.dex.best_price";
 
@@ -56,7 +58,15 @@ pub fn init_metrics() {
 
         describe_histogram!(LABEL_VOLUME_PER_TRADE, "Volume per trade");
 
-        describe_histogram!(LABEL_VOLUME_PER_BLOCK, "Volume per block");
+        describe_histogram!(
+            LABEL_VOLUME_AMOUNT_PER_BLOCK,
+            "Volume per block in token amount"
+        );
+
+        describe_histogram!(
+            LABEL_VOLUME_VALUE_PER_BLOCK,
+            "Volume per block in token value"
+        );
 
         describe_gauge!(LABEL_BEST_PRICE, "Best price available in order book");
 
