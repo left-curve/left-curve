@@ -19,6 +19,10 @@ pub struct Config {
 
 pub fn load_config() -> anyhow::Result<Config> {
     let config_path = format!("{}/config.json", env!("CARGO_MANIFEST_DIR"));
+    load_config_from_path(&config_path)
+}
+
+pub fn load_config_from_path(config_path: &str) -> anyhow::Result<Config> {
     let config = std::fs::read_to_string(config_path)?;
     let config: Config = serde_json::from_str(&config)?;
 
@@ -45,13 +49,17 @@ pub struct EVMWarpRouteDeployment {
     pub symbol: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Deployments {
     pub evm: BTreeMap<String, EVMDeployment>,
 }
 
 pub fn load_deployments() -> anyhow::Result<Deployments> {
     let deployments_path = format!("{}/deployments.json", env!("CARGO_MANIFEST_DIR"));
+    load_deployments_from_path(&deployments_path)
+}
+
+pub fn load_deployments_from_path(deployments_path: &str) -> anyhow::Result<Deployments> {
     let deployments = std::fs::read_to_string(deployments_path)?;
     let deployments: Deployments = serde_json::from_str(&deployments)?;
 
@@ -60,8 +68,15 @@ pub fn load_deployments() -> anyhow::Result<Deployments> {
 
 pub fn save_deployments(deployments: &Deployments) -> anyhow::Result<()> {
     let deployments_path = format!("{}/deployments.json", env!("CARGO_MANIFEST_DIR"));
+    save_deployments_to_path(deployments, &deployments_path)
+}
+
+pub fn save_deployments_to_path(
+    deployments: &Deployments,
+    deployments_path: &str,
+) -> anyhow::Result<()> {
     let deployments_json = serde_json::to_string_pretty(deployments)?;
-    std::fs::write(deployments_path.clone(), deployments_json)?;
+    std::fs::write(deployments_path, deployments_json)?;
     println!("Saved deployments to {deployments_path}");
 
     Ok(())

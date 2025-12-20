@@ -1,7 +1,7 @@
 {
   "dango": {
-    "api_url": "https://api-pr-1414-ovh2.dango.zone/",
-    "chain_id": "pr-1414",
+    "api_url": "https://api-testnet.dango.zone/",
+    "chain_id": "dev-6",
     "isms": [
       [
         11155111,
@@ -11,7 +11,7 @@
             "469f0940684d147defc44f3647146cb90dd0bc8e",
             "d3c75dcf15056012a4d74c483a0c6ea11d8c2b83"
           ],
-          "threshold": 1
+          "threshold": 2
         }
       ]
     ]
@@ -40,19 +40,13 @@
       "warp_routes": [
         {
           "warp_route_type": "native",
-          "symbol": "sepoliaETH"
+          "symbol": "ETH"
         },
         {
           "warp_route_type": {
             "erc20_collateral": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238"
           },
-          "symbol": "sepoliaUSDC"
-        },
-        {
-          "warp_route_type": {
-            "erc20_collateral": "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"
-          },
-          "symbol": "sepoliaUNI"
+          "symbol": "USDC"
         }
       ]
     }

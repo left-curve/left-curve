@@ -1,13 +1,15 @@
 use {
     crate::config::dango::DangoConfig,
     dango_client::{Secp256k1, Secret, SingleSigner},
-    dango_types::auth::Nonce,
-    grug::{Addr, Defined, addr},
+    dango_types::{
+        account_factory::{self, UserIndexOrName},
+        auth::Nonce,
+        config::AppConfig,
+    },
+    grug::{Addr, Defined, QueryClientExt, addr},
     hex_literal::hex,
     indexer_client::HttpClient,
 };
-
-const DANGO_OWNER_ADDR: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9");
 
 // Demo purpose only. Do not use for production!
 const DANGO_OWNER_PRIVATE_KEY: [u8; 32] =
@@ -24,8 +26,22 @@ pub async fn setup_dango(
 ) -> anyhow::Result<(HttpClient, SingleSigner<Secp256k1, Defined<Nonce>>)> {
     let dango_client = HttpClient::new(&config.api_url)?;
 
+    let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
+
+    // Query account factory for accounts by user
+    let accounts = dango_client
+        .query_wasm_smart(
+            app_cfg.addresses.account_factory,
+            account_factory::QueryAccountsByUserRequest {
+                user: UserIndexOrName::Index(0),
+            },
+            None,
+        )
+        .await?;
+    let dango_owner_addr = accounts.keys().next().unwrap();
+
     let dango_owner = SingleSigner::new(
-        DANGO_OWNER_ADDR,
+        dango_owner_addr.clone(),
         Secp256k1::from_bytes(DANGO_OWNER_PRIVATE_KEY)?,
     )
     .with_query_user_index(&dango_client)

@@ -5,6 +5,7 @@ use {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct EVMConfig {
+    pub chain_id: u32,
     pub infura_rpc_url: String,
     pub hyperlane_deployments: HyperlaneDeployments,
     pub hyperlane_domain: u32,

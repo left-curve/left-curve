@@ -1,0 +1,27 @@
+{
+  "evm": {
+    "11155111": {
+      "proxy_admin_address": "0xbba17d0a750d826a23cce09b0f8ceb92ca5c3e41",
+      "warp_routes": [
+        [
+          "native",
+          {
+            "address": "0x1ec94d820f2f3f6c13f60e0953030cfce59ba8f9",
+            "proxy_address": "0xa3e811b88c27003187fb11de7c7819950399e5a6",
+            "symbol": "ETH"
+          }
+        ],
+        [
+          {
+            "erc20_collateral": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238"
+          },
+          {
+            "address": "0x297f9eaa5b1bde3266da3c4186f41d4d69282412",
+            "proxy_address": "0x221967f16fc6a30dfc40bebc52a9f7a0fc84e285",
+            "symbol": "USDC"
+          }
+        ]
+      ]
+    }
+  }
+}
