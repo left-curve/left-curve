@@ -29,7 +29,7 @@ export { createGrugClient } from "@left-curve/sdk";
 /*                                   Chains                                   */
 /* -------------------------------------------------------------------------- */
 
-export { local, devnet, testnet } from "@left-curve/sdk/chains";
+export { local, devnet, testnet, mainnet } from "@left-curve/sdk/chains";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Signers                                  */

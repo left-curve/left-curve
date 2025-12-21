@@ -36,7 +36,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     { name: "Arbitrum Network", id: "42161", time: "5-30 mins" },
     /*       { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
           { name: "Solana Network", id: "solana", time: "2-10 mins" }, */
-    ...(["Devnet", "Dango"].includes(dangoChain.name)
+    ...(["Devnet", "Testnet"].includes(dangoChain.name)
       ? [{ name: "Sepolia Network", id: "11155111", time: "5-30 mins" }]
       : []),
   ]);
