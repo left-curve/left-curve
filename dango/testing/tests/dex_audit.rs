@@ -8,6 +8,7 @@ use {
         BridgeOp, Preset, TestOption, setup_test_naive, setup_test_naive_with_custom_genesis,
     },
     dango_types::{
+        config::AppConfig,
         constants::{
             btc, dango, eth,
             mock::{ONE, ONE_TENTH},
@@ -23,9 +24,9 @@ use {
         oracle::{self, PriceSource},
     },
     grug::{
-        BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, NonZero, Number, NumberConst,
-        QuerierExt, ResultExt, StdError, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
-        btree_map, btree_set, coins,
+        BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, MultiplyRatio, NonZero,
+        Number, NumberConst, QuerierExt, ResultExt, StdError, Timestamp, Udec128, Udec128_6,
+        Uint128, UniqueVec, btree_map, btree_set, coins,
     },
     grug_types::Addressable,
     hyperlane_types::constants::ethereum,
@@ -872,6 +873,202 @@ fn issue_233_minimum_order_size_cannot_be_circumvented_for_ask_orders() {
             coins! { dango::DENOM.clone() => 1 },
         )
         .should_fail();
+}
+
+/// Issue 268: Taker fees can be bypassed via asymmetric liquidity provision
+/// to a pool.
+///
+/// During asymmetric liquidity provision, a swap fee is charged based on a
+/// virtual swap. However, prior to the fix, only the LP/swap fee was charged,
+/// not the taker fee. This allowed someone to bypass the taker fee by providing
+/// asymmetric liquidity and then burning the LP tokens.
+#[test]
+fn issue_268_asymmetric_liquidity_provision_charges_taker_fee() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Query the app config (need taxman address and taker fee rate)
+    let app_cfg: AppConfig = suite.query_app_config().unwrap();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                eth::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::new(100),
+                    precision: 6,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                }
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Set swap fee rate to zero
+    let lp_denom = Denom::from_str("dex/pool/eth/usdc").unwrap();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params: PairParams {
+                    lp_denom: lp_denom.clone(),
+                    pool_type: PassiveLiquidity::Geometric(Geometric {
+                        limit: 1,
+                        spacing: Udec128::new_bps(1),
+                        ratio: Bounded::new_unchecked(Udec128::ONE),
+                    }),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: Bounded::new_unchecked(
+                        Udec128::from_str("0.000000000000000001").unwrap(),
+                    ),
+                    min_order_size_base: Uint128::ZERO,
+                    min_order_size_quote: Uint128::ZERO,
+                },
+            }])),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Provide initial symmetric liquidity to establish the pool
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                eth::DENOM.clone() => 10_000_000,
+                usdc::DENOM.clone() => 100_000_000,
+            },
+        )
+        .should_succeed();
+
+    // Get the pair's swap fee rate
+    let pair_info = suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .unwrap();
+
+    // Record initial balances
+    let initial_usdc_balance = suite
+        .query_balance(&accounts.user1.address(), usdc::DENOM.clone())
+        .unwrap();
+
+    // Now user1 provides asymmetric liquidity: only USDC, no ETH
+    // This should trigger the asymmetric deposit logic which does a virtual swap
+    let asymmetric_deposit_usdc = 1_000_000_000u128; // 1000 USDC
+
+    // Query how much LP tokens the user would get (simulate asymmetric provision)
+    let lp_tokens_received = suite
+        .query_wasm_smart(contracts.dex, dex::QuerySimulateProvideLiquidityRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            deposit: CoinPair::new_unchecked(
+                Coin {
+                    denom: eth::DENOM.clone(),
+                    amount: Uint128::ZERO,
+                },
+                Coin {
+                    denom: usdc::DENOM.clone(),
+                    amount: Uint128::new(asymmetric_deposit_usdc),
+                },
+            ),
+        })
+        .unwrap();
+
+    // Provide the asymmetric liquidity (only USDC)
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                usdc::DENOM.clone() => asymmetric_deposit_usdc,
+            },
+        )
+        .should_succeed();
+
+    // Now user1 withdraws the liquidity
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::WithdrawLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                pair_info.lp_denom.clone() => lp_tokens_received.amount,
+            },
+        )
+        .should_succeed();
+
+    // After the round-trip (deposit USDC asymmetrically, then withdraw symmetrically),
+    // the user should have lost some USDC due to fees
+    let final_usdc_balance = suite
+        .query_balance(&accounts.user1.address(), usdc::DENOM.clone())
+        .unwrap();
+
+    // Query lp denom balance
+    let taxman_collected_fee = suite
+        .query_balance(&app_cfg.addresses.taxman, lp_denom.clone())
+        .unwrap();
+
+    // Simulate withdraw liquidity
+    let simulated_withdraw_liquidity = suite
+        .query_wasm_smart(contracts.dex, dex::QuerySimulateWithdrawLiquidityRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            lp_burn_amount: taxman_collected_fee,
+        })
+        .unwrap();
+
+    // Calculate value of collected assets in USD according to the oracle price
+    // specified above
+    let collected_usdc = simulated_withdraw_liquidity
+        .amount_of(&usdc::DENOM.clone())
+        .unwrap();
+    let collected_eth = simulated_withdraw_liquidity
+        .amount_of(&eth::DENOM.clone())
+        .unwrap();
+    let collected_value_in_usd = collected_usdc
+        .checked_multiply_ratio(Uint128::ONE, 10u128.pow(6).into())
+        .unwrap()
+        .checked_add(
+            collected_eth
+                .checked_multiply_ratio(Uint128::new(100), 10u128.pow(6).into())
+                .unwrap(),
+        )
+        .unwrap();
+
+    // Calculate how much USDC the user lost
+    let usdc_loss = initial_usdc_balance
+        .checked_sub(final_usdc_balance)
+        .unwrap()
+        .checked_multiply_ratio(Uint128::ONE, 10u128.pow(6).into())
+        .unwrap();
+
+    // Since the swap fee rate is Udec128::MIN bsically only protocol fee is charged. Thus the entire loss of the user
+    // should equal the collected protocol fee, because the swap fee will rout to zero.
+    assert_eq!(usdc_loss, collected_value_in_usd);
 }
 
 #[test]
