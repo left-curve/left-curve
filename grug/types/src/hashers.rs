@@ -20,7 +20,7 @@ pub trait HashExt {
         self.sha2_256()
     }
 
-    /// Produce a has of the data using the RIPEMD-160 algorithm.
+    /// Produce a hash of the data using the RIPEMD-160 algorithm.
     fn ripemd160(&self) -> Hash160;
 
     /// Produce a has of the data using the SHA2-256 algorithm.
