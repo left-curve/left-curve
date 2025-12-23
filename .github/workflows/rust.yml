@@ -1233,6 +1233,27 @@ jobs:
             docker compose ps
             exit 1
           }
+
+          # Capture the actual ports assigned to the services
+          DANGO_PORT=$(\
+            docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml \
+              port dango 8080 | awk -F: '{print $NF}' \
+          )
+          FAUCET_PORT=$(\
+            docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml \
+              port faucet 8082 | awk -F: '{print $NF}' \
+          )
+
+          echo "Dango is running on port $DANGO_PORT"
+          echo "Faucet is running on port $FAUCET_PORT"
+
+          # Restart the frontend container so it picks up the correct backend URLs
+          export INDEXER_URL="http://localhost:$DANGO_PORT"
+          export UP_URL="http://localhost:$DANGO_PORT/up"
+          export FAUCET_URL="http://localhost:$FAUCET_PORT/mint"
+
+          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml up -d --no-deps frontend
+
           docker compose ps
 
       - name: Verify frontend and backend connection
