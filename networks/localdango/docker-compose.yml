@@ -148,15 +148,6 @@ services:
       minter_address: ${DEX_BOT_MINTER_ADDRESS}
       minter_username: ${DEX_BOT_MINTER_USERNAME}
       minter_private_key: ${DEX_BOT_MINTER_PRIVATE_KEY}
-      app_settings__sleep__min: 1s
-      app_settings__sleep__max: 2s
-      app_settings__size_percent__min: 0.0005
-      app_settings__size_percent__max: 0.003
-      app_settings__price_percent__min: 0.05
-      app_settings__price_percent__max: 0.2
-      app_settings__order_number__min: 1
-      app_settings__order_number__max: 5
-      app_settings__order_type: market
     command: sh -c "dex liquidity mint --url $$http_url $$mint_amount $$address --address $$minter_address --username $$minter_username --private-key $$minter_private_key; dex liquidity provide --url $$http_url $$mint_amount --address $$minter_address --username $$minter_username --private-key $$minter_private_key"
     restart: "no"
 

@@ -2,7 +2,7 @@
 github_sha: "{{ lookup('pipe','git rev-parse HEAD') }}"
 dango_image_tag: "{{ github_sha }}"
 frontend_image_tag: "{{ github_sha }}"
-dex_bot_tag: "latest"
+dex_bot_tag: "aa34525c367a95b43a8a0975282f9f0869edd479"
 cometbft_node_key: ""
 cometbft_validator_address: ""
 cometbft_validator_public_key: ""
