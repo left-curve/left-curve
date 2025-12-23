@@ -1,10 +1,12 @@
-- name: Restart services
+- name: Stop services
   hosts: full-app
   remote_user: "{{ deploy_user }}"
   gather_facts: yes
   vars_files:
     - roles/full-app/vars/main.yml
   tasks:
+    - import_tasks: roles/full-app/tasks/pause_kuma.yml
+
     - debug:
         msg: "{{ dango_network }}"
       when: not (deployment_name is defined)

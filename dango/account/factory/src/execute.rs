@@ -208,7 +208,11 @@ fn onboard_new_user(
     Ok((
         Message::instantiate(
             code_hash,
-            &account::InstantiateMsg {},
+            &account::InstantiateMsg {
+                // A new user's first account is inactive by default.
+                // An initial deposit is required to activate it.
+                activate: false,
+            },
             salt,
             Some(format!(
                 "dango/account/{}/{}",
@@ -282,7 +286,12 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     Ok(Response::new()
         .add_message(Message::instantiate(
             code_hash,
-            &account::InstantiateMsg {},
+            &account::InstantiateMsg {
+                // While a new user's first account is inactive by default and
+                // requires an initial deposit to activate, all subsequent accounts
+                // that the user creates are activated upon instantiation.
+                activate: true,
+            },
             salt,
             Some(format!("dango/account/{}/{}", account.params.ty(), index)),
             Some(ctx.contract),

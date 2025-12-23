@@ -21,12 +21,12 @@
 
     - name: Check if deployment already exists
       stat:
-        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+        path: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}/.env"
       register: env_file_exists
 
     - name: Read .env values
       shell: |
-        grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE|DELETE_S3_BACKUP_AT_MERGE|S3_BUCKET|DELETE_POSTGRES_DATABASE_AT_MERGE|DELETE_CLICKHOUSE_DATABASE_AT_MERGE)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+        grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE|DELETE_S3_BACKUP_AT_MERGE|S3_BUCKET|DELETE_POSTGRES_DATABASE_AT_MERGE|DELETE_CLICKHOUSE_DATABASE_AT_MERGE)=' {{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}/.env | \
         awk -F= '{print tolower($1) "=" $2}'
       register: existing_env_variables
       when: env_file_exists.stat.exists
@@ -62,7 +62,7 @@
 
     - name: Check if deployment directory exists
       stat:
-        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+        path: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}"
       register: deployment_dir
 
     - name: Delete CNAME records
@@ -81,16 +81,17 @@
         - name: Stop and remove stack
           community.docker.docker_compose_v2:
             project_name: "{{ deployment_name }}"
-            project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+            project_src: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}"
             state: absent
             remove_orphans: yes
             remove_volumes: yes
           ignore_errors: true
 
         - name: Remove deployment directory
-          file:
-            path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
-            state: absent
+          command: /usr/bin/sudo /usr/local/sbin/dango-cleanup-deployment "{{ deployment_name }}"
+          register: cleanup_deploy_dir
+          changed_when: cleanup_deploy_dir.stdout == "deleted"
+          failed_when: cleanup_deploy_dir.rc != 0
 
         - name: Prune unused Docker resources
           community.docker.docker_prune:
@@ -106,7 +107,7 @@
         path: "{{ deploy_lock_file }}"
         state: absent
       vars:
-        deploy_lock_file: "{{ ansible_env.HOME }}/deployments/.{{ deployment_name }}.deploy.lock"
+        deploy_lock_file: "{{ ansible_facts['env']['HOME'] }}/deployments/.{{ deployment_name }}.deploy.lock"
       ignore_errors: true
 
     - name: Delete Postgres Dango production database
