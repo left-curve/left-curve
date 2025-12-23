@@ -1117,7 +1117,7 @@ jobs:
       packages: read
       deployments: write
       contents: read
-    needs: [security-artifacts, set-image-tags]
+    needs: [security-artifacts, set-image-tags, localdango]
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -1186,6 +1186,17 @@ jobs:
         if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.16.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
       - uses: docker/setup-buildx-action@v3
         if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
       - uses: docker/login-action@v3
@@ -1222,6 +1233,38 @@ jobs:
             docker compose ps
             exit 1
           }
+
+          # Capture the actual ports assigned to the services
+          DANGO_PORT=$(\
+            docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml \
+              port dango 8080 | awk -F: '{print $NF}' \
+          )
+          FAUCET_PORT=$(\
+            docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml \
+              port faucet 8082 | awk -F: '{print $NF}' \
+          )
+
+          echo "Dango is running on port $DANGO_PORT"
+          echo "Faucet is running on port $FAUCET_PORT"
+
+          # Restart the frontend container so it picks up the correct backend URLs
+          export INDEXER_URL="http://localhost:$DANGO_PORT"
+          export UP_URL="http://localhost:$DANGO_PORT/up"
+          export FAUCET_URL="http://localhost:$FAUCET_PORT/mint"
+
+          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml up -d --no-deps frontend
+
+          docker compose ps
+
+      - name: Verify frontend and backend connection
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTEND_URL: "http://localhost:5081"
+        run: |
+          pnpm i --frozen-lockfile
+          pnpm exec playwright install --only-shell chromium
+          pnpm test:e2e
+
       - name: Cleanup
         if: always()
         run: |

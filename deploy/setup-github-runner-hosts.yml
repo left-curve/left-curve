@@ -6,7 +6,25 @@
   tasks:
     - name: Install required packages
       apt:
-        name: [curl, tar, pipx, python3, python3-pip, python3-clickhouse-driver]
+        name:
+          [
+            curl,
+            tar,
+            pipx,
+            python3,
+            python3-pip,
+            python3-clickhouse-driver,
+            libatk1.0-0,
+            libatk-bridge2.0-0,
+            libatspi2.0-0,
+            libxcomposite1,
+            libxdamage1,
+            libxfixes3,
+            libxrandr2,
+            libgbm1,
+            libxkbcommon0,
+            libasound2,
+          ]
         update_cache: yes
 
     - name: Ensure '{{ runner_user }}' owns its home directory
