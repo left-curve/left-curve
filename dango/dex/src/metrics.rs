@@ -2,6 +2,10 @@ pub const LABEL_TRADES: &str = "dango.contract.dex.trades_count";
 
 pub const LABEL_ORDERS_FILLED: &str = "dango.contract.dex.orders_filled_count";
 
+pub const LABEL_CONTRACT_AMOUNT: &str = "dango.contract.dex.contract_amount";
+
+pub const LABEL_CONTRACT_VALUE: &str = "dango.contract.dex.contract_value";
+
 pub const LABEL_RESERVE_AMOUNT: &str = "dango.contract.dex.reserve_amount";
 
 pub const LABEL_RESERVE_VALUE: &str = "dango.contract.dex.reserve_value";
@@ -50,7 +54,11 @@ pub fn init_metrics() {
 
         describe_counter!(LABEL_ORDERS_FILLED, "Number of unique orders filled");
 
-        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of reserve");
+        describe_gauge!(LABEL_CONTRACT_AMOUNT, "Amount of coin in the dex contract");
+
+        describe_gauge!(LABEL_CONTRACT_VALUE, "Value of dex contract");
+
+        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of coin in the reserve");
 
         describe_gauge!(LABEL_RESERVE_VALUE, "Value of reserve");
 

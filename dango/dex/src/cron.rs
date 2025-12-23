@@ -29,6 +29,9 @@ use {
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
+#[cfg(feature = "metrics")]
+use grug::QuerierExt;
+
 /// Match and fill orders using the uniform price auction strategy.
 ///
 /// Implemented according to:
@@ -183,6 +186,32 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     {
         metrics::histogram!(crate::metrics::LABEL_DURATION_AUCTION)
             .record(now.elapsed().as_secs_f64());
+
+        // Record the dex balance.
+        let dex_balance = ctx.querier.query_balances(ctx.contract, None, None)?;
+        for coin in dex_balance {
+            if let Ok(price) = oracle_querier.query_price_ignore_staleness(&coin.denom, None) {
+                let amount_f64: f64 = Udec128_6::checked_from_ratio(
+                    coin.amount,
+                    10u128.pow(price.precision() as u32),
+                )?
+                .to_string()
+                .parse()?;
+
+                metrics::gauge!(crate::metrics::LABEL_CONTRACT_AMOUNT,
+                    "token" => coin.denom.to_string()
+                )
+                .set(amount_f64);
+
+                let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
+                let value_f64: f64 = value.to_string().parse()?;
+
+                metrics::gauge!(crate::metrics::LABEL_CONTRACT_VALUE,
+                    "token" => coin.denom.to_string()
+                )
+                .set(value_f64);
+            }
+        }
     }
 
     Ok(Response::new()
