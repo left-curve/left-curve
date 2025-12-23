@@ -26,7 +26,7 @@ pub trait HashExt {
     /// Produce a hash of the data using the SHA2-256 algorithm.
     fn sha2_256(&self) -> Hash256;
 
-    /// Produce a has of the data using the Keccak256 algorithm.
+    /// Produce a hash of the data using the Keccak256 algorithm.
     fn keccak256(&self) -> Hash256;
 }
 
