@@ -43,10 +43,10 @@ services:
     ports:
       - "127.0.0.1:${DANGO_FRONTEND_PORT:-5081}:80"
     environment:
-      - INDEXER_URL=http://localhost:8080
-      - FAUCET_URL=http://localhost:8082/mint
-      - QUEST_URL=http://localhost:8081/check_username
-      - UP_URL=http://localhost:8080/up
+      - INDEXER_URL=${INDEXER_URL:-http://localhost:8080}
+      - FAUCET_URL=${FAUCET_URL:-http://localhost:8082/mint}
+      - QUEST_URL=${QUEST_URL:-http://localhost:8081/check_username}
+      - UP_URL=${UP_URL:-http://localhost:8080/up}
       # Set to "true" to enable JSON access logs
       - NGINX_JSON_LOGS=${NGINX_JSON_LOGS:-}
     healthcheck:
@@ -246,7 +246,6 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
-
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
