@@ -148,7 +148,7 @@ services:
       minter_address: ${DEX_BOT_MINTER_ADDRESS}
       minter_username: ${DEX_BOT_MINTER_USERNAME}
       minter_private_key: ${DEX_BOT_MINTER_PRIVATE_KEY}
-    command: sh -c "dex liquidity mint --url $$http_url $$mint_amount $$address --address $$minter_address --username $$minter_username --private-key $$minter_private_key; dex liquidity provide --url $$http_url $$mint_amount --address $$minter_address --username $$minter_username --private-key $$minter_private_key"
+    command: sh -c "dex liquidity mint $$http_url $$mint_amount $$address --address $$minter_address --username $$minter_username --private-key $$minter_private_key; dex liquidity provide $$http_url $$mint_amount --address $$minter_address --username $$minter_username --private-key $$minter_private_key"
     restart: "no"
 
   prometheus:
