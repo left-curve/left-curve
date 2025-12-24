@@ -2,13 +2,27 @@ pub const LABEL_TRADES: &str = "dango.contract.dex.trades_count";
 
 pub const LABEL_ORDERS_FILLED: &str = "dango.contract.dex.orders_filled_count";
 
+pub const LABEL_CONTRACT_AMOUNT: &str = "dango.contract.dex.contract_amount";
+
+pub const LABEL_CONTRACT_VALUE: &str = "dango.contract.dex.contract_value";
+
 pub const LABEL_RESERVE_AMOUNT: &str = "dango.contract.dex.reserve_amount";
+
+pub const LABEL_RESERVE_VALUE: &str = "dango.contract.dex.reserve_value";
 
 pub const LABEL_TRADES_PER_BLOCK: &str = "dango.contract.dex.trades_per_block";
 
 pub const LABEL_VOLUME_PER_TRADE: &str = "dango.contract.dex.volume_per_trade";
 
-pub const LABEL_VOLUME_PER_BLOCK: &str = "dango.contract.dex.volume_per_block";
+pub const LABEL_VOLUME_AMOUNT_PER_BLOCK: &str = "dango.contract.dex.volume_amount_per_block";
+
+pub const LABEL_VOLUME_VALUE_PER_BLOCK: &str = "dango.contract.dex.volume_value_per_block";
+
+pub const LABEL_BEST_PRICE: &str = "dango.contract.dex.best_price";
+
+pub const LABEL_SPREAD_ABSOLUTE: &str = "dango.contract.dex.spread_absolute";
+
+pub const LABEL_SPREAD_PERCENTAGE: &str = "dango.contract.dex.spread_percentage";
 
 pub const LABEL_DURATION_AUCTION: &str = "dango.contract.dex.auction.duration";
 
@@ -40,13 +54,36 @@ pub fn init_metrics() {
 
         describe_counter!(LABEL_ORDERS_FILLED, "Number of unique orders filled");
 
-        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of reserve");
+        describe_gauge!(LABEL_CONTRACT_AMOUNT, "Amount of coin in the dex contract");
+
+        describe_gauge!(LABEL_CONTRACT_VALUE, "Value of dex contract");
+
+        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of coin in the reserve");
+
+        describe_gauge!(LABEL_RESERVE_VALUE, "Value of reserve");
 
         describe_histogram!(LABEL_TRADES_PER_BLOCK, "Number of trades in a block");
 
         describe_histogram!(LABEL_VOLUME_PER_TRADE, "Volume per trade");
 
-        describe_histogram!(LABEL_VOLUME_PER_BLOCK, "Volume per block");
+        describe_histogram!(
+            LABEL_VOLUME_AMOUNT_PER_BLOCK,
+            "Volume per block in token amount"
+        );
+
+        describe_histogram!(
+            LABEL_VOLUME_VALUE_PER_BLOCK,
+            "Volume per block in token value"
+        );
+
+        describe_gauge!(LABEL_BEST_PRICE, "Best price available in order book");
+
+        describe_gauge!(LABEL_SPREAD_ABSOLUTE, "Absolute spread between bid and ask");
+
+        describe_gauge!(
+            LABEL_SPREAD_PERCENTAGE,
+            "Percentage spread between bid and ask"
+        );
 
         describe_histogram!(
             LABEL_DURATION_AUCTION,

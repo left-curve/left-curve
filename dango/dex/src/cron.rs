@@ -29,6 +29,9 @@ use {
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
+#[cfg(feature = "metrics")]
+use grug::QuerierExt;
+
 /// Match and fill orders using the uniform price auction strategy.
 ///
 /// Implemented according to:
@@ -183,6 +186,32 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     {
         metrics::histogram!(crate::metrics::LABEL_DURATION_AUCTION)
             .record(now.elapsed().as_secs_f64());
+
+        // Record the dex balance.
+        let dex_balance = ctx.querier.query_balances(ctx.contract, None, None)?;
+        for coin in dex_balance {
+            if let Ok(price) = oracle_querier.query_price_ignore_staleness(&coin.denom, None) {
+                let amount_f64: f64 = Udec128_6::checked_from_ratio(
+                    coin.amount,
+                    10u128.pow(price.precision() as u32),
+                )?
+                .to_string()
+                .parse()?;
+
+                metrics::gauge!(crate::metrics::LABEL_CONTRACT_AMOUNT,
+                    "token" => coin.denom.to_string()
+                )
+                .set(amount_f64);
+
+                let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
+                let value_f64: f64 = value.to_string().parse()?;
+
+                metrics::gauge!(crate::metrics::LABEL_CONTRACT_VALUE,
+                    "token" => coin.denom.to_string()
+                )
+                .set(value_f64);
+            }
+        }
     }
 
     Ok(Response::new()
@@ -226,6 +255,10 @@ fn clear_orders_of_pair(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "metrics")]
     let mut now = std::time::Instant::now();
+    #[cfg(feature = "metrics")]
+    let maybe_base_price = oracle_querier.query_price_ignore_staleness(&base_denom, None);
+    #[cfg(feature = "metrics")]
+    let maybe_quote_price = oracle_querier.query_price_ignore_staleness(&quote_denom, None);
 
     // --------------------- 1. Update passive pool orders ---------------------
 
@@ -665,7 +698,8 @@ fn clear_orders_of_pair(
 
     // Update the pool reserve.
     if inflows.is_non_empty() || outflows.is_non_empty() {
-        RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
+        #[allow(unused_variables)]
+        let reserve = RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
             for inflow in inflows.into_coins_floor() {
                 reserve.checked_add(&inflow)?;
             }
@@ -674,20 +708,48 @@ fn clear_orders_of_pair(
                 reserve.checked_sub(&outflow)?;
             }
 
-            #[cfg(feature = "metrics")]
-            {
-                for coin in [reserve.first(), reserve.second()] {
+            Ok::<_, StdError>(reserve)
+        })?;
+
+        #[cfg(feature = "metrics")]
+        {
+            if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price) {
+                for coin in reserve.into_iter() {
+                    let price = if coin.denom == base_denom {
+                        &base_price
+                    } else {
+                        &quote_price
+                    };
+
+                    // Divide the amount by 10^precision to get the human-readable amount.
+                    let amount_f64: f64 = Udec128_6::checked_from_ratio(
+                        coin.amount,
+                        10u128.pow(price.precision() as u32),
+                    )?
+                    .to_string()
+                    .parse()?;
+
+                    // Amount of tokens in reserve.
                     metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
                         "base_denom" => base_denom.to_string(),
                         "quote_denom" => quote_denom.to_string(),
                         "token" => coin.denom.to_string()
                     )
-                    .set(coin.amount.into_inner() as f64);
+                    .set(amount_f64);
+
+                    // Value of tokens in reserve (USD).
+                    let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
+                    let value_f64: f64 = value.to_string().parse()?;
+
+                    metrics::gauge!(crate::metrics::LABEL_RESERVE_VALUE,
+                        "base_denom" => base_denom.to_string(),
+                        "quote_denom" => quote_denom.to_string(),
+                        "token" => coin.denom.to_string()
+                    )
+                    .set(value_f64);
                 }
             }
-
-            Ok::<_, StdError>(reserve)
-        })?;
+        }
     }
 
     #[cfg(feature = "tracing")]
@@ -701,14 +763,38 @@ fn clear_orders_of_pair(
 
     #[cfg(feature = "metrics")]
     {
-        for ((bd, qd, token), amount) in metric_volume {
-            metrics::histogram!(
-                crate::metrics::LABEL_VOLUME_PER_BLOCK,
-                "base_denom" => bd.to_string(),
-                "quote_denom" => qd.to_string(),
-                "token" => token.to_string(),
-            )
-            .record(amount.into_inner() as f64);
+        if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price) {
+            for ((bd, qd, token), amount) in metric_volume {
+                let price = if token == &base_denom {
+                    &base_price
+                } else {
+                    &quote_price
+                };
+
+                let amount_f64: f64 =
+                    Udec128_6::checked_from_ratio(amount, 10u128.pow(price.precision() as u32))?
+                        .to_string()
+                        .parse()?;
+
+                let value: Udec128_6 = price.value_of_unit_amount(amount)?;
+                let value_f64: f64 = value.to_string().parse()?;
+
+                metrics::histogram!(
+                    crate::metrics::LABEL_VOLUME_AMOUNT_PER_BLOCK,
+                    "base_denom" => bd.to_string(),
+                    "quote_denom" => qd.to_string(),
+                    "token" => token.to_string(),
+                )
+                .record(amount_f64);
+
+                metrics::histogram!(
+                    crate::metrics::LABEL_VOLUME_VALUE_PER_BLOCK,
+                    "base_denom" => bd.to_string(),
+                    "quote_denom" => qd.to_string(),
+                    "token" => token.to_string(),
+                )
+                .record(value_f64);
+            }
         }
 
         metrics::histogram!(
@@ -811,6 +897,73 @@ fn clear_orders_of_pair(
         (None, Some(ask)) => Some(ask),
         (None, None) => None,
     };
+
+    #[cfg(feature = "metrics")]
+    {
+        if let Some(bid) = best_bid_price {
+            let bid_price_f64: f64 = bid.to_string().parse()?;
+
+            metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "type" => "bid",
+            )
+            .set(bid_price_f64);
+        }
+
+        if let Some(ask) = best_ask_price {
+            let ask_price_f64: f64 = ask.to_string().parse()?;
+
+            metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "type" => "ask",
+            )
+            .set(ask_price_f64);
+        }
+
+        if let Some(mid) = mid_price {
+            let mid_price_f64: f64 = mid.to_string().parse()?;
+
+            metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "type" => "mid",
+            )
+            .set(mid_price_f64);
+        }
+
+        if let (Some(bid), Some(ask), Some(mid), Ok(base_price), Ok(quote_price)) = (
+            best_bid_price,
+            best_ask_price,
+            mid_price,
+            maybe_base_price,
+            maybe_quote_price,
+        ) {
+            let spread_absolute = ask - bid;
+
+            let mut spread_absolute_f64: f64 = spread_absolute.to_string().parse()?;
+
+            // The spread absolute needs to be adjusted according to difference in the tokens's precision.
+            spread_absolute_f64 *=
+                10.0_f64.powi(base_price.precision() as i32 - quote_price.precision() as i32);
+
+            let spread_percentage_f64: f64 =
+                spread_absolute.checked_div(mid)?.to_string().parse()?;
+
+            metrics::gauge!(crate::metrics::LABEL_SPREAD_ABSOLUTE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+            )
+            .set(spread_absolute_f64);
+
+            metrics::gauge!(crate::metrics::LABEL_SPREAD_PERCENTAGE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+            )
+            .set(spread_percentage_f64);
+        }
+    }
 
     RESTING_ORDER_BOOK.save(
         storage,
