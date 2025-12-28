@@ -225,7 +225,7 @@ services:
       - "127.0.0.1:9100:9100"
 
   db:
-    image: postgres:17
+    image: docker.io/library/postgres:17
     shm_size: 1gb
     labels:
       <<: *common-labels
@@ -248,7 +248,7 @@ services:
       retries: 10
 
   clickhouse:
-    image: clickhouse/clickhouse-server:latest
+    image: docker.io/clickhouse/clickhouse-server:latest
     restart: unless-stopped
     ports:
       - "127.0.0.1:${CLICKHOUSE_PORT:-8123}:8123" # HTTP interface
