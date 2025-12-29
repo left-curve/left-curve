@@ -16,23 +16,28 @@ export type UserIndexOrName = { index: number } | { name: string };
 export type AccountTypes = (typeof AccountType)[keyof typeof AccountType];
 
 export const AccountType = {
-  Spot: "spot",
-  Margin: "margin",
+  Single: "single",
   Multi: "multi",
+} as const;
+
+export type UserStatus = (typeof UserState)[keyof typeof UserState];
+
+export const UserState = {
+  Active: "active",
+  Inactive: "inactive",
+  Frozen: "frozen",
 } as const;
 
 export type AccountSingleConfig = { owner: Username };
 export type AccountMultiConfig = Safe;
 
 export type AccountConfigs = {
-  [AccountType.Spot]: AccountSingleConfig;
-  [AccountType.Margin]: AccountSingleConfig;
+  [AccountType.Single]: AccountSingleConfig;
   [AccountType.Multi]: AccountMultiConfig;
 };
 
 export type AccountConfig =
-  | { readonly [AccountType.Spot]: AccountSingleConfig }
-  | { readonly [AccountType.Margin]: AccountSingleConfig }
+  | { readonly [AccountType.Single]: AccountSingleConfig }
   | { readonly [AccountType.Multi]: AccountMultiConfig };
 
 export type AccountIndex = number;

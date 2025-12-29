@@ -1,0 +1,7 @@
+---
+tailscale_ip: "100.109.200.70"
+hostname: "hetzner4"
+wireguard_ip: "10.99.0.11"
+dango_networks:
+  - testnet
+cloudflare_lb_enabled: true

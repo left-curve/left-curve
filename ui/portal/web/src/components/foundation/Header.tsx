@@ -1,8 +1,8 @@
 import { useAccount } from "@left-curve/store";
 import { useRouterState } from "@tanstack/react-router";
-import { Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import { IconWalletWithCross, Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
 
-import { Button, IconButton, IconWallet, twMerge } from "@left-curve/applets-kit";
+import { Button, IconButton, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
 import { AccountMenu } from "./AccountMenu";
 import { SearchMenu } from "./SearchMenu";
@@ -16,7 +16,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
-  const { account, isConnected } = useAccount();
+  const { account, isConnected, userStatus } = useAccount();
 
   const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
@@ -72,7 +72,9 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               type="button"
               className="shadow-account-card lg:hidden"
             >
-              <TxIndicator icon={<IconWallet className="w-6 h-6" />} />
+              <TxIndicator
+                icon={<IconWalletWithCross isCrossVisible={isConnected && !userStatus} />}
+              />
             </IconButton>
           ) : null}
         </div>
@@ -87,9 +89,11 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           >
             {isConnected ? (
               <div className="flex items-center justify-center gap-2">
-                <TxIndicator icon={<IconWallet className="w-6 h-6" />} />
+                <TxIndicator
+                  icon={<IconWalletWithCross isCrossVisible={isConnected && !userStatus} />}
+                />
                 <span className="italic font-exposure font-bold capitalize">
-                  {account?.type} # {account?.index}
+                  {m["common.account"]()} #{account?.index}
                 </span>
               </div>
             ) : (

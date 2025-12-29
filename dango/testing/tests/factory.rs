@@ -5,7 +5,7 @@ use {
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
-        account::{single, spot},
+        account::single,
         account_factory::{self, Account, AccountParams, RegisterUserData, UserIndexOrName},
         auth::AccountStatus,
         bank,
@@ -13,7 +13,7 @@ use {
     },
     grug::{
         Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
-        Signer, Uint128, btree_map, coins,
+        Signer, StorageQuerier, Uint128, btree_map, coins,
     },
     hyperlane_types::constants::solana,
 };
@@ -39,9 +39,9 @@ fn onboarding_without_deposit() {
     //
     // The reason of this is when the chain does `CheckTx`, it does it under the
     // state of the _last finalized block_. Without advancing the block here,
-    // that would be block 0, in other words the genesis block. The spot account
-    // won't claim orphaned transfers during genesis. For a realistic test, we
-    // do `CheckTx` at a post-genesis block.
+    // that would be block 0, in other words the genesis block. The single-signature
+    // account won't claim orphaned transfers during genesis. For a realistic test,
+    // we do `CheckTx` at a post-genesis block.
     suite.make_empty_block();
 
     let chain_id = suite.chain_id.clone();
@@ -49,7 +49,7 @@ fn onboarding_without_deposit() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_spot.to_bytes().hash256(),
+        codes.account_single.to_bytes().hash256(),
         true,
     );
 
@@ -74,7 +74,7 @@ fn onboarding_without_deposit() {
 
     // The account should have been created in the `Inactive` state.
     suite
-        .query_wasm_smart(user.address(), spot::QueryStatusRequest {})
+        .query_wasm_smart(user.address(), single::QueryStatusRequest {})
         .should_succeed_and_equal(AccountStatus::Inactive);
 
     // Attempting to send a transaction at this time. `CheckTx` should fail.
@@ -106,11 +106,43 @@ fn onboarding_without_deposit() {
 
     // Account should have been activated.
     suite
-        .query_wasm_smart(user.address(), spot::QueryStatusRequest {})
+        .query_wasm_smart(user.address(), single::QueryStatusRequest {})
         .should_succeed_and_equal(AccountStatus::Active);
 
     // Try again, should succeed.
     suite.check_tx(tx).should_succeed();
+
+    // User opens a new account. While his first account required an initial
+    // deposit, any subsequent account should be activated by default.
+    let user_index = user.user_index();
+    suite
+        .execute(
+            &mut user,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Single(single::Params::new(user_index)),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Ensure the user now has two accounts and they are both active.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryAccountsByUserRequest {
+                user: UserIndexOrName::Index(user_index),
+            },
+        )
+        .should_succeed_and(|accounts| {
+            accounts.len() == 2
+                && accounts.iter().all(|(address, _)| {
+                    suite
+                        .query_wasm_path(*address, dango_auth::account::STATUS.path())
+                        .unwrap()
+                        .is_active()
+                })
+        });
 }
 
 /// If minimum deposit is zero, then the account is automatically activated.
@@ -125,7 +157,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_spot.to_bytes().hash256(),
+        codes.account_single.to_bytes().hash256(),
         true,
     );
 
@@ -170,13 +202,13 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
                 // We have 10 genesis accounts (owner + users 1-9), indexed from
                 // zero, so this one should have the index of 10.
                 index: 10,
-                params: AccountParams::Spot(single::Params::new(user.user_index())),
+                params: AccountParams::Single(single::Params::new(user.user_index())),
             },
         });
 
     // The newly created account should be active.
     suite
-        .query_wasm_smart(user.address(), spot::QueryStatusRequest {})
+        .query_wasm_smart(user.address(), single::QueryStatusRequest {})
         .should_succeed_and_equal(AccountStatus::Active);
 
     // The newly created account should have zero balance.
@@ -201,7 +233,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_spot.to_bytes().hash256(),
+        codes.account_single.to_bytes().hash256(),
         true,
     );
 
@@ -256,7 +288,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
         )
         .should_succeed();
 
-    // Make sure a spot account is created with the deposited balance.
+    // Make sure a single-signature account is created with the deposited balance.
     suite
         .query_balance(&user, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
@@ -272,7 +304,7 @@ fn update_key() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         0,
-        codes.account_spot.to_bytes().hash256(),
+        codes.account_single.to_bytes().hash256(),
         true,
     );
 

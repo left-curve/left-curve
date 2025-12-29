@@ -2,9 +2,10 @@ use {
     crate::Secret,
     anyhow::anyhow,
     dango_types::{
-        account::spot,
-        account_factory::{self, UserIndex},
+        account::single,
+        account_factory::{self, UserIndex, UserIndexOrName},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
+        config::AppConfig,
         signer::SequencedSigner,
     },
     grug::{
@@ -16,7 +17,7 @@ use {
 pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 
 /// Utility for signing transactions in the format by Dango's single-signature
-/// accounts, i.e. spot and margin accounts.
+/// accounts.
 #[derive(Debug)]
 pub struct SingleSigner<S, I = Defined<UserIndex>, N = Defined<Nonce>>
 where
@@ -69,7 +70,7 @@ where
         // If the account hasn't sent any transaction yet, use 0 as nonce.
         // Otherwise, use the latest seen nonce + 1.
         let nonce = client
-            .query_wasm_smart(self.address, spot::QuerySeenNoncesRequest {}, None)
+            .query_wasm_smart(self.address, single::QuerySeenNoncesRequest {}, None)
             .await?
             .last()
             .map(|newest_nonce| newest_nonce + 1)
@@ -91,6 +92,71 @@ where
             user_index: Undefined::new(),
             nonce: Undefined::new(),
         }
+    }
+}
+
+impl<S> SingleSigner<S, Defined<UserIndex>, Undefined<Nonce>>
+where
+    S: Secret,
+{
+    /// Create a new `SingleSigner` with the given secret key, using the first
+    /// user index and account associated with this key.
+    pub async fn new_first_address_available<C>(
+        client: &C,
+        secret: S,
+        cfg: Option<&AppConfig>,
+    ) -> anyhow::Result<Self>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        let factory_addr = match cfg {
+            Some(cfg) => cfg.addresses.account_factory,
+            None => {
+                client
+                    .query_app_config::<AppConfig>(None)
+                    .await?
+                    .addresses
+                    .account_factory
+            },
+        };
+
+        let key_hash = secret.key_hash();
+
+        let user_index = client
+            .query_wasm_smart(
+                factory_addr,
+                account_factory::QueryForgotUsernameRequest {
+                    key_hash,
+                    start_after: None,
+                    limit: Some(1),
+                },
+                None,
+            )
+            .await?
+            .first()
+            .ok_or_else(|| anyhow!("no user index found for key hash {key_hash}"))?
+            .index;
+
+        let address = *client
+            .query_wasm_smart(
+                factory_addr,
+                account_factory::QueryAccountsByUserRequest {
+                    user: UserIndexOrName::Index(user_index),
+                },
+                None,
+            )
+            .await?
+            .first_key_value()
+            .ok_or_else(|| anyhow!("no address found for user index {user_index}"))?
+            .0;
+
+        Ok(SingleSigner {
+            address,
+            secret,
+            user_index: Defined::new(user_index),
+            nonce: Undefined::new(),
+        })
     }
 }
 
@@ -331,7 +397,6 @@ mod tests {
                     // the other addresses don't matter
                     ..Default::default()
                 },
-                collateral_powers: Default::default(),
                 ..Default::default()
             })
             .unwrap();
@@ -391,7 +456,6 @@ mod tests {
                     // the other addresses don't matter
                     ..Default::default()
                 },
-                collateral_powers: Default::default(),
                 ..Default::default()
             })
             .unwrap();

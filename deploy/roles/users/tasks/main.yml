@@ -1,14 +1,7 @@
-- name: Copy deploy ssh keys for {{ ansible_user }}
-  include_tasks: add_ssh_keys.yml
-  vars:
-    authorized_user: "{{ ansible_user }}"
-    user: "deploy"
-
 - name: Create users
   user:
     name: "{{ item }}"
     shell: /bin/bash
-    groups: sudo
     append: yes
     state: present
     create_home: yes
@@ -44,6 +37,45 @@
     append: yes
     state: present
     create_home: yes
+
+- name: Install deployment cleanup script
+  when: inventory_hostname in groups['full-app']
+  copy:
+    dest: /usr/local/sbin/dango-cleanup-deployment
+    owner: root
+    group: root
+    mode: '0750'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      DEPLOY_USER="{{ deploy_user }}"
+      BASE="/home/${DEPLOY_USER}/deployments"
+      name="${1:-}"
+
+      if [[ ! "$name" =~ ^(pr-[0-9]+|[0-9]{14})$ ]]; then
+        echo "invalid deployment name" >&2
+        exit 2
+      fi
+
+      target="${BASE}/${name}"
+
+      if [ -d "$target" ]; then
+        rm -rf --one-file-system -- "$target"
+        echo "deleted"
+      else
+        echo "absent"
+      fi
+
+- name: Allow deploy user to run cleanup script as root
+  when: inventory_hostname in groups['full-app']
+  copy:
+    dest: "/etc/sudoers.d/{{ deploy_user }}-cleanup-deployment"
+    owner: root
+    group: root
+    mode: '0440'
+    content: "{{ deploy_user }} ALL=(root) NOPASSWD: /usr/local/sbin/dango-cleanup-deployment\n"
+    validate: "/usr/sbin/visudo -cf %s"
 
 - name: Ensure direnv hook is present in .bashrc
   lineinfile:
@@ -95,7 +127,7 @@
     state: present
     regexp: "^{{ item }}\\s+ALL=\\(ALL\\) NOPASSWD:ALL$"
     backup: yes
-  with_items: "{{ ssh_users }}"
+  with_items: "{{ sudo_users }}"
 
 - name: Reload SSH
   service:

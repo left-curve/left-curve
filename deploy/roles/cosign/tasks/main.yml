@@ -5,7 +5,7 @@
   changed_when: false
   failed_when: false
   environment:
-    PATH: "{{ ansible_env.PATH | default('') }}:/usr/local/bin"
+    PATH: "{{ ansible_facts['env']['PATH'] | default('') }}:/usr/local/bin"
 
 - name: Fetch latest cosign release metadata
   ansible.builtin.uri:
@@ -104,8 +104,6 @@
     mode: "0644"
 
 - name: Download cosign binary
-  become: true
-  become_user: root
   when:
     - cosign_verify_checksums | default(true)
     - cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
@@ -185,4 +183,4 @@
   ansible.builtin.command: cosign version
   changed_when: false
   environment:
-    PATH: "{{ ansible_env.PATH | default('') }}:/usr/local/bin"
+    PATH: "{{ ansible_facts['env']['PATH'] | default('') }}:/usr/local/bin"

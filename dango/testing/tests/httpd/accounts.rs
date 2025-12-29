@@ -8,7 +8,7 @@ use {
         setup_test_with_indexer,
     },
     dango_types::{
-        account::spot::{QueryMsg, QuerySeenNoncesRequest},
+        account::single::{QueryMsg, QuerySeenNoncesRequest},
         auth::Nonce,
         constants::dango,
     },
@@ -78,7 +78,7 @@ async fn query_accounts() -> anyhow::Result<()> {
 
                 let expected_data = serde_json::json!([
                     {
-                        "accountType": "spot",
+                        "accountType": "single",
                         "users": [
                             {
                                 "userIndex": user2.user_index(),
@@ -86,7 +86,7 @@ async fn query_accounts() -> anyhow::Result<()> {
                         ],
                     },
                     {
-                        "accountType": "spot",
+                        "accountType": "single",
                         "users": [
                             {
                                 "userIndex": user1.user_index(),
@@ -158,7 +158,7 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
                 .await?;
 
                 let expected_data = serde_json::json!({
-                    "accountType": "spot",
+                    "accountType": "single",
                     "users": [
                         {
                             "userIndex": user.user_index(),
@@ -245,7 +245,7 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
 
 #[ignore = "flaky"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
+async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
@@ -343,7 +343,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
 
                 let expected_account = serde_json::json!(
                 {
-                    "accountType": "spot",
+                    "accountType": "single",
                     "address": test_account2.address.inner().to_string(),
                     "users": [
                         {
@@ -356,7 +356,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
 
                 let expected_account = serde_json::json!(
                 {
-                    "accountType": "spot",
+                    "accountType": "single",
                     "address": test_account1.address.inner().to_string(),
                     "users": [
                         {

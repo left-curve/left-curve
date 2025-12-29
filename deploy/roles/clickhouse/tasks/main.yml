@@ -11,38 +11,20 @@
       - clickhouse_password | length > 0
     fail_msg: "CLICKHOUSE_PASSWORD must be set and non-empty, aborting deployment."
 
-- name: Configure kernel parameters for memory optimization
-  sysctl:
-    name: "{{ item.key }}"
-    value: "{{ item.value }}"
-    state: present
-    reload: yes
-  loop:
-    - { key: 'vm.swappiness', value: '1' }
-    - { key: 'vm.vfs_cache_pressure', value: '50' }
-  become: true
-  become_user: root
-
 - name: Copy config files
-  become: true
-  become_user: root
   template:
     src: "{{ item }}"
     dest: "{{ config_dir }}/{{ item }}"
     mode: '0644'
-    owner: '{{ deploy_user }}'
   loop:
     - config.xml
     - users.xml
 
 - name: Copy backup script
-  become: true
-  become_user: root
   template:
     src: "make_clickhouse_backup.sh"
-    dest: "{{ ansible_env.HOME }}"
+    dest: "{{ ansible_facts['env']['HOME'] }}"
     mode: '0755'
-    owner: '{{ deploy_user }}'
 
 - name: Create clickhouse network
   docker_network:

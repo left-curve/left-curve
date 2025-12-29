@@ -1,3 +1,18 @@
+x-wireguard-hosts: &wg-hosts
+{% set wg_hosts = [] %}
+{% for h in groups['all'] %}
+{%   if hostvars[h].wireguard_ip is defined and hostvars[h].hostname is defined %}
+{%     set _ = wg_hosts.append({'name': hostvars[h].hostname, 'ip': hostvars[h].wireguard_ip}) %}
+{%   endif %}
+{% endfor %}
+{% if wg_hosts | length == 0 %}
+  []
+{% else %}
+{%   for item in wg_hosts | sort(attribute='name') %}
+  - "{{ item.name }}:{{ item.ip }}"
+{%   endfor %}
+{% endif %}
+
 services:
   promtail:
     image: grafana/promtail:latest
@@ -7,6 +22,7 @@ services:
     ports:
       - "{{ tailscale_ip }}:{{ promtail_port }}:9080"
       - "{{ wireguard_ip }}:{{ promtail_port }}:9080"
+    extra_hosts: *wg-hosts
     volumes:
       - ./config/promtail-config.yml:/etc/promtail/config.yml
       - /var/log:/var/log:ro

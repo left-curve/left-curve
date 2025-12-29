@@ -214,6 +214,7 @@ services:
       timeout: 5s
       retries: 3
 
+{% if faucet_bot_enabled %}
   faucet-bot:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
     ulimits:
@@ -242,6 +243,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+{% endif %}
 
 {% if dex_bot_enabled and inventory_hostname == dex_bot_host %}
   dex-bot:
@@ -292,12 +294,11 @@ services:
       - dango
     volumes:
       - "${COMETBFT_DIRECTORY}:/root/.cometbft"
-{% if expose_ports %}
     ports:
-      - "${TAILSCALE_IP}:${COMETBFT_P2P_PORT:-0}:26656"
+      - "${WIREGUARD_IP}:${COMETBFT_P2P_PORT:-0}:26656"
+{% if expose_ports %}
       - "${TAILSCALE_IP}:${COMETBFT_RPC_PORT:-0}:26657"
       - "${TAILSCALE_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
-      - "${WIREGUARD_IP}:${COMETBFT_P2P_PORT:-0}:26656"
       - "${WIREGUARD_IP}:${COMETBFT_RPC_PORT:-0}:26657"
       - "${WIREGUARD_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
 {% endif %}

@@ -1,6 +1,5 @@
 - hosts: full-app
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   collections:
     - community.general
   tasks:
@@ -12,18 +11,10 @@
       run_once: true
 
     - block:
-        - name: Install pipx
-          apt:
-            name: pipx
-            state: present
-            update_cache: yes
-          become: true
-          become_user: root
-
         - name: Install Backblaze b2 via pipx
-          ansible.builtin.command: pipx install b2
+          command: pipx install b2
           args:
-            creates: "{{ ansible_env.HOME }}/.local/bin/b2"
+            creates: "{{ ansible_facts['env']['HOME'] }}/.local/bin/b2"
 
         # NOTE: doing this because you can't delete a bucket which has files,
         # and removing files takes forever. So I set files to be deleted, and

@@ -1,6 +1,9 @@
 - hosts: monitoring
   become: true
   become_user: "{{ deploy_user }}"
+  remote_user: "debian"
+  vars_files:
+    - vaults/debian/root_vault.yml
   vars:
     loki_url: "http://loki:3100"
   pre_tasks:
@@ -9,8 +12,8 @@
         name: monitoring
         state: present
   roles:
-    - prometheus
     - loki
+    - prometheus
     - promtail
     - node-exporter
     - tempo

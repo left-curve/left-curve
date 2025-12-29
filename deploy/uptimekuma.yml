@@ -1,6 +1,5 @@
 - hosts: uptimekuma
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   vars:
     dango_networks: []
   collections:

@@ -37,10 +37,10 @@ export async function registerAccount<transport extends Transport>(
     type: [{ name: "register_account", type: "RegisterAccount" }],
     extraTypes: {
       RegisterAccount: [{ name: "params", type: "AccountParams" }],
-      ...("spot" in config
+      ...("single" in config
         ? {
-            AccountParams: [{ name: "spot", type: "SpotParams" }],
-            SpotParams: [{ name: "owner", type: "string" }],
+            AccountParams: [{ name: "single", type: "SingleParams" }],
+            SingleParams: [{ name: "owner", type: "string" }],
           }
         : {}),
       ...("multi" in config

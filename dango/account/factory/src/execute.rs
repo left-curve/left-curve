@@ -180,8 +180,8 @@ fn onboard_new_user(
     seed: u32,
     funds: Coins,
 ) -> StdResult<(Message, UserRegistered, AccountRegistered)> {
-    // A new user's 1st account is always a spot account.
-    let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
+    // A new user's 1st account is always a single-signature account.
+    let code_hash = CODE_HASHES.load(storage, AccountType::Single)?;
 
     // Increment the global user index.
     let (user_index, _) = NEXT_USER_INDEX.increment(storage)?;
@@ -199,7 +199,7 @@ fn onboard_new_user(
 
     let account = Account {
         index: account_index,
-        params: AccountParams::Spot(single::Params::new(user_index)),
+        params: AccountParams::Single(single::Params::new(user_index)),
     };
 
     ACCOUNTS.save(storage, address, &account)?;
@@ -208,11 +208,15 @@ fn onboard_new_user(
     Ok((
         Message::instantiate(
             code_hash,
-            &account::spot::InstantiateMsg {},
+            &account::InstantiateMsg {
+                // A new user's first account is inactive by default.
+                // An initial deposit is required to activate it.
+                activate: false,
+            },
             salt,
             Some(format!(
                 "dango/account/{}/{}",
-                AccountType::Spot,
+                AccountType::Single,
                 account_index
             )),
             Some(factory),
@@ -233,12 +237,12 @@ fn onboard_new_user(
 
 fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Response> {
     // Basic validations of the account.
-    // - For single signature accounts (spot and margin), one can only register
-    //   accounts for themself. They cannot register account for another user.
+    // - For single signature accounts, one can only register accounts for
+    //   themself. They cannot register account for another user.
     // - For multisig accounts, ensure voting threshold isn't greater than total
     //   voting power.
     match &params {
-        AccountParams::Spot(params) | AccountParams::Margin(params) => {
+        AccountParams::Single(params) => {
             ensure!(
                 ACCOUNTS_BY_USER.has(ctx.storage, (params.owner, ctx.sender)),
                 "can't register account for another user"
@@ -269,7 +273,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
 
     // Save the account ownership info.
     match &account.params {
-        AccountParams::Spot(params) | AccountParams::Margin(params) => {
+        AccountParams::Single(params) => {
             ACCOUNTS_BY_USER.insert(ctx.storage, (params.owner, address))?;
         },
         AccountParams::Multi(params) => {
@@ -282,14 +286,19 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     Ok(Response::new()
         .add_message(Message::instantiate(
             code_hash,
-            &account::spot::InstantiateMsg {},
+            &account::InstantiateMsg {
+                // While a new user's first account is inactive by default and
+                // requires an initial deposit to activate, all subsequent accounts
+                // that the user creates are activated upon instantiation.
+                activate: true,
+            },
             salt,
             Some(format!("dango/account/{}/{}", account.params.ty(), index)),
             Some(ctx.contract),
             ctx.funds, // Forward the received funds to the account.
         )?)
         .add_events(match &account.params {
-            AccountParams::Spot(params) | AccountParams::Margin(params) => {
+            AccountParams::Single(params) => {
                 vec![AccountOwned {
                     user_index: params.owner,
                     address,
@@ -437,7 +446,7 @@ fn get_user_index_of_account_owner(
 ) -> anyhow::Result<UserIndex> {
     let account = ACCOUNTS.load(storage, address)?;
     match account.params {
-        AccountParams::Spot(params) | AccountParams::Margin(params) => Ok(params.owner),
+        AccountParams::Single(params) => Ok(params.owner),
         _ => bail!("sender is not a single signature account"),
     }
 }

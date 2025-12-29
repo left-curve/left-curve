@@ -1117,12 +1117,13 @@ jobs:
       packages: read
       deployments: write
       contents: read
-    needs: [security-artifacts, set-image-tags]
+    needs: [security-artifacts, set-image-tags, localdango]
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_BRANCH: ${{ github.event.pull_request.head.ref }}
       ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+      ANSIBLE_DEBIAN_PASSWORD: ${{ secrets.ANSIBLE_DEBIAN_PASSWORD }}
       DEPLOY_BACKEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
       DEPLOY_FRONTEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
     steps:
@@ -1159,14 +1160,14 @@ jobs:
           cd deploy
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true}' -e github_sha=${{ env.GIT_COMMIT }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e ghcr_token=${{ secrets.GITHUB_TOKEN }}
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true}' -e github_sha=${{ env.GIT_COMMIT }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e ghcr_token=${{ secrets.GITHUB_TOKEN }} --limit 100.96.253.40,100.107.248.71
           fi
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
           # This deletes the existing deployment, but instead use `ansible-playbook delete-full-app.yml -e deployment_name=pr-<ID>` if you need
           # ansible-playbook delete-existing-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
 
-          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true, "s3_enabled": false}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }}
+          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true, "s3_enabled": false}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }} --limit 100.96.253.40,100.107.248.71
           fi
 
   localdango:
@@ -1185,6 +1186,19 @@ jobs:
         if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
+
+      - uses: pnpm/action-setup@v4
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+        with:
+          version: 10.16.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+        with:
+          node-version: 24
+          cache: "pnpm"
+
       - uses: docker/setup-buildx-action@v3
         if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
       - uses: docker/login-action@v3
@@ -1221,6 +1235,39 @@ jobs:
             docker compose ps
             exit 1
           }
+
+          # Capture the actual ports assigned to the services
+          DANGO_PORT=$(\
+            docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml \
+              port dango 8080 | awk -F: '{print $NF}' \
+          )
+          FAUCET_PORT=$(\
+            docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml \
+              port faucet 8082 | awk -F: '{print $NF}' \
+          )
+
+          echo "Dango is running on port $DANGO_PORT"
+          echo "Faucet is running on port $FAUCET_PORT"
+
+          # Restart the frontend container so it picks up the correct backend URLs
+          export INDEXER_URL="http://localhost:$DANGO_PORT"
+          export UP_URL="http://localhost:$DANGO_PORT/up"
+          export FAUCET_URL="http://localhost:$FAUCET_PORT/mint"
+
+          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml up -d --no-deps frontend
+
+          docker compose ps
+
+      - name: Verify frontend and backend connection
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTEND_URL: "http://localhost:5081"
+        run: |
+          pnpm i --frozen-lockfile
+          pnpm exec playwright install --only-shell chromium
+          pnpm test:e2e
+
       - name: Cleanup
         if: always()
         run: |

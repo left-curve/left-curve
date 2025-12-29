@@ -1,15 +1,18 @@
-tcp:
-  services:
-    {{ dango_network }}-cometbft_p2p:
-      loadBalancer:
-        servers:
-          - address: "{{ deployment_name }}-cometbft-1:26656"
-  routers:
-    {{ dango_network }}-cometbft_p2p:
-      rule: "HostSNI(`*`)"
-      entryPoints:
-        - "{{ dango_network }}-cometbft_p2p"
-      service: "{{ dango_network }}-cometbft_p2p"
+# I can't use traefik for TCP nodes, the internal cometbft deduplication is broken because
+# it sees all inbound through the same traefik internal IP and reject connections
+# This breaks if > 2 cometbft nodes.
+# tcp:
+#   services:
+#     {{ dango_network }}-cometbft_p2p:
+#       loadBalancer:
+#         servers:
+#           - address: "{{ deployment_name }}-cometbft-1:26656"
+#   routers:
+#     {{ dango_network }}-cometbft_p2p:
+#       rule: "HostSNI(`*`)"
+#       entryPoints:
+#         - "{{ dango_network }}-cometbft_p2p"
+#       service: "{{ dango_network }}-cometbft_p2p"
 
 http:
   middlewares:
@@ -70,20 +73,20 @@ http:
 
   routers:
     {{ dango_network }}-main-frontend:
-      rule: "Host(`www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`www-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-main-frontend-ssl:
-      rule: "Host(`www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`www-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls: {}
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-main-backend:
-      rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`api-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"
@@ -91,7 +94,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-backend-ssl:
-      rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`api-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls: {}
@@ -100,7 +103,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-faucet_bot:
-      rule: "Host(`faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`faucet-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-faucet_bot"
@@ -108,7 +111,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-faucet_bot-ssl:
-      rule: "Host(`faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`faucet-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls: {}
@@ -117,13 +120,13 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-graphiql:
-      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`graphiql-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-graphiql"
 
     {{ dango_network }}-main-graphiql-ssl:
-      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`graphiql-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls: {}

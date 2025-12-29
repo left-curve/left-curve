@@ -1,14 +1,4 @@
 - block:
-    - name: Install boto3 and botocore from apt
-      ansible.builtin.apt:
-        name:
-          - python3-boto3
-          - python3-botocore
-        state: present
-        update_cache: yes
-      become: true
-      become_user: root
-
     - name: Create Backblaze bucket if missing
       amazon.aws.s3_bucket:
         name: "{{ s3_bucket }}"
@@ -18,10 +8,8 @@
         aws_secret_key: "{{ s3_secret_key }}"
 
     - name: Install b2 delete buckets script
-      become: true
-      become_user: root
       copy:
         src: delete_b2_buckets.sh
-        dest: /usr/local/bin/delete_b2_buckets.sh
+        dest: "{{ ansible_facts['env']['HOME'] }}/delete_b2_buckets.sh"
         mode: '0755'
   run_once: true

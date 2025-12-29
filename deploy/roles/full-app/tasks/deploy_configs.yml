@@ -24,17 +24,13 @@
   when: cloudflare_tunnel_enabled
 
 - name: Deploy configuration files
-  become: true
-  become_user: root
   block:
     - template:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
-        owner: "{{ deploy_user }}"
         mode: "{{ item.mode | default('0600') }}"
       loop:
         - { src: "config/cometbft/config.toml.j2", dest: "{{ cometbft_directory }}/config/config.toml" }
-        - { src: "config/cometbft/genesis.json", dest: "{{ cometbft_directory }}/config/genesis.json" }
         - { src: "config/cometbft/node_key.json", dest: "{{ cometbft_directory }}/config/node_key.json" }
         - { src: "config/cometbft/priv_validator_key.json", dest: "{{ cometbft_directory }}/config/priv_validator_key.json" }
         - { src: "config/dango/app.toml", dest: "{{ dango_directory }}/config/app.toml" }
@@ -42,27 +38,42 @@
         - { src: "env.j2", dest: "{{ deployment_dir }}/.env" }
         - { src: "envrc.j2", dest: "{{ deployment_dir }}/.envrc" }
 
+- name: Check if network-specific genesis exists
+  stat:
+    path: "{{ role_path }}/templates/config/cometbft/genesis-{{ dango_network }}.json"
+  register: network_genesis
+  delegate_to: localhost
+  become: false
+
+- name: Copy network-specific genesis if it exists
+  template:
+    src: "config/cometbft/genesis-{{ dango_network }}.json"
+    dest: "{{ cometbft_directory }}/config/genesis.json"
+    mode: "0600"
+  when: network_genesis.stat.exists
+
+- name: Copy default genesis
+  template:
+    src: "config/cometbft/genesis.json"
+    dest: "{{ cometbft_directory }}/config/genesis.json"
+    mode: "0600"
+  when: not network_genesis.stat.exists
+
 - name: Deploy Cloudflare configuration files
-  become: true
-  become_user: root
   block:
     - template:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
-        owner: "{{ deploy_user }}"
         mode: "{{ item.mode | default('0600') }}"
       loop:
         - { src: "cloudflared/config.yml", dest: "{{ deployment_dir }}/cloudflared/config.yml", mode: "0644" }
   when: cloudflare_tunnel_enabled
 
 - name: Deploy Clickhouse configuration files
-  become: true
-  become_user: root
   block:
     - template:
         src: "{{ item.src }}"
         dest: "{{ deployment_dir }}/{{ item.dest }}"
-        owner: "{{ deploy_user }}"
       loop:
         - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
         - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }

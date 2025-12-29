@@ -9,6 +9,7 @@ jobs:
     runs-on: [self-hosted]
     env:
       ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+      ANSIBLE_DEBIAN_PASSWORD: ${{ secrets.ANSIBLE_DEBIAN_PASSWORD }}
     permissions:
       packages: write
       deployments: write
@@ -245,4 +246,4 @@ jobs:
       - name: Cleanup actual containers
         run: |
           cd deploy
-          ansible-playbook delete-full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
+          ansible-playbook delete-full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} --limit 100.96.253.40,100.107.248.71

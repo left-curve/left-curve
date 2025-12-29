@@ -29,17 +29,6 @@
       - cloudflare_ips | length > 5
     fail_msg: "Cloudflare IP list fetch failed/empty."
 
-- name: Install certbot + Cloudflare plugin
-  become: true
-  become_user: root
-  apt:
-    name:
-      - certbot
-      - python3-certbot-dns-cloudflare
-      - cron
-    state: present
-    update_cache: yes
-
 - name: Ensure config dir exists
   file:
     path: "{{ traefik_dir }}/{{ item }}"
@@ -48,61 +37,45 @@
   loop: ["config", "letsencrypt"]
 
 - name: Generate templates
-  become: true
-  become_user: root
   template:
     src: "{{ item.src }}"
     dest: "{{ traefik_dir }}/{{ item.dest }}"
-    owner: "{{ deploy_user }}"
   loop:
     - { src: "docker-compose.yml", dest: "docker-compose.yml" }
     - { src: "docker-compose-{{ hostname }}.yml", dest: "docker-compose-{{ hostname }}.yml" }
     - { src: "traefik-{{ hostname }}.yml", dest: "traefik.yml" }
 
 - name: Generate templates for config
-  become: true
-  become_user: root
   template:
     src: "{{ item }}"
     dest: "{{ traefik_dir }}/config/"
-    owner: "{{ deploy_user }}"
   loop: ["certs.yml", "quest.yml"]
 
 - name: Generate templates for letsencrypt
-  become: true
-  become_user: root
   template:
     src: "{{ item }}"
     dest: "{{ traefik_dir }}/letsencrypt/"
-    owner: "root"
     mode: '0600'
   loop: ["cloudflare.ini"]
 
 - name: Ensure letsencrypt subdirs exist
-  become: true
-  become_user: root
   file:
     path: "{{ traefik_dir }}/letsencrypt/{{ item }}"
     state: directory
-    owner: root
-    group: root
     mode: '0700'
   loop: ["work", "logs"]
 
 - name: Check if wildcard cert already exists
-  become: true
-  become_user: root
   stat:
     path: "{{ traefik_dir }}/letsencrypt/live/{{ dango_domain }}/fullchain.pem"
   register: cert_status
 
 - name: Create wildcard cert for {{ dango_domain }}
-  become: true
-  become_user: root
   ansible.builtin.command: >
     certbot certonly
     --dns-cloudflare
     --dns-cloudflare-credentials {{ traefik_dir }}/letsencrypt/cloudflare.ini
+    --dns-cloudflare-propagation-seconds 120
     --config-dir {{ traefik_dir }}/letsencrypt
     --work-dir {{ traefik_dir }}/letsencrypt/work
     --logs-dir {{ traefik_dir }}/letsencrypt/logs
@@ -114,8 +87,6 @@
     creates: "{{ traefik_dir }}/letsencrypt/live/dango.zone/fullchain.pem"
 
 - name: Create cloudflare network
-  become: true
-  become_user: root
   docker_network:
     name: cloudflare
 
@@ -129,25 +100,9 @@
     wait: true
     wait_timeout: 300
 
-# We don't allow those port from public IPs anymore
-- name: Add UFW rules
-  become: true
-  become_user: root
-  ufw:
-    rule: allow
-    direction: in
-    port: "{{ item }}"
-    proto: tcp
-    delete: yes
-  loop: [80, 443]
-  ignore_errors: yes
-
 - name: Renew Let's Encrypt certs for Traefik
-  become: true
-  become_user: root
   cron:
     name: "renew traefik certbot certs"
-    user: root
     minute: "0"
-    hour: "3"
+    hour: "11"
     job: "/usr/bin/certbot renew --config-dir {{ traefik_dir }}/letsencrypt --work-dir {{ traefik_dir }}/letsencrypt/work --logs-dir {{ traefik_dir }}/letsencrypt/logs --quiet && /usr/bin/docker compose -f {{ traefik_dir }}/docker-compose.yml exec -T traefik traefik reload"

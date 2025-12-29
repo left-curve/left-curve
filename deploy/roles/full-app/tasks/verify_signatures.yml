@@ -19,7 +19,7 @@
   loop_control:
     label: "{{ item.service }} -> {{ item.image }}:{{ item.tag }}"
   environment:
-    PATH: "{{ ansible_env.PATH | default('') }}:/usr/local/bin"
+    PATH: "{{ ansible_facts['env']['PATH'] | default('') }}:/usr/local/bin"
 
 - name: Build digest map from cosign verification
   ansible.builtin.set_fact:

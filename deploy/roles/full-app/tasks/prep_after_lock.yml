@@ -1,8 +1,8 @@
 ---
 - name: Set system wide cometbft and dango directories and overwrite s3_bucket
   set_fact:
-    dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
-    cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
+    dango_directory: "{{ ansible_facts['env']['HOME'] }}/{{ dango_network }}/{{ timestamp }}/dango"
+    cometbft_directory: "{{ ansible_facts['env']['HOME'] }}/{{ dango_network }}/{{ timestamp }}/cometbft"
   when: system_wide_directories
 
 - name: Read current deploy
@@ -26,13 +26,24 @@
     name: full-app
     tasks_from: cometbft_keys.yml
 
+- name: Wait for all hosts in play to generate keys
+  wait_for:
+    timeout: 1
+  until: hostvars[item].cometbft_node_id is defined
+  retries: 60
+  delay: 2
+  loop: "{{ ansible_play_hosts }}"
+  run_once: true
+  delegate_to: localhost
+
 - name: Build persistent_peers list
   set_fact:
     persistent_peers: "{{ peer_list }}"
+    unconditional_peer_ids: "{{ id_list }}"
   vars:
     peer_list: |-
       {%- set peers = [] -%}
-      {%- for host in groups['full-app'] -%}
+      {%- for host in ansible_play_hosts -%}
         {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
           {%- set port = (traefik_enabled | default(false))
                         | ternary(traefik[dango_network].ports.cometbft_p2p_port,
@@ -42,6 +53,14 @@
         {%- endif -%}
       {%- endfor -%}
       {{- peers | join(',') -}}
+    id_list: |-
+      {%- set ids = [] -%}
+      {%- for host in ansible_play_hosts -%}
+        {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
+          {{- ids.append(hostvars[host].cometbft_node_id) or '' -}}
+        {%- endif -%}
+      {%- endfor -%}
+      {{- ids | join(',') -}}
   when: cometbft_node_id is defined
 
 - name: Debug peer configuration

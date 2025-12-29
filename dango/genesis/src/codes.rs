@@ -23,14 +23,6 @@ impl GenesisCodes for RustVm {
             .with_authenticate(Box::new(dango_account_factory::authenticate))
             .build();
 
-        let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
-            .with_execute(Box::new(dango_account_margin::execute))
-            .with_authenticate(Box::new(dango_account_margin::authenticate))
-            .with_backrun(Box::new(dango_account_margin::backrun))
-            .with_receive(Box::new(dango_account_margin::receive))
-            .with_query(Box::new(dango_account_margin::query))
-            .build();
-
         let account_multi = ContractBuilder::new(Box::new(dango_account_multi::instantiate))
             .with_authenticate(Box::new(dango_account_multi::authenticate))
             .with_receive(Box::new(dango_account_multi::receive))
@@ -38,10 +30,10 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_account_multi::query))
             .build();
 
-        let account_spot = ContractBuilder::new(Box::new(dango_account_spot::instantiate))
-            .with_authenticate(Box::new(dango_account_spot::authenticate))
-            .with_receive(Box::new(dango_account_spot::receive))
-            .with_query(Box::new(dango_account_spot::query))
+        let account_single = ContractBuilder::new(Box::new(dango_account_single::instantiate))
+            .with_authenticate(Box::new(dango_account_single::authenticate))
+            .with_receive(Box::new(dango_account_single::receive))
+            .with_query(Box::new(dango_account_single::query))
             .build();
 
         let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
@@ -85,11 +77,6 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_oracle::query))
             .build();
 
-        let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
-            .with_execute(Box::new(dango_lending::execute))
-            .with_query(Box::new(dango_lending::query))
-            .build();
-
         let taxman = ContractBuilder::new(Box::new(dango_taxman::instantiate))
             .with_execute(Box::new(dango_taxman::execute))
             .with_query(Box::new(dango_taxman::query))
@@ -110,19 +97,18 @@ impl GenesisCodes for RustVm {
         #[cfg(feature = "metrics")]
         {
             dango_dex::metrics::init_metrics();
+            dango_oracle::metrics::init_metrics();
             // TODO: add other contracts that emit metrics
         }
 
         Codes {
             account_factory,
-            account_margin,
             account_multi,
-            account_spot,
+            account_single,
             bank,
             dex,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
-            lending,
             oracle,
             taxman,
             vesting,

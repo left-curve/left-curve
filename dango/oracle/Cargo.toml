@@ -13,15 +13,16 @@ version       = { workspace = true }
 # If enabled, Wasm exports won't be created. This allows this contract to be
 # imported into other contracts as a library.
 library = []
+metrics = ["dep:metrics", "grug/metrics"]
 
 [dependencies]
-anyhow        = { workspace = true }
-dango-lending = { workspace = true, features = ["library"] }
-dango-types   = { workspace = true }
-grug          = { workspace = true, features = ["chrono"] }
-hex           = { workspace = true }
-humantime     = { workspace = true }
-pyth-types    = { workspace = true }
+anyhow      = { workspace = true }
+dango-types = { workspace = true }
+grug        = { workspace = true, features = ["chrono"] }
+hex         = { workspace = true }
+humantime   = { workspace = true }
+metrics     = { workspace = true, optional = true }
+pyth-types  = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

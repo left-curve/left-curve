@@ -1,0 +1,82 @@
+# Use this playbook if you need to create a debian users because the servers
+# only have root as default user
+- hosts: all
+  become: true
+  become_user: root
+  vars:
+    new_user: "debian"
+  tasks:
+    - name: Install base packages
+      apt:
+        name:
+          - mosh
+          - sudo
+        state: present
+        update_cache: yes
+
+    - name: Create {{ new_user }} user
+      user:
+        name: "{{ new_user }}"
+        shell: /bin/bash
+        groups: sudo
+        append: yes
+        state: present
+        create_home: yes
+
+    - name: Copy deploy ssh keys for {{ new_user }}
+      include_tasks: roles/users/tasks/add_ssh_keys.yml
+      vars:
+        authorized_user: "{{ new_user }}"
+        user: "{{ new_user }}"
+        role_path: roles/users
+
+    - name: Allow {{ new_user }} to sudo without password
+      copy:
+        dest: "/etc/sudoers.d/{{ new_user }}"
+        content: "{{ new_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: '0440'
+
+    - name: Disable Hetzner apt sources (rename to .disabled)
+      shell: |
+        set -e
+        for f in /etc/apt/sources.list.d/hetzner-*.sources; do
+          [ -e "$f" ] || continue
+          mv "$f" "$f.disabled"
+        done
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Install default Debian sources
+      copy:
+        dest: /etc/apt/sources.list.d/debian.sources
+        mode: "0644"
+        content: |
+          Types: deb
+          URIs: http://deb.debian.org/debian
+          Suites: {{ ansible_facts['distribution_release'] }} {{ ansible_facts['distribution_release'] }}-updates {{ ansible_facts['distribution_release'] }}-backports
+          Components: main contrib non-free non-free-firmware
+          Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+          Types: deb
+          URIs: http://deb.debian.org/debian-security
+          Suites: {{ ansible_facts['distribution_release'] }}-security
+          Components: main contrib non-free non-free-firmware
+          Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+    - name: Clean apt lists
+      file:
+        path: /var/lib/apt/lists
+        state: absent
+
+    - name: Recreate apt lists dir
+      file:
+        path: /var/lib/apt/lists
+        state: directory
+        mode: "0755"
+
+    - name: Apt update
+      apt:
+        update_cache: yes

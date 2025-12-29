@@ -53,8 +53,8 @@ pub mod account {
 
     /// The most recent nonces that have been used to send transactions.
     ///
-    /// All three account types (spot, margin, multi) stores their nonces in this
-    /// same storage slot.
+    /// Both account types (single, multi) store their nonces in this same
+    /// storage slot.
     pub const SEEN_NONCES: Item<BTreeSet<Nonce>> = Item::new("seen_nonces");
 }
 
@@ -105,7 +105,7 @@ pub fn query_seen_nonces(storage: &dyn Storage) -> StdResult<BTreeSet<Nonce>> {
         .map(|opt| opt.unwrap_or_default()) // default to an empty B-tree set
 }
 
-pub fn create_account(ctx: MutableCtx) -> anyhow::Result<()> {
+pub fn create_account(ctx: MutableCtx, activate: bool) -> anyhow::Result<()> {
     let app_cfg = ctx.querier.query_dango_config()?;
 
     // Only the account factory can create new accounts.
@@ -119,11 +119,14 @@ pub fn create_account(ctx: MutableCtx) -> anyhow::Result<()> {
     // default to `Inactive`. This is an intentional optimization to minimize
     // disk writes.
     //
-    // Two exceptions to this are:
-    // 1. during genesis;
-    // 2. the account received sufficient funds during instantiation.
+    // Exceptions to this are:
+    // 1. account factory has specified in the instantiate message that the
+    //    account is to be activated upon instantiation;
+    // 2. during genesis (genesis accounts are always activated);
+    // 3. the account received sufficient funds during instantiation.
     // In these cases, activate the account now.
-    if ctx.block.height == GENESIS_BLOCK_HEIGHT
+    if activate
+        || ctx.block.height == GENESIS_BLOCK_HEIGHT
         || is_sufficient(&ctx.funds, &app_cfg.minimum_deposit)
     {
         account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
@@ -170,7 +173,7 @@ fn is_sufficient(deposit: &Coins, minimum: &Coins) -> bool {
 /// - the nonce is acceptible;
 /// - the signature is authentic.
 ///
-/// This logic is used by single-signature accounts (Spot and Margin).
+/// This logic is used by single-signature accounts.
 pub fn authenticate_tx(
     ctx: AuthCtx,
     tx: Tx,
@@ -525,8 +528,7 @@ mod tests {
         super::*,
         dango_types::config::{AppAddresses, AppConfig},
         grug::{
-            Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr,
-            btree_map, hash,
+            Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr, hash,
         },
         hex_literal::hex,
         std::str::FromStr,
@@ -811,7 +813,6 @@ mod tests {
                     account_factory: ACCOUNT_FACTORY,
                     ..Default::default()
                 },
-                collateral_powers: btree_map! {},
                 ..Default::default()
             })
             .unwrap()
@@ -894,7 +895,6 @@ mod tests {
                     account_factory: ACCOUNT_FACTORY,
                     ..Default::default()
                 },
-                collateral_powers: btree_map! {},
                 ..Default::default()
             })
             .unwrap()
@@ -976,7 +976,6 @@ mod tests {
                     account_factory: ACCOUNT_FACTORY,
                     ..Default::default()
                 },
-                collateral_powers: btree_map! {},
                 ..Default::default()
             })
             .unwrap()

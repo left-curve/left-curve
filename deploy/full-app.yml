@@ -1,7 +1,6 @@
 - name: Generate keys on all nodes and build peer list
   hosts: full-app
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   gather_facts: yes
   any_errors_fatal: true
   vars:
@@ -30,8 +29,8 @@
 
     - name: Set timestamp and deployment name on all hosts
       set_fact:
-        deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
-        timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+        deployment_name: "{{ hostvars[ansible_play_hosts[0]]['timestamp'] }}"
+        timestamp: "{{ hostvars[ansible_play_hosts[0]]['timestamp'] }}"
         s3_bucket: "dango-{{ dango_network }}-{{ timestamp }}"
 
     - name: Fetch PR title from GitHub API (once)
@@ -175,7 +174,7 @@
 
     - name: Calculate if deployment lock is recent
       set_fact:
-        deploy_lock_recent: "{{ deploy_lock_stat.stat.exists and ((ansible_date_time.epoch | int) - (deploy_lock_stat.stat.mtime | int) < (deploy_lock_threshold_seconds | int)) }}"
+        deploy_lock_recent: "{{ deploy_lock_stat.stat.exists and ((ansible_facts['date_time']['epoch'] | int) - (deploy_lock_stat.stat.mtime | int) < (deploy_lock_threshold_seconds | int)) }}"
 
     - name: Notify Discord of deployment stop due to active lock
       when:
@@ -221,6 +220,12 @@
       when: deploy_lock_recent | bool
       fail:
         msg: "Active deployment lock found at {{ deploy_lock_file }}. Remove manually to override."
+
+    - name: Ensure deployments directories exist
+      file:
+        path: "{{ ansible_facts['env']['HOME'] }}/deployments/"
+        state: directory
+        mode: '0755'
 
     - name: Create or refresh deployment lock
       file:
@@ -298,8 +303,7 @@
     # - meta: end_play
 
 - hosts: full-app
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   any_errors_fatal: true
   collections:
     - community.docker
@@ -334,21 +338,17 @@
 
   tasks:
     - block:
-        - name: Run cosign role
-          import_role:
-            name: cosign
-
         - name: Run full-app role
           import_role:
             name: full-app
 
       rescue:
-        - name: Stop and remove stack
-          community.docker.docker_compose_v2:
-            project_name: "{{ deployment_name }}"
-            project_src: "{{ deployment_dir }}"
-            state: absent
-          ignore_errors: true
+        # - name: Stop and remove stack
+        #   community.docker.docker_compose_v2:
+        #     project_name: "{{ deployment_name }}"
+        #     project_src: "{{ deployment_dir }}"
+        #     state: stopped
+        #   ignore_errors: true
 
         # I want to keep files if I need to dig further using `docker compose logs`
         # - name: Remove deployment directory
@@ -419,8 +419,11 @@
             msg: "Deployment failed, please look at the logs. You can also ssh to any of the servers, to {{ deployment_dir }} and run `docker compose logs`"
 
       always:
+        - import_tasks: roles/full-app/tasks/resume_kuma.yml
+          when: system_wide_directories
+
         - name: Log deployment finished
-          community.general.syslogger:
+          syslogger:
             msg: "[{{ deployment_name }}] Finished deployment"
             facility: local0
             priority: info
@@ -529,8 +532,7 @@
           ignore_errors: true
 
 - hosts: monitoring
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   tags: monitoring
   vars_files:
     - roles/full-app/vars/main.yml
@@ -551,7 +553,7 @@
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-dango.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
-          loop: "{{ groups['full-app'] }}"
+          loop: "{{ ansible_play_hosts }}"
         - name: Create Cometbft prometheus targets
           copy:
             content: |
@@ -565,7 +567,7 @@
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-cometbft.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
-          loop: "{{ groups['full-app'] }}"
+          loop: "{{ ansible_play_hosts }}"
         - name: Create Postgres prometheus targets
           when: deploy_includes_postgres
           copy:
@@ -580,7 +582,7 @@
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-postgres.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
-          loop: "{{ groups['full-app'] }}"
+          loop: "{{ ansible_play_hosts }}"
         - name: Create Clickhouse prometheus targets
           when: deploy_includes_clickhouse
           copy:
@@ -595,8 +597,6 @@
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-clickhouse.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
-          loop: "{{ groups['full-app'] }}"
+          loop: "{{ ansible_play_hosts }}"
       when:
-        - hostvars[groups['full-app'][0]]['expose_ports'] == true
-      become: true
-      become_user: root
+        - hostvars[ansible_play_hosts[0]]['expose_ports'] == true

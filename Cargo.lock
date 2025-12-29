@@ -1906,9 +1906,9 @@ checksum = "8b75356056920673b02621b35afd0f7dda9306d03c79a30f5c56c44cf256e3de"
 
 [[package]]
 name = "async-trait"
-version = "0.1.88"
+version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e539d3fca749fcee5236ab05e93a52867dd549cc157c8cb7f99595f3cedffdb5"
+checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3822,18 +3822,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-account-margin"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-auth",
- "dango-lending",
- "dango-oracle",
- "dango-types",
- "grug",
-]
-
-[[package]]
 name = "dango-account-multi"
 version = "0.0.0"
 dependencies = [
@@ -3846,7 +3834,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-account-spot"
+name = "dango-account-single"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -3984,13 +3972,11 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-account-factory",
- "dango-account-margin",
  "dango-account-multi",
- "dango-account-spot",
+ "dango-account-single",
  "dango-bank",
  "dango-dex",
  "dango-gateway",
- "dango-lending",
  "dango-oracle",
  "dango-taxman",
  "dango-types",
@@ -4133,16 +4119,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-lending"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-account-factory",
- "dango-types",
- "grug",
-]
-
-[[package]]
 name = "dango-mock-httpd"
 version = "0.0.0"
 dependencies = [
@@ -4173,11 +4149,11 @@ name = "dango-oracle"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "dango-lending",
  "dango-types",
  "grug",
  "hex",
  "humantime",
+ "metrics",
  "pyth-types",
  "test-case",
 ]
@@ -4259,7 +4235,6 @@ dependencies = [
  "dango-httpd",
  "dango-indexer-clickhouse",
  "dango-indexer-sql",
- "dango-lending",
  "dango-mock-httpd",
  "dango-oracle",
  "dango-proposal-preparer",
@@ -4327,8 +4302,6 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
- "dango-dex",
- "dango-types",
  "grug",
  "grug-app",
  "tracing",
@@ -8505,6 +8478,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "protobuf-codegen"
+version = "3.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d3976825c0014bbd2f3b34f0001876604fe87e0c86cd8fa54251530f1544ace"
+dependencies = [
+ "anyhow",
+ "once_cell",
+ "protobuf",
+ "protobuf-parse",
+ "regex",
+ "tempfile",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "protobuf-json-mapping"
+version = "3.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0d6e4be637b310d8a5c02fa195243328e2d97fa7df1127a27281ef1187fcb1d"
+dependencies = [
+ "protobuf",
+ "protobuf-support",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "protobuf-parse"
+version = "3.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4aeaa1f2460f1d348eeaeed86aea999ce98c1bded6f089ff8514c9d9dbdc973"
+dependencies = [
+ "anyhow",
+ "indexmap 2.9.0",
+ "log",
+ "protobuf",
+ "protobuf-support",
+ "tempfile",
+ "thiserror 1.0.69",
+ "which",
+]
+
+[[package]]
 name = "protobuf-support"
 version = "3.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8580,12 +8595,13 @@ dependencies = [
 
 [[package]]
 name = "pyth-lazer-client"
-version = "8.4.1"
+version = "15.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a1c5d0599485cb55333dc8f4de88edc50681a67b49a53a4ab2288768e7ca850"
+checksum = "8d6b7e6b8722a8939658176454bc9337d8b7e6ecfef5b8519306817c914a759d"
 dependencies = [
  "anyhow",
  "arc-swap",
+ "async-trait",
  "atomicwrites",
  "backoff",
  "base64 0.22.1",
@@ -8594,11 +8610,15 @@ dependencies = [
  "futures",
  "futures-util",
  "humantime-serde",
+ "protobuf-json-mapping",
  "pyth-lazer-protocol",
+ "pyth-lazer-publisher-sdk",
  "reqwest 0.12.23",
  "serde",
  "serde_json",
+ "serde_with",
  "tokio",
+ "tokio-stream",
  "tokio-tungstenite 0.20.1",
  "tracing",
  "ttl_cache",
@@ -8607,9 +8627,9 @@ dependencies = [
 
 [[package]]
 name = "pyth-lazer-protocol"
-version = "0.18.1"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f8609c264c03a18a07a2c0c57a4b38b6e7b141a4e3d41161e7ab5a455157ae8"
+checksum = "a7ad9d625a4461c4166633c2ded7bcf7c8eec2da7386a1885b2b19c489a4ebc1"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -8624,6 +8644,21 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.12",
+ "utoipa",
+]
+
+[[package]]
+name = "pyth-lazer-publisher-sdk"
+version = "0.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42311494e1d5c302784dbf0f26f919c7ad1a039943634859a32108795de7f433"
+dependencies = [
+ "anyhow",
+ "fs-err",
+ "protobuf",
+ "protobuf-codegen",
+ "pyth-lazer-protocol",
+ "serde_json",
 ]
 
 [[package]]
@@ -11807,6 +11842,30 @@ name = "utf8parse"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
+
+[[package]]
+name = "utoipa"
+version = "5.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fcc29c80c21c31608227e0912b2d7fddba57ad76b606890627ba8ee7964e993"
+dependencies = [
+ "indexmap 2.9.0",
+ "serde",
+ "serde_json",
+ "utoipa-gen",
+]
+
+[[package]]
+name = "utoipa-gen"
+version = "5.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d79d08d92ab8af4c5e8a6da20c47ae3f61a0f1dabc1997cdf2d082b757ca08b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn 2.0.110",
+]
 
 [[package]]
 name = "uuid"

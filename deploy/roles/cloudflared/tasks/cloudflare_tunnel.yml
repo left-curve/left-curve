@@ -71,29 +71,34 @@
     mode: '0755'
 
 - name: Copy cloudflared templates
-  become: true
-  become_user: root
   template:
     src: "{{ item.src }}"
     dest: "{{ cloudflared_dir }}/{{ item.dest }}"
-    owner: "{{ deploy_user }}"
     mode: "{{ item.mode }}"
   loop:
     - { src: "env.j2", dest: ".env", mode: "0600" }
     - { src: "docker-compose.yml", dest: "docker-compose.yml", mode: "0644" }
 
-- name: Copy cloudflared config (default then host override)
-  become: true
-  become_user: root
+- name: Check host override template exists
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ role_path }}/templates/config-{{ hostname }}.yml"
+  register: cf_override
+
+- name: Copy default cloudflared config
+  when: not cf_override.stat.exists
   template:
-    src: "{{ item }}"
+    src: config.yml
     dest: "{{ cloudflared_dir }}/config.yml"
-    owner: "{{ deploy_user }}"
     mode: "0644"
-  loop:
-    - "config.yml"
-    - "config-{{ hostname }}.yml"
-  ignore_errors: yes
+
+- name: Copy host override cloudflared config
+  template:
+    src: "config-{{ hostname }}.yml"
+    dest: "{{ cloudflared_dir }}/config.yml"
+    mode: "0644"
+  when: cf_override.stat.exists
 
 - name: Create cloudflare network
   community.docker.docker_network:
@@ -128,5 +133,34 @@
     proxied: true
     state: present
     api_token: "{{ cloudflare_api_token }}"
+  retries: 3
+  delay: 5
+
+# NOTE: There is no support for round-robin for CNAME so we point at a single
+# server.
+- name: Create DNS for services (when LB disabled)
+  community.general.cloudflare_dns:
+    zone: "{{ dango_domain }}"
+    record: "{{ item.1 }}-{{ item.0 }}"
+    type: CNAME
+    value: "{{ tunnel_id }}.cfargotunnel.com"
+    proxied: true
+    state: present
+    api_token: "{{ cloudflare_api_token }}"
+  loop: "{{ dango_networks | product(['api','www','faucet']) | list }}"
+  when: not cloudflare_lb_enabled
+  retries: 3
+  delay: 5
+
+- name: Create DNS for graphiql services
+  community.general.cloudflare_dns:
+    zone: "{{ dango_domain }}"
+    record: "{{ item.1 }}-{{ item.0 }}"
+    type: CNAME
+    value: "{{ tunnel_id }}.cfargotunnel.com"
+    proxied: true
+    state: present
+    api_token: "{{ cloudflare_api_token }}"
+  loop: "{{ dango_networks | product(['graphiql']) | list }}"
   retries: 3
   delay: 5

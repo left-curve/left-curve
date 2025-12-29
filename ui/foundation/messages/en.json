@@ -1,6 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common": {
+    "account": "Account",
     "connect": "Connect",
     "assets": "Assets",
     "fund": "Fund",
@@ -492,6 +493,7 @@
   "accountCreation": {
     "accountCreated": "Account Created",
     "title": "Create New Account",
+    "description": "Create a new subaccount to start trading and managing your assets.",
     "stepper": {
       "title": [
         {
@@ -708,6 +710,18 @@
       "title": "Current Session",
       "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
       "remaining": "Remaining time",
+      "userStatus": "Account Status",
+      "accountStatus": [
+        {
+          "declarations": ["input status"],
+          "selectors": ["status"],
+          "match": {
+            "status=active": "Active",
+            "status=inactive": "Inactive",
+            "status=frozen": "Frozen"
+          }
+        }
+      ],
       "network": {
         "title": "Network",
         "chainId": "Chain ID",

@@ -1,27 +1,28 @@
-traefik_dir: "{{ ansible_env.HOME }}/traefik"
+traefik_dir: "{{ ansible_facts['env']['HOME'] }}/traefik"
 discord_username: "Deploy"
 discord_avatar_url: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ansible-light.svg"
 github_repo: "left-curve/left-curve"
 ssh_users:
   - penso
-  - rhaki
   - larry
-  - zexsor
-  - j0nl1
-  - michael
-deploy_user: deploy
+  # - rhaki
+  # - zexsor
+  # - j0nl1
+  # - michael
+sudo_users:
+  - penso
 dango_domain: "dango.zone"
 dango:
   dex_bot:
     # NOTE: those are public from the genesis file
     # Dex bot signer: the account that will open orders on the DEX
     username: "user8"
-    address: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
-    dex_address: "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+    address: "0x7f360aa0806f41aabe9fc43bfc1254e5bafe7583"
+    dex_address: "0xda32476efe31e535207f0ad690d337a4ebf54a22"
     private_key: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
     # The account that will provide liquidity on the DEX and mint tokens to dex signer
     minter_username: "user9"
-    minter_address: "0x6f95c4f169f38f598dd571084daa5c799c5743de"
+    minter_address: "0x3792b060a077fceca337334adf53f695e1362397"
     minter_private_key: "c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3"
     mint_amount: 1000000000
     liquidity_amount: 1000000000
@@ -38,6 +39,10 @@ ports:
   db_metrics_port: 9187
   dango_metrics_port: 9191
   graphiql_port: 4000
+kuma:
+  devnet: [1, 16, 19, 17, 18, 24, 25, 2, 3, 4, 5, 6, 7, 8]
+  testnet: [9, 20, 21, 22, 23, 27, 26, 10, 11, 12, 13, 14]
+  mainnet: [28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]
 traefik:
   devnet:
     ports:
@@ -45,23 +50,34 @@ traefik:
       dango_frontend_port: 8081
       faucet_port: 8082
       graphiql_port: 8086
-      cometbft_p2p_port: 26656
       cometbft_rpc_port: 26657
+      # keep p2p port here but this is direct connection without traefik
+      cometbft_p2p_port: 26656
   testnet:
     ports:
       dango_port: 8050
       dango_frontend_port: 8051
       faucet_port: 8052
       graphiql_port: 8056
-      cometbft_p2p_port: 36656
       cometbft_rpc_port: 36657
+      # keep p2p port here but this is direct connection without traefik
+      cometbft_p2p_port: 36656
+  mainnet:
+    ports:
+      dango_port: 8030
+      dango_frontend_port: 8031
+      faucet_port: 8032
+      graphiql_port: 8036
+      cometbft_rpc_port: 46657
+      # keep p2p port here but this is direct connection without traefik
+      cometbft_p2p_port: 46656
 
 # in summary cometbft needs to expose:
-# 26656, to anyone
-# 26657, to tailscale
-# 26658, to dango container only
+# 26656, to wireguard (p2p)
+# 26657, to wireguard (rpc)
+# 26658, to dango container only (abci)
 # 26660, to tailscale (metrics)
 # dango needs to expose:
 # 8080, to anyone
 # 9191, to tailscale (metrics)
-# 26658, to cometbft container only
+# 26658, to cometbft container only (abci)

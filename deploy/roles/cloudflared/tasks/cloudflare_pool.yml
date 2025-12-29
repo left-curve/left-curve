@@ -6,26 +6,22 @@
       set_fact:
         pool_name: "pool-{{ pool.name }}-{{ dango_network }}"
         pool_monitor_id: "{{ (monitor_id_map[pool.name] if monitor_id_map is defined and monitor_id_map.get(pool.name) is defined else omit) }}"
+        pool_origins: []
 
     - name: Initialize per-iteration vars
       set_fact:
         existing_pool_id: ""
         created_pool_id: ""
 
-    - name: Build origins from inventory hosts
-      vars:
-        hosts: "{{ groups['full-app'] | default([]) }}"
-      set_fact:
-        pool_origins: []
-
-    - name: Append origin for each full-app host
+    - name: Append origin for each cloudflared host
       vars:
         hn: "{{ hostvars[item].hostname | default(item) }}"
         addr: "{{ pool.name }}-{{ dango_network }}-{{ hn }}.{{ dango_domain }}"
         origin_name: "{{ pool.name }}-{{ dango_network }}-{{ hn }}"
       set_fact:
         pool_origins: "{{ pool_origins + [ { 'name': origin_name, 'address': addr, 'enabled': true, 'header': { 'Host': [ addr ] } } ] }}"
-      loop: "{{ groups['full-app'] | default([]) }}"
+      loop: "{{ groups['cloudflared'] | default([]) }}"
+      when: dango_network in (hostvars[item].dango_networks | default([]))
 
     - name: Find existing pool by name
       set_fact:

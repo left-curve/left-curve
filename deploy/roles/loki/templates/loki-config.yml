@@ -1,13 +1,18 @@
 auth_enabled: false
 
+# single host mode
+target: all
+
 limits_config:
-  reject_old_samples: false  # Allow old entries
-  ingestion_rate_mb: 16        # Increase from 4MB to 16MB/sec
-  ingestion_burst_size_mb: 32  # Burst up to 32MB
+  reject_old_samples: false    # Allow old entries
+  reject_old_samples_max_age: 168h  # 7 days
+  ingestion_rate_mb: 16              # 16 MB/sec = ~1.4TB/day total
+  ingestion_burst_size_mb: 32
+  per_stream_rate_limit: 8MB
+  per_stream_rate_limit_burst: 16MB
   max_line_size: 256KB         # Increase line size limit
   max_streams_per_user: 0      # Unlimited streams
-  # Or increase window:
-  # reject_old_samples_max_age: 720h  # 30 days
+  retention_period: 30d # keeps 30 days of logs
 
 server:
   http_listen_port: 3100
@@ -24,6 +29,13 @@ common:
     instance_addr: 127.0.0.1
     kvstore:
       store: inmemory
+
+compactor:
+  working_directory: /tmp/loki/compactor
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+  delete_request_store: filesystem
 
 query_range:
   results_cache:

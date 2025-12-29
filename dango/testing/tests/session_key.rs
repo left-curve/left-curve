@@ -241,7 +241,7 @@ fn session_key() {
             .register_new_account(
                 &mut suite,
                 contracts.account_factory,
-                AccountParams::Spot(Params::new(owner_index)),
+                AccountParams::Single(Params::new(owner_index)),
                 Coins::default(),
             )
             .unwrap();

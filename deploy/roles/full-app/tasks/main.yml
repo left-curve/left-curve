@@ -12,11 +12,13 @@
 - import_tasks: cloudflare_pr_tunnel.yml
   when: cloudflare_tunnel_enabled and github_pr_number is defined
 - import_tasks: validate.yml
+- import_tasks: pause_kuma.yml
+  when: system_wide_directories
 - import_tasks: stop_previous.yml
   when: system_wide_directories
 - import_tasks: deploy_configs.yml
 - import_tasks: create_s3_bucket.yml
-  when: s3_enabled
+  when: s3_enabled | default(false)
 - import_tasks: verify_signatures.yml
   when: verify_signatures
 - import_tasks: create_databases.yml
@@ -43,3 +45,5 @@
 - import_tasks: dex_bot.yml
   when: dex_bot_enabled
 - import_tasks: check_container_healthy.yml
+- import_tasks: resume_kuma.yml
+  when: system_wide_directories
