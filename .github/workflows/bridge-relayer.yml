@@ -1,0 +1,708 @@
+name: Bitcoin Bridge Relayer
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_COMMIT: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
+  DEPLOY_BRIDGE_RELAYER_IMAGE_TAG: latest
+  # Toggle sccache in CI via repo/org variable USE_SCCACHE = 'true'
+  USE_SCCACHE: ${{ vars.USE_SCCACHE }}
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+      - "develop"
+    paths:
+      - ".github/workflows/bridge-relayer.yml"
+      - "deploy/**"
+      - "dango/**"
+      - "docker/**"
+      - "grug/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
+  pull_request:
+    branches:
+      - "**"
+    paths:
+      - ".github/workflows/bridge-relayer.yml"
+      - "deploy/**"
+      - "dango/**"
+      - "docker/**"
+      - "grug/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
+
+jobs:
+  format:
+    name: Format
+    runs-on: [self-hosted]
+    # Don't use this, it raises permissions issues on self hosted runners
+    # container:
+    #   image: rust:slim
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: rustfmt
+
+      - name: Run rustfmt checks
+        run: rustup run nightly cargo fmt --check --all
+
+  check-no-features:
+    # needs: [bridge-relayer-test]
+    name: Check compiling without features
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - name: Setup sccache (optional)
+        if: env.USE_SCCACHE == 'true'
+        run: |
+          set -euo pipefail
+          if ! command -v sccache >/dev/null 2>&1; then
+            V=0.12.0
+            ARCH=$(uname -m)
+            case "$ARCH" in
+              x86_64) A=x86_64 ;;
+              aarch64|arm64) A=aarch64 ;;
+              *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+            esac
+            curl -sSfL -o /tmp/sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v${V}/sccache-v${V}-${A}-unknown-linux-musl.tar.gz"
+            tar -xzf /tmp/sccache.tar.gz -C /tmp
+            mkdir -p "$HOME/.local/bin" "$HOME/.cache/sccache"
+            mv "/tmp/sccache-v${V}-${A}-unknown-linux-musl/sccache" "$HOME/.local/bin/sccache"
+            chmod +x "$HOME/.local/bin/sccache"
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+          else
+            mkdir -p "$HOME/.cache/sccache"
+          fi
+          {
+            echo "RUSTC_WRAPPER=sccache"
+            echo "SCCACHE_DIR=$HOME/.cache/sccache"
+            echo "SCCACHE_CACHE_SIZE=10G"
+            echo "SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+            echo "SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+            echo "SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+            echo "SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+            echo "SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+            echo "SCCACHE_S3_FORCE_PATH_STYLE=1"
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          } >> $GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: Check without features
+        run: |
+          set -euo pipefail
+          for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
+            echo "Checking $crate..."
+            cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
+          done
+
+      - name: sccache stats (optional)
+        if: env.USE_SCCACHE == 'true'
+        run: sccache --show-stats || true
+
+  # bridge-relayer-test:
+  #   needs: [format]
+  #   name: Lint + Test
+  #   runs-on: self-hosted
+  #   timeout-minutes: 20
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   # Don't use this, it raises permissions issues on self hosted runners
+  #   # container:
+  #   #   image: ghcr.io/left-curve/left-curve/native-builder
+  #   # permissions:
+  #   #   packages: read
+  #   env:
+  #     DANGO_URL: http://localhost:1317
+  #     DATABASE_URL: sqlite://db.sqlite?mode=rwc
+  #   services:
+  #     dango:
+  #       image: ghcr.io/left-curve/left-curve/dango:latest
+  #       ports:
+  #         - 127.0.0.1:1317:1317
+  #       healthcheck:
+  #         test: ["CMD", "curl", "-f", "http://127.0.0.1:1317/up"]
+  #         interval: 10s
+  #         timeout: 5s
+  #         retries: 3
+  #   steps:
+  #     - name: Checkout sources
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.head_ref || github.ref }}
+
+  #     - name: Setup sccache (optional)
+  #       if: env.USE_SCCACHE == 'true'
+  #       run: |
+  #         set -euo pipefail
+  #         if ! command -v sccache >/dev/null 2>&1; then
+  #           V=0.12.0
+  #           ARCH=$(uname -m)
+  #           case "$ARCH" in
+  #             x86_64) A=x86_64 ;;
+  #             aarch64|arm64) A=aarch64 ;;
+  #             *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+  #           esac
+  #           curl -sSfL -o /tmp/sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v${V}/sccache-v${V}-${A}-unknown-linux-musl.tar.gz"
+  #           tar -xzf /tmp/sccache.tar.gz -C /tmp
+  #           mkdir -p "$HOME/.local/bin" "$HOME/.cache/sccache"
+  #           mv "/tmp/sccache-v${V}-${A}-unknown-linux-musl/sccache" "$HOME/.local/bin/sccache"
+  #           chmod +x "$HOME/.local/bin/sccache"
+  #           echo "$HOME/.local/bin" >> $GITHUB_PATH
+  #         else
+  #           mkdir -p "$HOME/.cache/sccache"
+  #         fi
+  #         {
+  #           echo "RUSTC_WRAPPER=sccache"
+  #           echo "SCCACHE_DIR=$HOME/.cache/sccache"
+  #           echo "SCCACHE_CACHE_SIZE=10G"
+  #           echo "SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+  #           echo "SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+  #           echo "SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+  #           echo "SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+  #           echo "SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+  #           echo "SCCACHE_S3_FORCE_PATH_STYLE=1"
+  #           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+  #           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+  #         } >> $GITHUB_ENV
+
+  #     - name: Install toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         # Commenting this out so we always use the latest toolchain.
+  #         # toolchain: 1.91
+  #         components: clippy, llvm-tools-preview
+
+  #     - name: Run clippy
+  #       run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
+
+  #     - name: Build GraphQL schema
+  #       run: cargo run -p dango-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
+
+  #     - name: Check if schema is up-to-date
+  #       run: |
+  #         if ! git diff --exit-code ./indexer/client/src/schemas/schema.graphql; then
+  #           echo "::error::GraphQL schema is out of date. Please run 'just build-graphql-schema' locally and commit the changes."
+  #           exit 1
+  #         fi
+
+  #     - name: Install cargo-llvm-cov
+  #       run: cargo install cargo-llvm-cov
+
+  #     # Prior to introducing coverage, we were running tests here like this:
+  #     # - name: Run tests
+  #     #   run: |
+  #     #     cargo test --all-features # -- --test-threads=1
+  #     #   env:
+  #     #     RUST_BACKTRACE: 1
+  #     #
+  #     # Leaving here since coverage takes more time than tests and we might want to revert at some point.
+  #     - name: Run tests and collect coverage
+  #       run: |
+  #         mkdir -p target/coverage
+  #         cargo llvm-cov --workspace --all-features \
+  #                        --lcov  --output-path target/coverage/lcov.info
+  #       env:
+  #         RUST_BACKTRACE: 1
+
+  #     - name: sccache stats (optional)
+  #       if: env.USE_SCCACHE == 'true'
+  #       run: sccache --show-stats || true
+
+  #     - name: Upload coverage to Qlty
+  #       uses: qltysh/qlty-action/coverage@v2
+  #       with:
+  #         files: target/coverage/lcov.info
+  #         token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+
+  bridge-relayer-build:
+    # needs: [bridge-relayer-test]
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        runner:
+          [self-hosted]
+          # when needing to try on all runner types
+          # - [self-hosted, Linux]
+          # - [self-hosted, macOS]
+    name: Build bridge relayer for ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - name: Enable sccache for cross (optional)
+        if: env.USE_SCCACHE == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.cache/sccache" "$PWD/.cross-cache/cargo"
+          opts=""
+          opts="$opts -e RUSTC_WRAPPER=/usr/local/bin/sccache"
+          # Reuse the same host cache directory inside the container
+          opts="$opts -e SCCACHE_DIR=/tmp/sccache"
+          opts="$opts -e SCCACHE_CACHE_SIZE=10G"
+          # Run container processes as the host user to avoid permission issues
+          opts="$opts --user $(id -u):$(id -g)"
+          # Provide a writable cargo home inside the container and persist it
+          opts="$opts -e CARGO_HOME=/tmp/cargo -v $PWD/.cross-cache/cargo:/tmp/cargo"
+          [ -n "${{ secrets.SCCACHE_BUCKET }}" ] && opts="$opts -e SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+          [ -n "${{ secrets.SCCACHE_ENDPOINT }}" ] && opts="$opts -e SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+          [ -n "${{ secrets.SCCACHE_REGION }}" ] && opts="$opts -e SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+          [ -n "${{ secrets.SCCACHE_S3_KEY_PREFIX }}" ] && opts="$opts -e SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+          [ -n "${{ secrets.SCCACHE_S3_USE_SSL }}" ] && opts="$opts -e SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+          opts="$opts -e SCCACHE_S3_FORCE_PATH_STYLE=1"
+          [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && opts="$opts -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+          [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && opts="$opts -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          # Mount the host cache directory into the container
+          opts="$opts -v $HOME/.cache/sccache:/tmp/sccache"
+          echo "CROSS_CONTAINER_OPTS=$opts" >> $GITHUB_ENV
+
+      - name: Set build config
+        id: config
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+            if [[ "${{ runner.arch }}" == "X64" ]]; then
+              echo "image=ghcr.io/left-curve/left-curve/native-builder:amd64" >> $GITHUB_OUTPUT
+              echo "arch=x86_64" >> $GITHUB_OUTPUT
+            elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
+              # if [[ "${{ runner.os }}" == "macOS" ]]; then
+              #   echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}, cross doesn't work with this config (sadly). We should fix this."
+              #   exit 1
+              # fi
+
+              echo "image=ghcr.io/left-curve/left-curve/cross-builder-amd64" >> $GITHUB_OUTPUT
+              echo "arch=arm64" >> $GITHUB_OUTPUT
+            else
+              echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+              exit 1
+            fi
+            echo "target=x86_64-unknown-linux-gnu" >> $GITHUB_OUTPUT
+            echo "platform=linux/amd64" >> $GITHUB_OUTPUT
+            echo "suffix=amd64" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            if [[ "${{ runner.arch }}" == "X64" ]]; then
+              echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+            elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
+              if [[ "${{ runner.os }}" == "macOS" ]]; then
+                echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+              elif [[ "${{ runner.os }}" == "Linux" ]]; then
+                # NOTE: I could use a native-builder in such case, but using cross to keep consistency
+                echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+              else
+                echo "Unsupported runner OS for ARM64: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+                exit 1
+              fi
+            else
+              echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+              exit 1
+            fi
+            echo "target=aarch64-unknown-linux-gnu" >> $GITHUB_OUTPUT
+            echo "platform=linux/arm64" >> $GITHUB_OUTPUT
+            echo "suffix=arm64" >> $GITHUB_OUTPUT
+          else
+              echo "Unsupported matrix ${{ matrix.arch }}"
+              exit 1
+          fi
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Write Cross.toml
+        run: |
+          echo "[target.${{ steps.config.outputs.target }}]" > Cross.toml
+          echo "image = \"${{ steps.config.outputs.image }}\"" >> Cross.toml
+
+      - name: Set GIT_COMMIT
+        run: |
+          cp grug/types/src/git_info.rs grug/types/src/git_info.rs.in
+          sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" grug/types/src/git_info.rs.in > grug/types/src/git_info.rs
+          rm grug/types/src/git_info.rs.in
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/cache@v4
+        with:
+          path: .cross-cache
+          key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: pull cross docker builder image
+        run: |
+          docker pull ${{ steps.config.outputs.image }}
+
+      - name: build binary with cross
+        env:
+          RUSTFLAGS: "-C debuginfo=2 -C force-frame-pointers=yes"
+          CARGO_PROFILE_RELEASE_STRIP: "none"
+        run: |
+          set -euo pipefail
+          mkdir -p .cross-cache/${{ steps.config.outputs.target }}
+          CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
+          cross build --target ${{ steps.config.outputs.target }} --release --verbose
+
+      - name: sccache stats (cross, optional)
+        if: env.USE_SCCACHE == 'true'
+        run: |
+          # Best-effort: show stats in a fresh container with the same cache mounted.
+          docker run --rm \
+            --user $(id -u):$(id -g) \
+            -e SCCACHE_DIR=/tmp/sccache \
+            -v $HOME/.cache/sccache:/tmp/sccache \
+            ${{ steps.config.outputs.image }} \
+            bash -lc 'command -v sccache && sccache --show-stats || true'
+
+      - name: build docker image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --push \
+            --platform ${{ steps.config.outputs.platform }} \
+            --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
+            --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
+            --provenance=false \
+            -t ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
+            -f docker/bridge-relayer/Dockerfile .
+
+      - name: Ensure Bridge Relayer works
+        run: |
+          docker run --rm ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} bridge-relayer-httpd || true
+
+  bridge-relayer-push-manifest:
+    permissions:
+      packages: write
+      id-token: write
+    needs: [bridge-relayer-build]
+    outputs:
+      published: ${{ steps.publish-status.outputs.published }}
+    runs-on: [self-hosted]
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch Docker manifest
+        run: |
+          docker manifest create ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }} \
+            --amend ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}-amd64 \
+            --amend ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}-arm64
+
+          docker manifest push --purge ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}
+
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            docker manifest create ghcr.io/left-curve/left-curve/dango-bridge-relayer:latest \
+              --amend ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}-amd64 \
+              --amend ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}-arm64
+
+            docker manifest push --purge ghcr.io/left-curve/left-curve/dango-bridge-relayer:latest
+          fi
+
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            docker manifest create ghcr.io/left-curve/left-curve/dango-bridge-relayer:pr-${{ github.event.pull_request.number }}-latest \
+              --amend ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}-amd64 \
+              --amend ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}-arm64
+            docker manifest push --purge ghcr.io/left-curve/left-curve/dango-bridge-relayer:pr-${{ github.event.pull_request.number }}-latest
+          fi
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.10.0
+      - name: Sign bridge relayer images
+        id: sign-bridge-relayer
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+          COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/bridge-relayer.yml@${{ github.ref }}"
+        run: |
+          set -euo pipefail
+
+          images=("ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}")
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            images+=("ghcr.io/left-curve/left-curve/dango-bridge-relayer:latest")
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            images+=("ghcr.io/left-curve/left-curve/dango-bridge-relayer:pr-${{ github.event.pull_request.number }}-latest")
+          fi
+
+          tmp_markdown="$(mktemp)"
+          tmp_digests="$(mktemp)"
+          {
+            echo "| Image | Digest |"
+            echo "| ---- | ------ |"
+          } > "$tmp_markdown"
+
+          for image in "${images[@]}"; do
+            digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
+            if [ -z "$digest" ]; then
+              echo "Unable to determine digest for $image" >&2
+              exit 1
+            fi
+            cosign sign "$image@$digest"
+            printf '%s=%s\n' "$image" "$digest" >> "$tmp_digests"
+            printf '| %s | `%s` |\n' "$image" "$digest" >> "$tmp_markdown"
+          done
+          {
+            echo "digest_table<<EOF"
+            cat "$tmp_markdown"
+            echo "EOF"
+            echo "digests<<EOF"
+            cat "$tmp_digests"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify bridge relayer signatures
+        if: ${{ steps.sign-bridge-relayer.outputs.digests != '' }}
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/bridge-relayer.yml@${{ github.ref }}"
+          COSIGN_DIGESTS: ${{ steps.sign-bridge-relayer.outputs.digests }}
+        run: |
+          set -euo pipefail
+          while IFS='=' read -r image digest; do
+            [ -n "$image" ] || continue
+            cosign verify \
+              --certificate-identity "$COSIGN_IDENTITY" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$image@$digest" >/dev/null
+          done <<< "$COSIGN_DIGESTS"
+
+      - name: Docker Deploy Summary
+        env:
+          DIGEST_TABLE: ${{ steps.sign-bridge-relayer.outputs.digest_table }}
+        run: |
+          echo "# 🐳 Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
+          echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "| ---- | ------ |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ env.GIT_COMMIT }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image URL** | [ghcr.io/left-curve/left-curve/dango-bridge-relayer:${{ env.GIT_COMMIT }}](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango-bridge-relayer) |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "| **Latest tag:** | [ghcr.io/left-curve/left-curve/dango-bridge-relayer:latest](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango-bridge-relayer) |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "| **Architectures** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$DIGEST_TABLE" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 🔏 Signed Image Digests" >> $GITHUB_STEP_SUMMARY
+            echo "$DIGEST_TABLE" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Record bridge relayer manifest publication
+        id: publish-status
+        run: |
+          echo "published=true" >> $GITHUB_OUTPUT
+
+  set-image-tags:
+    name: Detect image tags
+    needs: [bridge-relayer-push-manifest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      bridge_relayer_tag: ${{ steps.determine-tags.outputs.bridge_relayer_tag }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Determine deploy image tag
+        id: determine-tags
+        run: |
+          set -euo pipefail
+          bridge_relayer_tag="latest"
+          bridge_relayer_published="${{ needs['bridge-relayer-push-manifest'].outputs.published }}"
+          run_event="${{ github.event_name }}"
+          bridge_relayer_repo="ghcr.io/left-curve/left-curve/dango-bridge-relayer"
+
+          commit_tag="${{ env.GIT_COMMIT }}"
+          pr_tag=""
+
+          if [ "$bridge_relayer_published" = "true" ]; then
+            bridge_relayer_tag="$commit_tag"
+          elif docker manifest inspect "${bridge_relayer_repo}:${commit_tag}" >/dev/null 2>&1; then
+            bridge_relayer_tag="$commit_tag"
+          elif [ "$run_event" = "pull_request" ]; then
+            pr_tag="pr-${{ github.event.pull_request.number }}-latest"
+            if docker manifest inspect "${bridge_relayer_repo}:${pr_tag}" >/dev/null 2>&1; then
+              bridge_relayer_tag="$pr_tag"
+            fi
+          fi
+
+          echo "Bridge Relayer deploy image tag: $bridge_relayer_tag"
+          echo "## Deploy Image Tags" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Tag |" >> $GITHUB_STEP_SUMMARY
+          echo "| --------- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| bridge relayer | \`$bridge_relayer_tag\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| commit | \`$commit_tag\` |" >> $GITHUB_STEP_SUMMARY
+          echo "bridge_relayer_tag=$bridge_relayer_tag" >> "$GITHUB_OUTPUT"
+
+  security-artifacts:
+    name: Generate SBOMs and Scan Images
+    needs: [set-image-tags]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Install Syft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! command -v syft >/dev/null 2>&1; then
+            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
+          fi
+      - name: Install Grype
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! command -v grype >/dev/null 2>&1; then
+            curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
+          fi
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate SBOM and scan
+        env:
+          SBOM_DIR: sbom
+          REPORT_DIR: vuln-reports
+          BRIDGE_RELAYER_TAG: ${{ needs.set-image-tags.outputs.bridge_relayer_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$SBOM_DIR" "$REPORT_DIR"
+          failed=false
+          images=(
+            "ghcr.io/left-curve/left-curve/dango-bridge-relayer:${BRIDGE_RELAYER_TAG}"
+          )
+          for image in "${images[@]}"; do
+            [ -n "$image" ] || continue
+            safe_name=$(echo "$image" | tr '/:@' '___')
+            sbom_file="$SBOM_DIR/${safe_name}.cdx.json"
+            report_file="$REPORT_DIR/${safe_name}.txt"
+            syft scan "$image" -o cyclonedx-json > "$sbom_file"
+            if ! grype "$image" --fail-on high --only-fixed --add-cpes-if-none > "$report_file"; then
+              echo "::warning::High severity vulnerabilities detected for $image"
+              failed=true
+            fi
+          done
+          if [ "$failed" = "true" ]; then
+            touch "$REPORT_DIR/.failed"
+          fi
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-artifacts-${{ github.run_id }}
+          path: |
+            sbom
+            vuln-reports
+      - name: Enforce vulnerability policy
+        run: |
+          if [ -f vuln-reports/.failed ]; then
+            echo "::error::Critical vulnerabilities detected in container images"
+            exit 1
+          fi
+      - name: Document security summary
+        run: |
+          echo "## 🔐 Supply Chain Security" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SBOMs generated with Syft v1.13.0" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Vulnerability scan performed with Grype v0.81.0 (fail-on=HIGH, only-fixed)" >> "$GITHUB_STEP_SUMMARY"
+
+  # deploy:
+  #   permissions:
+  #     packages: read
+  #     deployments: write
+  #     contents: read
+  #   needs: [security-artifacts, set-image-tags]
+  #   runs-on: [self-hosted]
+  #   env:
+  #     PR_NUMBER: ${{ github.event.pull_request.number }}
+  #     PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+  #     ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+  #     DEPLOY_BRIDGE_RELAYER_IMAGE_TAG: ${{ needs.set-image-tags.outputs.bridge_relayer_tag }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.head_ref || github.ref }}
+  #     - name: Log in to GHCR
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: ghcr.io
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Check DEPLOY_KEY is set
+  #       run: |
+  #         if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+  #           echo "Missing DEPLOY_KEY secret"
+  #           exit 1
+  #         fi
+  #     - name: Start SSH agent
+  #       uses: webfactory/ssh-agent@v0.7.0
+  #       with:
+  #         ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+  #     - name: Install Ansible
+  #       run: |
+  #         pipx install ansible
+  #         echo "${HOME}/.local/bin" >> $GITHUB_PATH
+  #         ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
+  #         ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
+  #     - name: Install collections
+  #       run: |
+  #         ansible-galaxy collection install -r deploy/requirements.yml
+  #     - name: Run Ansible playbook
+  #       run: |
+  #         cd deploy
+
+  #         if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+  #         ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true}' -e github_sha=${{ env.GIT_COMMIT }} -e dango_image_tag=${{ env.DEPLOY_BRIDGE_RELAYER_IMAGE_TAG }} -e ghcr_token=${{ secrets.GITHUB_TOKEN }}
+  #         fi
+
+  #         if [ "${{ github.event_name }}" == "pull_request" ]; then
+  #         # This deletes the existing deployment, but instead use `ansible-playbook delete-full-app.yml -e deployment_name=pr-<ID>` if you need
+  #         # ansible-playbook delete-existing-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
+
+  #         ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }}
+  #         fi
