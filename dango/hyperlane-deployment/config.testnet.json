@@ -47,7 +47,8 @@
           },
           "symbol": "USDC"
         }
-      ]
+      ],
+      "multi_sig_address": "0x72775792429B4e71b317e270329fB9222c650379"
     }
   }
 }

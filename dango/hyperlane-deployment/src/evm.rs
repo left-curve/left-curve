@@ -271,3 +271,40 @@ pub async fn get_or_deploy_ism(
         },
     }
 }
+
+/// Transfers ownership of the ProxyAdmin contract to a new owner.
+///
+/// # Arguments
+///
+/// - `provider`: The provider to use for the transaction.
+/// - `proxy_admin_address`: The address of the ProxyAdmin contract.
+/// - `new_owner`: The address of the new owner.
+///
+/// # Returns
+///
+/// - `Ok(())`: If the ownership transfer was successful.
+///
+/// # Errors
+///
+/// - `anyhow::Error`: If the ownership transfer fails.
+pub async fn transfer_proxy_owner_ownership(
+    provider: &impl Provider,
+    proxy_admin_address: Address,
+    new_owner: Address,
+) -> anyhow::Result<()> {
+    let proxy_admin = ProxyAdmin::new(proxy_admin_address, &provider);
+
+    println!(
+        "Transferring ownership of ProxyAdmin at {} to {}...",
+        proxy_admin_address, new_owner
+    );
+    let tx_hash = proxy_admin
+        .transferOwnership(new_owner)
+        .send()
+        .await?
+        .watch()
+        .await?;
+    println!("Done! Tx hash: {tx_hash}");
+
+    Ok(())
+}

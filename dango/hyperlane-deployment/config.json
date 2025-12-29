@@ -54,7 +54,8 @@
           },
           "symbol": "sepoliaUNI"
         }
-      ]
+      ],
+      "multi_sig_address": null
     }
   }
 }

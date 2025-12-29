@@ -3,7 +3,10 @@ use {
     dango_hyperlane_deployment::{
         config,
         dango::{self, set_warp_routes},
-        evm::{deploy_proxy_admin, deploy_warp_route_and_update_deployment, get_or_deploy_ism},
+        evm::{
+            deploy_proxy_admin, deploy_warp_route_and_update_deployment, get_or_deploy_ism,
+            transfer_proxy_owner_ownership,
+        },
         setup,
     },
     dotenvy::dotenv,
@@ -101,6 +104,19 @@ async fn main() -> anyhow::Result<()> {
             routes,
         )
         .await?;
+
+        // Transfer ProxyAdmin ownership to multi-sig if configured
+        if let Some(multi_sig_address) = evm_config.multi_sig_address {
+            transfer_proxy_owner_ownership(
+                &provider,
+                evm_deployment.proxy_admin_address,
+                multi_sig_address,
+            )
+            .await?;
+        } else {
+            println!("No multi-sig address configured for chain_id: {}", chain_id);
+            println!("Skipping ProxyAdmin ownership transfer...");
+        }
 
         // Set the validator set on the Dango gateway
         dango::set_ism_validator_set(&dango_client, &config, &mut dango_owner, evm_config).await?;
