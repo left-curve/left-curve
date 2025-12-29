@@ -13,25 +13,5 @@ hyperlane_instance_name: >-
 # Base directory for this specific instance
 hyperlane_instance_dir: "{{ hyperlane_agents_dir }}/{{ hyperlane_instance_name }}"
 
-# Docker image and tag (CI-aligned)
-hyperlane_agents_image: "ghcr.io/left-curve/left-curve/hyperlane-agents"
+# Docker image tag
 hyperlane_agents_tag: "latest"
-
-# Path to the per-instance .env file
-hyperlane_agents_env_file: "{{ hyperlane_instance_dir }}/.env"
-
-# Shared config across all agents on the host
-hyperlane_agents_shared_config: "{{ hyperlane_agents_dir }}/config.json"
-
-# Base config per agent type (shared by all instances of that type)
-hyperlane_agents_relayer_config: "{{ hyperlane_agents_dir }}/relayer-config.json"
-hyperlane_agents_validator_config: "{{ hyperlane_agents_dir }}/validator-config.json"
-
-# Optional network-specific config per agent type, e.g.:
-#  - relayer-testnet-config.json
-#  - validator-testnet-config.json
-hyperlane_agents_relayer_network_config: "{{ hyperlane_agents_dir }}/relayer-{{ hyperlane_agents_network }}-config.json"
-hyperlane_agents_validator_network_config: "{{ hyperlane_agents_dir }}/validator-{{ hyperlane_agents_network }}-config.json"
-
-# RocksDB data directory for this instance
-hyperlane_agents_data_dir: "{{ hyperlane_instance_dir }}/hyperlane_db"

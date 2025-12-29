@@ -11,7 +11,7 @@
   loop:
     - "{{ hyperlane_agents_dir }}"
     - "{{ hyperlane_instance_dir }}"
-    - "{{ hyperlane_agents_data_dir }}"
+    - "{{ hyperlane_instance_dir }}/hyperlane_db"
 
 # ------------------------------------------------------------------------------
 # Input validation (fail fast before writing files)
@@ -72,7 +72,7 @@
 - name: Render relayer env file
   template:
     src: "relayer-{{ hyperlane_agents_network }}.env.j2"
-    dest: "{{ hyperlane_agents_env_file }}"
+    dest: "{{ hyperlane_instance_dir }}/.env"
     mode: "0600"
   when: hyperlane_agent_type == 'relayer'
 
@@ -108,7 +108,7 @@
 - name: Render validator env file
   template:
     src: "validator-{{ hyperlane_agents_network }}.env.j2"
-    dest: "{{ hyperlane_agents_env_file }}"
+    dest: "{{ hyperlane_instance_dir }}/.env"
     mode: "0600"
   when: hyperlane_agent_type == 'validator'
 
@@ -119,7 +119,7 @@
 - name: Copy shared hyperlane config
   copy:
     src: config.json
-    dest: "{{ hyperlane_agents_shared_config }}"
+    dest: "{{ hyperlane_agents_dir }}/config.json"
     mode: "0644"
 
 #    ---------------------------------------------------------------------------
@@ -129,24 +129,16 @@
 - name: Copy relayer base config
   copy:
     src: relayer-config.json
-    dest: "{{ hyperlane_agents_relayer_config }}"
+    dest: "{{ hyperlane_agents_dir }}/relayer-config.json"
     mode: "0644"
-  when: hyperlane_agent_type == 'relayer'
-
-- name: Check if relayer network config exists
-  stat:
-    path: "{{ role_path }}/files/relayer-{{ hyperlane_agents_network }}-config.json"
-  register: relayer_network_config_stat
   when: hyperlane_agent_type == 'relayer'
 
 - name: Copy relayer network config
   copy:
     src: "relayer-{{ hyperlane_agents_network }}-config.json"
-    dest: "{{ hyperlane_agents_relayer_network_config }}"
+    dest: "{{ hyperlane_agents_dir }}/relayer-{{ hyperlane_agents_network }}-config.json"
     mode: "0644"
-  when:
-    - hyperlane_agent_type == 'relayer'
-    - relayer_network_config_stat.stat.exists
+  when: hyperlane_agent_type == 'relayer'
 
 #    ---------------------------------------------------------------------------
 #    Validator
@@ -155,24 +147,16 @@
 - name: Copy validator base config
   copy:
     src: validator-config.json
-    dest: "{{ hyperlane_agents_validator_config }}"
+    dest: "{{ hyperlane_agents_dir }}/validator-config.json"
     mode: "0644"
-  when: hyperlane_agent_type == 'validator'
-
-- name: Check if validator network config exists
-  stat:
-    path: "{{ role_path }}/files/validator-{{ hyperlane_agents_network }}-config.json"
-  register: validator_network_config_stat
   when: hyperlane_agent_type == 'validator'
 
 - name: Copy validator network config
   copy:
     src: "validator-{{ hyperlane_agents_network }}-config.json"
-    dest: "{{ hyperlane_agents_validator_network_config }}"
+    dest: "{{ hyperlane_agents_dir }}/validator-{{ hyperlane_agents_network }}-config.json"
     mode: "0644"
-  when:
-    - hyperlane_agent_type == 'validator'
-    - validator_network_config_stat.stat.exists
+  when: hyperlane_agent_type == 'validator'
 
 # ------------------------------------------------------------------------------
 # Docker Compose

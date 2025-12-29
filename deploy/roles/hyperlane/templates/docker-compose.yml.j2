@@ -1,39 +1,35 @@
 services:
 {% if hyperlane_agent_type == 'relayer' %}
   relayer:
-    image: "{{ hyperlane_agents_image }}:{{ hyperlane_agents_tag }}"
+    image: "ghcr.io/left-curve/left-curve/hyperlane-agents:{{ hyperlane_agents_tag }}"
     container_name: "{{ hyperlane_instance_name }}"
     env_file:
       - .env
     volumes:
-      - "{{ hyperlane_agents_data_dir }}:/app/hyperlane_db"
-      - "{{ hyperlane_agents_shared_config }}:/config/config.json:ro"
-      - "{{ hyperlane_agents_relayer_config }}:/config/relayer-config.json:ro"
-{% if relayer_network_config_stat is defined and relayer_network_config_stat.stat.exists %}
-      - "{{ hyperlane_agents_relayer_network_config }}:/config/relayer-{{ hyperlane_agents_network }}-config.json:ro"
-{% endif %}
+      - "{{ hyperlane_instance_dir }}/hyperlane_db:/app/hyperlane_db"
+      - "{{ hyperlane_agents_dir }}/config.json:/config/config.json:ro"
+      - "{{ hyperlane_agents_dir }}/relayer-config.json:/config/relayer-config.json:ro"
+      - "{{ hyperlane_agents_dir }}/relayer-{{ hyperlane_agents_network }}-config.json:/config/relayer-{{ hyperlane_agents_network }}-config.json:ro"
     environment:
       CONFIG_FILES: >-
-        /config/config.json,/config/relayer-config.json{% if relayer_network_config_stat is defined and relayer_network_config_stat.stat.exists %},/config/relayer-{{ hyperlane_agents_network }}-config.json{% endif %}
+        /config/config.json,/config/relayer-config.json,/config/relayer-{{ hyperlane_agents_network }}-config.json
 
     command: ["./relayer"]
     restart: unless-stopped
 {% elif hyperlane_agent_type == 'validator' %}
   validator:
-    image: "{{ hyperlane_agents_image }}:{{ hyperlane_agents_tag }}"
+    image: "ghcr.io/left-curve/left-curve/hyperlane-agents:{{ hyperlane_agents_tag }}"
     container_name: "{{ hyperlane_instance_name }}"
     env_file:
       - .env
     volumes:
-      - "{{ hyperlane_agents_data_dir }}:/app/hyperlane_db"
-      - "{{ hyperlane_agents_shared_config }}:/config/config.json:ro"
-      - "{{ hyperlane_agents_validator_config }}:/config/validator-config.json:ro"
-{% if validator_network_config_stat is defined and validator_network_config_stat.stat.exists %}
-      - "{{ hyperlane_agents_validator_network_config }}:/config/validator-{{ hyperlane_agents_network }}-config.json:ro"
-{% endif %}
+      - "{{ hyperlane_instance_dir }}/hyperlane_db:/app/hyperlane_db"
+      - "{{ hyperlane_agents_dir }}/config.json:/config/config.json:ro"
+      - "{{ hyperlane_agents_dir }}/validator-config.json:/config/validator-config.json:ro"
+      - "{{ hyperlane_agents_dir }}/validator-{{ hyperlane_agents_network }}-config.json:/config/validator-{{ hyperlane_agents_network }}-config.json:ro"
     environment:
       CONFIG_FILES: >-
-        /config/config.json,/config/validator-config.json{% if validator_network_config_stat is defined and validator_network_config_stat.stat.exists %},/config/validator-{{ hyperlane_agents_network }}-config.json{% endif %}
+        /config/config.json,/config/validator-config.json,/config/validator-{{ hyperlane_agents_network }}-config.json
 
     command: ["./validator"]
     restart: unless-stopped
