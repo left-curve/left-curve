@@ -1,6 +1,7 @@
 - hosts: monitoring
   become: true
   become_user: "{{ deploy_user }}"
+  remote_user: "debian"
   vars:
     loki_url: "http://loki:3100"
   pre_tasks:

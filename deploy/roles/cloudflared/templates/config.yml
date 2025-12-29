@@ -13,5 +13,14 @@ ingress:
     service: http://traefik
   - hostname: faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}
     service: http://traefik
+# for devnet, we use a CNAME to the host without using a LB
+  - hostname: api-{{ dango_network }}.{{ dango_domain }}
+    service: http://traefik
+  - hostname: graphiql-{{ dango_network }}.{{ dango_domain }}
+    service: http://traefik
+  - hostname: www-{{ dango_network }}.{{ dango_domain }}
+    service: http://traefik
+  - hostname: faucet-{{ dango_network }}.{{ dango_domain }}
+    service: http://traefik
 {% endfor %}
   - service: http_status:404

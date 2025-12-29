@@ -1,8 +1,7 @@
 ---
 - name: Remove deploy locks for the specified network
   hosts: full-app
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "{{ deploy_user }}"
   gather_facts: yes
   vars_files:
     - roles/full-app/vars/main.yml

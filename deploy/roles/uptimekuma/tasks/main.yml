@@ -9,12 +9,9 @@
     - "{{ uptimekuma_dir }}/data"
 
 - name: Deploy Uptime Kuma docker-compose
-  become: true
-  become_user: root
   template:
     src: "docker-compose.yml"
     dest: "{{ uptimekuma_dir }}/docker-compose.yml"
-    owner: "{{ deploy_user }}"
 
 - name: Launch Uptime Kuma stack
   community.docker.docker_compose_v2:
@@ -22,4 +19,3 @@
     pull: missing
     state: present
     recreate: always
-

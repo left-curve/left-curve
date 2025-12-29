@@ -292,12 +292,11 @@ services:
       - dango
     volumes:
       - "${COMETBFT_DIRECTORY}:/root/.cometbft"
-{% if expose_ports %}
     ports:
-      - "${TAILSCALE_IP}:${COMETBFT_P2P_PORT:-0}:26656"
+      - "${WIREGUARD_IP}:${COMETBFT_P2P_PORT:-0}:26656"
+{% if expose_ports %}
       - "${TAILSCALE_IP}:${COMETBFT_RPC_PORT:-0}:26657"
       - "${TAILSCALE_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
-      - "${WIREGUARD_IP}:${COMETBFT_P2P_PORT:-0}:26656"
       - "${WIREGUARD_IP}:${COMETBFT_RPC_PORT:-0}:26657"
       - "${WIREGUARD_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
 {% endif %}

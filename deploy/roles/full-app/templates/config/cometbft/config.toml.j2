@@ -271,7 +271,8 @@ addr_book_file = "config/addrbook.json"
 
 # Set true for strict address routability rules
 # Set false for private or local networks
-addr_book_strict = true
+# NOTE: need to set this to false to allow Wireguard IP routing
+addr_book_strict = false
 
 # Maximum number of inbound peers
 max_num_inbound_peers = 40
@@ -280,7 +281,7 @@ max_num_inbound_peers = 40
 max_num_outbound_peers = 10
 
 # List of node IDs, to which a connection will be (re)established ignoring any existing limits
-unconditional_peer_ids = ""
+unconditional_peer_ids = "{{ unconditional_peer_ids | default('') }}"
 
 # Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
 persistent_peers_max_dial_period = "0s"

@@ -27,6 +27,12 @@ scrape_configs:
       - targets: ['ovh1:8888']
       - targets: ['ovh2:8888']
       - targets: ['ovh3:8888']
+      - targets: ['hetzner1:8888']
+      - targets: ['hetzner2:8888']
+      - targets: ['hetzner3:8888']
+      - targets: ['hetzner4:8888']
+      - targets: ['inter1:8888']
+      - targets: ['inter2:8888']
 
   - job_name: 'alertmanager'
     static_configs:
@@ -46,6 +52,12 @@ scrape_configs:
         - 'ovh5:9100'
         - 'ovh6:9100'
         - 'ovh7:9100'
+        - 'hetzner1:9100'
+        - 'hetzner2:9100'
+        - 'hetzner3:9100'
+        - 'hetzner4:9100'
+        - 'inter1:9100'
+        - 'inter2:9100'
     relabel_configs:
     - source_labels: [__address__]
       regex: 'node-exporter:9100'
@@ -70,6 +82,12 @@ scrape_configs:
       - targets: ['ovh5:9080']
       - targets: ['ovh6:9080']
       - targets: ['ovh7:9080']
+      - targets: ['hetzner1:9080']
+      - targets: ['hetzner2:9080']
+      - targets: ['hetzner3:9080']
+      - targets: ['hetzner4:9080']
+      - targets: ['inter1:9080']
+      - targets: ['inter2:9080']
     relabel_configs:
     - source_labels: [__address__]
       regex: 'promtail:9080'
@@ -106,30 +124,42 @@ scrape_configs:
           environment: 'production'
           network: 'system'
           dango_network: 'system'
-      # - targets: ['ovh1:8055']
-      #   labels:
-      #     service: 'clickhouse'
-      #     environment: 'production'
-      #     network: 'testnet'
-      #     dango_network: 'testnet'
-      # - targets: ['ovh2:8055']
-      #   labels:
-      #     service: 'clickhouse'
-      #     environment: 'production'
-      #     network: 'testnet'
-      #     dango_network: 'testnet'
-      # - targets: ['ovh1:8085']
-      #   labels:
-      #     service: 'clickhouse'
-      #     environment: 'production'
-      #     network: 'devnet'
-      #     dango_network: 'devnet'
-      # - targets: ['ovh2:8085']
-      #   labels:
-      #     service: 'clickhouse'
-      #     environment: 'production'
-      #     network: 'devnet'
-      #     dango_network: 'devnet'
+      - targets: ['hetzner1:9126']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner2:9126']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner3:9126']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner4:9126']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['inter1:9126']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['inter2:9126']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
 
   - job_name: 'postgres'
     static_configs:
@@ -145,40 +175,76 @@ scrape_configs:
           environment: 'production'
           network: 'system'
           dango_network: 'system'
-      # - targets: ['ovh1:8054']
-      #   labels:
-      #     service: 'postgres'
-      #     environment: 'production'
-      #     network: 'testnet'
-      #     dango_network: 'testnet'
-      # - targets: ['ovh2:8054']
-      #   labels:
-      #     service: 'postgres'
-      #     environment: 'production'
-      #     network: 'testnet'
-      #     dango_network: 'testnet'
-      # - targets: ['ovh1:8084']
-      #   labels:
-      #     service: 'postgres'
-      #     environment: 'production'
-      #     network: 'devnet'
-      #     dango_network: 'devnet'
-      # - targets: ['ovh2:8084']
-      #   labels:
-      #     service: 'postgres'
-      #     environment: 'production'
-      #     network: 'devnet'
-      #     dango_network: 'devnet'
+      - targets: ['hetzner1:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner2:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner3:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner4:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['inter1:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['inter2:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
 
   - job_name: 'dango'
     static_configs:
-      - targets: ['ovh1:8053']
+      - targets: ['hetzner1:8033']
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['hetzner3:8033']
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['inter1:8033']
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['inter2:8033']
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['hetzner2:8053']
         labels:
           service: 'dango'
           environment: 'production'
           network: 'testnet'
           dango_network: 'testnet'
-      - targets: ['ovh2:8053']
+      - targets: ['hetzner4:8053']
         labels:
           service: 'dango'
           environment: 'production'
@@ -199,6 +265,26 @@ scrape_configs:
 
   - job_name: 'cometbft'
     static_configs:
+      - targets: ['hetzner1:46660']
+        labels:
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['hetzner3:46660']
+        labels:
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['inter1:46660']
+        labels:
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['inter2:46660']
+        labels:
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
       - targets: ['ovh1:26660']
         labels:
           environment: 'production'
@@ -209,12 +295,12 @@ scrape_configs:
           environment: 'production'
           network: 'devnet'
           dango_network: 'devnet'
-      - targets: ['ovh1:36660']
+      - targets: ['hetzner2:36660']
         labels:
           environment: 'production'
           network: 'testnet'
           dango_network: 'testnet'
-      - targets: ['ovh2:36660']
+      - targets: ['hetzner4:36660']
         labels:
           environment: 'production'
           network: 'testnet'

@@ -5,8 +5,6 @@
 #     state: absent
 #
 # - name: ✂️ Delete host data directory so Postgres re-initializes
-#   become: true
-#   become_user: root
 #   ansible.builtin.file:
 #     path: "{{ data_dir }}"
 #     state: absent
@@ -26,12 +24,10 @@
   loop: ["{{ config_dir }}"]
 
 - name: Write .env for docker-compose
-  become: true
-  become_user: root
   copy:
     dest: "{{ deploy_dir }}/.env"
     mode: "0600"
-    owner: '{{ deploy_user }}'
+    # owner: '{{ deploy_user }}'
     content: |
       CONTAINER_NAME=postgres
       PSQL_VERSION={{ psql_version }}
@@ -44,41 +40,21 @@
       CONFIG_DIR={{ config_dir }}
 
 - name: Copy docker-compose.yml
-  become: true
-  become_user: root
   copy:
     src: files/docker-compose.yml
     dest: "{{ deploy_dir }}/docker-compose.yml"
     mode: '0644'
-    owner: '{{ deploy_user }}'
 
 - name: Copy postgres config
-  become: true
-  become_user: root
   copy:
     src: "{{ item }}"
     dest: "{{ config_dir }}/{{ item }}"
     mode: '0644'
-    owner: '{{ deploy_user }}'
   loop:
     - postgresql.conf
     - init.sql
 
-- name: Configure kernel parameters for memory optimization
-  sysctl:
-    name: "{{ item.key }}"
-    value: "{{ item.value }}"
-    state: present
-    reload: yes
-  loop:
-    - { key: 'vm.swappiness', value: '1' }
-    - { key: 'vm.vfs_cache_pressure', value: '50' }
-  become: true
-  become_user: root
-
 - name: Create postgres network
-  become: true
-  become_user: root
   docker_network:
     name: postgres
 

@@ -1,51 +1,93 @@
 [all:vars]
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+deploy_user="deploy"
+# ansible_user="debian"
 
 [github_runners]
-100.114.160.24 hostname=ovh4 ansible_user=debian
-100.75.192.25 hostname=ovh5 ansible_user=debian
-100.64.79.112 hostname=ovh6 ansible_user=debian
-100.112.48.112 hostname=ovh7 ansible_user=debian
+100.114.160.24
+100.75.192.25
+100.64.79.112
+100.112.48.112
 
 [dozzle]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
-100.122.37.57 ansible_user=debian
-100.114.160.24 ansible_user=debian
-100.75.192.25 ansible_user=debian
-100.64.79.112 ansible_user=debian
-100.112.48.112 ansible_user=debian
+100.96.253.40  # ovh1
+100.107.248.71 # ovh2
+100.122.37.57  # ovh3
+100.114.160.24 # ovh4
+100.75.192.25  # ovh5
+100.64.79.112  # ovh6
+100.112.48.112 # ovh7
+100.89.7.33    # inter1
+100.66.234.16  # inter2
+100.126.8.2    # hetzner1
+100.90.163.19  # hetzner2
+100.76.197.30  # hetzner3
+100.109.200.70 # hetzner4
 
 [clickhouse]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
+100.96.253.40  # ovh1
+100.107.248.71 # ovh2
+100.89.7.33    # inter1
+100.66.234.16  # inter2
+100.126.8.2    # hetzner1
+100.90.163.19  # hetzner2
+100.76.197.30  # hetzner3
+100.109.200.70 # hetzner4
 
 [db]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
-100.122.37.57 ansible_user=debian
+100.96.253.40  # ovh1
+100.107.248.71 # ovh2
+100.122.37.57  # ovh3
+100.89.7.33    # inter1
+100.66.234.16  # inter2
+100.126.8.2    # hetzner1
+100.90.163.19  # hetzner2
+100.76.197.30  # hetzner3
+100.109.200.70 # hetzner4
 
 [bots]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
+100.96.253.40  # ovh1
+100.107.248.71 # ovh2
 
 [full-app]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
+100.96.253.40  # ovh1
+100.107.248.71 # ovh2
+100.89.7.33    # inter1
+100.66.234.16  # inter2
+100.126.8.2    # hetzner1
+100.90.163.19  # hetzner2
+100.76.197.30  # hetzner3
+100.109.200.70 # hetzner4
 
 [traefik]
-100.96.253.40 ansible_user=debian
-100.107.248.71 ansible_user=debian
-100.122.37.57 ansible_user=debian
+100.96.253.40  # ovh1
+100.107.248.71 # ovh2
+100.122.37.57  # ovh3
+100.89.7.33    # inter1
+100.66.234.16  # inter2
+100.126.8.2    # hetzner1
+100.90.163.19  # hetzner2
+100.76.197.30  # hetzner3
+100.109.200.70 # hetzner4
 
 [uptimekuma]
-100.122.37.57
+100.122.37.57  # ovh3
 
 [monitoring]
-100.122.37.57 ansible_user=debian
+100.122.37.57  # ovh3
 
 [minio]
-100.122.37.57 ansible_user=debian
+100.122.37.57  # ovh3
 
 [homer]
-100.96.253.40 ansible_user=debian
+100.96.253.40  # ovh1
+
+[cloudflared]
+100.96.253.40  # ovh1
+100.107.248.71 # ovh2
+100.89.7.33    # inter1
+100.66.234.16  # inter2
+100.126.8.2    # hetzner1
+100.90.163.19  # hetzner2
+100.76.197.30  # hetzner3
+100.109.200.70 # hetzner4

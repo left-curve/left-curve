@@ -1,8 +1,9 @@
 - hosts: all
   become: true
+  remote_user: debian
   collections:
     - artis3n.tailscale
+  vars:
+    tailscale_args: "--accept-dns=false"
   roles:
-    - role: tailscale
-      vars:
-        tailscale_args: "--accept-dns=false"
+    - role: artis3n.tailscale

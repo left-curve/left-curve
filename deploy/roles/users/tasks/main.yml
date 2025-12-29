@@ -1,14 +1,7 @@
-- name: Copy deploy ssh keys for {{ ansible_user }}
-  include_tasks: add_ssh_keys.yml
-  vars:
-    authorized_user: "{{ ansible_user }}"
-    user: "deploy"
-
 - name: Create users
   user:
     name: "{{ item }}"
     shell: /bin/bash
-    groups: sudo
     append: yes
     state: present
     create_home: yes
@@ -95,7 +88,7 @@
     state: present
     regexp: "^{{ item }}\\s+ALL=\\(ALL\\) NOPASSWD:ALL$"
     backup: yes
-  with_items: "{{ ssh_users }}"
+  with_items: "{{ sudo_users }}"
 
 - name: Reload SSH
   service:

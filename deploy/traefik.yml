@@ -1,7 +1,34 @@
 - hosts: traefik
-  become: true
-  become_user: "{{ deploy_user }}"
+  remote_user: "debian"
+  tasks:
+    - name: Install certbot + Cloudflare plugin
+      become: true
+      apt:
+        name:
+          - certbot
+          - python3-certbot-dns-cloudflare
+          - cron
+        state: present
+        update_cache: yes
+
+- hosts: traefik
+  remote_user: "{{ deploy_user }}"
   collections:
     - community.docker
   roles:
     - traefik
+
+# - hosts: traefik
+#   remote_user: "debian"
+#   tasks:
+#     # We don't allow those port from public IPs anymore
+#     - name: Add UFW rules
+#       become: true
+#       ufw:
+#         rule: allow
+#         direction: in
+#         port: "{{ item }}"
+#         proto: tcp
+#         delete: yes
+#       loop: [80, 443]
+#       ignore_errors: yes
