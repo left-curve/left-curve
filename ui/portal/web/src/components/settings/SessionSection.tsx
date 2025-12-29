@@ -3,6 +3,7 @@ import { useAccount, useConfig, useSessionKey } from "@left-curve/store";
 import {
   CurrentBlock,
   IconEdit,
+  IconInfo,
   IconMobile,
   IconNetwork,
   IconTimer,
@@ -50,6 +51,30 @@ const UsernameSection: React.FC = () => {
       >
         <p>{username}</p>
         {hasNotChangedUsername && <IconEdit className="w-5 h-5" />}
+      </div>
+    </div>
+  );
+};
+
+const UserStatusSection: React.FC = () => {
+  const { isConnected, userStatus } = useAccount();
+
+  if (!isConnected) return null;
+
+  return (
+    <div className="flex items-center justify-between rounded-md gap-8 px-2">
+      <div className="flex flex-col">
+        <div className="flex items-start gap-2">
+          <IconInfo className="text-ink-tertiary-500" />
+          <p className="diatype-m-bold text-ink-secondary-700">
+            {m["settings.session.userStatus"]()}
+          </p>
+        </div>
+      </div>
+      <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-end md:justify-center gap-1">
+        <p>
+          {m["settings.session.accountStatus"]({ status: userStatus ? userStatus : "inactive" })}
+        </p>
       </div>
     </div>
   );
@@ -161,6 +186,7 @@ const ConnectMobileSection: React.FC = () => {
 
 export const SessionSection = Object.assign(Container, {
   Username: UsernameSection,
+  UserStatus: UserStatusSection,
   RemainingTime: RemainingTimeSection,
   Network: NetworkSection,
   ConnectMobile: ConnectMobileSection,

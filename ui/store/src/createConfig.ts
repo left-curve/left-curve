@@ -182,6 +182,7 @@ export function createConfig<
       connectors: new Map(),
       current: null,
       userIndexAndName: undefined,
+      userStatus: undefined,
       status: ConnectionStatus.Disconnected,
     };
   }
@@ -200,11 +201,12 @@ export function createConfig<
           return { ...initialState };
         },
         partialize(state) {
-          const { chainId, connectors, status, current, userIndexAndName } = state;
+          const { chainId, connectors, status, current, userIndexAndName, userStatus } = state;
           return {
             chainId,
             status,
             current,
+            userStatus,
             userIndexAndName,
             connectors: new Map(
               Array.from(connectors.entries()).map(([key, connection]) => {
@@ -304,6 +306,7 @@ export function createConfig<
       return {
         ...x,
         current: data.uid,
+        userStatus: data.userStatus,
         userIndexAndName: { index, name: name ?? `User #${index}` },
         connectors: new Map(x.connectors).set(data.uid, {
           keyHash: data.keyHash,
@@ -345,6 +348,7 @@ export function createConfig<
           username: undefined,
           connectors: new Map(),
           current: null,
+          userStatus: undefined,
           status: ConnectionStatus.Disconnected,
         };
       }
