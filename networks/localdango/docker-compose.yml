@@ -43,10 +43,10 @@ services:
     ports:
       - "127.0.0.1:${DANGO_FRONTEND_PORT:-5081}:80"
     environment:
-      - INDEXER_URL=http://localhost:8080
-      - FAUCET_URL=http://localhost:8082/mint
-      - QUEST_URL=http://localhost:8081/check_username
-      - UP_URL=http://localhost:8080/up
+      - INDEXER_URL=${INDEXER_URL:-http://localhost:8080}
+      - FAUCET_URL=${FAUCET_URL:-http://localhost:8082/mint}
+      - QUEST_URL=${QUEST_URL:-http://localhost:8081/check_username}
+      - UP_URL=${UP_URL:-http://localhost:8080/up}
       # Set to "true" to enable JSON access logs
       - NGINX_JSON_LOGS=${NGINX_JSON_LOGS:-}
     healthcheck:
@@ -166,7 +166,7 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
 
   grafana:
-    image: grafana/grafana:latest
+    image: docker.io/grafana/grafana:latest
     profiles: ["analytics"]
     labels:
       <<: *common-labels
@@ -182,7 +182,7 @@ services:
       GF_USERS_ALLOW_SIGN_UP: false
 
   alertmanager:
-    image: prom/alertmanager:latest
+    image: docker.io/prom/alertmanager:latest
     profiles: ["analytics"]
     labels:
       <<: *common-labels
@@ -197,7 +197,7 @@ services:
       - "--storage.path=/alertmanager"
 
   push_gateway:
-    image: prom/pushgateway:latest
+    image: docker.io/prom/pushgateway:latest
     profiles: ["analytics"]
     labels:
       <<: *common-labels
@@ -206,7 +206,7 @@ services:
       - "127.0.0.1:9091:9091"
 
   node-exporter:
-    image: prom/node-exporter:latest
+    image: docker.io/prom/node-exporter:latest
     profiles: ["analytics"]
     labels:
       <<: *common-labels
@@ -225,7 +225,7 @@ services:
       - "127.0.0.1:9100:9100"
 
   db:
-    image: postgres:17
+    image: docker.io/library/postgres:17
     shm_size: 1gb
     labels:
       <<: *common-labels
@@ -247,9 +247,8 @@ services:
       timeout: 5s
       retries: 10
 
-
   clickhouse:
-    image: clickhouse/clickhouse-server:latest
+    image: docker.io/clickhouse/clickhouse-server:latest
     restart: unless-stopped
     ports:
       - "127.0.0.1:${CLICKHOUSE_PORT:-8123}:8123" # HTTP interface
@@ -278,7 +277,7 @@ services:
       retries: 10
 
   loki:
-    image: grafana/loki:latest
+    image: docker.io/grafana/loki:latest
     profiles: ["analytics"]
     labels:
       <<: *common-labels
@@ -291,7 +290,7 @@ services:
     command: -config.file=/etc/loki/loki-config.yml
 
   promtail:
-    image: grafana/promtail:latest
+    image: docker.io/grafana/promtail:latest
     profiles: ["analytics"]
     labels:
       <<: *common-labels
