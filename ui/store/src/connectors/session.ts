@@ -57,7 +57,16 @@ export function session(parameters: SessionConnectorParameters = {}) {
           toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
         );
 
-        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash: session.keyHash });
+        const account = accounts[0];
+        const userStatus = await client.getAccountStatus({ address: account.address });
+
+        emitter.emit("connect", {
+          accounts,
+          chainId,
+          userIndexAndName,
+          keyHash: session.keyHash,
+          userStatus,
+        });
       },
       async disconnect() {
         storage.removeItem("session");
