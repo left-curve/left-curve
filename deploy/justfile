@@ -8,7 +8,7 @@ edit-secrets:
   ansible-vault edit group_vars/all/vault.yml
 
 edit-hyperlane-secrets:
-  EDITOR="cursor --wait" ansible-vault edit group_vars/hyperlane/vault.yml
+  ansible-vault edit group_vars/hyperlane/vault.yml
 
 # Print validator address from AWS KMS (cast)
 # Usage: just hyperlane-kms-address testnet 1
@@ -70,9 +70,15 @@ deploy-db:
 deploy-clickhouse:
   ansible-playbook clickhouse.yml
 
+# Deploy Hyperlane agent locally
+# Usage: just hyperlane-local testnet relayer
+#        just hyperlane-local testnet validator 1
+# Valid values:
+#   network: testnet, mainnet
+#   agent: relayer, validator
+#   index: required for validator (e.g. "1", "2"), optional for relayer
 hyperlane-local network agent index="":
-  ansible-playbook -i inventory hyperlane.yml --limit localhost \
-    -e ansible_become=false \
+  ansible-playbook -i inventory hyperlane.yml \
     -e deploy_user={{env_var("USER")}} \
     -e hyperlane_agents_dir="{{invocation_directory()}}/../.hyperlane-agents" \
     -e hyperlane_agents_network={{network}} \

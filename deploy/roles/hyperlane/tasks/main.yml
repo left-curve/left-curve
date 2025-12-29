@@ -21,11 +21,12 @@
   assert:
     that:
       - (hyperlane_agents_network | default('') | string | length) > 0
+      - (hyperlane_agents_network | default('') | string) in ['testnet', 'mainnet']
       - (hyperlane_agent_type | default('') | string) in ['relayer', 'validator']
     fail_msg: >-
       Missing or invalid inputs. Required:
-      - hyperlane_agents_network (e.g. testnet/mainnet)
-      - hyperlane_agent_type (relayer|validator)
+      - hyperlane_agents_network must be one of: testnet, mainnet
+      - hyperlane_agent_type must be one of: relayer, validator
 
 - name: Validate validator index is provided (validator only)
   assert:
@@ -72,7 +73,6 @@
   template:
     src: "relayer-{{ hyperlane_agents_network }}.env.j2"
     dest: "{{ hyperlane_agents_env_file }}"
-    owner: "{{ deploy_user }}"
     mode: "0600"
   when: hyperlane_agent_type == 'relayer'
 
@@ -109,7 +109,6 @@
   template:
     src: "validator-{{ hyperlane_agents_network }}.env.j2"
     dest: "{{ hyperlane_agents_env_file }}"
-    owner: "{{ deploy_user }}"
     mode: "0600"
   when: hyperlane_agent_type == 'validator'
 
@@ -121,7 +120,6 @@
   copy:
     src: config.json
     dest: "{{ hyperlane_agents_shared_config }}"
-    owner: "{{ deploy_user }}"
     mode: "0644"
 
 #    ---------------------------------------------------------------------------
@@ -132,7 +130,6 @@
   copy:
     src: relayer-config.json
     dest: "{{ hyperlane_agents_relayer_config }}"
-    owner: "{{ deploy_user }}"
     mode: "0644"
   when: hyperlane_agent_type == 'relayer'
 
@@ -146,7 +143,6 @@
   copy:
     src: "relayer-{{ hyperlane_agents_network }}-config.json"
     dest: "{{ hyperlane_agents_relayer_network_config }}"
-    owner: "{{ deploy_user }}"
     mode: "0644"
   when:
     - hyperlane_agent_type == 'relayer'
@@ -160,7 +156,6 @@
   copy:
     src: validator-config.json
     dest: "{{ hyperlane_agents_validator_config }}"
-    owner: "{{ deploy_user }}"
     mode: "0644"
   when: hyperlane_agent_type == 'validator'
 
@@ -174,7 +169,6 @@
   copy:
     src: "validator-{{ hyperlane_agents_network }}-config.json"
     dest: "{{ hyperlane_agents_validator_network_config }}"
-    owner: "{{ deploy_user }}"
     mode: "0644"
   when:
     - hyperlane_agent_type == 'validator'
@@ -188,13 +182,11 @@
   template:
     src: "docker-compose.yml.j2"
     dest: "{{ hyperlane_instance_dir }}/docker-compose.yml"
-    owner: "{{ deploy_user }}"
     mode: "0644"
 
 - name: Launch Hyperlane stack for this instance
   community.docker.docker_compose_v2:
     project_src: "{{ hyperlane_instance_dir }}"
-    pull: "{{ hyperlane_agents_pull_policy }}"
+    pull: always
     state: present
     recreate: always
-  register: hyperlane_agents_compose

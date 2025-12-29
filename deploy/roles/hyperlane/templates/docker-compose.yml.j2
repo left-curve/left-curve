@@ -4,7 +4,7 @@ services:
     image: "{{ hyperlane_agents_image }}:{{ hyperlane_agents_tag }}"
     container_name: "{{ hyperlane_instance_name }}"
     env_file:
-      - "{{ hyperlane_agents_env_file }}"
+      - .env
     volumes:
       - "{{ hyperlane_agents_data_dir }}:/app/hyperlane_db"
       - "{{ hyperlane_agents_shared_config }}:/config/config.json:ro"
@@ -17,13 +17,13 @@ services:
         /config/config.json,/config/relayer-config.json{% if relayer_network_config_stat is defined and relayer_network_config_stat.stat.exists %},/config/relayer-{{ hyperlane_agents_network }}-config.json{% endif %}
 
     command: ["./relayer"]
-    restart: "{{ hyperlane_agents_restart_policy }}"
+    restart: unless-stopped
 {% elif hyperlane_agent_type == 'validator' %}
   validator:
     image: "{{ hyperlane_agents_image }}:{{ hyperlane_agents_tag }}"
     container_name: "{{ hyperlane_instance_name }}"
     env_file:
-      - "{{ hyperlane_agents_env_file }}"
+      - .env
     volumes:
       - "{{ hyperlane_agents_data_dir }}:/app/hyperlane_db"
       - "{{ hyperlane_agents_shared_config }}:/config/config.json:ro"
@@ -36,5 +36,5 @@ services:
         /config/config.json,/config/validator-config.json{% if validator_network_config_stat is defined and validator_network_config_stat.stat.exists %},/config/validator-{{ hyperlane_agents_network }}-config.json{% endif %}
 
     command: ["./validator"]
-    restart: "{{ hyperlane_agents_restart_policy }}"
+    restart: unless-stopped
 {% endif %}

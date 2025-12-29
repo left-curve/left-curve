@@ -1,17 +1,7 @@
 ---
 # Base directory on the target host where Hyperlane instances live.
 # Uses deploy_user if defined, otherwise ansible_user (the SSH user Ansible connects as).
-hyperlane_agents_dir: "/home/{{ deploy_user | default(ansible_user) }}/hyperlane-agents"
-
-# Network / environment name (e.g. testnet, mainnet)
-hyperlane_agents_network: ""
-
-# Agent type to run: "relayer" or "validator"
-hyperlane_agent_type: ""
-
-# Validator index (only if hyperlane_agent_type == "validator")
-# Examples: "1", "2", "3" -> instance name: {{ network }}-validator-1, etc.
-hyperlane_validator_index: ""
+hyperlane_agents_dir: "{{ ansible_facts['env']['HOME'] }}/hyperlane-agents"
 
 # Logical instance name used for directory and container_name:
 # - relayer:   "{{ network }}-relayer"
@@ -45,8 +35,3 @@ hyperlane_agents_validator_network_config: "{{ hyperlane_agents_dir }}/validator
 
 # RocksDB data directory for this instance
 hyperlane_agents_data_dir: "{{ hyperlane_instance_dir }}/hyperlane_db"
-
-# Docker Compose options
-# Use "always" to ensure the latest tag is pulled on every deploy.
-hyperlane_agents_pull_policy: "always"
-hyperlane_agents_restart_policy: "unless-stopped"
