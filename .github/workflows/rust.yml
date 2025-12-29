@@ -1257,6 +1257,7 @@ jobs:
           docker compose ps
 
       - name: Verify frontend and backend connection
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FRONTEND_URL: "http://localhost:5081"
