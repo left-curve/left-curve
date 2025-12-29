@@ -1188,11 +1188,13 @@ jobs:
           ref: ${{ github.head_ref || github.ref }}
 
       - uses: pnpm/action-setup@v4
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
         with:
           version: 10.16.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
         with:
           node-version: 24
           cache: "pnpm"
