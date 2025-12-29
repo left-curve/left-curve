@@ -378,6 +378,14 @@ fn transfer_remote(
 
     let cfg = CONFIG.load(ctx.storage)?;
 
+    // Ensure the withdrawal amount is greater than min withdrawal.
+    ensure!(
+        amount >= cfg.min_withdrawal,
+        "minimum withdrawal not met: {} < {}",
+        amount,
+        cfg.min_withdrawal
+    );
+
     // Ensure the recipient address is valid.
     check_bitcoin_address(&recipient, cfg.network)?;
 

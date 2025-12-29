@@ -24,8 +24,8 @@ use {
     grug::{
         Addr, Addressable, CheckedContractEvent, Coins, CommitmentStatus, Duration, EventStatus,
         Hash256, HashExt, HexBinary, HexByteArray, Inner, Json, JsonDeExt, JsonSerExt,
-        MakeBlockOutcome, Message, NonEmpty, Order, PrimaryKey, QuerierExt, ResultExt, SearchEvent,
-        Tx, TxOutcome, Uint128, btree_map, btree_set, coins,
+        MakeBlockOutcome, Message, NonEmpty, NumberConst, Order, PrimaryKey, QuerierExt, ResultExt,
+        SearchEvent, Tx, TxOutcome, Uint128, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     identity::Identity256,
@@ -108,19 +108,17 @@ fn withdraw(
     gateway_contract: Addr,
     amount: Uint128,
     recipient: &str,
-) {
+) -> TxOutcome {
     let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
         recipient: recipient.to_string(),
     });
 
-    suite
-        .execute(
-            user,
-            gateway_contract,
-            &msg,
-            coins! { btc::DENOM.clone() => amount },
-        )
-        .should_succeed();
+    suite.execute(
+        user,
+        gateway_contract,
+        &msg,
+        coins! { btc::DENOM.clone() => amount },
+    )
 }
 
 // Advance 10 minutes in the test suite, which is enough for the cron job to execute.
@@ -216,6 +214,7 @@ fn instantiate() {
             fee_rate_updater: *owner.address.inner(),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,
+            min_withdrawal: Uint128::new(1000),
         };
 
         suite
@@ -243,6 +242,7 @@ fn instantiate() {
             fee_rate_updater: *owner.address.inner(),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,
+            min_withdrawal: Uint128::new(1000),
         };
 
         suite
@@ -268,6 +268,7 @@ fn instantiate() {
             fee_rate_updater: *owner.address.inner(),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,
+            min_withdrawal: Uint128::new(1000),
         };
 
         suite
@@ -636,7 +637,8 @@ fn same_hash_different_vout() {
         contracts.gateway,
         withdraw_amount,
         recipient,
-    );
+    )
+    .should_succeed();
 
     let withdraw_fee = suite
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalFeeRequest {
@@ -882,7 +884,8 @@ fn cron_execute() {
         contracts.gateway,
         withdraw_amount1,
         &recipient1,
-    );
+    )
+    .should_succeed();
 
     let withdraw_amount2 = Uint128::new(20_000);
     let net_withdraw2 = withdraw_amount2 - withdraw_fee;
@@ -894,7 +897,8 @@ fn cron_execute() {
         contracts.gateway,
         withdraw_amount2,
         &recipient2,
-    );
+    )
+    .should_succeed();
 
     // Ensure the data is stored in the contract.
     suite
@@ -955,7 +959,8 @@ fn cron_execute() {
         contracts.gateway,
         Uint128::new(10_000),
         &recipient2,
-    );
+    )
+    .should_succeed();
 
     // Wait for the cron job to execute.
     let outcome = advance_ten_minutes(&mut suite);
@@ -1038,7 +1043,8 @@ fn authorize_outbound() {
             contracts.gateway,
             Uint128::new(10_000),
             "bcrt1q4e3mwznnr3chnytav5h4mhx52u447jv2kl55z9",
-        );
+        )
+        .should_succeed();
 
         advance_ten_minutes(&mut suite);
     }
@@ -1372,7 +1378,8 @@ fn fee() {
         contracts.gateway,
         Uint128::new(40_000),
         btc_recipient,
-    );
+    )
+    .should_succeed();
 
     // Build the transaction and add the signatures.
     let tx = suite
@@ -1470,7 +1477,8 @@ fn multiple_outbound_tx() {
         contracts.gateway,
         Uint128::new(10_000),
         recipient1,
-    );
+    )
+    .should_succeed();
 
     withdraw(
         &mut suite,
@@ -1478,7 +1486,8 @@ fn multiple_outbound_tx() {
         contracts.gateway,
         Uint128::new(10_000),
         recipient2,
-    );
+    )
+    .should_succeed();
 
     // Let cronjob execute the withdrawals and ensure there are 2 events.
     let outcome = advance_ten_minutes(&mut suite);
@@ -1629,4 +1638,65 @@ fn deposit_address_request() {
     outcome.should_succeed();
 
     assert_eq!(id2, id1 + 1);
+}
+
+#[test]
+fn min_withdrawal() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
+
+    let btc_config = suite
+        .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
+        .unwrap();
+
+    let withdrawal_fee = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalFeeRequest {
+            denom: btc::DENOM.clone(),
+            remote: gateway::Remote::Bitcoin,
+        })
+        .unwrap()
+        .unwrap();
+
+    // Assert the min_withdrawal is greater than 1, othwerwise this test is useless.
+    assert!(btc_config.min_withdrawal > Uint128::ONE);
+
+    let (address_index, outcome) =
+        create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_succeed();
+
+    // Deposit 100k sats to user1
+    deposit_and_confirm(
+        &mut suite,
+        contracts.bitcoin,
+        Hash256::from_inner([0; 32]),
+        0,
+        Uint128::new(100_000),
+        Recipient::Index(address_index),
+    );
+
+    let recipient = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0";
+
+    // Withdraw 1 sat below the minimum amount; this should fail.
+    let withdraw_amount = withdrawal_fee + btc_config.min_withdrawal - Uint128::ONE;
+    withdraw(
+        &mut suite,
+        &mut accounts.user1,
+        contracts.gateway,
+        withdraw_amount,
+        recipient,
+    )
+    .should_fail_with_error(format!(
+        "minimum withdrawal not met: {} < {}",
+        btc_config.min_withdrawal - Uint128::ONE,
+        btc_config.min_withdrawal
+    ));
+
+    let withdraw_amount = withdrawal_fee + btc_config.min_withdrawal;
+    withdraw(
+        &mut suite,
+        &mut accounts.user1,
+        contracts.gateway,
+        withdraw_amount,
+        recipient,
+    )
+    .should_succeed();
 }

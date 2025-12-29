@@ -213,6 +213,10 @@ pub struct Config {
     pub minimum_deposit: Uint128,
     /// The maximum number of outputs in a single transaction.
     pub max_output_per_tx: usize,
+    /// Minimum amount of Sats required for a withdrawal.
+    /// All withdrawal requests lower than this amount will be rejected.
+    /// This is to avoid dust outputs.
+    pub min_withdrawal: Uint128,
 }
 
 #[grug::derive(Serde, Borsh)]

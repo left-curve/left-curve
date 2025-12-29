@@ -187,6 +187,7 @@ where
                 fee_rate_updater: owner,
                 minimum_deposit: opt.bitcoin.minimum_deposit,
                 max_output_per_tx: opt.bitcoin.max_output_per_tx,
+                min_withdrawal: opt.bitcoin.min_withdrawal,
             },
         },
         "dango/bitcoin",
