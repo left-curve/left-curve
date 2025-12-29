@@ -7,8 +7,7 @@ hyperlane_agents_dir: "{{ ansible_facts['env']['HOME'] }}/hyperlane-agents"
 # - relayer:   "{{ network }}-relayer"
 # - validator: "{{ network }}-validator-1"
 hyperlane_instance_name: >-
-  {{ hyperlane_agents_network }}-{{ hyperlane_agent_type }}{{ ('-' ~ hyperlane_validator_index)
-    if hyperlane_agent_type == 'validator' and (hyperlane_validator_index | default('') | length) > 0 else '' }}
+  {{ hyperlane_agents_network }}-{{ hyperlane_agent_type }}{{ ('-' ~ hyperlane_validator_index) if hyperlane_agent_type == 'validator' }}
 
 # Base directory for this specific instance
 hyperlane_instance_dir: "{{ hyperlane_agents_dir }}/{{ hyperlane_instance_name }}"

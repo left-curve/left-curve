@@ -1,5 +1,30 @@
 ---
 - hosts: hyperlane
   remote_user: "{{ deploy_user }}"
+  vars:
+    hyperlane_agents_network: "{{ hyperlane_agents_network | default('') }}"
+    hyperlane_agent_type: "{{ hyperlane_agent_type | default('') }}"
+    hyperlane_validator_index: "{{ hyperlane_validator_index | default('') }}"
+  pre_tasks:
+    - name: Validate required inputs
+      assert:
+        that:
+          - hyperlane_agents_network in ['testnet', 'mainnet']
+          - hyperlane_agent_type in ['relayer', 'validator']
+        fail_msg: >-
+          Missing or invalid inputs. Required:
+          - hyperlane_agents_network must be one of: testnet, mainnet
+            (received: {{ hyperlane_agents_network }})
+          - hyperlane_agent_type must be one of: relayer, validator
+            (received: {{ hyperlane_agent_type }})
+
+    - name: Validate validator index is provided
+      assert:
+        that:
+          - hyperlane_validator_index | length > 0
+        fail_msg: >-
+          hyperlane_validator_index is required when hyperlane_agent_type=validator.
+          Example: -e hyperlane_validator_index=1
+        when: hyperlane_agent_type == 'validator'
   roles:
     - role: hyperlane

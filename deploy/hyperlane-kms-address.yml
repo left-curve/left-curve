@@ -14,13 +14,23 @@
     - name: Validate required inputs
       assert:
         that:
-          - hyperlane_agents_network | length > 0
+          - hyperlane_agents_network in ['testnet', 'mainnet']
           - hyperlane_validator_index | length > 0
+        fail_msg: >-
+          Missing or invalid inputs. Required:
+          - hyperlane_agents_network must be one of: testnet, mainnet
+            (received: {{ hyperlane_agents_network }})
+          - hyperlane_validator_index must be provided (e.g. "1", "2")
+            (received: {{ hyperlane_validator_index }})
+
+    - name: Validate validator secrets exist in vault
+      assert:
+        that:
           - validator is defined
           - validator[hyperlane_agents_network] is defined
           - validator[hyperlane_agents_network][hyperlane_validator_index] is defined
         fail_msg: >-
-          Missing inputs or vault keys. Expected:
+          Missing validator secrets in vault. Expected:
           validator[{{ hyperlane_agents_network }}][{{ hyperlane_validator_index }}]
 
     - name: Compute address from AWS KMS key via cast
@@ -33,7 +43,7 @@
       environment:
         AWS_ACCESS_KEY_ID: "{{ validator[hyperlane_agents_network][hyperlane_validator_index].aws_access_key_id }}"
         AWS_SECRET_ACCESS_KEY: "{{ validator[hyperlane_agents_network][hyperlane_validator_index].aws_secret_access_key }}"
-        AWS_KMS_KEY_ID: "{{ validator[hyperlane_agents_network][hyperlane_validator_index].validator_id }}"
+        AWS_KMS_KEY_ID: "{{ validator[hyperlane_agents_network][hyperlane_validator_index].aws_kms_alias }}"
         AWS_REGION: "{{ validator[hyperlane_agents_network][hyperlane_validator_index].aws_region | default('eu-north-1') }}"
       register: cast_address
       changed_when: false
