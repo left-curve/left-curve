@@ -1,7 +1,7 @@
 use {
     core::str,
     grug::{Binary, Inner, PrimaryKey, RawKey, StdError, StdResult},
-    serde::{Deserialize, Serialize, de},
+    serde::{Serialize, de},
     std::{fmt, str::FromStr},
 };
 
@@ -12,29 +12,7 @@ use {
 ///
 /// The user index is immutable, meaning a user always has the same index.
 /// However, the username may be changed.
-pub type UserIndex = u32;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[cfg_attr(feature = "sea-orm", derive(sea_orm::DeriveValueType))]
-#[cfg_attr(feature = "sea-orm", sea_orm(column_type = "Integer"))]
-// #[cfg_attr(feature = "async-graphql", derive(async_graphql::NewType))]
-pub struct UserIndexDb(pub i32);
-
-impl From<super::UserIndex> for UserIndexDb {
-    #[inline]
-    fn from(v: super::UserIndex) -> Self {
-        Self(v as i32)
-    }
-}
-
-impl TryFrom<UserIndexDb> for super::UserIndex {
-    type Error = &'static str;
-
-    #[inline]
-    fn try_from(v: UserIndexDb) -> Result<Self, Self::Error> {
-        u32::try_from(v.0).map_err(|_| "user_index out of u32 range")
-    }
-}
+pub type UserIndex = i32;
 
 /// A name that uniquely identifies a user.
 ///

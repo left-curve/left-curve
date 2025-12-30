@@ -4,7 +4,7 @@ use {
         *,
     },
     dango_indexer_sql::entity,
-    dango_types::account_factory::{UserIndex, UserIndexDb},
+    dango_types::account_factory::UserIndex,
     indexer_httpd::context::Context,
     sea_orm::{
         ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
@@ -15,7 +15,7 @@ use {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserCursor {
     created_block_height: u64,
-    user_index: UserIndexDb,
+    user_index: UserIndex,
 }
 
 impl From<entity::users::Model> for UserCursor {
