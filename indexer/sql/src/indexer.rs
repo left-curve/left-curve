@@ -87,41 +87,24 @@ impl IndexerBuilder<Defined<String>> {
 
         // Everything before the final '/'
         let slash_pos = base_url.rfind('/').unwrap_or(base_url.len());
-        let server_prefix = &base_url[..slash_pos
-            + if slash_pos < base_url.len() {
-                1
-            } else {
-                0
-            }];
+        let server_prefix = base_url[..slash_pos].to_string();
 
-        // Create the new test database by connecting to a parent DB on the same server.
-        // Prefer `postgres`, then `template1`, then fall back to the original DB URL.
-        let parent_urls = [
-            format!("{}postgres", server_prefix),
-            format!("{}template1", server_prefix),
-            base_url.clone(),
-        ];
-
-        let create_sql = format!("CREATE DATABASE \"{}\"", test_db_name);
-        let mut created = false;
-        for parent_url in parent_urls.iter() {
-            if let Ok(conn) = Database::connect(parent_url.clone()).await {
-                if conn.execute_unprepared(&create_sql).await.is_ok() {
-                    created = true;
-                    break;
-                }
-            }
-        }
-
+        // Create the new test database by connecting to the `postgres` DB on the same server.
+        let parent_url = format!("{server_prefix}/postgres");
+        let create_sql = format!("CREATE DATABASE \"{test_db_name}\"");
+        let created = if let Ok(conn) = Database::connect(parent_url.clone()).await {
+            conn.execute_unprepared(&create_sql).await.is_ok()
+        } else {
+            false
+        };
         if !created {
             panic!(
-                "Failed to create test database `{}`; could not connect to parent database (tried postgres/template1/base URL)",
-                test_db_name
+                "Failed to create test database `{test_db_name}`; could not connect to parent database"
             );
         }
 
         // Build a new URL pointing to the newly created database
-        let new_url = format!("{}{}", server_prefix, test_db_name);
+        let new_url = format!("{server_prefix}/{test_db_name}");
 
         IndexerBuilder {
             handle: self.handle,
@@ -130,7 +113,7 @@ impl IndexerBuilder<Defined<String>> {
             pubsub: self.pubsub,
             event_cache_window: self.event_cache_window,
             test_db_cleanup: Some(TestDbCleanup {
-                server_prefix: server_prefix.to_string(),
+                server_prefix,
                 db_name: test_db_name,
             }),
         }
@@ -495,27 +478,15 @@ impl IndexerTrait for Indexer {
                 #[cfg(feature = "tracing")]
                 tracing::info!(db = %clean.db_name, "Dropping temporary test database");
 
-                // Try connecting to `postgres`, then `template1`, then fall back to server_prefix itself
-                for parent in [
-                    format!("{}postgres", clean.server_prefix),
-                    format!("{}template1", clean.server_prefix),
-                    clean.server_prefix.clone(),
-                ] {
-                    if let Ok(conn) = Database::connect(parent.clone()).await {
-                        // Try WITH (FORCE) first to terminate remaining sessions
-                        let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", clean.db_name);
-                        if conn.execute_unprepared(&drop_sql).await.is_ok() {
-                            break;
-                        }
-
+                let parent = format!("{}/postgres", clean.server_prefix);
+                if let Ok(conn) = Database::connect(parent).await {
+                    // Try WITH (FORCE) first to terminate remaining sessions
+                    let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", clean.db_name);
+                    if conn.execute_unprepared(&drop_sql).await.is_err() {
                         // Fallback without FORCE for older Postgres versions
-                        if conn
+                        let _ = conn
                             .execute_unprepared(&format!("DROP DATABASE \"{}\"", clean.db_name))
-                            .await
-                            .is_ok()
-                        {
-                            break;
-                        }
+                            .await;
                     }
                 }
             }
