@@ -169,6 +169,8 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     dango_indexer_clickhouse::context::Context,
 ) {
     let indexer = indexer_sql::IndexerBuilder::default()
+        // We'll use this with a random database.
+        // .with_database_url("postgres://postgres@localhost/grug_test")
         .with_memory_database()
         .with_database_max_connections(1)
         .build()

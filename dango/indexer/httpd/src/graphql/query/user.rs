@@ -15,7 +15,7 @@ use {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserCursor {
     created_block_height: u64,
-    user_index: UserIndex,
+    user_index: i32,
 }
 
 impl From<entity::users::Model> for UserCursor {

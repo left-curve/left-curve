@@ -4,7 +4,7 @@ use {
     grug_types::Timestamp,
 };
 use {
-    dango_types::{account_factory::UserIndex, auth},
+    dango_types::auth,
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
 };
@@ -22,7 +22,7 @@ pub struct Model {
         graphql(skip)
     )]
     pub id: Uuid,
-    pub user_index: UserIndex,
+    pub user_index: i32,
     pub key_hash: String,
     pub public_key: String,
     pub key_type: auth::KeyType,
