@@ -54,7 +54,8 @@ impl Default for IndexerBuilder {
 
 #[derive(Clone, Debug)]
 struct TestDbCleanup {
-    parent_url: String,
+    // Everything up to and including the trailing '/'
+    server_prefix: String,
     db_name: String,
 }
 
@@ -84,43 +85,38 @@ impl IndexerBuilder<Defined<String>> {
         let unique_suffix = uuid::Uuid::new_v4();
         let test_db_name = format!("grug_test_{}", unique_suffix.simple());
 
-        // Connect to the provided database and create a new test database on the same server
-        // CREATE DATABASE cannot run inside a transaction; execute directly on the connection
+        // Everything before the final '/'
+        let slash_pos = base_url.rfind('/').unwrap_or(base_url.len());
+        let server_prefix = &base_url[..slash_pos + if slash_pos < base_url.len() { 1 } else { 0 }];
+
+        // Create the new test database by connecting to a parent DB on the same server.
+        // Prefer `postgres`, then `template1`, then fall back to the original DB URL.
+        let parent_urls = [
+            format!("{}postgres", server_prefix),
+            format!("{}template1", server_prefix),
+            base_url.clone(),
+        ];
+
         let create_sql = format!("CREATE DATABASE \"{}\"", test_db_name);
-        if let Ok(conn) = Database::connect(base_url.clone()).await {
-            // Best-effort create; panic on error so tests fail loudly
-            conn.execute_unprepared(&create_sql)
-                .await
-                .unwrap_or_else(|e| {
-                    panic!("Failed to create test database `{}`: {}", test_db_name, e)
-                });
-        } else {
+        let mut created = false;
+        for parent_url in parent_urls.iter() {
+            if let Ok(conn) = Database::connect(parent_url.clone()).await {
+                if conn.execute_unprepared(&create_sql).await.is_ok() {
+                    created = true;
+                    break;
+                }
+            }
+        }
+
+        if !created {
             panic!(
-                "Failed to connect to base database URL to create test database: {}",
-                base_url
+                "Failed to create test database `{}`; could not connect to parent database (tried postgres/template1/base URL)",
+                test_db_name
             );
         }
 
         // Build a new URL pointing to the newly created database
-        let new_url = {
-            // Preserve any query parameters by splitting on '?'
-            let mut parts = base_url.splitn(2, '?');
-            let main = parts.next().unwrap_or("");
-            let query = parts.next();
-
-            // Replace the database name after the last '/'
-            let slash_pos = main.rfind('/').unwrap_or(main.len());
-            let prefix = &main[..slash_pos
-                + if slash_pos < main.len() {
-                    1
-                } else {
-                    0
-                }];
-            match query {
-                Some(q) => format!("{}{}?{}", prefix, test_db_name, q),
-                None => format!("{}{}", prefix, test_db_name),
-            }
-        };
+        let new_url = format!("{}{}", server_prefix, test_db_name);
 
         IndexerBuilder {
             handle: self.handle,
@@ -129,7 +125,7 @@ impl IndexerBuilder<Defined<String>> {
             pubsub: self.pubsub,
             event_cache_window: self.event_cache_window,
             test_db_cleanup: Some(TestDbCleanup {
-                parent_url: base_url,
+                server_prefix: server_prefix.to_string(),
                 db_name: test_db_name,
             }),
         }
@@ -494,15 +490,30 @@ impl IndexerTrait for Indexer {
                 #[cfg(feature = "tracing")]
                 tracing::info!(db = %clean.db_name, "Dropping temporary test database");
 
-                if let Ok(conn) = Database::connect(clean.parent_url.clone()).await {
-                    // Try WITH (FORCE) first to terminate remaining sessions
-                    let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", clean.db_name);
-                    let res = conn.execute_unprepared(&drop_sql).await;
-                    if res.is_err() {
+                // Try connecting to `postgres`, then `template1`, then fall back to server_prefix itself
+                for parent in [
+                    format!("{}postgres", clean.server_prefix),
+                    format!("{}template1", clean.server_prefix),
+                    clean.server_prefix.clone(),
+                ] {
+                    if let Ok(conn) = Database::connect(parent.clone()).await {
+                        // Try WITH (FORCE) first to terminate remaining sessions
+                        let drop_sql = format!(
+                            "DROP DATABASE \"{}\" WITH (FORCE)",
+                            clean.db_name
+                        );
+                        if conn.execute_unprepared(&drop_sql).await.is_ok() {
+                            break;
+                        }
+
                         // Fallback without FORCE for older Postgres versions
-                        let _ = conn
+                        if conn
                             .execute_unprepared(&format!("DROP DATABASE \"{}\"", clean.db_name))
-                            .await;
+                            .await
+                            .is_ok()
+                        {
+                            break;
+                        }
                     }
                 }
             }
