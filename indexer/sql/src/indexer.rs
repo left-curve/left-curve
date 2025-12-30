@@ -184,6 +184,7 @@ where
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
+            test_cleanup: None,
         };
 
         match self.pubsub {
@@ -197,6 +198,14 @@ where
                 Ok::<(), IndexerError>(())
             })?,
             PubSubType::Memory => {},
+        }
+
+        // Attach test-db cleanup guard into Context for RAII cleanup once all clones drop
+        if let Some(t) = self.test_db_cleanup.clone() {
+            context.test_cleanup = Some(Arc::new(crate::context::TestDbCleanupGuard {
+                server_prefix: t.server_prefix,
+                db_name: t.db_name,
+            }));
         }
 
         Ok(context)
@@ -219,6 +228,7 @@ where
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
+            test_cleanup: None,
         };
 
         match self.pubsub {
@@ -234,11 +244,18 @@ where
             PubSubType::Memory => {},
         }
 
+        // Attach test-db cleanup guard into Context for RAII cleanup once all clones drop
+        if let Some(t) = self.test_db_cleanup.clone() {
+            context.test_cleanup = Some(Arc::new(crate::context::TestDbCleanupGuard {
+                server_prefix: t.server_prefix,
+                db_name: t.db_name,
+            }));
+        }
+
         Ok(Indexer {
             context,
             handle: self.handle,
             indexing: false,
-            test_db_cleanup: self.test_db_cleanup,
             #[cfg(feature = "tracing")]
             id,
         })
@@ -268,9 +285,6 @@ pub struct Indexer {
     // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
-    // When set, attempt to drop the temporary test database on shutdown/Drop.
-    #[allow(dead_code)]
-    test_db_cleanup: Option<TestDbCleanup>,
     // Add unique ID field, used for debugging and tracing
     #[cfg(feature = "tracing")]
     id: u64,
