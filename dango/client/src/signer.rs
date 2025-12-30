@@ -310,7 +310,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<S> SequencedSigner for SingleSigner<S, Defined<Nonce>>
+impl<S> SequencedSigner for SingleSigner<S, Defined<UserIndex>, Defined<Nonce>>
 where
     S: Secret + Send + Sync,
 {

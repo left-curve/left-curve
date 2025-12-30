@@ -1,11 +1,4 @@
-use {
-    crate::config::dango::DangoConfig,
-    dango_client::{Secp256k1, Secret, SingleSigner},
-    dango_types::auth::Nonce,
-    grug::{Addr, Defined, addr},
-    hex_literal::hex,
-    indexer_client::HttpClient,
-};
+use {crate::config::dango::DangoConfig, dango_client::{Secp256k1, Secret, SingleSigner}, grug::{Addr, addr}, hex_literal::hex, indexer_client::HttpClient};
 
 const DANGO_OWNER_ADDR: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9");
 
@@ -21,7 +14,7 @@ const DANGO_USER5_PRIVATE_KEY: [u8; 32] =
 
 pub async fn setup_dango(
     config: &DangoConfig,
-) -> anyhow::Result<(HttpClient, SingleSigner<Secp256k1, Defined<Nonce>>)> {
+) -> anyhow::Result<(HttpClient, SingleSigner<Secp256k1>)> {
     let dango_client = HttpClient::new(&config.api_url)?;
 
     let dango_owner = SingleSigner::new(
@@ -38,7 +31,7 @@ pub async fn setup_dango(
 
 pub async fn get_user5(
     dango_client: &HttpClient,
-) -> anyhow::Result<SingleSigner<Secp256k1, Defined<Nonce>>> {
+) -> anyhow::Result<SingleSigner<Secp256k1>> {
     SingleSigner::new(
         DANGO_USER5_ADDR,
         Secp256k1::from_bytes(DANGO_USER5_PRIVATE_KEY)?,

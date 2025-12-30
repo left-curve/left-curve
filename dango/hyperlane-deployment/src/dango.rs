@@ -3,15 +3,8 @@ use {
     alloy::primitives::Address,
     anyhow::{anyhow, bail},
     dango_client::{Secp256k1, SingleSigner},
-    dango_types::{
-        auth::Nonce,
-        config::AppConfig,
-        gateway::{self, Origin, Remote},
-    },
-    grug::{
-        BroadcastClientExt, Coins, Defined, GasOption, HexByteArray, QueryClientExt,
-        SearchTxClient, StdResult,
-    },
+    dango_types::{config::AppConfig, gateway::{self, Origin, Remote}},
+    grug::{BroadcastClientExt, Coins, GasOption, HexByteArray, QueryClientExt, SearchTxClient, StdResult},
     hyperlane_types::{Addr32, isms::multisig::ValidatorSet},
     indexer_client::HttpClient,
     std::{collections::BTreeSet, str::FromStr},
@@ -20,7 +13,7 @@ use {
 pub async fn set_warp_routes(
     dango_client: &HttpClient,
     dango_config: &DangoConfig,
-    signer: &mut SingleSigner<Secp256k1, Defined<Nonce>>,
+    signer: &mut SingleSigner<Secp256k1>,
     remote_domain: u32,
     routes: BTreeSet<(String, Address)>,
 ) -> anyhow::Result<()> {
@@ -63,7 +56,7 @@ pub async fn set_warp_routes(
 pub async fn set_ism_validator_set(
     dango_client: &HttpClient,
     config: &Config,
-    signer: &mut SingleSigner<Secp256k1, Defined<Nonce>>,
+    signer: &mut SingleSigner<Secp256k1>,
     evm_config: &EVMConfig,
 ) -> anyhow::Result<()> {
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
