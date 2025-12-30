@@ -6,12 +6,10 @@ use {
         HyperlaneTestSuite, TestOption, add_user_public_key, create_user_and_account,
         setup_test_with_indexer,
     },
-    grug::setup_tracing_subscriber,
     grug_app::Indexer,
     indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
     serde_json::json,
     std::collections::HashMap,
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -164,7 +162,6 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::DEBUG);
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
@@ -198,15 +195,8 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(dango_httpd_context);
 
-                tracing::info!("----------------------------------------------------");
-
                 let response =
                     call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
-
-                tracing::info!("----------------------------------------------------");
-
-                println!("{:#?}", response);
-                println!("{:#?}", test_account.first_key());
 
                 let expected_data = serde_json::json!({
                     "userIndex": test_account.user_index(),
