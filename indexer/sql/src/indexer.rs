@@ -56,6 +56,10 @@ impl IndexerBuilder<Defined<String>> {
             event_cache_window: self.event_cache_window,
         }
     }
+
+    pub async fn with_test_database(self) -> Self {
+        todo!("Should create a temporary test database and return the builder with its URL set")
+    }
 }
 
 impl IndexerBuilder<Undefined<String>> {

@@ -168,9 +168,13 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     dango_httpd::context::Context,
     dango_indexer_clickhouse::context::Context,
 ) {
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or("postgres://postgres@localhost/grug_test".to_string());
+
     let indexer = indexer_sql::IndexerBuilder::default()
-        .with_memory_database()
-        .with_database_max_connections(1)
+        .with_database_url(database_url)
+        .with_test_database()
+        .await
         .build()
         .unwrap();
 
