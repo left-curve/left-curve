@@ -55,7 +55,9 @@ impl Default for IndexerBuilder {
 #[derive(Clone, Debug)]
 struct TestDbCleanup {
     // Everything up to and including the trailing '/'
+    #[allow(dead_code)]
     server_prefix: String,
+    #[allow(dead_code)]
     db_name: String,
 }
 
@@ -267,6 +269,7 @@ pub struct Indexer {
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
     // When set, attempt to drop the temporary test database on shutdown/Drop.
+    #[allow(dead_code)]
     test_db_cleanup: Option<TestDbCleanup>,
     // Add unique ID field, used for debugging and tracing
     #[cfg(feature = "tracing")]
