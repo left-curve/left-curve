@@ -109,8 +109,7 @@ impl IndexerBuilder<Defined<String>> {
             handle: self.handle,
             db_url: Defined::new(new_url),
             db_max_connections: self.db_max_connections,
-            // Ensure the indexer uses SQLX-backed Postgres pubsub to match dango_httpd
-            pubsub: PubSubType::Postgres,
+            pubsub: self.pubsub,
             event_cache_window: self.event_cache_window,
             test_db_cleanup: Some(TestDbCleanup {
                 server_prefix,
