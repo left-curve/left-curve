@@ -1,7 +1,8 @@
 use {
     crate::{
-        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
-        USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
+        ACCOUNT_COUNT_BY_USER, ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS,
+        MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USER_INDEXES_BY_NAME,
+        USER_NAMES_BY_INDEX, USERS_BY_KEY,
     },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
@@ -241,11 +242,22 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     //   themself. They cannot register account for another user.
     // - For multisig accounts, ensure voting threshold isn't greater than total
     //   voting power.
+    // Additionally, ensure the account's owner(s) have not already reached the
+    // maximum account count limit.
     match &params {
         AccountParams::Single(params) => {
             ensure!(
                 ACCOUNTS_BY_USER.has(ctx.storage, (params.owner, ctx.sender)),
                 "can't register account for another user"
+            );
+
+            ensure!(
+                {
+                    let (_, count) = ACCOUNT_COUNT_BY_USER.increment(ctx.storage, params.owner)?;
+                    count <= MAX_ACCOUNTS_PER_USER
+                },
+                "user {} has reached max account count",
+                params.owner
             );
         },
         AccountParams::Multi(params) => {
@@ -253,6 +265,16 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
                 params.threshold.into_inner() <= params.total_power(),
                 "threshold can't be greater than total power"
             );
+
+            for member in params.members.keys() {
+                ensure!(
+                    {
+                        let (_, count) = ACCOUNT_COUNT_BY_USER.increment(ctx.storage, *member)?;
+                        count <= MAX_ACCOUNTS_PER_USER
+                    },
+                    "user {member} has reached max account count"
+                );
+            }
         },
     }
 

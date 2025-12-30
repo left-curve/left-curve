@@ -337,25 +337,27 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_paginate_transfers() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+    let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // Create 10 transfers to paginate through
-    for _ in 0..10 {
-        // Copied from benchmarks.rs
-        let msgs = vec![Message::execute(
-            contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
-            },
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
-        )?];
-
+    for recipient in [
+        accounts.owner.address(),
+        accounts.user1.address(),
+        accounts.user2.address(),
+        accounts.user3.address(),
+        accounts.user4.address(),
+        accounts.user5.address(),
+        accounts.user6.address(),
+        accounts.user7.address(),
+        accounts.user8.address(),
+        accounts.user9.address(),
+    ] {
         suite
-            .send_messages_with_gas(
+            .transfer(
                 &mut accounts.user1,
-                50_000_000,
-                NonEmpty::new_unchecked(msgs),
+                recipient,
+                Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
             )
             .should_succeed();
     }
