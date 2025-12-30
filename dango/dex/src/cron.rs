@@ -713,7 +713,7 @@ fn clear_orders_of_pair(
         #[cfg(feature = "metrics")]
         {
             if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price)
-                && let Err(err) = crate::metrics::reserve(
+                && let Err(err) = crate::metrics::emit_reserve(
                     &base_denom,
                     &quote_denom,
                     base_price,
@@ -743,7 +743,7 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     {
         if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price)
-            && let Err(err) = crate::metrics::volume(
+            && let Err(err) = crate::metrics::emit_volume(
                 &base_denom,
                 &quote_denom,
                 base_price,
@@ -863,7 +863,7 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     {
         if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price) {
-            if let Err(err) = crate::metrics::best_price(
+            if let Err(err) = crate::metrics::emit_best_price(
                 &base_denom,
                 &quote_denom,
                 base_price,
@@ -880,7 +880,7 @@ fn clear_orders_of_pair(
                 );
             };
 
-            if let Err(err) = crate::metrics::spread(
+            if let Err(err) = crate::metrics::emit_spread(
                 &base_denom,
                 &quote_denom,
                 base_price,

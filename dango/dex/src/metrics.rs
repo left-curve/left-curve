@@ -122,7 +122,7 @@ pub fn init_metrics() {
     });
 }
 
-pub fn reserve(
+pub fn emit_reserve(
     base_denom: &Denom,
     quote_denom: &Denom,
     base_price: &PrecisionedPrice,
@@ -163,7 +163,7 @@ pub fn reserve(
     Ok(())
 }
 
-pub fn volume(
+pub fn emit_volume(
     base_denom: &Denom,
     quote_denom: &Denom,
     base_price: &PrecisionedPrice,
@@ -204,7 +204,7 @@ pub fn volume(
     Ok(())
 }
 
-pub fn best_price(
+pub fn emit_best_price(
     base_denom: &Denom,
     quote_denom: &Denom,
     base_price: &PrecisionedPrice,
@@ -251,7 +251,7 @@ pub fn best_price(
     Ok(())
 }
 
-pub fn spread(
+pub fn emit_spread(
     base_denom: &Denom,
     quote_denom: &Denom,
     base_price: &PrecisionedPrice,
