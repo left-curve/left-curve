@@ -4,7 +4,6 @@ use {
     grug_types::Timestamp,
 };
 use {
-    dango_types::account_factory::UserIndex,
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
 };
@@ -23,7 +22,7 @@ pub struct Model {
     )]
     pub id: Uuid,
     #[sea_orm(unique)]
-    pub user_index: UserIndex,
+    pub user_index: u32,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "indexer_sql::serde_iso8601")]
     pub created_at: DateTime,

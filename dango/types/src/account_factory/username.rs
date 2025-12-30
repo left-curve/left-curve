@@ -12,7 +12,7 @@ use {
 ///
 /// The user index is immutable, meaning a user always has the same index.
 /// However, the username may be changed.
-pub type UserIndex = i32;
+pub type UserIndex = u32;
 
 /// A name that uniquely identifies a user.
 ///

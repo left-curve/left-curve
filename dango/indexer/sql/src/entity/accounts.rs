@@ -20,7 +20,7 @@ pub struct Model {
         graphql(skip)
     )]
     pub id: Uuid,
-    pub account_index: i32,
+    pub account_index: u32,
     #[sea_orm(unique)]
     pub address: String,
     pub account_type: account_factory::AccountType,
