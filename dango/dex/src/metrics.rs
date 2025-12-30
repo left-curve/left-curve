@@ -178,11 +178,10 @@ pub fn emit_volume(
         };
 
         let scale_f64 = 10_f64.powi(price.precision() as i32);
-
         let amount_f64 = (amount.into_inner() as f64) / scale_f64;
 
         let value: Udec128_6 = price.value_of_unit_amount(amount)?;
-        let value_f64: f64 = value.to_string().parse()?;
+        let value_f64: f64 = value.to_string().parse()?; // TODO: do not use string parse
 
         ::metrics::histogram!(
             crate::metrics::LABEL_VOLUME_AMOUNT_PER_BLOCK,
@@ -216,7 +215,7 @@ pub fn emit_best_price(
     let scale_f64 = 10_f64.powi(base_price.precision() as i32 - quote_price.precision() as i32);
 
     if let Some(bid) = best_bid_price {
-        let bid_price_f64: f64 = bid.to_string().parse()?;
+        let bid_price_f64: f64 = bid.to_string().parse()?; // TODO: do not use string parse
 
         ::metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
             "base_denom" => base_denom.to_string(),
@@ -227,7 +226,7 @@ pub fn emit_best_price(
     }
 
     if let Some(ask) = best_ask_price {
-        let ask_price_f64: f64 = ask.to_string().parse()?;
+        let ask_price_f64: f64 = ask.to_string().parse()?; // TODO: do not use string parse
 
         ::metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
             "base_denom" => base_denom.to_string(),
@@ -238,7 +237,7 @@ pub fn emit_best_price(
     }
 
     if let Some(mid) = mid_price {
-        let mid_price_f64: f64 = mid.to_string().parse()?;
+        let mid_price_f64: f64 = mid.to_string().parse()?; // TODO: do not use string parse
 
         ::metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
             "base_denom" => base_denom.to_string(),
@@ -265,12 +264,12 @@ pub fn emit_spread(
     if let (Some(bid), Some(ask), Some(mid)) = (best_bid_price, best_ask_price, mid_price) {
         let spread_absolute = ask - bid;
 
-        let mut spread_absolute_f64: f64 = spread_absolute.to_string().parse()?;
+        let mut spread_absolute_f64: f64 = spread_absolute.to_string().parse()?; // TODO: do not use string parse
 
         // The spread absolute needs to be adjusted according to difference in the tokens's precision.
         spread_absolute_f64 *= scale_f64;
 
-        let spread_percentage_f64: f64 = spread_absolute.checked_div(mid)?.to_string().parse()?;
+        let spread_percentage_f64: f64 = spread_absolute.checked_div(mid)?.to_string().parse()?; // TODO: do not use string parse
 
         ::metrics::gauge!(crate::metrics::LABEL_SPREAD_ABSOLUTE,
             "base_denom" => base_denom.to_string(),
