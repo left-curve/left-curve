@@ -238,7 +238,10 @@
           "funds": {},
           "label": "dango/gateway",
           "msg": {
-            "rate_limits": {},
+            "rate_limits": {
+              "bridge/eth": "0.1",
+              "bridge/usdc": "0.1"
+            },
             "routes": [],
             "withdrawal_fees": []
           },

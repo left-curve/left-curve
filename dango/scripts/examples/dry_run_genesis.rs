@@ -150,7 +150,16 @@ const GENESIS_JSON: &str = r#"{
         "funds": {},
         "label": "hyperlane/ism/multisig",
         "msg": {
-          "validator_sets": {}
+          "validator_sets": {
+            "1": {
+              "threshold": 2,
+              "validators": [
+                "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
+                "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
+                "92f7690869a6453ace4b5461f76367db902c2350"
+              ]
+            }
+          }
         },
         "salt": "aHlwZXJsYW5lL2lzbS9tdWx0aXNpZw=="
       }
@@ -205,7 +214,33 @@ const GENESIS_JSON: &str = r#"{
         "funds": {},
         "label": "dango/dex",
         "msg": {
-          "pairs": []
+          "pairs": [
+            {
+              "base_denom": "bridge/eth",
+              "params": {
+                "bucket_sizes": [
+                  "0.00000000000001",
+                  "0.0000000000001",
+                  "0.000000000001",
+                  "0.00000000001",
+                  "0.00000000005",
+                  "0.0000000001"
+                ],
+                "lp_denom": "dex/pool/eth/usdc",
+                "min_order_size_base": "500000000000000",
+                "min_order_size_quote": "1000000",
+                "pool_type": {
+                  "geometric": {
+                    "limit": 1,
+                    "ratio": "1",
+                    "spacing": "0.0001"
+                  }
+                },
+                "swap_fee_rate": "0.0001"
+              },
+              "quote_denom": "bridge/usdc"
+            }
+          ]
         },
         "salt": "ZGFuZ28vZGV4"
       }
@@ -217,7 +252,10 @@ const GENESIS_JSON: &str = r#"{
         "funds": {},
         "label": "dango/gateway",
         "msg": {
-          "rate_limits": {},
+          "rate_limits": {
+            "bridge/eth": "0.1",
+            "bridge/usdc": "0.1"
+          },
           "routes": [],
           "withdrawal_fees": []
         },
