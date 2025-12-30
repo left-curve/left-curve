@@ -3,8 +3,14 @@ use {
     alloy::primitives::Address,
     anyhow::{anyhow, bail},
     dango_client::{Secp256k1, SingleSigner},
-    dango_types::{config::AppConfig, gateway::{self, Origin, Remote}},
-    grug::{BroadcastClientExt, Coins, GasOption, HexByteArray, QueryClientExt, SearchTxClient, StdResult},
+    dango_types::{
+        config::AppConfig,
+        gateway::{self, Origin, Remote},
+    },
+    grug::{
+        BroadcastClientExt, Coins, GasOption, HexByteArray, QueryClientExt, SearchTxClient,
+        StdResult,
+    },
     hyperlane_types::{Addr32, isms::multisig::ValidatorSet},
     indexer_client::HttpClient,
     std::{collections::BTreeSet, str::FromStr},
