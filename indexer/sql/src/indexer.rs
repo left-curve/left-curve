@@ -87,7 +87,12 @@ impl IndexerBuilder<Defined<String>> {
 
         // Everything before the final '/'
         let slash_pos = base_url.rfind('/').unwrap_or(base_url.len());
-        let server_prefix = &base_url[..slash_pos + if slash_pos < base_url.len() { 1 } else { 0 }];
+        let server_prefix = &base_url[..slash_pos
+            + if slash_pos < base_url.len() {
+                1
+            } else {
+                0
+            }];
 
         // Create the new test database by connecting to a parent DB on the same server.
         // Prefer `postgres`, then `template1`, then fall back to the original DB URL.
@@ -498,10 +503,7 @@ impl IndexerTrait for Indexer {
                 ] {
                     if let Ok(conn) = Database::connect(parent.clone()).await {
                         // Try WITH (FORCE) first to terminate remaining sessions
-                        let drop_sql = format!(
-                            "DROP DATABASE \"{}\" WITH (FORCE)",
-                            clean.db_name
-                        );
+                        let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", clean.db_name);
                         if conn.execute_unprepared(&drop_sql).await.is_ok() {
                             break;
                         }
