@@ -510,7 +510,7 @@ fn clear_orders_of_pair(
     let mut outflows = DecCoins::new();
 
     #[cfg(feature = "metrics")]
-    let mut metric_volume = HashMap::new();
+    let mut volume_data = HashMap::with_capacity(2);
 
     // Handle order filling outcomes for the user placed orders.
     for res in filling_outcomes {
@@ -668,13 +668,13 @@ fn clear_orders_of_pair(
             let filled_base = filled_base.into_int_floor();
             let filled_quote = filled_quote.into_int_floor();
 
-            metric_volume
-                .entry((&base_denom, &quote_denom, &base_denom))
+            volume_data
+                .entry(&base_denom)
                 .or_insert(grug::Int::ZERO)
                 .checked_add_assign(filled_base)?;
 
-            metric_volume
-                .entry((&base_denom, &quote_denom, &quote_denom))
+            volume_data
+                .entry(&quote_denom)
                 .or_insert(grug::Int::ZERO)
                 .checked_add_assign(filled_quote)?;
 
@@ -744,7 +744,13 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     {
         if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price)
-            && let Err(err) = metrics_functions::volume(base_price, quote_price, metric_volume)
+            && let Err(err) = metrics_functions::volume(
+                &base_denom,
+                &quote_denom,
+                base_price,
+                quote_price,
+                volume_data,
+            )
         {
             tracing::error!(
                 %base_denom,
@@ -1186,11 +1192,13 @@ mod metrics_functions {
     }
 
     pub fn volume(
+        base_denom: &Denom,
+        quote_denom: &Denom,
         base_price: &PrecisionedPrice,
         quote_price: &PrecisionedPrice,
-        volume_data: HashMap<(&Denom, &Denom, &Denom), Int<u128>>,
+        volume_data: HashMap<&Denom, Int<u128>>,
     ) -> anyhow::Result<()> {
-        for ((base_denom, quote_denom, token), amount) in volume_data {
+        for (token, amount) in volume_data {
             let price = if token == base_denom {
                 &base_price
             } else {
