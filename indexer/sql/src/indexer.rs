@@ -74,7 +74,8 @@ impl IndexerBuilder<Defined<String>> {
         let base_url = self.db_url.inner().clone();
 
         // Only handle Postgres URLs; otherwise, return unchanged
-        let is_postgres = base_url.starts_with("postgres://") || base_url.starts_with("postgresql://");
+        let is_postgres =
+            base_url.starts_with("postgres://") || base_url.starts_with("postgresql://");
         if !is_postgres {
             return self;
         }
@@ -90,9 +91,14 @@ impl IndexerBuilder<Defined<String>> {
             // Best-effort create; panic on error so tests fail loudly
             conn.execute_unprepared(&create_sql)
                 .await
-                .unwrap_or_else(|e| panic!("Failed to create test database `{}`: {}", test_db_name, e));
+                .unwrap_or_else(|e| {
+                    panic!("Failed to create test database `{}`: {}", test_db_name, e)
+                });
         } else {
-            panic!("Failed to connect to base database URL to create test database: {}", base_url);
+            panic!(
+                "Failed to connect to base database URL to create test database: {}",
+                base_url
+            );
         }
 
         // Build a new URL pointing to the newly created database
@@ -104,7 +110,12 @@ impl IndexerBuilder<Defined<String>> {
 
             // Replace the database name after the last '/'
             let slash_pos = main.rfind('/').unwrap_or(main.len());
-            let prefix = &main[..slash_pos + if slash_pos < main.len() { 1 } else { 0 }];
+            let prefix = &main[..slash_pos
+                + if slash_pos < main.len() {
+                    1
+                } else {
+                    0
+                }];
             match query {
                 Some(q) => format!("{}{}?{}", prefix, test_db_name, q),
                 None => format!("{}{}", prefix, test_db_name),
