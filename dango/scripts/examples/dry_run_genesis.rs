@@ -340,19 +340,6 @@ const GENESIS_JSON: &str = r#"{
         },
         "salt": "ZGFuZ28vb3JhY2xl"
       }
-    },
-    {
-      "instantiate": {
-        "admin": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
-        "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
-        "funds": {},
-        "label": "dango/vesting",
-        "msg": {
-          "unlocking_cliff": "21772800",
-          "unlocking_period": "65318400"
-        },
-        "salt": "ZGFuZ28vdmVzdGluZw=="
-      }
     }
   ]
 }"#;
@@ -417,6 +404,8 @@ fn main() -> anyhow::Result<()> {
         owner == user0,
         "owner address does not equal user0! owner: {owner}, user0: {user0}"
     );
+
+    println!("ok");
 
     Ok(())
 }
