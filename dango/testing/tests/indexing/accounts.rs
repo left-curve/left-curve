@@ -37,7 +37,7 @@ async fn index_account_creations() -> anyhow::Result<()> {
         .await?;
 
     assert_that!(users.iter().map(|t| t.user_index).collect::<Vec<_>>())
-        .is_equal_to(vec![user.user_index()]);
+        .is_equal_to(vec![user.user_index().into()]);
 
     assert_that!(users).has_length(1);
     assert_that!(accounts).has_length(1);
@@ -46,7 +46,7 @@ async fn index_account_creations() -> anyhow::Result<()> {
 
     let public_key = public_keys.first().unwrap();
 
-    assert_that!(public_key.user_index).is_equal_to(user.user_index());
+    assert_that!(public_key.user_index).is_equal_to(user.user_index().into());
     assert_that!(public_key.key_hash).is_equal_to(user.first_key_hash().to_string());
     assert_that!(public_key.public_key).is_equal_to(user.first_key().to_string());
 
@@ -80,7 +80,7 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
             .map(|t| t.user_index)
             .collect::<Vec<_>>()
     )
-    .is_equal_to(vec![user.user_index()]);
+    .is_equal_to(vec![user.user_index().into()]);
 
     Ok(())
 }
@@ -119,7 +119,7 @@ async fn index_single_user_multiple_single_signature_accounts() -> anyhow::Resul
         .collect::<Vec<_>>();
 
     assert_that!(user_indexes).has_length(1);
-    assert_that!(user_indexes[0]).is_equal_to(test_account1.user_index());
+    assert_that!(user_indexes[0]).is_equal_to(test_account1.user_index().into());
 
     assert_that!(addresses).has_length(2);
     assert_that!(addresses).contains(&test_account1.address.into_inner().to_string());

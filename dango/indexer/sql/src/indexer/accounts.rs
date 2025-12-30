@@ -146,7 +146,7 @@ pub(crate) async fn save_accounts(
                 .iter()
                 .map(|(user_register_event, _)| entity::users::ActiveModel {
                     id: Set(Uuid::new_v4()),
-                    user_index: Set(user_register_event.user_index),
+                    user_index: Set(user_register_event.user_index.into()),
                     created_at: Set(created_at),
                     created_block_height: Set(block.block.info.height as i64),
                 })
@@ -157,7 +157,7 @@ pub(crate) async fn save_accounts(
                 .map(
                     |(user_register_event, _)| entity::public_keys::ActiveModel {
                         id: Set(Uuid::new_v4()),
-                        user_index: Set(user_register_event.user_index),
+                        user_index: Set(user_register_event.user_index.into()),
                         key_hash: Set(user_register_event.key_hash.to_string()),
                         public_key: Set(user_register_event.key.to_string()),
                         key_type: Set(user_register_event.key.ty()),
@@ -273,7 +273,7 @@ pub(crate) async fn save_accounts(
         for (account_key_added_event, _) in account_key_added_events {
             let model = entity::public_keys::ActiveModel {
                 id: Set(Uuid::new_v4()),
-                user_index: Set(account_key_added_event.user_index),
+                user_index: Set(account_key_added_event.user_index.into()),
                 key_hash: Set(account_key_added_event.key_hash.to_string()),
                 public_key: Set(account_key_added_event.key.to_string()),
                 key_type: Set(account_key_added_event.key.ty()),

@@ -4,7 +4,7 @@ use {
     grug_types::Timestamp,
 };
 use {
-    dango_types::{account_factory::UserIndex, auth},
+    dango_types::{account_factory::UserIndexDb, auth},
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
 };
@@ -22,7 +22,8 @@ pub struct Model {
         graphql(skip)
     )]
     pub id: Uuid,
-    pub user_index: UserIndex,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    pub user_index: UserIndexDb,
     pub key_hash: String,
     pub public_key: String,
     pub key_type: auth::KeyType,
@@ -38,6 +39,10 @@ impl Model {
     /// Returns the account creation timestamp in ISO 8601 format with time zone.
     async fn created_at(&self) -> String {
         Timestamp::from(self.created_at).to_rfc3339_string()
+    }
+
+    async fn user_index(&self) -> Result<u32> {
+        Ok(self.user_index.try_into()?)
     }
 
     pub async fn users(&self, ctx: &Context<'_>) -> Result<Vec<crate::entity::users::Model>> {
