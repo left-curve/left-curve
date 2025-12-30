@@ -465,34 +465,34 @@ impl IndexerTrait for Indexer {
 
         self.indexing = false;
 
-        // Close DB and cleanup test database if any
-        // Take ownership of cleanup config and db clone before entering async to avoid borrow issues
-        let cleanup = self.test_db_cleanup.take();
-        let db = self.context.db.clone();
-
-        self.handle.block_on(async move {
-            // Best-effort close of the pool
-            let _ = db.close().await;
-
-            if let Some(clean) = cleanup {
-                #[cfg(feature = "tracing")]
-                tracing::info!(db = %clean.db_name, "Dropping temporary test database");
-
-                let parent = format!("{}/postgres", clean.server_prefix);
-                if let Ok(conn) = Database::connect(parent).await {
-                    // Try WITH (FORCE) first to terminate remaining sessions
-                    let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", clean.db_name);
-                    if conn.execute_unprepared(&drop_sql).await.is_err() {
-                        // Fallback without FORCE for older Postgres versions
-                        let _ = conn
-                            .execute_unprepared(&format!("DROP DATABASE \"{}\"", clean.db_name))
-                            .await;
-                    }
-                }
-            }
-
-            Ok::<(), grug_app::IndexerError>(())
-        })?;
+        // // Close DB and cleanup test database if any
+        // // Take ownership of cleanup config and db clone before entering async to avoid borrow issues
+        // let cleanup = self.test_db_cleanup.take();
+        // let db = self.context.db.clone();
+        //
+        // self.handle.block_on(async move {
+        //     // Best-effort close of the pool
+        //     let _ = db.close().await;
+        //
+        //     if let Some(clean) = cleanup {
+        //         #[cfg(feature = "tracing")]
+        //         tracing::info!(db = %clean.db_name, "Dropping temporary test database");
+        //
+        //         let parent = format!("{}/postgres", clean.server_prefix);
+        //         if let Ok(conn) = Database::connect(parent).await {
+        //             // Try WITH (FORCE) first to terminate remaining sessions
+        //             let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", clean.db_name);
+        //             if conn.execute_unprepared(&drop_sql).await.is_err() {
+        //                 // Fallback without FORCE for older Postgres versions
+        //                 let _ = conn
+        //                     .execute_unprepared(&format!("DROP DATABASE \"{}\"", clean.db_name))
+        //                     .await;
+        //             }
+        //         }
+        //     }
+        //
+        //     Ok::<(), grug_app::IndexerError>(())
+        // })?;
 
         Ok(())
     }
