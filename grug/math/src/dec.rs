@@ -137,6 +137,17 @@ where
     }
 }
 
+impl<U, const S: u32> Dec<U, S>
+where
+    Int<U>: Into<f64> + Copy,
+{
+    pub fn to_f64(&self) -> f64 {
+        let atomics: f64 = self.0.into();
+        let scale = 10_f64.powi(S as i32);
+        atomics / scale
+    }
+}
+
 impl<U, const S: u32> Neg for Dec<U, S>
 where
     U: Neg<Output = U>,
