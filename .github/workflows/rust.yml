@@ -275,7 +275,7 @@ jobs:
       POSTGRES_PORT: 6432
       CLICKHOUSE_DATABASE: grug_test
       CLICKHOUSE_USER: default
-      DATABASE_URL: "postgres://postgres:postgres@postgres/dango_test"
+      DATABASE_URL: "postgres://postgres:postgres@localhost:6432/dango_test"
     services:
       postgres:
         image: postgres:17
