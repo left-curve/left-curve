@@ -19,7 +19,10 @@ use {
         Undefined,
     },
     itertools::Itertools,
-    sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
+    sea_orm::{
+        ColumnTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, QueryFilter,
+        TransactionTrait,
+    },
     std::{future::Future, sync::Arc},
     tokio::runtime::{Builder, Handle, Runtime},
 };
@@ -32,6 +35,8 @@ pub struct IndexerBuilder<DB = Undefined<String>> {
     db_max_connections: u32,
     pubsub: PubSubType,
     event_cache_window: usize,
+    // When set by `with_test_database`, ensures automatic cleanup in Indexer::shutdown/Drop
+    test_db_cleanup: Option<TestDbCleanup>,
 }
 
 impl Default for IndexerBuilder {
@@ -42,8 +47,15 @@ impl Default for IndexerBuilder {
             db_max_connections: 10,
             pubsub: PubSubType::Memory,
             event_cache_window: 100,
+            test_db_cleanup: None,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+struct TestDbCleanup {
+    parent_url: String,
+    db_name: String,
 }
 
 impl IndexerBuilder<Defined<String>> {
@@ -54,11 +66,62 @@ impl IndexerBuilder<Defined<String>> {
             db_max_connections,
             pubsub: self.pubsub,
             event_cache_window: self.event_cache_window,
+            test_db_cleanup: self.test_db_cleanup,
         }
     }
 
     pub async fn with_test_database(self) -> Self {
-        todo!("Should create a temporary test database and return the builder with its URL set")
+        let base_url = self.db_url.inner().clone();
+
+        // Only handle Postgres URLs; otherwise, return unchanged
+        let is_postgres = base_url.starts_with("postgres://") || base_url.starts_with("postgresql://");
+        if !is_postgres {
+            return self;
+        }
+
+        // Generate a unique database name
+        let unique_suffix = uuid::Uuid::new_v4();
+        let test_db_name = format!("grug_test_{}", unique_suffix.simple());
+
+        // Connect to the provided database and create a new test database on the same server
+        // CREATE DATABASE cannot run inside a transaction; execute directly on the connection
+        let create_sql = format!("CREATE DATABASE \"{}\"", test_db_name);
+        if let Ok(conn) = Database::connect(base_url.clone()).await {
+            // Best-effort create; panic on error so tests fail loudly
+            conn.execute_unprepared(&create_sql)
+                .await
+                .unwrap_or_else(|e| panic!("Failed to create test database `{}`: {}", test_db_name, e));
+        } else {
+            panic!("Failed to connect to base database URL to create test database: {}", base_url);
+        }
+
+        // Build a new URL pointing to the newly created database
+        let new_url = {
+            // Preserve any query parameters by splitting on '?'
+            let mut parts = base_url.splitn(2, '?');
+            let main = parts.next().unwrap_or("");
+            let query = parts.next();
+
+            // Replace the database name after the last '/'
+            let slash_pos = main.rfind('/').unwrap_or(main.len());
+            let prefix = &main[..slash_pos + if slash_pos < main.len() { 1 } else { 0 }];
+            match query {
+                Some(q) => format!("{}{}?{}", prefix, test_db_name, q),
+                None => format!("{}{}", prefix, test_db_name),
+            }
+        };
+
+        IndexerBuilder {
+            handle: self.handle,
+            db_url: Defined::new(new_url),
+            db_max_connections: self.db_max_connections,
+            pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
+            test_db_cleanup: Some(TestDbCleanup {
+                parent_url: base_url,
+                db_name: test_db_name,
+            }),
+        }
     }
 }
 
@@ -73,6 +136,7 @@ impl IndexerBuilder<Undefined<String>> {
             db_max_connections: self.db_max_connections,
             pubsub: self.pubsub,
             event_cache_window: self.event_cache_window,
+            test_db_cleanup: self.test_db_cleanup,
         }
     }
 
@@ -90,6 +154,7 @@ impl<DB> IndexerBuilder<DB> {
             db_max_connections: self.db_max_connections,
             pubsub: PubSubType::Postgres,
             event_cache_window: self.event_cache_window,
+            test_db_cleanup: self.test_db_cleanup,
         }
     }
 }
@@ -105,6 +170,7 @@ where
             db_max_connections: self.db_max_connections,
             pubsub: self.pubsub,
             event_cache_window,
+            test_db_cleanup: self.test_db_cleanup,
         }
     }
 
@@ -175,6 +241,7 @@ where
             context,
             handle: self.handle,
             indexing: false,
+            test_db_cleanup: self.test_db_cleanup,
             #[cfg(feature = "tracing")]
             id,
         })
@@ -204,6 +271,8 @@ pub struct Indexer {
     // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
+    // When set, attempt to drop the temporary test database on shutdown/Drop.
+    test_db_cleanup: Option<TestDbCleanup>,
     // Add unique ID field, used for debugging and tracing
     #[cfg(feature = "tracing")]
     id: u64,
@@ -362,6 +431,8 @@ impl Indexer {
     }
 }
 
+// Cleanup is performed in shutdown(); Drop calls shutdown.
+
 impl IndexerTrait for Indexer {
     fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
         let last_indexed_block_height = self
@@ -398,6 +469,35 @@ impl IndexerTrait for Indexer {
         }
 
         self.indexing = false;
+
+        // Close DB and cleanup test database if any
+        // Take ownership of cleanup config and db clone before entering async to avoid borrow issues
+        let cleanup = self.test_db_cleanup.take();
+        let db = self.context.db.clone();
+
+        self.handle.block_on(async move {
+            // Best-effort close of the pool
+            let _ = db.close().await;
+
+            if let Some(clean) = cleanup {
+                #[cfg(feature = "tracing")]
+                tracing::info!(db = %clean.db_name, "Dropping temporary test database");
+
+                if let Ok(conn) = Database::connect(clean.parent_url.clone()).await {
+                    // Try WITH (FORCE) first to terminate remaining sessions
+                    let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", clean.db_name);
+                    let res = conn.execute_unprepared(&drop_sql).await;
+                    if res.is_err() {
+                        // Fallback without FORCE for older Postgres versions
+                        let _ = conn
+                            .execute_unprepared(&format!("DROP DATABASE \"{}\"", clean.db_name))
+                            .await;
+                    }
+                }
+            }
+
+            Ok::<(), grug_app::IndexerError>(())
+        })?;
 
         Ok(())
     }
