@@ -146,7 +146,7 @@ pub(crate) async fn save_accounts(
                 .iter()
                 .map(|(user_register_event, _)| entity::users::ActiveModel {
                     id: Set(Uuid::new_v4()),
-                    user_index: Set(user_register_event.user_index),
+                    user_index: Set(user_register_event.user_index as i32),
                     created_at: Set(created_at),
                     created_block_height: Set(block.block.info.height as i64),
                 })
