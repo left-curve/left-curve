@@ -54,10 +54,7 @@ impl Default for IndexerBuilder {
 
 #[derive(Clone, Debug)]
 struct TestDbCleanup {
-    // Everything up to and including the trailing '/'
-    #[allow(dead_code)]
     server_prefix: String,
-    #[allow(dead_code)]
     db_name: String,
 }
 

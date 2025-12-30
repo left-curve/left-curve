@@ -150,12 +150,27 @@ impl Drop for TestDbCleanupGuard {
         let db_name = self.db_name.clone();
 
         let _ = std::panic::catch_unwind(|| {
-            // Use a lightweight current-thread runtime for cleanup
-            let rt = tokio::runtime::Builder::new_current_thread()
+            // If we're inside a Tokio runtime, spawn a detached task and return.
+            if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                handle.spawn(async move {
+                    let parent = format!("{}/postgres", server_prefix);
+                    if let Ok(conn) = Database::connect(parent).await {
+                        let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", db_name);
+                        if conn.execute_unprepared(&drop_sql).await.is_err() {
+                            let _ = conn
+                                .execute_unprepared(&format!("DROP DATABASE \"{}\"", db_name))
+                                .await;
+                        }
+                    }
+                });
+                return;
+            }
+
+            // Otherwise, create a lightweight current-thread runtime and block
+            if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .ok();
-            if let Some(rt) = rt {
+            {
                 rt.block_on(async move {
                     let parent = format!("{}/postgres", server_prefix);
                     if let Ok(conn) = Database::connect(parent).await {
