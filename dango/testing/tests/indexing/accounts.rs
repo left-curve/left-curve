@@ -37,7 +37,7 @@ async fn index_account_creations() -> anyhow::Result<()> {
         .await?;
 
     assert_that!(users.iter().map(|t| t.user_index).collect::<Vec<_>>())
-        .is_equal_to(vec![user.user_index());
+        .is_equal_to(vec![user.user_index()]);
 
     assert_that!(users).has_length(1);
     assert_that!(accounts).has_length(1);
