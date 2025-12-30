@@ -8,6 +8,7 @@ use {
     },
     grug_app::Indexer,
     indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
+    serde_json::json,
     std::collections::HashMap,
 };
 
@@ -151,6 +152,65 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
                     .unwrap()
                     .clone(),
                 );
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+
+    suite.app.indexer.wait_for_finish()?;
+
+    let graphql_query = r#"
+      query Keys($userIndex: Int!) {
+      user(userIndex: $userIndex) {
+        publicKeys { id keyHash publicKey keyType createdBlockHeight createdAt }
+        userIndex
+      }
+    }
+    "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "user",
+        query: graphql_query,
+        variables: json!({ "userIndex": test_account.user_index })
+            .as_object()
+            .unwrap()
+            .to_owned(),
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_actix_app(dango_httpd_context);
+
+                let response =
+                    call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
+
+                // println!("{:#?}", response);
+                // println!("{:#?}", test_account.first_key());
+
+                let expected_data = serde_json::json!({
+                    "userIndex": test_account.user_index(),
+                    "publicKeys": [
+                        {
+                            "publicKey": test_account.first_key().to_string(),
+                        }
+                    ]
+                });
+
+                assert_json_include!(actual: response.data, expected: expected_data);
 
                 Ok::<(), anyhow::Error>(())
             })
