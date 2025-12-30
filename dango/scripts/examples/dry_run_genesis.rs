@@ -152,18 +152,18 @@ const GENESIS_JSON: &str = r#"{
         "msg": {
           "validator_sets": {
             "1": {
-                "threshold": 6,
-                "validators": [
-                  "03c842db86a6a3e524d4a6615390c1ea8e2b9541",
-                  "94438a7de38d4548ae54df5c6010c4ebc5239eae",
-                  "5450447aee7b544c462c9352bef7cad049b0c2dc",
-                  "b3ac35d3988bca8c2ffd195b1c6bee18536b317b",
-                  "b683b742b378632a5f73a2a5a45801b3489bba44",
-                  "3786083ca59dc806d894104e65a13a70c2b39276",
-                  "4f977a59fdc2d9e39f6d780a84d5b4add1495a36",
-                  "29d783efb698f9a2d3045ef4314af1f5674f52c5",
-                  "36a669703ad0e11a0382b098574903d2084be22c"
-                ]
+              "threshold": 6,
+              "validators": [
+                "03c842db86a6a3e524d4a6615390c1ea8e2b9541",
+                "94438a7de38d4548ae54df5c6010c4ebc5239eae",
+                "5450447aee7b544c462c9352bef7cad049b0c2dc",
+                "b3ac35d3988bca8c2ffd195b1c6bee18536b317b",
+                "b683b742b378632a5f73a2a5a45801b3489bba44",
+                "3786083ca59dc806d894104e65a13a70c2b39276",
+                "4f977a59fdc2d9e39f6d780a84d5b4add1495a36",
+                "29d783efb698f9a2d3045ef4314af1f5674f52c5",
+                "36a669703ad0e11a0382b098574903d2084be22c"
+              ]
             }
           }
         },
