@@ -393,7 +393,7 @@ impl Indexer for HookedIndexer {
 
             // Remove completed tasks
             let mut tasks_guard = self.post_indexing_tasks.lock().await;
-            tasks_guard.retain(|block_height, handle| {
+            tasks_guard.retain(|&block_height, handle| {
                 if handle.is_finished() {
                     #[cfg(feature = "tracing")]
                     tracing::debug!(block_height, "Post_indexing task completed");
