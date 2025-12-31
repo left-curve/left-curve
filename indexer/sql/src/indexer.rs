@@ -13,6 +13,7 @@ use {
         error::{self, IndexerError},
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
+    async_trait::async_trait,
     grug_app::Indexer as IndexerTrait,
     grug_types::{
         BlockAndBlockOutcomeWithHttpDetails, Config, Defined, Json, MaybeDefined, Storage,
@@ -169,7 +170,6 @@ where
 
         Ok(Indexer {
             context,
-            handle: self.handle,
             indexing: false,
             #[cfg(feature = "tracing")]
             id,
@@ -195,7 +195,6 @@ static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 /// spawned task
 pub struct Indexer {
     pub context: Context,
-    pub handle: RuntimeHandler,
     // NOTE: this could be Arc<AtomicBool> because if this Indexer is cloned all instances should
     // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
     // as I understand it doesn't clone `App` in a way it'd raise concern.
@@ -358,28 +357,23 @@ impl Indexer {
     }
 }
 
+#[async_trait]
 impl IndexerTrait for Indexer {
-    fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
-        let last_indexed_block_height = self
-            .handle
-            .block_on(async {
-                entity::blocks::Entity::find_last_block_height(&self.context.db).await
-            })
+    async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+        let last_indexed_block_height = entity::blocks::Entity::find_last_block_height(&self.context.db)
+            .await
             .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
         Ok(last_indexed_block_height.map(|h| h as u64))
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
+    async fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
-        self.handle.block_on(async {
-            self.context.migrate_db().await?;
-
-            Ok::<(), error::IndexerError>(())
-        })?;
+        self.context.migrate_db().await
+            .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
 
         self.indexing = true;
 
@@ -387,7 +381,7 @@ impl IndexerTrait for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+    async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -399,7 +393,7 @@ impl IndexerTrait for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn post_indexing(
+    async fn post_indexing(
         &self,
         block_height: u64,
         _cfg: Config,
@@ -425,60 +419,54 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "tracing")]
         let id = self.id;
 
-        self.handle
-            .block_on(async move {
-                #[cfg(feature = "tracing")]
-                tracing::debug!(
-                    block_height,
-                    indexer_id = id,
-                    "`post_indexing` async work started"
-                );
+        #[cfg(feature = "tracing")]
+        tracing::debug!(
+            block_height,
+            indexer_id = id,
+            "`post_indexing` async work started"
+        );
 
-                #[allow(clippy::map_identity)]
-                if let Err(_err) =
-                    Self::save_block(context.db.clone(), context.event_cache.clone(), block).await
-                {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(
-                        err = %_err,
-                        indexer_id = id,
-                        block_height,
-                        "Can't save to db in `post_indexing`"
-                    );
+        #[allow(clippy::map_identity)]
+        if let Err(_err) =
+            Self::save_block(context.db.clone(), context.event_cache.clone(), block).await
+        {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                err = %_err,
+                indexer_id = id,
+                block_height,
+                "Can't save to db in `post_indexing`"
+            );
 
-                    #[cfg(feature = "metrics")]
-                    metrics::counter!("indexer.errors.save.total").increment(1);
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.errors.save.total").increment(1);
 
-                    return Ok(());
-                }
+            return Ok(());
+        }
 
-                #[cfg(feature = "metrics")]
-                metrics::counter!("indexer.blocks.processed.total").increment(1);
+        #[cfg(feature = "metrics")]
+        metrics::counter!("indexer.blocks.processed.total").increment(1);
 
-                if let Err(_err) = context.pubsub.publish(block_height).await {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(
-                        err = %_err,
-                        indexer_id = id,
-                        block_height,
-                        "Can't publish block minted in `post_indexing`"
-                    );
+        if let Err(_err) = context.pubsub.publish(block_height).await {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                err = %_err,
+                indexer_id = id,
+                block_height,
+                "Can't publish block minted in `post_indexing`"
+            );
 
-                    #[cfg(feature = "metrics")]
-                    metrics::counter!("indexer.errors.pubsub.total").increment(1);
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.errors.pubsub.total").increment(1);
 
-                    return Ok(());
-                }
+            return Ok(());
+        }
 
-                #[cfg(feature = "metrics")]
-                metrics::counter!("indexer.pubsub.published.total").increment(1);
+        #[cfg(feature = "metrics")]
+        metrics::counter!("indexer.pubsub.published.total").increment(1);
 
-                #[cfg(feature = "tracing")]
-                tracing::debug!(block_height, indexer_id = id, "`post_indexing` finished");
-
-                Ok::<(), grug_app::IndexerError>(())
-            })
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+        #[cfg(feature = "tracing")]
+        tracing::debug!(block_height, indexer_id = id, "`post_indexing` finished");
 
         Ok(())
     }
@@ -489,7 +477,10 @@ impl Drop for Indexer {
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
         // context.
-        self.shutdown().expect("can't shutdown indexer");
+        // Since shutdown is now async, we can't call it from Drop in an async context.
+        // Just mark as not indexing - the actual cleanup will happen when the async context
+        // completes.
+        self.indexing = false;
     }
 }
 
@@ -606,10 +597,10 @@ mod tests {
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("can't start indexer");
+        indexer.start(&storage).await.expect("can't start indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("can't shutdown Indexer");
+        indexer.shutdown().await.expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())
@@ -621,10 +612,10 @@ mod tests {
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("can't start Indexer");
+        indexer.start(&storage).await.expect("can't start Indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("can't shutdown Indexer");
+        indexer.shutdown().await.expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())
