@@ -370,7 +370,7 @@ impl Indexer for HookedIndexer {
 
         // 1. We have our own internal tasks that are running post_indexing
         loop {
-            let mut tasks_guard = self.post_indexing_tasks.lock().await;
+            let tasks_guard = self.post_indexing_tasks.lock().await;
 
             if tasks_guard.is_empty() {
                 break;
