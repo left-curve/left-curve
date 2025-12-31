@@ -144,13 +144,6 @@ impl IndexerCmd {
             SubCmd::CheckCandles => {
                 let cfg: Config = parse_config(app_dir.config_file())?;
 
-                let sql_indexer = indexer_sql::IndexerBuilder::default()
-                    .with_database_url(&cfg.indexer.database.url)
-                    .with_database_max_connections(cfg.indexer.database.max_connections)
-                    .with_sqlx_pubsub()
-                    .build()
-                    .map_err(|err| anyhow::anyhow!("failed to build indexer: {err:?}"))?;
-
                 let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
                     cfg.indexer.clickhouse.url.clone(),
                     cfg.indexer.clickhouse.database.clone(),
