@@ -95,14 +95,6 @@ impl Cache {
         }
     }
 
-    pub fn new_with_dir_and_runtime(
-        directory: PathBuf,
-        _runtime_handler: crate::runtime::RuntimeHandler,
-    ) -> Self {
-        // RuntimeHandler is no longer needed since Indexer trait is async
-        Self::new_with_dir(directory)
-    }
-
     /// Set HTTP request details for transactions in the given block, those details
     /// are previously stored in the context by the httpd
     #[cfg(feature = "http-request-details")]

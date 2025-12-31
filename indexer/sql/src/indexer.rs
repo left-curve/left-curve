@@ -20,14 +20,12 @@ use {
     },
     itertools::Itertools,
     sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
-    std::{future::Future, sync::Arc},
-    tokio::runtime::{Builder, Handle, Runtime},
+    std::sync::Arc,
 };
 
 // ------------------------------- IndexerBuilder ------------------------------
 
 pub struct IndexerBuilder<DB = Undefined<String>> {
-    handle: RuntimeHandler,
     db_url: DB,
     db_max_connections: u32,
     pubsub: PubSubType,
@@ -37,7 +35,6 @@ pub struct IndexerBuilder<DB = Undefined<String>> {
 impl Default for IndexerBuilder {
     fn default() -> Self {
         Self {
-            handle: RuntimeHandler::default(),
             db_url: Undefined::default(),
             db_max_connections: 10,
             pubsub: PubSubType::Memory,
@@ -49,7 +46,6 @@ impl Default for IndexerBuilder {
 impl IndexerBuilder<Defined<String>> {
     pub fn with_database_max_connections(self, db_max_connections: u32) -> Self {
         IndexerBuilder {
-            handle: self.handle,
             db_url: self.db_url,
             db_max_connections,
             pubsub: self.pubsub,
@@ -64,7 +60,6 @@ impl IndexerBuilder<Undefined<String>> {
         URL: ToString,
     {
         IndexerBuilder {
-            handle: self.handle,
             db_url: Defined::new(db_url.to_string()),
             db_max_connections: self.db_max_connections,
             pubsub: self.pubsub,
@@ -81,7 +76,6 @@ impl IndexerBuilder<Undefined<String>> {
 impl<DB> IndexerBuilder<DB> {
     pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB> {
         IndexerBuilder {
-            handle: self.handle,
             db_url: self.db_url,
             db_max_connections: self.db_max_connections,
             pubsub: PubSubType::Postgres,
@@ -96,7 +90,6 @@ where
 {
     pub fn with_event_cache_window(self, event_cache_window: usize) -> Self {
         Self {
-            handle: self.handle,
             db_url: self.db_url,
             db_max_connections: self.db_max_connections,
             pubsub: self.pubsub,
@@ -480,104 +473,6 @@ impl Drop for Indexer {
         // Just mark as not indexing - the actual cleanup will happen when the async context
         // completes.
         self.indexing = false;
-    }
-}
-
-// ------------------------------- RuntimeHandler ------------------------------
-
-/// Wrapper around Tokio runtime to allow running in sync context
-#[derive(Debug)]
-pub struct RuntimeHandler {
-    pub runtime: Option<Runtime>,
-    handle: Handle,
-}
-
-/// Derive macro is not working because generics.
-impl Default for RuntimeHandler {
-    fn default() -> Self {
-        let (runtime, handle) = match Handle::try_current() {
-            Ok(handle) => (None, handle),
-            Err(_) => {
-                let runtime = Builder::new_multi_thread().enable_all().build().unwrap();
-                let handle = runtime.handle().clone();
-                (Some(runtime), handle)
-            },
-        };
-
-        Self { runtime, handle }
-    }
-}
-
-// Note: Removed Deref implementation to allow proper referencing
-// Access the handle via .handle() method instead
-
-impl RuntimeHandler {
-    /// Create a RuntimeHandler from an existing tokio Handle
-    /// This shares the same runtime as the original handle
-    pub fn from_handle(handle: Handle) -> Self {
-        Self {
-            runtime: None, // No ownership of runtime, just using existing one
-            handle,
-        }
-    }
-
-    /// Get a reference to the tokio Handle
-    pub fn handle(&self) -> &Handle {
-        &self.handle
-    }
-
-    /// Spawn a task on the runtime
-    pub fn spawn<F>(&self, future: F) -> tokio::task::JoinHandle<F::Output>
-    where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static,
-    {
-        self.handle.spawn(future)
-    }
-
-    /// Runs a future in the Tokio runtime, blocking the current thread until the future is resolved.
-    ///
-    /// This function allows running in a sync context by using the appropriate method
-    /// based on whether we own the runtime or are using an existing one.
-    ///
-    /// Code in the indexer is running without async context (within Grug) and with an async
-    /// context (Dango). This is to ensure it works in both cases.
-    ///
-    /// NOTE: The Tokio runtime *must* be multi-threaded with either:
-    /// - `#[tokio::main]`
-    /// - `#[tokio::test(flavor = "multi_thread", worker_threads = 2)]`
-    pub fn block_on<F, R>(&self, closure: F) -> R
-    where
-        F: Future<Output = R>,
-    {
-        if self.runtime.is_some() {
-            self.handle.block_on(closure)
-        } else {
-            // Check if we're in an actix-web worker thread context
-            if let Some(name) = std::thread::current().name()
-                && name.contains("actix-")
-            {
-                // For actix-web worker threads, use futures::executor::block_on
-                // which doesn't require multi-threaded runtime
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    "Using futures::executor::block_on for actix-web worker thread: {}",
-                    name
-                );
-
-                let result = futures::executor::block_on(closure);
-
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    "futures::executor::block_on completed for actix-web worker thread: {}",
-                    name
-                );
-
-                return result;
-            }
-
-            tokio::task::block_in_place(|| self.handle.block_on(closure))
-        }
     }
 }
 

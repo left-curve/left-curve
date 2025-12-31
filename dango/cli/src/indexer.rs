@@ -151,13 +151,8 @@ impl IndexerCmd {
                     cfg.indexer.clickhouse.password.clone(),
                 );
 
-                // RuntimeHandler is no longer needed since Indexer trait is async
-                let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(
-                    indexer_sql::indexer::RuntimeHandler::from_handle(
-                        tokio::runtime::Handle::current(),
-                    ),
-                    clickhouse_context.clone(),
-                );
+                let clickhouse_indexer =
+                    dango_indexer_clickhouse::Indexer::new(clickhouse_context.clone());
 
                 clickhouse_indexer.check_all().await?;
             },

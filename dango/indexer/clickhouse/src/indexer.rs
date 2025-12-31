@@ -21,8 +21,7 @@ pub struct Indexer {
 }
 
 impl Indexer {
-    pub fn new(_runtime_handler: indexer_sql::indexer::RuntimeHandler, context: Context) -> Self {
-        // RuntimeHandler is no longer needed since Indexer trait is async
+    pub fn new(context: Context) -> Self {
         Self {
             context,
             indexing: false,

@@ -215,10 +215,7 @@ impl StartCmd {
             .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {e}"))?
             .into();
 
-        let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
-            indexer_sql::indexer::RuntimeHandler::from_handle(tokio::runtime::Handle::current()),
-            dango_context.clone(),
-        );
+        let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
 
         let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
             cfg.indexer.clickhouse.url.clone(),
@@ -227,10 +224,7 @@ impl StartCmd {
             cfg.indexer.clickhouse.password.clone(),
         );
 
-        let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(
-            indexer_sql::indexer::RuntimeHandler::from_handle(tokio::runtime::Handle::current()),
-            clickhouse_context.clone(),
-        );
+        let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(clickhouse_context.clone());
 
         // Create cache indexer (RuntimeHandler no longer needed)
         let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());

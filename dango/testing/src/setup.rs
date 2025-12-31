@@ -192,10 +192,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         .expect("Failed to create separate context for dango indexer in test setup")
         .into();
 
-    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
-        indexer_sql::indexer::RuntimeHandler::from_handle(tokio::runtime::Handle::current()),
-        dango_context.clone(),
-    );
+    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
 
     let mut clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         format!(
@@ -218,10 +215,8 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
-    let clickhouse_indexer = dango_indexer_clickhouse::indexer::Indexer::new(
-        indexer_sql::indexer::RuntimeHandler::from_handle(tokio::runtime::Handle::current()),
-        clickhouse_context.clone(),
-    );
+    let clickhouse_indexer =
+        dango_indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
     hooked_indexer.add_indexer(clickhouse_indexer).unwrap();
 
     let db = MemDb::new();

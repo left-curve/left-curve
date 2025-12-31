@@ -89,10 +89,7 @@ where
         })?
         .into();
 
-    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
-        indexer_sql::indexer::RuntimeHandler::from_handle(tokio::runtime::Handle::current()),
-        dango_context.clone(),
-    );
+    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
 
     let indexer_context_callback = indexer.context.clone();
 
