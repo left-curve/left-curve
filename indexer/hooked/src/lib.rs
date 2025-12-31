@@ -27,7 +27,7 @@ pub struct HookedIndexer {
     indexers: Arc<RwLock<Vec<Box<dyn Indexer + Send + Sync>>>>,
     /// Whether the indexer is currently running
     is_running: Arc<AtomicBool>,
-    post_indexing_tasks: Arc<Mutex<HashMap<u64, bool>>>,
+    post_indexing_tasks: Arc<Mutex<HashMap<u64, tokio::task::JoinHandle<()>>>>,
 }
 
 impl HookedIndexer {
@@ -310,7 +310,6 @@ impl Indexer for HookedIndexer {
         }
 
         let post_indexing_tasks = self.post_indexing_tasks.clone();
-
         let indexers = self.indexers.clone();
 
         // Clone the `IndexerContext` to avoid borrowing issues.
@@ -319,12 +318,7 @@ impl Indexer for HookedIndexer {
         // 2. `post_indexing` is called in a separate task
         let mut ctx = ctx.clone();
 
-        self.post_indexing_tasks
-            .lock()
-            .await
-            .insert(block_height, true);
-
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             let mut errors = Vec::new();
 
             let indexers_guard = indexers.read().await;
@@ -348,6 +342,7 @@ impl Indexer for HookedIndexer {
 
             drop(indexers_guard);
 
+            // Remove this task from the map when it completes
             let mut tasks_guard = post_indexing_tasks.lock().await;
             tasks_guard.remove(&block_height);
             drop(tasks_guard);
@@ -357,6 +352,12 @@ impl Indexer for HookedIndexer {
                 tracing::error!("Errors in post_indexing: {:?}", errors);
             }
         });
+
+        // Store the task handle with its block height
+        self.post_indexing_tasks
+            .lock()
+            .await
+            .insert(block_height, handle);
 
         Ok(())
     }
@@ -368,17 +369,39 @@ impl Indexer for HookedIndexer {
         tracing::debug!("Waiting for indexer to finish");
 
         // 1. We have our own internal tasks that are running post_indexing
-        for _ in 0..100 {
-            let post_indexing_tasks = self.post_indexing_tasks.lock().await.len();
+        loop {
+            let mut tasks_guard = self.post_indexing_tasks.lock().await;
 
-            #[cfg(feature = "tracing")]
-            tracing::debug!(tasks = post_indexing_tasks, "Waiting for tasks to finish",);
-
-            if post_indexing_tasks == 0 {
+            if tasks_guard.is_empty() {
                 break;
             }
 
+            // Collect block heights for logging
+            let block_heights: Vec<u64> = tasks_guard.keys().copied().collect();
+            let task_count = tasks_guard.len();
+            drop(tasks_guard);
+
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                tasks = task_count,
+                blocks = ?block_heights,
+                "Waiting for post_indexing tasks to finish"
+            );
+
+            // Wait a bit and check which tasks have completed
             sleep(Duration::from_millis(100)).await;
+
+            // Remove completed tasks
+            let mut tasks_guard = self.post_indexing_tasks.lock().await;
+            tasks_guard.retain(|block_height, handle| {
+                if handle.is_finished() {
+                    #[cfg(feature = "tracing")]
+                    tracing::debug!(block_height, "Post_indexing task completed");
+                    false
+                } else {
+                    true
+                }
+            });
         }
 
         #[cfg(feature = "tracing")]
