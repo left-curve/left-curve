@@ -130,14 +130,8 @@ async fn parse_previous_block_after_restart() {
     suite
         .app
         .indexer
-        .start(
-            &suite
-                .app
-                .db
-                .state_storage(None)
-                .await
-                .expect("Can't get storage"),
-        )
+        .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
+        .await
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is indexed
@@ -243,14 +237,8 @@ async fn no_sql_index_error_after_restart() {
     suite
         .app
         .indexer
-        .start(
-            &suite
-                .app
-                .db
-                .state_storage(None)
-                .await
-                .expect("Can't get storage"),
-        )
+        .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
+        .await
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is still indexed
@@ -520,8 +508,8 @@ async fn index_block_events() {
 }
 
 /// Ensure the indexed blocks are compressed on disk.
-#[test]
-fn blocks_on_disk_compressed() {
+#[tokio::test]
+async fn blocks_on_disk_compressed() {
     let (indexer, _, cache_context) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
