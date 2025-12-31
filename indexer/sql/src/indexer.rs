@@ -112,8 +112,8 @@ where
 
         match self.pubsub {
             PubSubType::Postgres => {
-                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
-                    let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
+                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = &context.db {
+                    let pool: &sqlx::PgPool = context.db.get_postgres_connection_pool();
 
                     context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
@@ -143,8 +143,8 @@ where
 
         match self.pubsub {
             PubSubType::Postgres => {
-                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
-                    let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
+                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = &context.db {
+                    let pool: &sqlx::PgPool = context.db.get_postgres_connection_pool();
 
                     context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
@@ -394,8 +394,6 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` called");
 
-        let context = self.context.clone();
-
         let block = ctx
             .get::<BlockAndBlockOutcomeWithHttpDetails>()
             .ok_or(grug_app::IndexerError::hook(
@@ -414,8 +412,12 @@ impl IndexerTrait for Indexer {
         );
 
         #[allow(clippy::map_identity)]
-        if let Err(_err) =
-            Self::save_block(context.db.clone(), context.event_cache.clone(), block).await
+        if let Err(_err) = Self::save_block(
+            self.context.db.clone(),
+            self.context.event_cache.clone(),
+            block,
+        )
+        .await
         {
             #[cfg(feature = "tracing")]
             tracing::error!(
@@ -434,7 +436,7 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "metrics")]
         metrics::counter!("indexer.blocks.processed.total").increment(1);
 
-        if let Err(_err) = context.pubsub.publish(block_height).await {
+        if let Err(_err) = self.context.pubsub.publish(block_height).await {
             #[cfg(feature = "tracing")]
             tracing::error!(
                 err = %_err,

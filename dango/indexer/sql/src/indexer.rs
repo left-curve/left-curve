@@ -69,13 +69,10 @@ impl grug_app::Indexer for Indexer {
             ),
         )?;
 
-        let context = self.context.clone();
-        let block_to_index = block_to_index.clone();
-
         // Run transfer processing and account saving in parallel
         let (transfers_result, accounts_result) = tokio::join!(
-            transfers::save_transfers(&context, block_height),
-            accounts::save_accounts(&context, &block_to_index, app_cfg)
+            transfers::save_transfers(&self.context, block_height),
+            accounts::save_accounts(&self.context, &block_to_index, app_cfg)
         );
 
         // Handle errors and increment counters
@@ -92,7 +89,7 @@ impl grug_app::Indexer for Indexer {
         transfers_result?;
         accounts_result?;
 
-        context
+        self.context
             .pubsub
             .publish(block_height)
             .await
