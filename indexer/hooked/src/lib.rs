@@ -307,7 +307,8 @@ impl Indexer for HookedIndexer {
         Ok(())
     }
 
-    /// Run post_indexing in a separate thread for each block height
+    /// Run post_indexing in a separate thread for each block height.
+    /// Uses tokio::task::spawn_blocking when in a Tokio context for proper lifecycle management.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn post_indexing(
         &self,
@@ -334,18 +335,35 @@ impl Indexer for HookedIndexer {
             .lock()?
             .insert(block_height, true);
 
-        std::thread::spawn(move || {
+        #[cfg(feature = "tracing")]
+        tracing::debug!(block_height, "Spawning post_indexing thread");
+
+        // Closure that does the actual work
+        let work = move || {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(block_height, "post_indexing thread started");
+
             let mut errors = Vec::new();
 
-            for indexer in indexers
-                .read()
-                .map_err(|_| {
+            let indexers_guard = match indexers.read() {
+                Ok(guard) => guard,
+                Err(_) => {
                     #[cfg(feature = "tracing")]
-                    tracing::error!("Rwlock poisoned in post_indexing");
-                    grug_app::IndexerError::rwlock_poisoned()
-                })?
-                .iter()
-            {
+                    tracing::error!(block_height, "Rwlock poisoned in post_indexing");
+                    // Still remove from tracking map
+                    let _ = post_indexing_threads.lock().map(|mut m| m.remove(&block_height));
+                    return Err(grug_app::IndexerError::rwlock_poisoned());
+                },
+            };
+
+            for indexer in indexers_guard.iter() {
+                #[cfg(feature = "tracing")]
+                tracing::debug!(
+                    block_height,
+                    indexer = indexer.name(),
+                    "Calling post_indexing on sub-indexer"
+                );
+
                 if let Err(err) =
                     indexer.post_indexing(block_height, cfg.clone(), app_cfg.clone(), &mut ctx)
                 {
@@ -359,23 +377,37 @@ impl Indexer for HookedIndexer {
 
                     errors.push(err.to_string());
                 }
+
+                #[cfg(feature = "tracing")]
+                tracing::debug!(
+                    block_height,
+                    indexer = indexer.name(),
+                    "Finished post_indexing on sub-indexer"
+                );
             }
 
-            post_indexing_threads
-                .lock()
-                .map_err(|_| {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!("Mutex poisoned in post_indexing");
-                    grug_app::IndexerError::mutex_poisoned()
-                })?
-                .remove(&block_height);
+            // Drop the read guard before acquiring the mutex
+            drop(indexers_guard);
+
+            #[cfg(feature = "tracing")]
+            tracing::debug!(block_height, "Removing from post_indexing_threads map");
+
+            if let Err(_) = post_indexing_threads.lock().map(|mut m| m.remove(&block_height)) {
+                #[cfg(feature = "tracing")]
+                tracing::error!(block_height, "Mutex poisoned when removing from tracking map");
+            }
+
+            #[cfg(feature = "tracing")]
+            tracing::debug!(block_height, "post_indexing thread finished");
 
             if !errors.is_empty() {
                 return Err(grug_app::IndexerError::multiple(errors));
             }
 
             Ok::<(), IndexerError>(())
-        });
+        };
+
+        std::thread::spawn(work);
 
         Ok(())
     }
@@ -384,23 +416,33 @@ impl Indexer for HookedIndexer {
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn wait_for_finish(&self) -> IndexerResult<()> {
         #[cfg(feature = "tracing")]
-        tracing::debug!("Waiting for indexer to finish");
+        tracing::info!("Waiting for indexer to finish");
 
         // 1. We have our own internal threads that are running post_indexing
-        for _ in 0..100 {
-            let post_indexing_threads = self
+        #[allow(unused_variables)]
+        for i in 0..100 {
+            let active_blocks: Vec<u64> = self
                 .post_indexing_threads
                 .lock()
                 .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
-                .len();
+                .keys()
+                .cloned()
+                .collect();
 
+            let thread_count = active_blocks.len();
+
+            // Only log every second (10 iterations) to reduce noise
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                threads = post_indexing_threads,
-                "Waiting for threads to finish",
-            );
+            if i % 10 == 0 && thread_count > 0 {
+                tracing::info!(
+                    threads = thread_count,
+                    ?active_blocks,
+                    iteration = i,
+                    "Waiting for threads to finish",
+                );
+            }
 
-            if post_indexing_threads == 0 {
+            if thread_count == 0 {
                 break;
             }
 

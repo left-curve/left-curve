@@ -16,9 +16,6 @@ pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub event_cache: EventCacheWriter,
-    // If set during tests, dropping the last Context will attempt to drop the temporary DB
-    #[allow(dead_code)]
-    pub test_cleanup: Option<Arc<TestDbCleanupGuard>>,
 }
 
 impl std::fmt::Debug for Context {
@@ -27,14 +24,6 @@ impl std::fmt::Debug for Context {
             .field("db", &self.db)
             .field("pubsub", &"<PubSub trait object>")
             .field("event_cache", &"<EventCacheWriter>")
-            .field(
-                "test_cleanup",
-                &self
-                    .test_cleanup
-                    .as_ref()
-                    .map(|_| "<TestDbCleanupGuard>")
-                    .unwrap_or("<None>"),
-            )
             .finish()
     }
 }
@@ -64,7 +53,6 @@ impl Context {
             db: self.db.clone(),
             pubsub: new_pubsub,
             event_cache: self.event_cache.clone(),
-            test_cleanup: self.test_cleanup.clone(),
         })
     }
 
@@ -134,55 +122,5 @@ impl Context {
                 Err(error)
             },
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct TestDbCleanupGuard {
-    pub server_prefix: String, // without trailing '/'
-    pub db_name: String,
-}
-
-impl Drop for TestDbCleanupGuard {
-    fn drop(&mut self) {
-        // Best-effort; never panic from Drop
-        let server_prefix = self.server_prefix.clone();
-        let db_name = self.db_name.clone();
-
-        let _ = std::panic::catch_unwind(|| {
-            // If we're inside a Tokio runtime, spawn a detached task and return.
-            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                handle.spawn(async move {
-                    let parent = format!("{}/postgres", server_prefix);
-                    if let Ok(conn) = Database::connect(parent).await {
-                        let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", db_name);
-                        if conn.execute_unprepared(&drop_sql).await.is_err() {
-                            let _ = conn
-                                .execute_unprepared(&format!("DROP DATABASE \"{}\"", db_name))
-                                .await;
-                        }
-                    }
-                });
-                return;
-            }
-
-            // Otherwise, create a lightweight current-thread runtime and block
-            if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                rt.block_on(async move {
-                    let parent = format!("{}/postgres", server_prefix);
-                    if let Ok(conn) = Database::connect(parent).await {
-                        let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", db_name);
-                        if conn.execute_unprepared(&drop_sql).await.is_err() {
-                            let _ = conn
-                                .execute_unprepared(&format!("DROP DATABASE \"{}\"", db_name))
-                                .await;
-                        }
-                    }
-                });
-            }
-        });
     }
 }

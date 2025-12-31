@@ -35,8 +35,6 @@ pub struct IndexerBuilder<DB = Undefined<String>> {
     db_max_connections: u32,
     pubsub: PubSubType,
     event_cache_window: usize,
-    // When set by `with_test_database`, ensures automatic cleanup in Indexer::shutdown/Drop
-    test_db_cleanup: Option<TestDbCleanup>,
 }
 
 impl Default for IndexerBuilder {
@@ -47,15 +45,23 @@ impl Default for IndexerBuilder {
             db_max_connections: 10,
             pubsub: PubSubType::Memory,
             event_cache_window: 100,
-            test_db_cleanup: None,
         }
     }
 }
 
-#[derive(Clone, Debug)]
-struct TestDbCleanup {
-    server_prefix: String,
-    db_name: String,
+impl<DB> IndexerBuilder<DB> {
+    /// Use a dedicated runtime that the indexer owns.
+    /// This ensures async operations complete even when the caller's runtime shuts down.
+    /// Recommended for tests where the indexer runs background work via HookedIndexer.
+    pub fn with_dedicated_runtime(self) -> Self {
+        Self {
+            handle: RuntimeHandler::new_dedicated(),
+            db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
+            pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
+        }
+    }
 }
 
 impl IndexerBuilder<Defined<String>> {
@@ -66,55 +72,6 @@ impl IndexerBuilder<Defined<String>> {
             db_max_connections,
             pubsub: self.pubsub,
             event_cache_window: self.event_cache_window,
-            test_db_cleanup: self.test_db_cleanup,
-        }
-    }
-
-    pub async fn with_test_database(self) -> Self {
-        let base_url = self.db_url.inner().clone();
-
-        // Only handle Postgres URLs; otherwise, return unchanged
-        let is_postgres =
-            base_url.starts_with("postgres://") || base_url.starts_with("postgresql://");
-        if !is_postgres {
-            return self;
-        }
-
-        // Generate a unique database name
-        let unique_suffix = uuid::Uuid::new_v4();
-        let test_db_name = format!("grug_test_{}", unique_suffix.simple());
-
-        // Everything before the final '/'
-        let slash_pos = base_url.rfind('/').unwrap_or(base_url.len());
-        let server_prefix = base_url[..slash_pos].to_string();
-
-        // Create the new test database by connecting to the `postgres` DB on the same server.
-        let parent_url = format!("{server_prefix}/postgres");
-        let create_sql = format!("CREATE DATABASE \"{test_db_name}\"");
-        let created = if let Ok(conn) = Database::connect(parent_url.clone()).await {
-            conn.execute_unprepared(&create_sql).await.is_ok()
-        } else {
-            false
-        };
-        if !created {
-            panic!(
-                "Failed to create test database `{test_db_name}`; could not connect to parent database"
-            );
-        }
-
-        // Build a new URL pointing to the newly created database
-        let new_url = format!("{server_prefix}/{test_db_name}");
-
-        IndexerBuilder {
-            handle: self.handle,
-            db_url: Defined::new(new_url),
-            db_max_connections: self.db_max_connections,
-            pubsub: self.pubsub,
-            event_cache_window: self.event_cache_window,
-            test_db_cleanup: Some(TestDbCleanup {
-                server_prefix,
-                db_name: test_db_name,
-            }),
         }
     }
 }
@@ -130,7 +87,6 @@ impl IndexerBuilder<Undefined<String>> {
             db_max_connections: self.db_max_connections,
             pubsub: self.pubsub,
             event_cache_window: self.event_cache_window,
-            test_db_cleanup: self.test_db_cleanup,
         }
     }
 
@@ -148,7 +104,138 @@ impl<DB> IndexerBuilder<DB> {
             db_max_connections: self.db_max_connections,
             pubsub: PubSubType::Postgres,
             event_cache_window: self.event_cache_window,
-            test_db_cleanup: self.test_db_cleanup,
+        }
+    }
+}
+
+impl IndexerBuilder<Defined<String>> {
+    /// Create a unique test database and return a guard for manual cleanup.
+    ///
+    /// This is useful for tests that need an isolated database. The returned guard
+    /// has a `cleanup()` method that should be called when the test is done.
+    /// The guard's Drop does NOT automatically clean up to avoid race conditions.
+    pub async fn with_test_database(self) -> (Self, TestDatabaseGuard) {
+        let base_url = self.db_url.inner().clone();
+
+        // Only handle Postgres URLs
+        let is_postgres =
+            base_url.starts_with("postgres://") || base_url.starts_with("postgresql://");
+        if !is_postgres {
+            // Return unchanged for non-Postgres databases
+            return (
+                self,
+                TestDatabaseGuard {
+                    server_prefix: String::new(),
+                    db_name: String::new(),
+                },
+            );
+        }
+
+        // Generate a unique database name
+        let unique_suffix = uuid::Uuid::new_v4();
+        let test_db_name = format!("grug_test_{}", unique_suffix.simple());
+
+        // Everything before the final '/'
+        let slash_pos = base_url.rfind('/').unwrap_or(base_url.len());
+        let server_prefix = base_url[..slash_pos].to_string();
+
+        // Create the new test database
+        let parent_url = format!("{server_prefix}/postgres");
+        let create_sql = format!("CREATE DATABASE \"{test_db_name}\"");
+        let created = if let Ok(conn) = Database::connect(parent_url.clone()).await {
+            conn.execute_unprepared(&create_sql).await.is_ok()
+        } else {
+            false
+        };
+        if !created {
+            panic!(
+                "Failed to create test database `{test_db_name}`; could not connect to parent database"
+            );
+        }
+
+        // Build a new URL pointing to the newly created database
+        let new_url = format!("{server_prefix}/{test_db_name}");
+
+        let guard = TestDatabaseGuard {
+            server_prefix,
+            db_name: test_db_name,
+        };
+
+        let builder = IndexerBuilder {
+            handle: self.handle,
+            db_url: Defined::new(new_url),
+            db_max_connections: self.db_max_connections,
+            pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
+        };
+
+        (builder, guard)
+    }
+}
+
+/// Guard for test database cleanup.
+///
+/// Call `cleanup()` when done with the test database.
+/// Drop does NOT automatically clean up to avoid race conditions with async operations.
+#[derive(Debug)]
+pub struct TestDatabaseGuard {
+    server_prefix: String,
+    db_name: String,
+}
+
+impl TestDatabaseGuard {
+    /// Get the test database name
+    pub fn db_name(&self) -> &str {
+        &self.db_name
+    }
+
+    /// Manually cleanup the test database.
+    /// This creates its own runtime and connection to avoid interfering with other operations.
+    pub fn cleanup(&self) {
+        if self.db_name.is_empty() {
+            return;
+        }
+
+        let server_prefix = self.server_prefix.clone();
+        let db_name = self.db_name.clone();
+
+        // Use a separate thread with its own runtime
+        let handle = std::thread::spawn(move || {
+            if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                rt.block_on(async move {
+                    let parent = format!("{}/postgres", server_prefix);
+                    if let Ok(conn) = Database::connect(parent).await {
+                        // Try WITH (FORCE) first to terminate remaining sessions
+                        let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", db_name);
+                        if conn.execute_unprepared(&drop_sql).await.is_err() {
+                            // Fallback without FORCE
+                            let _ = conn
+                                .execute_unprepared(&format!("DROP DATABASE \"{}\"", db_name))
+                                .await;
+                        }
+                    }
+                });
+            }
+        });
+
+        // Wait for cleanup to complete
+        let _ = handle.join();
+    }
+}
+
+impl Drop for TestDatabaseGuard {
+    fn drop(&mut self) {
+        // Intentionally do nothing - cleanup is manual via cleanup() method
+        // This avoids race conditions with async operations during shutdown
+        if !self.db_name.is_empty() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                db_name = %self.db_name,
+                "TestDatabaseGuard dropped without cleanup - call cleanup() manually if needed"
+            );
         }
     }
 }
@@ -164,7 +251,6 @@ where
             db_max_connections: self.db_max_connections,
             pubsub: self.pubsub,
             event_cache_window,
-            test_db_cleanup: self.test_db_cleanup,
         }
     }
 
@@ -181,7 +267,6 @@ where
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
-            test_cleanup: None,
         };
 
         match self.pubsub {
@@ -195,14 +280,6 @@ where
                 Ok::<(), IndexerError>(())
             })?,
             PubSubType::Memory => {},
-        }
-
-        // Attach test-db cleanup guard into Context for RAII cleanup once all clones drop
-        if let Some(t) = self.test_db_cleanup.clone() {
-            context.test_cleanup = Some(Arc::new(crate::context::TestDbCleanupGuard {
-                server_prefix: t.server_prefix,
-                db_name: t.db_name,
-            }));
         }
 
         Ok(context)
@@ -225,7 +302,6 @@ where
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
-            test_cleanup: None,
         };
 
         match self.pubsub {
@@ -239,14 +315,6 @@ where
                 Ok::<(), IndexerError>(())
             })?,
             PubSubType::Memory => {},
-        }
-
-        // Attach test-db cleanup guard into Context for RAII cleanup once all clones drop
-        if let Some(t) = self.test_db_cleanup.clone() {
-            context.test_cleanup = Some(Arc::new(crate::context::TestDbCleanupGuard {
-                server_prefix: t.server_prefix,
-                db_name: t.db_name,
-            }));
         }
 
         Ok(Indexer {
@@ -440,8 +508,6 @@ impl Indexer {
     }
 }
 
-// Cleanup is performed in shutdown(); Drop calls shutdown.
-
 impl IndexerTrait for Indexer {
     fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
         let last_indexed_block_height = self
@@ -478,35 +544,6 @@ impl IndexerTrait for Indexer {
         }
 
         self.indexing = false;
-
-        // // Close DB and cleanup test database if any
-        // // Take ownership of cleanup config and db clone before entering async to avoid borrow issues
-        // let cleanup = self.test_db_cleanup.take();
-        // let db = self.context.db.clone();
-        //
-        // self.handle.block_on(async move {
-        //     // Best-effort close of the pool
-        //     let _ = db.close().await;
-        //
-        //     if let Some(clean) = cleanup {
-        //         #[cfg(feature = "tracing")]
-        //         tracing::info!(db = %clean.db_name, "Dropping temporary test database");
-        //
-        //         let parent = format!("{}/postgres", clean.server_prefix);
-        //         if let Ok(conn) = Database::connect(parent).await {
-        //             // Try WITH (FORCE) first to terminate remaining sessions
-        //             let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", clean.db_name);
-        //             if conn.execute_unprepared(&drop_sql).await.is_err() {
-        //                 // Fallback without FORCE for older Postgres versions
-        //                 let _ = conn
-        //                     .execute_unprepared(&format!("DROP DATABASE \"{}\"", clean.db_name))
-        //                     .await;
-        //             }
-        //         }
-        //     }
-        //
-        //     Ok::<(), grug_app::IndexerError>(())
-        // })?;
 
         Ok(())
     }
@@ -611,8 +648,25 @@ impl Drop for Indexer {
 /// Wrapper around Tokio runtime to allow running in sync context
 #[derive(Debug)]
 pub struct RuntimeHandler {
-    pub runtime: Option<Runtime>,
+    /// The runtime, wrapped in Option so we can take ownership in Drop
+    runtime: Option<Runtime>,
     handle: Handle,
+}
+
+impl Drop for RuntimeHandler {
+    fn drop(&mut self) {
+        if let Some(runtime) = self.runtime.take() {
+            // If we're in an async context, we can't drop the runtime directly.
+            // Spawn a thread to handle the shutdown.
+            if Handle::try_current().is_ok() {
+                std::thread::spawn(move || {
+                    drop(runtime);
+                });
+            } else {
+                drop(runtime);
+            }
+        }
+    }
 }
 
 /// Derive macro is not working because generics.
@@ -635,6 +689,29 @@ impl Default for RuntimeHandler {
 // Access the handle via .handle() method instead
 
 impl RuntimeHandler {
+    /// Create a RuntimeHandler that owns its own dedicated runtime.
+    /// This is useful for indexers that need to ensure their async work
+    /// completes independently of the caller's runtime lifecycle.
+    pub fn new_dedicated() -> Self {
+        // Always create a new runtime, even if we're in an async context.
+        // We spawn on a separate thread to avoid "cannot create runtime within runtime" panic.
+        let (runtime, handle) = std::thread::spawn(|| {
+            let runtime = Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .expect("Failed to create dedicated runtime");
+            let handle = runtime.handle().clone();
+            (runtime, handle)
+        })
+        .join()
+        .expect("Failed to join runtime creation thread");
+
+        Self {
+            runtime: Some(runtime),
+            handle,
+        }
+    }
+
     /// Create a RuntimeHandler from an existing tokio Handle
     /// This shares the same runtime as the original handle
     pub fn from_handle(handle: Handle) -> Self {
@@ -673,33 +750,14 @@ impl RuntimeHandler {
     where
         F: Future<Output = R>,
     {
-        if self.runtime.is_some() {
-            self.handle.block_on(closure)
-        } else {
-            // Check if we're in an actix-web worker thread context
-            if let Some(name) = std::thread::current().name()
-                && name.contains("actix-")
-            {
-                // For actix-web worker threads, use futures::executor::block_on
-                // which doesn't require multi-threaded runtime
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    "Using futures::executor::block_on for actix-web worker thread: {}",
-                    name
-                );
-
-                let result = futures::executor::block_on(closure);
-
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    "futures::executor::block_on completed for actix-web worker thread: {}",
-                    name
-                );
-
-                return result;
-            }
-
+        // Check if we're currently in a Tokio runtime context
+        if Handle::try_current().is_ok() {
+            // We're inside a Tokio runtime - use block_in_place to avoid blocking the runtime
             tokio::task::block_in_place(|| self.handle.block_on(closure))
+        } else {
+            // We're not in a Tokio runtime (e.g., native thread from std::thread::spawn)
+            // Just use the handle directly
+            self.handle.block_on(closure)
         }
     }
 }

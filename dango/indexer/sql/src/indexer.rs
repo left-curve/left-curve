@@ -67,6 +67,11 @@ impl grug_app::Indexer for Indexer {
         app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            block_height,
+            "dango_indexer_sql::indexer.post_indexing: start"
+        );
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
@@ -80,9 +85,19 @@ impl grug_app::Indexer for Indexer {
             let context = self.context.clone();
             let block_to_index = block_to_index.clone();
             async move {
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    block_height,
+                    "dango_indexer_sql::indexer.post_indexing: save_transfers"
+                );
                 // Transfer processing
                 transfers::save_transfers(&context, block_height).await?;
 
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    block_height,
+                    "dango_indexer_sql::indexer.post_indexing: save_accounts begin"
+                );
                 // Save accounts
                 accounts::save_accounts(&context, &block_to_index, app_cfg)
                     .await
@@ -90,7 +105,17 @@ impl grug_app::Indexer for Indexer {
                         #[cfg(feature = "metrics")]
                         counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
                     })?;
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    block_height,
+                    "dango_indexer_sql::indexer.post_indexing: save_accounts end"
+                );
 
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    block_height,
+                    "dango_indexer_sql::indexer.post_indexing: publish begin"
+                );
                 context
                     .pubsub
                     .publish(block_height)
@@ -99,6 +124,11 @@ impl grug_app::Indexer for Indexer {
                         #[cfg(feature = "metrics")]
                         counter!("indexer.dango.hooks.pubsub.errors.total").increment(1);
                     })?;
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    block_height,
+                    "dango_indexer_sql::indexer.post_indexing: publish end"
+                );
 
                 Ok::<(), Error>(())
             }
@@ -106,6 +136,12 @@ impl grug_app::Indexer for Indexer {
 
         #[cfg(feature = "metrics")]
         histogram!("indexer.dango.hooks.duration").record(start.elapsed().as_secs_f64());
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            block_height,
+            "dango_indexer_sql::indexer.post_indexing: finish"
+        );
 
         Ok(())
     }

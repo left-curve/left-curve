@@ -22,7 +22,7 @@ const GAS_LIMIT: u64 = 50_000_000;
 
 pub struct ProposalPreparer<P>
 where
-    P: PythClientTrait,
+    P: PythClientTrait + crate::pyth_handler::QueryPythId,
 {
     // `Option` to be able to not clone the `PythHandler`.
     pyth_handler: Option<Mutex<PythHandler<P>>>,
@@ -30,7 +30,7 @@ where
 
 impl<P> Clone for ProposalPreparer<P>
 where
-    P: PythClientTrait,
+    P: PythClientTrait + crate::pyth_handler::QueryPythId,
 {
     fn clone(&self) -> Self {
         Self { pyth_handler: None }
@@ -78,6 +78,20 @@ impl ProposalPreparer<PythClientCache> {
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
+        }
+    }
+}
+
+// Ensure background streaming threads are stopped when the preparer is dropped.
+impl<P> Drop for ProposalPreparer<P>
+where
+    P: PythClientTrait + crate::pyth_handler::QueryPythId,
+{
+    fn drop(&mut self) {
+        if let Some(handler) = &self.pyth_handler
+            && let Ok(mut h) = handler.lock()
+        {
+            h.close_stream();
         }
     }
 }

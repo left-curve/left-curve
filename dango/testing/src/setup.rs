@@ -146,6 +146,7 @@ pub async fn setup_test_with_indexer(
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
     dango_indexer_clickhouse::context::Context,
+    indexer_sql::indexer::TestDatabaseGuard,
 ) {
     setup_test_with_indexer_and_custom_genesis(test_opt, GenesisOption::preset_test()).await
 }
@@ -167,16 +168,18 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
     dango_indexer_clickhouse::context::Context,
+    indexer_sql::indexer::TestDatabaseGuard,
 ) {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or("postgres://postgres@localhost/grug_test".to_string());
 
-    let indexer = indexer_sql::IndexerBuilder::default()
+    let (builder, db_guard) = indexer_sql::IndexerBuilder::default()
+        .with_dedicated_runtime()
         .with_database_url(database_url)
         .with_test_database()
-        .await
-        .build()
-        .unwrap();
+        .await;
+
+    let indexer = builder.build().unwrap();
 
     let indexer_context = indexer.context.clone();
 
@@ -269,6 +272,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         indexer_httpd_context,
         dango_httpd_context,
         clickhouse_context,
+        db_guard,
     )
 }
 

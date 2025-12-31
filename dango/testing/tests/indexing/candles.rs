@@ -31,7 +31,7 @@ use {
 #[ignore = "This test is now hanging, should be fixed, the mock feature is not working"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
 
     let recording = clickhouse_context
@@ -129,7 +129,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
@@ -182,7 +182,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     for _ in 0..10 {
@@ -244,7 +244,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "flaky test, sometimes fails"]
 async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // Call the `create_pair_prices` function 10 times.
@@ -353,7 +353,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_changing_prices() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_and_custom_genesis(
             TestOption {
                 // Start at block 0 at 1 second, with a block time of 20 seconds.
@@ -588,7 +588,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption {
             // Start at block 0 at 1 second, with a block time of 20 seconds.
             block_time: Duration::from_seconds(20),

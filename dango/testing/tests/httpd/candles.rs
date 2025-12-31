@@ -26,7 +26,7 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_candles() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
@@ -113,7 +113,7 @@ async fn query_candles() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_candles_with_dates() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
@@ -203,7 +203,7 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     let _span = tracing::info_span!("graphql_subscribe_to_candles").entered();
 
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
@@ -393,7 +393,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
