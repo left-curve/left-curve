@@ -510,8 +510,6 @@ async fn index_block_events() {
 /// Ensure the indexed blocks are compressed on disk.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn blocks_on_disk_compressed() {
-    grug_testing::setup_tracing_subscriber(tracing::Level::DEBUG);
-
     let (indexer, _, cache_context) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)

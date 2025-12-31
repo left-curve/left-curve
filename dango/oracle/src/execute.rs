@@ -259,10 +259,8 @@ mod tests {
         let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
 
         for feed in payload.feeds {
-            let id = feed.feed_id.0;
             let price = PrecisionlessPrice::try_from((feed, timestamp)).unwrap();
-            let price_f64: f64 = price.humanized_price.to_string().parse().unwrap();
-            println!("ID: {id}, Price: {price_f64}",);
+            let _price_f64: f64 = price.humanized_price.to_string().parse().unwrap();
         }
     }
 }
