@@ -775,19 +775,22 @@ fn clear_orders_of_pair(
 
     // ------------------------- 4. Cancel IOC orders --------------------------
 
-    for order in ORDERS
+    let order_iter = ORDERS
         .idx
         .time_in_force
         .prefix(TimeInForce::ImmediateOrCancel)
-        .append((base_denom.clone(), quote_denom.clone()))
-        .values(storage, None, None, IterationOrder::Ascending)
-        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-            ("base_denom", base_denom.to_string()),
-            ("quote_denom", quote_denom.to_string()),
-            ("iteration_order", IterationOrder::Ascending.to_string()),
-        ])
-        .collect::<StdResult<Vec<_>>>()?
-    {
+        .append((base_denom.clone(), quote_denom.clone()));
+
+    let order_iter = order_iter.values(storage, None, None, IterationOrder::Ascending);
+
+    #[cfg(feature = "metrics")]
+    let order_iter = order_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+        ("base_denom", base_denom.to_string()),
+        ("quote_denom", quote_denom.to_string()),
+        ("iteration_order", IterationOrder::Ascending.to_string()),
+    ]);
+
+    for order in order_iter.collect::<StdResult<Vec<_>>>()? {
         ORDERS.remove(
             storage,
             (
@@ -825,30 +828,47 @@ fn clear_orders_of_pair(
     // ----------------- 5. Save the resting order book state ------------------
 
     // Find the best bid and ask prices that remains after all the previous steps.
-    let best_bid_price = ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Bid)
-        .keys(storage, None, None, IterationOrder::Descending)
-        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-            ("base_denom", base_denom.to_string()),
-            ("quote_denom", quote_denom.to_string()),
-            ("iteration_order", IterationOrder::Descending.to_string()),
-        ])
-        .next()
-        .transpose()?
-        .map(|(price, _order_id)| price);
-    let best_ask_price = ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Ask)
-        .keys(storage, None, None, IterationOrder::Ascending)
-        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-            ("base_denom", base_denom.to_string()),
-            ("quote_denom", quote_denom.to_string()),
-            ("iteration_order", IterationOrder::Ascending.to_string()),
-        ])
-        .next()
-        .transpose()?
-        .map(|(price, _order_id)| price);
+    let best_bid_price = {
+        #[allow(unused_mut)]
+        let mut best_bid_price_iter = ORDERS
+            .prefix((base_denom.clone(), quote_denom.clone()))
+            .append(Direction::Bid)
+            .keys(storage, None, None, IterationOrder::Descending);
+
+        #[cfg(feature = "metrics")]
+        let mut best_bid_price_iter =
+            best_bid_price_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+                ("base_denom", base_denom.to_string()),
+                ("quote_denom", quote_denom.to_string()),
+                ("iteration_order", IterationOrder::Descending.to_string()),
+            ]);
+
+        best_bid_price_iter
+            .next()
+            .transpose()?
+            .map(|(price, _order_id)| price)
+    };
+
+    let best_ask_price = {
+        #[allow(unused_mut)]
+        let mut best_ask_price_iter = ORDERS
+            .prefix((base_denom.clone(), quote_denom.clone()))
+            .append(Direction::Ask)
+            .keys(storage, None, None, IterationOrder::Ascending);
+
+        #[cfg(feature = "metrics")]
+        let mut best_ask_price_iter =
+            best_ask_price_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+                ("base_denom", base_denom.to_string()),
+                ("quote_denom", quote_denom.to_string()),
+                ("iteration_order", IterationOrder::Ascending.to_string()),
+            ]);
+
+        best_ask_price_iter
+            .next()
+            .transpose()?
+            .map(|(price, _order_id)| price)
+    };
 
     // Determine the mid price:
     // - if both best bid and ask prices exist, then take the average of them;
