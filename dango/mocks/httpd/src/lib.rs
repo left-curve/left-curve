@@ -142,8 +142,15 @@ where
         None,
     );
 
-    dango_httpd::server::run_server("127.0.0.1", port, cors_allowed_origin, dango_httpd_context)
-        .await
+    let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    dango_httpd::server::run_server(
+        "127.0.0.1",
+        port,
+        cors_allowed_origin,
+        dango_httpd_context,
+        shutdown_flag,
+    )
+    .await
 }
 
 pub fn get_mock_socket_addr() -> u16 {
