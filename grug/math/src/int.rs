@@ -104,12 +104,6 @@ where
     }
 }
 
-impl From<Int<u128>> for f64 {
-    fn from(v: Int<u128>) -> Self {
-        v.0 as f64
-    }
-}
-
 struct IntVisitor<U> {
     _marker: PhantomData<U>,
 }

@@ -137,11 +137,10 @@ pub fn emit_reserve(
         };
 
         // Divide the amount by 10^precision to get the human-readable amount.
-        let scale_f64 = 10_f64.powi(price.precision() as i32);
-        let amount_f64 = (coin.amount.into_inner() as f64) / scale_f64;
+        let amount_f64 = coin.amount.into_inner() as f64 / 10_f64.powi(price.precision() as i32);
 
         // Amount of tokens in reserve.
-        ::metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
+        metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
             "token" => coin.denom.to_string()
@@ -150,14 +149,13 @@ pub fn emit_reserve(
 
         // Value of tokens in reserve (USD).
         let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
-        let value_f64: f64 = value.to_string().parse()?;
 
-        ::metrics::gauge!(crate::metrics::LABEL_RESERVE_VALUE,
+        metrics::gauge!(crate::metrics::LABEL_RESERVE_VALUE,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
             "token" => coin.denom.to_string()
         )
-        .set(value_f64);
+        .set(dec_to_f64(&value));
     }
 
     Ok(())
@@ -182,7 +180,7 @@ pub fn emit_volume(
 
         let value: Udec128_6 = price.value_of_unit_amount(amount)?;
 
-        ::metrics::histogram!(
+        metrics::histogram!(
             crate::metrics::LABEL_VOLUME_AMOUNT_PER_BLOCK,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
@@ -190,13 +188,13 @@ pub fn emit_volume(
         )
         .record(amount_f64);
 
-        ::metrics::histogram!(
+        metrics::histogram!(
             crate::metrics::LABEL_VOLUME_VALUE_PER_BLOCK,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
             "token" => token.to_string(),
         )
-        .record(value.to_f64());
+        .record(dec_to_f64(&value));
     }
 
     Ok(())
@@ -215,9 +213,9 @@ pub fn emit_best_price(
         10_f64.powi(base_price.precision() as i32 - quote_price.precision() as i32);
 
     if let Some(bid) = best_bid_price {
-        let bid_price_f64: f64 = bid.to_f64();
+        let bid_price_f64: f64 = dec_to_f64(&bid);
 
-        ::metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+        metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
             "type" => "bid",
@@ -226,9 +224,9 @@ pub fn emit_best_price(
     }
 
     if let Some(ask) = best_ask_price {
-        let ask_price_f64: f64 = ask.to_f64();
+        let ask_price_f64: f64 = dec_to_f64(&ask);
 
-        ::metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+        metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
             "type" => "ask",
@@ -237,9 +235,9 @@ pub fn emit_best_price(
     }
 
     if let Some(mid) = mid_price {
-        let mid_price_f64: f64 = mid.to_f64();
+        let mid_price_f64: f64 = dec_to_f64(&mid);
 
-        ::metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+        metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
             "type" => "mid",
@@ -265,20 +263,20 @@ pub fn emit_spread(
     if let (Some(bid), Some(ask), Some(mid)) = (best_bid_price, best_ask_price, mid_price) {
         let spread_absolute = ask - bid;
 
-        let mut spread_absolute_f64: f64 = spread_absolute.to_f64();
+        let mut spread_absolute_f64 = dec_to_f64(&spread_absolute);
 
         // The spread absolute needs to be adjusted according to difference in the tokens's precision.
         spread_absolute_f64 *= scale_tokens_precision;
 
-        let spread_percentage_f64: f64 = spread_absolute.checked_div(mid)?.to_f64();
+        let spread_percentage_f64 = dec_to_f64(&spread_absolute.checked_div(mid)?);
 
-        ::metrics::gauge!(crate::metrics::LABEL_SPREAD_ABSOLUTE,
+        metrics::gauge!(crate::metrics::LABEL_SPREAD_ABSOLUTE,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
         )
         .set(spread_absolute_f64);
 
-        ::metrics::gauge!(crate::metrics::LABEL_SPREAD_PERCENTAGE,
+        metrics::gauge!(crate::metrics::LABEL_SPREAD_PERCENTAGE,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
         )
@@ -286,4 +284,8 @@ pub fn emit_spread(
     }
 
     Ok(())
+}
+
+pub fn dec_to_f64<const S: u32>(dec: &grug::Dec<u128, S>) -> f64 {
+    dec.0.into_inner() as f64 / 10f64.powi(S as i32)
 }
