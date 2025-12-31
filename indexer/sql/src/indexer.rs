@@ -357,15 +357,10 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
-        // SQLite migrations can block, so run them in a blocking thread
-        // Clone the context to move into the blocking task
-        let context = self.context.clone();
-        tokio::task::spawn_blocking(move || {
-            futures::executor::block_on(async { context.migrate_db().await })
-        })
-        .await
-        .map_err(|e| grug_app::IndexerError::database(format!("Migration task failed: {e}")))?
-        .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
+        self.context
+            .migrate_db()
+            .await
+            .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
 
         self.indexing = true;
 
