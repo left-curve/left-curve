@@ -434,18 +434,12 @@ where
         let mut tx_outcomes = vec![];
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        let result = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::try_current()
-                .unwrap_or_else(|_| {
-                    panic!("Indexer::pre_indexing requires a tokio runtime context")
-                })
-                .block_on(async {
-                    self.indexer
-                        .pre_indexing(block.info.height, &mut indexer_ctx)
-                        .await
-                })
-        });
-        result?;
+        // Use futures::executor::block_on which works in both sync and async contexts
+        futures::executor::block_on(async {
+            self.indexer
+                .pre_indexing(block.info.height, &mut indexer_ctx)
+                .await
+        })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -614,16 +608,12 @@ where
         };
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        let result = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::try_current()
-                .unwrap_or_else(|_| panic!("Indexer::index_block requires a tokio runtime context"))
-                .block_on(async {
-                    self.indexer
-                        .index_block(&block, &block_outcome, &mut indexer_ctx)
-                        .await
-                })
-        });
-        result?;
+        // Use futures::executor::block_on which works in both sync and async contexts
+        futures::executor::block_on(async {
+            self.indexer
+                .index_block(&block, &block_outcome, &mut indexer_ctx)
+                .await
+        })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -655,18 +645,13 @@ where
         let app_cfg = APP_CONFIG.load(&storage)?;
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        let result = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::try_current()
-                .unwrap_or_else(|_| {
-                    panic!("Indexer::post_indexing requires a tokio runtime context")
-                })
-                .block_on(async {
-                    self.indexer
-                        .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
-                        .await
-                })
-        });
-        result.inspect_err(|_err| {
+        // Use futures::executor::block_on which works in both sync and async contexts
+        futures::executor::block_on(async {
+            self.indexer
+                .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
+                .await
+        })
+        .inspect_err(|_err| {
             #[cfg(feature = "tracing")]
             {
                 tracing::error!(err = %_err, "Error in `post_indexing`");

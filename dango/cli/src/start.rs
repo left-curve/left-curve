@@ -203,6 +203,7 @@ impl StartCmd {
             .with_database_max_connections(cfg.indexer.database.max_connections)
             .with_sqlx_pubsub()
             .build()
+            .await
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
         let indexer_context = sql_indexer.context.clone();
 

@@ -9,8 +9,7 @@ use {
     crate::{
         Context, EventCache, EventCacheWriter,
         active_model::Models,
-        entity,
-        error::{self, IndexerError},
+        entity, error,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
     async_trait::async_trait,
@@ -105,12 +104,10 @@ where
         }
     }
 
-    pub fn build_context(self) -> error::Result<Context> {
+    pub async fn build_context(self) -> error::Result<Context> {
         let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self.handle.block_on(async {
-                Context::connect_db_with_url(&url, self.db_max_connections).await
-            }),
-            None => self.handle.block_on(async { Context::connect_db().await }),
+            Some(url) => Context::connect_db_with_url(&url, self.db_max_connections).await,
+            None => Context::connect_db().await,
         }?;
 
         let mut context = Context {
@@ -121,27 +118,23 @@ where
         };
 
         match self.pubsub {
-            PubSubType::Postgres => self.handle.block_on(async {
+            PubSubType::Postgres => {
                 if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
                     let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
 
                     context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
-
-                Ok::<(), IndexerError>(())
-            })?,
+            },
             PubSubType::Memory => {},
         }
 
         Ok(context)
     }
 
-    pub fn build(self) -> error::Result<Indexer> {
+    pub async fn build(self) -> error::Result<Indexer> {
         let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self.handle.block_on(async {
-                Context::connect_db_with_url(&url, self.db_max_connections).await
-            }),
-            None => self.handle.block_on(async { Context::connect_db().await }),
+            Some(url) => Context::connect_db_with_url(&url, self.db_max_connections).await,
+            None => Context::connect_db().await,
         }?;
 
         // Generate unique ID
@@ -156,15 +149,13 @@ where
         };
 
         match self.pubsub {
-            PubSubType::Postgres => self.handle.block_on(async {
+            PubSubType::Postgres => {
                 if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
                     let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
 
                     context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
-
-                Ok::<(), IndexerError>(())
-            })?,
+            },
             PubSubType::Memory => {},
         }
 
@@ -373,10 +364,15 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
-        self.context
-            .migrate_db()
-            .await
-            .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
+        // SQLite migrations can block, so run them in a blocking thread
+        // Clone the context to move into the blocking task
+        let context = self.context.clone();
+        tokio::task::spawn_blocking(move || {
+            futures::executor::block_on(async { context.migrate_db().await })
+        })
+        .await
+        .map_err(|e| grug_app::IndexerError::database(format!("Migration task failed: {e}")))?
+        .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
 
         self.indexing = true;
 
@@ -596,7 +592,10 @@ mod tests {
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let mut indexer: Indexer = IndexerBuilder::default().with_memory_database().build()?;
+        let mut indexer: Indexer = IndexerBuilder::default()
+            .with_memory_database()
+            .build()
+            .await?;
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
@@ -611,7 +610,10 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn build_without_hooks() -> anyhow::Result<()> {
-        let mut indexer: Indexer = IndexerBuilder::default().with_memory_database().build()?;
+        let mut indexer: Indexer = IndexerBuilder::default()
+            .with_memory_database()
+            .build()
+            .await?;
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);

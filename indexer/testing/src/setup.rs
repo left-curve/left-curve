@@ -1,9 +1,11 @@
 use indexer_hooked::HookedIndexer;
 
-pub fn create_hooked_indexer() -> (HookedIndexer, indexer_sql::Context, indexer_cache::Context) {
+pub async fn create_hooked_indexer() -> (HookedIndexer, indexer_sql::Context, indexer_cache::Context)
+{
     let sql_indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .build()
+        .await
         .expect("Can't create indexer");
 
     let sql_indexer_context = sql_indexer.context.clone();

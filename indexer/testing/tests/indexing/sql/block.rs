@@ -19,7 +19,7 @@ use {
 async fn index_block() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let (indexer, sql_indexer_context, ..) = create_hooked_indexer();
+    let (indexer, sql_indexer_context, ..) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -86,7 +86,7 @@ async fn index_block() {
 async fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let (indexer, sql_indexer_context, ..) = create_hooked_indexer();
+    let (indexer, sql_indexer_context, ..) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -176,7 +176,7 @@ async fn parse_previous_block_after_restart() {
 async fn no_sql_index_error_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let (indexer, sql_indexer_context, cache_context) = create_hooked_indexer();
+    let (indexer, sql_indexer_context, cache_context) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -420,7 +420,7 @@ pub mod replier {
 /// Ensure that flatten events are indexed correctly.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_block_events() {
-    let (indexer, sql_indexer_context, ..) = create_hooked_indexer();
+    let (indexer, sql_indexer_context, ..) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coin::new("usdc", 100_000).unwrap())
@@ -508,9 +508,11 @@ async fn index_block_events() {
 }
 
 /// Ensure the indexed blocks are compressed on disk.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn blocks_on_disk_compressed() {
-    let (indexer, _, cache_context) = create_hooked_indexer();
+    grug_testing::setup_tracing_subscriber(tracing::Level::DEBUG);
+
+    let (indexer, _, cache_context) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coin::new("usdc", 100_000).unwrap())

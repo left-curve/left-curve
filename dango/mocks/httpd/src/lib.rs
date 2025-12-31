@@ -68,7 +68,7 @@ where
             .with_database_max_connections(1)
     };
 
-    let indexer = indexer.with_sqlx_pubsub().build()?;
+    let indexer = indexer.with_sqlx_pubsub().build().await?;
 
     let indexer_context = indexer.context.clone();
 
