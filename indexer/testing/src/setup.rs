@@ -14,8 +14,8 @@ pub async fn create_hooked_indexer() -> (HookedIndexer, indexer_sql::Context, in
     let indexer_cache_context = cache_indexer.context.clone();
 
     let mut hooked_indexer = HookedIndexer::new();
-    hooked_indexer.add_indexer(cache_indexer).unwrap();
-    hooked_indexer.add_indexer(sql_indexer).unwrap();
+    hooked_indexer.add_indexer(cache_indexer).await.unwrap();
+    hooked_indexer.add_indexer(sql_indexer).await.unwrap();
 
     (hooked_indexer, sql_indexer_context, indexer_cache_context)
 }

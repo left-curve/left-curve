@@ -93,9 +93,9 @@ where
 
     let indexer_context_callback = indexer.context.clone();
 
-    hooked_indexer.add_indexer(indexer_cache).unwrap();
-    hooked_indexer.add_indexer(indexer).unwrap();
-    hooked_indexer.add_indexer(dango_indexer).unwrap();
+    hooked_indexer.add_indexer(indexer_cache).await.unwrap();
+    hooked_indexer.add_indexer(indexer).await.unwrap();
+    hooked_indexer.add_indexer(dango_indexer).await.unwrap();
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::<SimpleCommitment>::new(),

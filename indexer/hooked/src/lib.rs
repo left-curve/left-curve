@@ -40,7 +40,7 @@ impl HookedIndexer {
     }
 
     /// Add an indexer to the composition
-    pub fn add_indexer<I>(&mut self, indexer: I) -> Result<&mut Self, grug_app::IndexerError>
+    pub async fn add_indexer<I>(&mut self, indexer: I) -> Result<&mut Self, grug_app::IndexerError>
     where
         I: Indexer + Send + Sync + 'static,
     {
@@ -48,11 +48,7 @@ impl HookedIndexer {
             return Err(grug_app::IndexerError::already_running());
         }
 
-        // Use futures::executor::block_on for sync access to async lock
-        // This works in both sync and async contexts
-        block_on(async {
-            self.indexers.write().await.push(Box::new(indexer));
-        });
+        self.indexers.write().await.push(Box::new(indexer));
         Ok(self)
     }
 
@@ -485,23 +481,28 @@ mod tests {
         assert!(!indexer.is_running());
     }
 
-    #[test]
-    fn test_add_indexers() {
+    #[tokio::test]
+    async fn test_add_indexers() {
         let mut hooked_indexer = HookedIndexer::new();
 
         hooked_indexer
             .add_indexer(TestIndexer::default())
+            .await
             .unwrap()
             .add_indexer(TestIndexer::default())
+            .await
             .unwrap();
 
-        assert_eq!(hooked_indexer.indexer_count_sync(), 2);
+        assert_eq!(hooked_indexer.indexer_count().await, 2);
     }
 
     #[tokio::test]
     async fn test_start_and_shutdown() {
         let mut hooked_indexer = HookedIndexer::new();
-        hooked_indexer.add_indexer(TestIndexer::default()).unwrap();
+        hooked_indexer
+            .add_indexer(TestIndexer::default())
+            .await
+            .unwrap();
 
         let storage = MockStorage::new();
 
@@ -518,7 +519,10 @@ mod tests {
     #[tokio::test]
     async fn test_double_start_fails() {
         let mut hooked_indexer = HookedIndexer::new();
-        hooked_indexer.add_indexer(TestIndexer::default()).unwrap();
+        hooked_indexer
+            .add_indexer(TestIndexer::default())
+            .await
+            .unwrap();
 
         let storage = MockStorage::new();
 
@@ -531,7 +535,10 @@ mod tests {
     #[tokio::test]
     async fn test_operations_when_not_running() {
         let mut hooked_indexer = HookedIndexer::new();
-        hooked_indexer.add_indexer(TestIndexer::default()).unwrap();
+        hooked_indexer
+            .add_indexer(TestIndexer::default())
+            .await
+            .unwrap();
 
         let mut ctx = grug_app::IndexerContext::new();
 
@@ -623,12 +630,12 @@ mod tests {
 
         // Add a producer indexer that stores data
         let producer = DataProducerIndexer::new("producer1");
-        hooked_indexer.add_indexer(producer).unwrap();
+        hooked_indexer.add_indexer(producer).await.unwrap();
 
         // Add a consumer indexer that reads data
         let consumer = DataConsumerIndexer::new();
         let consumer_data = consumer.consumed_data.clone();
-        hooked_indexer.add_indexer(consumer).unwrap();
+        hooked_indexer.add_indexer(consumer).await.unwrap();
 
         let storage = MockStorage::new();
         hooked_indexer.start(&storage).await.unwrap();

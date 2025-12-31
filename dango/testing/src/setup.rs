@@ -211,13 +211,16 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         clickhouse_context = clickhouse_context.with_mock();
     }
 
-    hooked_indexer.add_indexer(indexer_cache).unwrap();
-    hooked_indexer.add_indexer(indexer).unwrap();
-    hooked_indexer.add_indexer(dango_indexer).unwrap();
+    hooked_indexer.add_indexer(indexer_cache).await.unwrap();
+    hooked_indexer.add_indexer(indexer).await.unwrap();
+    hooked_indexer.add_indexer(dango_indexer).await.unwrap();
 
     let clickhouse_indexer =
         dango_indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
-    hooked_indexer.add_indexer(clickhouse_indexer).unwrap();
+    hooked_indexer
+        .add_indexer(clickhouse_indexer)
+        .await
+        .unwrap();
 
     let db = MemDb::new();
     let vm = RustVm::new();

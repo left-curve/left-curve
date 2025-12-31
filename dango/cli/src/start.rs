@@ -232,10 +232,10 @@ impl StartCmd {
         indexer_cache.context.s3 = cfg.indexer.s3.clone();
         let indexer_cache_context = indexer_cache.context.clone();
 
-        hooked_indexer.add_indexer(indexer_cache)?;
-        hooked_indexer.add_indexer(sql_indexer)?;
-        hooked_indexer.add_indexer(dango_indexer)?;
-        hooked_indexer.add_indexer(clickhouse_indexer)?;
+        hooked_indexer.add_indexer(indexer_cache).await?;
+        hooked_indexer.add_indexer(sql_indexer).await?;
+        hooked_indexer.add_indexer(dango_indexer).await?;
+        hooked_indexer.add_indexer(clickhouse_indexer).await?;
 
         let indexer_httpd_context = indexer_httpd::context::Context::new(
             indexer_cache_context,
