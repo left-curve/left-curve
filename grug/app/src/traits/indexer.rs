@@ -1,5 +1,6 @@
 use {
     crate::IndexerError,
+    async_trait::async_trait,
     grug_types::{Block, BlockOutcome, Config, Json, Storage},
     std::any::type_name,
 };
@@ -63,28 +64,29 @@ impl IndexerContext {
 }
 
 /// This is the trait that the indexer must implement. It is used by the Grug core to index blocks
-pub trait Indexer {
+#[async_trait]
+pub trait Indexer: Send + Sync {
     fn name(&self) -> &'static str {
         type_name::<Self>()
     }
 
     /// Called when initializing the indexer, allowing for DB migration if needed
-    fn start(&mut self, _storage: &dyn Storage) -> IndexerResult<()> {
+    async fn start(&mut self, _storage: &dyn Storage) -> IndexerResult<()> {
         Ok(())
     }
 
     /// Called when terminating the indexer, allowing for DB transactions to be committed
-    fn shutdown(&mut self) -> IndexerResult<()> {
+    async fn shutdown(&mut self) -> IndexerResult<()> {
         Ok(())
     }
 
     /// Called when indexing a block, allowing to create a new DB transaction
-    fn pre_indexing(&self, _block_height: u64, _ctx: &mut IndexerContext) -> IndexerResult<()> {
+    async fn pre_indexing(&self, _block_height: u64, _ctx: &mut IndexerContext) -> IndexerResult<()> {
         Ok(())
     }
 
     /// Called when indexing the block, happens at the end of the block creation
-    fn index_block(
+    async fn index_block(
         &self,
         _block: &Block,
         _block_outcome: &BlockOutcome,
@@ -94,7 +96,7 @@ pub trait Indexer {
     }
 
     /// Called after indexing the block, allowing for DB transactions to be committed
-    fn post_indexing(
+    async fn post_indexing(
         &self,
         _block_height: u64,
         _cfg: Config,
@@ -105,11 +107,11 @@ pub trait Indexer {
     }
 
     /// Wait for the indexer to finish indexing
-    fn wait_for_finish(&self) -> IndexerResult<()> {
+    async fn wait_for_finish(&self) -> IndexerResult<()> {
         Ok(())
     }
 
-    fn last_indexed_block_height(&self) -> IndexerResult<Option<u64>> {
+    async fn last_indexed_block_height(&self) -> IndexerResult<Option<u64>> {
         Ok(None)
     }
 }

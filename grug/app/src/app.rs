@@ -434,8 +434,18 @@ where
         let mut tx_outcomes = vec![];
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        self.indexer
-            .pre_indexing(block.info.height, &mut indexer_ctx)?;
+        let result = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::try_current()
+                .unwrap_or_else(|_| {
+                    panic!("Indexer::pre_indexing requires a tokio runtime context")
+                })
+                .block_on(async {
+                    self.indexer
+                        .pre_indexing(block.info.height, &mut indexer_ctx)
+                        .await
+                })
+        });
+        result?;
 
         #[cfg(feature = "metrics")]
         {
@@ -604,8 +614,18 @@ where
         };
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        self.indexer
-            .index_block(&block, &block_outcome, &mut indexer_ctx)?;
+        let result = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::try_current()
+                .unwrap_or_else(|_| {
+                    panic!("Indexer::index_block requires a tokio runtime context")
+                })
+                .block_on(async {
+                    self.indexer
+                        .index_block(&block, &block_outcome, &mut indexer_ctx)
+                        .await
+                })
+        });
+        result?;
 
         #[cfg(feature = "metrics")]
         {
@@ -637,14 +657,23 @@ where
         let app_cfg = APP_CONFIG.load(&storage)?;
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        self.indexer
-            .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
-            .inspect_err(|_err| {
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::error!(err = %_err, "Error in `post_indexing`");
-                }
-            })?;
+        let result = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::try_current()
+                .unwrap_or_else(|_| {
+                    panic!("Indexer::post_indexing requires a tokio runtime context")
+                })
+                .block_on(async {
+                    self.indexer
+                        .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
+                        .await
+                })
+        });
+        result.inspect_err(|_err| {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(err = %_err, "Error in `post_indexing`");
+            }
+        })?;
 
         #[cfg(feature = "metrics")]
         {

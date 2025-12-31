@@ -5476,6 +5476,7 @@ dependencies = [
 name = "grug-app"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "borsh",
  "data-encoding",
  "dyn-event",
@@ -5489,6 +5490,7 @@ dependencies = [
  "sha2 0.10.9",
  "tendermint",
  "thiserror 2.0.12",
+ "tokio",
  "tower",
  "tower-abci",
  "tracing",
