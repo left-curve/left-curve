@@ -27,7 +27,7 @@ pub struct HookedIndexer {
     indexers: Arc<RwLock<Vec<Box<dyn Indexer + Send + Sync>>>>,
     /// Whether the indexer is currently running
     is_running: Arc<AtomicBool>,
-    post_indexing_threads: Arc<Mutex<HashMap<u64, bool>>>,
+    post_indexing_tasks: Arc<Mutex<HashMap<u64, bool>>>,
 }
 
 impl HookedIndexer {
@@ -35,7 +35,7 @@ impl HookedIndexer {
         Self {
             indexers: Arc::new(RwLock::new(Vec::new())),
             is_running: Arc::new(AtomicBool::new(false)),
-            post_indexing_threads: Arc::new(Mutex::new(HashMap::new())),
+            post_indexing_tasks: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -309,17 +309,17 @@ impl Indexer for HookedIndexer {
             return Err(grug_app::IndexerError::not_running());
         }
 
-        let post_indexing_threads = self.post_indexing_threads.clone();
+        let post_indexing_tasks = self.post_indexing_tasks.clone();
 
         let indexers = self.indexers.clone();
 
         // Clone the `IndexerContext` to avoid borrowing issues.
         // I do this clone because:
-        // 1. `IndexerContext` isn't used in the main thread after `post_indexing` is called
+        // 1. `IndexerContext` isn't used in the main task after `post_indexing` is called
         // 2. `post_indexing` is called in a separate task
         let mut ctx = ctx.clone();
 
-        self.post_indexing_threads
+        self.post_indexing_tasks
             .lock()
             .await
             .insert(block_height, true);
@@ -348,9 +348,9 @@ impl Indexer for HookedIndexer {
 
             drop(indexers_guard);
 
-            let mut threads_guard = post_indexing_threads.lock().await;
-            threads_guard.remove(&block_height);
-            drop(threads_guard);
+            let mut tasks_guard = post_indexing_tasks.lock().await;
+            tasks_guard.remove(&block_height);
+            drop(tasks_guard);
 
             if !errors.is_empty() {
                 #[cfg(feature = "tracing")]
@@ -369,15 +369,12 @@ impl Indexer for HookedIndexer {
 
         // 1. We have our own internal tasks that are running post_indexing
         for _ in 0..100 {
-            let post_indexing_threads = self.post_indexing_threads.lock().await.len();
+            let post_indexing_tasks = self.post_indexing_tasks.lock().await.len();
 
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                threads = post_indexing_threads,
-                "Waiting for tasks to finish",
-            );
+            tracing::debug!(tasks = post_indexing_tasks, "Waiting for tasks to finish",);
 
-            if post_indexing_threads == 0 {
+            if post_indexing_tasks == 0 {
                 break;
             }
 
