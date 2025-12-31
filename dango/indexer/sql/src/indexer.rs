@@ -72,15 +72,15 @@ impl grug_app::Indexer for Indexer {
         let context = self.context.clone();
         let block_to_index = block_to_index.clone();
 
-        // Transfer processing
-        transfers::save_transfers(&context, block_height).await?;
-
-        // Save accounts
-        accounts::save_accounts(&context, &block_to_index, app_cfg)
-            .await
-            .inspect_err(|_| {
-                #[cfg(feature = "metrics")]
-                counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
+        // Run transfer processing and account saving in parallel
+        let ((), ()) =
+            tokio::try_join!(transfers::save_transfers(&context, block_height), async {
+                accounts::save_accounts(&context, &block_to_index, app_cfg)
+                    .await
+                    .inspect_err(|_| {
+                        #[cfg(feature = "metrics")]
+                        counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
+                    })
             })?;
 
         context
