@@ -658,9 +658,11 @@ mod tests {
             .unwrap();
 
         // Verify that data was passed from producer to consumer
-        let consumed_data = consumer_data.lock().unwrap();
-        assert_eq!(consumed_data.len(), 1);
-        assert_eq!(consumed_data[0], "data_from_producer1_at_height_42");
+        {
+            let consumed_data = consumer_data.lock().unwrap();
+            assert_eq!(consumed_data.len(), 1);
+            assert_eq!(consumed_data[0], "data_from_producer1_at_height_42");
+        }
 
         hooked_indexer.shutdown().await.unwrap();
     }

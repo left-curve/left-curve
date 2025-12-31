@@ -1,7 +1,5 @@
 use {
-    crate::{
-        Context, cache_file::CacheFile, error::Result, indexer_path::IndexerPath,
-    },
+    crate::{Context, cache_file::CacheFile, error::Result, indexer_path::IndexerPath},
     async_trait::async_trait,
     grug_types::BlockAndBlockOutcomeWithHttpDetails,
     serde::{Deserialize, Serialize},
@@ -97,7 +95,10 @@ impl Cache {
         }
     }
 
-    pub fn new_with_dir_and_runtime(directory: PathBuf, _runtime_handler: crate::runtime::RuntimeHandler) -> Self {
+    pub fn new_with_dir_and_runtime(
+        directory: PathBuf,
+        _runtime_handler: crate::runtime::RuntimeHandler,
+    ) -> Self {
         // RuntimeHandler is no longer needed since Indexer trait is async
         Self::new_with_dir(directory)
     }

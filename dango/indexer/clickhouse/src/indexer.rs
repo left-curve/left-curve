@@ -1,6 +1,6 @@
 use {
-    async_trait::async_trait,
     crate::context::Context,
+    async_trait::async_trait,
     dango_types::config::AppConfig,
     futures::try_join,
     grug::{Config, Json, JsonDeExt},
@@ -60,9 +60,7 @@ impl grug_app::Indexer for Indexer {
                 .execute()
                 .await
                 .map_err(|e| {
-                    grug_app::IndexerError::database(format!(
-                        "Failed to run migration: {e}"
-                    ))
+                    grug_app::IndexerError::database(format!("Failed to run migration: {e}"))
                 })?;
 
             #[cfg(feature = "tracing")]
@@ -137,7 +135,8 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        let app_cfg: AppConfig = app_cfg.deserialize_json()
+        let app_cfg: AppConfig = app_cfg
+            .deserialize_json()
             .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
         try_join!(
@@ -147,10 +146,8 @@ impl grug_app::Indexer for Indexer {
         .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
         #[cfg(feature = "metrics")]
-        histogram!(
-            "indexer.clickhouse.post_indexing.duration"
-        )
-        .record(start.elapsed().as_secs_f64());
+        histogram!("indexer.clickhouse.post_indexing.duration")
+            .record(start.elapsed().as_secs_f64());
 
         if let Err(_err) = context.pubsub.publish(block_height).await {
             #[cfg(feature = "tracing")]

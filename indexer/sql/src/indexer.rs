@@ -360,9 +360,10 @@ impl Indexer {
 #[async_trait]
 impl IndexerTrait for Indexer {
     async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
-        let last_indexed_block_height = entity::blocks::Entity::find_last_block_height(&self.context.db)
-            .await
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+        let last_indexed_block_height =
+            entity::blocks::Entity::find_last_block_height(&self.context.db)
+                .await
+                .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
         Ok(last_indexed_block_height.map(|h| h as u64))
     }
@@ -372,7 +373,9 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
-        self.context.migrate_db().await
+        self.context
+            .migrate_db()
+            .await
             .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
 
         self.indexing = true;

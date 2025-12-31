@@ -178,12 +178,6 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let indexer_context = indexer.context.clone();
 
-    // Create a shared runtime handler that uses the same tokio runtime
-    let shared_runtime_handle =
-        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
-    let shared_runtime_handle2 =
-        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
-
     let mut hooked_indexer = HookedIndexer::new();
 
     let indexer_cache = indexer_cache::Cache::new_with_tempdir();
@@ -197,8 +191,10 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         .expect("Failed to create separate context for dango indexer in test setup")
         .into();
 
-    let dango_indexer =
-        dango_indexer_sql::indexer::Indexer::new(shared_runtime_handle, dango_context.clone());
+    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
+        indexer_sql::indexer::RuntimeHandler::from_handle(tokio::runtime::Handle::current()),
+        dango_context.clone(),
+    );
 
     let mut clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         format!(
@@ -222,7 +218,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
     let clickhouse_indexer = dango_indexer_clickhouse::indexer::Indexer::new(
-        shared_runtime_handle2,
+        indexer_sql::indexer::RuntimeHandler::from_handle(tokio::runtime::Handle::current()),
         clickhouse_context.clone(),
     );
     hooked_indexer.add_indexer(clickhouse_indexer).unwrap();

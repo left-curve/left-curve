@@ -20,7 +20,7 @@ async fn query_user() -> anyhow::Result<()> {
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Users {
@@ -83,7 +83,7 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
 
     let (pk, key_hash) = add_user_public_key(&mut suite, &contracts, &mut test_account);
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Users {
@@ -168,7 +168,7 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
 
     let test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Keys($userIndex: Int!) {

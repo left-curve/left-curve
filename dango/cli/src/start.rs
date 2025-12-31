@@ -179,7 +179,7 @@ impl StartCmd {
             },
         }
 
-        indexer_clone.wait_for_finish()?;
+        indexer_clone.wait_for_finish().await?;
 
         Ok(())
     }
@@ -215,7 +215,7 @@ impl StartCmd {
             .into();
 
         let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
-            indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
+            indexer_sql::indexer::RuntimeHandler::from_handle(tokio::runtime::Handle::current()),
             dango_context.clone(),
         );
 
@@ -227,15 +227,12 @@ impl StartCmd {
         );
 
         let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(
-            indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
+            indexer_sql::indexer::RuntimeHandler::from_handle(tokio::runtime::Handle::current()),
             clickhouse_context.clone(),
         );
 
-        // Create cache indexer with shared runtime handler
-        let cache_runtime =
-            indexer_cache::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone());
-        let mut indexer_cache =
-            indexer_cache::Cache::new_with_dir_and_runtime(app_dir.indexer_dir(), cache_runtime);
+        // Create cache indexer (RuntimeHandler no longer needed)
+        let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
         // Pass S3 config to the cache indexer context
         indexer_cache.context.s3 = cfg.indexer.s3.clone();
         let indexer_cache_context = indexer_cache.context.clone();
@@ -259,7 +256,16 @@ impl StartCmd {
             cfg.httpd.static_files_path.clone(),
         );
 
-        hooked_indexer.start(&app.db.state_storage_with_comment(None, "hooked_indexer")?)?;
+        let storage = app
+            .db
+            .state_storage_with_comment(None, "hooked_indexer")
+            .map_err(|e| anyhow!("Failed to get state storage: {e}"))?;
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::try_current()
+                .unwrap_or_else(|_| panic!("build_indexer requires a tokio runtime context"))
+                .block_on(async { hooked_indexer.start(&storage).await })
+        })
+        .map_err(|e| anyhow!("Failed to start indexer: {e}"))?;
 
         Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }

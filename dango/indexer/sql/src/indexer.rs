@@ -1,6 +1,6 @@
 use {
-    async_trait::async_trait,
     crate::context::Context,
+    async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, Storage},
 };
@@ -21,9 +21,7 @@ pub struct Indexer {
 impl Indexer {
     pub fn new(_runtime_handler: indexer_sql::indexer::RuntimeHandler, context: Context) -> Self {
         // RuntimeHandler is no longer needed since Indexer trait is async
-        Self {
-            context,
-        }
+        Self { context }
     }
 }
 

@@ -42,6 +42,7 @@ async fn index_block() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
@@ -108,6 +109,7 @@ async fn parse_previous_block_after_restart() {
         .app
         .indexer
         .shutdown()
+        .await
         .expect("Can't shutdown indexer");
 
     // 1. Delete database block height 1
@@ -128,7 +130,14 @@ async fn parse_previous_block_after_restart() {
     suite
         .app
         .indexer
-        .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
+        .start(
+            &suite
+                .app
+                .db
+                .state_storage(None)
+                .await
+                .expect("Can't get storage"),
+        )
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is indexed
@@ -153,6 +162,7 @@ async fn parse_previous_block_after_restart() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
@@ -195,6 +205,7 @@ async fn no_sql_index_error_after_restart() {
         .app
         .indexer
         .shutdown()
+        .await
         .expect("Can't shutdown indexer");
 
     // 1. Verify the block height 1 is indexed
@@ -232,7 +243,14 @@ async fn no_sql_index_error_after_restart() {
     suite
         .app
         .indexer
-        .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
+        .start(
+            &suite
+                .app
+                .db
+                .state_storage(None)
+                .await
+                .expect("Can't get storage"),
+        )
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is still indexed
@@ -257,6 +275,7 @@ async fn no_sql_index_error_after_restart() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
@@ -455,6 +474,7 @@ async fn index_block_events() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
@@ -535,6 +555,7 @@ fn blocks_on_disk_compressed() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     let mut block_path = cache_context.indexer_path.block_path(1);
