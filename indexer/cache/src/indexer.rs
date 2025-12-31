@@ -1,8 +1,8 @@
 use {
     crate::{
         Context, cache_file::CacheFile, error::Result, indexer_path::IndexerPath,
-        runtime::RuntimeHandler,
     },
+    async_trait::async_trait,
     grug_types::BlockAndBlockOutcomeWithHttpDetails,
     serde::{Deserialize, Serialize},
     std::{
@@ -50,7 +50,6 @@ const INTERVAL_BETWEEN_S3_BITMAP_STORES: u64 = 60;
 #[derive(Default)]
 pub struct Cache {
     pub context: Context,
-    pub runtime_handler: RuntimeHandler,
     // This because the way indexer methods are called, we need to store the blocks
     // in memory between `pre_indexing`, `index_block` and `post_indexing`.
     blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
@@ -75,7 +74,6 @@ impl Cache {
                 indexer_path,
                 ..Default::default()
             },
-            runtime_handler: RuntimeHandler::default(),
             #[cfg(feature = "s3")]
             s3_bitmap,
             ..Default::default()
@@ -93,29 +91,15 @@ impl Cache {
                 indexer_path,
                 ..Default::default()
             },
-            runtime_handler: RuntimeHandler::default(),
             #[cfg(feature = "s3")]
             s3_bitmap,
             ..Default::default()
         }
     }
 
-    pub fn new_with_dir_and_runtime(directory: PathBuf, runtime_handler: RuntimeHandler) -> Self {
-        let indexer_path = IndexerPath::new_with_dir(directory);
-
-        #[cfg(feature = "s3")]
-        let s3_bitmap = Arc::new(Mutex::new(Self::s3_bitmap(&indexer_path)));
-
-        Self {
-            context: Context {
-                indexer_path,
-                ..Default::default()
-            },
-            runtime_handler,
-            #[cfg(feature = "s3")]
-            s3_bitmap,
-            ..Default::default()
-        }
+    pub fn new_with_dir_and_runtime(directory: PathBuf, _runtime_handler: crate::runtime::RuntimeHandler) -> Self {
+        // RuntimeHandler is no longer needed since Indexer trait is async
+        Self::new_with_dir(directory)
     }
 
     /// Set HTTP request details for transactions in the given block, those details
@@ -406,15 +390,16 @@ impl Cache {
     }
 }
 
+#[async_trait]
 impl grug_app::Indexer for Cache {
-    fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
+    async fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "s3")]
         if self.context.s3.enabled {
             let context = self.context.clone();
             let s3_bitmap = self.s3_bitmap.clone();
             let mut start_time = Instant::now();
 
-            self.runtime_handler.spawn(async move {
+            tokio::spawn(async move {
                 loop {
                     Self::sync_to_s3(&context, s3_bitmap.clone()).await.ok();
 
@@ -441,14 +426,14 @@ impl grug_app::Indexer for Cache {
     }
 
     #[cfg(feature = "s3")]
-    fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+    async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         Self::store_bitmap(&self.context, self.s3_bitmap.clone())?;
 
         Ok(())
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn pre_indexing(
+    async fn pre_indexing(
         &self,
         block_height: u64,
         ctx: &mut grug_app::IndexerContext,
@@ -471,7 +456,7 @@ impl grug_app::Indexer for Cache {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn index_block(
+    async fn index_block(
         &self,
         block: &grug_types::Block,
         block_outcome: &grug_types::BlockOutcome,
@@ -525,7 +510,7 @@ impl grug_app::Indexer for Cache {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn post_indexing(
+    async fn post_indexing(
         &self,
         block_height: u64,
         _cfg: grug_types::Config,

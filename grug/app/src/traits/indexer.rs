@@ -81,7 +81,11 @@ pub trait Indexer: Send + Sync {
     }
 
     /// Called when indexing a block, allowing to create a new DB transaction
-    async fn pre_indexing(&self, _block_height: u64, _ctx: &mut IndexerContext) -> IndexerResult<()> {
+    async fn pre_indexing(
+        &self,
+        _block_height: u64,
+        _ctx: &mut IndexerContext,
+    ) -> IndexerResult<()> {
         Ok(())
     }
 
