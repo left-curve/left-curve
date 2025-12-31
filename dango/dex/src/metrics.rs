@@ -1,7 +1,7 @@
 use {
-    ::metrics::{describe_counter, describe_gauge, describe_histogram},
     dango_types::{dex::Price, oracle::PrecisionedPrice},
     grug::{CoinPair, Denom, Inner, Number, Udec128_6, Uint128},
+    metrics::{describe_counter, describe_gauge, describe_histogram},
     std::{collections::HashMap, sync::Once},
 };
 

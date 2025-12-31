@@ -2,7 +2,6 @@ pub mod core;
 mod cron;
 mod execute;
 pub mod liquidity_depth;
-#[cfg(feature = "metrics")]
 pub mod metrics;
 mod query;
 mod state;
