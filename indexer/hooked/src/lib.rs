@@ -51,10 +51,7 @@ impl HookedIndexer {
         // Use futures::executor::block_on for sync access to async lock
         // This works in both sync and async contexts
         block_on(async {
-            self.indexers
-                .write()
-                .await
-                .push(Box::new(indexer));
+            self.indexers.write().await.push(Box::new(indexer));
         });
         Ok(self)
     }
@@ -63,7 +60,7 @@ impl HookedIndexer {
     pub fn is_running(&self) -> bool {
         self.is_running.load(Ordering::Relaxed)
     }
-    
+
     // Synchronous version for tests and sync contexts
     pub fn indexer_count_sync(&self) -> usize {
         // For sync access, use futures::executor::block_on
@@ -72,10 +69,7 @@ impl HookedIndexer {
 
     /// Get the number of registered indexers
     pub async fn indexer_count(&self) -> usize {
-        self.indexers
-            .read()
-            .await
-            .len()
+        self.indexers.read().await.len()
     }
 
     /// This will reindex all indexers from their last indexed block height
@@ -147,12 +141,10 @@ impl HookedIndexer {
                     // I recreate a context like classic indexing code path
                     let mut ctx = grug_app::IndexerContext::new();
                     for indexer in &mut indexers.iter_mut() {
-                        if let Err(err) = indexer.post_indexing(
-                            block_height,
-                            cfg.clone(),
-                            app_cfg.clone(),
-                            &mut ctx,
-                        ).await {
+                        if let Err(err) = indexer
+                            .post_indexing(block_height, cfg.clone(), app_cfg.clone(), &mut ctx)
+                            .await
+                        {
                             #[cfg(feature = "tracing")]
                             tracing::error!("Error in start calling reindex: {:?}", err);
                             errors.push(err.to_string());
@@ -188,10 +180,7 @@ impl Indexer for HookedIndexer {
         #[cfg(feature = "tracing")]
         {
             let count = self.indexer_count().await;
-            tracing::debug!(
-                "Starting HookedIndexer with {} indexers",
-                count
-            );
+            tracing::debug!("Starting HookedIndexer with {} indexers", count);
         }
 
         let mut errors = Vec::new();
@@ -345,9 +334,9 @@ impl Indexer for HookedIndexer {
             let indexers_guard = indexers.read().await;
 
             for indexer in indexers_guard.iter() {
-                if let Err(err) =
-                    indexer.post_indexing(block_height, cfg.clone(), app_cfg.clone(), &mut ctx)
-                        .await
+                if let Err(err) = indexer
+                    .post_indexing(block_height, cfg.clone(), app_cfg.clone(), &mut ctx)
+                    .await
                 {
                     #[cfg(feature = "tracing")]
                     tracing::error!(
@@ -384,11 +373,7 @@ impl Indexer for HookedIndexer {
 
         // 1. We have our own internal tasks that are running post_indexing
         for _ in 0..100 {
-            let post_indexing_threads = self
-                .post_indexing_threads
-                .lock()
-                .await
-                .len();
+            let post_indexing_threads = self.post_indexing_threads.lock().await.len();
 
             #[cfg(feature = "tracing")]
             tracing::debug!(

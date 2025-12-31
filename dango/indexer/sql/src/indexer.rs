@@ -1,8 +1,8 @@
 use {
-    crate::{context::Context, error::Error},
+    async_trait::async_trait,
+    crate::context::Context,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, Storage},
-    indexer_sql::indexer::RuntimeHandler,
 };
 #[cfg(feature = "metrics")]
 use {
@@ -15,37 +15,33 @@ mod accounts;
 mod transfers;
 
 pub struct Indexer {
-    runtime_handler: RuntimeHandler,
     pub context: Context,
 }
 
 impl Indexer {
-    pub fn new(runtime_handler: RuntimeHandler, context: Context) -> Self {
+    pub fn new(_runtime_handler: indexer_sql::indexer::RuntimeHandler, context: Context) -> Self {
+        // RuntimeHandler is no longer needed since Indexer trait is async
         Self {
-            runtime_handler,
             context,
         }
     }
 }
 
+#[async_trait]
 impl grug_app::Indexer for Indexer {
-    fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+    async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
         // TODO: Implement last_indexed_block_height
         Ok(None)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
+    async fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        self.runtime_handler.block_on(async {
-            Migrator::up(&self.context.db, None)
-                .await
-                .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
-
-            Ok::<(), grug_app::IndexerError>(())
-        })?;
+        Migrator::up(&self.context.db, None)
+            .await
+            .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
 
         #[cfg(feature = "metrics")]
         {
@@ -60,7 +56,7 @@ impl grug_app::Indexer for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn post_indexing(
+    async fn post_indexing(
         &self,
         block_height: u64,
         _cfg: Config,
@@ -76,33 +72,29 @@ impl grug_app::Indexer for Indexer {
             ),
         )?;
 
-        self.runtime_handler.block_on({
-            let context = self.context.clone();
-            let block_to_index = block_to_index.clone();
-            async move {
-                // Transfer processing
-                transfers::save_transfers(&context, block_height).await?;
+        let context = self.context.clone();
+        let block_to_index = block_to_index.clone();
 
-                // Save accounts
-                accounts::save_accounts(&context, &block_to_index, app_cfg)
-                    .await
-                    .inspect_err(|_| {
-                        #[cfg(feature = "metrics")]
-                        counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
-                    })?;
+        // Transfer processing
+        transfers::save_transfers(&context, block_height).await?;
 
-                context
-                    .pubsub
-                    .publish(block_height)
-                    .await
-                    .inspect_err(|_| {
-                        #[cfg(feature = "metrics")]
-                        counter!("indexer.dango.hooks.pubsub.errors.total").increment(1);
-                    })?;
+        // Save accounts
+        accounts::save_accounts(&context, &block_to_index, app_cfg)
+            .await
+            .inspect_err(|_| {
+                #[cfg(feature = "metrics")]
+                counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
+            })?;
 
-                Ok::<(), Error>(())
-            }
-        })?;
+        context
+            .pubsub
+            .publish(block_height)
+            .await
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))
+            .inspect_err(|_| {
+                #[cfg(feature = "metrics")]
+                counter!("indexer.dango.hooks.pubsub.errors.total").increment(1);
+            })?;
 
         #[cfg(feature = "metrics")]
         histogram!("indexer.dango.hooks.duration").record(start.elapsed().as_secs_f64());

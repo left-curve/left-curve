@@ -164,7 +164,17 @@ where
                 );
             });
 
-        id.start(&state_storage).unwrap_or_else(|err| {
+        // Since start is now async, we need to block on it
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::try_current()
+                .unwrap_or_else(|_| {
+                    panic!("TestSuite::new requires a tokio runtime context")
+                })
+                .block_on(async {
+                    id.start(&state_storage).await
+                })
+        })
+        .unwrap_or_else(|err| {
             panic!("fatal error while running indexer start: {err}");
         });
 
