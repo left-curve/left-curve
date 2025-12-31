@@ -377,7 +377,9 @@ impl Indexer for HookedIndexer {
             }
 
             // Collect block heights for logging
+            #[cfg(feature = "tracing")]
             let block_heights: Vec<u64> = tasks_guard.keys().copied().collect();
+            #[cfg(feature = "tracing")]
             let task_count = tasks_guard.len();
             drop(tasks_guard);
 
@@ -394,13 +396,14 @@ impl Indexer for HookedIndexer {
             // Remove completed tasks
             let mut tasks_guard = self.post_indexing_tasks.lock().await;
             tasks_guard.retain(|&block_height, handle| {
-                if handle.is_finished() {
-                    #[cfg(feature = "tracing")]
+                let finished = handle.is_finished();
+                #[cfg(feature = "tracing")]
+                if finished {
                     tracing::debug!(block_height, "Post_indexing task completed");
-                    false
-                } else {
-                    true
                 }
+                #[cfg(not(feature = "tracing"))]
+                let _ = block_height; // Suppress unused variable warning when tracing is disabled
+                !finished
             });
         }
 
