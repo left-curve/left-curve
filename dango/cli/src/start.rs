@@ -116,6 +116,7 @@ impl StartCmd {
                         cfg.pyth,
                         db,
                         vm,
+                        hooked_indexer.clone(),
                         hooked_indexer
                     )
                 )?;
@@ -130,6 +131,7 @@ impl StartCmd {
                         cfg.pyth,
                         db,
                         vm,
+                        hooked_indexer.clone(),
                         hooked_indexer
                     )
                 )?;
@@ -144,14 +146,23 @@ impl StartCmd {
                         cfg.pyth,
                         db,
                         vm,
+                        hooked_indexer.clone(),
                         hooked_indexer
                     )
                 )?;
             },
             (true, false, false) => {
                 // Only indexer enabled
-                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, hooked_indexer)
-                    .await?;
+                self.run_with_indexer(
+                    cfg.grug,
+                    cfg.tendermint,
+                    cfg.pyth,
+                    db,
+                    vm,
+                    hooked_indexer.clone(),
+                    hooked_indexer,
+                )
+                .await?;
             },
             (false, true, false) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics disabled
@@ -159,7 +170,15 @@ impl StartCmd {
 
                 tokio::try_join!(
                     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
+                    self.run_with_indexer(
+                        cfg.grug,
+                        cfg.tendermint,
+                        cfg.pyth,
+                        db,
+                        vm,
+                        NullIndexer,
+                        NullIndexer
+                    )
                 )?;
             },
             (false, true, true) => {
@@ -168,14 +187,30 @@ impl StartCmd {
 
                 tokio::try_join!(
                     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer),
+                    self.run_with_indexer(
+                        cfg.grug,
+                        cfg.tendermint,
+                        cfg.pyth,
+                        db,
+                        vm,
+                        NullIndexer,
+                        NullIndexer
+                    ),
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler)
                 )?;
             },
             (false, false, _) => {
                 // No indexer, no HTTP server
-                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
-                    .await?;
+                self.run_with_indexer(
+                    cfg.grug,
+                    cfg.tendermint,
+                    cfg.pyth,
+                    db,
+                    vm,
+                    NullIndexer,
+                    NullIndexer,
+                )
+                .await?;
             },
         }
 
@@ -340,6 +375,7 @@ impl StartCmd {
         db: DiskDb<SimpleCommitment>,
         vm: RustVm,
         indexer: ID,
+        mut indexer_for_shutdown: ID,
     ) -> anyhow::Result<()>
     where
         ID: Indexer + Send + 'static,
@@ -378,12 +414,18 @@ impl StartCmd {
             },
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
+                if let Err(err) = indexer_for_shutdown.shutdown().await {
+                    tracing::error!(err = %err, "Error shutting down indexer");
+                }
                 telemetry::shutdown();
                 telemetry::shutdown_sentry();
                 Ok(())
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
+                if let Err(err) = indexer_for_shutdown.shutdown().await {
+                    tracing::error!(err = %err, "Error shutting down indexer");
+                }
                 telemetry::shutdown();
                 telemetry::shutdown_sentry();
                 Ok(())
