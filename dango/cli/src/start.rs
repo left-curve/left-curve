@@ -255,12 +255,10 @@ impl StartCmd {
             .db
             .state_storage_with_comment(None, "hooked_indexer")
             .map_err(|e| anyhow!("Failed to get state storage: {e}"))?;
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::try_current()
-                .unwrap_or_else(|_| panic!("build_indexer requires a tokio runtime context"))
-                .block_on(async { hooked_indexer.start(&storage).await })
-        })
-        .map_err(|e| anyhow!("Failed to start indexer: {e}"))?;
+        hooked_indexer
+            .start(&storage)
+            .await
+            .map_err(|e| anyhow!("Failed to start indexer: {e}"))?;
 
         Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }
