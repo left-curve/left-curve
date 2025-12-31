@@ -127,8 +127,17 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+    let (
+        suite,
+        mut accounts,
+        codes,
+        contracts,
+        validator_sets,
+        _,
+        dango_httpd_context,
+        _,
+        _db_guard,
+    ) = setup_test_with_indexer(TestOption::default()).await;
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -264,8 +273,17 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+    let (
+        suite,
+        mut accounts,
+        codes,
+        contracts,
+        validator_sets,
+        _,
+        dango_httpd_context,
+        _,
+        _db_guard,
+    ) = setup_test_with_indexer(TestOption::default()).await;
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 

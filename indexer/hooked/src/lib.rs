@@ -351,7 +351,9 @@ impl Indexer for HookedIndexer {
                     #[cfg(feature = "tracing")]
                     tracing::error!(block_height, "Rwlock poisoned in post_indexing");
                     // Still remove from tracking map
-                    let _ = post_indexing_threads.lock().map(|mut m| m.remove(&block_height));
+                    let _ = post_indexing_threads
+                        .lock()
+                        .map(|mut m| m.remove(&block_height));
                     return Err(grug_app::IndexerError::rwlock_poisoned());
                 },
             };
@@ -392,9 +394,16 @@ impl Indexer for HookedIndexer {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height, "Removing from post_indexing_threads map");
 
-            if let Err(_) = post_indexing_threads.lock().map(|mut m| m.remove(&block_height)) {
+            if post_indexing_threads
+                .lock()
+                .map(|mut m| m.remove(&block_height))
+                .is_err()
+            {
                 #[cfg(feature = "tracing")]
-                tracing::error!(block_height, "Mutex poisoned when removing from tracking map");
+                tracing::error!(
+                    block_height,
+                    "Mutex poisoned when removing from tracking map"
+                );
             }
 
             #[cfg(feature = "tracing")]
