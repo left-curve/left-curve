@@ -12,7 +12,6 @@ version       = { workspace = true }
 [features]
 metrics = [
   "dep:actix-web-metrics",
-  "dep:futures-util",
   "dep:metrics",
   "dep:metrics-exporter-prometheus",
 ]
@@ -29,7 +28,7 @@ async-graphql               = { workspace = true }
 async-graphql-actix-web     = { workspace = true }
 async-trait                 = { workspace = true }
 chrono                      = { workspace = true }
-futures-util                = { workspace = true, optional = true }
+futures-util                = { workspace = true }
 grug-app                    = { workspace = true, features = ["tracing"] }
 grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
