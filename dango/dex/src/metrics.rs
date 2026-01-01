@@ -1,6 +1,6 @@
 use {
     dango_types::{dex::Price, oracle::PrecisionedPrice},
-    grug::{CoinPair, Denom, Inner, Number, Udec128_6, Uint128},
+    grug::{CoinPair, Dec, Denom, Inner, Number, Udec128_6, Uint128},
     metrics::{describe_counter, describe_gauge, describe_histogram},
     std::{collections::HashMap, sync::Once},
 };
@@ -155,7 +155,7 @@ pub fn emit_reserve(
             "quote_denom" => quote_denom.to_string(),
             "token" => coin.denom.to_string()
         )
-        .set(dec_to_f64(&value));
+        .set(dec_to_f64(value));
     }
 
     Ok(())
@@ -170,9 +170,9 @@ pub fn emit_volume(
 ) -> anyhow::Result<()> {
     for (token, amount) in volume_data {
         let price = if token == base_denom {
-            &base_price
+            base_price
         } else {
-            &quote_price
+            quote_price
         };
 
         let token_precision = 10_f64.powi(price.precision() as i32);
@@ -194,7 +194,7 @@ pub fn emit_volume(
             "quote_denom" => quote_denom.to_string(),
             "token" => token.to_string(),
         )
-        .record(dec_to_f64(&value));
+        .record(dec_to_f64(value));
     }
 
     Ok(())
@@ -213,7 +213,7 @@ pub fn emit_best_price(
         10_f64.powi(base_price.precision() as i32 - quote_price.precision() as i32);
 
     if let Some(bid) = best_bid_price {
-        let bid_price_f64: f64 = dec_to_f64(&bid);
+        let bid_price_f64: f64 = dec_to_f64(bid);
 
         metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
             "base_denom" => base_denom.to_string(),
@@ -224,7 +224,7 @@ pub fn emit_best_price(
     }
 
     if let Some(ask) = best_ask_price {
-        let ask_price_f64: f64 = dec_to_f64(&ask);
+        let ask_price_f64: f64 = dec_to_f64(ask);
 
         metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
             "base_denom" => base_denom.to_string(),
@@ -235,7 +235,7 @@ pub fn emit_best_price(
     }
 
     if let Some(mid) = mid_price {
-        let mid_price_f64: f64 = dec_to_f64(&mid);
+        let mid_price_f64: f64 = dec_to_f64(mid);
 
         metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
             "base_denom" => base_denom.to_string(),
@@ -263,12 +263,12 @@ pub fn emit_spread(
     if let (Some(bid), Some(ask), Some(mid)) = (best_bid_price, best_ask_price, mid_price) {
         let spread_absolute = ask - bid;
 
-        let mut spread_absolute_f64 = dec_to_f64(&spread_absolute);
+        let mut spread_absolute_f64 = dec_to_f64(spread_absolute);
 
         // The spread absolute needs to be adjusted according to difference in the tokens's precision.
         spread_absolute_f64 *= scale_tokens_precision;
 
-        let spread_percentage_f64 = dec_to_f64(&spread_absolute.checked_div(mid)?);
+        let spread_percentage_f64 = dec_to_f64(spread_absolute.checked_div(mid)?);
 
         metrics::gauge!(crate::metrics::LABEL_SPREAD_ABSOLUTE,
             "base_denom" => base_denom.to_string(),
@@ -286,6 +286,8 @@ pub fn emit_spread(
     Ok(())
 }
 
-pub fn dec_to_f64<const S: u32>(dec: &grug::Dec<u128, S>) -> f64 {
-    dec.0.into_inner() as f64 / 10f64.powi(S as i32)
+pub fn dec_to_f64<const S: u32>(dec: Dec<u128, S>) -> f64 {
+    let raw = dec.into_inner() as f64;
+    let scale = 10_f64.powi(S as i32);
+    raw / scale
 }

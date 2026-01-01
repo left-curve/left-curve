@@ -203,7 +203,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
                 metrics::gauge!(crate::metrics::LABEL_CONTRACT_VALUE,
                     "token" => coin.denom.to_string()
                 )
-                .set(dec_to_f64(&value));
+                .set(dec_to_f64(value));
             }
         }
     }
