@@ -1,5 +1,6 @@
 use {
     crate::config::dango::DangoConfig,
+    anyhow::anyhow,
     dango_client::{Secp256k1, Secret, SingleSigner},
     dango_types::{
         account_factory::{self, UserIndexOrName},
@@ -29,7 +30,7 @@ pub async fn setup_dango(
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
 
     // Query account factory for accounts by user
-    let accounts = dango_client
+    let dango_owner_addr = dango_client
         .query_wasm_smart(
             app_cfg.addresses.account_factory,
             account_factory::QueryAccountsByUserRequest {
@@ -37,8 +38,10 @@ pub async fn setup_dango(
             },
             None,
         )
-        .await?;
-    let dango_owner_addr = accounts.keys().next().unwrap();
+        .await?
+        .into_keys()
+        .next()
+        .ok_or_else(|| anyhow!("not address found for user index 0"))?;
 
     let dango_owner = SingleSigner::new(
         dango_owner_addr.clone(),
