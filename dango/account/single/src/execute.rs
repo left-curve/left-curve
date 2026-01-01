@@ -4,8 +4,8 @@ use {
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
-    dango_auth::create_account(ctx)?;
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    dango_auth::create_account(ctx, msg.activate)?;
 
     Ok(Response::new())
 }

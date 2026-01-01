@@ -1,4 +1,5 @@
 use {
+    dango_account_factory::{ACCOUNT_COUNT_BY_USER, MAX_ACCOUNTS_PER_USER},
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
         Factory, HyperlaneTestSuite, Preset, TestAccount, setup_test_naive,
@@ -13,7 +14,7 @@ use {
     },
     grug::{
         Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
-        Signer, Uint128, btree_map, coins,
+        Signer, StorageQuerier, Uint128, btree_map, coins,
     },
     hyperlane_types::constants::solana,
 };
@@ -111,6 +112,38 @@ fn onboarding_without_deposit() {
 
     // Try again, should succeed.
     suite.check_tx(tx).should_succeed();
+
+    // User opens a new account. While his first account required an initial
+    // deposit, any subsequent account should be activated by default.
+    let user_index = user.user_index();
+    suite
+        .execute(
+            &mut user,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Single(single::Params::new(user_index)),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Ensure the user now has two accounts and they are both active.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryAccountsByUserRequest {
+                user: UserIndexOrName::Index(user_index),
+            },
+        )
+        .should_succeed_and(|accounts| {
+            accounts.len() == 2
+                && accounts.iter().all(|(address, _)| {
+                    suite
+                        .query_wasm_path(*address, dango_auth::account::STATUS.path())
+                        .unwrap()
+                        .is_active()
+                })
+        });
 }
 
 /// If minimum deposit is zero, then the account is automatically activated.
@@ -393,4 +426,45 @@ fn update_key() {
             },
         )
         .should_succeed_and_equal(btree_map! { key_hash => pk });
+}
+
+#[test]
+fn single_signature_account_count_limit() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let user_index = accounts.user1.user_index();
+
+    // User 1 should have one account now. Open 4 more.
+    for _ in 2..=MAX_ACCOUNTS_PER_USER {
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::RegisterAccount {
+                    params: AccountParams::Single(single::Params::new(user_index)),
+                },
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Query user 1's account count that is stored in factory. Should be 5.
+    suite
+        .query_wasm_path(
+            contracts.account_factory,
+            &ACCOUNT_COUNT_BY_USER.path(user_index),
+        )
+        .should_succeed_and_equal(MAX_ACCOUNTS_PER_USER);
+
+    // Attempt to open one more account. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Single(single::Params::new(user_index)),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!("user {user_index} has reached max account count"));
 }

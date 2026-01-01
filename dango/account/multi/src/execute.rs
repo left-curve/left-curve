@@ -17,10 +17,8 @@ use {
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
-    dango_auth::create_account(ctx)?;
-
-    Ok(Response::new())
+pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
+    bail!("creation of multisig accounts is temporarily disabled");
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -301,6 +299,7 @@ mod tests {
     /// Address of the multisig for use in the following tests.
     const MULTI: Addr = Addr::mock(255);
 
+    #[ignore = "multisig accounts are temporarily disabled"]
     #[test]
     fn only_factory_can_instantiate() {
         let querier = MockQuerier::new()
@@ -321,7 +320,7 @@ mod tests {
 
         // Attempt to instantiate with a random address as sender. Should fail.
         {
-            let res = instantiate(ctx.as_mutable(), InstantiateMsg {});
+            let res = instantiate(ctx.as_mutable(), InstantiateMsg { activate: true });
             assert!(res.is_err_and(|err| err.to_string().contains("you don't have the right")));
         }
 
@@ -329,7 +328,7 @@ mod tests {
         {
             ctx = ctx.with_sender(ACCOUNT_FACTORY);
 
-            let res = instantiate(ctx.as_mutable(), InstantiateMsg {});
+            let res = instantiate(ctx.as_mutable(), InstantiateMsg { activate: true });
             assert!(res.is_ok());
         }
     }

@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Codec, Item, Map, PrimaryKey},
+    crate::{Borsh, Codec, Item, Map, Path, PrimaryKey},
     grug_math::Number,
     grug_types::{Bound, Order, StdResult, Storage},
 };
@@ -88,6 +88,14 @@ where
     T: Number + Copy,
     C: Codec<T>,
 {
+    pub fn path_raw(&self, key_raw: &[u8]) -> Path<'_, T, C> {
+        self.map.path_raw(key_raw)
+    }
+
+    pub fn path(&self, key: K) -> Path<'_, T, C> {
+        self.map.path(key)
+    }
+
     /// Load the current counter value under the given key.
     pub fn current(&self, storage: &dyn Storage, key: K) -> StdResult<T> {
         self.map

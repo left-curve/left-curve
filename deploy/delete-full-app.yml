@@ -88,9 +88,10 @@
           ignore_errors: true
 
         - name: Remove deployment directory
-          file:
-            path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
-            state: absent
+          command: /usr/bin/sudo /usr/local/sbin/dango-cleanup-deployment "{{ deployment_name }}"
+          register: cleanup_deploy_dir
+          changed_when: cleanup_deploy_dir.stdout == "deleted"
+          failed_when: cleanup_deploy_dir.rc != 0
 
         - name: Prune unused Docker resources
           community.docker.docker_prune:

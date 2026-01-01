@@ -15,9 +15,11 @@
         "taxman": "0xda70a9c1417aee00f960fe896add9d571f9c365b",
         "warp": "0x981e6817442143ce5128992c7ab4a317321f00e9"
       },
-      "maker_fee_rate": "0.0025",
-      "minimum_deposit": {},
-      "taker_fee_rate": "0.004"
+      "maker_fee_rate": "0.0002",
+      "minimum_deposit": {
+        "bridge/usdc": "10000000"
+      },
+      "taker_fee_rate": "0.0005"
     },
     "config": {
       "bank": "0xe0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7",
@@ -26,7 +28,7 @@
         "0xda32476efe31e535207f0ad690d337a4ebf54a22": "0"
       },
       "max_orphan_age": "604800",
-      "owner": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
+      "owner": "0x149a2e2bc3ed63aeb0410416b9123d886af1f9cd",
       "permissions": {
         "instantiate": {
           "somebodies": [
@@ -117,73 +119,10 @@
             "users": [
               {
                 "key": {
-                  "secp256k1": "Anj3t9k9qbWmLihDQYTRwzfCwo1M7SkXkyFatu6J1//4"
+                  "secp256k1": "A2Uj5mWM1u9AL+r7Q7ZYekezdiOXgx5YIJM1yJ1m1RPq"
                 },
-                "key_hash": "06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2",
+                "key_hash": "4682F5BE77499C54F63BDEF6734F8E388275342BFD845322D9377A5C312B7F8B",
                 "seed": 0
-              },
-              {
-                "key": {
-                  "secp256k1": "A7z4nV1PGASPBmLTWdF6LbuwioCxcFvBDAuVPyH7nhkR"
-                },
-                "key_hash": "27779FA83DC05C7BFA051A670EFE32AA662F61056DF9F84AE1C15029FB334EFC",
-                "seed": 1
-              },
-              {
-                "key": {
-                  "secp256k1": "AtMJunFvJxsQg+JKC51DjveuBQX2NFG8EYOZJRGzsdUt"
-                },
-                "key_hash": "92F8F258701DDFD25B45EA880629609DD7064C6E0ABECFDD6D0AE552C10D021E",
-                "seed": 2
-              },
-              {
-                "key": {
-                  "secp256k1": "AkvWHYCioWPm3q/DZ2xzTSnxN5yyxBajK1fO7SS5Iuug"
-                },
-                "key_hash": "4F96C9A1F29229A1AB6168E12B1B0FBB81B8B0337B508562C4BDBD28E883AC93",
-                "seed": 3
-              },
-              {
-                "key": {
-                  "secp256k1": "Akoj56b4XpQqTb7bhxw2ah/a1tC4TmcBJZkZlhNMJw3y"
-                },
-                "key_hash": "B982314DCD2D9561B8FCDE7BCE3BFF7560D76552E684DFE509A65482CCA0612F",
-                "seed": 4
-              },
-              {
-                "key": {
-                  "secp256k1": "A9qGsc1v0gNQoLUlEY7vk5R3wP4/UFIZfNYxTtcvmXCt"
-                },
-                "key_hash": "DB2D1B779D4427A6F424448B6C8A88A891C8421FB5B3D05F011BC0B832A6256E",
-                "seed": 5
-              },
-              {
-                "key": {
-                  "secp256k1": "A0KLF5oHX/IUJFPIBacaY7IyQAzDPI6ENyEeE+K9HexM"
-                },
-                "key_hash": "E78808491B346470ABFB97F8FD701F43F70D6F89B9FEA258EF58D7BD4A3BD382",
-                "seed": 6
-              },
-              {
-                "key": {
-                  "secp256k1": "Ao1NcmXVg4GQhCraJXPvnt/JeN7JfKWc5Izx3Rk1KkQH"
-                },
-                "key_hash": "D431DBD57994800A12772A7C498FF1CBE940E2355946BB7769CC620A0CA96B59",
-                "seed": 7
-              },
-              {
-                "key": {
-                  "secp256k1": "AqiIsUCoNs1xpe+bx2d6OHoqQnI0PPQHIquehdX4qiG9"
-                },
-                "key_hash": "703C0CB9AA21A265AC45048DA12592C1B715C8B0CEC11ADBBA3212C729B00DDD",
-                "seed": 8
-              },
-              {
-                "key": {
-                  "secp256k1": "AjD5O6qOHb5AqSgUTsIUTu2QLJS4NUIKavSq/S6Iy3tS"
-                },
-                "key_hash": "F29E1799E1AF0D12150474B64997465DAB7D068DAD20534B550A7F99F2826809",
-                "seed": 9
               }
             ]
           },
@@ -199,51 +138,17 @@
           "msg": {
             "validator_sets": {
               "1": {
-                "threshold": 2,
+                "threshold": 6,
                 "validators": [
-                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
-                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
-                  "92f7690869a6453ace4b5461f76367db902c2350"
-                ]
-              },
-              "10": {
-                "threshold": 2,
-                "validators": [
-                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
-                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
-                  "92f7690869a6453ace4b5461f76367db902c2350"
-                ]
-              },
-              "11155111": {
-                "threshold": 2,
-                "validators": [
-                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
-                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
-                  "92f7690869a6453ace4b5461f76367db902c2350"
-                ]
-              },
-              "1399811149": {
-                "threshold": 2,
-                "validators": [
-                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
-                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
-                  "92f7690869a6453ace4b5461f76367db902c2350"
-                ]
-              },
-              "42161": {
-                "threshold": 2,
-                "validators": [
-                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
-                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
-                  "92f7690869a6453ace4b5461f76367db902c2350"
-                ]
-              },
-              "8453": {
-                "threshold": 2,
-                "validators": [
-                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
-                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
-                  "92f7690869a6453ace4b5461f76367db902c2350"
+                  "03c842db86a6a3e524d4a6615390c1ea8e2b9541",
+                  "94438a7de38d4548ae54df5c6010c4ebc5239eae",
+                  "5450447aee7b544c462c9352bef7cad049b0c2dc",
+                  "b3ac35d3988bca8c2ffd195b1c6bee18536b317b",
+                  "b683b742b378632a5f73a2a5a45801b3489bba44",
+                  "3786083ca59dc806d894104e65a13a70c2b39276",
+                  "4f977a59fdc2d9e39f6d780a84d5b4add1495a36",
+                  "29d783efb698f9a2d3045ef4314af1f5674f52c5",
+                  "36a669703ad0e11a0382b098574903d2084be22c"
                 ]
               }
             }
@@ -303,49 +208,6 @@
           "msg": {
             "pairs": [
               {
-                "base_denom": "dango",
-                "params": {
-                  "bucket_sizes": [],
-                  "lp_denom": "dex/pool/dango/usdc",
-                  "min_order_size_base": "0",
-                  "min_order_size_quote": "0",
-                  "pool_type": {
-                    "geometric": {
-                      "limit": 1,
-                      "ratio": "1",
-                      "spacing": "0.0001"
-                    }
-                  },
-                  "swap_fee_rate": "0.0001"
-                },
-                "quote_denom": "bridge/usdc"
-              },
-              {
-                "base_denom": "bridge/btc",
-                "params": {
-                  "bucket_sizes": [
-                    "0.0001",
-                    "0.001",
-                    "0.01",
-                    "0.1",
-                    "0.5",
-                    "1"
-                  ],
-                  "lp_denom": "dex/pool/btc/usdc",
-                  "min_order_size_base": "0",
-                  "min_order_size_quote": "0",
-                  "pool_type": {
-                    "geometric": {
-                      "limit": 1,
-                      "ratio": "1",
-                      "spacing": "0.0001"
-                    }
-                  },
-                  "swap_fee_rate": "0.0001"
-                },
-                "quote_denom": "bridge/usdc"
-              },
-              {
                 "base_denom": "bridge/eth",
                 "params": {
                   "bucket_sizes": [
@@ -357,8 +219,8 @@
                     "0.0000000001"
                   ],
                   "lp_denom": "dex/pool/eth/usdc",
-                  "min_order_size_base": "0",
-                  "min_order_size_quote": "0",
+                  "min_order_size_base": "500000000000000",
+                  "min_order_size_quote": "1000000",
                   "pool_type": {
                     "geometric": {
                       "limit": 1,
@@ -366,30 +228,7 @@
                       "spacing": "0.0001"
                     }
                   },
-                  "swap_fee_rate": "0.0001"
-                },
-                "quote_denom": "bridge/usdc"
-              },
-              {
-                "base_denom": "bridge/sol",
-                "params": {
-                  "bucket_sizes": [
-                    "0.00001",
-                    "0.0001",
-                    "0.001",
-                    "0.01"
-                  ],
-                  "lp_denom": "dex/pool/sol/usdc",
-                  "min_order_size_base": "0",
-                  "min_order_size_quote": "0",
-                  "pool_type": {
-                    "geometric": {
-                      "limit": 1,
-                      "ratio": "1",
-                      "spacing": "0.0001"
-                    }
-                  },
-                  "swap_fee_rate": "0.0001"
+                  "swap_fee_rate": "0.0005"
                 },
                 "quote_denom": "bridge/usdc"
               }
@@ -407,233 +246,10 @@
           "msg": {
             "rate_limits": {
               "bridge/eth": "0.1",
-              "bridge/sol": "0.1",
               "bridge/usdc": "0.1"
             },
-            "routes": [
-              [
-                {
-                  "remote": "eth"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 1
-                  }
-                }
-              ],
-              [
-                {
-                  "remote": "eth"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 10
-                  }
-                }
-              ],
-              [
-                {
-                  "remote": "eth"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 8453
-                  }
-                }
-              ],
-              [
-                {
-                  "remote": "eth"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 42161
-                  }
-                }
-              ],
-              [
-                {
-                  "remote": "sol"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 1399811149
-                  }
-                }
-              ],
-              [
-                {
-                  "remote": "usdc"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 1
-                  }
-                }
-              ],
-              [
-                {
-                  "remote": "usdc"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 10
-                  }
-                }
-              ],
-              [
-                {
-                  "remote": "usdc"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 8453
-                  }
-                }
-              ],
-              [
-                {
-                  "remote": "usdc"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 42161
-                  }
-                }
-              ],
-              [
-                {
-                  "remote": "usdc"
-                },
-                "0x981e6817442143ce5128992c7ab4a317321f00e9",
-                {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 1399811149
-                  }
-                }
-              ]
-            ],
-            "withdrawal_fees": [
-              {
-                "denom": "bridge/usdc",
-                "fee": "100000",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 42161
-                  }
-                }
-              },
-              {
-                "denom": "bridge/usdc",
-                "fee": "100000",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 8453
-                  }
-                }
-              },
-              {
-                "denom": "bridge/usdc",
-                "fee": "1000000",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 1
-                  }
-                }
-              },
-              {
-                "denom": "bridge/usdc",
-                "fee": "100000",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 10
-                  }
-                }
-              },
-              {
-                "denom": "bridge/usdc",
-                "fee": "10000",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
-                    "domain": 1399811149
-                  }
-                }
-              },
-              {
-                "denom": "bridge/eth",
-                "fee": "50000000000000",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 42161
-                  }
-                }
-              },
-              {
-                "denom": "bridge/eth",
-                "fee": "50000000000000",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 8453
-                  }
-                }
-              },
-              {
-                "denom": "bridge/eth",
-                "fee": "500000000000000",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 1
-                  }
-                }
-              },
-              {
-                "denom": "bridge/eth",
-                "fee": "50000000000000",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 10
-                  }
-                }
-              },
-              {
-                "denom": "bridge/sol",
-                "fee": "66667",
-                "remote": {
-                  "warp": {
-                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
-                    "domain": 1399811149
-                  }
-                }
-              }
-            ]
+            "routes": [],
+            "withdrawal_fees": []
           },
           "salt": "ZGFuZ28vZ2F0ZXdheQ=="
         }
@@ -645,94 +261,17 @@
           "funds": {},
           "label": "dango/bank",
           "msg": {
-            "balances": {
-              "0x365beaf8e8dd6c1a378bcf130df03de7b724602d": {
-                "dango": "100000000000000"
-              },
-              "0x3792b060a077fceca337334adf53f695e1362397": {
-                "dango": "100000000000000"
-              },
-              "0x6043c1bed0fc45131e48ee38ceff36e36d6a8734": {
-                "dango": "100000000000000"
-              },
-              "0x7f360aa0806f41aabe9fc43bfc1254e5bafe7583": {
-                "dango": "100000000000000"
-              },
-              "0xa0db99b6fad46412c3fdc65802f3fe62e307f8e6": {
-                "dango": "100000000000000"
-              },
-              "0xa34470089d2e0130832cd14618fae67e0bc3de80": {
-                "dango": "100000000000000"
-              },
-              "0xa689d271b926305be99dc7a7a04f5f793af252cc": {
-                "dango": "1000000000000000000"
-              },
-              "0xc4a8f7bbadd1457092a8cd182480230c0a848331": {
-                "dango": "100000000000000"
-              },
-              "0xee3df368a78cfacf9f9cfe3bcf514ed9e21abf97": {
-                "dango": "100000000000000"
-              },
-              "0xf5f3dd21f6a19fea1e85df6e4f72779331ff45a2": {
-                "dango": "100000000000000"
-              }
-            },
+            "balances": {},
             "metadatas": {
-              "bridge/atom": {
-                "decimals": 6,
-                "name": "Atom",
-                "symbol": "ATOM"
-              },
-              "bridge/bch": {
-                "decimals": 8,
-                "name": "Bitcoin Cash",
-                "symbol": "BCH"
-              },
-              "bridge/bnb": {
-                "decimals": 18,
-                "name": "Binance Coin",
-                "symbol": "BNB"
-              },
-              "bridge/btc": {
-                "decimals": 8,
-                "name": "Bitcoin",
-                "symbol": "BTC"
-              },
-              "bridge/doge": {
-                "decimals": 8,
-                "name": "Dogecoin",
-                "symbol": "DOGE"
-              },
               "bridge/eth": {
                 "decimals": 18,
                 "name": "Ether",
                 "symbol": "ETH"
               },
-              "bridge/ltc": {
-                "decimals": 8,
-                "name": "Litecoin",
-                "symbol": "LTC"
-              },
-              "bridge/sol": {
-                "decimals": 9,
-                "name": "Solana",
-                "symbol": "SOL"
-              },
               "bridge/usdc": {
                 "decimals": 6,
                 "name": "USD Coin",
                 "symbol": "USDC"
-              },
-              "bridge/xrp": {
-                "decimals": 6,
-                "name": "XRP",
-                "symbol": "XRP"
-              },
-              "dango": {
-                "decimals": 6,
-                "description": "Native token of Dango",
-                "name": "Dango",
-                "symbol": "DGX"
               }
             },
             "namespaces": {
@@ -766,41 +305,6 @@
           "label": "dango/oracle",
           "msg": {
             "price_sources": {
-              "bridge/atom": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 44,
-                  "precision": 6
-                }
-              },
-              "bridge/bch": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 24,
-                  "precision": 8
-                }
-              },
-              "bridge/bnb": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 15,
-                  "precision": 18
-                }
-              },
-              "bridge/btc": {
-                "pyth": {
-                  "channel": "real_time",
-                  "id": 1,
-                  "precision": 8
-                }
-              },
-              "bridge/doge": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 13,
-                  "precision": 8
-                }
-              },
               "bridge/eth": {
                 "pyth": {
                   "channel": "real_time",
@@ -808,31 +312,10 @@
                   "precision": 18
                 }
               },
-              "bridge/ltc": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 26,
-                  "precision": 8
-                }
-              },
-              "bridge/sol": {
-                "pyth": {
-                  "channel": "real_time",
-                  "id": 6,
-                  "precision": 9
-                }
-              },
               "bridge/usdc": {
                 "pyth": {
                   "channel": "real_time",
                   "id": 7,
-                  "precision": 6
-                }
-              },
-              "bridge/xrp": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 14,
                   "precision": 6
                 }
               }
@@ -842,19 +325,6 @@
             }
           },
           "salt": "ZGFuZ28vb3JhY2xl"
-        }
-      },
-      {
-        "instantiate": {
-          "admin": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
-          "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
-          "funds": {},
-          "label": "dango/vesting",
-          "msg": {
-            "unlocking_cliff": "21772800",
-            "unlocking_period": "65318400"
-          },
-          "salt": "ZGFuZ28vdmVzdGluZw=="
         }
       }
     ]

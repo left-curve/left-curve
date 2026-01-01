@@ -164,9 +164,13 @@ where
                 );
             });
 
-        id.start(&state_storage).unwrap_or_else(|err| {
-            panic!("fatal error while running indexer start: {err}");
-        });
+        // Since start is now async, we need to block on it
+        // Use futures::executor::block_on which works in both sync and async contexts
+        futures::executor::block_on(async { id.start(&state_storage).await }).unwrap_or_else(
+            |err| {
+                panic!("fatal error while running indexer start: {err}");
+            },
+        );
 
         // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.

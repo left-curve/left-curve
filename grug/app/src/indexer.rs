@@ -1,5 +1,6 @@
 use {
     crate::{Indexer, IndexerError},
+    async_trait::async_trait,
     std::{
         convert::Infallible,
         fmt::{self, Display},
@@ -10,6 +11,7 @@ use {
 #[derive(Debug, Clone, Default)]
 pub struct NullIndexer;
 
+#[async_trait]
 impl Indexer for NullIndexer {}
 
 /// An error type that is never encountered.

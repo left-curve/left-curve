@@ -17,6 +17,7 @@ function SettingsApplet() {
       <MobileTitle title={m["settings.title"]()} />
       <SessionSection>
         <SessionSection.Username />
+        <SessionSection.UserStatus />
         <SessionSection.ConnectMobile />
         <SessionSection.RemainingTime />
         <SessionSection.Network />

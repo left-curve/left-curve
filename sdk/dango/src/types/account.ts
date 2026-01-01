@@ -20,6 +20,14 @@ export const AccountType = {
   Multi: "multi",
 } as const;
 
+export type UserStatus = (typeof UserState)[keyof typeof UserState];
+
+export const UserState = {
+  Active: "active",
+  Inactive: "inactive",
+  Frozen: "frozen",
+} as const;
+
 export type AccountSingleConfig = { owner: Username };
 export type AccountMultiConfig = Safe;
 

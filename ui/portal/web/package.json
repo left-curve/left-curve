@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "rsbuild dev",
     "build": "rsbuild build",
-    "preview": "rsbuild preview"
+    "preview": "rsbuild preview",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fullpage/react-fullpage": "^0.1.45",
@@ -42,6 +43,7 @@
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
+    "@playwright/test": "^1.52.0",
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-node-polyfill": "^1.4.2",
     "@rsbuild/plugin-react": "catalog:",

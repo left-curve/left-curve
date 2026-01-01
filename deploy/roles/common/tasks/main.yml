@@ -82,9 +82,6 @@
     state: present
     update_cache: yes
 
-- name: Install Uptime Kuma via pipx
-  command: pipx install b2
-
 - name: Refresh network facts
   setup:
     gather_subset:
