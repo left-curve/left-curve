@@ -701,6 +701,8 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
             // Create a new account with the original user
             let _test_account2 =
                 add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
+
+            suite.app.indexer.wait_for_finish()?;
         }
         Ok::<(), anyhow::Error>(())
     });

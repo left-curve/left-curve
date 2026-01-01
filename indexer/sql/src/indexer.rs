@@ -172,8 +172,12 @@ impl IndexerBuilder<Defined<String>> {
 
 /// Guard for test database cleanup.
 ///
-/// Call `cleanup()` when done with the test database.
-/// Drop does NOT automatically clean up to avoid race conditions with async operations.
+/// Does NOT automatically clean up - call `cleanup()` manually after ensuring
+/// all indexers and database connections are properly shut down.
+///
+/// Automatic cleanup in Drop was causing race conditions and panics because:
+/// 1. The database might be dropped while indexers are still using it
+/// 2. SQLx pool cleanup requires a Tokio context, which actix threads don't have
 #[derive(Debug)]
 pub struct TestDatabaseGuard {
     server_prefix: String,
@@ -187,7 +191,7 @@ impl TestDatabaseGuard {
     }
 
     /// Manually cleanup the test database.
-    /// This creates its own runtime and connection to avoid interfering with other operations.
+    /// Call this AFTER all indexers and database connections are shut down.
     pub fn cleanup(&self) {
         if self.db_name.is_empty() {
             return;
@@ -196,44 +200,73 @@ impl TestDatabaseGuard {
         let server_prefix = self.server_prefix.clone();
         let db_name = self.db_name.clone();
 
-        // Use a separate thread with its own runtime
+        #[cfg(feature = "tracing")]
+        tracing::debug!(db_name = %db_name, "Cleaning up test database");
+
+        // Spawn a separate thread with its own runtime
         let handle = std::thread::spawn(move || {
-            if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+            let rt = match tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
             {
-                rt.block_on(async move {
-                    let parent = format!("{}/postgres", server_prefix);
-                    if let Ok(conn) = Database::connect(parent).await {
-                        // Try WITH (FORCE) first to terminate remaining sessions
-                        let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", db_name);
-                        if conn.execute_unprepared(&drop_sql).await.is_err() {
-                            // Fallback without FORCE
-                            let _ = conn
-                                .execute_unprepared(&format!("DROP DATABASE \"{}\"", db_name))
-                                .await;
-                        }
+                Ok(rt) => rt,
+                Err(_) => return,
+            };
+
+            rt.block_on(async move {
+                let parent = format!("{}/postgres", server_prefix);
+                if let Ok(conn) = Database::connect(&parent).await {
+                    let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", db_name);
+                    if conn.execute_unprepared(&drop_sql).await.is_err() {
+                        let _ = conn
+                            .execute_unprepared(&format!("DROP DATABASE \"{}\"", db_name))
+                            .await;
                     }
-                });
-            }
+                }
+            });
         });
 
-        // Wait for cleanup to complete
         let _ = handle.join();
     }
 }
 
 impl Drop for TestDatabaseGuard {
     fn drop(&mut self) {
-        // Intentionally do nothing - cleanup is manual via cleanup() method
-        // This avoids race conditions with async operations during shutdown
-        if !self.db_name.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                db_name = %self.db_name,
-                "TestDatabaseGuard dropped without cleanup - call cleanup() manually if needed"
-            );
+        if self.db_name.is_empty() {
+            return;
         }
+
+        let server_prefix = std::mem::take(&mut self.server_prefix);
+        let db_name = std::mem::take(&mut self.db_name);
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!(db_name = %db_name, "TestDatabaseGuard::drop - cleaning up test database");
+
+        // Spawn a separate thread with its own runtime to avoid any context issues
+        let handle = std::thread::spawn(move || {
+            let rt = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(rt) => rt,
+                Err(_) => return,
+            };
+
+            rt.block_on(async move {
+                let parent = format!("{}/postgres", server_prefix);
+                if let Ok(conn) = Database::connect(&parent).await {
+                    let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", db_name);
+                    if conn.execute_unprepared(&drop_sql).await.is_err() {
+                        let _ = conn
+                            .execute_unprepared(&format!("DROP DATABASE \"{}\"", db_name))
+                            .await;
+                    }
+                }
+            });
+        });
+
+        // Block until cleanup completes
+        let _ = handle.join();
     }
 }
 
@@ -541,6 +574,10 @@ impl IndexerTrait for Indexer {
         }
 
         self.indexing = false;
+
+        // Close the database connection to avoid panics when SQLx pool
+        // is dropped from non-Tokio contexts (like actix threads)
+        self.handle.block_on(self.context.close());
 
         Ok(())
     }
