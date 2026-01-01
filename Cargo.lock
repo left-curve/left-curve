@@ -4015,7 +4015,6 @@ dependencies = [
  "sea-orm",
  "sentry-actix",
  "serde",
- "serde_json",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
