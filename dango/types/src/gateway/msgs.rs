@@ -53,6 +53,12 @@ pub enum QueryMsg {
     /// Given an alloyed denom and the remote, find the bridge contract that handles it.
     #[returns(Option<Addr>)]
     ReverseRoute { denom: Denom, remote: Remote },
+    /// Enumerate all routes.
+    #[returns(BTreeMap<(Addr, Remote), Denom>)]
+    Routes {
+        start_after: Option<(Addr, Remote)>,
+        limit: Option<u32>,
+    },
     /// Query the withdraw rate limits.
     #[returns(BTreeMap<Denom, RateLimit>)]
     RateLimits {},
