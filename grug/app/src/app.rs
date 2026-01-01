@@ -434,8 +434,17 @@ where
         let mut tx_outcomes = vec![];
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        self.indexer
-            .pre_indexing(block.info.height, &mut indexer_ctx)?;
+        futures::executor::block_on(async {
+            self.indexer
+                .pre_indexing(block.info.height, &mut indexer_ctx)
+                .await
+        })
+        .inspect_err(|_err| {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(err = %_err, "Error in `pre_indexing`");
+            }
+        })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -604,8 +613,17 @@ where
         };
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        self.indexer
-            .index_block(&block, &block_outcome, &mut indexer_ctx)?;
+        futures::executor::block_on(async {
+            self.indexer
+                .index_block(&block, &block_outcome, &mut indexer_ctx)
+                .await
+        })
+        .inspect_err(|_err| {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(err = %_err, "Error in `index_block`");
+            }
+        })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -637,14 +655,17 @@ where
         let app_cfg = APP_CONFIG.load(&storage)?;
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        self.indexer
-            .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
-            .inspect_err(|_err| {
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::error!(err = %_err, "Error in `post_indexing`");
-                }
-            })?;
+        futures::executor::block_on(async {
+            self.indexer
+                .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
+                .await
+        })
+        .inspect_err(|_err| {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(err = %_err, "Error in `post_indexing`");
+            }
+        })?;
 
         #[cfg(feature = "metrics")]
         {

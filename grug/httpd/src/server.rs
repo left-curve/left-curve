@@ -1,6 +1,6 @@
 use {
     super::error::Error,
-    crate::{context::Context, routes},
+    crate::{context::Context, middlewares::shutdown::ShutdownMiddleware, routes},
     actix_cors::Cors,
     actix_web::{
         App, HttpResponse, HttpServer, http,
@@ -8,7 +8,10 @@ use {
         web::{self, ServiceConfig},
     },
     sentry_actix::Sentry,
-    std::fmt::Display,
+    std::{
+        fmt::Display,
+        sync::{Arc, atomic::AtomicBool},
+    },
 };
 #[cfg(feature = "metrics")]
 use {
@@ -17,6 +20,8 @@ use {
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
+/// The shutdown_flag should be set when signals are received to return 503 for new requests.
+/// Actix Web handles graceful shutdown automatically on SIGTERM/SIGINT.
 pub async fn run_server<CA, GS, I>(
     ip: I,
     port: u16,
@@ -24,6 +29,7 @@ pub async fn run_server<CA, GS, I>(
     context: Context,
     config_app: CA,
     build_schema: fn(Context) -> GS,
+    shutdown_flag: Arc<AtomicBool>,
 ) -> Result<(), Error>
 where
     CA: Fn(Context, GS) -> Box<dyn Fn(&mut ServiceConfig)> + Clone + Send + 'static,
@@ -40,6 +46,7 @@ where
         .build()
         .map_err(|_| Error::ActixWebMetricsBuilder)?;
 
+    let shutdown_flag_clone = shutdown_flag.clone();
     HttpServer::new(move || {
         let mut cors = Cors::default()
             .allowed_methods(vec!["POST", "GET", "OPTIONS"])
@@ -61,6 +68,7 @@ where
         }
 
         let app = App::new()
+            .wrap(ShutdownMiddleware::new(shutdown_flag_clone.clone()))
             .wrap(Sentry::new())
             .wrap(Logger::default())
             .wrap(Compress::default())
