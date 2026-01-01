@@ -121,6 +121,9 @@ pub fn init_metrics() {
     });
 }
 
+/// Emission of metrics that are more complex and fallible. We encapsulate them
+/// in helper functions, so that in `cron_execute`, in case one errors, we can
+/// gracefully capture and log the error, instead of exiting the whole operation.
 #[cfg(feature = "metrics")]
 pub mod emit {
     use {
@@ -138,8 +141,7 @@ pub mod emit {
         querier: QuerierWrapper<'_>,
         oracle_querier: &mut OracleQuerier<'_>,
     ) -> anyhow::Result<()> {
-        let dex_balance = querier.query_balances(contract, None, None)?;
-        for coin in dex_balance {
+        for coin in querier.query_balances(contract, None, None)? {
             if let Ok(price) = oracle_querier.query_price_ignore_staleness(&coin.denom, None) {
                 let amount_f64 = to_float(coin.amount, price.precision());
 
