@@ -44,7 +44,7 @@ pub async fn setup_dango(
         .ok_or_else(|| anyhow!("no address found for user index 0"))?;
 
     let dango_owner = SingleSigner::new(
-        dango_owner_addr.clone(),
+        dango_owner_addr,
         Secp256k1::from_bytes(DANGO_OWNER_PRIVATE_KEY)?,
     )
     .with_query_user_index(&dango_client)
