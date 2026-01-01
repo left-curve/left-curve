@@ -1,5 +1,5 @@
 #[cfg(feature = "metrics")]
-use {crate::metrics::dec_to_f64, grug::QuerierExt};
+use {crate::metrics::emit::dec_to_f64, grug::QuerierExt};
 use {
     crate::{
         MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
@@ -381,26 +381,22 @@ fn clear_orders_of_pair(
     let bid_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .values(storage, None, None, IterationOrder::Descending);
-
-    #[cfg(feature = "metrics")]
-    let bid_iter = bid_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-        ("base_denom", base_denom.to_string()),
-        ("quote_denom", quote_denom.to_string()),
-        ("iteration_order", IterationOrder::Descending.to_string()),
-    ]);
+        .values(storage, None, None, IterationOrder::Descending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Descending.to_string()),
+        ]);
 
     let ask_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .values(storage, None, None, IterationOrder::Ascending);
-
-    #[cfg(feature = "metrics")]
-    let ask_iter = ask_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-        ("base_denom", base_denom.to_string()),
-        ("quote_denom", quote_denom.to_string()),
-        ("iteration_order", IterationOrder::Ascending.to_string()),
-    ]);
+        .values(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Ascending.to_string()),
+        ]);
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
@@ -711,7 +707,7 @@ fn clear_orders_of_pair(
         #[cfg(feature = "metrics")]
         {
             if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price)
-                && let Err(_err) = crate::metrics::emit_reserve(
+                && let Err(_err) = crate::metrics::emit::reserve(
                     &base_denom,
                     &quote_denom,
                     base_price,
@@ -744,7 +740,7 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     {
         if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price)
-            && let Err(_err) = crate::metrics::emit_volume(
+            && let Err(_err) = crate::metrics::emit::volume(
                 &base_denom,
                 &quote_denom,
                 base_price,
@@ -775,22 +771,19 @@ fn clear_orders_of_pair(
 
     // ------------------------- 4. Cancel IOC orders --------------------------
 
-    let order_iter = ORDERS
+    for order in ORDERS
         .idx
         .time_in_force
         .prefix(TimeInForce::ImmediateOrCancel)
-        .append((base_denom.clone(), quote_denom.clone()));
-
-    let order_iter = order_iter.values(storage, None, None, IterationOrder::Ascending);
-
-    #[cfg(feature = "metrics")]
-    let order_iter = order_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-        ("base_denom", base_denom.to_string()),
-        ("quote_denom", quote_denom.to_string()),
-        ("iteration_order", IterationOrder::Ascending.to_string()),
-    ]);
-
-    for order in order_iter.collect::<StdResult<Vec<_>>>()? {
+        .append((base_denom.clone(), quote_denom.clone()))
+        .values(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Ascending.to_string()),
+        ])
+        .collect::<StdResult<Vec<_>>>()?
+    {
         ORDERS.remove(
             storage,
             (
@@ -828,47 +821,30 @@ fn clear_orders_of_pair(
     // ----------------- 5. Save the resting order book state ------------------
 
     // Find the best bid and ask prices that remains after all the previous steps.
-    let best_bid_price = {
-        #[allow(unused_mut)]
-        let mut best_bid_price_iter = ORDERS
-            .prefix((base_denom.clone(), quote_denom.clone()))
-            .append(Direction::Bid)
-            .keys(storage, None, None, IterationOrder::Descending);
-
-        #[cfg(feature = "metrics")]
-        let mut best_bid_price_iter =
-            best_bid_price_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-                ("base_denom", base_denom.to_string()),
-                ("quote_denom", quote_denom.to_string()),
-                ("iteration_order", IterationOrder::Descending.to_string()),
-            ]);
-
-        best_bid_price_iter
-            .next()
-            .transpose()?
-            .map(|(price, _order_id)| price)
-    };
-
-    let best_ask_price = {
-        #[allow(unused_mut)]
-        let mut best_ask_price_iter = ORDERS
-            .prefix((base_denom.clone(), quote_denom.clone()))
-            .append(Direction::Ask)
-            .keys(storage, None, None, IterationOrder::Ascending);
-
-        #[cfg(feature = "metrics")]
-        let mut best_ask_price_iter =
-            best_ask_price_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-                ("base_denom", base_denom.to_string()),
-                ("quote_denom", quote_denom.to_string()),
-                ("iteration_order", IterationOrder::Ascending.to_string()),
-            ]);
-
-        best_ask_price_iter
-            .next()
-            .transpose()?
-            .map(|(price, _order_id)| price)
-    };
+    let best_bid_price = ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Bid)
+        .keys(storage, None, None, IterationOrder::Descending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Descending.to_string()),
+        ])
+        .next()
+        .transpose()?
+        .map(|(price, _order_id)| price);
+    let best_ask_price = ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Ask)
+        .keys(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Ascending.to_string()),
+        ])
+        .next()
+        .transpose()?
+        .map(|(price, _order_id)| price);
 
     // Determine the mid price:
     // - if both best bid and ask prices exist, then take the average of them;
@@ -909,7 +885,7 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     {
         if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price) {
-            if let Err(_err) = crate::metrics::emit_best_price(
+            if let Err(_err) = crate::metrics::emit::best_price(
                 &base_denom,
                 &quote_denom,
                 base_price,
@@ -929,7 +905,7 @@ fn clear_orders_of_pair(
                 }
             };
 
-            if let Err(_err) = crate::metrics::emit_spread(
+            if let Err(_err) = crate::metrics::emit::spread(
                 &base_denom,
                 &quote_denom,
                 base_price,
