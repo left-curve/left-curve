@@ -41,7 +41,7 @@ pub async fn setup_dango(
         .await?
         .into_keys()
         .next()
-        .ok_or_else(|| anyhow!("not address found for user index 0"))?;
+        .ok_or_else(|| anyhow!("no address found for user index 0"))?;
 
     let dango_owner = SingleSigner::new(
         dango_owner_addr.clone(),
