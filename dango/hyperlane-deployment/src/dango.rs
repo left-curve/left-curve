@@ -1,5 +1,5 @@
 use {
-    crate::config::{Config, dango::DangoConfig, evm::EVMConfig},
+    crate::config::{Config, evm::EVMConfig},
     alloy::primitives::Address,
     anyhow::{anyhow, bail},
     dango_client::{Secp256k1, SingleSigner},
