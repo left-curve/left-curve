@@ -1,8 +1,3 @@
-#[cfg(feature = "metrics")]
-use {
-    crate::metrics::{dec_to_float, to_float},
-    grug::QuerierExt,
-};
 use {
     crate::{
         MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
@@ -186,29 +181,17 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     #[cfg(feature = "metrics")]
     {
-        metrics::histogram!(crate::metrics::LABEL_DURATION_AUCTION)
-            .record(now.elapsed().as_secs_f64());
-
-        // Record the dex balance.
-        let dex_balance = ctx.querier.query_balances(ctx.contract, None, None)?;
-        for coin in dex_balance {
-            if let Ok(price) = oracle_querier.query_price_ignore_staleness(&coin.denom, None) {
-                let amount_f64 = to_float(coin.amount, price.precision());
-
-                metrics::gauge!(crate::metrics::LABEL_CONTRACT_AMOUNT,
-                    "token" => coin.denom.to_string()
-                )
-                .set(amount_f64);
-
-                let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
-                let value_f64 = dec_to_float(value);
-
-                metrics::gauge!(crate::metrics::LABEL_CONTRACT_VALUE,
-                    "token" => coin.denom.to_string()
-                )
-                .set(value_f64);
+        if let Err(_err) =
+            crate::metrics::emit::balances(ctx.contract, ctx.querier, &mut oracle_querier)
+        {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(%_err, "!!! RECORD BALANCES METRICS FAILED !!!");
             }
         }
+
+        metrics::histogram!(crate::metrics::LABEL_DURATION_AUCTION)
+            .record(now.elapsed().as_secs_f64());
     }
 
     Ok(Response::new()

@@ -1,5 +1,3 @@
-use grug::{Dec, Inner};
-
 pub const LABEL_TRADES: &str = "dango.contract.dex.trades_count";
 
 pub const LABEL_ORDERS_FILLED: &str = "dango.contract.dex.orders_filled_count";
@@ -126,11 +124,42 @@ pub fn init_metrics() {
 #[cfg(feature = "metrics")]
 pub mod emit {
     use {
-        super::{dec_to_float, to_float},
+        dango_oracle::OracleQuerier,
         dango_types::{dex::Price, oracle::PrecisionedPrice},
-        grug::{CoinPair, Denom, Number, Udec128_6, Uint128},
+        grug::{
+            Addr, CoinPair, Dec, Denom, Inner, Number, QuerierExt, QuerierWrapper, Udec128_6,
+            Uint128,
+        },
         std::collections::HashMap,
     };
+
+    pub fn balances(
+        contract: Addr,
+        querier: QuerierWrapper<'_>,
+        oracle_querier: &mut OracleQuerier<'_>,
+    ) -> anyhow::Result<()> {
+        let dex_balance = querier.query_balances(contract, None, None)?;
+        for coin in dex_balance {
+            if let Ok(price) = oracle_querier.query_price_ignore_staleness(&coin.denom, None) {
+                let amount_f64 = to_float(coin.amount, price.precision());
+
+                metrics::gauge!(crate::metrics::LABEL_CONTRACT_AMOUNT,
+                    "token" => coin.denom.to_string()
+                )
+                .set(amount_f64);
+
+                let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
+                let value_f64 = dec_to_float(value);
+
+                metrics::gauge!(crate::metrics::LABEL_CONTRACT_VALUE,
+                    "token" => coin.denom.to_string()
+                )
+                .set(value_f64);
+            }
+        }
+
+        Ok(())
+    }
 
     pub fn reserve(
         base_denom: &Denom,
@@ -293,20 +322,20 @@ pub mod emit {
 
         Ok(())
     }
-}
 
-/// Convert a fixed-point decimal number to `f64`.
-pub fn to_float<T, S>(raw: T, decimal_places: S) -> f64
-where
-    T: Inner<U = u128>,
-    S: Into<i32>,
-{
-    let raw = raw.into_inner() as f64;
-    let scale = 10_f64.powi(decimal_places.into());
-    raw / scale
-}
+    /// Convert a fixed-point decimal number to `f64`.
+    pub fn to_float<T, S>(raw: T, decimal_places: S) -> f64
+    where
+        T: Inner<U = u128>,
+        S: Into<i32>,
+    {
+        let raw = raw.into_inner() as f64;
+        let scale = 10_f64.powi(decimal_places.into());
+        raw / scale
+    }
 
-/// Convert a `Dec` to `f64`.
-pub fn dec_to_float<const S: u32>(dec: Dec<u128, S>) -> f64 {
-    to_float(dec, S as i32)
+    /// Convert a `Dec` to `f64`.
+    pub fn dec_to_float<const S: u32>(dec: Dec<u128, S>) -> f64 {
+        to_float(dec, S as i32)
+    }
 }
