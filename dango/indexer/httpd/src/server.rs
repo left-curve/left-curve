@@ -7,9 +7,13 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
-    grug_httpd::routes::{graphql::graphql_route, index::index},
+    grug_httpd::{
+        middlewares::shutdown::ShutdownMiddleware,
+        routes::{graphql::graphql_route, index::index},
+    },
     indexer_httpd::routes,
     sentry_actix::Sentry,
+    std::sync::{Arc, atomic::AtomicBool},
 };
 
 /// Custom 404 handler that serves a nice HTML page
@@ -76,11 +80,14 @@ where
 }
 
 /// Run the dango HTTP server with dango-specific context
+/// The shutdown_flag should be set when signals are received to return 503 for new requests.
+/// Actix Web handles graceful shutdown automatically on SIGTERM/SIGINT.
 pub async fn run_server<I>(
     ip: I,
     port: u16,
     cors_allowed_origin: Option<String>,
     dango_httpd_context: crate::context::Context,
+    shutdown_flag: Arc<AtomicBool>,
 ) -> Result<(), indexer_httpd::error::Error>
 where
     I: ToString + std::fmt::Display,
@@ -98,6 +105,7 @@ where
     #[cfg(feature = "metrics")]
     indexer_httpd::middlewares::metrics::init_httpd_metrics();
 
+    let shutdown_flag_clone = shutdown_flag.clone();
     HttpServer::new(move || {
         let mut cors = Cors::default()
             .allowed_methods(vec!["POST", "GET", "OPTIONS"])
@@ -119,6 +127,7 @@ where
         }
 
         let app = App::new()
+            .wrap(ShutdownMiddleware::new(shutdown_flag_clone.clone()))
             .wrap(Sentry::new())
             .wrap(Logger::default())
             .wrap(Compress::default())

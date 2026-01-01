@@ -21,7 +21,7 @@ async fn index_trades() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let trade_query_builder = TradeQueryBuilder::default();
 

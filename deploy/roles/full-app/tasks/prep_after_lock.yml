@@ -1,8 +1,8 @@
 ---
 - name: Set system wide cometbft and dango directories and overwrite s3_bucket
   set_fact:
-    dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
-    cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
+    dango_directory: "{{ ansible_facts['env']['HOME'] }}/{{ dango_network }}/{{ timestamp }}/dango"
+    cometbft_directory: "{{ ansible_facts['env']['HOME'] }}/{{ dango_network }}/{{ timestamp }}/cometbft"
   when: system_wide_directories
 
 - name: Read current deploy

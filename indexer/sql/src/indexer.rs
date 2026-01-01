@@ -9,10 +9,10 @@ use {
     crate::{
         Context, EventCache, EventCacheWriter,
         active_model::Models,
-        entity,
-        error::{self, IndexerError},
+        entity, error,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
+    async_trait::async_trait,
     grug_app::Indexer as IndexerTrait,
     grug_types::{
         BlockAndBlockOutcomeWithHttpDetails, Config, Defined, Json, MaybeDefined, Storage,
@@ -20,14 +20,12 @@ use {
     },
     itertools::Itertools,
     sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
-    std::{future::Future, sync::Arc},
-    tokio::runtime::{Builder, Handle, Runtime},
+    std::sync::Arc,
 };
 
 // ------------------------------- IndexerBuilder ------------------------------
 
 pub struct IndexerBuilder<DB = Undefined<String>> {
-    handle: RuntimeHandler,
     db_url: DB,
     db_max_connections: u32,
     pubsub: PubSubType,
@@ -37,7 +35,6 @@ pub struct IndexerBuilder<DB = Undefined<String>> {
 impl Default for IndexerBuilder {
     fn default() -> Self {
         Self {
-            handle: RuntimeHandler::default(),
             db_url: Undefined::default(),
             db_max_connections: 10,
             pubsub: PubSubType::Memory,
@@ -49,7 +46,6 @@ impl Default for IndexerBuilder {
 impl IndexerBuilder<Defined<String>> {
     pub fn with_database_max_connections(self, db_max_connections: u32) -> Self {
         IndexerBuilder {
-            handle: self.handle,
             db_url: self.db_url,
             db_max_connections,
             pubsub: self.pubsub,
@@ -64,7 +60,6 @@ impl IndexerBuilder<Undefined<String>> {
         URL: ToString,
     {
         IndexerBuilder {
-            handle: self.handle,
             db_url: Defined::new(db_url.to_string()),
             db_max_connections: self.db_max_connections,
             pubsub: self.pubsub,
@@ -81,7 +76,6 @@ impl IndexerBuilder<Undefined<String>> {
 impl<DB> IndexerBuilder<DB> {
     pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB> {
         IndexerBuilder {
-            handle: self.handle,
             db_url: self.db_url,
             db_max_connections: self.db_max_connections,
             pubsub: PubSubType::Postgres,
@@ -96,7 +90,6 @@ where
 {
     pub fn with_event_cache_window(self, event_cache_window: usize) -> Self {
         Self {
-            handle: self.handle,
             db_url: self.db_url,
             db_max_connections: self.db_max_connections,
             pubsub: self.pubsub,
@@ -104,12 +97,10 @@ where
         }
     }
 
-    pub fn build_context(self) -> error::Result<Context> {
+    pub async fn build_context(self) -> error::Result<Context> {
         let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self.handle.block_on(async {
-                Context::connect_db_with_url(&url, self.db_max_connections).await
-            }),
-            None => self.handle.block_on(async { Context::connect_db().await }),
+            Some(url) => Context::connect_db_with_url(&url, self.db_max_connections).await,
+            None => Context::connect_db().await,
         }?;
 
         let mut context = Context {
@@ -120,27 +111,23 @@ where
         };
 
         match self.pubsub {
-            PubSubType::Postgres => self.handle.block_on(async {
-                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
-                    let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
+            PubSubType::Postgres => {
+                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = &context.db {
+                    let pool: &sqlx::PgPool = context.db.get_postgres_connection_pool();
 
                     context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
-
-                Ok::<(), IndexerError>(())
-            })?,
+            },
             PubSubType::Memory => {},
         }
 
         Ok(context)
     }
 
-    pub fn build(self) -> error::Result<Indexer> {
+    pub async fn build(self) -> error::Result<Indexer> {
         let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self.handle.block_on(async {
-                Context::connect_db_with_url(&url, self.db_max_connections).await
-            }),
-            None => self.handle.block_on(async { Context::connect_db().await }),
+            Some(url) => Context::connect_db_with_url(&url, self.db_max_connections).await,
+            None => Context::connect_db().await,
         }?;
 
         // Generate unique ID
@@ -155,21 +142,18 @@ where
         };
 
         match self.pubsub {
-            PubSubType::Postgres => self.handle.block_on(async {
-                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
-                    let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
+            PubSubType::Postgres => {
+                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = &context.db {
+                    let pool: &sqlx::PgPool = context.db.get_postgres_connection_pool();
 
                     context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
-
-                Ok::<(), IndexerError>(())
-            })?,
+            },
             PubSubType::Memory => {},
         }
 
         Ok(Indexer {
             context,
-            handle: self.handle,
             indexing: false,
             #[cfg(feature = "tracing")]
             id,
@@ -195,7 +179,6 @@ static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 /// spawned task
 pub struct Indexer {
     pub context: Context,
-    pub handle: RuntimeHandler,
     // NOTE: this could be Arc<AtomicBool> because if this Indexer is cloned all instances should
     // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
     // as I understand it doesn't clone `App` in a way it'd raise concern.
@@ -358,28 +341,26 @@ impl Indexer {
     }
 }
 
+#[async_trait]
 impl IndexerTrait for Indexer {
-    fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
-        let last_indexed_block_height = self
-            .handle
-            .block_on(async {
-                entity::blocks::Entity::find_last_block_height(&self.context.db).await
-            })
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+    async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+        let last_indexed_block_height =
+            entity::blocks::Entity::find_last_block_height(&self.context.db)
+                .await
+                .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
         Ok(last_indexed_block_height.map(|h| h as u64))
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
+    async fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
-        self.handle.block_on(async {
-            self.context.migrate_db().await?;
-
-            Ok::<(), error::IndexerError>(())
-        })?;
+        self.context
+            .migrate_db()
+            .await
+            .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
 
         self.indexing = true;
 
@@ -387,7 +368,7 @@ impl IndexerTrait for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+    async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -399,7 +380,7 @@ impl IndexerTrait for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn post_indexing(
+    async fn post_indexing(
         &self,
         block_height: u64,
         _cfg: Config,
@@ -413,8 +394,6 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` called");
 
-        let context = self.context.clone();
-
         let block = ctx
             .get::<BlockAndBlockOutcomeWithHttpDetails>()
             .ok_or(grug_app::IndexerError::hook(
@@ -425,60 +404,58 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "tracing")]
         let id = self.id;
 
-        self.handle
-            .block_on(async move {
-                #[cfg(feature = "tracing")]
-                tracing::debug!(
-                    block_height,
-                    indexer_id = id,
-                    "`post_indexing` async work started"
-                );
+        #[cfg(feature = "tracing")]
+        tracing::debug!(
+            block_height,
+            indexer_id = id,
+            "`post_indexing` async work started"
+        );
 
-                #[allow(clippy::map_identity)]
-                if let Err(_err) =
-                    Self::save_block(context.db.clone(), context.event_cache.clone(), block).await
-                {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(
-                        err = %_err,
-                        indexer_id = id,
-                        block_height,
-                        "Can't save to db in `post_indexing`"
-                    );
+        #[allow(clippy::map_identity)]
+        if let Err(_err) = Self::save_block(
+            self.context.db.clone(),
+            self.context.event_cache.clone(),
+            block,
+        )
+        .await
+        {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                err = %_err,
+                indexer_id = id,
+                block_height,
+                "Can't save to db in `post_indexing`"
+            );
 
-                    #[cfg(feature = "metrics")]
-                    metrics::counter!("indexer.errors.save.total").increment(1);
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.errors.save.total").increment(1);
 
-                    return Ok(());
-                }
+            return Ok(());
+        }
 
-                #[cfg(feature = "metrics")]
-                metrics::counter!("indexer.blocks.processed.total").increment(1);
+        #[cfg(feature = "metrics")]
+        metrics::counter!("indexer.blocks.processed.total").increment(1);
 
-                if let Err(_err) = context.pubsub.publish(block_height).await {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(
-                        err = %_err,
-                        indexer_id = id,
-                        block_height,
-                        "Can't publish block minted in `post_indexing`"
-                    );
+        if let Err(_err) = self.context.pubsub.publish(block_height).await {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                err = %_err,
+                indexer_id = id,
+                block_height,
+                "Can't publish block minted in `post_indexing`"
+            );
 
-                    #[cfg(feature = "metrics")]
-                    metrics::counter!("indexer.errors.pubsub.total").increment(1);
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.errors.pubsub.total").increment(1);
 
-                    return Ok(());
-                }
+            return Ok(());
+        }
 
-                #[cfg(feature = "metrics")]
-                metrics::counter!("indexer.pubsub.published.total").increment(1);
+        #[cfg(feature = "metrics")]
+        metrics::counter!("indexer.pubsub.published.total").increment(1);
 
-                #[cfg(feature = "tracing")]
-                tracing::debug!(block_height, indexer_id = id, "`post_indexing` finished");
-
-                Ok::<(), grug_app::IndexerError>(())
-            })
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+        #[cfg(feature = "tracing")]
+        tracing::debug!(block_height, indexer_id = id, "`post_indexing` finished");
 
         Ok(())
     }
@@ -489,105 +466,10 @@ impl Drop for Indexer {
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
         // context.
-        self.shutdown().expect("can't shutdown indexer");
-    }
-}
-
-// ------------------------------- RuntimeHandler ------------------------------
-
-/// Wrapper around Tokio runtime to allow running in sync context
-#[derive(Debug)]
-pub struct RuntimeHandler {
-    pub runtime: Option<Runtime>,
-    handle: Handle,
-}
-
-/// Derive macro is not working because generics.
-impl Default for RuntimeHandler {
-    fn default() -> Self {
-        let (runtime, handle) = match Handle::try_current() {
-            Ok(handle) => (None, handle),
-            Err(_) => {
-                let runtime = Builder::new_multi_thread().enable_all().build().unwrap();
-                let handle = runtime.handle().clone();
-                (Some(runtime), handle)
-            },
-        };
-
-        Self { runtime, handle }
-    }
-}
-
-// Note: Removed Deref implementation to allow proper referencing
-// Access the handle via .handle() method instead
-
-impl RuntimeHandler {
-    /// Create a RuntimeHandler from an existing tokio Handle
-    /// This shares the same runtime as the original handle
-    pub fn from_handle(handle: Handle) -> Self {
-        Self {
-            runtime: None, // No ownership of runtime, just using existing one
-            handle,
-        }
-    }
-
-    /// Get a reference to the tokio Handle
-    pub fn handle(&self) -> &Handle {
-        &self.handle
-    }
-
-    /// Spawn a task on the runtime
-    pub fn spawn<F>(&self, future: F) -> tokio::task::JoinHandle<F::Output>
-    where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static,
-    {
-        self.handle.spawn(future)
-    }
-
-    /// Runs a future in the Tokio runtime, blocking the current thread until the future is resolved.
-    ///
-    /// This function allows running in a sync context by using the appropriate method
-    /// based on whether we own the runtime or are using an existing one.
-    ///
-    /// Code in the indexer is running without async context (within Grug) and with an async
-    /// context (Dango). This is to ensure it works in both cases.
-    ///
-    /// NOTE: The Tokio runtime *must* be multi-threaded with either:
-    /// - `#[tokio::main]`
-    /// - `#[tokio::test(flavor = "multi_thread", worker_threads = 2)]`
-    pub fn block_on<F, R>(&self, closure: F) -> R
-    where
-        F: Future<Output = R>,
-    {
-        if self.runtime.is_some() {
-            self.handle.block_on(closure)
-        } else {
-            // Check if we're in an actix-web worker thread context
-            if let Some(name) = std::thread::current().name()
-                && name.contains("actix-")
-            {
-                // For actix-web worker threads, use futures::executor::block_on
-                // which doesn't require multi-threaded runtime
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    "Using futures::executor::block_on for actix-web worker thread: {}",
-                    name
-                );
-
-                let result = futures::executor::block_on(closure);
-
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    "futures::executor::block_on completed for actix-web worker thread: {}",
-                    name
-                );
-
-                return result;
-            }
-
-            tokio::task::block_in_place(|| self.handle.block_on(closure))
-        }
+        // Since shutdown is now async, we can't call it from Drop in an async context.
+        // Just mark as not indexing - the actual cleanup will happen when the async context
+        // completes.
+        self.indexing = false;
     }
 }
 
@@ -602,14 +484,17 @@ mod tests {
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let mut indexer: Indexer = IndexerBuilder::default().with_memory_database().build()?;
+        let mut indexer: Indexer = IndexerBuilder::default()
+            .with_memory_database()
+            .build()
+            .await?;
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("can't start indexer");
+        indexer.start(&storage).await.expect("can't start indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("can't shutdown Indexer");
+        indexer.shutdown().await.expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())
@@ -617,14 +502,17 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn build_without_hooks() -> anyhow::Result<()> {
-        let mut indexer: Indexer = IndexerBuilder::default().with_memory_database().build()?;
+        let mut indexer: Indexer = IndexerBuilder::default()
+            .with_memory_database()
+            .build()
+            .await?;
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("can't start Indexer");
+        indexer.start(&storage).await.expect("can't start Indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("can't shutdown Indexer");
+        indexer.shutdown().await.expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())

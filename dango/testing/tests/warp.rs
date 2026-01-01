@@ -134,6 +134,7 @@ async fn sending_remote() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // The transfers should have been indexed.

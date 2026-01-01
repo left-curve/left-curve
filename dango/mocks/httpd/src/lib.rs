@@ -68,7 +68,7 @@ where
             .with_database_max_connections(1)
     };
 
-    let indexer = indexer.with_sqlx_pubsub().build()?;
+    let indexer = indexer.with_sqlx_pubsub().build().await?;
 
     let indexer_context = indexer.context.clone();
 
@@ -89,16 +89,13 @@ where
         })?
         .into();
 
-    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
-        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone()),
-        dango_context.clone(),
-    );
+    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
 
     let indexer_context_callback = indexer.context.clone();
 
-    hooked_indexer.add_indexer(indexer_cache).unwrap();
-    hooked_indexer.add_indexer(indexer).unwrap();
-    hooked_indexer.add_indexer(dango_indexer).unwrap();
+    hooked_indexer.add_indexer(indexer_cache).await.unwrap();
+    hooked_indexer.add_indexer(indexer).await.unwrap();
+    hooked_indexer.add_indexer(dango_indexer).await.unwrap();
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::<SimpleCommitment>::new(),
@@ -145,8 +142,15 @@ where
         None,
     );
 
-    dango_httpd::server::run_server("127.0.0.1", port, cors_allowed_origin, dango_httpd_context)
-        .await
+    let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    dango_httpd::server::run_server(
+        "127.0.0.1",
+        port,
+        cors_allowed_origin,
+        dango_httpd_context,
+        shutdown_flag,
+    )
+    .await
 }
 
 pub fn get_mock_socket_addr() -> u16 {

@@ -181,6 +181,15 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     #[cfg(feature = "metrics")]
     {
+        if let Err(_err) =
+            crate::metrics::emit::balances(ctx.contract, ctx.querier, &mut oracle_querier)
+        {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(%_err, "!!! RECORD BALANCES METRICS FAILED !!!");
+            }
+        }
+
         metrics::histogram!(crate::metrics::LABEL_DURATION_AUCTION)
             .record(now.elapsed().as_secs_f64());
     }
@@ -226,6 +235,10 @@ fn clear_orders_of_pair(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "metrics")]
     let mut now = std::time::Instant::now();
+    #[cfg(feature = "metrics")]
+    let maybe_base_price = oracle_querier.query_price_ignore_staleness(&base_denom, None);
+    #[cfg(feature = "metrics")]
+    let maybe_quote_price = oracle_querier.query_price_ignore_staleness(&quote_denom, None);
 
     // --------------------- 1. Update passive pool orders ---------------------
 
@@ -477,7 +490,7 @@ fn clear_orders_of_pair(
     let mut outflows = DecCoins::new();
 
     #[cfg(feature = "metrics")]
-    let mut metric_volume = HashMap::new();
+    let mut volume_data = HashMap::with_capacity(2);
 
     // Handle order filling outcomes for the user placed orders.
     for res in filling_outcomes {
@@ -635,13 +648,13 @@ fn clear_orders_of_pair(
             let filled_base = filled_base.into_int_floor();
             let filled_quote = filled_quote.into_int_floor();
 
-            metric_volume
-                .entry((&base_denom, &quote_denom, &base_denom))
+            volume_data
+                .entry(&base_denom)
                 .or_insert(grug::Int::ZERO)
                 .checked_add_assign(filled_base)?;
 
-            metric_volume
-                .entry((&base_denom, &quote_denom, &quote_denom))
+            volume_data
+                .entry(&quote_denom)
                 .or_insert(grug::Int::ZERO)
                 .checked_add_assign(filled_quote)?;
 
@@ -665,7 +678,7 @@ fn clear_orders_of_pair(
 
     // Update the pool reserve.
     if inflows.is_non_empty() || outflows.is_non_empty() {
-        RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
+        let _reserve = RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
             for inflow in inflows.into_coins_floor() {
                 reserve.checked_add(&inflow)?;
             }
@@ -674,20 +687,31 @@ fn clear_orders_of_pair(
                 reserve.checked_sub(&outflow)?;
             }
 
-            #[cfg(feature = "metrics")]
-            {
-                for coin in [reserve.first(), reserve.second()] {
-                    metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
-                        "base_denom" => base_denom.to_string(),
-                        "quote_denom" => quote_denom.to_string(),
-                        "token" => coin.denom.to_string()
-                    )
-                    .set(coin.amount.into_inner() as f64);
-                }
-            }
-
             Ok::<_, StdError>(reserve)
         })?;
+
+        #[cfg(feature = "metrics")]
+        {
+            if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price)
+                && let Err(_err) = crate::metrics::emit::reserve(
+                    &base_denom,
+                    &quote_denom,
+                    base_price,
+                    quote_price,
+                    _reserve,
+                )
+            {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(
+                        %base_denom,
+                        %quote_denom,
+                        %_err,
+                        "!!! RECORD RESERVE METRICS FAILED !!!"
+                    );
+                }
+            };
+        }
     }
 
     #[cfg(feature = "tracing")]
@@ -701,14 +725,24 @@ fn clear_orders_of_pair(
 
     #[cfg(feature = "metrics")]
     {
-        for ((bd, qd, token), amount) in metric_volume {
-            metrics::histogram!(
-                crate::metrics::LABEL_VOLUME_PER_BLOCK,
-                "base_denom" => bd.to_string(),
-                "quote_denom" => qd.to_string(),
-                "token" => token.to_string(),
+        if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price)
+            && let Err(_err) = crate::metrics::emit::volume(
+                &base_denom,
+                &quote_denom,
+                base_price,
+                quote_price,
+                volume_data,
             )
-            .record(amount.into_inner() as f64);
+        {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(
+                    %base_denom,
+                    %quote_denom,
+                    %_err,
+                    "!!! RECORD VOLUME METRICS FAILED !!!"
+                );
+            }
         }
 
         metrics::histogram!(
@@ -836,6 +870,48 @@ fn clear_orders_of_pair(
 
     #[cfg(feature = "metrics")]
     {
+        if let (Ok(base_price), Ok(quote_price)) = (&maybe_base_price, &maybe_quote_price) {
+            if let Err(_err) = crate::metrics::emit::best_price(
+                &base_denom,
+                &quote_denom,
+                base_price,
+                quote_price,
+                best_bid_price,
+                best_ask_price,
+                mid_price,
+            ) {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(
+                        %base_denom,
+                        %quote_denom,
+                        %_err,
+                        "!!! RECORD BEST PRICE METRICS FAILED !!!"
+                    );
+                }
+            };
+
+            if let Err(_err) = crate::metrics::emit::spread(
+                &base_denom,
+                &quote_denom,
+                base_price,
+                quote_price,
+                best_bid_price,
+                best_ask_price,
+                mid_price,
+            ) {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(
+                        %base_denom,
+                        %quote_denom,
+                        %_err,
+                        "!!! RECORD SPREAD METRICS FAILED !!!"
+                    );
+                }
+            };
+        }
+
         metrics::histogram!(
             crate::metrics::LABEL_DURATION_UPDATE_REST_STATE,
             "base_denom" => base_denom.to_string(),

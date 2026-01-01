@@ -1,12 +1,10 @@
 use {
-    crate::{context::Context, error::IndexerError},
+    crate::context::Context,
+    async_trait::async_trait,
     dango_types::config::AppConfig,
     futures::try_join,
     grug::{Config, Json, JsonDeExt},
-    grug_app::Indexer as IndexerTrait,
-    indexer_sql::indexer::RuntimeHandler,
 };
-
 #[cfg(feature = "metrics")]
 use {
     metrics::{describe_histogram, histogram},
@@ -18,65 +16,57 @@ pub mod trades;
 
 pub struct Indexer {
     pub context: Context,
-    pub runtime_handler: RuntimeHandler,
     indexing: bool,
 }
 
 impl Indexer {
-    pub fn new(runtime_handler: RuntimeHandler, context: Context) -> Self {
+    pub fn new(context: Context) -> Self {
         Self {
             context,
-            runtime_handler,
             indexing: false,
         }
     }
 }
 
+#[async_trait]
 impl grug_app::Indexer for Indexer {
-    fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+    async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
         // TODO: Implement last_indexed_block_height using `pair_prices` table.
         Ok(None)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
+    async fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "testing")]
         if self.context.is_mocked() {
             #[cfg(feature = "tracing")]
             tracing::info!("Clickhouse indexer is mocked");
+            self.indexing = true;
             return Ok(());
         }
 
         #[cfg(feature = "tracing")]
         tracing::info!("Clickhouse indexer started");
 
-        self.runtime_handler.block_on({
-            let clickhouse_client = self.context.clickhouse_client().clone();
-            async move {
-                for migration in crate::migrations::candle_builder::migrations()
-                    .iter()
-                    .chain(crate::migrations::trade::Migration::migrations().iter())
-                {
-                    clickhouse_client
-                        .query(migration)
-                        .execute()
-                        .await
-                        .map_err(|e| {
-                            grug_app::IndexerError::database(format!(
-                                "Failed to run migration: {e}"
-                            ))
-                        })?;
+        let clickhouse_client = self.context.clickhouse_client().clone();
+        for migration in crate::migrations::candle_builder::migrations()
+            .iter()
+            .chain(crate::migrations::trade::Migration::migrations().iter())
+        {
+            clickhouse_client
+                .query(migration)
+                .execute()
+                .await
+                .map_err(|e| {
+                    grug_app::IndexerError::database(format!("Failed to run migration: {e}"))
+                })?;
 
-                    #[cfg(feature = "tracing")]
-                    tracing::debug!("ran migration: {migration}");
-                }
+            #[cfg(feature = "tracing")]
+            tracing::debug!("ran migration: {migration}");
+        }
 
-                #[cfg(feature = "tracing")]
-                tracing::info!("ran migrations successfully");
-
-                Ok::<(), grug_app::IndexerError>(())
-            }
-        })?;
+        #[cfg(feature = "tracing")]
+        tracing::info!("ran migrations successfully");
 
         self.indexing = true;
 
@@ -84,50 +74,46 @@ impl grug_app::Indexer for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+    async fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             return Ok(());
         }
 
-        self.runtime_handler.block_on(async move {
-            let candle_generator = candles::generator::CandleGenerator::new(self.context.clone());
+        let candle_generator = candles::generator::CandleGenerator::new(self.context.clone());
 
-            if let Err(_err) = candle_generator.save_all_candles().await {
-                #[cfg(feature = "tracing")]
-                tracing::error!(err = %_err, "Failed to save candles");
-            }
-
-            Ok::<(), grug_app::IndexerError>(())
-        })
-    }
-
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
-        // Avoid running this twice when called manually and from `Drop`
-        if !self.indexing {
-            return Ok(());
-        }
-
-        self.wait_for_finish()?;
-
-        self.indexing = false;
-
-        #[cfg(feature = "testing")]
-        {
-            let context = self.context.clone();
-            self.runtime_handler.block_on(async move {
-                if let Err(_err) = context.cleanup_test_database().await {
-                    #[cfg(feature = "tracing")]
-                    tracing::warn!(err = %_err, "Failed to cleanup test database");
-                }
-            });
+        if let Err(_err) = candle_generator.save_all_candles().await {
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = %_err, "Failed to save candles");
         }
 
         Ok(())
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn post_indexing(
+    async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+        // Avoid running this twice when called manually and from `Drop`
+        if !self.indexing {
+            return Ok(());
+        }
+
+        self.wait_for_finish().await?;
+
+        self.indexing = false;
+
+        #[cfg(feature = "testing")]
+        {
+            let context = self.context.clone();
+            if let Err(_err) = context.cleanup_test_database().await {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(err = %_err, "Failed to cleanup test database");
+            }
+        }
+
+        Ok(())
+    }
+
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
+    async fn post_indexing(
         &self,
         #[allow(unused_variables)] block_height: u64,
         _cfg: Config,
@@ -144,34 +130,31 @@ impl grug_app::Indexer for Indexer {
         let ctx = ctx.clone();
         let context = self.context.clone();
 
-        self.runtime_handler.block_on(async move {
-            #[cfg(feature = "metrics")]
-            let start = Instant::now();
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
 
-            let app_cfg: AppConfig = app_cfg.deserialize_json()?;
+        let app_cfg: AppConfig = app_cfg
+            .deserialize_json()
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
-            try_join!(
-                Self::store_candles(&app_cfg.addresses.dex, &ctx, &context),
-                Self::store_trades(&app_cfg.addresses.dex, &ctx, &context)
-            )?;
+        try_join!(
+            Self::store_candles(&app_cfg.addresses.dex, &ctx, &context),
+            Self::store_trades(&app_cfg.addresses.dex, &ctx, &context)
+        )
+        .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
-            #[cfg(feature = "metrics")]
-            histogram!(
-                "indexer.clickhouse.post_indexing.duration"
-            )
+        #[cfg(feature = "metrics")]
+        histogram!("indexer.clickhouse.post_indexing.duration")
             .record(start.elapsed().as_secs_f64());
 
-            if let Err(_err) = context.pubsub.publish(block_height).await {
-                #[cfg(feature = "tracing")]
-                tracing::error!(err = %_err, block_height, "Can't publish block minted in `post_indexing`");
-                return Ok(());
-            }
-
+        if let Err(_err) = context.pubsub.publish(block_height).await {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height, "`post_indexing` async work finished");
+            tracing::error!(err = %_err, block_height, "Can't publish block minted in `post_indexing`");
+            return Ok(());
+        }
 
-            Ok::<(), IndexerError>(())
-        })?;
+        #[cfg(feature = "tracing")]
+        tracing::debug!(block_height, "`post_indexing` async work finished");
 
         Ok(())
     }
@@ -179,9 +162,12 @@ impl grug_app::Indexer for Indexer {
 
 impl Drop for Indexer {
     fn drop(&mut self) {
-        self.shutdown().expect("can't shutdown indexer");
+        // Since shutdown is now async, we can't call it from Drop
+        // Just mark as not indexing - the actual cleanup will happen when the async context completes
+        self.indexing = false;
     }
 }
+
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
     use metrics::{describe_counter, describe_gauge};

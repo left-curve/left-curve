@@ -10,7 +10,7 @@
         content: |
           {
             "current_deployment": "{{ deployment_name }}",
-            "deployed_at": "{{ ansible_date_time.iso8601 }}"
+            "deployed_at": "{{ ansible_facts['date_time']['iso8601'] }}"
           }
 
-        dest: "{{ ansible_env.HOME }}/deployments/{{ dango_network }}.json"
+        dest: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ dango_network }}.json"

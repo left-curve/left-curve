@@ -3,7 +3,7 @@ use {
         account_factory::{Account, AccountIndex, AccountType, UserIndex, Username},
         auth::Key,
     },
-    grug::{Addr, Counter, Hash256, Map, Set},
+    grug::{Addr, Counter, Counters, Hash256, Map, Set},
 };
 
 pub const CODE_HASHES: Map<AccountType, Hash256> = Map::new("hash");
@@ -19,6 +19,10 @@ pub const USERS_BY_KEY: Set<(Hash256, UserIndex)> = Set::new("user__key");
 pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
 
 pub const ACCOUNTS_BY_USER: Set<(UserIndex, Addr)> = dango_auth::account_factory::ACCOUNTS_BY_USER;
+
+// Base is default to 1, because an account is opened automatically upon the
+// creation of each user.
+pub const ACCOUNT_COUNT_BY_USER: Counters<UserIndex, u8> = Counters::new("account_count", 1, 1);
 
 pub const USER_NAMES_BY_INDEX: Map<UserIndex, Username> = Map::new("user_names__index");
 

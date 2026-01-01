@@ -32,11 +32,11 @@
     update_cache: yes
     name: ['docker-ce', 'docker-ce-cli', 'containerd.io', 'docker-buildx-plugin', 'docker-compose-plugin', 'apparmor']
 
-- name: Adding {{ ansible_env.USER }} user to group docker
+- name: Adding {{ ansible_facts['env']['USER'] }} user to group docker
   become: true
   user:
     append: true
-    name: '{{ ansible_env.USER }}'
+    name: '{{ ansible_facts['env']['USER'] }}'
     groups:
       - docker
 

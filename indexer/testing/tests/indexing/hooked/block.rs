@@ -20,7 +20,7 @@ use {
 async fn index_block() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let (hooked_indexer, indexer_context, _) = create_hooked_indexer();
+    let (hooked_indexer, indexer_context, _) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(hooked_indexer)
         .add_account("owner", Coins::new())
@@ -43,6 +43,7 @@ async fn index_block() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
@@ -86,7 +87,7 @@ async fn index_block() {
 async fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let (indexer, indexer_context, _) = create_hooked_indexer();
+    let (indexer, indexer_context, _) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -108,6 +109,7 @@ async fn parse_previous_block_after_restart() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // Force the runtime to shutdown or when reusing this `start` would fail
@@ -115,6 +117,7 @@ async fn parse_previous_block_after_restart() {
         .app
         .indexer
         .shutdown()
+        .await
         .expect("Can't shutdown indexer");
 
     tracing::warn!("Shut down indexer");
@@ -138,6 +141,7 @@ async fn parse_previous_block_after_restart() {
         .app
         .indexer
         .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
+        .await
         .expect("Can't start indexer");
 
     tracing::warn!("Start indexer");
@@ -164,6 +168,7 @@ async fn parse_previous_block_after_restart() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
@@ -183,7 +188,7 @@ async fn parse_previous_block_after_restart() {
 async fn no_sql_index_error_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let (indexer, sql_indexer_context, cache_context) = create_hooked_indexer();
+    let (indexer, sql_indexer_context, cache_context) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -205,6 +210,7 @@ async fn no_sql_index_error_after_restart() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // Force the runtime to shutdown or when reusing this `start` would fail
@@ -212,6 +218,7 @@ async fn no_sql_index_error_after_restart() {
         .app
         .indexer
         .shutdown()
+        .await
         .expect("Can't shutdown indexer");
 
     // 1. Verify the block height 1 is indexed
@@ -252,6 +259,7 @@ async fn no_sql_index_error_after_restart() {
         .app
         .indexer
         .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
+        .await
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is still indexed
@@ -276,6 +284,7 @@ async fn no_sql_index_error_after_restart() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
@@ -295,7 +304,7 @@ async fn no_sql_index_error_after_restart() {
 /// Ensure that flatten events are indexed correctly.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_block_events() {
-    let (indexer, indexer_context, _) = create_hooked_indexer();
+    let (indexer, indexer_context, _) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coin::new("usdc", 100_000).unwrap())
@@ -337,6 +346,7 @@ async fn index_block_events() {
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     // ensure block was saved

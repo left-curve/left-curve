@@ -27,6 +27,7 @@ grug-app                 = { workspace = true }
 grug-client              = { workspace = true }
 grug-db-disk             = { workspace = true }
 grug-db-memory           = { workspace = true }
+grug-httpd               = { workspace = true }
 grug-types               = { workspace = true, features = ["async-graphql"] }
 grug-vm-rust             = { workspace = true }
 hex-literal              = { workspace = true }

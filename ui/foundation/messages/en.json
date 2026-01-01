@@ -710,6 +710,18 @@
       "title": "Current Session",
       "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
       "remaining": "Remaining time",
+      "userStatus": "Account Status",
+      "accountStatus": [
+        {
+          "declarations": ["input status"],
+          "selectors": ["status"],
+          "match": {
+            "status=active": "Active",
+            "status=inactive": "Inactive",
+            "status=frozen": "Frozen"
+          }
+        }
+      ],
       "network": {
         "title": "Network",
         "chainId": "Chain ID",

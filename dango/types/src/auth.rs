@@ -23,6 +23,12 @@ pub enum AccountStatus {
     Frozen,
 }
 
+impl AccountStatus {
+    pub fn is_active(self) -> bool {
+        self == Self::Active
+    }
+}
+
 /// A number that included in each transaction's sign doc for the purpose of
 /// replay protection.
 pub type Nonce = u32;

@@ -174,7 +174,7 @@
 
     - name: Calculate if deployment lock is recent
       set_fact:
-        deploy_lock_recent: "{{ deploy_lock_stat.stat.exists and ((ansible_date_time.epoch | int) - (deploy_lock_stat.stat.mtime | int) < (deploy_lock_threshold_seconds | int)) }}"
+        deploy_lock_recent: "{{ deploy_lock_stat.stat.exists and ((ansible_facts['date_time']['epoch'] | int) - (deploy_lock_stat.stat.mtime | int) < (deploy_lock_threshold_seconds | int)) }}"
 
     - name: Notify Discord of deployment stop due to active lock
       when:
@@ -419,8 +419,11 @@
             msg: "Deployment failed, please look at the logs. You can also ssh to any of the servers, to {{ deployment_dir }} and run `docker compose logs`"
 
       always:
+        - import_tasks: roles/full-app/tasks/resume_kuma.yml
+          when: system_wide_directories
+
         - name: Log deployment finished
-          community.general.syslogger:
+          syslogger:
             msg: "[{{ deployment_name }}] Finished deployment"
             facility: local0
             priority: info
