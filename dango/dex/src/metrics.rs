@@ -143,7 +143,8 @@ pub mod emit {
             if let Ok(price) = oracle_querier.query_price_ignore_staleness(&coin.denom, None) {
                 let amount_f64 = to_float(coin.amount, price.precision());
 
-                metrics::gauge!(crate::metrics::LABEL_CONTRACT_AMOUNT,
+                metrics::gauge!(
+                    crate::metrics::LABEL_CONTRACT_AMOUNT,
                     "token" => coin.denom.to_string()
                 )
                 .set(amount_f64);
@@ -151,7 +152,8 @@ pub mod emit {
                 let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
                 let value_f64 = dec_to_float(value);
 
-                metrics::gauge!(crate::metrics::LABEL_CONTRACT_VALUE,
+                metrics::gauge!(
+                    crate::metrics::LABEL_CONTRACT_VALUE,
                     "token" => coin.denom.to_string()
                 )
                 .set(value_f64);
@@ -179,7 +181,8 @@ pub mod emit {
             let amount_f64 = to_float(coin.amount, price.precision());
 
             // Amount of tokens in reserve.
-            metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
+            metrics::gauge!(
+                crate::metrics::LABEL_RESERVE_AMOUNT,
                 "base_denom" => base_denom.to_string(),
                 "quote_denom" => quote_denom.to_string(),
                 "token" => coin.denom.to_string()
@@ -190,7 +193,8 @@ pub mod emit {
             let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
             let value_f64 = dec_to_float(value);
 
-            metrics::gauge!(crate::metrics::LABEL_RESERVE_VALUE,
+            metrics::gauge!(
+                crate::metrics::LABEL_RESERVE_VALUE,
                 "base_denom" => base_denom.to_string(),
                 "quote_denom" => quote_denom.to_string(),
                 "token" => coin.denom.to_string()
@@ -221,7 +225,7 @@ pub mod emit {
                 crate::metrics::LABEL_VOLUME_AMOUNT_PER_BLOCK,
                 "base_denom" => base_denom.to_string(),
                 "quote_denom" => quote_denom.to_string(),
-                "token" => token.to_string(),
+                "token" => token.to_string()
             )
             .record(amount_f64);
 
@@ -232,7 +236,7 @@ pub mod emit {
                 crate::metrics::LABEL_VOLUME_VALUE_PER_BLOCK,
                 "base_denom" => base_denom.to_string(),
                 "quote_denom" => quote_denom.to_string(),
-                "token" => token.to_string(),
+                "token" => token.to_string()
             )
             .record(value_f64);
         }
@@ -255,10 +259,11 @@ pub mod emit {
         if let Some(bid) = best_bid_price {
             let bid_price_f64 = to_float(bid, scale_tokens_precision);
 
-            metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+            metrics::gauge!(
+                crate::metrics::LABEL_BEST_PRICE,
                 "base_denom" => base_denom.to_string(),
                 "quote_denom" => quote_denom.to_string(),
-                "type" => "bid",
+                "type" => "bid"
             )
             .set(bid_price_f64);
         }
@@ -266,10 +271,11 @@ pub mod emit {
         if let Some(ask) = best_ask_price {
             let ask_price_f64 = to_float(ask, scale_tokens_precision);
 
-            metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+            metrics::gauge!(
+                crate::metrics::LABEL_BEST_PRICE,
                 "base_denom" => base_denom.to_string(),
                 "quote_denom" => quote_denom.to_string(),
-                "type" => "ask",
+                "type" => "ask"
             )
             .set(ask_price_f64);
         }
@@ -277,10 +283,11 @@ pub mod emit {
         if let Some(mid) = mid_price {
             let mid_price_f64 = to_float(mid, scale_tokens_precision);
 
-            metrics::gauge!(crate::metrics::LABEL_BEST_PRICE,
+            metrics::gauge!(
+                crate::metrics::LABEL_BEST_PRICE,
                 "base_denom" => base_denom.to_string(),
                 "quote_denom" => quote_denom.to_string(),
-                "type" => "mid",
+                "type" => "mid"
             )
             .set(mid_price_f64);
         }
@@ -304,18 +311,20 @@ pub mod emit {
             let spread_absolute = ask - bid;
             let spread_absolute_f64 = to_float(spread_absolute, scale_tokens_precision);
 
-            metrics::gauge!(crate::metrics::LABEL_SPREAD_ABSOLUTE,
+            metrics::gauge!(
+                crate::metrics::LABEL_SPREAD_ABSOLUTE,
                 "base_denom" => base_denom.to_string(),
-                "quote_denom" => quote_denom.to_string(),
+                "quote_denom" => quote_denom.to_string()
             )
             .set(spread_absolute_f64);
 
             let spread_percentage = spread_absolute.checked_div(mid)?;
             let spread_percentage_f64 = to_float(spread_percentage, scale_tokens_precision);
 
-            metrics::gauge!(crate::metrics::LABEL_SPREAD_PERCENTAGE,
+            metrics::gauge!(
+                crate::metrics::LABEL_SPREAD_PERCENTAGE,
                 "base_denom" => base_denom.to_string(),
-                "quote_denom" => quote_denom.to_string(),
+                "quote_denom" => quote_denom.to_string()
             )
             .set(spread_percentage_f64);
         }
@@ -324,7 +333,7 @@ pub mod emit {
     }
 
     /// Convert a fixed-point decimal number to `f64`.
-    pub fn to_float<T, S>(raw: T, decimal_places: S) -> f64
+    fn to_float<T, S>(raw: T, decimal_places: S) -> f64
     where
         T: Inner<U = u128>,
         S: Into<i32>,
@@ -335,7 +344,7 @@ pub mod emit {
     }
 
     /// Convert a `Dec` to `f64`.
-    pub fn dec_to_float<const S: u32>(dec: Dec<u128, S>) -> f64 {
+    fn dec_to_float<const S: u32>(dec: Dec<u128, S>) -> f64 {
         to_float(dec, S as i32)
     }
 }
