@@ -1,5 +1,8 @@
 #[cfg(feature = "metrics")]
-use {crate::metrics::emit::dec_to_f64, grug::QuerierExt};
+use {
+    crate::metrics::{dec_to_float, to_float},
+    grug::QuerierExt,
+};
 use {
     crate::{
         MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
@@ -190,8 +193,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         let dex_balance = ctx.querier.query_balances(ctx.contract, None, None)?;
         for coin in dex_balance {
             if let Ok(price) = oracle_querier.query_price_ignore_staleness(&coin.denom, None) {
-                let amount_f64 =
-                    coin.amount.into_inner() as f64 / 10f64.powi(price.precision() as i32);
+                let amount_f64 = to_float(coin.amount, price.precision());
 
                 metrics::gauge!(crate::metrics::LABEL_CONTRACT_AMOUNT,
                     "token" => coin.denom.to_string()
@@ -199,11 +201,12 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
                 .set(amount_f64);
 
                 let value: Udec128_6 = price.value_of_unit_amount(coin.amount)?;
+                let value_f64 = dec_to_float(value);
 
                 metrics::gauge!(crate::metrics::LABEL_CONTRACT_VALUE,
                     "token" => coin.denom.to_string()
                 )
-                .set(dec_to_f64(value));
+                .set(value_f64);
             }
         }
     }
