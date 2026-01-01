@@ -17,6 +17,8 @@ use {
     std::collections::BTreeSet,
 };
 
+const EVM_NETWORK: &str = "11155111";
+
 const ROUTES: &[(&str, Address)] = &[(
     "sepoliaETH",
     address!("0x613942eff27c6886bb2a33a172cdaf03a009e601"),
@@ -30,14 +32,13 @@ async fn main() -> anyhow::Result<()> {
 
     let evm_config = config
         .evm
-        .get("sepolia")
-        .ok_or(anyhow!("EVM config not found for `sepolia`"))?;
+        .get(EVM_NETWORK)
+        .ok_or(anyhow!("EVM config not found for chain ID `{EVM_NETWORK}`"))?;
 
     let (dango_client, mut dango_owner) = setup::setup_dango(&config.dango).await?;
 
     set_warp_routes(
         &dango_client,
-        &config.dango,
         &mut dango_owner,
         evm_config.hyperlane_domain,
         ROUTES

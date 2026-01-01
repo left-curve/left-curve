@@ -1,5 +1,5 @@
 use {
-    crate::config::{Config, dango::DangoConfig, evm::EVMConfig},
+    crate::config::{Config, evm::EVMConfig},
     alloy::primitives::Address,
     anyhow::{anyhow, bail},
     dango_client::{Secp256k1, SingleSigner},
@@ -19,12 +19,13 @@ use {
 
 pub async fn set_warp_routes(
     dango_client: &HttpClient,
-    dango_config: &DangoConfig,
     signer: &mut SingleSigner<Secp256k1, Defined<Nonce>>,
     remote_domain: u32,
     routes: BTreeSet<(String, Address)>,
 ) -> anyhow::Result<()> {
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
+
+    let status = dango_client.query_status(None).await?;
 
     let routes = routes
         .into_iter()
@@ -51,7 +52,7 @@ pub async fn set_warp_routes(
             grug::GasOption::Predefined {
                 gas_limit: 1_000_000_u64,
             },
-            dango_config.chain_id.as_str(),
+            status.chain_id.as_str(),
         )
         .await?;
 
@@ -67,6 +68,8 @@ pub async fn set_ism_validator_set(
     evm_config: &EVMConfig,
 ) -> anyhow::Result<()> {
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
+
+    let status = dango_client.query_status(None).await?;
 
     // Query mailbox Config
     let mailbox_config = dango_client
@@ -146,7 +149,7 @@ pub async fn set_ism_validator_set(
             &set_validators_msg,
             Coins::new(),
             GasOption::Predefined { gas_limit: 1000000 },
-            config.dango.chain_id.as_str(),
+            status.chain_id.as_str(),
         )
         .await?;
 

@@ -15,6 +15,8 @@ use {
     dotenvy::dotenv,
 };
 
+const EVM_NETWORK: &str = "11155111";
+
 #[derive(Parser)]
 #[command(name = "evm_enroll_dango_domain")]
 #[command(about = "Enrolls the Dango domain in a remote Hyperlane Warp Route")]
@@ -32,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Load config
     let config = config::load_config()?;
-    let evm_config = config.evm.get("sepolia").unwrap();
+    let evm_config = config.evm.get(EVM_NETWORK).unwrap();
 
     // Setup Ethereum provider
     let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;

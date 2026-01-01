@@ -4,7 +4,7 @@ use {
     dotenvy::dotenv,
 };
 
-const REMOTE_CHAIN_ID: &str = "sepolia";
+const REMOTE_CHAIN_ID: &str = "11155111";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -15,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let evm_config = config
         .evm
         .get(REMOTE_CHAIN_ID)
-        .ok_or_else(|| anyhow!("EVM config not found for `{REMOTE_CHAIN_ID}`"))?;
+        .ok_or_else(|| anyhow!("EVM config not found for chain ID `{REMOTE_CHAIN_ID}`"))?;
 
     let (dango_client, mut dango_owner) = setup::setup_dango(&config.dango).await?;
 
