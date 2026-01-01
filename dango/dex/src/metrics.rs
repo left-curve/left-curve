@@ -255,8 +255,8 @@ pub mod emit {
         best_ask_price: Option<Price>,
         mid_price: Option<Price>,
     ) -> anyhow::Result<()> {
-        let scale_tokens_precision = Price::DECIMAL_PLACES as i32
-            + (base_price.precision() - quote_price.precision()) as i32;
+        let scale_tokens_precision = Price::DECIMAL_PLACES as i32 + base_price.precision() as i32
+            - quote_price.precision() as i32;
 
         if let Some(bid) = best_bid_price {
             let bid_price_f64 = to_float(bid, scale_tokens_precision);
@@ -306,8 +306,8 @@ pub mod emit {
         best_ask_price: Option<Price>,
         mid_price: Option<Price>,
     ) -> anyhow::Result<()> {
-        let scale_tokens_precision = Price::DECIMAL_PLACES as i32
-            + (base_price.precision() - quote_price.precision()) as i32;
+        let scale_tokens_precision = Price::DECIMAL_PLACES as i32 + base_price.precision() as i32
+            - quote_price.precision() as i32;
 
         if let (Some(bid), Some(ask), Some(mid)) = (best_bid_price, best_ask_price, mid_price) {
             let spread_absolute = ask - bid;
