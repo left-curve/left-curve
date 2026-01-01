@@ -68,6 +68,7 @@ where
                 "error": "Service is shutting down",
                 "status": 503
             }));
+
             return Box::pin(async move {
                 let (req, _) = req.into_parts();
                 Ok(ServiceResponse::new(req, response))

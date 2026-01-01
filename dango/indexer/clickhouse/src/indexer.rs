@@ -5,7 +5,6 @@ use {
     futures::try_join,
     grug::{Config, Json, JsonDeExt},
 };
-
 #[cfg(feature = "metrics")]
 use {
     metrics::{describe_histogram, histogram},
@@ -168,6 +167,7 @@ impl Drop for Indexer {
         self.indexing = false;
     }
 }
+
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
     use metrics::{describe_counter, describe_gauge};

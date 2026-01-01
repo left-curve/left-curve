@@ -17,7 +17,7 @@ use {
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
-    std::sync::Arc,
+    std::sync::{Arc, atomic::AtomicBool},
     tokio::signal::unix::{SignalKind, signal},
     tower_abci::v038::{Server, split},
 };
@@ -100,7 +100,7 @@ impl StartCmd {
         let indexer_clone = hooked_indexer.clone();
 
         // Create shutdown flags for HTTP servers (to return 503 during shutdown)
-        let httpd_shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let httpd_shutdown_flag = Arc::new(AtomicBool::new(false));
         let httpd_shutdown_flags = vec![httpd_shutdown_flag.clone()];
 
         // Run ABCI server, optionally with indexer and httpd server.
@@ -330,7 +330,7 @@ impl StartCmd {
     async fn run_minimal_httpd_server(
         cfg: &HttpdConfig,
         context: HttpdContext,
-        shutdown_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        shutdown_flag: Arc<AtomicBool>,
     ) -> anyhow::Result<()> {
         tracing::info!(cfg.ip, cfg.port, "Starting minimal HTTP server");
 
@@ -347,8 +347,7 @@ impl StartCmd {
         .map_err(|err| {
             tracing::error!("Failed to run minimal HTTP server: {err:?}");
             anyhow::anyhow!("Failed to run minimal HTTP server: {err:?}")
-        })?;
-        Ok(())
+        })
     }
 
     /// Run the full-featured HTTP server (with indexer features)
@@ -410,7 +409,7 @@ impl StartCmd {
         vm: RustVm,
         indexer: ID,
         mut indexer_for_shutdown: ID,
-        httpd_shutdown_flags: Vec<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+        httpd_shutdown_flags: Vec<Arc<AtomicBool>>,
     ) -> anyhow::Result<()>
     where
         ID: Indexer + Send + 'static,
