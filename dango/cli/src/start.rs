@@ -442,39 +442,36 @@ impl StartCmd {
         let mut sigint = signal(SignalKind::interrupt())?;
         let mut sigterm = signal(SignalKind::terminate())?;
 
+        let mut shutdown = async || {
+            // Set shutdown flags to return 503 for new HTTP requests
+            for flag in &httpd_shutdown_flags {
+                flag.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+
+            // Give a brief moment for the flags to propagate
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+            if let Err(err) = indexer_for_shutdown.shutdown().await {
+                tracing::error!(err = %err, "Error shutting down indexer");
+            }
+
+            telemetry::shutdown();
+            telemetry::shutdown_sentry();
+
+            Ok(())
+        };
+
         tokio::select! {
             result = async { abci_server.listen_tcp(tendermint_cfg.abci_addr).await } => {
                 result.map_err(|err| anyhow!("failed to start ABCI server: {err:?}"))
             },
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
-                // Set shutdown flags to return 503 for new HTTP requests
-                for flag in &httpd_shutdown_flags {
-                    flag.store(true, std::sync::atomic::Ordering::Relaxed);
-                }
-                // Give a brief moment for the flags to propagate
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                if let Err(err) = indexer_for_shutdown.shutdown().await {
-                    tracing::error!(err = %err, "Error shutting down indexer");
-                }
-                telemetry::shutdown();
-                telemetry::shutdown_sentry();
-                Ok(())
+                shutdown().await
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
-                // Set shutdown flags to return 503 for new HTTP requests
-                for flag in &httpd_shutdown_flags {
-                    flag.store(true, std::sync::atomic::Ordering::Relaxed);
-                }
-                // Give a brief moment for the flags to propagate
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                if let Err(err) = indexer_for_shutdown.shutdown().await {
-                    tracing::error!(err = %err, "Error shutting down indexer");
-                }
-                telemetry::shutdown();
-                telemetry::shutdown_sentry();
-                Ok(())
+                shutdown().await
             },
         }
     }
