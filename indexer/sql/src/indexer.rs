@@ -227,12 +227,7 @@ impl IndexerBuilder<Defined<String>> {
 
 /// Guard for test database cleanup.
 ///
-/// Does NOT automatically clean up - call `cleanup()` manually after ensuring
-/// all indexers and database connections are properly shut down.
-///
-/// Automatic cleanup in Drop was causing race conditions and panics because:
-/// 1. The database might be dropped while indexers are still using it
-/// 2. SQLx pool cleanup requires a Tokio context, which actix threads don't have
+/// Automatically cleans up the database when dropped.
 #[derive(Debug)]
 pub struct TestDatabaseGuard {
     server_prefix: String,
@@ -243,45 +238,6 @@ impl TestDatabaseGuard {
     /// Get the test database name
     pub fn db_name(&self) -> &str {
         &self.db_name
-    }
-
-    /// Manually cleanup the test database.
-    /// Call this AFTER all indexers and database connections are shut down.
-    pub fn cleanup(&self) {
-        if self.db_name.is_empty() {
-            return;
-        }
-
-        let server_prefix = self.server_prefix.clone();
-        let db_name = self.db_name.clone();
-
-        #[cfg(feature = "tracing")]
-        tracing::debug!(db_name = %db_name, "Cleaning up test database");
-
-        // Spawn a separate thread with its own runtime
-        let handle = std::thread::spawn(move || {
-            let rt = match tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                Ok(rt) => rt,
-                Err(_) => return,
-            };
-
-            rt.block_on(async move {
-                let parent = format!("{}/postgres", server_prefix);
-                if let Ok(conn) = Database::connect(&parent).await {
-                    let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", db_name);
-                    if conn.execute_unprepared(&drop_sql).await.is_err() {
-                        let _ = conn
-                            .execute_unprepared(&format!("DROP DATABASE \"{}\"", db_name))
-                            .await;
-                    }
-                }
-            });
-        });
-
-        let _ = handle.join();
     }
 }
 
