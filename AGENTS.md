@@ -28,6 +28,7 @@ This document is a generic, evergreen guide for new agents working in this repos
 - Reference issues with "Closes #123" or "Fixes #456" in footer if applicable
 - Include app and LLM user as co-authors in every commit
 - Use `users.noreply.github.com` as the domain for co-author emails
+- Run `just fmt` before committing to ensure code formatting
 
 ## Versions & Compatibility (Examples that matter)
 - OpenTelemetry: `opentelemetry = 0.31`, `opentelemetry_sdk = 0.31`, `opentelemetry-otlp = 0.31` (`grpc-tonic`, `trace`), `tracing-opentelemetry = 0.32`.
