@@ -342,9 +342,9 @@ impl DexAction {
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
 
-                if let Err(err) = &block_outcome.tx_outcomes.first().unwrap().result {
-                    println!("CreateLimitOrder error: {err}");
-                    println!("block_outcome: {block_outcome:?}");
+                if let Err(_err) = &block_outcome.tx_outcomes.first().unwrap().result {
+                    // println!("CreateLimitOrder error: {_err}");
+                    // println!("block_outcome: {block_outcome:?}");
                 }
 
                 assert!(
@@ -458,9 +458,9 @@ impl DexAction {
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
 
-                if let Err(err) = &block_outcome.tx_outcomes.first().unwrap().result {
-                    println!("ProvideLiquidity error: {err}");
-                    println!("block_outcome: {block_outcome:?}");
+                if let Err(_err) = &block_outcome.tx_outcomes.first().unwrap().result {
+                    // println!("ProvideLiquidity error: {_err}");
+                    // println!("block_outcome: {block_outcome:?}");
                 }
 
                 assert!(
@@ -1122,7 +1122,7 @@ fn test_dex_actions(
                 .any(|cron_outcome| cron_outcome.cron_event.as_result().is_err())
                 || is_paused)
         {
-            println!("Failed cron outcome or dex is paused. Block outcome: {block_outcome:?}");
+            // println!("Failed cron outcome or dex is paused. Block outcome: {block_outcome:?}");
         }
 
         // Ensure all cron outcomes succeeded

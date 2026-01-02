@@ -14,7 +14,7 @@ use {
     },
     grug::{
         Addressable, Coin, Coins, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
-        QueryResponse, ResultExt, setup_tracing_subscriber,
+        QueryResponse, ResultExt,
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
@@ -24,7 +24,6 @@ use {
     },
     std::collections::BTreeSet,
     tokio::{sync::mpsc, time::sleep},
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -541,7 +540,6 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
     let (
         suite,
         mut accounts,

@@ -11,7 +11,7 @@ use {
         response::IntoResponse,
         routing::get,
     },
-    grug::{NonEmpty, setup_tracing_subscriber},
+    grug::{NonEmpty},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
@@ -31,7 +31,7 @@ use {
     },
     tokio::{select, sync::Mutex, time::sleep},
     tokio_stream::StreamExt,
-    tracing::{Level, error, info},
+    tracing::{error, info},
 };
 
 const TOKEN: &str = "inser_lazer_token_here";
@@ -321,7 +321,6 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 #[ignore = "manual performance test"]
 #[tokio::test]
 async fn test_performance() {
-    setup_tracing_subscriber(Level::INFO);
     // Load the .env file
     dotenvy::dotenv().ok();
 
