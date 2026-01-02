@@ -258,7 +258,10 @@ where
         }
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument("abci::prepare_proposal", skip_all))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument("abci::prepare_proposal", skip_all)
+    )]
     fn tower_prepare_proposal(
         &self,
         req: request::PrepareProposal,
