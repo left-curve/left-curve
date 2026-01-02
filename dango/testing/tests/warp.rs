@@ -52,7 +52,7 @@ fn receiving_remote() {
         .should_succeed_and_equal(Uint128::new(MOCK_RECEIVE_AMOUNT));
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn sending_remote() {
     let (mut suite, mut accounts, _, contracts, _, context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;

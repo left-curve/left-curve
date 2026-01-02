@@ -12,7 +12,7 @@ use {
     std::collections::HashMap,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_user() -> anyhow::Result<()> {
     let (
         suite,
@@ -82,7 +82,7 @@ async fn query_user() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
     let (
         suite,
@@ -178,7 +178,7 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
     let (
         suite,

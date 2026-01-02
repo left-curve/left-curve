@@ -26,7 +26,7 @@ use {
     tokio::{sync::mpsc, time::sleep},
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_accounts() -> anyhow::Result<()> {
     let (
         suite,
@@ -113,7 +113,7 @@ async fn query_accounts() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_accounts_with_user_index() -> anyhow::Result<()> {
     let (
         suite,
@@ -193,7 +193,7 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
     let (
         suite,
@@ -271,7 +271,7 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
 }
 
 #[ignore = "flaky"]
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
     let (
         suite,
@@ -410,7 +410,7 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_accounts() -> anyhow::Result<()> {
     let (
         suite,
@@ -538,7 +538,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     let (
         suite,
@@ -639,7 +639,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
     let (
         suite,
@@ -759,7 +759,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
@@ -830,7 +830,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_address_balance() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;

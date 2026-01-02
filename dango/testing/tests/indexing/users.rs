@@ -9,7 +9,7 @@ use {
     sea_orm::EntityTrait,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
