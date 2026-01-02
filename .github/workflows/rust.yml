@@ -269,7 +269,7 @@ jobs:
     #   packages: read
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
-      DB_HOST: postgres
+      DB_HOST: localhost
       CLICKHOUSE_HOST: localhost
       CLICKHOUSE_PORT: 10123
       POSTGRES_PORT: 6432
@@ -279,20 +279,21 @@ jobs:
       # Used by psql client and also passed to postgres container
       PGPASSWORD: postgres
     services:
-      postgres:
-        # Using postgres with custom max_connections for parallel test support
-        # 24 cores * ~5 connections per test = need more than default 100
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
-        ports:
-          # Using a different port to not mess with the currently running psql
-          - 127.0.0.1:6432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+      # PostgreSQL is started manually in a step below instead of as a service.
+      # GitHub Actions services don't support passing command arguments, only
+      # Docker options. We need to pass `-c max_connections=500` to handle
+      # parallel test load (24 cores * ~5 connections per test > default 100).
+      # postgres:
+      #   image: postgres:17
+      #   env:
+      #     POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
+      #   ports:
+      #     - 127.0.0.1:6432:5432
+      #   options: >-
+      #     --health-cmd pg_isready
+      #     --health-interval 10s
+      #     --health-timeout 5s
+      #     --health-retries 5
       clickhouse:
         image: clickhouse/clickhouse-server:latest
         env:
@@ -319,24 +320,36 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
 
-      - name: Increase PostgreSQL max_connections for parallel tests
+      - name: Start PostgreSQL with increased max_connections
         if: env.BACKEND_CHANGED == 'true'
         run: |
+          # Start postgres manually to pass -c max_connections=500
+          # (GitHub Actions services don't support passing command args)
           # With 24 cores running tests in parallel, each test using ~5 connections,
           # we need more than the default 100 max_connections
-          CONTAINER_ID=$(docker ps -q --filter ancestor=postgres:17)
-          docker exec $CONTAINER_ID psql -U postgres -c "ALTER SYSTEM SET max_connections = 500;"
-          # Restart container to apply max_connections change
-          docker restart $CONTAINER_ID
-          # Wait for postgres to be ready again
+          docker run -d \
+            --name postgres-test \
+            -e POSTGRES_PASSWORD=${{ env.PGPASSWORD }} \
+            -p 127.0.0.1:6432:5432 \
+            --health-cmd pg_isready \
+            --health-interval 10s \
+            --health-timeout 5s \
+            --health-retries 5 \
+            postgres:17 \
+            -c max_connections=500
+
+          # Wait for postgres to be ready
           for i in {1..30}; do
-            if docker exec $CONTAINER_ID pg_isready -U postgres; then
+            if docker exec postgres-test pg_isready -U postgres; then
+              echo "PostgreSQL is ready"
               break
             fi
+            echo "Waiting for PostgreSQL..."
             sleep 1
           done
+
           # Verify the setting
-          docker exec $CONTAINER_ID psql -U postgres -c "SHOW max_connections;"
+          docker exec postgres-test psql -U postgres -c "SHOW max_connections;"
 
       - name: Setup sccache (optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
