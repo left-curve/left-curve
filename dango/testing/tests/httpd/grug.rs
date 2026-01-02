@@ -20,7 +20,7 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
             rt.block_on(async {
                 tracing::info!("Starting mock HTTP server on port {port}");
 
-                if let Err(_error) = dango_mock_httpd::run(
+                if let Err(error) = dango_mock_httpd::run(
                     port,
                     BlockCreation::OnBroadcast,
                     None,
@@ -31,7 +31,7 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
                 .await
                 {
                     // Using println! so even without `setup_tracing_subscriber` we can see the error
-                    // println!("Error running mock HTTP server: {_error}");
+                    println!("Error running mock HTTP server: {error}");
                 }
             });
         });
