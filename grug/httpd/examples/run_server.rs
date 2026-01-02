@@ -34,6 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Starting HTTP server on {}:{}", args.ip, args.port);
 
+    let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     server::run_server(
         args.ip,
         args.port,
@@ -41,6 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         context,
         server::config_app,
         graphql::build_schema,
+        shutdown_flag,
     )
     .await?;
 

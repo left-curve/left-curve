@@ -111,7 +111,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
             outcome.should_succeed();
         });
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let clickhouse_inserts = recording.collect::<Vec<PairPrice>>().await;
 
@@ -134,7 +134,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let pair_price_query_builder =
         PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string()).with_limit(1);
@@ -189,7 +189,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
     }
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let pair_prices = PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string())
         .fetch_all(clickhouse_context.clickhouse_client())
@@ -284,7 +284,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
     }
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let pair_prices = PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string())
         .fetch_all(clickhouse_context.clickhouse_client())
@@ -471,7 +471,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Volume in USDC: 1 * 100_000 = 100_000
     make_block_with_price(&mut suite, Udec128_24::new(100_000), Uint128::new(1));
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let candle_1m = candle_query_builder
         .fetch_all(clickhouse_context.clickhouse_client())
@@ -498,7 +498,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Volume in USDC: 99_999 + 100_000 (from previous block) = 199_999
     make_block_with_price(&mut suite, Udec128_24::new(99_999), Uint128::new(1));
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let candle_1m = candle_query_builder
         .fetch_all(clickhouse_context.clickhouse_client())
@@ -525,7 +525,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Volume in USDC: 100_001 + 199_999 (from previous blocks) = 300_000
     make_block_with_price(&mut suite, Udec128_24::new(100_001), Uint128::new(1));
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let candle_1m = candle_query_builder
         .fetch_all(clickhouse_context.clickhouse_client())
@@ -550,7 +550,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Do nothing.
     suite.make_empty_block();
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let candle_1m = candle_query_builder
         .fetch_all(clickhouse_context.clickhouse_client())
@@ -664,7 +664,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
         )
         .should_succeed();
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let pair_price_query_builder =
         PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string()).with_limit(1);

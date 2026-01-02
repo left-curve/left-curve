@@ -1,8 +1,8 @@
 use {
-    crate::{context::Context, error::Error},
+    crate::context::Context,
+    async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, Storage},
-    indexer_sql::indexer::RuntimeHandler,
 };
 #[cfg(feature = "metrics")]
 use {
@@ -15,37 +15,30 @@ mod accounts;
 mod transfers;
 
 pub struct Indexer {
-    runtime_handler: RuntimeHandler,
     pub context: Context,
 }
 
 impl Indexer {
-    pub fn new(runtime_handler: RuntimeHandler, context: Context) -> Self {
-        Self {
-            runtime_handler,
-            context,
-        }
+    pub fn new(context: Context) -> Self {
+        Self { context }
     }
 }
 
+#[async_trait]
 impl grug_app::Indexer for Indexer {
-    fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+    async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
         // TODO: Implement last_indexed_block_height
         Ok(None)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
+    async fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        self.runtime_handler.block_on(async {
-            Migrator::up(&self.context.db, None)
-                .await
-                .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
-
-            Ok::<(), grug_app::IndexerError>(())
-        })?;
+        Migrator::up(&self.context.db, None)
+            .await
+            .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
 
         #[cfg(feature = "metrics")]
         {
@@ -60,18 +53,13 @@ impl grug_app::Indexer for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    fn post_indexing(
+    async fn post_indexing(
         &self,
         block_height: u64,
         _cfg: Config,
         app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
-        #[cfg(feature = "tracing")]
-        tracing::info!(
-            block_height,
-            "dango_indexer_sql::indexer.post_indexing: start"
-        );
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
@@ -81,67 +69,38 @@ impl grug_app::Indexer for Indexer {
             ),
         )?;
 
-        self.runtime_handler.block_on({
-            let context = self.context.clone();
-            let block_to_index = block_to_index.clone();
-            async move {
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    block_height,
-                    "dango_indexer_sql::indexer.post_indexing: save_transfers"
-                );
-                // Transfer processing
-                transfers::save_transfers(&context, block_height).await?;
+        // Run transfer processing and account saving in parallel
+        let (transfers_result, accounts_result) = tokio::join!(
+            transfers::save_transfers(&self.context, block_height),
+            accounts::save_accounts(&self.context, block_to_index, app_cfg)
+        );
 
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    block_height,
-                    "dango_indexer_sql::indexer.post_indexing: save_accounts begin"
-                );
-                // Save accounts
-                accounts::save_accounts(&context, &block_to_index, app_cfg)
-                    .await
-                    .inspect_err(|_| {
-                        #[cfg(feature = "metrics")]
-                        counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
-                    })?;
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    block_height,
-                    "dango_indexer_sql::indexer.post_indexing: save_accounts end"
-                );
+        // Handle errors and increment counters
+        if transfers_result.is_err() {
+            #[cfg(feature = "metrics")]
+            counter!("indexer.dango.hooks.transfers.errors.total").increment(1);
+        }
+        if accounts_result.is_err() {
+            #[cfg(feature = "metrics")]
+            counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
+        }
 
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    block_height,
-                    "dango_indexer_sql::indexer.post_indexing: publish begin"
-                );
-                context
-                    .pubsub
-                    .publish(block_height)
-                    .await
-                    .inspect_err(|_| {
-                        #[cfg(feature = "metrics")]
-                        counter!("indexer.dango.hooks.pubsub.errors.total").increment(1);
-                    })?;
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    block_height,
-                    "dango_indexer_sql::indexer.post_indexing: publish end"
-                );
+        // Return the first error if any
+        transfers_result?;
+        accounts_result?;
 
-                Ok::<(), Error>(())
-            }
-        })?;
+        self.context
+            .pubsub
+            .publish(block_height)
+            .await
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))
+            .inspect_err(|_| {
+                #[cfg(feature = "metrics")]
+                counter!("indexer.dango.hooks.pubsub.errors.total").increment(1);
+            })?;
 
         #[cfg(feature = "metrics")]
         histogram!("indexer.dango.hooks.duration").record(start.elapsed().as_secs_f64());
-
-        #[cfg(feature = "tracing")]
-        tracing::info!(
-            block_height,
-            "dango_indexer_sql::indexer.post_indexing: finish"
-        );
 
         Ok(())
     }

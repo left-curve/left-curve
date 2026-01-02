@@ -29,7 +29,7 @@ pub async fn create_blocks(
 )> {
     let denom = Denom::from_str("ugrug")?;
 
-    let (indexer, sql_indexer_context, indexer_cache_context) = create_hooked_indexer();
+    let (indexer, sql_indexer_context, indexer_cache_context) = create_hooked_indexer().await;
 
     let (suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -63,6 +63,7 @@ pub async fn create_blocks(
         .app
         .indexer
         .wait_for_finish()
+        .await
         .expect("Can't wait for indexer to finish");
 
     let client = Arc::new(mock_client);

@@ -17,10 +17,12 @@ testing = []
 tracing = ["dep:tracing", "grug-types/chrono"]
 
 [dependencies]
+async-trait     = { workspace = true }
 borsh           = { workspace = true }
 data-encoding   = { workspace = true, optional = true }
 dyn-event       = { workspace = true }
 error-backtrace = { workspace = true }
+futures         = { workspace = true }
 grug-storage    = { workspace = true }
 grug-types      = { workspace = true }
 http            = { workspace = true }
@@ -30,6 +32,7 @@ prost           = { workspace = true }
 sha2            = { workspace = true }
 tendermint      = { workspace = true, optional = true }
 thiserror       = { workspace = true }
+tokio           = { workspace = true }
 tower           = { workspace = true, optional = true }
 tower-abci      = { workspace = true, optional = true }
 tracing         = { workspace = true, optional = true }

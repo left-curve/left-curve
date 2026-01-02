@@ -31,7 +31,7 @@ async fn query_candles() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Candles($base_denom: String!, $quote_denom: String!, $interval: String) {
@@ -118,7 +118,7 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Candles($base_denom: String!, $quote_denom: String!, $interval: String, $earlierThan: DateTime) {
@@ -209,7 +209,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
@@ -343,7 +343,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     {
         let suite_guard = suite.lock().await;
-        suite_guard.app.indexer.wait_for_finish().unwrap();
+        suite_guard.app.indexer.wait_for_finish().await.unwrap();
     }
 
     // The following ensures than loading clickhouse data to a new cache result in the same
@@ -386,6 +386,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
         .app
         .indexer
         .shutdown()
+        .await
         .expect("Can't shutdown indexer");
 
     Ok(())
@@ -398,7 +399,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
@@ -525,7 +526,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     {
         let suite_guard = suite.lock().await;
-        suite_guard.app.indexer.wait_for_finish().unwrap();
+        suite_guard.app.indexer.wait_for_finish().await.unwrap();
     }
 
     // The following ensures than loading clickhouse data to a new cache result in the same
@@ -567,6 +568,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
         .app
         .indexer
         .shutdown()
+        .await
         .expect("Can't shutdown indexer");
 
     Ok(())

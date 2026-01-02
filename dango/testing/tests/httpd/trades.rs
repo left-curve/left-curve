@@ -29,7 +29,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Trades($addr: String) {
@@ -145,7 +145,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Trades($addr: String, $first: Int, $after: String) {
@@ -279,7 +279,7 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Trades($addr: String) {
@@ -361,7 +361,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       subscription Trades($base_denom: String!, $quote_denom: String!) {

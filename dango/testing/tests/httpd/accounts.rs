@@ -45,7 +45,7 @@ async fn query_accounts() -> anyhow::Result<()> {
     let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
     let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Accounts {
@@ -131,7 +131,7 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Accounts($userIndex: String) {
@@ -211,7 +211,7 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
 
     create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Accounts($userIndex: String) {
@@ -293,7 +293,7 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
     let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
     assert_eq!(test_account1.user_index(), test_account2.user_index());
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Accounts($userIndex: String) {
@@ -431,7 +431,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
         let _user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
     }
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query Accounts($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
@@ -557,7 +557,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 
     let _test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       subscription Accounts {
@@ -659,7 +659,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
     let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
     let user_index = test_account1.user_index();
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       subscription Accounts($userIndex: String) {
@@ -702,7 +702,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
             let _test_account2 =
                 add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
 
-            suite.app.indexer.wait_for_finish()?;
+            suite.app.indexer.wait_for_finish().await?;
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -777,7 +777,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
             .should_succeed();
     }
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     suite
         .query_wasm_smart(accounts.owner.address(), QuerySeenNoncesRequest {})
@@ -858,7 +858,7 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
         .unwrap()
         .into_balance();
 
-    suite.app.indexer.wait_for_finish()?;
+    suite.app.indexer.wait_for_finish().await?;
 
     let graphql_query = r#"
       query QueryApp($request: String!, $height: Int) {

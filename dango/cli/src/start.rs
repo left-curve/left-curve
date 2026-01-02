@@ -17,7 +17,7 @@ use {
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
-    std::sync::Arc,
+    std::sync::{Arc, atomic::AtomicBool},
     tokio::signal::unix::{SignalKind, signal},
     tower_abci::v038::{Server, split},
 };
@@ -99,6 +99,10 @@ impl StartCmd {
 
         let indexer_clone = hooked_indexer.clone();
 
+        // Create shutdown flags for HTTP servers (to return 503 during shutdown)
+        let httpd_shutdown_flag = Arc::new(AtomicBool::new(false));
+        let httpd_shutdown_flags = vec![httpd_shutdown_flag.clone()];
+
         // Run ABCI server, optionally with indexer and httpd server.
         match (
             cfg.indexer.enabled,
@@ -108,7 +112,11 @@ impl StartCmd {
             (true, true, true) => {
                 // Indexer, HTTP server, and metrics server all enabled
                 tokio::try_join!(
-                    Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
+                    Self::run_dango_httpd_server(
+                        &cfg.httpd,
+                        dango_httpd_context,
+                        httpd_shutdown_flag.clone()
+                    ),
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
                     self.run_with_indexer(
                         cfg.grug,
@@ -116,21 +124,29 @@ impl StartCmd {
                         cfg.pyth,
                         db,
                         vm,
-                        hooked_indexer
+                        hooked_indexer.clone(),
+                        hooked_indexer,
+                        httpd_shutdown_flags
                     )
                 )?;
             },
             (true, true, false) => {
                 // Indexer and HTTP server enabled, metrics disabled
                 tokio::try_join!(
-                    Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
+                    Self::run_dango_httpd_server(
+                        &cfg.httpd,
+                        dango_httpd_context,
+                        httpd_shutdown_flag.clone()
+                    ),
                     self.run_with_indexer(
                         cfg.grug,
                         cfg.tendermint,
                         cfg.pyth,
                         db,
                         vm,
-                        hooked_indexer
+                        hooked_indexer.clone(),
+                        hooked_indexer,
+                        httpd_shutdown_flags
                     )
                 )?;
             },
@@ -144,22 +160,46 @@ impl StartCmd {
                         cfg.pyth,
                         db,
                         vm,
-                        hooked_indexer
+                        hooked_indexer.clone(),
+                        hooked_indexer,
+                        vec![] // No HTTP server shutdown flags
                     )
                 )?;
             },
             (true, false, false) => {
                 // Only indexer enabled
-                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, hooked_indexer)
-                    .await?;
+                self.run_with_indexer(
+                    cfg.grug,
+                    cfg.tendermint,
+                    cfg.pyth,
+                    db,
+                    vm,
+                    hooked_indexer.clone(),
+                    hooked_indexer,
+                    vec![], // No HTTP server shutdown flags
+                )
+                .await?;
             },
             (false, true, false) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics disabled
                 let httpd_context = HttpdContext::new(app);
 
                 tokio::try_join!(
-                    Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
+                    Self::run_minimal_httpd_server(
+                        &cfg.httpd,
+                        httpd_context,
+                        httpd_shutdown_flag.clone()
+                    ),
+                    self.run_with_indexer(
+                        cfg.grug,
+                        cfg.tendermint,
+                        cfg.pyth,
+                        db,
+                        vm,
+                        NullIndexer,
+                        NullIndexer,
+                        httpd_shutdown_flags
+                    )
                 )?;
             },
             (false, true, true) => {
@@ -167,19 +207,41 @@ impl StartCmd {
                 let httpd_context = HttpdContext::new(app);
 
                 tokio::try_join!(
-                    Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer),
+                    Self::run_minimal_httpd_server(
+                        &cfg.httpd,
+                        httpd_context,
+                        httpd_shutdown_flag.clone()
+                    ),
+                    self.run_with_indexer(
+                        cfg.grug,
+                        cfg.tendermint,
+                        cfg.pyth,
+                        db,
+                        vm,
+                        NullIndexer,
+                        NullIndexer,
+                        httpd_shutdown_flags
+                    ),
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler)
                 )?;
             },
             (false, false, _) => {
                 // No indexer, no HTTP server
-                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
-                    .await?;
+                self.run_with_indexer(
+                    cfg.grug,
+                    cfg.tendermint,
+                    cfg.pyth,
+                    db,
+                    vm,
+                    NullIndexer,
+                    NullIndexer,
+                    vec![], // No HTTP server shutdown flags
+                )
+                .await?;
             },
         }
 
-        indexer_clone.wait_for_finish()?;
+        indexer_clone.wait_for_finish().await?;
 
         Ok(())
     }
@@ -203,6 +265,7 @@ impl StartCmd {
             .with_database_max_connections(cfg.indexer.database.max_connections)
             .with_sqlx_pubsub()
             .build()
+            .await
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
         let indexer_context = sql_indexer.context.clone();
 
@@ -214,10 +277,7 @@ impl StartCmd {
             .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {e}"))?
             .into();
 
-        let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
-            indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
-            dango_context.clone(),
-        );
+        let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
 
         let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
             cfg.indexer.clickhouse.url.clone(),
@@ -226,24 +286,18 @@ impl StartCmd {
             cfg.indexer.clickhouse.password.clone(),
         );
 
-        let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(
-            indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
-            clickhouse_context.clone(),
-        );
+        let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(clickhouse_context.clone());
 
-        // Create cache indexer with shared runtime handler
-        let cache_runtime =
-            indexer_cache::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone());
-        let mut indexer_cache =
-            indexer_cache::Cache::new_with_dir_and_runtime(app_dir.indexer_dir(), cache_runtime);
+        // Create cache indexer (RuntimeHandler no longer needed)
+        let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
         // Pass S3 config to the cache indexer context
         indexer_cache.context.s3 = cfg.indexer.s3.clone();
         let indexer_cache_context = indexer_cache.context.clone();
 
-        hooked_indexer.add_indexer(indexer_cache)?;
-        hooked_indexer.add_indexer(sql_indexer)?;
-        hooked_indexer.add_indexer(dango_indexer)?;
-        hooked_indexer.add_indexer(clickhouse_indexer)?;
+        hooked_indexer.add_indexer(indexer_cache).await?;
+        hooked_indexer.add_indexer(sql_indexer).await?;
+        hooked_indexer.add_indexer(dango_indexer).await?;
+        hooked_indexer.add_indexer(clickhouse_indexer).await?;
 
         let indexer_httpd_context = indexer_httpd::context::Context::new(
             indexer_cache_context,
@@ -259,15 +313,24 @@ impl StartCmd {
             cfg.httpd.static_files_path.clone(),
         );
 
-        hooked_indexer.start(&app.db.state_storage_with_comment(None, "hooked_indexer")?)?;
+        let storage = app
+            .db
+            .state_storage_with_comment(None, "hooked_indexer")
+            .map_err(|e| anyhow!("Failed to get state storage: {e}"))?;
+        hooked_indexer
+            .start(&storage)
+            .await
+            .map_err(|e| anyhow!("Failed to start indexer: {e}"))?;
 
         Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }
 
     /// Run the minimal HTTP server (without indexer features)
+    /// The shutdown flag should be set when signals are received to return 503 for new requests.
     async fn run_minimal_httpd_server(
         cfg: &HttpdConfig,
         context: HttpdContext,
+        shutdown_flag: Arc<AtomicBool>,
     ) -> anyhow::Result<()> {
         tracing::info!(cfg.ip, cfg.port, "Starting minimal HTTP server");
 
@@ -278,18 +341,21 @@ impl StartCmd {
             context,
             grug_httpd::server::config_app,
             grug_httpd::graphql::build_schema,
+            shutdown_flag,
         )
         .await
         .map_err(|err| {
             tracing::error!("Failed to run minimal HTTP server: {err:?}");
-            err.into()
+            anyhow::anyhow!("Failed to run minimal HTTP server: {err:?}")
         })
     }
 
     /// Run the full-featured HTTP server (with indexer features)
+    /// The shutdown flag should be set when signals are received to return 503 for new requests.
     async fn run_dango_httpd_server(
         cfg: &HttpdConfig,
         dango_httpd_context: dango_httpd::context::Context,
+        shutdown_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> anyhow::Result<()> {
         tracing::info!(
             "Starting full-featured HTTP server at {}:{}",
@@ -307,6 +373,7 @@ impl StartCmd {
             cfg.port,
             cfg.cors_allowed_origin.clone(),
             dango_httpd_context,
+            shutdown_flag,
         )
         .await
         .map_err(|err| {
@@ -341,6 +408,8 @@ impl StartCmd {
         db: DiskDb<SimpleCommitment>,
         vm: RustVm,
         indexer: ID,
+        mut indexer_for_shutdown: ID,
+        httpd_shutdown_flags: Vec<Arc<AtomicBool>>,
     ) -> anyhow::Result<()>
     where
         ID: Indexer + Send + 'static,
@@ -373,21 +442,36 @@ impl StartCmd {
         let mut sigint = signal(SignalKind::interrupt())?;
         let mut sigterm = signal(SignalKind::terminate())?;
 
+        let mut shutdown = async || {
+            // Set shutdown flags to return 503 for new HTTP requests
+            for flag in &httpd_shutdown_flags {
+                flag.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+
+            // Give a brief moment for the flags to propagate
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+            if let Err(err) = indexer_for_shutdown.shutdown().await {
+                tracing::error!(err = %err, "Error shutting down indexer");
+            }
+
+            telemetry::shutdown();
+            telemetry::shutdown_sentry();
+
+            Ok(())
+        };
+
         tokio::select! {
             result = async { abci_server.listen_tcp(tendermint_cfg.abci_addr).await } => {
                 result.map_err(|err| anyhow!("failed to start ABCI server: {err:?}"))
             },
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
-                telemetry::shutdown();
-                telemetry::shutdown_sentry();
-                Ok(())
+                shutdown().await
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
-                telemetry::shutdown();
-                telemetry::shutdown_sentry();
-                Ok(())
+                shutdown().await
             },
         }
     }

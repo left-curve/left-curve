@@ -18,5 +18,5 @@ pub use {
     context::Context,
     error::{IndexerError, Result},
     event_cache::{EventCache, EventCacheReader, EventCacheWriter},
-    indexer::{Indexer, IndexerBuilder},
+    indexer::{Indexer, IndexerBuilder, TestDatabaseGuard},
 };

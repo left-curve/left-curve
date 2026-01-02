@@ -4247,6 +4247,7 @@ dependencies = [
  "grug-client",
  "grug-db-disk",
  "grug-db-memory",
+ "grug-httpd",
  "grug-testing",
  "grug-types",
  "grug-vm-rust",
@@ -5476,10 +5477,12 @@ dependencies = [
 name = "grug-app"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "borsh",
  "data-encoding",
  "dyn-event",
  "error-backtrace",
+ "futures",
  "grug-storage",
  "grug-types",
  "http 1.3.1",
@@ -5489,6 +5492,7 @@ dependencies = [
  "sha2 0.10.9",
  "tendermint",
  "thiserror 2.0.12",
+ "tokio",
  "tower",
  "tower-abci",
  "tracing",
@@ -5718,6 +5722,7 @@ dependencies = [
  "async-trait",
  "borsh",
  "error-backtrace",
+ "futures",
  "grug-app",
  "grug-db-memory",
  "grug-math",
