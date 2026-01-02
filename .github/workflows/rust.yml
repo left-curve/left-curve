@@ -241,14 +241,14 @@ jobs:
         if: env.BACKEND_CHANGED == 'true'
         with:
           toolchain: stable
-      - name: Check without features
+
+      - name: Install cargo-hack
         if: env.BACKEND_CHANGED == 'true'
-        run: |
-          set -euo pipefail
-          for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
-            echo "Checking $crate..."
-            cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
-          done
+        run: cargo install cargo-hack
+
+      - name: Check all feature combinations with cargo hack
+        if: env.BACKEND_CHANGED == 'true'
+        run: cargo hack clippy --each-feature --no-dev-deps -- -D warnings
 
       - name: sccache stats (optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
