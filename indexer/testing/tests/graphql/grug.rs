@@ -14,7 +14,7 @@ use {
     tokio::sync::mpsc,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_query_app() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
@@ -58,7 +58,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 

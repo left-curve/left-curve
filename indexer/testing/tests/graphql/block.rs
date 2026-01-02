@@ -13,7 +13,7 @@ use {
     tokio::sync::mpsc,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_blocks() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
@@ -62,7 +62,7 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
@@ -115,7 +115,7 @@ async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_block() -> anyhow::Result<()> {
     // NOTE: It's necessary to capture the client in a variable named `_client`
     // here. It can't be named just an underscore (`_`) or dropped (`..`).
@@ -168,7 +168,7 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_last_block() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
@@ -209,7 +209,7 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_blocks() -> anyhow::Result<()> {
     let (httpd_context, _client, _) = create_blocks(10).await?;
 
@@ -317,7 +317,7 @@ async fn graphql_paginate_blocks() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 

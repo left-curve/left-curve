@@ -22,7 +22,7 @@ use {
     tokio::sync::mpsc,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
@@ -71,7 +71,7 @@ async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_transactions() -> anyhow::Result<()> {
     let (httpd_context, _client, accounts) = create_block().await?;
 
@@ -131,7 +131,7 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_transactions() -> anyhow::Result<()> {
     let (httpd_context, _client, _) = create_blocks(10).await?;
 
@@ -237,7 +237,7 @@ async fn graphql_paginate_transactions() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
@@ -336,7 +336,7 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
     let port = get_mock_socket_addr();
 

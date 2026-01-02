@@ -6,7 +6,7 @@ use {
     serde_json::json,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn up_returns_200() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
@@ -35,7 +35,7 @@ async fn up_returns_200() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn api_returns_block() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 

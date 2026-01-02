@@ -1,6 +1,6 @@
 use indexer_testing::{GraphQLCustomRequest, block::create_block, build_app_service, call_graphql};
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_iso_8601() -> anyhow::Result<()> {
     // NOTE: It's necessary to capture the client in a variable named `_client`
     // here. It can't be named just an underscore (`_`) or dropped (`..`).

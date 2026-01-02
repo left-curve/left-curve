@@ -58,7 +58,7 @@ async fn test_lazer_stream() {
 // - Ensure the client has reconnected multiple times;
 // - Ensure there are some data in the stream.
 #[ignore = "fails on CI; need to investigate; TODO"]
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread")]
 async fn reconnection() {
     // Random port 15k - 16k.
     let mut rng = rand::thread_rng();
