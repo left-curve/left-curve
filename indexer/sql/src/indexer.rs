@@ -20,7 +20,10 @@ use {
         Undefined,
     },
     itertools::Itertools,
-    sea_orm::{ColumnTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
+    sea_orm::{
+        ColumnTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, QueryFilter,
+        TransactionTrait,
+    },
     std::sync::Arc,
     uuid::Uuid,
 };
