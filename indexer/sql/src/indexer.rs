@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "metrics")]
 use std::time::Instant;
 
-#[allow(unused_imports)]
 use {
     crate::{
         Context, EventCache, EventCacheWriter,
@@ -25,7 +24,6 @@ use {
         TransactionTrait,
     },
     std::sync::Arc,
-    uuid::Uuid,
 };
 
 // ------------------------------- IndexerBuilder ------------------------------

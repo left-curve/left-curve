@@ -41,9 +41,9 @@ where
 
         tokio::spawn(async move {
             loop {
-                if let Err(e) = listener.listen(&name).await {
+                if let Err(_e) = listener.listen(&name).await {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %e, "Listen error");
+                    tracing::error!(error = %_e, "Listen error");
 
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
@@ -58,17 +58,14 @@ where
                     match listener.recv().await {
                         Ok(notification) => {
                             if let Ok(item) = serde_json::from_str::<I>(notification.payload()) {
-                                // If no receivers, the channel is closed - exit gracefully
-                                if sender.send(item).is_err() {
-                                    #[cfg(feature = "tracing")]
-                                    tracing::debug!("No subscribers, stopping listener");
-                                    return;
-                                }
+                                // Ignore send errors if there is no receivers, could have some
+                                // later
+                                let _ = sender.send(item);
                             }
                         },
-                        Err(e) => {
+                        Err(_e) => {
                             #[cfg(feature = "tracing")]
-                            tracing::error!(error = %e, "Notification error");
+                            tracing::error!(error = %_e, "Notification error");
 
                             break;
                         },
