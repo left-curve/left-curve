@@ -26,7 +26,7 @@ This document is a generic, evergreen guide for new agents working in this repos
 - Wrap body at 72 characters
 - Explain what and why in the body, not how
 - Reference issues with "Closes #123" or "Fixes #456" in footer if applicable
-- Include app and LLM user as co-authors in every commit
+- Include app and LLM user as co-authors only if you produced the code being committed
 - Use `users.noreply.github.com` as the domain for co-author emails
 - Run `just fmt` and `just lint` before committing to ensure code formatting and linting
 
