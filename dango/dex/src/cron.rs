@@ -58,14 +58,12 @@ pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Respon
         ReplyMsg::AfterAuction {} => {
             let error = res.unwrap_err(); // safe to unwrap because we only request reply on error
 
-            #[cfg(feature = "library")]
-            {
-                tracing::error!(
-                    error,
-                    block_height = ctx.block.height,
-                    "!!! AUCTION FAILED !!!"
-                );
-            }
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                error,
+                block_height = ctx.block.height,
+                "!!! AUCTION FAILED !!!"
+            );
 
             // Pause trading in case of a failure.
             PAUSED.save(ctx.storage, &true)?;
@@ -355,21 +353,27 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
         .values(storage, None, None, IterationOrder::Descending)
-        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-            ("base_denom", base_denom.to_string()),
-            ("quote_denom", quote_denom.to_string()),
-            ("iteration_order", IterationOrder::Descending.to_string()),
-        ]);
+        .with_metrics(
+            crate::metrics::LABEL_DURATION_ITER_NEXT,
+            [
+                ("base_denom", base_denom.to_string()),
+                ("quote_denom", quote_denom.to_string()),
+                ("iteration_order", IterationOrder::Descending.to_string()),
+            ],
+        );
 
     let ask_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .values(storage, None, None, IterationOrder::Ascending)
-        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-            ("base_denom", base_denom.to_string()),
-            ("quote_denom", quote_denom.to_string()),
-            ("iteration_order", IterationOrder::Ascending.to_string()),
-        ]);
+        .with_metrics(
+            crate::metrics::LABEL_DURATION_ITER_NEXT,
+            [
+                ("base_denom", base_denom.to_string()),
+                ("quote_denom", quote_denom.to_string()),
+                ("iteration_order", IterationOrder::Ascending.to_string()),
+            ],
+        );
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
@@ -729,11 +733,14 @@ fn clear_orders_of_pair(
         .prefix(TimeInForce::ImmediateOrCancel)
         .append((base_denom.clone(), quote_denom.clone()))
         .values(storage, None, None, IterationOrder::Ascending)
-        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-            ("base_denom", base_denom.to_string()),
-            ("quote_denom", quote_denom.to_string()),
-            ("iteration_order", IterationOrder::Ascending.to_string()),
-        ])
+        .with_metrics(
+            crate::metrics::LABEL_DURATION_ITER_NEXT,
+            [
+                ("base_denom", base_denom.to_string()),
+                ("quote_denom", quote_denom.to_string()),
+                ("iteration_order", IterationOrder::Ascending.to_string()),
+            ],
+        )
         .collect::<StdResult<Vec<_>>>()?
     {
         ORDERS.remove(
@@ -777,11 +784,14 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
         .keys(storage, None, None, IterationOrder::Descending)
-        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-            ("base_denom", base_denom.to_string()),
-            ("quote_denom", quote_denom.to_string()),
-            ("iteration_order", IterationOrder::Descending.to_string()),
-        ])
+        .with_metrics(
+            crate::metrics::LABEL_DURATION_ITER_NEXT,
+            [
+                ("base_denom", base_denom.to_string()),
+                ("quote_denom", quote_denom.to_string()),
+                ("iteration_order", IterationOrder::Descending.to_string()),
+            ],
+        )
         .next()
         .transpose()?
         .map(|(price, _order_id)| price);
@@ -789,11 +799,14 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .keys(storage, None, None, IterationOrder::Ascending)
-        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
-            ("base_denom", base_denom.to_string()),
-            ("quote_denom", quote_denom.to_string()),
-            ("iteration_order", IterationOrder::Ascending.to_string()),
-        ])
+        .with_metrics(
+            crate::metrics::LABEL_DURATION_ITER_NEXT,
+            [
+                ("base_denom", base_denom.to_string()),
+                ("quote_denom", quote_denom.to_string()),
+                ("iteration_order", IterationOrder::Ascending.to_string()),
+            ],
+        )
         .next()
         .transpose()?
         .map(|(price, _order_id)| price);
