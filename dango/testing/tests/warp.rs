@@ -54,7 +54,7 @@ fn receiving_remote() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn sending_remote() {
-    let (mut suite, mut accounts, _, contracts, _, context, ..) =
+    let (mut suite, mut accounts, _, contracts, _, context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     const RECIPIENT: Addr32 =
