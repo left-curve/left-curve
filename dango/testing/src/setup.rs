@@ -175,6 +175,8 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let (builder, db_guard) = indexer_sql::IndexerBuilder::default()
         .with_database_url(database_url)
+        // Keep pool small to avoid exhausting server connections when tests run in parallel
+        .with_database_max_connections(5)
         .with_test_database()
         .await;
 
