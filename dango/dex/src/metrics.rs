@@ -321,7 +321,7 @@ pub mod emit {
             .set(spread_absolute_f64);
 
             let spread_percentage = spread_absolute.checked_div(mid)?;
-            let spread_percentage_f64 = to_float(spread_percentage, scale_tokens_precision);
+            let spread_percentage_f64 = to_float(spread_percentage, Price::DECIMAL_PLACES as i32);
 
             metrics::gauge!(
                 crate::metrics::LABEL_SPREAD_PERCENTAGE,
