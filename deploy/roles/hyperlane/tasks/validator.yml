@@ -1,0 +1,34 @@
+---
+- name: Validate validator secrets exist in vault
+  assert:
+    that:
+      - validator is defined
+      - validator[hyperlane_agents_network] is defined
+      - validator[hyperlane_agents_network][hyperlane_validator_index] is defined
+    fail_msg: >-
+      Missing validator secrets in vault. Expected:
+      validator[{{ hyperlane_agents_network }}][{{ hyperlane_validator_index }}]
+
+- name: Render validator env file
+  template:
+    src: "validator-{{ hyperlane_agents_network }}.env.j2"
+    dest: "{{ hyperlane_instance_dir }}/.env"
+    mode: "0600"
+
+- name: Copy validator base config
+  copy:
+    src: validator-config.json
+    dest: "{{ hyperlane_agents_dir }}/validator-config.json"
+    mode: "0644"
+
+- name: Copy validator network config
+  copy:
+    src: "validator-{{ hyperlane_agents_network }}-config.json"
+    dest: "{{ hyperlane_agents_dir }}/validator-{{ hyperlane_agents_network }}-config.json"
+    mode: "0644"
+
+- name: Deploy Hyperlane docker-compose for validator
+  copy:
+    src: docker-compose-validator.yml
+    dest: "{{ hyperlane_instance_dir }}/docker-compose.yml"
+    mode: "0644"

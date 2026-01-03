@@ -1,0 +1,16 @@
+---
+# Base directory on the target host where Hyperlane instances live.
+# Uses deploy_user if defined, otherwise ansible_user (the SSH user Ansible connects as).
+hyperlane_agents_dir: "{{ ansible_facts['env']['HOME'] }}/hyperlane-agents"
+
+# Logical instance name used for directory and container_name:
+# - relayer:   "{{ network }}-relayer"
+# - validator: "{{ network }}-validator-1"
+hyperlane_instance_name: >-
+  {{ hyperlane_agents_network }}-{{ hyperlane_agent_type }}{{ ('-' ~ hyperlane_validator_index) if hyperlane_agent_type == 'validator' }}
+
+# Base directory for this specific instance
+hyperlane_instance_dir: "{{ hyperlane_agents_dir }}/{{ hyperlane_instance_name }}"
+
+# Docker image tag
+hyperlane_agents_tag: "latest"

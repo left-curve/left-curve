@@ -1,0 +1,10 @@
+{
+  "validator": {
+    "type": "aws",
+    "region": "eu-north-1"
+  },
+  "checkpointsyncer": {
+    "type": "s3",
+    "region": "eu-north-1"
+  }
+}

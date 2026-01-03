@@ -92,3 +92,6 @@ deploy_user="deploy"
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
+
+[hyperlane]
+localhost ansible_connection=local

@@ -85,3 +85,6 @@ networks/**/logs
 
 # GraphiQL
 docker/graphiql/dist
+
+# Hyperlane
+**/*_hyperlane_db

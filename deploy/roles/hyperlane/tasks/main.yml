@@ -1,0 +1,28 @@
+---
+- name: Ensure hyperlane base directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ hyperlane_agents_dir }}"
+    - "{{ hyperlane_instance_dir }}/hyperlane_db"
+
+- import_tasks: relayer.yml
+  when: hyperlane_agent_type == 'relayer'
+
+- import_tasks: validator.yml
+  when: hyperlane_agent_type == 'validator'
+
+- name: Copy shared hyperlane config
+  copy:
+    src: config.json
+    dest: "{{ hyperlane_agents_dir }}/config.json"
+    mode: "0644"
+
+- name: Launch Hyperlane stack for this instance
+  community.docker.docker_compose_v2:
+    project_src: "{{ hyperlane_instance_dir }}"
+    pull: always
+    state: present
+    recreate: always
