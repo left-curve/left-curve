@@ -11,7 +11,7 @@ use {
         response::IntoResponse,
         routing::get,
     },
-    grug::{NonEmpty, setup_tracing_subscriber},
+    grug::NonEmpty,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
@@ -31,7 +31,7 @@ use {
     },
     tokio::{select, sync::Mutex, time::sleep},
     tokio_stream::StreamExt,
-    tracing::{Level, error, info},
+    tracing::{error, info},
 };
 
 const TOKEN: &str = "inser_lazer_token_here";
@@ -58,7 +58,7 @@ async fn test_lazer_stream() {
 // - Ensure the client has reconnected multiple times;
 // - Ensure there are some data in the stream.
 #[ignore = "fails on CI; need to investigate; TODO"]
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread")]
 async fn reconnection() {
     // Random port 15k - 16k.
     let mut rng = rand::thread_rng();
@@ -321,7 +321,6 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 #[ignore = "manual performance test"]
 #[tokio::test]
 async fn test_performance() {
-    setup_tracing_subscriber(Level::INFO);
     // Load the .env file
     dotenvy::dotenv().ok();
 

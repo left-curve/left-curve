@@ -58,7 +58,9 @@ where
                     match listener.recv().await {
                         Ok(notification) => {
                             if let Ok(item) = serde_json::from_str::<I>(notification.payload()) {
-                                let _ = sender.send(item); // Ignore send errors
+                                // Ignore send errors if there is no receivers, could have some
+                                // later
+                                let _ = sender.send(item);
                             }
                         },
                         Err(_e) => {

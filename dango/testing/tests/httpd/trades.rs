@@ -22,9 +22,9 @@ use {
     tokio::sync::{Mutex, mpsc},
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_all_trades() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
@@ -138,9 +138,9 @@ async fn query_all_trades() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
@@ -272,9 +272,9 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn query_trades_with_address() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
@@ -354,9 +354,9 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;

@@ -149,6 +149,7 @@ impl Cache {
         let s3_bitmap = s3_bitmap
             .lock()
             .map_err(|err| IndexerError::mutex_poisoned(err.to_string()))?;
+        #[cfg(feature = "tracing")]
         let blocks_len = s3_bitmap.len();
 
         let mut tmp = tempfile::NamedTempFile::new_in(context.indexer_path.blocks_path())?;
@@ -230,8 +231,6 @@ impl Cache {
             }
         }
 
-        let path = file_path.clone();
-
         // When restarting the node, we could have some already copied over blocks. Skipping those.
         match s3_client.exists(&s3_key).await {
             Ok(false) => {
@@ -242,18 +241,18 @@ impl Cache {
                 tracing::debug!(
                     block_height,
                     key = %s3_key,
-                    path = %path.display(),
+                    path = %file_path.display(),
                     "Cached block already exists in S3"
                 );
                 return Ok(());
             },
-            Err(err) => {
+            Err(_err) => {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
                     block_height,
                     key = %s3_key,
-                    path = %path.display(),
-                    error = %err,
+                    path = %file_path.display(),
+                    error = %_err,
                     "Failed to check if cached block exists in S3"
                 );
 
@@ -265,7 +264,7 @@ impl Cache {
         tracing::info!(
             block_height,
             key = %s3_key,
-            path = %path.display(),
+            path = %file_path.display(),
             "Uploading cached block to S3"
         );
 
@@ -274,11 +273,14 @@ impl Cache {
 
         // Naive retries, in case of network error.
         for _ in 0..=10 {
+            #[cfg(any(feature = "tracing", feature = "metrics"))]
             let size = std::fs::metadata(&file_path).map(|m| m.len()).unwrap_or(0);
+            #[cfg(any(feature = "tracing", feature = "metrics"))]
             let start = Instant::now();
 
             match s3_client.upload_file(s3_key.clone(), &file_path).await {
                 Ok(()) => {
+                    #[cfg(any(feature = "tracing", feature = "metrics"))]
                     let elapsed = start.elapsed();
 
                     #[cfg(feature = "tracing")]
@@ -307,9 +309,9 @@ impl Cache {
 
                     break;
                 },
-                Err(err) => {
+                Err(_err) => {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %err, file = %file_path.display(), "S3 upload failed");
+                    tracing::error!(error = %_err, file = %file_path.display(), "S3 upload failed");
                     #[cfg(feature = "metrics")]
                     metrics::counter!("indexer.s3.upload.failure").increment(1);
 

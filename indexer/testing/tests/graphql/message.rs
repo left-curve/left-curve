@@ -13,7 +13,7 @@ use {
     tokio::sync::mpsc,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_messages() -> anyhow::Result<()> {
     let (httpd_context, _client, accounts) = create_block().await?;
 
@@ -81,7 +81,7 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_messages() -> anyhow::Result<()> {
     let (httpd_context, _client, _) = create_blocks(10).await?;
 
@@ -196,7 +196,7 @@ async fn graphql_paginate_messages() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 

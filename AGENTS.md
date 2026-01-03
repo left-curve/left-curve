@@ -17,6 +17,19 @@ This document is a generic, evergreen guide for new agents working in this repos
   3) Parse with `config_parser::parse_config` in the target binary.
 - Feature flags commonly gate tracing/metrics.
 
+### Commit Messages
+- Follow conventional commit format: `type(scope): description`
+- Separate subject from body with a blank line
+- Limit subject line to 50 characters
+- Capitalize the subject line and do not end with a period
+- Use imperative mood (e.g., "Add feature" not "Added feature")
+- Wrap body at 72 characters
+- Explain what and why in the body, not how
+- Reference issues with "Closes #123" or "Fixes #456" in footer if applicable
+- Include app and LLM user as co-authors only if you produced the code being committed
+- Use `users.noreply.github.com` as the domain for co-author emails
+- Run `just fmt` and `just lint` before committing to ensure code formatting and linting
+
 ## Versions & Compatibility (Examples that matter)
 - OpenTelemetry: `opentelemetry = 0.31`, `opentelemetry_sdk = 0.31`, `opentelemetry-otlp = 0.31` (`grpc-tonic`, `trace`), `tracing-opentelemetry = 0.32`.
 - Sentry: `sentry = 0.38`.

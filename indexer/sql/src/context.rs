@@ -60,6 +60,16 @@ impl Context {
         Migrator::up(&self.db, None).await
     }
 
+    /// Close the database connection. Call this before dropping if you're
+    /// in a context that might not have a Tokio runtime.
+    /// Note: DatabaseConnection is internally an Arc, so clone is cheap.
+    pub async fn close(&self) {
+        if let Err(_e) = self.db.clone().close().await {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(error = %_e, "Error closing database connection");
+        }
+    }
+
     pub async fn connect_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
         let database_url = "sqlite::memory:";
 

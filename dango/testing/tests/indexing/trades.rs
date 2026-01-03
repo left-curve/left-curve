@@ -14,9 +14,9 @@ use {
     grug_app::Indexer,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn index_trades() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;

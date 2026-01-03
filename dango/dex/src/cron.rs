@@ -58,14 +58,12 @@ pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Respon
         ReplyMsg::AfterAuction {} => {
             let error = res.unwrap_err(); // safe to unwrap because we only request reply on error
 
-            #[cfg(feature = "library")]
-            {
-                tracing::error!(
-                    error,
-                    block_height = ctx.block.height,
-                    "!!! AUCTION FAILED !!!"
-                );
-            }
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                error,
+                block_height = ctx.block.height,
+                "!!! AUCTION FAILED !!!"
+            );
 
             // Pause trading in case of a failure.
             PAUSED.save(ctx.storage, &true)?;

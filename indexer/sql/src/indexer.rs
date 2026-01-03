@@ -19,7 +19,10 @@ use {
         Undefined,
     },
     itertools::Itertools,
-    sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
+    sea_orm::{
+        ColumnTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, QueryFilter,
+        TransactionTrait,
+    },
     std::sync::Arc,
 };
 
@@ -158,6 +161,123 @@ where
             #[cfg(feature = "tracing")]
             id,
         })
+    }
+}
+
+impl IndexerBuilder<Defined<String>> {
+    /// Create a unique test database and return a guard for manual cleanup.
+    ///
+    /// This is useful for tests that need an isolated database. The returned guard
+    /// has a `cleanup()` method that should be called when the test is done.
+    /// The guard's Drop does NOT automatically clean up to avoid race conditions.
+    pub async fn with_test_database(self) -> (Self, TestDatabaseGuard) {
+        let base_url = self.db_url.inner().clone();
+
+        // Only handle Postgres URLs
+        let is_postgres =
+            base_url.starts_with("postgres://") || base_url.starts_with("postgresql://");
+        if !is_postgres {
+            // Return unchanged for non-Postgres databases
+            return (self, TestDatabaseGuard {
+                server_prefix: String::new(),
+                db_name: String::new(),
+            });
+        }
+
+        // Generate a unique database name
+        let unique_suffix = uuid::Uuid::new_v4();
+        let test_db_name = format!("grug_test_{}", unique_suffix.simple());
+
+        // Everything before the final '/'
+        let slash_pos = base_url.rfind('/').unwrap_or(base_url.len());
+        let server_prefix = base_url[..slash_pos].to_string();
+
+        // Create the new test database
+        let parent_url = format!("{server_prefix}/postgres");
+        let create_sql = format!("CREATE DATABASE \"{test_db_name}\"");
+        let created = if let Ok(conn) = Database::connect(parent_url.clone()).await {
+            conn.execute_unprepared(&create_sql).await.is_ok()
+        } else {
+            false
+        };
+        if !created {
+            panic!(
+                "Failed to create test database `{test_db_name}`; could not connect to parent database"
+            );
+        }
+
+        // Build a new URL pointing to the newly created database
+        let new_url = format!("{server_prefix}/{test_db_name}");
+
+        let guard = TestDatabaseGuard {
+            server_prefix,
+            db_name: test_db_name,
+        };
+
+        let builder = IndexerBuilder {
+            db_url: Defined::new(new_url),
+            db_max_connections: self.db_max_connections,
+            pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
+        };
+
+        (builder, guard)
+    }
+}
+
+/// Guard for test database cleanup.
+///
+/// Automatically cleans up the database when dropped.
+#[derive(Debug)]
+pub struct TestDatabaseGuard {
+    server_prefix: String,
+    db_name: String,
+}
+
+impl TestDatabaseGuard {
+    /// Get the test database name
+    pub fn db_name(&self) -> &str {
+        &self.db_name
+    }
+}
+
+impl Drop for TestDatabaseGuard {
+    fn drop(&mut self) {
+        if self.db_name.is_empty() {
+            return;
+        }
+
+        let server_prefix = std::mem::take(&mut self.server_prefix);
+        let db_name = std::mem::take(&mut self.db_name);
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!(db_name = %db_name, "TestDatabaseGuard::drop - cleaning up test database");
+
+        // Spawn a separate thread with its own runtime to avoid any context issues
+        let handle = std::thread::spawn(move || {
+            let rt = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(rt) => rt,
+                Err(_) => return,
+            };
+
+            rt.block_on(async move {
+                let parent = format!("{}/postgres", server_prefix);
+                if let Ok(conn) = Database::connect(&parent).await {
+                    let drop_sql = format!("DROP DATABASE \"{}\" WITH (FORCE)", db_name);
+                    if conn.execute_unprepared(&drop_sql).await.is_err() {
+                        let _ = conn
+                            .execute_unprepared(&format!("DROP DATABASE \"{}\"", db_name))
+                            .await;
+                    }
+                }
+            });
+        });
+
+        // Block until cleanup completes
+        let _ = handle.join();
     }
 }
 
@@ -482,7 +602,7 @@ mod tests {
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
     /// context.
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[tokio::test(flavor = "multi_thread")]
     async fn should_start() -> anyhow::Result<()> {
         let mut indexer: Indexer = IndexerBuilder::default()
             .with_memory_database()
@@ -500,7 +620,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[tokio::test(flavor = "multi_thread")]
     async fn build_without_hooks() -> anyhow::Result<()> {
         let mut indexer: Indexer = IndexerBuilder::default()
             .with_memory_database()

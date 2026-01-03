@@ -11,9 +11,9 @@ use {
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn index_transfer_events() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_context, _) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // Copied from benchmarks.rs

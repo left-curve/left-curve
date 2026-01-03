@@ -146,6 +146,7 @@ pub async fn setup_test_with_indexer(
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
     dango_indexer_clickhouse::context::Context,
+    indexer_sql::TestDatabaseGuard,
 ) {
     setup_test_with_indexer_and_custom_genesis(test_opt, GenesisOption::preset_test()).await
 }
@@ -167,15 +168,19 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
     dango_indexer_clickhouse::context::Context,
+    indexer_sql::TestDatabaseGuard,
 ) {
-    let indexer = indexer_sql::IndexerBuilder::default()
-        // We'll use this with a random database.
-        // .with_database_url("postgres://postgres@localhost/grug_test")
-        .with_memory_database()
-        .with_database_max_connections(1)
-        .build()
-        .await
-        .unwrap();
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or("postgres://postgres@localhost/grug_test".to_string());
+
+    let (builder, db_guard) = indexer_sql::IndexerBuilder::default()
+        .with_database_url(database_url)
+        // Keep pool small to avoid exhausting server connections when tests run in parallel
+        .with_database_max_connections(5)
+        .with_test_database()
+        .await;
+
+    let indexer = builder.build().await.unwrap();
 
     let indexer_context = indexer.context.clone();
 
@@ -262,6 +267,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         indexer_httpd_context,
         dango_httpd_context,
         clickhouse_context,
+        db_guard,
     )
 }
 

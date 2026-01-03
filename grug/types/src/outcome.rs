@@ -1,7 +1,5 @@
 #[cfg(feature = "tendermint")]
-use crate::StdResult;
-#[cfg(any(feature = "tendermint", feature = "async-graphql"))]
-use crate::serializers::JsonDeExt;
+use crate::{StdResult, serializers::JsonDeExt};
 use {
     crate::{
         CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,

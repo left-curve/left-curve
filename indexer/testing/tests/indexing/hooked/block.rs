@@ -16,7 +16,7 @@ use {
     std::str::FromStr,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn index_block() {
     let denom = Denom::from_str("ugrug").unwrap();
 
@@ -83,7 +83,7 @@ async fn index_block() {
 /// This test is to ensure the indexer will index previous block not yet indexed.
 /// This happens if the process crash after the block was saved on disk, and
 /// before it was indexed.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
@@ -184,7 +184,7 @@ async fn parse_previous_block_after_restart() {
 /// This test is to ensure the indexer will reindex previous block already indexed.
 /// This happens if the process crash after the block was saved on disk,
 /// after it was indexed, and before the tmp file was deleted.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn no_sql_index_error_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
@@ -302,7 +302,7 @@ async fn no_sql_index_error_after_restart() {
 }
 
 /// Ensure that flatten events are indexed correctly.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread")]
 async fn index_block_events() {
     let (indexer, indexer_context, _) = create_hooked_indexer().await;
 

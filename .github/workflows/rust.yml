@@ -241,14 +241,14 @@ jobs:
         if: env.BACKEND_CHANGED == 'true'
         with:
           toolchain: stable
-      - name: Check without features
+
+      - name: Install cargo-hack
         if: env.BACKEND_CHANGED == 'true'
-        run: |
-          set -euo pipefail
-          for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
-            echo "Checking $crate..."
-            cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
-          done
+        run: cargo install cargo-hack
+
+      - name: Check all feature combinations with cargo hack
+        if: env.BACKEND_CHANGED == 'true'
+        run: cargo hack clippy --each-feature --no-dev-deps -- -D warnings
 
       - name: sccache stats (optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
@@ -269,26 +269,31 @@ jobs:
     #   packages: read
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
-      PGDATABASE: grug_test
-      DB_HOST: postgres
+      DB_HOST: localhost
       CLICKHOUSE_HOST: localhost
       CLICKHOUSE_PORT: 10123
       POSTGRES_PORT: 6432
       CLICKHOUSE_DATABASE: grug_test
       CLICKHOUSE_USER: default
+      DATABASE_URL: "postgres://postgres:postgres@localhost:6432/dango_test"
+      # Used by psql client and also passed to postgres container
+      PGPASSWORD: postgres
     services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          # Using a different port to not mess with the currently running psql
-          - 127.0.0.1:6432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+      # PostgreSQL is started manually in a step below instead of as a service.
+      # GitHub Actions services don't support passing command arguments, only
+      # Docker options. We need to pass `-c max_connections=500` to handle
+      # parallel test load (24 cores * ~5 connections per test > default 100).
+      # postgres:
+      #   image: postgres:17
+      #   env:
+      #     POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
+      #   ports:
+      #     - 127.0.0.1:6432:5432
+      #   options: >-
+      #     --health-cmd pg_isready
+      #     --health-interval 10s
+      #     --health-timeout 5s
+      #     --health-retries 5
       clickhouse:
         image: clickhouse/clickhouse-server:latest
         env:
@@ -308,11 +313,43 @@ jobs:
       - name: Skip backend tests (no backend changes)
         if: env.BACKEND_CHANGED != 'true'
         run: echo "No backend changes detected. Skipping backend lint/test."
+
       - name: Checkout sources
         if: env.BACKEND_CHANGED == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref }}
+
+      - name: Start PostgreSQL with increased max_connections
+        if: env.BACKEND_CHANGED == 'true'
+        run: |
+          # Start postgres manually to pass -c max_connections=500
+          # (GitHub Actions services don't support passing command args)
+          # With 24 cores running tests in parallel, each test using ~5 connections,
+          # we need more than the default 100 max_connections
+          docker run -d \
+            --name postgres-test \
+            -e POSTGRES_PASSWORD=${{ env.PGPASSWORD }} \
+            -p 127.0.0.1:6432:5432 \
+            --health-cmd pg_isready \
+            --health-interval 10s \
+            --health-timeout 5s \
+            --health-retries 5 \
+            postgres:17 \
+            -c max_connections=500
+
+          # Wait for postgres to be ready
+          for i in {1..30}; do
+            if docker exec postgres-test pg_isready -U postgres; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL..."
+            sleep 1
+          done
+
+          # Verify the setting
+          docker exec postgres-test psql -U postgres -c "SHOW max_connections;"
 
       - name: Setup sccache (optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
@@ -356,10 +393,6 @@ jobs:
           # Commenting this out so we always use the latest toolchain.
           # toolchain: 1.91
           components: clippy, llvm-tools-preview
-
-      # - name: Create psql database
-      #   run: |
-      #     createdb -U postgres -h postgres "$PGDATABASE"
 
       # - uses: actions/cache@v4
       #   with:
