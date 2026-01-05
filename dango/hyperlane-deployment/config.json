@@ -34,7 +34,12 @@
       "hyperlane_protocol_fee": 1,
       "ism": {
         "static_message_id_multisig_ism": {
-          "validators": ["TODO: add hyperlane validators"],
+          "validators": [
+              "0x2F3bC8d740dBfC310D78124db8476040F9Cd7357",
+              "0x2cc539a1383128Ab0e2007D24543445A665B1947",
+              "0xb45dea8d034AfD3A9753732cAe9eFE15B7f97Fd0",
+              "0xCC315d2c581315D5961bdaFd1944B3b4c7DbAC57"
+          ],
           "threshold": 2
         }
       },
