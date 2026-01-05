@@ -1,38 +1,40 @@
 {
   "dango": {
-    "api_url": "https://api-pr-1414-ovh2.dango.zone/",
-    "chain_id": "pr-1414",
+    "api_url": "https://api-mainnet.dango.zone/",
+    "chain_id": "dango-1",
     "isms": [
       [
-        11155111,
+        1,
         {
           "validators": [
-            "b22b65f202558adf86a8bb2847b76ae1036686a5",
-            "469f0940684d147defc44f3647146cb90dd0bc8e",
-            "d3c75dcf15056012a4d74c483a0c6ea11d8c2b83"
+            "03c842db86a6a3e524d4a6615390c1ea8e2b9541",
+            "94438a7de38d4548ae54df5c6010c4ebc5239eae",
+            "5450447aee7b544c462c9352bef7cad049b0c2dc",
+            "b3ac35d3988bca8c2ffd195b1c6bee18536b317b",
+            "b683b742b378632a5f73a2a5a45801b3489bba44",
+            "3786083ca59dc806d894104e65a13a70c2b39276",
+            "4f977a59fdc2d9e39f6d780a84d5b4add1495a36",
+            "29d783efb698f9a2d3045ef4314af1f5674f52c5",
+            "36a669703ad0e11a0382b098574903d2084be22c"
           ],
-          "threshold": 1
+          "threshold": 6
         }
       ]
     ]
   },
   "evm": {
     "11155111": {
-      "chain_id": 11155111,
-      "infura_rpc_url": "https://sepolia.infura.io/v3/",
+      "chain_id": 1,
+      "infura_rpc_url": "https://mainnet.infura.io/v3/",
       "hyperlane_deployments": {
         "static_message_id_multisig_ism_factory": "0xfeb9585b2f948c1ed74034205a7439261a9d27dd",
         "mailbox": "0xffaef09b3cd11d9b20d1a19becca54eec2884766"
       },
-      "hyperlane_domain": 11155111,
+      "hyperlane_domain": 1,
       "hyperlane_protocol_fee": 1,
       "ism": {
         "static_message_id_multisig_ism": {
-          "validators": [
-            "0x6603760598E4aAc3E9D47569cc3A7024cDa7003a",
-            "0xf8E81626772C4f6e43e3F4cd9eAac1bC5D23a16f",
-            "0x77302BB386b258BA1422bAe9edB5a22EA733D4d4"
-          ],
+          "validators": ["TODO: add hyperlane validators"],
           "threshold": 2
         }
       },
@@ -40,19 +42,13 @@
       "warp_routes": [
         {
           "warp_route_type": "native",
-          "symbol": "sepoliaETH"
+          "symbol": "ETH"
         },
         {
           "warp_route_type": {
-            "erc20_collateral": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238"
+            "erc20_collateral": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
           },
-          "symbol": "sepoliaUSDC"
-        },
-        {
-          "warp_route_type": {
-            "erc20_collateral": "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"
-          },
-          "symbol": "sepoliaUNI"
+          "symbol": "USDC"
         }
       ],
       "multi_sig_address": null
