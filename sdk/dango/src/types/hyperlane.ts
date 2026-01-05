@@ -27,10 +27,10 @@ export type HyperlaneConfig = {
     static_message_id_multisig_ism: Ism;
   };
   proxy_admin_address: Address;
-  warp_routes: Warproute[];
+  warp_routes: WarpRoute[];
 };
 
-type Warproute = {
+type WarpRoute = {
   warp_route_type: { erc20_collateral: Address } | string;
   proxy_address: Address;
   symbol: string;

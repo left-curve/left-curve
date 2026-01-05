@@ -63,7 +63,7 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
   changeAction,
 }) => {
   const controllers = useInputs();
-  const state = useBridgeState({ action, controllers, config: {} as any });
+  const state = useBridgeState({ action, controllers, config: import.meta.env.HYPERLANE_CONFIG });
 
   return (
     <BridgeProvider value={{ state, controllers }}>
