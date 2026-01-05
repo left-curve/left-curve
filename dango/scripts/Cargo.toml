@@ -20,17 +20,18 @@ indexer-client = { workspace = true }
 tokio          = { workspace = true }
 
 [dev-dependencies]
-chrono         = { workspace = true }
-clap           = { workspace = true }
-dango-genesis  = { workspace = true }
-dango-testing  = { workspace = true }
-dango-types    = { workspace = true }
-grug-db-disk   = { workspace = true }
-grug-db-memory = { workspace = true, features = ["snapshot"] }
-grug-vm-rust   = { workspace = true }
-hex            = { workspace = true }
-hex-literal    = { workspace = true }
-indexer-cache  = { workspace = true }
-indexer-sql    = { workspace = true }
-num-format     = { workspace = true }
-tracing        = { workspace = true }
+chrono          = { workspace = true }
+clap            = { workspace = true }
+dango-genesis   = { workspace = true }
+dango-testing   = { workspace = true }
+dango-types     = { workspace = true }
+grug-db-disk    = { workspace = true }
+grug-db-memory  = { workspace = true, features = ["snapshot"] }
+grug-vm-rust    = { workspace = true }
+hex             = { workspace = true }
+hex-literal     = { workspace = true }
+hyperlane-types = { workspace = true }
+indexer-cache   = { workspace = true }
+indexer-sql     = { workspace = true }
+num-format      = { workspace = true }
+tracing         = { workspace = true }
