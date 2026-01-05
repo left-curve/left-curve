@@ -95,7 +95,7 @@ export const Deposit: React.FC = () => {
 
         await signingClient.registerAccount({
           sender: account!.address,
-          config: { single: { owner: account!.username } },
+          config: { single: { owner: account!.index } },
           ...(Decimal(funds).gt(0) ? { funds: { "bridge/usdc": parsedAmount.toString() } } : {}),
         });
       },
