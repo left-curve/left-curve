@@ -16,6 +16,8 @@ import type { EIP1193Provider } from "../types/eip1193.js";
 import type { MailBoxConfig, NonNullablePropertiesBy } from "@left-curve/dango/types";
 import type { useBridgeState } from "./useBridgeState.js";
 
+const MAX_SAFE = 2n ** 256n - 1n;
+
 export type UseBridgeEvmDepositParameters = {
   connector?: Connector;
   coin: AnyCoin;
@@ -28,6 +30,8 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
   if (!config || !config.router) throw new Error("Unexpected missing router config");
 
   const { bridger, router, chain } = config;
+
+  console.log(router);
 
   const { account } = useAccount();
   const { getAppConfig } = useConfig();
@@ -61,10 +65,10 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
 
   const allowanceQuery = useQuery({
     enabled: !!wallet.data && !!router,
-    queryKey: ["bridge_evm", "allowance", wallet?.data?.account.address],
-    initialData: BigInt(Number.MAX_SAFE_INTEGER),
+    queryKey: ["bridge_evm", "allowance", wallet?.data?.account.address, router.coin],
+    initialData: MAX_SAFE,
     queryFn: async () => {
-      if (router.coin === "native") return BigInt(Number.MAX_SAFE_INTEGER);
+      if (router.coin === "native") return MAX_SAFE;
       const { data: client } = wallet as NonNullablePropertiesBy<typeof wallet, "data">;
 
       return await publicClient.readContract({
@@ -127,7 +131,7 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
           address: router.address,
           abi: HYPERLANE_ROUTER_ABI,
           functionName: "transferRemote",
-          args: [localDomain, recipientAddress, depositAmount],
+          args: [localDomain, `0x${recipientAddress}`, depositAmount],
           value,
         });
 

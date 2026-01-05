@@ -2,8 +2,8 @@ import { decodeHex, encodeHex } from "@left-curve/sdk/encoding";
 
 import type { Address, Encoder } from "@left-curve/sdk/types";
 
-export function toAddr32(address: `0x${string}`): `0x${string}` {
-  return `0x${address.slice(2).padStart(64, "0")}` as `0x${string}`;
+export function toAddr32(address: `0x${string}`): Address {
+  return `${address.slice(2).padStart(64, "0")}`.toLowerCase() as Address;
 }
 
 export class Addr32 implements Encoder {

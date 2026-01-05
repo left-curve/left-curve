@@ -85,7 +85,9 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
       if (userAccount) {
         return {
           account: {
-            name: `${userAccount.username} #${userAccount.index}`,
+            name: userAccount.username
+              ? `${userAccount.username} #${userAccount.index}`
+              : `Account #${userAccount.index}`,
             type: "own",
           },
         };
@@ -94,7 +96,9 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
       const account = await client.getAccountInfo({ address });
 
       if (account) {
-        const accountName = `${account.username} #${account.index}`;
+        const accountName = account.username
+          ? `${account.username} #${account.index}`
+          : `User #${account.index}`;
         const type = "other";
         const info = { account: { name: accountName, type } };
 
