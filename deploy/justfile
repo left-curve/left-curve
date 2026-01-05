@@ -105,32 +105,17 @@ deploy-hyperlane network agent limit index="":
     -e hyperlane_validator_index={{index}} \
     --limit {{limit}}
 
-deploy-hyperlane-mainnet-validator-1:
+deploy-hyperlane-mainnet:
   just deploy-hyperlane mainnet validator 100.89.7.33 1
-
-deploy-hyperlane-mainnet-validator-2:
   just deploy-hyperlane mainnet validator 100.66.234.16 2
-
-deploy-hyperlane-mainnet-validator-3:
   just deploy-hyperlane mainnet validator 100.126.8.2 3
-
-deploy-hyperlane-mainnet-validator-4:
-  just deploy-hyperlane mainnet validator 100.90.163.19 4
-
-deploy-hyperlane-mainnet-relayer:
+  just deploy-hyperlane mainnet validator 100.76.197.30 4
   just deploy-hyperlane mainnet relayer 100.76.197.30
 
-deploy-hyperlane-testnet-validator-1:
-  just deploy-hyperlane testnet validator 100.89.7.33 1
-
-deploy-hyperlane-testnet-validator-2:
-  just deploy-hyperlane testnet validator 100.66.234.16 2
-
-deploy-hyperlane-testnet-validator-3:
-  just deploy-hyperlane testnet validator 100.126.8.2 3
-
-deploy-hyperlane-testnet-relayer:
-  just deploy-hyperlane testnet relayer 100.76.197.30
+deploy-hyperlane-testnet:
+  just deploy-hyperlane testnet validator 100.90.163.19 1
+  just deploy-hyperlane testnet validator 100.109.200.70 2
+  just deploy-hyperlane testnet relayer 100.109.200.70
 
 add-deploy-key:
   ./deploy-key.sh | ssh-add - >/dev/null
