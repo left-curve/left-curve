@@ -21,10 +21,9 @@
     - name: Validate validator index is provided
       assert:
         that:
-          - hyperlane_validator_index | length > 0
+          - hyperlane_agent_type != 'validator' or hyperlane_validator_index | length > 0
         fail_msg: >-
           hyperlane_validator_index is required when hyperlane_agent_type=validator.
           Example: -e hyperlane_validator_index=1
-        when: hyperlane_agent_type == 'validator'
   roles:
     - role: hyperlane
