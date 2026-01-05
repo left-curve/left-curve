@@ -41,6 +41,34 @@ fs.copySync(
   { overwrite: true },
 );
 
+const hyperlaneConfig = async () => {
+  const mainFiles = {
+    config: "../../../dango/hyperlane-deployment/config.json",
+    deployment: "../../../dango/hyperlane-deployment/deployments.json",
+  };
+
+  const testFiles = {
+    config: "../../../dango/hyperlane-deployment/config.testnet.json",
+    deployment: "../../../dango/hyperlane-deployment/deployments-testnet.json",
+  };
+
+  const files = environment === "prod" ? mainFiles : testFiles;
+
+  const config = await import(files.config);
+  const deployments = await import(files.deployment);
+
+  Object.entries(deployments.evm).forEach(([chainId, deployment]: [string, any]) => {
+    config.evm[chainId].warp_routes = deployment.warp_routes.map(
+      ([warp_route_type, route]: [string, object]) => ({
+        warp_route_type,
+        ...route,
+      }),
+    );
+  });
+
+  return config;
+};
+
 const chain = {
   local: local,
   dev: devnet,
@@ -126,6 +154,7 @@ export default defineConfig({
     define: {
       ...publicVars,
       "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
+      "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
       "process.env": {},
       "import.meta.env": {},
     },
