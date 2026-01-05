@@ -50,7 +50,7 @@
           "symbol": "usdc"
         }
       ],
-      "multi_sig_address": null
+      "multi_sig_address": "0xec16b574ddf7c1b1039aad3b7c170408b7aaa4ac"
     }
   }
 }
