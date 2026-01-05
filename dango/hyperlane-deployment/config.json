@@ -40,7 +40,7 @@
               "0xb45dea8d034AfD3A9753732cAe9eFE15B7f97Fd0",
               "0xCC315d2c581315D5961bdaFd1944B3b4c7DbAC57"
           ],
-          "threshold": 2
+          "threshold": 3
         }
       },
       "warp_routes": [
