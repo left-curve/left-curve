@@ -4187,6 +4187,7 @@ dependencies = [
  "dango-genesis",
  "dango-testing",
  "dango-types",
+ "dialoguer",
  "grug",
  "grug-app",
  "grug-db-disk",
