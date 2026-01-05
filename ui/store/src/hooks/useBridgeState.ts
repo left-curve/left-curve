@@ -5,12 +5,14 @@ import { useStorage } from "./useStorage.js";
 
 import { chains } from "../hyperlane.js";
 import { toAddr32 } from "@left-curve/dango/hyperlane";
-import config from "../../../../dango/hyperlane-deployment/config.json" with { type: "json" };
-const { evm } = config;
 
 import type { AnyCoin } from "../types/coin.js";
+import type { HyperlaneConfig } from "@left-curve/dango/types";
 
 export type UseBridgeStateParameters = {
+  config: {
+    evm: Record<string, HyperlaneConfig>;
+  };
   action: "deposit" | "withdraw";
   controllers: {
     inputs: Record<string, { value: string }>;
@@ -22,16 +24,20 @@ export type UseBridgeStateParameters = {
 export function useBridgeState(params: UseBridgeStateParameters) {
   const { coins: allCoins, chain: dangoChain } = useConfig();
 
-  const { action, controllers } = params;
+  const {
+    action,
+    controllers,
+    config: { evm },
+  } = params;
 
   const { current: networks } = useRef([
-    { name: "Ethereum Network", id: "ethereum", time: "16 blocks | 5-30 mins" },
-    { name: "Base Network", id: "base", time: "5-30 mins" },
-    { name: "Arbitrum Network", id: "arbitrum", time: "5-30 mins" },
+    { name: "Ethereum Network", id: "1", time: "16 blocks | 5-30 mins" },
+    { name: "Base Network", id: "8453", time: "5-30 mins" },
+    { name: "Arbitrum Network", id: "42161", time: "5-30 mins" },
     /*       { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
           { name: "Solana Network", id: "solana", time: "2-10 mins" }, */
     ...(["Devnet", "Dango"].includes(dangoChain.name)
-      ? [{ name: "Sepolia Network", id: "sepolia", time: "5-30 mins" }]
+      ? [{ name: "Sepolia Network", id: "11155111", time: "5-30 mins" }]
       : []),
   ]);
 
@@ -76,15 +82,15 @@ export function useBridgeState(params: UseBridgeStateParameters) {
           remote: {
             warp: {
               domain: bridger.hyperlane_domain,
-              contract: toAddr32(router.proxy_address as `0x${string}`),
+              contract: toAddr32(router.proxy_address),
             },
           },
           domain: bridger.hyperlane_domain,
-          address: router.proxy_address as `0x${string}`,
+          address: router.proxy_address,
           coin:
             typeof router.warp_route_type === "string"
               ? ("native" as const)
-              : (router.warp_route_type.erc20_collateral as `0x${string}`),
+              : router.warp_route_type.erc20_collateral,
         };
       }
     })();
