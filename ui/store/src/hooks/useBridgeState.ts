@@ -98,11 +98,15 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     return { chain, bridger, router };
   }, [network, coin]);
 
-  useEffect(() => {
+  const reset = useCallback(() => {
     setConnectorId(null);
     setCoin(undefined);
     setNetwork(undefined);
     controllers.reset();
+  }, [controllers]);
+
+  useEffect(() => {
+    reset();
   }, [action]);
 
   return {
@@ -116,5 +120,6 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     networks,
     connector,
     setConnectorId,
+    reset,
   };
 }
