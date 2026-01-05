@@ -17,6 +17,7 @@ import type { Config } from "../types/store.js";
 export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes> =
   | {
       username: Username;
+      userIndex: number;
       keyHash: KeyHash;
       account: Account<accounType>;
       accounts: readonly Account[];
@@ -34,6 +35,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
     }
   | {
       username: Username | undefined;
+      userIndex: number | undefined;
       keyHash: KeyHash | undefined;
       account: Account<accounType> | undefined;
       accounts: readonly Account[] | undefined;
@@ -51,6 +53,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
     }
   | {
       username: Username | undefined;
+      userIndex: number | undefined;
       keyHash: KeyHash | undefined;
       account: Account<accounType> | undefined;
       accounts: readonly Account[] | undefined;
@@ -68,6 +71,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
     }
   | {
       username: undefined;
+      userIndex: undefined;
       keyHash: undefined;
       account: undefined;
       accounts: undefined;
@@ -86,6 +90,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
 
 const disconnected = {
   username: undefined,
+  userIndex: undefined,
   keyHash: undefined,
   account: undefined,
   accounts: undefined,
@@ -130,11 +135,15 @@ export function getAccount<
 
   const { accounts, connector, account: acc, keyHash } = connection;
   const username = config.state.userIndexAndName?.name;
+  const userIndex = config.state.userIndexAndName?.index;
+
+  console.log(userIndex, "userIndex");
   const account = acc as Account<accountType>;
   switch (status) {
     case "connected":
       return {
         username: username as string,
+        userIndex: userIndex as number,
         keyHash,
         account,
         accounts,
@@ -153,6 +162,7 @@ export function getAccount<
     case "reconnecting":
       return {
         username,
+        userIndex,
         keyHash,
         account,
         accounts,
@@ -171,6 +181,7 @@ export function getAccount<
     case "connecting":
       return {
         username,
+        userIndex,
         keyHash,
         account,
         accounts,

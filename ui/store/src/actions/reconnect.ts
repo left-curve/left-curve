@@ -52,7 +52,6 @@ export async function reconnect<config extends Config>(
     ...x,
     connectors,
     current,
-    userIndexAndName: x.userIndexAndName,
     status: connectors.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
   }));
 
