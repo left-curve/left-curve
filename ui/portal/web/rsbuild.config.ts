@@ -12,7 +12,7 @@ import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { GenerateSW } from "workbox-webpack-plugin";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 
-import { devnet, local, testnet } from "@left-curve/dango";
+import { devnet, local, testnet, mainnet } from "@left-curve/dango";
 
 import type { Chain } from "@left-curve/dango/types";
 import type { Rspack } from "@rsbuild/core";
@@ -45,6 +45,7 @@ const chain = {
   local: local,
   dev: devnet,
   test: testnet,
+  prod: mainnet,
 }[environment] as Chain;
 
 const urls = {
@@ -63,10 +64,16 @@ const urls = {
     questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
   },
+  prod: {
+    faucetUrl: "",
+    questUrl: "",
+    upUrl: `${chain.urls.indexer}/up`,
+  },
 }[environment]!;
 
 const banner = {
   dev: "You are using devnet",
+  test: "You are using testnet",
 }[environment];
 
 const envConfig = `window.dango = ${JSON.stringify(
