@@ -32,23 +32,22 @@
             "0xf8E81626772C4f6e43e3F4cd9eAac1bC5D23a16f",
             "0x77302BB386b258BA1422bAe9edB5a22EA733D4d4"
           ],
-          "threshold": 2
+          "threshold": 1
         }
       },
-      "proxy_admin_address": "0x311d8cd0eddab142be43a7f794b9013408675dbb",
       "warp_routes": [
         {
           "warp_route_type": "native",
-          "symbol": "ETH"
+          "symbol": "eth"
         },
         {
           "warp_route_type": {
             "erc20_collateral": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238"
           },
-          "symbol": "USDC"
+          "symbol": "usdc"
         }
       ],
-      "multi_sig_address": "0x72775792429B4e71b317e270329fB9222c650379"
+      "multi_sig_address": null
     }
   }
 }
