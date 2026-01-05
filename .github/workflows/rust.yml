@@ -328,7 +328,7 @@ jobs:
           # With 24 cores running tests in parallel, each test using ~5 connections,
           # we need more than the default 100 max_connections
           docker run -d \
-            --name postgres-test \
+            --name postgres-test-${{ github.run_id }} \
             -e POSTGRES_PASSWORD=${{ env.PGPASSWORD }} \
             -p 127.0.0.1:6432:5432 \
             --health-cmd pg_isready \
@@ -340,7 +340,7 @@ jobs:
 
           # Wait for postgres to be ready
           for i in {1..30}; do
-            if docker exec postgres-test pg_isready -U postgres; then
+            if docker exec postgres-test-${{ github.run_id }} pg_isready -U postgres; then
               echo "PostgreSQL is ready"
               break
             fi
@@ -349,7 +349,7 @@ jobs:
           done
 
           # Verify the setting
-          docker exec postgres-test psql -U postgres -c "SHOW max_connections;"
+          docker exec postgres-test-${{ github.run_id }} psql -U postgres -c "SHOW max_connections;"
 
       - name: Setup sccache (optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
@@ -451,6 +451,10 @@ jobs:
         with:
           files: target/coverage/lcov.info
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+
+      - name: Cleanup PostgreSQL container
+        if: always() && env.BACKEND_CHANGED == 'true'
+        run: docker rm -f postgres-test-${{ github.run_id }} || true
 
   backend-build:
     needs: [backend-test, changes]
