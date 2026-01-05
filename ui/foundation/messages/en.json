@@ -697,7 +697,19 @@
     "withdraw": "Withdraw",
     "youWithdraw": "You withdraw",
     "withdrawAddress": "Withdraw Wallet Address",
-    "placeholderWithdrawAddress": "Enter your {network} wallet address"
+    "placeholderWithdrawAddress": "Enter your {network} wallet address",
+    "network": [
+      {
+        "declarations": ["input network"],
+        "selectors": ["network"],
+        "match": {
+          "network=11155111": "Ethereum Sepolia",
+          "network=1": "Ethereum",
+          "network=8453": "Base",
+          "network=42161": "Arbitrum"
+        }
+      }
+    ]
   },
   "settings": {
     "title": "Settings",

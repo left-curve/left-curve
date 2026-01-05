@@ -21,7 +21,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { capitalize, parseUnits } from "@left-curve/dango/utils";
+import { parseUnits } from "@left-curve/dango/utils";
 
 import {
   Button,
@@ -308,7 +308,9 @@ const BridgeWithdraw: React.FC = () => {
           <Input
             {...register("recipient", { mask: masks[network as keyof typeof masks] })}
             label={m["bridge.withdrawAddress"]()}
-            placeholder={m["bridge.placeholderWithdrawAddress"]({ network: capitalize(network) })}
+            placeholder={m["bridge.placeholderWithdrawAddress"]({
+              network: m["bridge.network"]({ network }),
+            })}
           />
           <Input
             placeholder="0"
