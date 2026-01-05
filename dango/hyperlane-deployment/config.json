@@ -41,7 +41,7 @@
       "warp_routes": [
         {
           "warp_route_type": "native",
-          "symbol": "ETH"
+          "symbol": "eth"
         },
         {
           "warp_route_type": {
