@@ -106,9 +106,6 @@ RUN apt-get update && \
     mkdir -p /usr/share/hyperlane && chmod 755 /usr/share/hyperlane && \
     mkdir -p /data && chown -R 1000:1000 /data
 
-# Run as non-root user for improved security
-USER 1000
-
 # Use tini as the init process (same as Hyperlane upstream)
 ENTRYPOINT ["tini", "--"]
 

@@ -98,8 +98,6 @@ deploy-clickhouse:
 #   index: required for validator (e.g. "1", "2"), optional for relayer
 deploy-hyperlane network agent limit index="":
   ansible-playbook -i inventory hyperlane.yml \
-    -e deploy_user={{env_var("USER")}} \
-    -e hyperlane_agents_dir="{{invocation_directory()}}/../.hyperlane-agents" \
     -e hyperlane_agents_network={{network}} \
     -e hyperlane_agent_type={{agent}} \
     -e hyperlane_validator_index={{index}} \
