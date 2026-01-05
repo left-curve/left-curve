@@ -6,6 +6,37 @@
       - deploy_cosign_images | length > 0
     fail_msg: "deploy_cosign_images must describe the container images to verify before deployment."
 
+- name: Check if container images exist in registry
+  ansible.builtin.command: >
+    docker manifest inspect {{ item.image }}:{{ item.tag }}
+  register: image_exists_results
+  changed_when: false
+  failed_when: false
+  loop: "{{ deploy_cosign_images }}"
+  loop_control:
+    label: "{{ item.service }} -> {{ item.image }}:{{ item.tag }}"
+  environment:
+    PATH: "{{ ansible_facts['env']['PATH'] | default('') }}:/usr/local/bin"
+
+- name: Fail if container image does not exist
+  ansible.builtin.fail:
+    msg: |
+      ERROR: Container image does not exist in registry.
+
+      Image: {{ item.item.image }}:{{ item.item.tag }}
+      Service: {{ item.item.service }}
+
+      This is NOT a signature verification failure (which would indicate a security issue).
+      The image may have been deleted from the registry or was never built.
+
+      To fix this, trigger a rebuild by:
+      1. Re-running the CI workflow with changes to the relevant component, OR
+      2. Using the .force_frontend_rebuild or .force_backend_rebuild trigger files
+  when: item.rc != 0
+  loop: "{{ image_exists_results.results }}"
+  loop_control:
+    label: "{{ item.item.service }}"
+
 - name: Verify cosign signatures
   ansible.builtin.command: >
     cosign verify
