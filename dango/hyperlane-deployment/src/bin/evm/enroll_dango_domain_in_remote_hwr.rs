@@ -43,7 +43,13 @@ async fn main() -> anyhow::Result<()> {
     let (dango_client, ..) = setup::setup_dango(&config.dango).await?;
 
     // Enroll dango domain in remote HWR
-    enroll_dango_domain(&provider, &dango_client, args.warp_route_address).await?;
+    enroll_dango_domain(
+        &provider,
+        &dango_client,
+        args.warp_route_address,
+        evm_config.chain_id,
+    )
+    .await?;
 
     Ok(())
 }

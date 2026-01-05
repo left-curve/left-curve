@@ -35,6 +35,7 @@ pub async fn enroll_dango_domain(
     provider: &impl Provider,
     dango_client: &HttpClient,
     warp_proxy_address: Address,
+    chain_id: u32,
 ) -> anyhow::Result<()> {
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
 
@@ -56,7 +57,10 @@ pub async fn enroll_dango_domain(
     // Setup contract wrapper
     let hwr_proxy = TransparentUpgradeableProxy::new(warp_proxy_address, &provider);
 
-    println!("Enrolling dango domain in router on Sepolia...");
+    println!(
+        "Enrolling dango domain in router on EVM chain with chain ID {}...",
+        chain_id
+    );
     let tx_hash = provider
         .send_transaction(
             TransactionRequest::default()
@@ -191,7 +195,7 @@ pub async fn deploy_warp_route_and_update_deployment(
     .await?;
 
     // Enroll the dango domain in the warp route
-    enroll_dango_domain(provider, dango_client, proxy_address).await?;
+    enroll_dango_domain(provider, dango_client, proxy_address, evm_config.chain_id).await?;
 
     // Update the deployment with the new warp route
     deployment.warp_routes.push(
