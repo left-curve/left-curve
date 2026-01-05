@@ -42,17 +42,6 @@
         <script src="toc.js"></script>
     </head>
     <body>
-    <div id="mdbook-help-container">
-        <div id="mdbook-help-popup">
-            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
-            <div>
-                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
-                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
-                <p>Press <kbd>?</kbd> to show this help</p>
-                <p>Press <kbd>Esc</kbd> to hide this help</p>
-            </div>
-        </div>
-    </div>
     <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
@@ -130,7 +119,7 @@
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -327,6 +316,44 @@ fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -&gt; anyhow::Result&lt;Res
 }
 <span class="boring">}</span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+<h1 id="chain-upgrades"><a class="header" href="#chain-upgrades">Chain upgrades</a></h1>
+<p>There are three dimensions in which to evaluate whether a chain upgrade is a <strong>breaking change</strong>:</p>
+<ul>
+<li><strong>Consensus-breaking</strong>: a change in the chain's business logic. Given the same finalized state as of block <code>N - 1</code> and the same block <code>N</code>, executing the block <code>N</code> using the old and the new software would yield different results, resulting in a consensus failure.</li>
+<li><strong>State-breaking</strong>: a change in the format in which the chain's state is stored in the DB.</li>
+<li><strong>API-breaking</strong>: a change in the chain's transaction or query API.</li>
+</ul>
+<p>For example, PR <a href="https://github.com/left-curve/left-curve/pull/1217">#1217</a> is breaking in all three dimensions; PR <a href="https://github.com/left-curve/left-curve/pull/1299">#1299</a> however, is state-breaking, but not consensus- or API-breaking.</p>
+<p>Generally speaking, an upgrade that is breaking in any dimension requires a <strong>coordinated upgrade</strong>, meaning all <em>validating nodes</em> should halt <em>at exactly the same block height</em>, upgrade the software, run the upgrade logic (if any), and resume block production.</p>
+<h2 id="coordinated-upgrade"><a class="header" href="#coordinated-upgrade">Coordinated upgrade</a></h2>
+<p>The typical procedure of a coordinated upgrade is as follows, in chronological order:</p>
+<ol>
+<li>
+<p>The chain owner sends a transaction containing the a message in the following schema:</p>
+<pre><code class="language-json">{
+  "upgrade": {
+    "height": 12345,
+    "cargo_version": "1.2.3",
+    "git_tag": "v1.2.3",
+    "url": "https://github.com/left-curve/left-curve/releases/v1.2.3"
+  }
+}
+</code></pre>
+<p>This signals to node operators at which block the chain will be upgraded, and the proper version of node software they should upgrade to. <em>The node operators should not upgrade the software at this point yet.</em></p>
+</li>
+<li>
+<p>The chain finalizes the block right before the upgrade height (<code>12344</code> in this example). At the upgrade height (<code>12345</code>), during <code>FinalizeBlock</code>, Grug app notices the upgrade height is reached, but the chain isn't using the correct version (<code>1.2.3</code>), so it performs a graceful halt of the chain by returning an error in ABCI <code>FinalizeBlockResponse</code>. The upgrade height (<code>12345</code>) is not finalized, with no state change committed.</p>
+</li>
+<li>
+<p>The node operator replaces the node software on the server with the correct version (<code>1.2.3</code>), and restart the service.</p>
+</li>
+<li>
+<p>CometBFT attempts <code>FinalizeBlock</code> of the upgrade height (<code>12345</code>) again. Grug app notices the upgrade height is reached, and the software is of the correct version. It runs the upgrade logic specified in <code>App::upgrade_handler</code> (if any), and then resumes processing blocks.</p>
+</li>
+</ol>
+<h2 id="automation"><a class="header" href="#automation">Automation</a></h2>
+<p>Cosmos SDK chains uses a similar approach to coordinate upgrades, with the <a href="https://docs.cosmos.network/v0.53/build/modules/upgrade"><code>x/upgrade</code></a> module. There exists a tool, <a href="https://docs.cosmos.network/main/build/tooling/cosmovisor">cosmovisor</a>, that automates the step (3) discussed in the previous section, without the node operator having to manually do anything. Such a tool doesn't exist for Grug chains yet, but we're working on it.</p>
+<div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="entry-points"><a class="header" href="#entry-points">Entry points</a></h1>
 <p>Each Grug smart contract presents several predefined Wasm export functions known as <strong>entry points</strong>. The state machine (also referred to as the <strong>host</strong>) executes or makes queries at contracts by calling these functions. Some of the entry points are mandatory, while the others are optional. The Grug standard library provides an <code>#[grug::export]</code> macro which helps defining entry points.</p>
 <p>This page lists all supported entry points, in <em>Rust pseudo-code</em>.</p>
@@ -334,10 +361,10 @@ fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -&gt; anyhow::Result&lt;Res
 <p>These two are auto-implemented. They are used by the host to load data into the Wasm memory. The contract programmer should not try modifying them.</p>
 <pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>#[no_mangle]
+</span>#[unsafe(no_mangle)]
 extern "C" fn allocate(capacity: u32) -&gt; u32;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn deallocate(region_ptr: u32);
 <span class="boring">}</span></code></pre></pre>
 <h2 id="basic"><a class="header" href="#basic">Basic</a></h2>
