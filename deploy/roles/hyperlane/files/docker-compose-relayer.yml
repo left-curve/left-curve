@@ -1,0 +1,16 @@
+services:
+  relayer:
+    image: "ghcr.io/left-curve/left-curve/hyperlane-agents:${HYPERLANE_AGENTS_TAG}"
+    container_name: "${HYPERLANE_INSTANCE_NAME}"
+    env_file:
+      - .env
+    volumes:
+      - "${HYPERLANE_INSTANCE_DIR}/hyperlane_db:/app/hyperlane_db"
+      - "${HYPERLANE_AGENTS_DIR}/config.json:/config/config.json:ro"
+      - "${HYPERLANE_AGENTS_DIR}/relayer-config.json:/config/relayer-config.json:ro"
+      - "${HYPERLANE_AGENTS_DIR}/relayer-${HYPERLANE_AGENTS_NETWORK}-config.json:/config/relayer-${HYPERLANE_AGENTS_NETWORK}-config.json:ro"
+    environment:
+      CONFIG_FILES: >-
+        /config/config.json,/config/relayer-config.json,/config/relayer-${HYPERLANE_AGENTS_NETWORK}-config.json
+    command: ["./relayer"]
+    restart: unless-stopped
