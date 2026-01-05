@@ -38,7 +38,6 @@
           "threshold": 2
         }
       },
-      "proxy_admin_address": "0x311d8cd0eddab142be43a7f794b9013408675dbb",
       "warp_routes": [
         {
           "warp_route_type": "native",
