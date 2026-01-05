@@ -23,7 +23,7 @@
     ]
   },
   "evm": {
-    "11155111": {
+    "1": {
       "chain_id": 1,
       "infura_rpc_url": "https://mainnet.infura.io/v3/",
       "hyperlane_deployments": {
