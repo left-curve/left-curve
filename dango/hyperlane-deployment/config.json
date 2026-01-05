@@ -27,8 +27,8 @@
       "chain_id": 1,
       "infura_rpc_url": "https://mainnet.infura.io/v3/",
       "hyperlane_deployments": {
-        "static_message_id_multisig_ism_factory": "0xfeb9585b2f948c1ed74034205a7439261a9d27dd",
-        "mailbox": "0xffaef09b3cd11d9b20d1a19becca54eec2884766"
+        "static_message_id_multisig_ism_factory": "0xfA21D9628ADce86531854C2B7ef00F07394B0B69",
+        "mailbox": "0xc005dc82818d67AF737725bD4bf75435d065D239"
       },
       "hyperlane_domain": 1,
       "hyperlane_protocol_fee": 1,
