@@ -132,9 +132,6 @@ deploy-hyperlane-testnet-validator-3:
 deploy-hyperlane-testnet-relayer:
   just deploy-hyperlane testnet relayer 100.76.197.30
 
-deploy-hyperlane-local network agent index="":
-  just deploy-hyperlane {{network}} {{agent}} localhost {{index}}
-
 add-deploy-key:
   ./deploy-key.sh | ssh-add - >/dev/null
   @echo "Deploy key added to ssh-agent. You can now run ansible-playbook normally."
