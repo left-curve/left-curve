@@ -9,25 +9,28 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[dev-dependencies]
+[dependencies]
 anyhow         = { workspace = true }
-chrono         = { workspace = true }
-clap           = { workspace = true }
+async-trait    = { workspace = true }
 dango-client   = { workspace = true }
-dango-genesis  = { workspace = true }
-dango-testing  = { workspace = true }
-dango-types    = { workspace = true }
 dialoguer      = { workspace = true }
 grug           = { workspace = true }
 grug-app       = { workspace = true }
+indexer-client = { workspace = true }
+tokio          = { workspace = true }
+
+[dev-dependencies]
+chrono         = { workspace = true }
+clap           = { workspace = true }
+dango-genesis  = { workspace = true }
+dango-testing  = { workspace = true }
+dango-types    = { workspace = true }
 grug-db-disk   = { workspace = true }
 grug-db-memory = { workspace = true, features = ["snapshot"] }
 grug-vm-rust   = { workspace = true }
 hex            = { workspace = true }
 hex-literal    = { workspace = true }
 indexer-cache  = { workspace = true }
-indexer-client = { workspace = true }
 indexer-sql    = { workspace = true }
 num-format     = { workspace = true }
-tokio          = { workspace = true }
 tracing        = { workspace = true }

@@ -4181,6 +4181,7 @@ name = "dango-scripts"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "clap",
  "dango-client",
