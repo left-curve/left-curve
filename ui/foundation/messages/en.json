@@ -385,7 +385,6 @@
       "usernameRequired": "Username is required",
       "usernameNotExist": "Username doesn’t exist",
       "failedSigningIn": "Failed to connect with the selected credential."
-
     },
     "credential": {
       "description": "Choose any of the credentials that have been associated with your username."
@@ -412,7 +411,7 @@
     "termsOfUse": "Terms of Use"
   },
   "auth": {
-    "emailPlaceholder":"email",
+    "emailPlaceholder": "email",
     "passkey": "Passkey",
     "wallets": "Wallets",
     "didntReceiveCode": "Didn't receive the code?",
@@ -702,6 +701,7 @@
     "minimumWithdraw": "Minimum withdraw",
     "fee": "Fee",
     "placeholderWithdrawAddress": "Enter your {network} wallet address",
+    "activeAccount": "To activate your account, please deposit at least {amount}",
     "network": [
       {
         "declarations": ["input network"],

@@ -1,5 +1,6 @@
 import {
   useAccount,
+  useAppConfig,
   useBalances,
   useBridgeEvmDeposit,
   useBridgeState,
@@ -21,7 +22,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { Decimal, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
 
 import {
   Button,
@@ -141,12 +142,16 @@ const BitcoinDeposit: React.FC = () => {
 };
 
 const EvmDeposit: React.FC = () => {
+  const { userStatus } = useAccount();
   const { getPrice } = usePrices();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
   const { controllers, state } = useBridge();
-  const { inputs } = controllers;
+  const { inputs, errors } = controllers;
+
+  const { data: appConfig } = useAppConfig();
+  const { minimumDeposit } = appConfig || { minimumDeposit: {} };
 
   const { coin, connector, setConnectorId, config, reset } = state as NonNullablePropertiesBy<
     typeof state,
@@ -185,6 +190,16 @@ const EvmDeposit: React.FC = () => {
         controllers={controllers}
         showRange
         shouldValidate
+        extendValidation={(v) => {
+          if (userStatus === "active") return true;
+          const minDeposit = minimumDeposit[coin.denom as keyof typeof minimumDeposit];
+          if (!minDeposit) return true;
+
+          const amount = formatUnits(minDeposit, coin.decimals);
+          if (Number(v) < Number(amount))
+            return m["bridge.activeAccount"]({ amount: `${amount} ${coin.symbol}` });
+          return true;
+        }}
         label={
           <div className="flex justify-between w-full items-center">
             <p className="exposure-sm-italic text-ink-secondary-700">{m["bridge.youDeposit"]()}</p>
@@ -245,6 +260,7 @@ const EvmDeposit: React.FC = () => {
           fullWidth
           onClick={() => allowanceMutation.mutate()}
           isLoading={allowanceMutation.isPending || allowanceQuery.isLoading}
+          isDisabled={!!errors.amount}
           className="mt-4"
         >
           {m["bridge.allow"]()}
@@ -259,7 +275,7 @@ const EvmDeposit: React.FC = () => {
             reset();
           }}
           isLoading={deposit.isPending}
-          isDisabled={amount === "0"}
+          isDisabled={amount === "0" || !!errors.amount}
           className="mt-4"
         >
           {m["bridge.deposit"]()}

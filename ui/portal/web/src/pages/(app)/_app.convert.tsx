@@ -4,7 +4,7 @@ import { z } from "zod";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 const BASE_DENOM = "USDC";
-const DEFAULT_QUOTE = "BTC";
+const DEFAULT_QUOTE = "ETH";
 
 export const Route = createFileRoute("/(app)/_app/convert")({
   head: () => ({

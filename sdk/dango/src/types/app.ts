@@ -1,4 +1,4 @@
-import type { Address } from "@left-curve/sdk/types";
+import type { Address, Denom } from "@left-curve/sdk/types";
 
 export type AppConfig = {
   addresses: {
@@ -20,4 +20,5 @@ export type AppConfig = {
   maxLiquidationBonus: string;
   minLiquidationBonus: string;
   targetUtilizationRate: string;
+  minimumDeposit: Record<Denom, string>;
 };

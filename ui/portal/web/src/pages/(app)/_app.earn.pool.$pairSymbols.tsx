@@ -19,7 +19,7 @@ export const Route = createFileRoute("/(app)/_app/earn/pool/$pairSymbols")({
     const pairParams = await client?.getPair({ baseDenom, quoteDenom }).catch(() => null);
     if (pairParams) return { pair: { baseDenom, quoteDenom, params: pairParams } };
 
-    throw redirect({ to: "/earn/pool/$pairSymbols", params: { pairSymbols: "BTC-USDC" } });
+    throw redirect({ to: "/earn/pool/$pairSymbols", params: { pairSymbols: "ETH-USDC" } });
   },
   validateSearch: z.object({
     action: z.enum(["deposit", "withdraw"]).catch("deposit"),
