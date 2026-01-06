@@ -12,6 +12,8 @@ pub struct EVMConfig {
     pub hyperlane_protocol_fee: u128,
     pub ism: Ism,
     pub warp_routes: Vec<WarpRoute>,
+    /// The address of the multi-sig that will be the new owner of the ProxyAdmin contract.
+    pub multi_sig_address: Option<Address>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

@@ -38,7 +38,7 @@ To rebuild the EVM contracts from source, run the following.
      /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypNative.sol/HypNative.json
      /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/StaticMessageIdMultisigIsm.json \
      /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/StaticMessageIsMultisigIsmFactory.json \
-     /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/TokenRouter.json 
+     /path/to/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/TokenRouter.json
    do
      cp "$f" artifacts/evm
    done
@@ -50,6 +50,12 @@ Before you can run the deployment scripts make sure you have the correct environ
 
 The deployment scripts are located in the `dango/hyperlane-deployment/src/bin/evm/` directory. Use the `dango/hyperlane-deployment/config.json` file to configure the deployment.
 The main script is `deploy.rs`. It deploys the Hyperlane Routes that are configured in the config file.
+
+To deploy the EVM contracts, run the following:
+
+```bash
+cargo run -p dango-hyperlane-deployment --bin evm-deploy -- --config config.json --deployments deployments.json
+```
 
 ## SVM
 
