@@ -462,8 +462,7 @@
       ]
     },
     "accountCreated": {
-      "title": "Account Created",
-      "description": "Your user was created and now you can log in with your new account."
+      "description": "Account created successfully! You can now log in."
     },
     "title": "Create your account",
     "options": {
