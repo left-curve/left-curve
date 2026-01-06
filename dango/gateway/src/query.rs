@@ -1,6 +1,9 @@
 use {
     crate::{RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
-    dango_types::gateway::{QueryMsg, QueryRoutesResponseItem, RateLimit, Remote},
+    dango_types::gateway::{
+        QueryMsg, QueryReservesResponseItem, QueryRoutesResponseItem,
+        QueryWithdrawalFeesResponseItem, RateLimit, Remote,
+    },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Uint128,
@@ -31,8 +34,16 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_reserve(ctx, bridge, remote)?;
             res.to_json_value()
         },
+        QueryMsg::Reserves { start_after, limit } => {
+            let res = query_reserves(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
         QueryMsg::WithdrawalFee { denom, remote } => {
             let res = query_withdrawal_fee(ctx, denom, remote)?;
+            res.to_json_value()
+        },
+        QueryMsg::WithdrawalFees { start_after, limit } => {
+            let res = query_withdrawal_fees(ctx, start_after, limit)?;
             res.to_json_value()
         },
     }
@@ -76,6 +87,48 @@ fn query_reserve(ctx: ImmutableCtx, bridge: Addr, remote: Remote) -> StdResult<U
     RESERVES.load(ctx.storage, (bridge, remote))
 }
 
+fn query_reserves(
+    ctx: ImmutableCtx,
+    start_after: Option<(Addr, Remote)>,
+    limit: Option<u32>,
+) -> StdResult<Vec<QueryReservesResponseItem>> {
+    let start = start_after.map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    RESERVES
+        .range(ctx.storage, start, None, Order::Ascending)
+        .map(|res| {
+            let ((bridge, remote), reserve) = res?;
+            Ok(QueryReservesResponseItem {
+                bridge,
+                remote,
+                reserve,
+            })
+        })
+        .take(limit)
+        .collect()
+}
+
 fn query_withdrawal_fee(ctx: ImmutableCtx, denom: Denom, remote: Remote) -> StdResult<Uint128> {
     WITHDRAWAL_FEES.load(ctx.storage, (&denom, remote))
+}
+
+fn query_withdrawal_fees(
+    ctx: ImmutableCtx,
+    start_after: Option<(Denom, Remote)>,
+    limit: Option<u32>,
+) -> StdResult<Vec<QueryWithdrawalFeesResponseItem>> {
+    let start = start_after
+        .as_ref()
+        .map(|(denom, remote)| Bound::Exclusive((denom, *remote)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    WITHDRAWAL_FEES
+        .range(ctx.storage, start, None, Order::Ascending)
+        .map(|res| {
+            let ((denom, remote), fee) = res?;
+            Ok(QueryWithdrawalFeesResponseItem { denom, remote, fee })
+        })
+        .take(limit)
+        .collect()
 }
