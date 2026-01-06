@@ -19,7 +19,7 @@ export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
     if (!pair)
       throw redirect({
         to: "/trade/$pairSymbols",
-        params: { pairSymbols: "BTC-USDC" },
+        params: { pairSymbols: "ETH-USDC" },
       });
   },
   validateSearch: z.object({

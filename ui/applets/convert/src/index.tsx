@@ -29,7 +29,7 @@ const queryClient = new QueryClient({
 });
 
 export const ConvertApplet: React.FC = () => {
-  const [{ from, to }, onChangePair] = useState({ from: "USDC", to: "BTC" });
+  const [{ from, to }, onChangePair] = useState({ from: "USDC", to: "ETH" });
 
   return (
     <div className="w-full md:max-w-[25rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit text-ink-primary-900">
