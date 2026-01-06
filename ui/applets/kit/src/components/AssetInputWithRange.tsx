@@ -80,7 +80,6 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
   } = register(name, {
     strategy: "onChange",
     validate: (v) => {
-      console.log("blabla");
       if (!isConnected || !shouldValidate) return true;
       if (Number(v) > Number(balance)) return m["errors.validations.insufficientFunds"]();
       if (extendValidation) return extendValidation(v);
