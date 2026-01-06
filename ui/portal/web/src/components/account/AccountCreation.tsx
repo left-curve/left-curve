@@ -105,7 +105,7 @@ export const Deposit: React.FC = () => {
   useEffect(() => {
     if (!account) return;
     return subscriptions.subscribe("account", {
-      params: { userIndex: account.index },
+      params: { userIndex: userIndex as number },
       listener: async ({ accounts }) => {
         const account = accounts.at(0)!;
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
