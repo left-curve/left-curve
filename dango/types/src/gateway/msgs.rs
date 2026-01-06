@@ -1,6 +1,6 @@
 use {
     super::{Addr32, Origin, RateLimit, Remote},
-    grug::{Addr, Denom, Uint128},
+    grug::{Addr, Denom, Op, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -8,7 +8,9 @@ use {
 pub struct WithdrawalFee {
     pub denom: Denom,
     pub remote: Remote,
-    pub fee: Uint128,
+    /// Use `Op::Insert` to add a new fee or change an existing fee; use
+    /// `Op::Delete` to remove a fee.
+    pub fee: Op<Uint128>,
 }
 
 #[grug::derive(Serde)]

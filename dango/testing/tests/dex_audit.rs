@@ -410,7 +410,7 @@ fn issue_156_depth_quote_rounding_error() {
                 BridgeOp {
                     remote: Remote::Warp {
                         domain: ethereum::DOMAIN,
-                        contract: ethereum::WETH_WARP,
+                        contract: ethereum::ETH_WARP,
                     },
                     amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),

@@ -1035,7 +1035,7 @@ fn test_dex_actions(
                 BridgeOp {
                     remote: Remote::Warp {
                         domain: ethereum::DOMAIN,
-                        contract: ethereum::WETH_WARP,
+                        contract: ethereum::ETH_WARP,
                     },
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),

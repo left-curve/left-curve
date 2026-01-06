@@ -176,7 +176,7 @@ fn sending_remote_incorrect_route() {
 
     const ETHEREUM_WETH_REMOTE: Remote = Remote::Warp {
         domain: ethereum::DOMAIN,
-        contract: ethereum::WETH_WARP, // Wrong!!
+        contract: ethereum::ETH_WARP, // Wrong!!
     };
 
     const SEND_AMOUNT: u128 = 888_000_000;
