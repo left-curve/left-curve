@@ -3,8 +3,8 @@ use {
         constants::{eth, usdc},
         gateway::{self, Remote, WithdrawalFee},
     },
-    grug::{Addr, Coins, Message, Uint128, addr},
-    hyperlane_types::{addr32, constants::ethereum},
+    grug::{Addr, Coins, Message, Op, Uint128, addr},
+    hyperlane_types::constants::ethereum,
     indexer_client::HttpClient,
 };
 
@@ -24,25 +24,40 @@ impl dango_scripts::MessageBuilder for MessageBuilder {
         Ok(Message::execute(
             GATEWAY,
             &gateway::ExecuteMsg::SetWithdrawalFees(vec![
+                // The following two are the correct withdrawal fees.
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: ethereum::DOMAIN,
-                        contract: addr32!(
-                            "000000000000000000000000d05909852ae07118857f9d071781671d12c0f36c"
-                        ),
+                        contract: ethereum::USDC_WARP,
                     },
-                    fee: Uint128::new(100_000), // 0.1 USDC
+                    fee: Op::Insert(Uint128::new(100_000)), // 0.1 USDC
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: ethereum::DOMAIN,
-                        contract: addr32!(
-                            "0000000000000000000000009d259aa1ec7324c7433b89d2935b08c30f3154cb"
-                        ),
+                        contract: ethereum::WETH_WARP,
                     },
-                    fee: Uint128::new(50_000_000_000_000), // 0.00005 ETH ~= 0.15 USD
+                    fee: Op::Insert(Uint128::new(50_000_000_000_000)), // 0.00005 ETH ~= 0.15 USD
+                },
+                // The following two are incorrect ones that I added previously
+                // by mistake. Deleting them.
+                WithdrawalFee {
+                    denom: usdc::DENOM.clone(),
+                    remote: Remote::Warp {
+                        domain: ethereum::DOMAIN,
+                        contract: ethereum::WETH_WARP, // should be USDC, got ETH
+                    },
+                    fee: Op::Delete,
+                },
+                WithdrawalFee {
+                    denom: eth::DENOM.clone(),
+                    remote: Remote::Warp {
+                        domain: ethereum::DOMAIN,
+                        contract: ethereum::USDC_WARP, // should be ETH, got USDC
+                    },
+                    fee: Op::Delete,
                 },
             ]),
             Coins::new(),

@@ -24,7 +24,7 @@ use {
     },
     grug::{
         Addressable, Binary, BlockInfo, Bounded, Coin, Coins, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Timestamp, Udec128, Uint128,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Op, Timestamp, Udec128, Uint128,
         btree_map, btree_set,
     },
     hyperlane_testing::constants::{
@@ -505,7 +505,7 @@ impl Preset for GatewayOption {
                         domain: arbitrum::DOMAIN,
                         contract: arbitrum::USDC_WARP,
                     },
-                    fee: Uint128::new(100_000),
+                    fee: Op::Insert(Uint128::new(100_000)),
                 },
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
@@ -513,7 +513,7 @@ impl Preset for GatewayOption {
                         domain: base::DOMAIN,
                         contract: base::USDC_WARP,
                     },
-                    fee: Uint128::new(100_000),
+                    fee: Op::Insert(Uint128::new(100_000)),
                 },
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
@@ -521,7 +521,7 @@ impl Preset for GatewayOption {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::USDC_WARP,
                     },
-                    fee: Uint128::new(1_000_000),
+                    fee: Op::Insert(Uint128::new(1_000_000)),
                 },
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
@@ -529,7 +529,7 @@ impl Preset for GatewayOption {
                         domain: optimism::DOMAIN,
                         contract: optimism::USDC_WARP,
                     },
-                    fee: Uint128::new(100_000),
+                    fee: Op::Insert(Uint128::new(100_000)),
                 },
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
@@ -537,7 +537,7 @@ impl Preset for GatewayOption {
                         domain: solana::DOMAIN,
                         contract: solana::USDC_WARP,
                     },
-                    fee: Uint128::new(10_000),
+                    fee: Op::Insert(Uint128::new(10_000)),
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
@@ -545,7 +545,7 @@ impl Preset for GatewayOption {
                         domain: arbitrum::DOMAIN,
                         contract: arbitrum::WETH_WARP,
                     },
-                    fee: Uint128::new(50_000_000_000_000),
+                    fee: Op::Insert(Uint128::new(50_000_000_000_000)),
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
@@ -553,7 +553,7 @@ impl Preset for GatewayOption {
                         domain: base::DOMAIN,
                         contract: base::WETH_WARP,
                     },
-                    fee: Uint128::new(50_000_000_000_000),
+                    fee: Op::Insert(Uint128::new(50_000_000_000_000)),
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
@@ -561,7 +561,7 @@ impl Preset for GatewayOption {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::WETH_WARP,
                     },
-                    fee: Uint128::new(500_000_000_000_000),
+                    fee: Op::Insert(Uint128::new(500_000_000_000_000)),
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
@@ -569,7 +569,7 @@ impl Preset for GatewayOption {
                         domain: optimism::DOMAIN,
                         contract: optimism::WETH_WARP,
                     },
-                    fee: Uint128::new(50_000_000_000_000),
+                    fee: Op::Insert(Uint128::new(50_000_000_000_000)),
                 },
                 WithdrawalFee {
                     denom: sol::DENOM.clone(),
@@ -577,7 +577,7 @@ impl Preset for GatewayOption {
                         domain: solana::DOMAIN,
                         contract: solana::SOL_WARP,
                     },
-                    fee: Uint128::new(66_667), // ~$0.01, assume SOL is $150
+                    fee: Op::Insert(Uint128::new(66_667)), // ~$0.01, assume SOL is $150
                 },
             ],
             rate_limits: btree_map! {

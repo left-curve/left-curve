@@ -11,7 +11,7 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst,
+        Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst, Op,
         QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
@@ -123,7 +123,14 @@ fn _set_withdrawal_fees(
     withdrawal_fees: Vec<WithdrawalFee>,
 ) -> StdResult<()> {
     for WithdrawalFee { denom, remote, fee } in withdrawal_fees {
-        WITHDRAWAL_FEES.save(storage, (&denom, remote), &fee)?;
+        match fee {
+            Op::Insert(fee) => {
+                WITHDRAWAL_FEES.save(storage, (&denom, remote), &fee)?;
+            },
+            Op::Delete => {
+                WITHDRAWAL_FEES.remove(storage, (&denom, remote));
+            },
+        }
     }
 
     Ok(())
