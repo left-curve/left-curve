@@ -147,6 +147,9 @@ export {
   type CreateSessionParameters,
   type CreateSessionReturnType,
   createSession,
+  type GetUsernameByIndexParameters,
+  type GetUsernameByIndexReturnType,
+  getUsernameByIndex,
 } from "./account-factory/index.js";
 
 /* -------------------------------------------------------------------------- */

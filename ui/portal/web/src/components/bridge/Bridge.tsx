@@ -21,7 +21,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { capitalize, parseUnits } from "@left-curve/dango/utils";
+import { parseUnits } from "@left-curve/dango/utils";
 
 import {
   Button,
@@ -148,7 +148,7 @@ const EvmDeposit: React.FC = () => {
   const { controllers, state } = useBridge();
   const { inputs } = controllers;
 
-  const { coin, connector, setConnectorId, config } = state as NonNullablePropertiesBy<
+  const { coin, connector, setConnectorId, config, reset } = state as NonNullablePropertiesBy<
     typeof state,
     "coin" | "config"
   >;
@@ -167,7 +167,7 @@ const EvmDeposit: React.FC = () => {
 
   const evmAddress = wallet.data?.account.address;
 
-  const { data: balances = {} } = useEvmBalances({
+  const { data: balances = {}, refetch: refreshBalances } = useEvmBalances({
     chain: config.chain,
     address: evmAddress,
   });
@@ -253,7 +253,11 @@ const EvmDeposit: React.FC = () => {
       {!requiresAllowance && (
         <Button
           fullWidth
-          onClick={() => deposit.mutate()}
+          onClick={async () => {
+            await deposit.mutateAsync();
+            await refreshBalances();
+            reset();
+          }}
           isLoading={deposit.isPending}
           isDisabled={amount === "0"}
           className="mt-4"
@@ -272,7 +276,7 @@ const BridgeWithdraw: React.FC = () => {
   const { state, controllers } = useBridge();
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { getPrice } = usePrices();
-  const { action, coin, network, config } = state;
+  const { action, coin, network, config, reset } = state;
   const { register, inputs } = controllers;
 
   const amount = inputs.amount?.value || "0";
@@ -304,7 +308,9 @@ const BridgeWithdraw: React.FC = () => {
           <Input
             {...register("recipient", { mask: masks[network as keyof typeof masks] })}
             label={m["bridge.withdrawAddress"]()}
-            placeholder={m["bridge.placeholderWithdrawAddress"]({ network: capitalize(network) })}
+            placeholder={m["bridge.placeholderWithdrawAddress"]({
+              network: m["bridge.network"]({ network }),
+            })}
           />
           <Input
             placeholder="0"
@@ -340,7 +346,10 @@ const BridgeWithdraw: React.FC = () => {
 
           <Button
             fullWidth
-            onClick={() => withdraw.mutate()}
+            onClick={async () => {
+              await withdraw.mutateAsync();
+              reset();
+            }}
             isLoading={withdraw.isPending}
             className="mt-4"
           >

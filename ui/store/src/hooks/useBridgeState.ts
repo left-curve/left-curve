@@ -32,10 +32,10 @@ export function useBridgeState(params: UseBridgeStateParameters) {
 
   const { current: networks } = useRef([
     { name: "Ethereum Network", id: "1", time: "16 blocks | 5-30 mins" },
-    { name: "Base Network", id: "8453", time: "5-30 mins" },
+    /*   { name: "Base Network", id: "8453", time: "5-30 mins" },
     { name: "Arbitrum Network", id: "42161", time: "5-30 mins" },
-    /*       { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
-          { name: "Solana Network", id: "solana", time: "2-10 mins" }, */
+    { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
+    { name: "Solana Network", id: "solana", time: "2-10 mins" }, */
     ...(["Devnet", "Testnet"].includes(dangoChain.name)
       ? [{ name: "Sepolia Network", id: "11155111", time: "5-30 mins" }]
       : []),
@@ -98,11 +98,15 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     return { chain, bridger, router };
   }, [network, coin]);
 
-  useEffect(() => {
+  const reset = useCallback(() => {
     setConnectorId(null);
     setCoin(undefined);
     setNetwork(undefined);
     controllers.reset();
+  }, [controllers]);
+
+  useEffect(() => {
+    reset();
   }, [action]);
 
   return {
@@ -116,5 +120,6 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     networks,
     connector,
     setConnectorId,
+    reset,
   };
 }
