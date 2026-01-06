@@ -1,10 +1,9 @@
 import { forwardRef } from "react";
 
-import { Button, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
+import { Button, IconButton, IconClose, TruncateResponsive, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { AnyCoin } from "@left-curve/store/types";
 import { usePrices, type useBridgeState, type UseSubmitTxReturnType } from "@left-curve/store";
-import { TruncateResponsive } from "../../../../../applets/kit/src/components/TruncateResponsive";
 
 interface BridgeWithdrawProps {
   coin: AnyCoin;
