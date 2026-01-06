@@ -31,7 +31,9 @@ export const CurrentBlock: React.FC<CurrentBlockProps> = ({ classNames, selector
   }, []);
 
   return currentBlock ? (
-    <p className={classNames?.container}>#{currentBlock[selector]}</p>
+    <p
+      className={classNames?.container}
+    >{`${selector === "height" ? "#" : ""}${currentBlock[selector]}`}</p>
   ) : (
     <Skeleton className={classNames?.skeleton} />
   );
