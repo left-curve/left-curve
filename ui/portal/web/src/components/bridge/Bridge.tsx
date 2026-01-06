@@ -313,7 +313,7 @@ const BridgeWithdraw: React.FC = () => {
               <div className="w-full flex justify-between">
                 <p>{m["bridge.minimumWithdraw"]()}</p>
                 <p className="flex gap-1">
-                  <span>{fee}</span>
+                  <span>{`> ${fee}`}</span>
                   <span>{coin.symbol}</span>
                 </p>
               </div>

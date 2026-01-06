@@ -73,7 +73,9 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               className="shadow-account-card lg:hidden"
             >
               <TxIndicator
-                icon={<IconWalletWithCross isCrossVisible={isConnected && !userStatus} />}
+                icon={
+                  <IconWalletWithCross isCrossVisible={isConnected && userStatus !== "active"} />
+                }
               />
             </IconButton>
           ) : null}
