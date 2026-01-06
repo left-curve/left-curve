@@ -411,6 +411,7 @@
     "termsOfUse": "Terms of Use"
   },
   "auth": {
+    "emailPlaceholder":"email",
     "passkey": "Passkey",
     "wallets": "Wallets",
     "didntReceiveCode": "Didn't receive the code?",
