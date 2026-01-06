@@ -8,6 +8,7 @@ import { toAddr32 } from "@left-curve/dango/hyperlane";
 
 import type { AnyCoin } from "../types/coin.js";
 import type { HyperlaneConfig } from "@left-curve/dango/types";
+import { useAccount } from "./useAccount.js";
 
 export type UseBridgeStateParameters = {
   config: {
@@ -23,6 +24,7 @@ export type UseBridgeStateParameters = {
 
 export function useBridgeState(params: UseBridgeStateParameters) {
   const { coins: allCoins, chain: dangoChain } = useConfig();
+  const { isConnected } = useAccount();
 
   const {
     action,
@@ -108,6 +110,12 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   useEffect(() => {
     reset();
   }, [action]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      reset();
+    }
+  }, [isConnected]);
 
   return {
     action,
