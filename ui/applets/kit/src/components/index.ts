@@ -53,6 +53,7 @@ export { QRCodeReader } from "./QRCodeReader";
 export { AssetInputWithRange } from "./AssetInputWithRange";
 export { DepositAddressBox } from "./DepositAddressBox";
 export { ConnectWalletWithModal } from "./ConnectWalletWithModal";
+export { TruncateResponsive } from "./TruncateResponsive";
 
 /* ---------------------------------- Icons --------------------------------- */
 

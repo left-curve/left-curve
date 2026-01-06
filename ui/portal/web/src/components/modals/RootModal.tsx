@@ -180,6 +180,16 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       disableClosing: true,
     },
   },
+  [Modals.BridgeWithdraw]: {
+    component: lazy(() =>
+      import("./BridgeWithdraw").then(({ BridgeWithdraw }) => ({
+        default: BridgeWithdraw,
+      })),
+    ),
+    options: {
+      disableClosing: true,
+    },
+  },
 };
 
 type ModalDefinition = {

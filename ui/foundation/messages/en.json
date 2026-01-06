@@ -1,6 +1,8 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common": {
+    "chain": "Chain",
+    "fee": "Fee",
     "account": "Account",
     "connect": "Connect",
     "assets": "Assets",
@@ -695,7 +697,12 @@
     "allow": "Allow",
     "youDeposit": "You deposit",
     "youGet": "You get",
-    "withdraw": "Withdraw",
+    "withdraw": {
+        "title": "Withdraw",
+        "action": "Withdrawing",
+        "toWallet": "To Wallet Address",
+        "estArrival": "Est. Arrival"
+      },
     "youWithdraw": "You withdraw",
     "withdrawAddress": "Withdraw Wallet Address",
     "minimumWithdraw": "Minimum withdraw",
@@ -711,6 +718,18 @@
           "network=1": "Ethereum",
           "network=8453": "Base",
           "network=42161": "Arbitrum"
+        }
+      }
+    ],
+    "timeArrival": [
+      {
+        "declarations": ["input network"],
+        "selectors": ["network"],
+        "match": {
+          "network=11155111": "1-2 minutes",
+          "network=1": "3-6 minutes",
+          "network=8453": "3-6 minutes",
+          "network=42161": "3-6 minutes"
         }
       }
     ]

@@ -16,6 +16,7 @@ import {
   DepositAddressBox,
   ethAddressMask,
   IconDisconnect,
+  Modals,
   TruncateText,
   useApp,
   useInputs,
@@ -294,6 +295,7 @@ const BridgeWithdraw: React.FC = () => {
   const { getPrice } = usePrices();
   const { action, coin, network, config, reset } = state;
   const { register, inputs } = controllers;
+  const { showModal } = useApp();
 
   const amount = inputs.amount?.value || "0";
   const recipient = inputs.recipient?.value || "";
@@ -303,9 +305,20 @@ const BridgeWithdraw: React.FC = () => {
     config: config as NonNullable<typeof config>,
     amount,
     recipient,
+    reset,
   });
 
   const fee = withdrawFee.data || "0";
+
+  const handleWithdraw = () =>
+    showModal(Modals.BridgeWithdraw, {
+      coin,
+      config,
+      amount,
+      recipient,
+      withdraw,
+      fee,
+    });
 
   const feeSubtraction = Decimal(amount).minus(fee);
   const youGet = feeSubtraction.gt("0") ? feeSubtraction.toFixed() : "0";
@@ -383,17 +396,8 @@ const BridgeWithdraw: React.FC = () => {
             }
           />
 
-          <Button
-            fullWidth
-            onClick={async () => {
-              await withdraw.mutateAsync();
-              reset();
-            }}
-            isDisabled={youGet === "0"}
-            isLoading={withdraw.isPending}
-            className="mt-4"
-          >
-            {m["bridge.withdraw"]()}
+          <Button fullWidth onClick={handleWithdraw} className="mt-4" isDisabled={!recipient}>
+            {m["bridge.withdraw.title"]()}
           </Button>
         </div>
       )}
