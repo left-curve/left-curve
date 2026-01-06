@@ -31,8 +31,6 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
 
   const { bridger, router, chain } = config;
 
-  console.log(router);
-
   const { account } = useAccount();
   const { getAppConfig } = useConfig();
   const { data: signingClient } = useSigningClient();

@@ -25,6 +25,7 @@ type AssetInputWithRangeProps = {
   shouldValidate?: boolean;
   showRange?: boolean;
   balances: Coins;
+  extendValidation?: (value: string) => string | boolean;
   onFocus?: () => void;
   onSelectCoin?: (denom: string) => void;
   triggerSimulation?: (reverse?: boolean) => void;
@@ -59,6 +60,7 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
     onSelectCoin,
     triggerSimulation,
     renderSelector,
+    extendValidation,
   } = props;
 
   const { register, setValue } = controllers;
@@ -78,8 +80,10 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
   } = register(name, {
     strategy: "onChange",
     validate: (v) => {
+      console.log("blabla");
       if (!isConnected || !shouldValidate) return true;
       if (Number(v) > Number(balance)) return m["errors.validations.insufficientFunds"]();
+      if (extendValidation) return extendValidation(v);
       return true;
     },
     mask: numberMask,
