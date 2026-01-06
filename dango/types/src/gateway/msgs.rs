@@ -65,9 +65,21 @@ pub enum QueryMsg {
     /// Given a `(bridge, remote)` tuple, find the reserve amount.
     #[returns(Uint128)]
     Reserve { bridge: Addr, remote: Remote },
+    /// Enumerate all reserves.
+    #[returns(Vec<QueryReservesResponseItem>)]
+    Reserves {
+        start_after: Option<(Addr, Remote)>,
+        limit: Option<u32>,
+    },
     /// Given a `(denom, remote)` tuple, find the withdrawal fee.
     #[returns(Uint128)]
     WithdrawalFee { denom: Denom, remote: Remote },
+    /// Enumerate all withdrawal fees.
+    #[returns(Vec<QueryWithdrawalFeesResponseItem>)]
+    WithdrawalFees {
+        start_after: Option<(Denom, Remote)>,
+        limit: Option<u32>,
+    },
 }
 
 #[grug::derive(Serde)]
@@ -75,4 +87,18 @@ pub struct QueryRoutesResponseItem {
     pub bridge: Addr,
     pub remote: Remote,
     pub denom: Denom,
+}
+
+#[grug::derive(Serde)]
+pub struct QueryReservesResponseItem {
+    pub bridge: Addr,
+    pub remote: Remote,
+    pub reserve: Uint128,
+}
+
+#[grug::derive(Serde)]
+pub struct QueryWithdrawalFeesResponseItem {
+    pub denom: Denom,
+    pub remote: Remote,
+    pub fee: Uint128,
 }
