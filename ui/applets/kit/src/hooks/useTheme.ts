@@ -7,6 +7,7 @@ export type Themes = "dark" | "light";
 export type UseThemeReturnType = {
   theme: Themes;
   themeSchema: ThemesSchema;
+  hasLoaded: boolean;
   setThemeSchema: (theme: ThemesSchema) => void;
 };
 
@@ -18,7 +19,7 @@ const getPreferredScheme = (): Themes => {
 };
 
 export function useTheme(): UseThemeReturnType {
-  const [themeSchema, setThemeSchema] = useStorage<ThemesSchema>("app.theme", {
+  const [themeSchema, setThemeSchema, hasLoaded] = useStorage<ThemesSchema>("app.theme", {
     initialValue: "system",
     sync: true,
   });
@@ -33,5 +34,5 @@ export function useTheme(): UseThemeReturnType {
     root.classList.add(theme);
   }, [theme]);
 
-  return { theme, themeSchema, setThemeSchema };
+  return { theme, themeSchema, setThemeSchema, hasLoaded };
 }

@@ -123,5 +123,5 @@ export function useStorage<T>(
   if (!isMounted) return [initialValue as T, setValue, true];
   if (!enabled) return [initialValue as T, setValue, false];
 
-  return [value as T, setValue, !hasHydrated];
+  return [value as T, setValue, hasHydrated];
 }

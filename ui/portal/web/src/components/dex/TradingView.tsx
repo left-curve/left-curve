@@ -129,7 +129,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       widgetRef.current?.remove();
       widgetRef.current = null;
     };
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
