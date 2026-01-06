@@ -109,13 +109,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
 
   useEffect(() => {
     reset();
-  }, [action]);
-
-  useEffect(() => {
-    if (!isConnected) {
-      reset();
-    }
-  }, [isConnected]);
+  }, [action, isConnected]);
 
   return {
     action,
