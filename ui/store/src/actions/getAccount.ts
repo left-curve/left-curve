@@ -137,7 +137,6 @@ export function getAccount<
   const username = config.state.userIndexAndName?.name;
   const userIndex = config.state.userIndexAndName?.index;
 
-  console.log(userIndex, "userIndex");
   const account = acc as Account<accountType>;
   switch (status) {
     case "connected":

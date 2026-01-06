@@ -21,7 +21,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { parseUnits } from "@left-curve/dango/utils";
+import { Decimal, parseUnits } from "@left-curve/dango/utils";
 
 import {
   Button,
@@ -282,12 +282,17 @@ const BridgeWithdraw: React.FC = () => {
   const amount = inputs.amount?.value || "0";
   const recipient = inputs.recipient?.value || "";
 
-  const { withdraw } = useBridgeWithdraw({
+  const { withdraw, withdrawFee } = useBridgeWithdraw({
     coin: coin as AnyCoin,
     config: config as NonNullable<typeof config>,
     amount,
     recipient,
   });
+
+  const fee = withdrawFee.data || "0";
+
+  const feeSubstraction = Decimal(amount).minus(fee);
+  const youGet = feeSubstraction.gt("0") ? feeSubstraction.toFixed() : "0";
 
   if (action !== "withdraw") return null;
 
@@ -304,6 +309,15 @@ const BridgeWithdraw: React.FC = () => {
             controllers={controllers}
             showRange
             label={m["bridge.youWithdraw"]()}
+            bottomComponent={
+              <div className="w-full flex justify-between">
+                <p>{m["bridge.minimumWithdraw"]()}</p>
+                <p className="flex gap-1">
+                  <span>{fee}</span>
+                  <span>{coin.symbol}</span>
+                </p>
+              </div>
+            }
           />
           <Input
             {...register("recipient", { mask: masks[network as keyof typeof masks] })}
@@ -316,7 +330,7 @@ const BridgeWithdraw: React.FC = () => {
             placeholder="0"
             readOnly
             label={m["bridge.youGet"]()}
-            value={amount}
+            value={youGet}
             classNames={{
               base: "z-20",
               inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
@@ -332,10 +346,19 @@ const BridgeWithdraw: React.FC = () => {
                 </div>
               </div>
             }
+            bottomComponent={
+              <div className="w-full flex justify-between">
+                <p>{m["bridge.fee"]()}</p>
+                <p className="flex gap-1">
+                  <span>{fee}</span>
+                  <span>{coin.symbol}</span>
+                </p>
+              </div>
+            }
             insideBottomComponent={
               <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
                 <p>
-                  {getPrice(amount, coin.denom, {
+                  {getPrice(youGet, coin.denom, {
                     format: true,
                     formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
                   })}
@@ -350,6 +373,7 @@ const BridgeWithdraw: React.FC = () => {
               await withdraw.mutateAsync();
               reset();
             }}
+            isDisabled={youGet === "0"}
             isLoading={withdraw.isPending}
             className="mt-4"
           >
