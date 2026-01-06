@@ -49,7 +49,5 @@ async fn main() -> anyhow::Result<()> {
         args.warp_route_address,
         evm_config.chain_id,
     )
-    .await?;
-
-    Ok(())
+    .await
 }
