@@ -291,8 +291,8 @@ const BridgeWithdraw: React.FC = () => {
 
   const fee = withdrawFee.data || "0";
 
-  const feeSubstraction = Decimal(amount).minus(fee);
-  const youGet = feeSubstraction.gt("0") ? feeSubstraction.toFixed() : "0";
+  const feeSubtraction = Decimal(amount).minus(fee);
+  const youGet = feeSubtraction.gt("0") ? feeSubtraction.toFixed() : "0";
 
   if (action !== "withdraw") return null;
 
