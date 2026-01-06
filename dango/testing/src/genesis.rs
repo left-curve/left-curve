@@ -69,7 +69,7 @@ impl Preset for TestOption {
                     BridgeOp {
                         remote: Remote::Warp {
                             domain: ethereum::DOMAIN,
-                            contract: ethereum::WETH_WARP,
+                            contract: ethereum::ETH_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.owner.address(),
@@ -85,7 +85,7 @@ impl Preset for TestOption {
                     BridgeOp {
                         remote: Remote::Warp {
                             domain: ethereum::DOMAIN,
-                            contract: ethereum::WETH_WARP,
+                            contract: ethereum::ETH_WARP,
                         },
                         amount: Uint128::new(20_000_000_000_000_000_000), // 20 ETH
                         recipient: accounts.user1.address(),
@@ -101,7 +101,7 @@ impl Preset for TestOption {
                     BridgeOp {
                         remote: Remote::Warp {
                             domain: ethereum::DOMAIN,
-                            contract: ethereum::WETH_WARP,
+                            contract: ethereum::ETH_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user2.address(),
@@ -479,19 +479,19 @@ impl Preset for GatewayOption {
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: arbitrum::DOMAIN,
-                    contract: arbitrum::WETH_WARP,
+                    contract: arbitrum::ETH_WARP,
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: base::DOMAIN,
-                    contract: base::WETH_WARP,
+                    contract: base::ETH_WARP,
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: ethereum::DOMAIN,
-                    contract: ethereum::WETH_WARP,
+                    contract: ethereum::ETH_WARP,
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: optimism::DOMAIN,
-                    contract: optimism::WETH_WARP,
+                    contract: optimism::ETH_WARP,
                 }),
                 (Origin::Remote(sol::SUBDENOM.clone()), Remote::Warp {
                     domain: solana::DOMAIN,
@@ -543,7 +543,7 @@ impl Preset for GatewayOption {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: arbitrum::DOMAIN,
-                        contract: arbitrum::WETH_WARP,
+                        contract: arbitrum::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(50_000_000_000_000)),
                 },
@@ -551,7 +551,7 @@ impl Preset for GatewayOption {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: base::DOMAIN,
-                        contract: base::WETH_WARP,
+                        contract: base::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(50_000_000_000_000)),
                 },
@@ -559,7 +559,7 @@ impl Preset for GatewayOption {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: ethereum::DOMAIN,
-                        contract: ethereum::WETH_WARP,
+                        contract: ethereum::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(500_000_000_000_000)),
                 },
@@ -567,7 +567,7 @@ impl Preset for GatewayOption {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: optimism::DOMAIN,
-                        contract: optimism::WETH_WARP,
+                        contract: optimism::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(50_000_000_000_000)),
                 },

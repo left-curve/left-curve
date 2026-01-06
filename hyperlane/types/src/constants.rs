@@ -22,7 +22,7 @@ pub mod arbitrum {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     // TODO: not yet deployed
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 }
 
@@ -36,7 +36,7 @@ pub mod arbitrum_testnet {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     // TODO: not yet deployed
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 }
 
@@ -50,7 +50,7 @@ pub mod base {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     // TODO: not yet deployed
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 }
 
@@ -64,7 +64,7 @@ pub mod base_testnet {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     // TODO: not yet deployed
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 }
 
@@ -76,7 +76,7 @@ pub mod ethereum {
     pub const USDC_WARP: Addr32 =
         addr32!("000000000000000000000000d05909852ae07118857f9d071781671d12c0f36c");
 
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("0000000000000000000000009d259aa1ec7324c7433b89d2935b08c30f3154cb");
 }
 
@@ -88,7 +88,7 @@ pub mod ethereum_testnet {
     pub const USDC_WARP: Addr32 =
         addr32!("0000000000000000000000000d8c3516df20cff940e479ea2d8c7d1dd0a706ac");
 
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("000000000000000000000000e3109f83bef36aece35870ee1b2e07a5dd12cfa9");
 }
 
@@ -102,7 +102,7 @@ pub mod optimism {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     // TODO: not yet deployed
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 }
 
@@ -116,7 +116,7 @@ pub mod optimism_testnet {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     // TODO: not yet deployed
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 }
 
@@ -130,7 +130,7 @@ pub mod polygon {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     // TODO: not yet deployed
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 }
 
@@ -144,7 +144,7 @@ pub mod polygon_testnet {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     // TODO: not yet deployed
-    pub const WETH_WARP: Addr32 =
+    pub const ETH_WARP: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 }
 

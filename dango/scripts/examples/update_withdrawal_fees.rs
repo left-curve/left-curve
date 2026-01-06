@@ -37,7 +37,7 @@ impl dango_scripts::MessageBuilder for MessageBuilder {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: ethereum::DOMAIN,
-                        contract: ethereum::WETH_WARP,
+                        contract: ethereum::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(50_000_000_000_000)), // 0.00005 ETH ~= 0.15 USD
                 },
@@ -47,7 +47,7 @@ impl dango_scripts::MessageBuilder for MessageBuilder {
                     denom: usdc::DENOM.clone(),
                     remote: Remote::Warp {
                         domain: ethereum::DOMAIN,
-                        contract: ethereum::WETH_WARP, // should be USDC, got ETH
+                        contract: ethereum::ETH_WARP, // should be USDC, got ETH
                     },
                     fee: Op::Delete,
                 },
