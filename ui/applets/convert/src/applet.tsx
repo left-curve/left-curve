@@ -250,7 +250,7 @@ const ConvertTrigger: React.FC = () => {
   const { state, controllers } = useConvert();
   const { simulation, submission } = state;
   const { isValid } = controllers;
-  const { navigate } = useApp();
+  const { showModal } = useApp();
 
   return isConnected ? (
     <Button
@@ -266,7 +266,11 @@ const ConvertTrigger: React.FC = () => {
       {m["dex.convert.swap"]()}
     </Button>
   ) : (
-    <Button fullWidth size="md" onClick={() => navigate("/signin")}>
+    <Button
+      fullWidth
+      size="md"
+      onClick={() => showModal(Modals.Authenticate, { action: "signin" })}
+    >
       {m["common.signin"]()}
     </Button>
   );

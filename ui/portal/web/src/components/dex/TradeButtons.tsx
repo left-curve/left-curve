@@ -2,6 +2,7 @@ import {
   Button,
   IconButton,
   IconChevronRight,
+  Modals,
   twMerge,
   useApp,
   usePortalTarget,
@@ -21,7 +22,7 @@ type TradeButtonsProps = {
 
 export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
   const navigate = useNavigate();
-  const { setTradeBarVisibility } = useApp();
+  const { setTradeBarVisibility, showModal } = useApp();
   const { isConnected } = useAccount();
 
   const { changeAction, baseCoin } = state;
@@ -67,7 +68,10 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
                   </Button>
                 </div>
               ) : (
-                <Button className="flex-1 h-[44px]" onClick={() => navigate({ to: "/signin" })}>
+                <Button
+                  className="flex-1 h-[44px]"
+                  onClick={() => showModal(Modals.Authenticate, { action: "signin" })}
+                >
                   {m["common.connect"]()}
                 </Button>
               )}
