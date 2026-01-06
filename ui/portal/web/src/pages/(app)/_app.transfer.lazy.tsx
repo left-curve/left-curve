@@ -143,8 +143,10 @@ function TransferApplet() {
                     <CoinSelector
                       coins={
                         isConnected
-                          ? Object.keys(coins.byDenom).map((denom) => coins.byDenom[denom])
-                          : Object.values(coins.byDenom)
+                          ? Object.keys({ ...balances, "bridge/usdc": "" }).map(
+                              (denom) => coins.byDenom[denom],
+                            )
+                          : [coins.byDenom[selectedDenom]]
                       }
                       value={value}
                       isDisabled={isDisabled}
