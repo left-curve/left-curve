@@ -380,7 +380,7 @@ const BridgeWithdraw: React.FC = () => {
             }
           />
 
-          <Button fullWidth onClick={handleWithdraw} className="mt-4">
+          <Button fullWidth onClick={handleWithdraw} className="mt-4" isDisabled={!recipient}>
             {m["bridge.withdraw.title"]()}
           </Button>
         </div>
