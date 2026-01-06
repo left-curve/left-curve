@@ -1,7 +1,22 @@
 {
   "chains": {
+    "dango": {
+      "chain_id": "dango-1",
+      "httpd_urls": ["https://api-mainnet.dango.zone"],
+      "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7",
+      "interchainGasPaymaster": "0x0000000000000000000000000000000000000000",
+      "validatorAnnounce": "0x75f38c6fcfc2fb8333e5c3ef89d13b7036abe3ff",
+      "merkleTreeHook": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7",
+      "index": {
+        "chunk": 50,
+        "from": 1
+      },
+      "signer": {
+        "type": "dangoKey"
+      }
+    },
     "dangotestnet": {
-      "chain_id": "dev-6",
+      "chain_id": "dango-testnet-1",
       "httpd_urls": ["https://api-testnet.dango.zone"],
       "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7",
       "interchainGasPaymaster": "0x0000000000000000000000000000000000000000",
@@ -9,10 +24,19 @@
       "merkleTreeHook": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7",
       "index": {
         "chunk": 50,
-        "from": 2200135
+        "from": 1
       },
       "signer": {
         "type": "dangoKey"
+      }
+    },
+    "ethereum": {
+      "index": {
+        "chunk": 20,
+        "from": 24171282
+      },
+      "signer": {
+        "type": "hexKey"
       }
     },
     "sepolia": {
@@ -27,6 +51,6 @@
   },
   "log": {
     "format": "json",
-    "level": "info"
+    "level": "debug"
   }
 }

@@ -6,6 +6,7 @@
     mode: "0755"
   loop:
     - "{{ hyperlane_agents_dir }}"
+    - "{{ hyperlane_instance_dir }}/hyperlane_db"
 
 - import_tasks: relayer.yml
   when: hyperlane_agent_type == 'relayer'
