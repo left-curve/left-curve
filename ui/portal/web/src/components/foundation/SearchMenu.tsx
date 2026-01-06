@@ -31,9 +31,7 @@ const SearchMenu: React.FC = () => {
   const { searchText, setSearchText, isLoading, searchResult, allNotFavApplets, isRefetching } =
     useSearchBar({
       applets: Object.fromEntries(
-        Object.entries(APPLETS).filter(
-          ([appletId]) => !(appletId === "earn" && import.meta.env.CONFIG_ENVIRONMENT === "test"),
-        ),
+        Object.entries(APPLETS).filter(([appletId]) => appletId !== "earn"),
       ),
       favApplets,
     });

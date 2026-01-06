@@ -33,6 +33,7 @@ type AssetInputWithRangeProps = {
     onChange: (denom: string) => void;
     isDisabled?: boolean;
   }) => React.ReactNode;
+  bottomComponent?: React.ReactNode;
 };
 
 export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) => {
@@ -53,6 +54,7 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
     showRange,
     showCoinSelector,
     balances,
+    bottomComponent,
     onFocus,
     onSelectCoin,
     triggerSimulation,
@@ -123,6 +125,7 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
           </div>
         )
       }
+      bottomComponent={bottomComponent}
       insideBottomComponent={
         <div className="flex flex-col w-full gap-2 pl-4">
           <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">

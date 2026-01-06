@@ -8,7 +8,7 @@ import { getWithdrawalFee, transferRemote } from "@left-curve/dango/actions";
 import { usePublicClient } from "./usePublicClient.js";
 import { useAccount } from "./useAccount.js";
 import { toAddr32 } from "@left-curve/dango/hyperlane";
-import { parseUnits } from "@left-curve/dango/utils";
+import { formatUnits, parseUnits } from "@left-curve/dango/utils";
 
 export type UseBridgeWithdrawParameters = {
   coin: AnyCoin;
@@ -26,12 +26,17 @@ export function useBridgeWithdraw(parameters: UseBridgeWithdrawParameters) {
   const withdrawFee = useQuery({
     enabled: !!coin && !!config?.router,
     queryKey: ["withdrawFee", config],
+    initialData: "0",
     queryFn: async () => {
-      if (!coin || !config?.router) return;
-      return await getWithdrawalFee(publicClient, {
+      if (!coin || !config?.router) return "0";
+      const response = await getWithdrawalFee(publicClient, {
         denom: coin.denom,
         remote: config.router.remote,
       });
+
+      if (!response) return "0";
+
+      return formatUnits(response, coin.decimals);
     },
   });
 

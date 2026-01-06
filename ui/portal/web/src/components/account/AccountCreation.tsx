@@ -62,7 +62,7 @@ export const Deposit: React.FC = () => {
 
   const { toast, showModal, subscriptions, settings } = useApp();
   const { coins } = useConfig();
-  const { username, account } = useAccount();
+  const { username, userIndex, account } = useAccount();
   const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 
@@ -86,7 +86,7 @@ export const Deposit: React.FC = () => {
       error: m["signup.errors.couldntCompleteRequest"](),
     },
     mutation: {
-      invalidateKeys: [["quests", account?.username]],
+      invalidateKeys: [["quests", userIndex]],
       mutationFn: async () => {
         if (!signingClient) throw new Error("error: no signing client");
         const funds = fundsAmount || "0";
@@ -95,7 +95,7 @@ export const Deposit: React.FC = () => {
 
         await signingClient.registerAccount({
           sender: account!.address,
-          config: { single: { owner: account!.index } },
+          config: { single: { owner: userIndex as number } },
           ...(Decimal(funds).gt(0) ? { funds: { "bridge/usdc": parsedAmount.toString() } } : {}),
         });
       },
@@ -105,7 +105,7 @@ export const Deposit: React.FC = () => {
   useEffect(() => {
     if (!account) return;
     return subscriptions.subscribe("account", {
-      params: { userIndex: account.index },
+      params: { userIndex: userIndex as number },
       listener: async ({ accounts }) => {
         const account = accounts.at(0)!;
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
@@ -115,7 +115,7 @@ export const Deposit: React.FC = () => {
           amount: parsedAmount,
           accountAddress: account.address,
           accountType: account.accountType,
-          accountName: `${username} #${account.accountIndex}`,
+          accountName: `Account #${account.accountIndex}`,
           denom: "bridge/usdc",
         });
       },

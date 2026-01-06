@@ -31,7 +31,7 @@
         "mailbox": "0xc005dc82818d67AF737725bD4bf75435d065D239"
       },
       "hyperlane_domain": 1,
-      "hyperlane_protocol_fee": 1,
+      "hyperlane_protocol_fee": 0,
       "ism": {
         "static_message_id_multisig_ism": {
           "validators": [

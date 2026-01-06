@@ -173,7 +173,7 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
   const { isMd } = useMediaQuery();
   const { username, address, type } = account;
 
-  const name = `${username} #${account?.index}`;
+  const name = `${username ? username : "Account"} #${account?.index}`;
 
   return (
     <motion.div

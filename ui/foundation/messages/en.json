@@ -697,6 +697,8 @@
     "withdraw": "Withdraw",
     "youWithdraw": "You withdraw",
     "withdrawAddress": "Withdraw Wallet Address",
+    "minimumWithdraw": "Minimum withdraw",
+    "fee": "Fee",
     "placeholderWithdrawAddress": "Enter your {network} wallet address",
     "network": [
       {

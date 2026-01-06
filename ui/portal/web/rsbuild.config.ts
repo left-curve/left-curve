@@ -93,8 +93,8 @@ const urls = {
     upUrl: `${chain.urls.indexer}/up`,
   },
   prod: {
-    faucetUrl: "",
-    questUrl: "",
+    faucetUrl: "/faucet",
+    questUrl: "/quest",
     upUrl: `${chain.urls.indexer}/up`,
   },
 }[environment]!;
