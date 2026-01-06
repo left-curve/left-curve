@@ -48,7 +48,7 @@ const StepInputEmail: React.FC<StepInputEmailProps> = ({
       <Input
         fullWidth
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        onChange={(e) => setEmail(e.target.value.trim())}
         startContent={<IconEmail />}
         endContent={
           <Button variant="link" className="p-0" isLoading={isPending} type="submit">
