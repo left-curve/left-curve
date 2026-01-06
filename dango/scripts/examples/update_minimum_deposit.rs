@@ -1,5 +1,8 @@
 use {
-    dango_types::{config::AppConfig, constants::usdc},
+    dango_types::{
+        config::AppConfig,
+        constants::{eth, usdc},
+    },
     grug::{Addr, Message, QueryClientExt, addr, coins},
     indexer_client::HttpClient,
 };
@@ -15,8 +18,14 @@ struct MessageBuilder;
 #[async_trait::async_trait]
 impl dango_scripts::MessageBuilder for MessageBuilder {
     async fn build_message(client: &HttpClient) -> anyhow::Result<Message> {
+        // Query the current app config.
         let mut app_cfg: AppConfig = client.query_app_config(None).await?;
-        app_cfg.minimum_deposit = coins! { usdc::DENOM.clone() => 10_000_000 };
+
+        // Change the minimum deposit.
+        app_cfg.minimum_deposit = coins! {
+            usdc::DENOM.clone() => 10_000_000, // 10 USDC
+            eth::DENOM.clone() => 3_000_000_000_000_000 // 0.003 ETH ~= $10
+        };
 
         Ok(Message::configure(None, Some(app_cfg))?)
     }
