@@ -28,27 +28,51 @@ const StepInputEmail: React.FC<StepInputEmailProps> = ({
   const connectors = useConnectors();
   const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
   const [email, setEmail] = useControlledState(value, onChange, defaultValue);
+  const { register, inputs, setValue, handleSubmit } = useInputs({
+    initialValues: { email: email ?? "" },
+  });
+
+  const emailField = register("email", {
+    validate: (newValue) =>
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newValue.trim()) ? true : m["auth.errors.validEmail"](),
+  });
+
+  const emailInputValue = inputs.email?.value ?? email ?? "";
+
+  useEffect(() => {
+    const current = inputs.email?.value ?? "";
+    if (email !== undefined && email !== current) {
+      setValue("email", email);
+    }
+  }, [email, inputs.email?.value, setValue]);
 
   const { mutate, isPending } = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (email: string) => {
       await connector.privy.auth.email.sendCode(email);
-      setEmail(email);
     },
     onSuccess: () => onSubmit(),
   });
 
   return (
     <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        mutate();
-      }}
+      onSubmit={handleSubmit<{ email: string }>(({ email }) => {
+        mutate(email.trim());
+      })}
       className="w-full"
     >
       <Input
         fullWidth
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        {...emailField}
+        value={emailInputValue}
+        autoComplete="email"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        onChange={(e) => {
+          const normalizedValue = e.target.value.replace(/\.\s$/, " ");
+          setEmail(normalizedValue);
+          emailField.onChange(normalizedValue);
+        }}
         startContent={<IconEmail />}
         endContent={
           <Button variant="link" className="p-0" isLoading={isPending} type="submit">
@@ -58,7 +82,9 @@ const StepInputEmail: React.FC<StepInputEmailProps> = ({
         placeholder={
           <span>
             {m["auth.enterYou"]()}{" "}
-            <span className="exposure-m-italic text-ink-secondary-rice">email</span>
+            <span className="exposure-m-italic text-ink-secondary-rice">
+              {m["auth.emailPlaceholder"]()}
+            </span>
           </span>
         }
       />

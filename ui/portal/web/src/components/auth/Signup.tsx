@@ -212,8 +212,8 @@ const Deposit: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
           alt="deposit-bag"
           className="w-[60px] h-[60px]"
         />
+        <h2 className="h4-bold text-ink-secondary-700">{m["signup.deposit.title"]()}</h2>
         <div className="flex flex-col w-full items-center gap-1">
-          <h2 className="h4-bold text-ink-secondary-700">{m["signup.deposit.title"]()}</h2>
           <p className="diatype-m-regular">{m["signup.deposit.description"]()}</p>
           <p className="diatype-m-regular">{m["signup.deposit.description2"]()}</p>
         </div>
