@@ -54,7 +54,7 @@ pub enum QueryMsg {
     #[returns(Option<Addr>)]
     ReverseRoute { denom: Denom, remote: Remote },
     /// Enumerate all routes.
-    #[returns(BTreeMap<(Addr, Remote), Denom>)]
+    #[returns(Vec<QueryRoutesResponseItem>)]
     Routes {
         start_after: Option<(Addr, Remote)>,
         limit: Option<u32>,
@@ -68,4 +68,11 @@ pub enum QueryMsg {
     /// Given a `(denom, remote)` tuple, find the withdrawal fee.
     #[returns(Uint128)]
     WithdrawalFee { denom: Denom, remote: Remote },
+}
+
+#[grug::derive(Serde)]
+pub struct QueryRoutesResponseItem {
+    pub bridge: Addr,
+    pub remote: Remote,
+    pub denom: Denom,
 }

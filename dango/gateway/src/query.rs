@@ -1,6 +1,6 @@
 use {
     crate::{RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
-    dango_types::gateway::{QueryMsg, RateLimit, Remote},
+    dango_types::gateway::{QueryMsg, QueryRoutesResponseItem, RateLimit, Remote},
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Uint128,
@@ -50,12 +50,20 @@ fn query_routes(
     ctx: ImmutableCtx,
     start_after: Option<(Addr, Remote)>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<(Addr, Remote), Denom>> {
+) -> StdResult<Vec<QueryRoutesResponseItem>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     ROUTES
         .range(ctx.storage, start, None, Order::Ascending)
+        .map(|res| {
+            let ((bridge, remote), denom) = res?;
+            Ok(QueryRoutesResponseItem {
+                bridge,
+                remote,
+                denom,
+            })
+        })
         .take(limit)
         .collect()
 }
