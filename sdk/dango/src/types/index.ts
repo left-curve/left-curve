@@ -163,6 +163,7 @@ export type {
   Domain,
   Remote,
   WarpRemote,
+  HyperlaneConfig,
 } from "./hyperlane.js";
 
 export type { WithPrice } from "./utils.js";

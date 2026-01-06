@@ -7,8 +7,6 @@ import { NotFound } from "~/components/foundation/NotFound";
 import { StatusBadge } from "~/components/foundation/StatusBadge";
 import { TestnetBanner } from "~/components/foundation/TestnetBanner";
 
-import { WelcomeModal } from "~/components/modals/WelcomeModal";
-
 import { z } from "zod";
 
 export const Route = createFileRoute("/(app)/_app")({
@@ -93,7 +91,6 @@ function LayoutApp() {
           { hidden: isHomePage && !isLg },
         )}
       />
-      <WelcomeModal />
       {!isLg ? <div id="quest-banner-mobile" /> : null}
       {!isLg ? <TestnetBanner /> : null}
       <Header isScrolled={effectiveIsScrolled} />

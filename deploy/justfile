@@ -96,13 +96,24 @@ deploy-clickhouse:
 #   network: testnet, mainnet
 #   agent: relayer, validator
 #   index: required for validator (e.g. "1", "2"), optional for relayer
-hyperlane-local network agent index="":
+deploy-hyperlane network agent limit index="":
   ansible-playbook -i inventory hyperlane.yml \
-    -e deploy_user={{env_var("USER")}} \
-    -e hyperlane_agents_dir="{{invocation_directory()}}/../.hyperlane-agents" \
     -e hyperlane_agents_network={{network}} \
     -e hyperlane_agent_type={{agent}} \
-    -e hyperlane_validator_index={{index}}
+    -e hyperlane_validator_index={{index}} \
+    --limit {{limit}}
+
+deploy-hyperlane-mainnet:
+  just deploy-hyperlane mainnet validator 100.89.7.33 1
+  just deploy-hyperlane mainnet validator 100.66.234.16 2
+  just deploy-hyperlane mainnet validator 100.126.8.2 3
+  just deploy-hyperlane mainnet validator 100.76.197.30 4
+  just deploy-hyperlane mainnet relayer 100.76.197.30
+
+deploy-hyperlane-testnet:
+  just deploy-hyperlane testnet validator 100.90.163.19 1
+  just deploy-hyperlane testnet validator 100.109.200.70 2
+  just deploy-hyperlane testnet relayer 100.109.200.70
 
 add-deploy-key:
   ./deploy-key.sh | ssh-add - >/dev/null

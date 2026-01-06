@@ -1,16 +1,16 @@
 import { defineChain } from "../defineChain.js";
 
-export const testnet = /*#__PURE__*/ defineChain({
-  id: "dango-testnet-1",
-  name: "Testnet",
+export const mainnet = /*#__PURE__*/ defineChain({
+  id: "dango-1",
+  name: "Mainnet",
   nativeCoin: "dango",
   blockExplorer: {
-    name: "Testnet Explorer",
+    name: "Mainnet Explorer",
     txPage: "/tx/${txHash}",
     accountPage: "/account/${address}",
     contractPage: "/contract/${address}",
   },
   urls: {
-    indexer: "https://api-testnet.dango.zone",
+    indexer: "https://api-mainnet.dango.zone",
   },
 });

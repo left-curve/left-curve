@@ -42,6 +42,27 @@ jobs:
           for IMAGE in "${IMAGES[@]}"; do
             echo "🧹 Processing image: $IMAGE"
 
+            # Decode image name for docker commands (e.g., left-curve%2Fdango -> left-curve/dango)
+            DECODED_IMAGE=$(echo "$IMAGE" | sed 's/%2F/\//g')
+
+            # Initialize associative array to track protected digests
+            # These are digests referenced by 'latest' or 'pr-*-latest' manifest lists
+            declare -A PROTECTED_DIGESTS
+
+            # Collect protected digests from 'latest' tag
+            echo "  Collecting protected digests from 'latest' tag..."
+            if latest_manifest=$(docker manifest inspect "ghcr.io/left-curve/${DECODED_IMAGE}:latest" 2>/dev/null); then
+              # Extract all child manifest digests from the manifest list
+              while IFS= read -r digest; do
+                if [ -n "$digest" ]; then
+                  PROTECTED_DIGESTS["$digest"]=1
+                  echo "    Protected (from latest): $digest"
+                fi
+              done < <(echo "$latest_manifest" | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
+            else
+              echo "    ⚠️  WARNING: Could not fetch 'latest' manifest for ${DECODED_IMAGE} (may not exist yet)"
+            fi
+
             # Get all versions with proper pagination
             echo "  Fetching all versions..."
             page=1
@@ -92,6 +113,28 @@ jobs:
             total_count=$(echo "$all_versions" | jq '. | length')
             echo "  Total versions found: $total_count"
 
+            # First pass: collect protected digests from pr-*-latest tagged versions
+            echo "  Collecting protected digests from pr-*-latest tags..."
+            while IFS= read -r version; do
+              # Check if this version has a pr-*-latest tag
+              if echo "$version" | jq -r '.metadata.container.tags[]?' 2>/dev/null | grep -q "^pr-.*-latest$"; then
+                pr_tag=$(echo "$version" | jq -r '.metadata.container.tags[]?' 2>/dev/null | grep "^pr-.*-latest$" | head -1)
+                # Fetch the manifest to get child digests
+                if pr_manifest=$(docker manifest inspect "ghcr.io/left-curve/${DECODED_IMAGE}:${pr_tag}" 2>/dev/null); then
+                  while IFS= read -r digest; do
+                    if [ -n "$digest" ]; then
+                      PROTECTED_DIGESTS["$digest"]=1
+                      echo "    Protected (from ${pr_tag}): $digest"
+                    fi
+                  done < <(echo "$pr_manifest" | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
+                else
+                  echo "    ⚠️  WARNING: Could not fetch manifest for ${pr_tag}"
+                fi
+              fi
+            done < <(echo "$all_versions" | jq -c '.[]')
+
+            echo "  Total protected digests: ${#PROTECTED_DIGESTS[@]}"
+
             # Process each version
             while IFS= read -r version; do
               TOTAL_PROCESSED=$((TOTAL_PROCESSED + 1))
@@ -115,6 +158,15 @@ jobs:
               # Skip if has pr-X-latest pattern
               if echo "$version" | jq -r '.metadata.container.tags[]?' 2>/dev/null | grep -q "^pr-.*-latest$"; then
                 echo "      ✅ SKIP: Has PR preview tag"
+                TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+                continue
+              fi
+
+              # Skip if this version's digest is referenced by a protected tag (latest or pr-*-latest)
+              # The NAME field contains the digest (sha256:...)
+              VERSION_DIGEST="$NAME"
+              if [ -n "$VERSION_DIGEST" ] && [ "${PROTECTED_DIGESTS[$VERSION_DIGEST]+exists}" ]; then
+                echo "      ✅ SKIP: Digest referenced by protected tag (latest or pr-*-latest)"
                 TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
                 continue
               fi
@@ -149,6 +201,9 @@ jobs:
 
             echo "  Completed processing $IMAGE"
             echo
+
+            # Clear protected digests for next image
+            unset PROTECTED_DIGESTS
           done
 
           echo "====================================="

@@ -12,7 +12,7 @@ import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { GenerateSW } from "workbox-webpack-plugin";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 
-import { devnet, local, testnet } from "@left-curve/dango";
+import { devnet, local, testnet, mainnet } from "@left-curve/dango";
 
 import type { Chain } from "@left-curve/dango/types";
 import type { Rspack } from "@rsbuild/core";
@@ -41,10 +41,39 @@ fs.copySync(
   { overwrite: true },
 );
 
+const hyperlaneConfig = async () => {
+  const mainFiles = {
+    config: "../../../dango/hyperlane-deployment/config.json",
+    deployment: "../../../dango/hyperlane-deployment/deployments.json",
+  };
+
+  const testFiles = {
+    config: "../../../dango/hyperlane-deployment/config.testnet.json",
+    deployment: "../../../dango/hyperlane-deployment/deployments-testnet.json",
+  };
+
+  const files = environment === "prod" ? mainFiles : testFiles;
+
+  const config = await import(files.config);
+  const deployments = await import(files.deployment);
+
+  Object.entries(deployments.evm).forEach(([chainId, deployment]: [string, any]) => {
+    config.evm[chainId].warp_routes = deployment.warp_routes.map(
+      ([warp_route_type, route]: [string, object]) => ({
+        warp_route_type,
+        ...route,
+      }),
+    );
+  });
+
+  return config;
+};
+
 const chain = {
   local: local,
   dev: devnet,
   test: testnet,
+  prod: mainnet,
 }[environment] as Chain;
 
 const urls = {
@@ -63,10 +92,16 @@ const urls = {
     questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
   },
+  prod: {
+    faucetUrl: "",
+    questUrl: "",
+    upUrl: `${chain.urls.indexer}/up`,
+  },
 }[environment]!;
 
 const banner = {
   dev: "You are using devnet",
+  test: "You are using testnet",
 }[environment];
 
 const envConfig = `window.dango = ${JSON.stringify(
@@ -119,6 +154,7 @@ export default defineConfig({
     define: {
       ...publicVars,
       "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
+      "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
       "process.env": {},
       "import.meta.env": {},
     },

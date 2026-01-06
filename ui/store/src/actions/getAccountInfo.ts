@@ -1,4 +1,7 @@
-import { getAccountInfo as getAccountInfoSdkAction } from "@left-curve/dango/actions";
+import {
+  getAccountInfo as getAccountInfoSdkAction,
+  getUsernameByIndex,
+} from "@left-curve/dango/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
 import type { Account, AccountTypes } from "@left-curve/dango/types";
@@ -28,8 +31,8 @@ export async function getAccountInfo<config extends Config>(
   const type = Object.keys(account.params).at(0) as AccountTypes;
 
   const username = ["margin", "single"].includes(type)
-    ? (account.params as { [key: string]: { owner: string } })[type].owner
-    : "";
+    ? await getUsernameByIndex(client, { index: account.index })
+    : "Multisig";
 
   return {
     ...account,

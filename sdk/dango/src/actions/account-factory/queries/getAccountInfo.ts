@@ -1,4 +1,5 @@
 import { getAction, getAppConfig, queryWasmSmart } from "@left-curve/sdk/actions";
+import { getUsernameByIndex } from "./getUsernameByIndex.js";
 
 import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
 import type { Account, AccountInfo, AccountTypes, AppConfig } from "../../../types/index.js";
@@ -42,7 +43,7 @@ export async function getAccountInfo<
   const type = Object.keys(account.params).at(0) as AccountTypes;
 
   const username = ["margin", "single"].includes(type)
-    ? (account.params as { [key: string]: { owner: string } })[type].owner
+    ? await getUsernameByIndex(client, { index: account.index })
     : "Multisig";
 
   return {

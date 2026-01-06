@@ -24,7 +24,7 @@ export default function AccountMenuScreen() {
             index: 10,
             params: {
               single: {
-                owner: "cookie",
+                owner: 1,
               },
             },
             address: "0x75b89bd4a0e12b45dd12a6e12550aed2b8fd858f",

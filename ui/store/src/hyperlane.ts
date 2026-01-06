@@ -1,7 +1,7 @@
 import { sepolia, mainnet, base, arbitrum } from "viem/chains";
 
 export const chains = {
-  sepolia: {
+  "11155111": {
     ...sepolia,
     contracts: {
       ...sepolia.contracts,
@@ -15,7 +15,7 @@ export const chains = {
       ],
     },
   },
-  ethereum: {
+  "1": {
     ...mainnet,
     contracts: {
       ...mainnet.contracts,
@@ -35,7 +35,7 @@ export const chains = {
       ],
     },
   },
-  base: {
+  "8453": {
     ...base,
     contracts: {
       ...base.contracts,
@@ -55,7 +55,7 @@ export const chains = {
       ],
     },
   },
-  arbitrum: {
+  "42161": {
     ...arbitrum,
     contracts: {
       ...arbitrum.contracts,

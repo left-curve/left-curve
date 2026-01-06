@@ -28,7 +28,7 @@ export const UserState = {
   Frozen: "frozen",
 } as const;
 
-export type AccountSingleConfig = { owner: Username };
+export type AccountSingleConfig = { owner: number };
 export type AccountMultiConfig = Safe;
 
 export type AccountConfigs = {
