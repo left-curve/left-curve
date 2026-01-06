@@ -15,10 +15,11 @@ export type UseBridgeWithdrawParameters = {
   config: ReturnType<typeof useBridgeState>["config"];
   amount: string;
   recipient: string;
+  reset: () => void;
 };
 
 export function useBridgeWithdraw(parameters: UseBridgeWithdrawParameters) {
-  const { coin, config, amount, recipient } = parameters;
+  const { coin, config, amount, recipient, reset } = parameters;
   const { data: signingClient } = useSigningClient();
   const publicClient = usePublicClient();
   const { account } = useAccount();
@@ -42,6 +43,7 @@ export function useBridgeWithdraw(parameters: UseBridgeWithdrawParameters) {
 
   const withdraw = useSubmitTx({
     mutation: {
+      onSuccess: () => reset(),
       mutationFn: async () => {
         if (!signingClient) throw new Error("Signing client not initialized");
         if (!config || !config.router) throw new Error("Bridge config not available");

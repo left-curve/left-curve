@@ -23,6 +23,7 @@ export const Modals = {
   WalletSelector: "wallet-selector",
   Authenticate: "authenticate",
   EditUsername: "edit-username",
+  BridgeWithdraw: "bridge-withdraw",
 };
 
 export type ModalRef = {
