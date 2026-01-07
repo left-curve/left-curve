@@ -198,6 +198,18 @@ impl Cache {
         Ok(Some(payload.block_height))
     }
 
+    /// Read the last S3 synced block height from the file cache.
+    #[cfg(feature = "s3")]
+    pub fn read_last_s3_block_height(context: &Context) -> Result<Option<u64>> {
+        Self::read_last_block_height(context, S3_HIGHEST_BLOCK_FILENAME)
+    }
+
+    /// Store the last S3 synced block height in the file cache.
+    #[cfg(feature = "s3")]
+    pub fn store_last_s3_block_height(context: &Context, height: u64) -> Result<()> {
+        Self::store_last_block_height(context, height, S3_HIGHEST_BLOCK_FILENAME)
+    }
+
     #[cfg(feature = "s3")]
     async fn sync_block_to_s3(
         context: &Context,
@@ -310,7 +322,7 @@ impl Cache {
                         s3_bitmap.insert(block_height);
                     }
 
-                    break;
+                    return Ok(());
                 },
                 Err(_err) => {
                     #[cfg(feature = "tracing")]
@@ -323,7 +335,8 @@ impl Cache {
             }
         }
 
-        Ok(())
+        // All retries failed
+        Err(IndexerError::s3upload_failed(block_height, s3_key))
     }
 
     #[cfg(feature = "s3")]

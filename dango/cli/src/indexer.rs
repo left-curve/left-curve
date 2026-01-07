@@ -166,17 +166,34 @@ impl IndexerCmd {
                 let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
                 indexer_cache.context.s3 = cfg.indexer.s3.clone();
 
+                // Read the last synced height from disk
+                let last_synced_height =
+                    indexer_cache::Cache::read_last_s3_block_height(&indexer_cache.context)?
+                        .unwrap_or(0);
+
                 let start = Instant::now();
 
-                indexer_cache::Cache::sync_to_s3(
+                tracing::info!(last_synced_height, "Starting S3 sync");
+
+                let new_height = indexer_cache::Cache::sync_to_s3(
                     &indexer_cache.context,
                     indexer_cache.s3_bitmap.clone(),
-                    0,
+                    last_synced_height,
                 )
                 .await?;
 
+                // Only store the new height if sync succeeded and made progress
+                if let Some(height) = new_height {
+                    indexer_cache::Cache::store_last_s3_block_height(
+                        &indexer_cache.context,
+                        height,
+                    )?;
+                }
+
                 tracing::info!(
                     elapsed = start.elapsed().as_secs_f32(),
+                    last_synced_height,
+                    new_height = ?new_height,
                     "Finished syncing to S3"
                 );
 
