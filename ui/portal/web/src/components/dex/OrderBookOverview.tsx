@@ -76,7 +76,6 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
             selectedTab={"trades"}
             keys={["trades"]}
             fullWidth
-            onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
             classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
           />
           <LiveTrades state={state} controllers={controllers} />
