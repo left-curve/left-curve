@@ -261,6 +261,15 @@ impl Cache {
                         path = %path.display(),
                         "Cached block already exists in S3"
                     );
+
+                    // Mark block as uploaded in the bitmap so we don't check S3 again
+                    {
+                        let mut s3_bitmap = s3_bitmap
+                            .lock()
+                            .map_err(|err| IndexerError::mutex_poisoned(err.to_string()))?;
+                        s3_bitmap.insert(block_height);
+                    }
+
                     return Ok(());
                 },
                 Err(_err) => {
