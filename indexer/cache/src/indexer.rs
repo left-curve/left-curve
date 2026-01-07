@@ -231,6 +231,7 @@ impl Cache {
             }
         }
 
+        #[cfg(feature = "tracing")]
         let path = file_path.clone();
 
         // Naive retries, in case of network error.
@@ -250,13 +251,13 @@ impl Cache {
                     );
                     return Ok(());
                 },
-                Err(err) => {
+                Err(_err) => {
                     #[cfg(feature = "tracing")]
                     tracing::error!(
                         block_height,
                         key = %s3_key,
                         path = %path.display(),
-                        error = %err,
+                        error = %_err,
                         "Failed to check if cached block exists in S3"
                     );
 
