@@ -145,7 +145,7 @@ const BitcoinDeposit: React.FC = () => {
 const EvmDeposit: React.FC = () => {
   const { userStatus } = useAccount();
   const { getPrice } = usePrices();
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const { controllers, state } = useBridge();
@@ -181,6 +181,17 @@ const EvmDeposit: React.FC = () => {
   if (!connector || !coin) {
     return <ConnectWalletWithModal fullWidth onWalletSelected={(id) => setConnectorId(id)} />;
   }
+
+  const handleDeposit = () =>
+    showModal(Modals.BridgeDeposit, {
+      coin,
+      config,
+      amount,
+      evmAddress,
+      deposit,
+      refreshBalances,
+      reset,
+    });
 
   return (
     <div className="flex flex-col items-center justify-center gap-6">
@@ -259,7 +270,8 @@ const EvmDeposit: React.FC = () => {
       {requiresAllowance && (
         <Button
           fullWidth
-          onClick={() => allowanceMutation.mutate()}
+          /* onClick={() => allowanceMutation.mutate()} */
+          onClick={handleDeposit}
           isLoading={allowanceMutation.isPending || allowanceQuery.isLoading}
           isDisabled={!!errors.amount}
           className="mt-4"
@@ -270,16 +282,12 @@ const EvmDeposit: React.FC = () => {
       {!requiresAllowance && (
         <Button
           fullWidth
-          onClick={async () => {
-            await deposit.mutateAsync();
-            await refreshBalances();
-            reset();
-          }}
-          isLoading={deposit.isPending}
+          onClick={handleDeposit}
+          /*   isLoading={deposit.isPending} */
           isDisabled={amount === "0" || !!errors.amount}
           className="mt-4"
         >
-          {m["bridge.deposit"]()}
+          {m["bridge.deposit.title"]()}
         </Button>
       )}
     </div>

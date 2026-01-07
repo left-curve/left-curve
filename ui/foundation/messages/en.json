@@ -693,7 +693,6 @@
     "depositAddress": "Deposit Address",
     "networkName": "{network} Network",
     "onlyCanReceiveOn": "This address can only receive assets on",
-    "deposit": "Deposit",
     "allow": "Allow",
     "youDeposit": "You deposit",
     "youGet": "You get",
@@ -702,6 +701,18 @@
         "action": "Withdrawing",
         "toWallet": "To Wallet Address",
         "estArrival": "Est. Arrival"
+      },
+    "deposit": {
+        "title": "Deposit",
+        "action": "Depositing",
+        "from":"From",
+        "continueInYourWallet": "Continue in your wallet",
+        "steps": {
+          "approve": "Approve",
+          "signMessage": "Sign message",
+          "confirmDeposit": "Confirm deposit in wallet",
+          "progress": "Step {current} of {total}"
+        }
       },
     "youWithdraw": "You withdraw",
     "withdrawAddress": "Withdraw Wallet Address",
