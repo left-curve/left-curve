@@ -1,0 +1,6 @@
+- name: Setup S3 sync cron job
+  ansible.builtin.cron:
+    name: "dango s3 sync - {{ deployment_name }}"
+    minute: "*/10"
+    job: "cd {{ deployment_dir }} && /usr/bin/docker compose exec -T dango dango indexer s3-sync 2>&1 | logger -t dango-s3-sync"
+    state: present
