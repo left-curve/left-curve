@@ -697,23 +697,23 @@
     "youDeposit": "You deposit",
     "youGet": "You get",
     "withdraw": {
-        "title": "Withdraw",
-        "action": "Withdrawing",
-        "toWallet": "To Wallet Address",
-        "estArrival": "Est. Arrival"
-      },
+      "title": "Withdraw",
+      "action": "Withdrawing",
+      "toWallet": "To Wallet Address",
+      "estArrival": "Est. Arrival"
+    },
     "deposit": {
-        "title": "Deposit",
-        "action": "Depositing",
-        "from":"From",
-        "continueInYourWallet": "Continue in your wallet",
-        "steps": {
-          "approve": "Approve",
-          "signMessage": "Sign message",
-          "confirmDeposit": "Confirm deposit in wallet",
-          "progress": "Step {current} of {total}"
-        }
-      },
+      "title": "Deposit",
+      "action": "Depositing",
+      "from": "From",
+      "continueInYourWallet": "Continue in your wallet",
+      "steps": {
+        "approve": "Approve",
+        "deposit": "Deposit",
+        "depositArrival": "Your deposit is estimated to arrive in",
+        "progress": "Step {current} of {total}"
+      }
+    },
     "youWithdraw": "You withdraw",
     "withdrawAddress": "Withdraw Wallet Address",
     "minimumWithdraw": "Minimum withdraw",
@@ -737,8 +737,8 @@
         "declarations": ["input network"],
         "selectors": ["network"],
         "match": {
-          "network=11155111": "1-2 minutes",
-          "network=1": "3-6 minutes",
+          "network=11155111": "6 blocks | 1-2 minutes",
+          "network=1": "6 blocks | 3-6 minutes",
           "network=8453": "3-6 minutes",
           "network=42161": "3-6 minutes"
         }

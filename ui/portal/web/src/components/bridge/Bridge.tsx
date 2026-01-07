@@ -187,10 +187,13 @@ const EvmDeposit: React.FC = () => {
       coin,
       config,
       amount,
-      evmAddress,
+      allowanceMutation,
+      requiresAllowance,
       deposit,
-      refreshBalances,
-      reset,
+      reset: () => {
+        refreshBalances();
+        reset();
+      },
     });
 
   return (
@@ -267,29 +270,14 @@ const EvmDeposit: React.FC = () => {
         }
       />
 
-      {requiresAllowance && (
-        <Button
-          fullWidth
-          /* onClick={() => allowanceMutation.mutate()} */
-          onClick={handleDeposit}
-          isLoading={allowanceMutation.isPending || allowanceQuery.isLoading}
-          isDisabled={!!errors.amount}
-          className="mt-4"
-        >
-          {m["bridge.allow"]()}
-        </Button>
-      )}
-      {!requiresAllowance && (
-        <Button
-          fullWidth
-          onClick={handleDeposit}
-          /*   isLoading={deposit.isPending} */
-          isDisabled={amount === "0" || !!errors.amount}
-          className="mt-4"
-        >
-          {m["bridge.deposit.title"]()}
-        </Button>
-      )}
+      <Button
+        fullWidth
+        onClick={handleDeposit}
+        isDisabled={!!errors.amount || amount === "0"}
+        className="mt-4"
+      >
+        {m["bridge.deposit.title"]()}
+      </Button>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { forwardRef, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 
 import {
   Button,
@@ -18,9 +18,9 @@ interface BridgeDepositProps {
   coin: AnyCoin;
   config: NonNullable<ReturnType<typeof useBridgeState>["config"]>;
   amount: string;
-  evmAddress: string;
   deposit: UseSubmitTxReturnType<void, Error, void, unknown>;
-  refreshBalances: () => Promise<void>;
+  requiresAllowance: boolean;
+  allowanceMutation: UseSubmitTxReturnType<void, Error, void, unknown>;
   reset: () => void;
 }
 
@@ -90,7 +90,7 @@ const DepositStepper: React.FC<{ steps: DepositStep[]; currentStep: number }> = 
               </div>
             </div>
 
-            <div className="flex">
+            <div className="flex gap-2">
               <div className="w-6 flex items-center justify-center">
                 {!isLast && <span className="w-[2px] h-4 bg-outline-secondary-gray" />}
               </div>
@@ -106,10 +106,11 @@ const DepositStepper: React.FC<{ steps: DepositStep[]; currentStep: number }> = 
 };
 
 export const BridgeDeposit = forwardRef((props: BridgeDepositProps, _ref) => {
-  const { coin, config, amount, evmAddress, deposit, refreshBalances, reset } = props;
+  const { coin, config, amount, requiresAllowance, allowanceMutation, deposit, reset } = props;
   const { hideModal, settings } = useApp();
   const { getPrice } = usePrices();
-  const [currentStep, setCurrentStep] = useState(2);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [txLink, setTxLink] = useState("");
 
   const { formatNumberOptions } = settings;
 
@@ -118,23 +119,47 @@ export const BridgeDeposit = forwardRef((props: BridgeDepositProps, _ref) => {
     formatOptions: formatNumberOptions,
   });
 
-  const steps: DepositStep[] = [
-    { label: m["bridge.deposit.steps.approve"]() },
-    { label: m["bridge.deposit.steps.signMessage"]() },
+  const commonSteps = [
     {
-      label: m["bridge.deposit.steps.confirmDeposit"](),
-      isLoading: deposit.isPending,
+      label: m["bridge.deposit.steps.deposit"](),
+      isLoading: currentStep === (requiresAllowance ? 1 : 0),
+    },
+    {
+      label: m["bridge.deposit.steps.depositArrival"](),
+      completedLink: txLink,
+      subMsg: m["bridge.timeArrival"]({ network: config.chain.id }),
     },
   ];
 
-  const depositAction = async () => {
-    await deposit.mutateAsync();
-    await refreshBalances();
-    reset();
-  };
+  const steps: DepositStep[] = requiresAllowance
+    ? [
+        {
+          label: m["bridge.deposit.steps.approve"](),
+          isLoading: currentStep === 0,
+        },
+        ...commonSteps,
+      ]
+    : commonSteps;
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (requiresAllowance) {
+          await allowanceMutation.mutateAsync();
+          setCurrentStep(1);
+        }
+        const txHash = await deposit.mutateAsync();
+        setCurrentStep(requiresAllowance ? 2 : 1);
+        setTxLink(`${config.chain.blockExplorers.default.url}/tx/${txHash}`);
+        reset();
+      } catch (_) {
+        hideModal();
+      }
+    })();
+  }, []);
 
   return (
-    <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-4 w-full md:max-w-[25rem]">
+    <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray text-ink-secondary-700 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-4 w-full md:max-w-[25rem]">
       <IconButton
         className="hidden md:block absolute right-4 top-4"
         variant="link"
@@ -172,9 +197,11 @@ export const BridgeDeposit = forwardRef((props: BridgeDepositProps, _ref) => {
 
       <DepositStepper steps={steps} currentStep={currentStep} />
 
-      <Button onClick={depositAction} isLoading={deposit.isPending} fullWidth>
-        {m["common.confirm"]()}
-      </Button>
+      {steps.length === currentStep + 1 && (
+        <Button onClick={hideModal} fullWidth>
+          {m["common.confirm"]()}
+        </Button>
+      )}
     </div>
   );
 });
