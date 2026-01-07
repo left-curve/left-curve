@@ -392,7 +392,10 @@ impl Cache {
             tasks.push(task);
         }
 
-        try_join_all(tasks).await?;
+        let results = try_join_all(tasks).await?;
+        for result in results {
+            result?;
+        }
 
         #[cfg(feature = "tracing")]
         tracing::info!(

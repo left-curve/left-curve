@@ -58,6 +58,7 @@ pub enum IndexerError {
     S3 { error: String },
 
     #[error("s3 upload failed after retries: block {block_height}, key {key}")]
+    #[backtrace(new)]
     S3UploadFailed { block_height: u64, key: String },
 }
 
