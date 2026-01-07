@@ -1,5 +1,4 @@
 import { useAccount, useAppConfig, usePrices } from "@left-curve/store";
-import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import {
@@ -11,6 +10,7 @@ import {
   IconChevronDownFill,
   IconUser,
   Input,
+  Modals,
   Range,
   Tabs,
   numberMask,
@@ -39,7 +39,7 @@ type TradeMenuProps = {
 };
 
 const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
   const { isConnected } = useAccount();
   const { data: appConfig } = useAppConfig();
@@ -60,8 +60,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
     isDexPaused,
   } = state;
   const { register, setValue, inputs } = controllers;
-
-  const navigate = useNavigate();
 
   const size = inputs.size?.value || "0";
 
@@ -178,7 +176,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               variant={action === "sell" ? "primary" : "tertiary"}
               fullWidth
               size="md"
-              onClick={() => navigate({ to: "/signin" })}
+              onClick={() => showModal(Modals.Authenticate, { action: "signin" })}
             >
               {m["dex.protrade.spot.enableTrading"]()}
             </Button>

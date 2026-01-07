@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { Modals, useApp } from "@left-curve/foundation";
 import { useState } from "react";
 import { Image, View } from "react-native";
 import {
@@ -13,7 +13,7 @@ import {
 } from "~/components/foundation";
 
 export default function AccountMenuScreen() {
-  const { navigate } = useRouter();
+  const { showModal } = useApp();
   const [activeTab, setActiveTab] = useState("wallet");
 
   return (
@@ -56,7 +56,7 @@ export default function AccountMenuScreen() {
           <Button
             variant="secondary"
             size="icon"
-            onPress={() => navigate("/signin")}
+            onPress={() => showModal(Modals.Authenticate, { action: "signin" })}
             leftIcon={<IconLogOut className="w-5 h-5" />}
           />
         </View>

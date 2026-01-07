@@ -81,6 +81,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
         "go_to_date",
         "header_layouttoggle",
         "trading_account_manager",
+        "create_volume_indicator_by_default",
       ],
       saved_data: chartState ? chartState : undefined,
       overrides: {
@@ -114,6 +115,8 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
 
     widget.onChartReady(() => {
       widgetRef.current = widget;
+      const chart = widget.chart();
+      chart.createStudy("Volume", false, false);
       widget.subscribe("onAutoSaveNeeded", saveFn);
       widget.applyOverrides({
         "paneProperties.background": toolbar_bg,
@@ -129,7 +132,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       widgetRef.current?.remove();
       widgetRef.current = null;
     };
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     if (!widgetRef.current) return;

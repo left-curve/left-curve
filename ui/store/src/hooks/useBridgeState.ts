@@ -33,7 +33,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   } = params;
 
   const { current: networks } = useRef([
-    { name: "Ethereum Network", id: "1", time: "16 blocks | 5-30 mins" },
+    { name: "Ethereum Network", id: "1", time: "6 blocks | 1-3 mins" },
     /*   { name: "Base Network", id: "8453", time: "5-30 mins" },
     { name: "Arbitrum Network", id: "42161", time: "5-30 mins" },
     { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },

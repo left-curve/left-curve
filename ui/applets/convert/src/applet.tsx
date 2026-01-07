@@ -95,7 +95,6 @@ const ConvertHeader: React.FC = () => {
       <div className="flex gap-2 items-center relative z-10">
         <img src={base.logoURI} alt="token" className="h-6 w-6" />
         <p className="text-ink-secondary-700 h4-bold">{base.symbol}</p>
-        <Badge text="Stable Strategy" color="green" size="s" />
       </div>
       <div className="flex items-center justify-between gap-2 relative z-10 min-h-[22px]">
         <div className="flex items-center gap-2">
@@ -250,7 +249,7 @@ const ConvertTrigger: React.FC = () => {
   const { state, controllers } = useConvert();
   const { simulation, submission } = state;
   const { isValid } = controllers;
-  const { navigate } = useApp();
+  const { showModal } = useApp();
 
   return isConnected ? (
     <Button
@@ -266,7 +265,11 @@ const ConvertTrigger: React.FC = () => {
       {m["dex.convert.swap"]()}
     </Button>
   ) : (
-    <Button fullWidth size="md" onClick={() => navigate("/signin")}>
+    <Button
+      fullWidth
+      size="md"
+      onClick={() => showModal(Modals.Authenticate, { action: "signin" })}
+    >
       {m["common.signin"]()}
     </Button>
   );

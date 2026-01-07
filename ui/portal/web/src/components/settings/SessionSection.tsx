@@ -30,10 +30,10 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const UsernameSection: React.FC = () => {
-  const { username, isConnected, account } = useAccount();
+  const { username, isConnected, userIndex } = useAccount();
   const { showModal } = useApp();
 
-  const hasNotChangedUsername = username === `User #${account?.index}`;
+  const hasNotChangedUsername = username === `User #${userIndex}`;
 
   if (!isConnected) return null;
 
@@ -50,7 +50,7 @@ const UsernameSection: React.FC = () => {
         onClick={() => hasNotChangedUsername && showModal(Modals.EditUsername)}
       >
         <p>{username}</p>
-        {hasNotChangedUsername && <IconEdit className="w-5 h-5" />}
+        {hasNotChangedUsername && <IconEdit className="w-5 h-5 hover:cursor-pointer" />}
       </div>
     </div>
   );
