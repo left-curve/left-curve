@@ -134,6 +134,7 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
         });
 
         await publicClient.waitForTransactionReceipt({ hash: txHash });
+        return txHash;
       },
     },
   });

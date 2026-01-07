@@ -24,6 +24,7 @@ export const Modals = {
   Authenticate: "authenticate",
   EditUsername: "edit-username",
   BridgeWithdraw: "bridge-withdraw",
+  BridgeDeposit: "bridge-deposit",
 };
 
 export type ModalRef = {

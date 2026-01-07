@@ -190,6 +190,16 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       disableClosing: true,
     },
   },
+  [Modals.BridgeDeposit]: {
+    component: lazy(() =>
+      import("./BridgeDeposit").then(({ BridgeDeposit }) => ({
+        default: BridgeDeposit,
+      })),
+    ),
+    options: {
+      disableClosing: true,
+    },
+  },
 };
 
 type ModalDefinition = {
