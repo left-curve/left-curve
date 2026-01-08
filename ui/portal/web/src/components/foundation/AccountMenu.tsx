@@ -253,10 +253,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
         <Button
           fullWidth
           size="md"
-          onClick={() => [
-            navigate({ to: "/transfer", search: { action: "receive" } }),
-            setSidebarVisibility(false),
-          ]}
+          onClick={() => [navigate({ to: "/bridge" }), setSidebarVisibility(false)]}
         >
           <IconAddCross className="w-5 h-5" /> <span> {m["common.fund"]()}</span>
         </Button>
