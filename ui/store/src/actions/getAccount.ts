@@ -27,6 +27,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       userStatus: UserStatus | undefined;
       isConnected: true;
       isConnecting: false;
+      isUserActive: boolean;
       isDisconnected: false;
       isReconnecting: false;
       status: "connected";
@@ -44,6 +45,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       connector: Connector | undefined;
       userStatus: UserStatus | undefined;
       isConnected: boolean;
+      isUserActive: boolean;
       isConnecting: false;
       isDisconnected: false;
       isReconnecting: true;
@@ -62,6 +64,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       connector: Connector | undefined;
       userStatus: UserStatus | undefined;
       isConnected: false;
+      isUserActive: boolean;
       isReconnecting: false;
       isConnecting: true;
       isDisconnected: false;
@@ -80,6 +83,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       connector: undefined;
       userStatus: UserStatus | undefined;
       isConnected: false;
+      isUserActive: boolean;
       isReconnecting: false;
       isConnecting: false;
       isDisconnected: true;
@@ -98,6 +102,7 @@ const disconnected = {
   chainId: undefined,
   connector: undefined,
   userStatus: undefined,
+  isUserActive: false,
   isConnected: false,
   isConnecting: false,
   isDisconnected: true,
@@ -136,6 +141,7 @@ export function getAccount<
   const { accounts, connector, account: acc, keyHash } = connection;
   const username = config.state.userIndexAndName?.name;
   const userIndex = config.state.userIndexAndName?.index;
+  const isUserActive = userStatus === "active";
 
   const account = acc as Account<accountType>;
   switch (status) {
@@ -150,6 +156,7 @@ export function getAccount<
         chainId,
         connector,
         userStatus,
+        isUserActive,
         isConnected: true,
         isConnecting: false,
         isDisconnected: false,
@@ -169,6 +176,7 @@ export function getAccount<
         chainId,
         connector,
         userStatus,
+        isUserActive,
         isConnected: false,
         isConnecting: false,
         isDisconnected: false,
@@ -188,6 +196,7 @@ export function getAccount<
         chainId,
         connector,
         userStatus,
+        isUserActive,
         isConnected: false,
         isConnecting: true,
         isDisconnected: false,
