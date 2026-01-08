@@ -167,12 +167,12 @@ const Credentials: React.FC = () => {
           label={m["common.signWithPasskey"]({ action: "signin" })}
         />
 
-        {isMd ? (
-          <Button variant="secondary" fullWidth onClick={() => setScreen("wallets")}>
-            <IconWallet />
-            {m["signin.connectWallet"]()}
-          </Button>
-        ) : (
+        <Button variant="secondary" fullWidth onClick={() => setScreen("wallets")}>
+          <IconWallet />
+          {m["signin.connectWallet"]()}
+        </Button>
+
+        {!isMd && (
           <Button
             fullWidth
             className="gap-2"
