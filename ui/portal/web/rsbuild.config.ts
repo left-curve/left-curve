@@ -125,7 +125,7 @@ const envConfig = `window.dango = ${JSON.stringify(
   2,
 )};`;
 
-const copyPattern = [{ from: "./public/rmsw.js", to: "service-worker.js" }];
+const copyPattern = [];
 
 if (fs.existsSync(tradingViewPath)) {
   copyPattern.push({
@@ -249,11 +249,11 @@ export default defineConfig({
       );
 
       if (process.env.NODE_ENV === "production") {
-        /*   config.plugins.push(
+        config.plugins.push(
           new GenerateSW({
             cacheId: "leftcurve-portal",
             clientsClaim: true,
-            skipWaiting: false,
+            skipWaiting: true,
             cleanupOutdatedCaches: true,
             runtimeCaching: [
               {
@@ -265,7 +265,7 @@ export default defineConfig({
               },
             ],
           }),
-        ); */
+        );
       }
 
       config.devtool = "source-map";
