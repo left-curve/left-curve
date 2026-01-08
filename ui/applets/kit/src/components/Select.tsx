@@ -72,15 +72,12 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
   return (
     <Provider value={{ selected, setSelected, slots, classNames }}>
       <div className={base({ className: classNames?.base })}>
-        <NativeSelect classNames={classNames} variant={variant}>
-          {children}
-        </NativeSelect>
         {label ? (
           <label className="exposure-sm-italic text-ink-secondary-700" htmlFor={label}>
             {label}
           </label>
         ) : null}
-        <div className="hidden md:block relative w-full" ref={selectRef}>
+        <div className="relative w-full" ref={selectRef}>
           <button
             type="button"
             onClick={() => !isDisabled && setIsOpen((prev) => !prev)}
