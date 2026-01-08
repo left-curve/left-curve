@@ -1,5 +1,4 @@
 import { DangoStoreProvider } from "@left-curve/store";
-import { captureException } from "@sentry/react";
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
@@ -38,14 +37,6 @@ const queryClient = new QueryClient({
     onSettled(_data, _error, _variables, _context, mutation) {
       if (!mutation.meta?.invalidateKeys) return;
       channel.postMessage({ type: "invalidate", keys: mutation.meta.invalidateKeys });
-    },
-    onError: (error: unknown) => {
-      if (!error) return;
-      if (typeof error === "object" && ("code" in error || !(error instanceof Error))) return;
-      if (typeof error === "string" && error.includes("reject")) return;
-
-      const errorMessage = error instanceof Error ? error.message : error;
-      captureException(errorMessage);
     },
   }),
   defaultOptions: {
