@@ -19,6 +19,8 @@
 - import_tasks: deploy_configs.yml
 - import_tasks: create_s3_bucket.yml
   when: s3_enabled | default(false)
+- import_tasks: s3_sync_cron.yml
+  when: s3_enabled | default(false)
 - import_tasks: verify_signatures.yml
   when: verify_signatures
 - import_tasks: create_databases.yml

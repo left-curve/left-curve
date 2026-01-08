@@ -56,6 +56,10 @@ pub enum IndexerError {
     #[error("s3 error: {error}")]
     #[backtrace(new)]
     S3 { error: String },
+
+    #[error("s3 upload failed after retries: block {block_height}, key {key}")]
+    #[backtrace(new)]
+    S3UploadFailed { block_height: u64, key: String },
 }
 
 pub type Result<T> = core::result::Result<T, IndexerError>;
@@ -104,6 +108,14 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
             IndexerError::Parse(e) => parse_error!(Generic, e),
             IndexerError::S3 { error, backtrace } => parse_error!(Generic, error, backtrace),
+            IndexerError::S3UploadFailed {
+                block_height,
+                key,
+                backtrace,
+            } => grug_app::IndexerError::Generic {
+                error: format!("s3 upload failed after retries: block {block_height}, key {key}"),
+                backtrace,
+            },
         }
     }
 }
