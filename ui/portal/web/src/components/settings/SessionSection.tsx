@@ -30,10 +30,11 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const UsernameSection: React.FC = () => {
-  const { username, isConnected, userIndex } = useAccount();
+  const { username, isConnected, userIndex, isUserActive } = useAccount();
   const { showModal } = useApp();
 
   const hasNotChangedUsername = username === `User #${userIndex}`;
+  const allowEdit = isUserActive && hasNotChangedUsername;
 
   if (!isConnected) return null;
 
@@ -47,10 +48,10 @@ const UsernameSection: React.FC = () => {
       </div>
       <div
         className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-end md:justify-center gap-1"
-        onClick={() => hasNotChangedUsername && showModal(Modals.EditUsername)}
+        onClick={() => allowEdit && showModal(Modals.EditUsername)}
       >
         <p>{username}</p>
-        {hasNotChangedUsername && <IconEdit className="w-5 h-5 hover:cursor-pointer" />}
+        {allowEdit && <IconEdit className="w-5 h-5 hover:cursor-pointer" />}
       </div>
     </div>
   );

@@ -29,6 +29,14 @@ if (SENTRY_DSN && SENTRY_ENV) {
   });
 }
 
+let refreshing = false;
+navigator.serviceWorker.addEventListener("controllerchange", () => {
+  if (!refreshing) {
+    refreshing = true;
+    window.location.reload();
+  }
+});
+
 const container = document.getElementById("root");
 if (!container) throw new Error("No root element found");
 
