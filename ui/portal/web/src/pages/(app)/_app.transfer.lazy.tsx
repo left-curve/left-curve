@@ -9,10 +9,11 @@ import {
   useAccount,
   useBalances,
   useConfig,
+  usePublicClient,
   useSigningClient,
   useSubmitTx,
 } from "@left-curve/store";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -28,11 +29,12 @@ import {
 } from "@left-curve/applets-kit";
 import type { Address } from "@left-curve/dango/types";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
+import { WarningTransferAccounts } from "~/components/transfer/WarningTransferAccounts";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { isValidAddress } from "@left-curve/dango";
-import { capitalize, parseUnits, withResolvers } from "@left-curve/dango/utils";
+import { capitalize, parseUnits, wait, withResolvers } from "@left-curve/dango/utils";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
   component: TransferApplet,
@@ -55,12 +57,34 @@ function TransferApplet() {
   const { account, isConnected } = useAccount();
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
+  const publicClient = usePublicClient();
 
   const { refetch: refreshBalances, data: balances = {} } = useBalances({
     address: account?.address,
   });
 
   useWatchEffect(isConnected, (v) => !v && setAction("send"));
+
+  const isValid20HexAddress = isValidAddress(inputs.address?.value || "");
+
+  const { data: doesUserExist = false, isFetching } = useQuery({
+    enabled: !!inputs.address?.value?.length,
+    queryKey: ["transfer", inputs.address?.value],
+    queryFn: async ({ signal }) => {
+      await wait(450);
+      if (signal.aborted || !isValid20HexAddress) return null;
+
+      const account = await publicClient.getAccountInfo({
+        address: inputs.address?.value as Address,
+      });
+
+      if (!account) return false;
+      return true;
+    },
+  });
+
+  const showAdressWarning =
+    action === "send" && inputs.address?.value && isValid20HexAddress && !doesUserExist;
 
   const selectedCoin = coins.byDenom[selectedDenom];
 
@@ -126,71 +150,78 @@ function TransferApplet() {
           />
 
           {action === "send" ? (
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <div className="flex flex-col w-full gap-4">
-                <AssetInputWithRange
-                  name="amount"
-                  label="You're sending"
-                  asset={selectedCoin}
-                  balances={balances}
-                  controllers={controllers}
-                  isDisabled={isPending}
-                  shouldValidate
-                  showRange
-                  showCoinSelector
-                  onSelectCoin={(denom) => setSelectedDenom(denom)}
-                  renderSelector={({ value, onChange, isDisabled }) => (
-                    <CoinSelector
-                      coins={
-                        isConnected
-                          ? Object.keys({ ...balances, "bridge/usdc": "" }).map(
-                              (denom) => coins.byDenom[denom],
-                            )
-                          : [coins.byDenom[selectedDenom]]
-                      }
-                      value={value}
-                      isDisabled={isDisabled}
-                      onChange={(k) => onChange(k)}
-                    />
-                  )}
-                />
-                <AccountSearchInput
-                  {...register("address", {
-                    validate: (v) => isValidAddress(v) || m["errors.validations.invalidAddress"](),
-                    mask: (v) => v.toLowerCase().replace(/[^a-z0-9_]/g, ""),
-                  })}
-                  label="To"
-                  placeholder="Wallet address or name"
-                  isDisabled={isPending}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                fullWidth
-                className="mt-5"
-                isLoading={isPending}
-                isDisabled={!isConnected || !!inputs.amount?.error}
-              >
-                {m["common.send"]()}
-              </Button>
-            </form>
-          ) : (
-            <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-surface-secondary-rice rounded-xl shadow-account-card p-4">
-              <div className="flex flex-col gap-1 items-center">
-                <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
-                <div className="flex gap-1">
-                  <TruncateText
-                    className="diatype-sm-medium text-ink-tertiary-500"
-                    text={account?.address}
+            <div className="flex flex-col w-full gap-4">
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <div className="flex flex-col w-full gap-4">
+                  <AssetInputWithRange
+                    name="amount"
+                    label="You're sending"
+                    asset={selectedCoin}
+                    balances={balances}
+                    controllers={controllers}
+                    isDisabled={isPending}
+                    shouldValidate
+                    showRange
+                    showCoinSelector
+                    onSelectCoin={(denom) => setSelectedDenom(denom)}
+                    renderSelector={({ value, onChange, isDisabled }) => (
+                      <CoinSelector
+                        coins={
+                          isConnected
+                            ? Object.keys({ ...balances, "bridge/usdc": "" }).map(
+                                (denom) => coins.byDenom[denom],
+                              )
+                            : [coins.byDenom[selectedDenom]]
+                        }
+                        value={value}
+                        isDisabled={isDisabled}
+                        onChange={(k) => onChange(k)}
+                      />
+                    )}
                   />
-                  <TextCopy
-                    copyText={account?.address}
-                    className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+                  <AccountSearchInput
+                    {...register("address", {
+                      validate: (v) =>
+                        isValidAddress(v) || m["errors.validations.invalidAddress"](),
+                      mask: (v) => v.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                    })}
+                    label="To"
+                    placeholder="Wallet address or name"
+                    isDisabled={isPending}
                   />
                 </div>
+
+                <Button
+                  type="submit"
+                  fullWidth
+                  className="mt-5"
+                  isLoading={isPending}
+                  isDisabled={!isConnected || !!inputs.amount?.error}
+                >
+                  {m["common.send"]()}
+                </Button>
+              </form>
+              {showAdressWarning && <WarningTransferAccounts variant="send" />}
+            </div>
+          ) : (
+            <div className="flex flex-col w-full gap-4">
+              <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-surface-secondary-rice rounded-xl shadow-account-card p-4">
+                <div className="flex flex-col gap-1 items-center">
+                  <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
+                  <div className="flex gap-1">
+                    <TruncateText
+                      className="diatype-sm-medium text-ink-tertiary-500"
+                      text={account?.address}
+                    />
+                    <TextCopy
+                      copyText={account?.address}
+                      className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+                    />
+                  </div>
+                </div>
+                <QRCode data={account?.address as string} />
               </div>
-              <QRCode data={account?.address as string} />
+              <WarningTransferAccounts variant="receive" />
             </div>
           )}
         </ResizerContainer>
