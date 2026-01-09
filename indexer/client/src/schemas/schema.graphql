@@ -395,6 +395,33 @@ type PageInfo {
 	endCursor: String
 }
 
+"""
+Represents 24h statistics for a trading pair.
+Fields are fetched lazily when requested via GraphQL.
+"""
+type PairStats {
+	quoteDenom: String!
+	baseDenom: String!
+	"""
+	Current price as a decimal string (fetched lazily)
+	"""
+	currentPrice: BigDecimal
+	"""
+	Price from 24 hours ago as a decimal string (fetched lazily)
+	"""
+	price24HAgo: BigDecimal
+	"""
+	24h volume in quote asset as a decimal string (6 decimals, fetched lazily)
+	"""
+	volume24H: BigDecimal!
+	"""
+	24h price change as a percentage (e.g., 5.25 means +5.25%)
+	Calculated as: (current_price - price_24h_ago) / price_24h_ago * 100
+	Fetches both prices lazily.
+	"""
+	priceChange24H: BigDecimal
+}
+
 type PublicKey {
 	userIndex: Int!
 	keyHash: String!
@@ -602,6 +629,27 @@ type Query {
 		"""
 		addr: String
 	): TradeConnection!
+	"""
+	Get 24h statistics for a specific trading pair.
+	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume.
+	Fields are fetched lazily - only requested fields trigger database queries.
+	"""
+	pairStats(
+		"""
+		Base denom (e.g., 'BTC')
+		"""
+		baseDenom: String!,
+		"""
+		Quote denom (e.g., 'USDC')
+		"""
+		quoteDenom: String!
+	): PairStats
+	"""
+	Get 24h statistics for all trading pairs.
+	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume for each pair.
+	Fields are fetched lazily - only requested fields trigger database queries.
+	"""
+	allPairStats: [PairStats!]!
 }
 
 type QueryResponseWithBlockHeight {
