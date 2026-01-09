@@ -99,7 +99,7 @@
                   value: "{{ dango_network }}"
                   inline: true
                 - name: "Commit"
-                  value: "{{ commit_short_sha }}"
+                  value: "[{{ commit_short_sha }}](https://github.com/{{ github_repo }}/commit/{{ commit_short_sha }})"
                   inline: true
                 - name: "Author"
                   value: "{{ commit_author | default('-', true) }}"
@@ -152,7 +152,7 @@
                       value: "{{ dango_network }}"
                       inline: true
                     - name: "Commit"
-                      value: "{{ commit_short_sha }}"
+                      value: "[{{ commit_short_sha }}](https://github.com/{{ github_repo }}/commit/{{ commit_short_sha }})"
                       inline: true
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
@@ -205,7 +205,7 @@
                   value: "{{ dango_network }}"
                   inline: true
                 - name: "Commit"
-                  value: "{{ commit_short_sha }}"
+                  value: "[{{ commit_short_sha }}](https://github.com/{{ github_repo }}/commit/{{ commit_short_sha }})"
                   inline: true
                 - name: "Lock path"
                   value: "{{ deploy_lock_file }}"
@@ -277,7 +277,7 @@
                       value: "{{ dango_network }}"
                       inline: true
                     - name: "Commit"
-                      value: "{{ commit_short_sha }}"
+                      value: "[{{ commit_short_sha }}](https://github.com/{{ github_repo }}/commit/{{ commit_short_sha }})"
                       inline: true
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
@@ -406,7 +406,7 @@
                       value: "{{ dango_network }}"
                       inline: true
                     - name: "Commit"
-                      value: "{{ commit_short_sha }}"
+                      value: "[{{ commit_short_sha }}](https://github.com/{{ github_repo }}/commit/{{ commit_short_sha }})"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
@@ -471,7 +471,7 @@
                       value: "{{ dango_network }}"
                       inline: true
                     - name: "Commit"
-                      value: "{{ commit_short_sha }}"
+                      value: "[{{ commit_short_sha }}](https://github.com/{{ github_repo }}/commit/{{ commit_short_sha }})"
                       inline: true
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
@@ -520,7 +520,7 @@
                       value: "{{ dango_network }}"
                       inline: true
                     - name: "Commit"
-                      value: "{{ commit_short_sha }}"
+                      value: "[{{ commit_short_sha }}](https://github.com/{{ github_repo }}/commit/{{ commit_short_sha }})"
                       inline: true
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
