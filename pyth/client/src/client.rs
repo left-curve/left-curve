@@ -37,6 +37,8 @@ pub const RESUBSCRIBE_ATTEMPTS: u32 = 5;
 
 /// Timeout in milliseconds that we wait for receiving data before trying to resubscribe.
 pub const DATA_RECEIVE_TIMEOUT_MS: u64 = 200;
+/// Timeout in milliseconds for subscription requests.
+pub const SUBSCRIPTION_TIMEOUT_MS: u64 = 1000;
 
 #[derive(Clone, Debug)]
 pub struct PythClient {
@@ -105,7 +107,27 @@ impl PythClient {
         );
 
         for subscription in subscribe_requests {
-            let _ = client.subscribe(subscription).await;
+            match tokio::time::timeout(
+                Duration::from_millis(SUBSCRIPTION_TIMEOUT_MS),
+                client.subscribe(subscription.clone()),
+            )
+            .await
+            {
+                Ok(res) => {
+                    if let Err(err) = res {
+                        error!(
+                            subscription_id = subscription.subscription_id.0,
+                            error = %err,
+                            "Subscription request failed",
+                        );
+                    }
+                },
+                Err(_) => error!(
+                    subscription_id = subscription.subscription_id.0,
+                    timeout_ms = SUBSCRIPTION_TIMEOUT_MS,
+                    "Sending subscription request timed out",
+                ),
+            }
         }
     }
 
