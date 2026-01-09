@@ -6,7 +6,6 @@ import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import {
   Button,
   createContext,
-  IconDango,
   IconLeft,
   IconQR,
   IconWallet,
@@ -21,6 +20,7 @@ import { EmailCredential } from "./EmailCredential";
 import { SocialCredential } from "./SocialCredential";
 import { PasskeyCredential } from "./PasskeyCredential";
 import { UsernamesList } from "./UsernamesList";
+import { DangoLogo } from "../foundation/DangoLogo";
 
 import type React from "react";
 
@@ -94,7 +94,7 @@ const Header: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-7 items-center justify-center w-full text-center">
-      <IconDango className="w-[60px] h-[60px]" />
+      <DangoLogo className="h-[60px]" />
       <div className="flex flex-col gap-3">
         <h1 className="h2-heavy">{title}</h1>
         {description && <div className="text-ink-tertiary-500 diatype-m-medium">{description}</div>}

@@ -38,6 +38,7 @@ type AccountCardProps = {
   balance: string;
   balanceChange?: string;
   isSelectorActive?: boolean;
+  isUserActive: boolean;
   onTriggerAction?: () => void;
 };
 
@@ -47,6 +48,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
   balanceChange,
   onTriggerAction,
   isSelectorActive,
+  isUserActive,
 }) => {
   const { address, type } = account;
   const name = `${m["common.account"]()} #${account?.index}`;
@@ -58,6 +60,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
       className={twMerge(
         "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 text-ink-secondary-700",
         bgColor,
+        !isUserActive && "opacity-50",
       )}
     >
       <img
@@ -90,9 +93,14 @@ const AccountCard: React.FC<AccountCardProps> = ({
         ) : null}
       </AnimatePresence>
       <div className="flex flex-col relative z-10">
-        <div className="flex gap-1 items-center">
+        <div className="flex gap-1 items-center justify-between">
           <p className="exposure-m-italic capitalize">{name}</p>
-          <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
+          <Badge
+            text={isUserActive ? text : "Inactive"}
+            color={isUserActive ? badge : "gray"}
+            className="h-fit capitalize"
+            size="s"
+          />
         </div>
         <div className="flex gap-1 items-center">
           <TruncateText
