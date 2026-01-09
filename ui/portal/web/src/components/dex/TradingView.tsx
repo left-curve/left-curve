@@ -28,23 +28,26 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
   const { base, quote } = coins;
   const { timeFormat, timeZone } = settings;
 
-  const [chartState, setChartState] = useStorage<object>(`tradingview.${pairSymbol}`, {
+  const [chartState, setChartState, hasLoaded] = useStorage<object>(`tradingview.${pairSymbol}`, {
     sync: true,
-    version: 1.1,
+    version: 1.2,
     migrations: {
-      1: () => ({}),
+      "*": () => ({}),
     },
   });
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
 
   useEffect(() => {
+    if (!hasLoaded) return;
+
     localStorage.setItem(
       "tradingview.time_hours_format",
       timeFormat.includes("a") ? "12-hours" : "24-hours",
     );
 
     const toolbar_bg = theme === "dark" ? "#2d2c2a" : "#FFFCF6";
+    const textColor = theme === "dark" ? "#FFFCF6" : "#2E2521";
 
     const datafeed = createTradingViewDataFeed({
       client: publicClient,
@@ -116,11 +119,15 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     widget.onChartReady(() => {
       widgetRef.current = widget;
       const chart = widget.chart();
-      chart.createStudy("Volume", false, false);
+      const allStudies = chart.getAllStudies();
+
+      const volumeExists = allStudies.some((study) => study.name === "Volume");
+      if (!volumeExists) chart.createStudy("Volume", false, false);
+
       widget.subscribe("onAutoSaveNeeded", saveFn);
       widget.applyOverrides({
         "paneProperties.background": toolbar_bg,
-        "scalesProperties.textColor": theme === "dark" ? "#FFFCF6" : "#2E2521",
+        "scalesProperties.textColor": textColor,
         timezone:
           timeZone === "utc"
             ? "Etc/UTC"
@@ -132,7 +139,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       widgetRef.current?.remove();
       widgetRef.current = null;
     };
-  }, [theme]);
+  }, [theme, hasLoaded]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
