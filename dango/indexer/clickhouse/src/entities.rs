@@ -3,6 +3,7 @@ pub mod candle_interval;
 pub mod candle_query;
 pub mod pair_price;
 pub mod pair_price_query;
+pub mod pair_stats;
 pub mod trade;
 pub mod trade_query;
 
