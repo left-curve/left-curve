@@ -128,3 +128,6 @@ export { IconEdit } from "./icons/IconEdit";
 export { IconWalletWithCross } from "./icons/IconWalletWithCross";
 export { IconNotiStatus } from "./icons/IconNotiStatus";
 export { IconGift } from "./icons/IconGift";
+export { IconSwapMoney } from "./icons/IconSwapMoney";
+export { IconSprout } from "./icons/IconSprout";
+export { IconFriendshipGroup } from "./icons/IconFriendshipGroup";
