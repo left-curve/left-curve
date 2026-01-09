@@ -82,7 +82,7 @@ const Details: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
-      <AccountCard account={account} balance={totalBalance} />
+      <AccountCard account={account} balance={totalBalance} isUserActive />
       <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
         <h4 className="h4-bold text-ink-primary-900">
           {m["explorer.contracts.details.contractDetails"]()}

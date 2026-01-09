@@ -16,7 +16,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
-  const { account, isConnected, userStatus } = useAccount();
+  const { account, isConnected, isUserActive } = useAccount();
 
   const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
@@ -72,11 +72,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               type="button"
               className="shadow-account-card lg:hidden"
             >
-              <TxIndicator
-                icon={
-                  <IconWalletWithCross isCrossVisible={isConnected && userStatus !== "active"} />
-                }
-              />
+              <TxIndicator icon={<IconWalletWithCross isCrossVisible={!isUserActive} />} />
             </IconButton>
           ) : null}
         </div>
@@ -91,10 +87,12 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           >
             {isConnected ? (
               <div className="flex items-center justify-center gap-2">
-                <TxIndicator
-                  icon={<IconWalletWithCross isCrossVisible={isConnected && !userStatus} />}
-                />
-                <span className="italic font-exposure font-bold capitalize">
+                <TxIndicator icon={<IconWalletWithCross isCrossVisible={!isUserActive} />} />
+                <span
+                  className={twMerge("italic font-exposure font-bold capitalize", {
+                    "text-ink-placeholder-400": !isUserActive,
+                  })}
+                >
                   {m["common.account"]()} #{account?.index}
                 </span>
               </div>
