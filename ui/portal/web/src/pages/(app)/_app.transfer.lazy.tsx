@@ -67,12 +67,12 @@ function TransferApplet() {
 
   const isValid20HexAddress = isValidAddress(inputs.address?.value || "");
 
-  const { data: doesUserExist = false, isFetching } = useQuery({
+  const { data: doesUserExist = false } = useQuery({
     enabled: !!inputs.address?.value?.length,
     queryKey: ["transfer", inputs.address?.value],
     queryFn: async ({ signal }) => {
       await wait(450);
-      if (signal.aborted || !isValid20HexAddress) return null;
+      if (signal.aborted || !isValid20HexAddress) return false;
 
       const account = await publicClient.getAccountInfo({
         address: inputs.address?.value as Address,
@@ -83,7 +83,7 @@ function TransferApplet() {
     },
   });
 
-  const showAdressWarning =
+  const showAddressWarning =
     action === "send" && inputs.address?.value && isValid20HexAddress && !doesUserExist;
 
   const selectedCoin = coins.byDenom[selectedDenom];
@@ -201,7 +201,7 @@ function TransferApplet() {
                   {m["common.send"]()}
                 </Button>
               </form>
-              {showAdressWarning && <WarningTransferAccounts variant="send" />}
+              {showAddressWarning && <WarningTransferAccounts variant="send" />}
             </div>
           ) : (
             <div className="flex flex-col w-full gap-4">
