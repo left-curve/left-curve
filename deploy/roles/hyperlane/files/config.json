@@ -51,6 +51,6 @@
   },
   "log": {
     "format": "json",
-    "level": "debug"
+    "level": "info"
   }
 }
