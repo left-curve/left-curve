@@ -1,39 +1,31 @@
-use {
-    crate::{
-        context::Context,
-        entities::{CandleInterval, candle::Candle},
-        error::Result,
-    },
-    chrono::{Duration, Utc},
-    clickhouse::Row,
-    grug::Udec128_24,
-    serde::Deserialize,
+use crate::{
+    entities::{CandleInterval, candle::Candle},
+    error::Result,
 };
 #[cfg(feature = "async-graphql")]
 use {
+    crate::context::Context,
     async_graphql::{ComplexObject, SimpleObject},
     bigdecimal::BigDecimal,
     bigdecimal::num_bigint::BigInt,
-    grug::IsZero,
+    chrono::{Duration, Utc},
+    clickhouse::Row,
+    grug::{IsZero, Udec128_24},
+    serde::Deserialize,
 };
 
 /// Helper struct for fetching a single price value from ClickHouse.
+#[cfg(feature = "async-graphql")]
 #[derive(Debug, Row, Deserialize)]
 struct PriceRow {
     clearing_price: u128,
 }
 
 /// Helper struct for fetching volume sum from ClickHouse.
+#[cfg(feature = "async-graphql")]
 #[derive(Debug, Row, Deserialize)]
 struct VolumeRow {
     total_volume: u128,
-}
-
-/// Helper struct for checking existence.
-#[derive(Debug, Row, Deserialize)]
-struct ExistsRow {
-    #[allow(dead_code)]
-    exists: u8,
 }
 
 /// Represents 24h statistics for a trading pair.
@@ -58,12 +50,35 @@ impl PairStats {
         }
     }
 
-    /// Checks if the pair exists in the database.
-    pub async fn exists(
+    /// Fetches all trading pairs.
+    pub async fn fetch_all(clickhouse_client: &clickhouse::Client) -> Result<Vec<Self>> {
+        // Reuse existing_pairs from Candle to get all pairs with 1h candles
+        let pairs =
+            Candle::existing_pairs(CandleInterval::OneHour, clickhouse_client, None).await?;
+
+        let results = pairs
+            .into_iter()
+            .map(|pair| PairStats::new(pair.base_denom.to_string(), pair.quote_denom.to_string()))
+            .collect();
+
+        Ok(results)
+    }
+}
+
+#[cfg(feature = "async-graphql")]
+impl PairStats {
+    /// Helper struct for checking existence.
+    async fn pair_exists(
         clickhouse_client: &clickhouse::Client,
         base_denom: &str,
         quote_denom: &str,
     ) -> Result<bool> {
+        #[derive(Debug, Row, Deserialize)]
+        struct ExistsRow {
+            #[allow(dead_code)]
+            exists: u8,
+        }
+
         let query = r#"
             SELECT 1 as exists
             FROM pair_prices
@@ -81,18 +96,13 @@ impl PairStats {
         Ok(exists.is_some())
     }
 
-    /// Fetches all trading pairs.
-    pub async fn fetch_all(clickhouse_client: &clickhouse::Client) -> Result<Vec<Self>> {
-        // Reuse existing_pairs from Candle to get all pairs with 1h candles
-        let pairs =
-            Candle::existing_pairs(CandleInterval::OneHour, clickhouse_client, None).await?;
-
-        let results = pairs
-            .into_iter()
-            .map(|pair| PairStats::new(pair.base_denom.to_string(), pair.quote_denom.to_string()))
-            .collect();
-
-        Ok(results)
+    /// Checks if the pair exists in the database.
+    pub async fn exists(
+        clickhouse_client: &clickhouse::Client,
+        base_denom: &str,
+        quote_denom: &str,
+    ) -> Result<bool> {
+        Self::pair_exists(clickhouse_client, base_denom, quote_denom).await
     }
 
     /// Fetches the current price for the pair.
