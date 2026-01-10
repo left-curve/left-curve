@@ -9,9 +9,12 @@ import { IconWallet } from "./icons/IconWallet";
 
 import type React from "react";
 import { ShadowContainer } from "./ShadowContainer";
+import { useAccount } from "@left-curve/store";
 
 export const Menu: React.FC = () => {
   const { navigate } = useRouter();
+  const { account } = useAccount();
+
   return (
     <View className="absolute bottom-0 lg:top-0 left-0 right-0 z-50 transition-all bg-transparent shadow-none min-h-10">
       <View
@@ -39,7 +42,7 @@ export const Menu: React.FC = () => {
         <Button
           variant="utility"
           size="icon"
-          onPress={() => navigate("/account-menu")}
+          onPress={() => navigate(account ? "/account-menu" : "/auth")}
           leftIcon={<IconWallet />}
         />
       </View>

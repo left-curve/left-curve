@@ -7,7 +7,6 @@ import { SearchMenu } from "~/components/Search/SearchMenu";
 import { Button, IconChevronDown, ShadowContainer } from "~/components/foundation";
 
 import { APPLETS } from "~/constants";
-import { Shadow } from "react-native-shadow-2";
 
 export default function SearchScreen() {
   const { theme } = useTheme();
