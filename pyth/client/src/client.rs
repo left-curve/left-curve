@@ -588,17 +588,29 @@ impl PythClientTrait for PythClient {
 
             // If the code reaches here, it means the stream needs to be closed.
             for subscription_id in subscription_ids {
-                match client.unsubscribe(SubscriptionId(subscription_id)).await {
-                    Ok(_) => {
-                        info!(subscription_id, "Unsubscribed stream successfully");
+                match tokio::time::timeout(
+                    Duration::from_millis(SUBSCRIPTION_TIMEOUT_MS),
+                    client.unsubscribe(SubscriptionId(subscription_id)),
+                )
+                .await
+                {
+                    Ok(res) => match res {
+                        Ok(_) => {
+                            info!(subscription_id, "Unsubscribed stream successfully");
+                        },
+                        Err(err) => {
+                            error!(
+                                subscription_id,
+                                error=%err,
+                                "Failed to unsubscribe stream"
+                            );
+                        },
                     },
-                    Err(err) => {
-                        error!(
-                            subscription_id,
-                            error=%err,
-                            "Failed to unsubscribe stream"
-                        );
-                    },
+                    Err(_) => warn!(
+                        subscription_id,
+                        timeout_ms = SUBSCRIPTION_TIMEOUT_MS,
+                        "Sending unsubscription request timed out",
+                    ),
                 };
             }
         };
