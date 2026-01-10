@@ -115,14 +115,14 @@ impl PythClient {
             {
                 Ok(res) => {
                     if let Err(err) = res {
-                        error!(
+                        warn!(
                             subscription_id = subscription.subscription_id.0,
                             error = %err,
                             "Subscription request failed",
                         );
                     }
                 },
-                Err(_) => error!(
+                Err(_) => warn!(
                     subscription_id = subscription.subscription_id.0,
                     timeout_ms = SUBSCRIPTION_TIMEOUT_MS,
                     "Sending subscription request timed out",
