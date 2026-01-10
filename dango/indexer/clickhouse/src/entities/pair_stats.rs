@@ -1,7 +1,13 @@
-use crate::{
-    context::Context,
-    entities::{CandleInterval, candle::Candle},
-    error::Result,
+use {
+    crate::{
+        context::Context,
+        entities::{CandleInterval, candle::Candle},
+        error::Result,
+    },
+    chrono::{Duration, Utc},
+    clickhouse::Row,
+    grug::Udec128_24,
+    serde::Deserialize,
 };
 #[cfg(feature = "async-graphql")]
 use {
@@ -9,12 +15,6 @@ use {
     bigdecimal::BigDecimal,
     bigdecimal::num_bigint::BigInt,
     grug::IsZero,
-};
-use {
-    chrono::{Duration, Utc},
-    clickhouse::Row,
-    grug::Udec128_24,
-    serde::Deserialize,
 };
 
 /// Helper struct for fetching a single price value from ClickHouse.
@@ -84,7 +84,8 @@ impl PairStats {
     /// Fetches all trading pairs.
     pub async fn fetch_all(clickhouse_client: &clickhouse::Client) -> Result<Vec<Self>> {
         // Reuse existing_pairs from Candle to get all pairs with 1h candles
-        let pairs = Candle::existing_pairs(CandleInterval::OneHour, clickhouse_client, None).await?;
+        let pairs =
+            Candle::existing_pairs(CandleInterval::OneHour, clickhouse_client, None).await?;
 
         let results = pairs
             .into_iter()
@@ -145,7 +146,9 @@ impl PairStats {
 
         // If no price from 24h ago, use the earliest available price
         if let Some(row) = result {
-            return Ok(Some(Udec128_24::raw(grug::Uint128::new(row.clearing_price))));
+            return Ok(Some(Udec128_24::raw(grug::Uint128::new(
+                row.clearing_price,
+            ))));
         }
 
         // Get the earliest price if no data from 24h ago

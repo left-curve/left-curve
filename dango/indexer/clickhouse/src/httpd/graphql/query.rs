@@ -1,6 +1,5 @@
 use {
-    async_graphql::MergedObject, candle::CandleQuery, pair_stats::PairStatsQuery,
-    trade::TradeQuery,
+    async_graphql::MergedObject, candle::CandleQuery, pair_stats::PairStatsQuery, trade::TradeQuery,
 };
 
 pub mod candle;
