@@ -551,8 +551,8 @@ impl DexAction {
                             [
                                 "insufficient liquidity",
                                 "output amount after fee must be positive", // this refers to the output after _liquidity fee_
-                                "output amount is zero",                    // this refers to the output after _protocol fee_
-                                "not enough liquidity to fulfill the swap!"
+                                "output amount is zero", // this refers to the output after _protocol fee_
+                                "not enough liquidity to fulfill the swap!",
                             ]
                             .iter()
                             .any(|reason| err.error.contains(reason))

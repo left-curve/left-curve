@@ -89,12 +89,11 @@ async fn query_pair_stats() -> anyhow::Result<()> {
                     "With fresh data, current and 24h ago prices should match"
                 );
 
-                // Price change should be 0% since prices are the same
+                // Price change should be 0 since prices are the same
                 if let Some(price_change) = &response.price_change_24h {
-                    let change: f64 = price_change.parse().unwrap();
-                    assert!(
-                        change.abs() < 0.0001,
-                        "Expected ~0% price change, got {change}"
+                    assert_eq!(
+                        price_change, "0",
+                        "Expected 0 price change, got {price_change}"
                     );
                 }
 
