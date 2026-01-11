@@ -10,7 +10,6 @@ use {
     bigdecimal::num_bigint::BigInt,
     chrono::{Duration, Utc},
     clickhouse::Row,
-    grug::{IsZero, Udec128_24},
     serde::Deserialize,
 };
 
@@ -110,7 +109,7 @@ impl PairStats {
         clickhouse_client: &clickhouse::Client,
         base_denom: &str,
         quote_denom: &str,
-    ) -> Result<Option<Udec128_24>> {
+    ) -> Result<Option<u128>> {
         let query = r#"
             SELECT clearing_price
             FROM pair_prices
@@ -126,7 +125,7 @@ impl PairStats {
             .fetch_optional()
             .await?;
 
-        Ok(result.map(|row| Udec128_24::raw(grug::Uint128::new(row.clearing_price))))
+        Ok(result.map(|row| row.clearing_price))
     }
 
     /// Fetches the price from ~24h ago for the pair.
@@ -134,7 +133,7 @@ impl PairStats {
         clickhouse_client: &clickhouse::Client,
         base_denom: &str,
         quote_denom: &str,
-    ) -> Result<Option<Udec128_24>> {
+    ) -> Result<Option<u128>> {
         let time_24h_ago = Utc::now() - Duration::hours(24);
 
         let query = r#"
@@ -156,9 +155,7 @@ impl PairStats {
 
         // If no price from 24h ago, use the earliest available price
         if let Some(row) = result {
-            return Ok(Some(Udec128_24::raw(grug::Uint128::new(
-                row.clearing_price,
-            ))));
+            return Ok(Some(row.clearing_price));
         }
 
         // Get the earliest price if no data from 24h ago
@@ -177,7 +174,7 @@ impl PairStats {
             .fetch_optional()
             .await?;
 
-        Ok(earliest.map(|row| Udec128_24::raw(grug::Uint128::new(row.clearing_price))))
+        Ok(earliest.map(|row| row.clearing_price))
     }
 
     /// Fetches the 24h volume in quote asset for the pair.
@@ -211,7 +208,7 @@ impl PairStats {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl PairStats {
-    /// Current price as a decimal string (fetched lazily)
+    /// Current price as a BigDecimal with 24 decimal places (fetched lazily)
     async fn current_price(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -224,13 +221,12 @@ impl PairStats {
                 .await?;
 
         Ok(price.map(|p| {
-            let inner_value = grug::Inner::inner(&p);
-            let bigint = BigInt::from(*inner_value);
+            let bigint = BigInt::from(p);
             BigDecimal::new(bigint, 24).normalized()
         }))
     }
 
-    /// Price from 24 hours ago as a decimal string (fetched lazily)
+    /// Price from 24 hours ago as a BigDecimal with 24 decimal places (fetched lazily)
     async fn price_24h_ago(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -243,13 +239,12 @@ impl PairStats {
                 .await?;
 
         Ok(price.map(|p| {
-            let inner_value = grug::Inner::inner(&p);
-            let bigint = BigInt::from(*inner_value);
+            let bigint = BigInt::from(p);
             BigDecimal::new(bigint, 24).normalized()
         }))
     }
 
-    /// 24h volume in quote asset as a decimal string (6 decimals, fetched lazily)
+    /// 24h volume in quote asset as a BigDecimal with 6 decimal places (fetched lazily)
     async fn volume_24h(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -286,21 +281,13 @@ impl PairStats {
             _ => return Ok(None),
         };
 
-        if old.is_zero() {
+        if old == 0 {
             return Ok(None);
         }
 
         // Calculate price change percentage using BigDecimal for precision
-        let current_bd = {
-            let inner_value = grug::Inner::inner(&current);
-            let bigint = BigInt::from(*inner_value);
-            BigDecimal::new(bigint, 24)
-        };
-        let old_bd = {
-            let inner_value = grug::Inner::inner(&old);
-            let bigint = BigInt::from(*inner_value);
-            BigDecimal::new(bigint, 24)
-        };
+        let current_bd = BigDecimal::new(BigInt::from(current), 24);
+        let old_bd = BigDecimal::new(BigInt::from(old), 24);
 
         // (current - old) / old * 100
         let change = (current_bd - &old_bd) / old_bd * BigDecimal::from(100);

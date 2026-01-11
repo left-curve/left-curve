@@ -403,15 +403,15 @@ type PairStats {
 	quoteDenom: String!
 	baseDenom: String!
 	"""
-	Current price as a decimal string (fetched lazily)
+	Current price as a BigDecimal with 24 decimal places (fetched lazily)
 	"""
 	currentPrice: BigDecimal
 	"""
-	Price from 24 hours ago as a decimal string (fetched lazily)
+	Price from 24 hours ago as a BigDecimal with 24 decimal places (fetched lazily)
 	"""
 	price24HAgo: BigDecimal
 	"""
-	24h volume in quote asset as a decimal string (6 decimals, fetched lazily)
+	24h volume in quote asset as a BigDecimal with 6 decimal places (fetched lazily)
 	"""
 	volume24H: BigDecimal!
 	"""
