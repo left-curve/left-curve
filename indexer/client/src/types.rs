@@ -211,7 +211,7 @@ impl Default for candles::CandleInterval {
 
 // Subscription types - generated separately since they follow a different pattern
 macro_rules! generate_subscription_types {
-    ($({name: $name:ident, path: $path:literal $(, test_with: $var:expr)?}), * $(,)? ) => {
+    ($({name: $name:ident, path: $path:literal $(, test_with: $var:expr, expect: $expect:expr, require_data: $require:expr)?}), * $(,)? ) => {
         $(
             #[derive(graphql_client::GraphQLQuery)]
             #[graphql(
@@ -234,6 +234,7 @@ macro_rules! generate_subscription_types {
             #[allow(unused_imports)]
             use {
                 super::*,
+                assertor::*,
                 dango_genesis::GenesisOption,
                 dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
                 dango_testing::Preset,
@@ -241,6 +242,9 @@ macro_rules! generate_subscription_types {
                 serde_json::json,
                 std::time::Duration,
             };
+
+            const MAX_RETRIES: u32 = 3;
+            const TIMEOUT_SECS: u64 = 5;
 
             $($(
                 paste::paste! {
@@ -282,35 +286,66 @@ macro_rules! generate_subscription_types {
 
                         let mut stream = client.subscribe::<$name>($var).await?;
 
-                        // For subscriptions, we just verify we can connect and start receiving
-                        // We use a timeout since subscriptions are long-running
-                        let result = tokio::time::timeout(
-                            Duration::from_secs(5),
-                            stream.next()
-                        ).await;
+                        // Retry loop for subscriptions that may not emit immediately
+                        let mut retries = 0;
+                        let require_data: bool = $require;
 
-                        // It's ok if we timeout (no data yet) or receive data
-                        // The important thing is that the subscription was established
-                        match result {
-                            Ok(Some(Ok(_response))) => {
-                                #[cfg(feature = "tracing")]
-                                tracing::info!("Subscription response: {_response:#?}");
-                                // Response received successfully
-                            },
-                            Ok(Some(Err(e))) => {
-                                // Subscription error - this is a test failure
-                                panic!("Subscription error: {e}");
-                            },
-                            Ok(None) => {
-                                // Stream ended - unusual but not necessarily an error
-                                #[cfg(feature = "tracing")]
-                                tracing::info!("Subscription stream ended");
-                            },
-                            Err(_) => {
-                                // Timeout - expected for subscriptions that don't immediately emit
-                                #[cfg(feature = "tracing")]
-                                tracing::info!("Subscription timeout (expected for some subscriptions)");
-                            },
+                        loop {
+                            let result = tokio::time::timeout(
+                                Duration::from_secs(TIMEOUT_SECS),
+                                stream.next()
+                            ).await;
+
+                            match result {
+                                Ok(Some(Ok(response))) => {
+                                    #[cfg(feature = "tracing")]
+                                    tracing::info!("Subscription response: {response:#?}");
+
+                                    // Check for GraphQL errors
+                                    if let Some(errors) = &response.errors {
+                                        if !errors.is_empty() {
+                                            if require_data {
+                                                panic!("GraphQL errors: {:?}", errors);
+                                            } else {
+                                                // For event-driven subscriptions, GraphQL errors may be acceptable
+                                                // (e.g., query not found for certain keys)
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    // Verify the response data matches expected
+                                    if let Some(data) = response.data {
+                                        let expect_fn: fn(_) -> bool = $expect;
+                                        assert!(expect_fn(data), "Response data did not match expected");
+                                    } else if require_data {
+                                        panic!("Expected data in response but got None");
+                                    }
+                                    break;
+                                },
+                                Ok(Some(Err(e))) => {
+                                    panic!("Subscription error: {e}");
+                                },
+                                Ok(None) => {
+                                    panic!("Subscription stream ended unexpectedly");
+                                },
+                                Err(_) => {
+                                    retries += 1;
+                                    #[cfg(feature = "tracing")]
+                                    tracing::info!("Subscription timeout, retry {retries}/{MAX_RETRIES}");
+
+                                    if retries >= MAX_RETRIES {
+                                        if require_data {
+                                            panic!("Subscription timed out after {MAX_RETRIES} retries");
+                                        } else {
+                                            // For event-driven subscriptions, timeout is acceptable
+                                            // The connection was established successfully
+                                            break;
+                                        }
+                                    }
+                                    // Continue the loop to retry
+                                },
+                            }
                         }
 
                         Ok(())
@@ -325,32 +360,61 @@ generate_subscription_types! {
     {
         name: SubscribeBlock,
         path: "src/schemas/subscriptions/block.graphql",
-        test_with: crate::subscribe_block::Variables
+        test_with: crate::subscribe_block::Variables,
+        expect: |data: crate::subscribe_block::ResponseData| {
+            data.block.block_height >= 0
+        },
+        require_data: false  // Event-driven, no automatic block production in mock
     },
     {
         name: SubscribeAccounts,
         path: "src/schemas/subscriptions/accounts.graphql",
-        test_with: crate::subscribe_accounts::Variables::default()
+        test_with: crate::subscribe_accounts::Variables::default(),
+        expect: |_data: crate::subscribe_accounts::ResponseData| {
+            // Accounts subscription returns a list
+            true
+        },
+        require_data: false  // Event-driven
     },
     {
         name: SubscribeTransfers,
         path: "src/schemas/subscriptions/transfers.graphql",
-        test_with: crate::subscribe_transfers::Variables::default()
+        test_with: crate::subscribe_transfers::Variables::default(),
+        expect: |_data: crate::subscribe_transfers::ResponseData| {
+            // Transfers subscription returns a list
+            true
+        },
+        require_data: false  // Event-driven
     },
     {
         name: SubscribeTransactions,
         path: "src/schemas/subscriptions/transactions.graphql",
-        test_with: crate::subscribe_transactions::Variables::default()
+        test_with: crate::subscribe_transactions::Variables::default(),
+        expect: |_data: crate::subscribe_transactions::ResponseData| {
+            // Transactions subscription returns a list
+            true
+        },
+        require_data: false  // Event-driven
     },
     {
         name: SubscribeMessages,
         path: "src/schemas/subscriptions/messages.graphql",
-        test_with: crate::subscribe_messages::Variables::default()
+        test_with: crate::subscribe_messages::Variables::default(),
+        expect: |_data: crate::subscribe_messages::ResponseData| {
+            // Messages subscription returns a list
+            true
+        },
+        require_data: false  // Event-driven
     },
     {
         name: SubscribeEvents,
         path: "src/schemas/subscriptions/events.graphql",
-        test_with: crate::subscribe_events::Variables::default()
+        test_with: crate::subscribe_events::Variables::default(),
+        expect: |_data: crate::subscribe_events::ResponseData| {
+            // Events subscription returns a list
+            true
+        },
+        require_data: false  // Event-driven
     },
     {
         name: SubscribeEventByAddresses,
@@ -358,7 +422,12 @@ generate_subscription_types! {
         test_with: crate::subscribe_event_by_addresses::Variables {
             addresses: vec!["0x0000000000000000000000000000000000000000".to_string()],
             since_block_height: None,
-        }
+        },
+        expect: |_data: crate::subscribe_event_by_addresses::ResponseData| {
+            // EventByAddresses subscription returns a list
+            true
+        },
+        require_data: false  // Event-driven
     },
     {
         name: SubscribeCandles,
@@ -367,7 +436,12 @@ generate_subscription_types! {
             base_denom: "dango".to_string(),
             quote_denom: "bridge/usdc".to_string(),
             interval: crate::subscribe_candles::CandleInterval::ONE_MINUTE,
-        }
+        },
+        expect: |_data: crate::subscribe_candles::ResponseData| {
+            // Candles subscription returns a list
+            true
+        },
+        require_data: false  // Event-driven
     },
     {
         name: SubscribeTrades,
@@ -375,7 +449,12 @@ generate_subscription_types! {
         test_with: crate::subscribe_trades::Variables {
             base_denom: "dango".to_string(),
             quote_denom: "bridge/usdc".to_string(),
-        }
+        },
+        expect: |data: crate::subscribe_trades::ResponseData| {
+            // Trades returns a single Trade, verify it has expected denoms
+            data.trades.base_denom == "dango" && data.trades.quote_denom == "bridge/usdc"
+        },
+        require_data: false  // Event-driven
     },
     {
         name: SubscribeQueryApp,
@@ -383,7 +462,11 @@ generate_subscription_types! {
         test_with: crate::subscribe_query_app::Variables {
             request: json!({"config":{}}),
             block_interval: 10,
-        }
+        },
+        expect: |data: crate::subscribe_query_app::ResponseData| {
+            data.query_app.block_height >= 0
+        },
+        require_data: true  // Emits immediately with blockInterval
     },
     {
         name: SubscribeQueryStore,
@@ -392,14 +475,22 @@ generate_subscription_types! {
             key: "Y2hhaW5faWQ=".to_string(),
             prove: false,
             block_interval: 10,
-        }
+        },
+        expect: |data: crate::subscribe_query_store::ResponseData| {
+            data.query_store.block_height >= 0 && !data.query_store.value.is_empty()
+        },
+        require_data: false  // May not emit immediately
     },
     {
         name: SubscribeQueryStatus,
         path: "src/schemas/subscriptions/queryStatus.graphql",
         test_with: crate::subscribe_query_status::Variables {
             block_interval: 10,
-        }
+        },
+        expect: |data: crate::subscribe_query_status::ResponseData| {
+            !data.query_status.chain_id.is_empty() && data.query_status.block.block_height >= 0
+        },
+        require_data: true  // Emits immediately with blockInterval
     },
 }
 
