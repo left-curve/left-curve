@@ -11,14 +11,15 @@ use {
         dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
+    graphql_client::{GraphQLQuery, Response},
     grug::{
         Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
+    indexer_client::{Candles, candles},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     std::{collections::HashMap, sync::Arc},
     tokio::sync::{Mutex, mpsc},
@@ -33,42 +34,6 @@ async fn query_candles() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Candles($base_denom: String!, $quote_denom: String!, $interval: String) {
-      candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval) {
-          nodes {
-            timeStart
-            open
-            high
-            low
-            close
-            volumeBase
-            volumeQuote
-            quoteDenom
-            baseDenom
-            interval
-            minBlockHeight
-            maxBlockHeight
-          }
-          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom minBlockHeight maxBlockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "candles",
-        query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-            "interval": "ONE_SECOND",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
@@ -77,16 +42,50 @@ async fn query_candles() -> anyhow::Result<()> {
                 let mut received_candles: Vec<serde_json::Value> = vec![];
 
                 for _ in 0..10 {
+                    let variables = candles::Variables {
+                        after: None,
+                        first: None,
+                        base_denom: "dango".to_string(),
+                        quote_denom: "bridge/usdc".to_string(),
+                        interval: candles::CandleInterval::ONE_SECOND,
+                        earlier_than: None,
+                        later_than: None,
+                    };
+
+                    let request_body = Candles::build_query(variables);
                     let app = build_actix_app(dango_httpd_context.clone());
+                    let app = actix_web::test::init_service(app).await;
 
-                    let response: PaginatedResponse<serde_json::Value> =
-                        call_paginated_graphql(app, request_body.clone()).await?;
+                    let request = actix_web::test::TestRequest::post()
+                        .uri("/graphql")
+                        .set_json(&request_body)
+                        .to_request();
 
-                    received_candles = response
-                        .edges
-                        .into_iter()
-                        .map(|e| e.node)
-                        .collect::<Vec<_>>();
+                    let response = actix_web::test::call_and_read_body(&app, request).await;
+                    let response: Response<candles::ResponseData> =
+                        serde_json::from_slice(&response)?;
+
+                    let data = response.data.unwrap();
+
+                    received_candles = data
+                        .candles
+                        .nodes
+                        .iter()
+                        .map(|c| {
+                            serde_json::json!({
+                                "timeStart": c.time_start,
+                                "open": c.open,
+                                "high": c.high,
+                                "low": c.low,
+                                "close": c.close,
+                                "volumeBase": c.volume_base,
+                                "volumeQuote": c.volume_quote,
+                                "interval": format!("{:?}", c.interval),
+                                "baseDenom": c.base_denom,
+                                "quoteDenom": c.quote_denom,
+                            })
+                        })
+                        .collect();
                 }
 
                 let expected_candle = serde_json::json!({
@@ -120,43 +119,6 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Candles($base_denom: String!, $quote_denom: String!, $interval: String, $earlierThan: DateTime) {
-      candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, earlierThan: $earlierThan) {
-          nodes {
-            timeStart
-            open
-            high
-            low
-            close
-            volumeBase
-            volumeQuote
-            quoteDenom
-            baseDenom
-            interval
-            minBlockHeight
-            maxBlockHeight
-          }
-          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom minBlockHeight maxBlockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "candles",
-        query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-            "interval": "ONE_SECOND",
-            "earlierThan": "2025-07-24T07:00:00.000000000Z",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
@@ -165,16 +127,50 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
                 let mut received_candles: Vec<serde_json::Value> = vec![];
 
                 for _ in 0..10 {
+                    let variables = candles::Variables {
+                        after: None,
+                        first: None,
+                        base_denom: "dango".to_string(),
+                        quote_denom: "bridge/usdc".to_string(),
+                        interval: candles::CandleInterval::ONE_SECOND,
+                        earlier_than: Some("2025-07-24T07:00:00.000000000Z".to_string()),
+                        later_than: None,
+                    };
+
+                    let request_body = Candles::build_query(variables);
                     let app = build_actix_app(dango_httpd_context.clone());
+                    let app = actix_web::test::init_service(app).await;
 
-                    let response: PaginatedResponse<serde_json::Value> =
-                        call_paginated_graphql(app, request_body.clone()).await?;
+                    let request = actix_web::test::TestRequest::post()
+                        .uri("/graphql")
+                        .set_json(&request_body)
+                        .to_request();
 
-                    received_candles = response
-                        .edges
-                        .into_iter()
-                        .map(|e| e.node)
-                        .collect::<Vec<_>>();
+                    let response = actix_web::test::call_and_read_body(&app, request).await;
+                    let response: Response<candles::ResponseData> =
+                        serde_json::from_slice(&response)?;
+
+                    let data = response.data.unwrap();
+
+                    received_candles = data
+                        .candles
+                        .nodes
+                        .iter()
+                        .map(|c| {
+                            serde_json::json!({
+                                "timeStart": c.time_start,
+                                "open": c.open,
+                                "high": c.high,
+                                "low": c.low,
+                                "close": c.close,
+                                "volumeBase": c.volume_base,
+                                "volumeQuote": c.volume_quote,
+                                "interval": format!("{:?}", c.interval),
+                                "baseDenom": c.base_denom,
+                                "quoteDenom": c.quote_denom,
+                            })
+                        })
+                        .collect();
                 }
 
                 let expected_candle = serde_json::json!({
@@ -211,6 +207,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
+    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
     let graphql_query = r#"
       subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
           candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
@@ -401,6 +398,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     suite.app.indexer.wait_for_finish().await?;
 
+    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
     let graphql_query = r#"
       subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
           candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
