@@ -1,0 +1,31 @@
+query Users($after: String, $before: String, $first: Int, $last: Int, $blockHeight: Int, $publicKey: String, $publicKeyHash: String) {
+  users(after: $after, before: $before, first: $first, last: $last, blockHeight: $blockHeight, publicKey: $publicKey, publicKeyHash: $publicKeyHash) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      userIndex
+      createdBlockHeight
+      createdAt
+      publicKeys {
+        userIndex
+        keyHash
+        publicKey
+        keyType
+        createdBlockHeight
+        createdAt
+      }
+      accounts {
+        accountIndex
+        address
+        accountType
+        createdBlockHeight
+        createdTxHash
+        createdAt
+      }
+    }
+  }
+}

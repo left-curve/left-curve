@@ -1,0 +1,18 @@
+query Accounts($after: String, $before: String, $first: Int, $last: Int, $sortBy: AccountSortBy, $blockHeight: Int, $userIndex: Int, $address: String) {
+  accounts(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy, blockHeight: $blockHeight, userIndex: $userIndex, address: $address) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      accountIndex
+      address
+      accountType
+      createdBlockHeight
+      createdTxHash
+      createdAt
+    }
+  }
+}

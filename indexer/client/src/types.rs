@@ -99,6 +99,9 @@ type JSON = serde_json::Value;
 type GrugQueryInput = serde_json::Value;
 type UnsignedTx = serde_json::Value;
 type Tx = serde_json::Value;
+type DateTime = String;
+type BigDecimal = String;
+type NaiveDateTime = String;
 
 generate_types! {
     {
@@ -148,5 +151,53 @@ generate_types! {
     {
         name: SearchTx,
         path: "src/schemas/queries/transaction.graphql",
+    },
+    {
+        name: Block,
+        path: "src/schemas/queries/block.graphql",
+    },
+    {
+        name: Blocks,
+        path: "src/schemas/queries/blocks.graphql",
+    },
+    {
+        name: Transactions,
+        path: "src/schemas/queries/transactions.graphql",
+    },
+    {
+        name: Messages,
+        path: "src/schemas/queries/messages.graphql",
+    },
+    {
+        name: Events,
+        path: "src/schemas/queries/events.graphql",
+    },
+    {
+        name: Transfers,
+        path: "src/schemas/queries/transfers.graphql",
+    },
+    {
+        name: Accounts,
+        path: "src/schemas/queries/accounts.graphql",
+    },
+    {
+        name: User,
+        path: "src/schemas/queries/user.graphql",
+    },
+    {
+        name: Users,
+        path: "src/schemas/queries/users.graphql",
+    },
+    {
+        name: Candles,
+        path: "src/schemas/queries/candles.graphql",
+    },
+    {
+        name: Trades,
+        path: "src/schemas/queries/trades.graphql",
+    },
+    {
+        name: QueryStatus,
+        path: "src/schemas/queries/queryStatus.graphql",
     }
 }

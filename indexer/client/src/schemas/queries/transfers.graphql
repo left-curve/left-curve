@@ -1,0 +1,20 @@
+query Transfers($after: String, $before: String, $first: Int, $last: Int, $sortBy: TransferSortBy, $blockHeight: Int, $fromAddress: String, $toAddress: String, $userIndex: Int) {
+  transfers(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy, blockHeight: $blockHeight, fromAddress: $fromAddress, toAddress: $toAddress, userIndex: $userIndex) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      idx
+      blockHeight
+      txHash
+      fromAddress
+      toAddress
+      amount
+      denom
+      createdAt
+    }
+  }
+}
