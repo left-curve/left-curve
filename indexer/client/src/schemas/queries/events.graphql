@@ -18,6 +18,9 @@ query Events($after: String, $before: String, $first: Int, $last: Int, $sortBy: 
       data
       blockHeight
       createdAt
+      transaction {
+        hash
+      }
     }
   }
 }

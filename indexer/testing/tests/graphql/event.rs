@@ -1,13 +1,12 @@
 use {
     assertor::*,
+    graphql_client::{GraphQLQuery, Response},
     grug_types::{BroadcastClientExt, Coins, Denom, ResultExt},
-    indexer_sql::entity,
+    indexer_client::{Events, Transactions, events, transactions},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse,
+        GraphQLCustomRequest,
         block::{create_block, create_blocks},
-        build_app_service, call_graphql, call_ws_graphql_stream,
-        graphql::paginate_models,
-        parse_graphql_subscription_response,
+        build_app_service, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     itertools::Itertools,
     sea_orm::{EntityTrait, PaginatorTrait},
@@ -19,56 +18,15 @@ use {
 async fn graphql_returns_events() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let graphql_query = r#"
-      query Events {
-        events {
-          nodes {
-            id
-            parentId
-            transactionId
-            messageId
-            blockHeight
-            createdAt
-            type
-            method
-            eventStatus
-            commitmentStatus
-            transactionType
-            transactionIdx
-            messageIdx
-            eventIdx
-            data
-          }
-          edges {
-            node {
-              id
-              parentId
-              transactionId
-              messageId
-              blockHeight
-              createdAt
-              type
-              method
-              eventStatus
-              commitmentStatus
-              transactionType
-              transactionIdx
-              messageIdx
-              data
-              eventIdx
-            }
-            cursor
-          }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "events",
-        query: graphql_query,
-        variables: Default::default(),
+    let variables = events::Variables {
+        after: None,
+        before: None,
+        first: None,
+        last: None,
+        sort_by: None,
     };
+
+    let request_body = Events::build_query(variables);
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -76,14 +34,19 @@ async fn graphql_returns_events() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
+                let app = actix_web::test::init_service(app).await;
 
-                let response = call_graphql::<PaginatedResponse<entity::events::Model>, _, _, _>(
-                    app,
-                    request_body,
-                )
-                .await?;
+                let request = actix_web::test::TestRequest::post()
+                    .uri("/graphql")
+                    .set_json(&request_body)
+                    .to_request();
 
-                assert_that!(response.data.edges).is_not_empty();
+                let response = actix_web::test::call_and_read_body(&app, request).await;
+                let response: Response<events::ResponseData> = serde_json::from_slice(&response)?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+                assert_that!(data.events.nodes).is_not_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -96,42 +59,15 @@ async fn graphql_returns_events() -> anyhow::Result<()> {
 async fn graphql_returns_events_transaction_hashes() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let graphql_query = r#"
-      query Events {
-        events {
-          nodes {
-            transaction { hash }
-            blockHeight
-            createdAt
-            type
-            method
-            eventStatus
-            commitmentStatus
-            data
-          }
-          edges {
-            node {
-              transaction { hash }
-              blockHeight
-              createdAt
-              type
-              method
-              eventStatus
-              commitmentStatus
-              data
-            }
-            cursor
-          }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "events",
-        query: graphql_query,
-        variables: Default::default(),
+    let variables = events::Variables {
+        after: None,
+        before: None,
+        first: None,
+        last: None,
+        sort_by: None,
     };
+
+    let request_body = Events::build_query(variables);
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -139,19 +75,25 @@ async fn graphql_returns_events_transaction_hashes() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
+                let app = actix_web::test::init_service(app).await;
 
-                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
-                    app,
-                    request_body,
-                )
-                .await?;
+                let request = actix_web::test::TestRequest::post()
+                    .uri("/graphql")
+                    .set_json(&request_body)
+                    .to_request();
 
-                let hashes = response
-                    .data
-                    .edges
+                let response = actix_web::test::call_and_read_body(&app, request).await;
+                let response: Response<events::ResponseData> = serde_json::from_slice(&response)?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+
+                let hashes: Vec<_> = data
+                    .events
+                    .nodes
                     .iter()
-                    .flat_map(|edge| edge.node.get("transaction").and_then(|tx| tx.get("hash")))
-                    .collect::<Vec<_>>();
+                    .filter_map(|node| node.transaction.as_ref().map(|tx| &tx.hash))
+                    .collect();
 
                 assert_that!(hashes).is_not_empty();
 
@@ -166,54 +108,9 @@ async fn graphql_returns_events_transaction_hashes() -> anyhow::Result<()> {
 async fn graphql_paginate_events() -> anyhow::Result<()> {
     let (httpd_context, _client, _) = create_blocks(10).await?;
 
-    let events_total_count = entity::events::Entity::find()
+    let events_total_count = indexer_sql::entity::events::Entity::find()
         .count(&httpd_context.db)
         .await?;
-
-    let graphql_query = r#"
-      query Events($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
-        events(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
-          nodes {
-            id
-            parentId
-            transactionId
-            messageId
-            blockHeight
-            createdAt
-            type
-            method
-            eventStatus
-            commitmentStatus
-            transactionType
-            transactionIdx
-            messageIdx
-            eventIdx
-            data
-          }
-          edges {
-            node {
-              id
-              parentId
-              transactionId
-              messageId
-              blockHeight
-              createdAt
-              type
-              method
-              eventStatus
-              commitmentStatus
-              transactionType
-              transactionIdx
-              messageIdx
-              data
-              eventIdx
-            }
-            cursor
-          }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -222,18 +119,79 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let events_count = 2;
 
+                // Helper to paginate through all events
+                async fn paginate_all_events(
+                    httpd_context: indexer_httpd::context::Context,
+                    sort_by: events::EventSortBy,
+                    first: Option<i64>,
+                    last: Option<i64>,
+                ) -> anyhow::Result<Vec<i64>> {
+                    let mut all_heights = vec![];
+                    let mut after: Option<String> = None;
+                    let mut before: Option<String> = None;
+
+                    loop {
+                        let variables = events::Variables {
+                            after: after.clone(),
+                            before: before.clone(),
+                            first,
+                            last,
+                            sort_by: Some(sort_by.clone()),
+                        };
+
+                        let request_body = Events::build_query(variables);
+                        let app = build_app_service(httpd_context.clone());
+                        let app = actix_web::test::init_service(app).await;
+
+                        let request = actix_web::test::TestRequest::post()
+                            .uri("/graphql")
+                            .set_json(&request_body)
+                            .to_request();
+
+                        let response = actix_web::test::call_and_read_body(&app, request).await;
+                        let response: Response<events::ResponseData> =
+                            serde_json::from_slice(&response)?;
+
+                        let data = response.data.unwrap();
+
+                        match (first, last) {
+                            (Some(_), None) => {
+                                for node in data.events.nodes {
+                                    all_heights.push(node.block_height);
+                                }
+
+                                if !data.events.page_info.has_next_page {
+                                    break;
+                                }
+                                after = data.events.page_info.end_cursor;
+                            },
+                            (None, Some(_)) => {
+                                for node in data.events.nodes.into_iter().rev() {
+                                    all_heights.push(node.block_height);
+                                }
+
+                                if !data.events.page_info.has_previous_page {
+                                    break;
+                                }
+                                before = data.events.page_info.start_cursor;
+                            },
+                            _ => break,
+                        }
+                    }
+
+                    Ok(all_heights)
+                }
+
                 // 1. first with descending order
-                let block_heights = paginate_models::<entity::events::Model>(
+                let block_heights = paginate_all_events(
                     httpd_context.clone(),
-                    graphql_query,
-                    "events",
-                    "BLOCK_HEIGHT_DESC",
+                    events::EventSortBy::BLOCK_HEIGHT_DESC,
                     Some(events_count),
                     None,
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.block_height as u64)
+                .map(|h| h as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -248,17 +206,15 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
                 assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
 
                 // 2. first with ascending order
-                let block_heights = paginate_models::<entity::events::Model>(
+                let block_heights = paginate_all_events(
                     httpd_context.clone(),
-                    graphql_query,
-                    "events",
-                    "BLOCK_HEIGHT_ASC",
+                    events::EventSortBy::BLOCK_HEIGHT_ASC,
                     Some(events_count),
                     None,
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.block_height as u64)
+                .map(|h| h as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -273,17 +229,15 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
                 assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
 
                 // 3. last with descending order
-                let block_heights = paginate_models::<entity::events::Model>(
+                let block_heights = paginate_all_events(
                     httpd_context.clone(),
-                    graphql_query,
-                    "events",
-                    "BLOCK_HEIGHT_DESC",
+                    events::EventSortBy::BLOCK_HEIGHT_DESC,
                     None,
                     Some(events_count),
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.block_height as u64)
+                .map(|h| h as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -298,17 +252,15 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
                 assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
 
                 // 4. last with ascending order
-                let block_heights = paginate_models::<entity::events::Model>(
+                let block_heights = paginate_all_events(
                     httpd_context.clone(),
-                    graphql_query,
-                    "events",
-                    "BLOCK_HEIGHT_ASC",
+                    events::EventSortBy::BLOCK_HEIGHT_ASC,
                     None,
                     Some(events_count),
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.block_height as u64)
+                .map(|h| h as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -333,13 +285,10 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
+    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
     let graphql_query = r#"
       subscription Events {
         events {
-          id
-          parentId
-          transactionId
-          messageId
           transactionType
           transactionIdx
           messageIdx
@@ -396,12 +345,17 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
                 let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
+                // Define a simple struct to capture subscription response
+                #[derive(serde::Deserialize, Debug)]
+                #[serde(rename_all = "camelCase")]
+                struct SubscriptionEvent {
+                    block_height: i64,
+                }
+
                 // 1st response is always the existing last block
-                let response = parse_graphql_subscription_response::<Vec<entity::events::Model>>(
-                    &mut framed,
-                    name,
-                )
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<SubscriptionEvent>>(&mut framed, name)
+                        .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
                 assert_that!(response.data).is_not_empty();
@@ -409,11 +363,9 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2nd response
-                let response = parse_graphql_subscription_response::<Vec<entity::events::Model>>(
-                    &mut framed,
-                    name,
-                )
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<SubscriptionEvent>>(&mut framed, name)
+                        .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
                 assert_that!(response.data).is_not_empty();
@@ -421,11 +373,9 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let response = parse_graphql_subscription_response::<Vec<entity::events::Model>>(
-                    &mut framed,
-                    name,
-                )
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<SubscriptionEvent>>(&mut framed, name)
+                        .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
                 assert_that!(response.data).is_not_empty();
@@ -441,27 +391,18 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
 async fn graphql_returns_nested_events() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let graphql_query = r#"
-      query Transactions {
-        transactions {
-          nodes {
-            blockHeight
-            sender
-            hash
-            hasSucceeded
-            nestedEvents
-          }
-          edges { node { blockHeight sender hash hasSucceeded nestedEvents } cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "transactions",
-        query: graphql_query,
-        variables: Default::default(),
+    let variables = transactions::Variables {
+        after: None,
+        before: None,
+        first: None,
+        last: None,
+        sort_by: None,
+        hash: None,
+        block_height: None,
+        sender_address: None,
     };
+
+    let request_body = Transactions::build_query(variables);
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -469,17 +410,23 @@ async fn graphql_returns_nested_events() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
+                let app = actix_web::test::init_service(app).await;
 
-                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
-                    app,
-                    request_body,
-                )
-                .await?;
+                let request = actix_web::test::TestRequest::post()
+                    .uri("/graphql")
+                    .set_json(&request_body)
+                    .to_request();
 
-                let nested_events: &str = response.data.edges[0]
-                    .node
-                    .get("nestedEvents")
-                    .and_then(|s| s.as_str())
+                let response = actix_web::test::call_and_read_body(&app, request).await;
+                let response: Response<transactions::ResponseData> =
+                    serde_json::from_slice(&response)?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+
+                let nested_events = data.transactions.nodes[0]
+                    .nested_events
+                    .as_ref()
                     .expect("Can't get nestedEvents");
 
                 assert_that!(nested_events.len()).is_at_least(10);
