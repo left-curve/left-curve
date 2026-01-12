@@ -616,8 +616,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
                 let verify_account_user_index =
                     |account: &subscribe_accounts::SubscribeAccountsAccounts| {
                         assert!(!account.users.is_empty(), "Expected at least one user");
-                        assert_that!(account.users[0].user_index as i64)
-                            .is_equal_to(user_index as i64);
+                        assert_that!(account.users[0].user_index).is_equal_to(user_index as i64);
                     };
 
                 // 1st response is always accounts from the last block if any
