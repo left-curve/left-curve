@@ -70,7 +70,8 @@ async fn query_candles() -> anyhow::Result<()> {
                 assert_that!(nodes.len()).is_equal_to(1);
 
                 let candle = &nodes[0];
-                assert_that!(candle.time_start.as_str()).is_equal_to("1971-01-01T00:00:00.000000000Z");
+                assert_that!(candle.time_start.as_str())
+                    .is_equal_to("1971-01-01T00:00:00.000000000Z");
                 assert_that!(candle.open.as_str()).is_equal_to("27.5");
                 assert_that!(candle.high.as_str()).is_equal_to("27.5");
                 assert_that!(candle.low.as_str()).is_equal_to("27.5");
@@ -133,7 +134,8 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
                 assert_that!(nodes.len()).is_equal_to(1);
 
                 let candle = &nodes[0];
-                assert_that!(candle.time_start.as_str()).is_equal_to("1971-01-01T00:00:00.000000000Z");
+                assert_that!(candle.time_start.as_str())
+                    .is_equal_to("1971-01-01T00:00:00.000000000Z");
                 assert_that!(candle.open.as_str()).is_equal_to("27.5");
                 assert_that!(candle.high.as_str()).is_equal_to("27.5");
                 assert_that!(candle.low.as_str()).is_equal_to("27.5");

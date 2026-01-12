@@ -133,8 +133,14 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
                 ]));
 
                 assert_that!(received_public_keys).contains(HashMap::from([
-                    ("publicKey".to_string(), test_account.first_key().to_string()),
-                    ("keyHash".to_string(), test_account.first_key_hash().to_string()),
+                    (
+                        "publicKey".to_string(),
+                        test_account.first_key().to_string(),
+                    ),
+                    (
+                        "keyHash".to_string(),
+                        test_account.first_key_hash().to_string(),
+                    ),
                 ]));
 
                 Ok::<(), anyhow::Error>(())

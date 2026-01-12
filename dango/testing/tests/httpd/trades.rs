@@ -77,10 +77,42 @@ async fn query_all_trades() -> anyhow::Result<()> {
 
                 assert_that!(nodes.len()).is_equal_to(4);
 
-                assert_trade(&nodes[0], accounts.user6.address(), trades::Direction::ask, "5", "137.5", "0", "136.95");
-                assert_trade(&nodes[1], accounts.user5.address(), trades::Direction::ask, "10", "275", "0", "273.9");
-                assert_trade(&nodes[2], accounts.user4.address(), trades::Direction::ask, "10", "275", "0", "273.9");
-                assert_trade(&nodes[3], accounts.user1.address(), trades::Direction::bid, "25", "687.5", "24.9", "62.5");
+                assert_trade(
+                    &nodes[0],
+                    accounts.user6.address(),
+                    trades::Direction::ask,
+                    "5",
+                    "137.5",
+                    "0",
+                    "136.95",
+                );
+                assert_trade(
+                    &nodes[1],
+                    accounts.user5.address(),
+                    trades::Direction::ask,
+                    "10",
+                    "275",
+                    "0",
+                    "273.9",
+                );
+                assert_trade(
+                    &nodes[2],
+                    accounts.user4.address(),
+                    trades::Direction::ask,
+                    "10",
+                    "275",
+                    "0",
+                    "273.9",
+                );
+                assert_trade(
+                    &nodes[3],
+                    accounts.user1.address(),
+                    trades::Direction::bid,
+                    "25",
+                    "687.5",
+                    "24.9",
+                    "62.5",
+                );
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -141,10 +173,42 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
 
                 assert_that!(received_trades.len()).is_equal_to(4);
 
-                assert_trade(&received_trades[0], accounts.user6.address(), trades::Direction::ask, "5", "137.5", "0", "136.95");
-                assert_trade(&received_trades[1], accounts.user5.address(), trades::Direction::ask, "10", "275", "0", "273.9");
-                assert_trade(&received_trades[2], accounts.user4.address(), trades::Direction::ask, "10", "275", "0", "273.9");
-                assert_trade(&received_trades[3], accounts.user1.address(), trades::Direction::bid, "25", "687.5", "24.9", "62.5");
+                assert_trade(
+                    &received_trades[0],
+                    accounts.user6.address(),
+                    trades::Direction::ask,
+                    "5",
+                    "137.5",
+                    "0",
+                    "136.95",
+                );
+                assert_trade(
+                    &received_trades[1],
+                    accounts.user5.address(),
+                    trades::Direction::ask,
+                    "10",
+                    "275",
+                    "0",
+                    "273.9",
+                );
+                assert_trade(
+                    &received_trades[2],
+                    accounts.user4.address(),
+                    trades::Direction::ask,
+                    "10",
+                    "275",
+                    "0",
+                    "273.9",
+                );
+                assert_trade(
+                    &received_trades[3],
+                    accounts.user1.address(),
+                    trades::Direction::bid,
+                    "25",
+                    "687.5",
+                    "24.9",
+                    "62.5",
+                );
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -195,7 +259,8 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
                 assert_that!(nodes.len()).is_equal_to(1);
 
                 let node = &nodes[0];
-                assert_that!(node.addr.as_str()).is_equal_to(accounts.user6.address().to_string().as_str());
+                assert_that!(node.addr.as_str())
+                    .is_equal_to(accounts.user6.address().to_string().as_str());
                 assert_that!(node.base_denom.as_str()).is_equal_to("dango");
                 assert_that!(node.quote_denom.as_str()).is_equal_to("bridge/usdc");
                 assert_that!(node.clearing_price.as_str()).is_equal_to("27.5");
