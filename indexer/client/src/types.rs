@@ -208,3 +208,219 @@ impl Default for candles::CandleInterval {
         Self::ONE_MINUTE
     }
 }
+
+// Subscription types - generated separately since they follow a different pattern
+macro_rules! generate_subscription_types {
+    ($({name: $name:ident, path: $path:literal $(, test_with: $var:expr)?}), * $(,)? ) => {
+        $(
+            #[derive(graphql_client::GraphQLQuery)]
+            #[graphql(
+                schema_path = "src/schemas/schema.graphql",
+                query_path = $path,
+                response_derives = "Debug, Clone, PartialEq, Eq",
+                variables_derives = "Debug, Clone, Default"
+            )]
+            pub struct $name;
+
+            paste::paste! {
+                impl Variables for [<$name:snake>]::Variables {
+                    type Query = $name;
+                }
+            }
+        )*
+
+        #[cfg(test)]
+        mod subscription_tests {
+            #[allow(unused_imports)]
+            use {
+                super::*,
+                dango_genesis::GenesisOption,
+                dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
+                dango_testing::Preset,
+                futures::StreamExt,
+                serde_json::json,
+                std::time::Duration,
+            };
+
+            $($(
+                paste::paste! {
+                    #[tokio::test]
+                    async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
+                        let port = get_mock_socket_addr();
+
+                        // Spawn server in separate thread with its own runtime
+                        let _server_handle = std::thread::spawn(move || {
+                            let rt = tokio::runtime::Builder::new_multi_thread()
+                                .worker_threads(2)
+                                .enable_all()
+                                .build()
+                                .unwrap();
+                            rt.block_on(async {
+                                #[cfg(feature = "tracing")]
+                                tracing::info!("Starting mock HTTP server on port {port}");
+
+                                if let Err(_error) = dango_mock_httpd::run(
+                                    port,
+                                    BlockCreation::OnBroadcast,
+                                    None,
+                                    TestOption::default(),
+                                    GenesisOption::preset_test(),
+                                    None,
+                                )
+                                .await
+                                {
+                                    #[cfg(feature = "tracing")]
+                                    tracing::error!("Error running mock HTTP server: {_error}");
+                                }
+                            });
+                        });
+
+                        wait_for_server_ready(port).await?;
+
+                        let ws_url = format!("ws://localhost:{port}/graphql");
+                        let client = crate::WsClient::new(&ws_url)?;
+
+                        let mut stream = client.subscribe::<$name>($var).await?;
+
+                        // For subscriptions, we just verify we can connect and start receiving
+                        // We use a timeout since subscriptions are long-running
+                        let result = tokio::time::timeout(
+                            Duration::from_secs(5),
+                            stream.next()
+                        ).await;
+
+                        // It's ok if we timeout (no data yet) or receive data
+                        // The important thing is that the subscription was established
+                        match result {
+                            Ok(Some(Ok(_response))) => {
+                                #[cfg(feature = "tracing")]
+                                tracing::info!("Subscription response: {_response:#?}");
+                                // Response received successfully
+                            },
+                            Ok(Some(Err(e))) => {
+                                // Subscription error - this is a test failure
+                                panic!("Subscription error: {e}");
+                            },
+                            Ok(None) => {
+                                // Stream ended - unusual but not necessarily an error
+                                #[cfg(feature = "tracing")]
+                                tracing::info!("Subscription stream ended");
+                            },
+                            Err(_) => {
+                                // Timeout - expected for subscriptions that don't immediately emit
+                                #[cfg(feature = "tracing")]
+                                tracing::info!("Subscription timeout (expected for some subscriptions)");
+                            },
+                        }
+
+                        Ok(())
+                    }
+                }
+            )*)?
+        }
+    };
+}
+
+generate_subscription_types! {
+    {
+        name: SubscribeBlock,
+        path: "src/schemas/subscriptions/block.graphql",
+        test_with: crate::subscribe_block::Variables
+    },
+    {
+        name: SubscribeAccounts,
+        path: "src/schemas/subscriptions/accounts.graphql",
+        test_with: crate::subscribe_accounts::Variables::default()
+    },
+    {
+        name: SubscribeTransfers,
+        path: "src/schemas/subscriptions/transfers.graphql",
+        test_with: crate::subscribe_transfers::Variables::default()
+    },
+    {
+        name: SubscribeTransactions,
+        path: "src/schemas/subscriptions/transactions.graphql",
+        test_with: crate::subscribe_transactions::Variables::default()
+    },
+    {
+        name: SubscribeMessages,
+        path: "src/schemas/subscriptions/messages.graphql",
+        test_with: crate::subscribe_messages::Variables::default()
+    },
+    {
+        name: SubscribeEvents,
+        path: "src/schemas/subscriptions/events.graphql",
+        test_with: crate::subscribe_events::Variables::default()
+    },
+    {
+        name: SubscribeEventByAddresses,
+        path: "src/schemas/subscriptions/eventByAddresses.graphql",
+        test_with: crate::subscribe_event_by_addresses::Variables {
+            addresses: vec!["0x0000000000000000000000000000000000000000".to_string()],
+            since_block_height: None,
+        }
+    },
+    {
+        name: SubscribeCandles,
+        path: "src/schemas/subscriptions/candles.graphql",
+        test_with: crate::subscribe_candles::Variables {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            interval: crate::subscribe_candles::CandleInterval::ONE_MINUTE,
+        }
+    },
+    {
+        name: SubscribeTrades,
+        path: "src/schemas/subscriptions/trades.graphql",
+        test_with: crate::subscribe_trades::Variables {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+        }
+    },
+    {
+        name: SubscribeQueryApp,
+        path: "src/schemas/subscriptions/queryApp.graphql",
+        test_with: crate::subscribe_query_app::Variables {
+            request: json!({"config":{}}),
+            block_interval: 10,
+        }
+    },
+    {
+        name: SubscribeQueryStore,
+        path: "src/schemas/subscriptions/queryStore.graphql",
+        test_with: crate::subscribe_query_store::Variables {
+            key: "Y2hhaW5faWQ=".to_string(),
+            prove: false,
+            block_interval: 10,
+        }
+    },
+    {
+        name: SubscribeQueryStatus,
+        path: "src/schemas/subscriptions/queryStatus.graphql",
+        test_with: crate::subscribe_query_status::Variables {
+            block_interval: 10,
+        }
+    },
+}
+
+// Re-export subscription modules
+pub mod subscriptions {
+    pub use super::{
+        subscribe_accounts, subscribe_block, subscribe_candles, subscribe_event_by_addresses,
+        subscribe_events, subscribe_messages, subscribe_query_app, subscribe_query_status,
+        subscribe_query_store, subscribe_trades, subscribe_transactions, subscribe_transfers,
+    };
+}
+
+// Implement Default for subscription enum types
+impl Default for subscribe_candles::CandleInterval {
+    fn default() -> Self {
+        Self::ONE_MINUTE
+    }
+}
+
+impl Default for subscribe_events::CheckValue {
+    fn default() -> Self {
+        Self::EQUAL
+    }
+}
