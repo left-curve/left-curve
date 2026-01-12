@@ -270,9 +270,11 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 }
 
                 // 1st response is always the existing last block
-                let response =
-                    parse_graphql_subscription_response::<Vec<SubscriptionMessage>>(&mut framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<SubscriptionMessage>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
                 assert_that!(response.data.first().unwrap().method_name.as_str())
@@ -284,9 +286,11 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2nd response
-                let response =
-                    parse_graphql_subscription_response::<Vec<SubscriptionMessage>>(&mut framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<SubscriptionMessage>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
                 assert_that!(response.data.first().unwrap().method_name.as_str())
@@ -298,9 +302,11 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let response =
-                    parse_graphql_subscription_response::<Vec<SubscriptionMessage>>(&mut framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<SubscriptionMessage>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
                 assert_that!(response.data.first().unwrap().method_name.as_str())

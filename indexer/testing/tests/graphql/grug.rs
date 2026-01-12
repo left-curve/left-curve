@@ -51,7 +51,8 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
 
                 // Convert the JSON response for comparison
                 let query_app_result: Json = serde_json::from_value(data.query_app)?;
-                assert_that!(query_app_result.into_inner()).is_equal_to(json!({"app_config": null}));
+                assert_that!(query_app_result.into_inner())
+                    .is_equal_to(json!({"app_config": null}));
 
                 Ok::<(), anyhow::Error>(())
             })

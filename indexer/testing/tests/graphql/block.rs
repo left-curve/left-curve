@@ -78,7 +78,7 @@ async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
 
                 let request = actix_web::test::TestRequest::post()
                     .uri("/graphql")
-                    .set_json(&vec![request_body, request_body2])
+                    .set_json(vec![request_body, request_body2])
                     .to_request();
 
                 let response = actix_web::test::call_and_read_body(&app, request).await;
