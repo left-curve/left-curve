@@ -13,6 +13,9 @@ query Accounts($after: String, $before: String, $first: Int, $last: Int, $sortBy
       createdBlockHeight
       createdTxHash
       createdAt
+      users {
+        userIndex
+      }
     }
   }
 }

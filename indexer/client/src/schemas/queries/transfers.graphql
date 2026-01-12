@@ -15,6 +15,24 @@ query Transfers($after: String, $before: String, $first: Int, $last: Int, $sortB
       amount
       denom
       createdAt
+      accounts {
+        address
+        users {
+          userIndex
+        }
+      }
+      fromAccount {
+        address
+        users {
+          userIndex
+        }
+      }
+      toAccount {
+        address
+        users {
+          userIndex
+        }
+      }
     }
   }
 }
