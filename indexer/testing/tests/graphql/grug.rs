@@ -1,13 +1,15 @@
 use {
     assert_json_diff::assert_json_eq,
     assertor::*,
+    graphql_client::{GraphQLQuery, Response},
     grug_types::{
         BroadcastClientExt, Coins, Denom, GasOption, Inner, Json, JsonSerExt, Message, Query,
         QueryAppConfigRequest, QueryBalanceRequest, ResultExt,
     },
+    indexer_client::{QueryApp, query_app},
     indexer_testing::{
-        GraphQLCustomRequest, block::create_block, build_app_service, call_graphql,
-        call_ws_graphql_stream, parse_graphql_subscription_response,
+        GraphQLCustomRequest, block::create_block, build_app_service, call_ws_graphql_stream,
+        parse_graphql_subscription_response,
     },
     serde_json::json,
     std::str::FromStr,
@@ -18,38 +20,38 @@ use {
 async fn graphql_returns_query_app() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let graphql_query = r#"
-      query QueryApp($request: String!, $height: Int!) {
-        queryApp(request: $request, height: $height)
-      }
-    "#;
-
     let body_request = Query::AppConfig(QueryAppConfigRequest {}).to_json_value()?;
-
-    let variables = json!({
-        "request": body_request,
-        "height": 1,
-    })
-    .as_object()
-    .unwrap()
-    .clone();
-
-    let request_body = GraphQLCustomRequest {
-        name: "queryApp",
-        query: graphql_query,
-        variables,
-    };
 
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
-            tokio::task::spawn_local(async {
+            tokio::task::spawn_local(async move {
+                let variables = query_app::Variables {
+                    request: body_request.into_inner(),
+                    height: Some(1),
+                };
+
+                let request_body = QueryApp::build_query(variables);
+
                 let app = build_app_service(httpd_context);
+                let app = actix_web::test::init_service(app).await;
 
-                let response = call_graphql::<Json, _, _, _>(app, request_body).await?;
+                let request = actix_web::test::TestRequest::post()
+                    .uri("/graphql")
+                    .set_json(&request_body)
+                    .to_request();
 
-                assert_that!(response.data.into_inner()).is_equal_to(json!({"app_config": null}));
+                let response = actix_web::test::call_and_read_body(&app, request).await;
+                let response: Response<query_app::ResponseData> =
+                    serde_json::from_slice(&response)?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+
+                // Convert the JSON response for comparison
+                let query_app_result: Json = serde_json::from_value(data.query_app)?;
+                assert_that!(query_app_result.into_inner()).is_equal_to(json!({"app_config": null}));
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -62,6 +64,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
+    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
     let graphql_query = r#"
       subscription QueryApp($request: String!, $block_interval: Int!) {
         queryApp(request: $request, blockInterval: $block_interval) { response blockHeight }
