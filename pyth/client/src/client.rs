@@ -113,20 +113,26 @@ impl PythClient {
             )
             .await
             {
-                Ok(res) => {
-                    if let Err(err) = res {
-                        warn!(
-                            subscription_id = subscription.subscription_id.0,
-                            error = %err,
-                            "Subscription request failed",
-                        );
-                    }
+                Ok(Ok(_)) => {
+                    info!(
+                        subscription_id = subscription.subscription_id.0,
+                        "Subscription request succeeded"
+                    );
                 },
-                Err(_) => warn!(
-                    subscription_id = subscription.subscription_id.0,
-                    timeout_ms = SUBSCRIPTION_TIMEOUT_MS,
-                    "Sending subscription request timed out",
-                ),
+                Ok(Err(err)) => {
+                    warn!(
+                        subscription_id = subscription.subscription_id.0,
+                        error = %err,
+                        "Subscription request failed"
+                    );
+                },
+                Err(_) => {
+                    warn!(
+                        subscription_id = subscription.subscription_id.0,
+                        timeout_ms = SUBSCRIPTION_TIMEOUT_MS,
+                        "Sending subscription request timed out"
+                    );
+                },
             }
         }
     }
@@ -594,23 +600,23 @@ impl PythClientTrait for PythClient {
                 )
                 .await
                 {
-                    Ok(res) => match res {
-                        Ok(_) => {
-                            info!(subscription_id, "Unsubscribed stream successfully");
-                        },
-                        Err(err) => {
-                            error!(
-                                subscription_id,
-                                error=%err,
-                                "Failed to unsubscribe stream"
-                            );
-                        },
+                    Ok(Ok(_)) =>  {
+                        info!(subscription_id, "Unsubscribed stream successfully");
                     },
-                    Err(_) => warn!(
-                        subscription_id,
-                        timeout_ms = SUBSCRIPTION_TIMEOUT_MS,
-                        "Sending unsubscription request timed out",
-                    ),
+                    Ok(Err(err)) => {
+                        warn!(
+                            subscription_id,
+                            error = %err,
+                            "Failed to unsubscribe stream"
+                        );
+                    },
+                    Err(_) => {
+                        warn!(
+                            subscription_id,
+                            timeout_ms = SUBSCRIPTION_TIMEOUT_MS,
+                            "Sending unsubscription request timed out"
+                        );
+                    },
                 };
             }
         };
