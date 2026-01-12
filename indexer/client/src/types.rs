@@ -436,6 +436,7 @@ generate_subscription_types! {
             base_denom: "dango".to_string(),
             quote_denom: "bridge/usdc".to_string(),
             interval: crate::subscribe_candles::CandleInterval::ONE_MINUTE,
+            later_than: None,
         },
         expect: |_data: crate::subscribe_candles::ResponseData| {
             // Candles subscription returns a list

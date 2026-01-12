@@ -17,7 +17,7 @@ use {
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
-    indexer_client::{Candles, candles, subscribe_candles},
+    indexer_client::{Candles, SubscribeCandles, candles, subscribe_candles},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -165,39 +165,15 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish().await?;
 
     // Use typed subscription from indexer-client
-    let graphql_query = r#"
-      subscription Candles($baseDenom: String!, $quoteDenom: String!, $interval: CandleInterval!) {
-          candles(baseDenom: $baseDenom, quoteDenom: $quoteDenom, interval: $interval) {
-              quoteDenom
-              baseDenom
-              interval
-              minBlockHeight
-              maxBlockHeight
-              open
-              high
-              low
-              close
-              volumeBase
-              volumeQuote
-              timeStart
-              timeStartUnix
-              timeEnd
-              timeEndUnix
-          }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "candles",
-        query: graphql_query,
-        variables: [
-            ("baseDenom".to_string(), serde_json::json!("dango")),
-            ("quoteDenom".to_string(), serde_json::json!("bridge/usdc")),
-            ("interval".to_string(), serde_json::json!("ONE_MINUTE")),
-        ]
-        .into_iter()
-        .collect(),
-    };
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeCandles::build_query(subscribe_candles::Variables {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            interval: subscribe_candles::CandleInterval::ONE_MINUTE,
+            later_than: None,
+        }),
+        "candles",
+    );
 
     let local_set = tokio::task::LocalSet::new();
     let suite = Arc::new(Mutex::new(suite));
@@ -370,39 +346,15 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
     suite.app.indexer.wait_for_finish().await?;
 
     // Use typed subscription from indexer-client
-    let graphql_query = r#"
-      subscription Candles($baseDenom: String!, $quoteDenom: String!, $interval: CandleInterval!) {
-          candles(baseDenom: $baseDenom, quoteDenom: $quoteDenom, interval: $interval) {
-              quoteDenom
-              baseDenom
-              interval
-              minBlockHeight
-              maxBlockHeight
-              open
-              high
-              low
-              close
-              volumeBase
-              volumeQuote
-              timeStart
-              timeStartUnix
-              timeEnd
-              timeEndUnix
-          }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "candles",
-        query: graphql_query,
-        variables: [
-            ("baseDenom".to_string(), serde_json::json!("dango")),
-            ("quoteDenom".to_string(), serde_json::json!("bridge/usdc")),
-            ("interval".to_string(), serde_json::json!("ONE_MINUTE")),
-        ]
-        .into_iter()
-        .collect(),
-    };
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeCandles::build_query(subscribe_candles::Variables {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            interval: subscribe_candles::CandleInterval::ONE_MINUTE,
+            later_than: None,
+        }),
+        "candles",
+    );
 
     let local_set = tokio::task::LocalSet::new();
     let suite = Arc::new(Mutex::new(suite));

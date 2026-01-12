@@ -18,7 +18,9 @@ use {
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
-    indexer_client::{Accounts, QueryApp, accounts, query_app, subscribe_accounts},
+    indexer_client::{
+        Accounts, QueryApp, SubscribeAccounts, accounts, query_app, subscribe_accounts,
+    },
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -489,25 +491,10 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish().await?;
 
     // Use typed subscription from indexer-client
-    let graphql_query = r#"
-      subscription Accounts {
-        accounts {
-          accountIndex
-          address
-          accountType
-          createdBlockHeight
-          createdTxHash
-          createdAt
-          users { userIndex }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "accounts",
-        query: graphql_query,
-        variables: Default::default(),
-    };
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeAccounts::build_query(subscribe_accounts::Variables::default()),
+        "accounts",
+    );
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -589,27 +576,13 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish().await?;
 
     // Use typed subscription from indexer-client
-    let graphql_query = r#"
-      subscription Accounts($userIndex: Int) {
-        accounts(userIndex: $userIndex) {
-          accountIndex
-          address
-          accountType
-          createdBlockHeight
-          createdTxHash
-          createdAt
-          users { userIndex }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "accounts",
-        query: graphql_query,
-        variables: [("userIndex".to_string(), serde_json::json!(user_index))]
-            .into_iter()
-            .collect(),
-    };
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeAccounts::build_query(subscribe_accounts::Variables {
+            user_index: Some(user_index as i64),
+            ..Default::default()
+        }),
+        "accounts",
+    );
 
     let local_set = tokio::task::LocalSet::new();
 

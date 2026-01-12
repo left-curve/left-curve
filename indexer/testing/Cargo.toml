@@ -13,6 +13,7 @@ actix-web      = { workspace = true }
 anyhow         = { workspace = true }
 awc            = { workspace = true }
 futures-util   = { workspace = true }
+graphql_client = { workspace = true }
 grug-app       = { workspace = true }
 grug-db-memory = { workspace = true }
 grug-httpd     = { workspace = true }

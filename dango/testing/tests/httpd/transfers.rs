@@ -12,7 +12,7 @@ use {
     graphql_client::{GraphQLQuery, Response},
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
-    indexer_client::{Transfers, subscribe_transfers, transfers},
+    indexer_client::{SubscribeTransfers, Transfers, subscribe_transfers, transfers},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -499,26 +499,10 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish().await?;
 
     // Use typed subscription from indexer-client
-    let graphql_query = r#"
-      subscription Transfer {
-        transfers {
-          idx
-          blockHeight
-          txHash
-          fromAddress
-          toAddress
-          amount
-          denom
-          createdAt
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "transfers",
-        query: graphql_query,
-        variables: Default::default(),
-    };
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeTransfers::build_query(subscribe_transfers::Variables::default()),
+        "transfers",
+    );
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -629,28 +613,13 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         .should_succeed();
 
     // Use typed subscription from indexer-client
-    let graphql_query = r#"
-      subscription Transfer($address: String) {
-        transfers(address: $address) {
-          idx
-          blockHeight
-          txHash
-          fromAddress
-          toAddress
-          amount
-          denom
-          createdAt
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "transfers",
-        query: graphql_query,
-        variables: [("address".to_string(), serde_json::json!(accounts.user1.address))]
-            .into_iter()
-            .collect(),
-    };
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeTransfers::build_query(subscribe_transfers::Variables {
+            address: Some(accounts.user1.address().to_string()),
+            ..Default::default()
+        }),
+        "transfers",
+    );
 
     let local_set = tokio::task::LocalSet::new();
 

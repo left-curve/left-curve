@@ -14,7 +14,7 @@ use {
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
-    indexer_client::{Trades, subscribe_trades, trades},
+    indexer_client::{SubscribeTrades, Trades, subscribe_trades, trades},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -282,37 +282,13 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish().await?;
 
     // Use typed subscription from indexer-client
-    let graphql_query = r#"
-      subscription Trades($baseDenom: String!, $quoteDenom: String!) {
-          trades(baseDenom: $baseDenom, quoteDenom: $quoteDenom) {
-            addr
-            quoteDenom
-            baseDenom
-            direction
-            timeInForce
-            blockHeight
-            createdAt
-            filledBase
-            filledQuote
-            refundBase
-            refundQuote
-            feeBase
-            feeQuote
-            clearingPrice
-          }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "trades",
-        query: graphql_query,
-        variables: [
-            ("baseDenom".to_string(), serde_json::json!("dango")),
-            ("quoteDenom".to_string(), serde_json::json!("bridge/usdc")),
-        ]
-        .into_iter()
-        .collect(),
-    };
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeTrades::build_query(subscribe_trades::Variables {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+        }),
+        "trades",
+    );
 
     let local_set = tokio::task::LocalSet::new();
     let suite = Arc::new(Mutex::new(suite));
