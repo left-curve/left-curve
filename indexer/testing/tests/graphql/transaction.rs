@@ -316,12 +316,11 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 }
 
                 // 1st response is always the existing last block
-                let response =
-                    parse_graphql_subscription_response::<Vec<SubscriptionTransaction>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                let response = parse_graphql_subscription_response::<Vec<SubscriptionTransaction>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
                 assert_that!(response.data).has_length(1);
@@ -329,12 +328,11 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2nd response
-                let response =
-                    parse_graphql_subscription_response::<Vec<SubscriptionTransaction>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                let response = parse_graphql_subscription_response::<Vec<SubscriptionTransaction>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
                 assert_that!(response.data).has_length(1);
@@ -342,12 +340,11 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let response =
-                    parse_graphql_subscription_response::<Vec<SubscriptionTransaction>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                let response = parse_graphql_subscription_response::<Vec<SubscriptionTransaction>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
                 assert_that!(response.data).has_length(1);

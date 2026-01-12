@@ -6,7 +6,6 @@ use {
         web,
     },
     dango_httpd::{graphql::build_schema, server::config_app},
-    indexer_testing::paginate_models_with_app_builder,
 };
 
 pub mod accounts;
@@ -38,27 +37,4 @@ fn build_actix_app(
         ))
         .app_data(web::Data::new(graphql_schema.clone()))
         .configure(config_app(dango_httpd_context, graphql_schema))
-}
-
-async fn paginate_models<R>(
-    dango_httpd_context: dango_httpd::context::Context,
-    graphql_query: &str,
-    name: &str,
-    sort_by: &str,
-    first: Option<i32>,
-    last: Option<i32>,
-) -> anyhow::Result<Vec<R>>
-where
-    R: serde::de::DeserializeOwned,
-{
-    paginate_models_with_app_builder(
-        dango_httpd_context,
-        graphql_query,
-        name,
-        sort_by,
-        first,
-        last,
-        build_actix_app,
-    )
-    .await
 }

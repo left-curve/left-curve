@@ -73,7 +73,8 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                     .to_request();
 
                 let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<transfers::ResponseData> = serde_json::from_slice(&response)?;
+                let response: Response<transfers::ResponseData> =
+                    serde_json::from_slice(&response)?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -169,7 +170,8 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                     .to_request();
 
                 let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<transfers::ResponseData> = serde_json::from_slice(&response)?;
+                let response: Response<transfers::ResponseData> =
+                    serde_json::from_slice(&response)?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -288,7 +290,8 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
                     .to_request();
 
                 let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<transfers::ResponseData> = serde_json::from_slice(&response)?;
+                let response: Response<transfers::ResponseData> =
+                    serde_json::from_slice(&response)?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();

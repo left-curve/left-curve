@@ -4245,6 +4245,7 @@ dependencies = [
  "dango-types",
  "digest 0.10.7",
  "eth-utils",
+ "graphql_client",
  "grug",
  "grug-app",
  "grug-client",
