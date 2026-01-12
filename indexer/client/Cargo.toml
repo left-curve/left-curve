@@ -40,5 +40,6 @@ dango-types      = { workspace = true }
 grug             = { workspace = true }
 grug-testing     = { workspace = true }
 indexer-testing  = { workspace = true }
+serial_test      = { workspace = true }
 tokio            = { workspace = true }
 tracing          = { workspace = true }
