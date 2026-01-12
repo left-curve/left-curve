@@ -36,6 +36,7 @@ macro_rules! generate_types {
             $($(
                 paste::paste! {
                     #[tokio::test]
+                    #[ignore] // These tests spawn mock servers and can't run in parallel in CI
                     async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
                         let port = get_mock_socket_addr();
 
@@ -249,6 +250,7 @@ macro_rules! generate_subscription_types {
             $($(
                 paste::paste! {
                     #[tokio::test]
+                    #[ignore] // These tests spawn mock servers and can't run in parallel in CI
                     async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
                         let port = get_mock_socket_addr();
 
