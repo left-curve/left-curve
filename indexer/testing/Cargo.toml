@@ -37,6 +37,7 @@ dango-genesis    = { workspace = true }
 dango-mock-httpd = { workspace = true }
 dango-testing    = { workspace = true }
 dango-types      = { workspace = true }
+graphql_client   = { workspace = true }
 grug             = { workspace = true }
 grug-storage     = { workspace = true }
 indexer-client   = { workspace = true }

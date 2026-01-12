@@ -6750,6 +6750,7 @@ dependencies = [
  "dango-testing",
  "dango-types",
  "futures-util",
+ "graphql_client",
  "grug",
  "grug-app",
  "grug-db-memory",
