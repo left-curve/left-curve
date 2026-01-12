@@ -1,6 +1,7 @@
 use {
     crate::build_actix_app,
     assert_json_diff::assert_json_include,
+    assertor::*,
     dango_genesis::Contracts,
     dango_indexer_clickhouse::{
         entities::pair_price::PairPrice, indexer::candles::cache::CandleCache,
@@ -39,7 +40,7 @@ async fn query_candles() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut received_candles: Vec<serde_json::Value> = vec![];
+                let mut nodes: Vec<candles::CandlesCandlesNodes> = vec![];
 
                 for _ in 0..10 {
                     let variables = candles::Variables {
@@ -63,42 +64,22 @@ async fn query_candles() -> anyhow::Result<()> {
                         serde_json::from_slice(&response)?;
 
                     let data = response.data.unwrap();
-
-                    received_candles = data
-                        .candles
-                        .nodes
-                        .iter()
-                        .map(|c| {
-                            serde_json::json!({
-                                "timeStart": c.time_start,
-                                "open": c.open,
-                                "high": c.high,
-                                "low": c.low,
-                                "close": c.close,
-                                "volumeBase": c.volume_base,
-                                "volumeQuote": c.volume_quote,
-                                "interval": format!("{:?}", c.interval),
-                                "baseDenom": c.base_denom,
-                                "quoteDenom": c.quote_denom,
-                            })
-                        })
-                        .collect();
+                    nodes = data.candles.nodes;
                 }
 
-                let expected_candle = serde_json::json!({
-                    "timeStart": "1971-01-01T00:00:00.000000000Z",
-                    "open": "27.5",
-                    "high": "27.5",
-                    "low": "27.5",
-                    "close": "27.5",
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                    "interval": "ONE_SECOND",
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                });
+                assert_that!(nodes.len()).is_equal_to(1);
 
-                assert_json_include!(actual: received_candles, expected: [expected_candle]);
+                let candle = &nodes[0];
+                assert_that!(candle.time_start.as_str()).is_equal_to("1971-01-01T00:00:00.000000000Z");
+                assert_that!(candle.open.as_str()).is_equal_to("27.5");
+                assert_that!(candle.high.as_str()).is_equal_to("27.5");
+                assert_that!(candle.low.as_str()).is_equal_to("27.5");
+                assert_that!(candle.close.as_str()).is_equal_to("27.5");
+                assert_that!(candle.volume_base.as_str()).is_equal_to("25");
+                assert_that!(candle.volume_quote.as_str()).is_equal_to("687.5");
+                assert_that!(candle.interval).is_equal_to(candles::CandleInterval::ONE_SECOND);
+                assert_that!(candle.base_denom.as_str()).is_equal_to("dango");
+                assert_that!(candle.quote_denom.as_str()).is_equal_to("bridge/usdc");
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -121,7 +102,7 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut received_candles: Vec<serde_json::Value> = vec![];
+                let mut nodes: Vec<candles::CandlesCandlesNodes> = vec![];
 
                 for _ in 0..10 {
                     let variables = candles::Variables {
@@ -146,42 +127,22 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
                         serde_json::from_slice(&response)?;
 
                     let data = response.data.unwrap();
-
-                    received_candles = data
-                        .candles
-                        .nodes
-                        .iter()
-                        .map(|c| {
-                            serde_json::json!({
-                                "timeStart": c.time_start,
-                                "open": c.open,
-                                "high": c.high,
-                                "low": c.low,
-                                "close": c.close,
-                                "volumeBase": c.volume_base,
-                                "volumeQuote": c.volume_quote,
-                                "interval": format!("{:?}", c.interval),
-                                "baseDenom": c.base_denom,
-                                "quoteDenom": c.quote_denom,
-                            })
-                        })
-                        .collect();
+                    nodes = data.candles.nodes;
                 }
 
-                let expected_candle = serde_json::json!({
-                    "timeStart": "1971-01-01T00:00:00.000000000Z",
-                    "open": "27.5",
-                    "high": "27.5",
-                    "low": "27.5",
-                    "close": "27.5",
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                    "interval": "ONE_SECOND",
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                });
+                assert_that!(nodes.len()).is_equal_to(1);
 
-                assert_json_include!(actual: received_candles, expected: [expected_candle]);
+                let candle = &nodes[0];
+                assert_that!(candle.time_start.as_str()).is_equal_to("1971-01-01T00:00:00.000000000Z");
+                assert_that!(candle.open.as_str()).is_equal_to("27.5");
+                assert_that!(candle.high.as_str()).is_equal_to("27.5");
+                assert_that!(candle.low.as_str()).is_equal_to("27.5");
+                assert_that!(candle.close.as_str()).is_equal_to("27.5");
+                assert_that!(candle.volume_base.as_str()).is_equal_to("25");
+                assert_that!(candle.volume_quote.as_str()).is_equal_to("687.5");
+                assert_that!(candle.interval).is_equal_to(candles::CandleInterval::ONE_SECOND);
+                assert_that!(candle.base_denom.as_str()).is_equal_to("dango");
+                assert_that!(candle.quote_denom.as_str()).is_equal_to("bridge/usdc");
 
                 Ok::<(), anyhow::Error>(())
             })

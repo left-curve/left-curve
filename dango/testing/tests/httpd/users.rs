@@ -127,23 +127,15 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
                     })
                     .collect();
 
-                assert_that!(received_public_keys).contains(
-                    serde_json::from_value::<HashMap<String, String>>(serde_json::json!({
-                        "publicKey": pk.to_string(),
-                        "keyHash": key_hash.to_string(),
-                    }))
-                    .unwrap()
-                    .clone(),
-                );
+                assert_that!(received_public_keys).contains(HashMap::from([
+                    ("publicKey".to_string(), pk.to_string()),
+                    ("keyHash".to_string(), key_hash.to_string()),
+                ]));
 
-                assert_that!(received_public_keys).contains(
-                    serde_json::from_value::<HashMap<String, String>>(serde_json::json!({
-                        "publicKey": test_account.first_key().to_string(),
-                        "keyHash": test_account.first_key_hash().to_string()
-                    }))
-                    .unwrap()
-                    .clone(),
-                );
+                assert_that!(received_public_keys).contains(HashMap::from([
+                    ("publicKey".to_string(), test_account.first_key().to_string()),
+                    ("keyHash".to_string(), test_account.first_key_hash().to_string()),
+                ]));
 
                 Ok::<(), anyhow::Error>(())
             })

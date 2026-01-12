@@ -11,7 +11,7 @@ use {
     },
     graphql_client::{GraphQLQuery, Response},
     grug::{
-        Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
+        Addr, Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
@@ -22,6 +22,27 @@ use {
     std::sync::Arc,
     tokio::sync::{Mutex, mpsc},
 };
+
+fn assert_trade(
+    node: &trades::TradesTradesNodes,
+    addr: Addr,
+    direction: trades::Direction,
+    filled_base: &str,
+    filled_quote: &str,
+    refund_base: &str,
+    refund_quote: &str,
+) {
+    assert_that!(node.addr.as_str()).is_equal_to(addr.to_string().as_str());
+    assert_that!(node.base_denom.as_str()).is_equal_to("dango");
+    assert_that!(node.quote_denom.as_str()).is_equal_to("bridge/usdc");
+    assert_that!(node.clearing_price.as_str()).is_equal_to("27.5");
+    assert_that!(node.direction).is_equal_to(direction);
+    assert_that!(node.time_in_force).is_equal_to(trades::TimeInForce::GTC);
+    assert_that!(node.filled_base.as_str()).is_equal_to(filled_base);
+    assert_that!(node.filled_quote.as_str()).is_equal_to(filled_quote);
+    assert_that!(node.refund_base.as_str()).is_equal_to(refund_base);
+    assert_that!(node.refund_quote.as_str()).is_equal_to(refund_quote);
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_all_trades() -> anyhow::Result<()> {
@@ -52,79 +73,14 @@ async fn query_all_trades() -> anyhow::Result<()> {
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
+                let nodes = &data.trades.nodes;
 
-                let received_trades: Vec<_> = data
-                    .trades
-                    .nodes
-                    .iter()
-                    .map(|t| {
-                        serde_json::json!({
-                            "addr": t.addr,
-                            "baseDenom": t.base_denom,
-                            "quoteDenom": t.quote_denom,
-                            "clearingPrice": t.clearing_price,
-                            "direction": format!("{:?}", t.direction).to_lowercase(),
-                            "timeInForce": format!("{:?}", t.time_in_force),
-                            "filledBase": t.filled_base,
-                            "filledQuote": t.filled_quote,
-                            "refundBase": t.refund_base,
-                            "refundQuote": t.refund_quote,
-                        })
-                    })
-                    .collect();
+                assert_that!(nodes.len()).is_equal_to(4);
 
-                let expected_candle = serde_json::json!([
-                    {
-                        "addr": accounts.user6.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "5",
-                        "filledQuote": "137.5",
-                        "refundBase": "0",
-                        "refundQuote": "136.95",
-                    },
-                    {
-                        "addr": accounts.user5.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "10",
-                        "filledQuote": "275",
-                        "refundBase": "0",
-                        "refundQuote": "273.9",
-                    },
-                    {
-                        "addr": accounts.user4.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "10",
-                        "filledQuote": "275",
-                        "refundBase": "0",
-                        "refundQuote": "273.9",
-                    },
-                    {
-                        "addr": accounts.user1.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "bid",
-                        "timeInForce": "GTC",
-                        "filledBase": "25",
-                        "filledQuote": "687.5",
-                        "refundBase": "24.9",
-                        "refundQuote": "62.5",
-                    },
-                ]);
-
-                assert_json_include!(actual: received_trades, expected: expected_candle);
+                assert_trade(&nodes[0], accounts.user6.address(), trades::Direction::ask, "5", "137.5", "0", "136.95");
+                assert_trade(&nodes[1], accounts.user5.address(), trades::Direction::ask, "10", "275", "0", "273.9");
+                assert_trade(&nodes[2], accounts.user4.address(), trades::Direction::ask, "10", "275", "0", "273.9");
+                assert_trade(&nodes[3], accounts.user1.address(), trades::Direction::bid, "25", "687.5", "24.9", "62.5");
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -147,7 +103,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut received_trades = Vec::new();
+                let mut received_trades: Vec<trades::TradesTradesNodes> = Vec::new();
                 let mut after = None;
 
                 loop {
@@ -173,18 +129,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                     let data = response.data.unwrap();
 
                     for node in data.trades.nodes {
-                        received_trades.push(serde_json::json!({
-                            "addr": node.addr,
-                            "baseDenom": node.base_denom,
-                            "quoteDenom": node.quote_denom,
-                            "clearingPrice": node.clearing_price,
-                            "direction": format!("{:?}", node.direction).to_lowercase(),
-                            "timeInForce": format!("{:?}", node.time_in_force),
-                            "filledBase": node.filled_base,
-                            "filledQuote": node.filled_quote,
-                            "refundBase": node.refund_base,
-                            "refundQuote": node.refund_quote,
-                        }));
+                        received_trades.push(node);
                     }
 
                     after = data.trades.page_info.end_cursor;
@@ -194,58 +139,12 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                     }
                 }
 
-                let expected_candle = serde_json::json!([
-                    {
-                        "addr": accounts.user6.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "5",
-                        "filledQuote": "137.5",
-                        "refundBase": "0",
-                        "refundQuote": "136.95",
-                    },
-                    {
-                        "addr": accounts.user5.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "10",
-                        "filledQuote": "275",
-                        "refundBase": "0",
-                        "refundQuote": "273.9",
-                    },
-                    {
-                        "addr": accounts.user4.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "10",
-                        "filledQuote": "275",
-                        "refundBase": "0",
-                        "refundQuote": "273.9",
-                    },
-                    {
-                        "addr": accounts.user1.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "bid",
-                        "timeInForce": "GTC",
-                        "filledBase": "25",
-                        "filledQuote": "687.5",
-                        "refundBase": "24.9",
-                        "refundQuote": "62.5",
-                    },
-                ]);
+                assert_that!(received_trades.len()).is_equal_to(4);
 
-                assert_json_include!(actual: received_trades, expected: expected_candle);
+                assert_trade(&received_trades[0], accounts.user6.address(), trades::Direction::ask, "5", "137.5", "0", "136.95");
+                assert_trade(&received_trades[1], accounts.user5.address(), trades::Direction::ask, "10", "275", "0", "273.9");
+                assert_trade(&received_trades[2], accounts.user4.address(), trades::Direction::ask, "10", "275", "0", "273.9");
+                assert_trade(&received_trades[3], accounts.user1.address(), trades::Direction::bid, "25", "687.5", "24.9", "62.5");
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -268,7 +167,7 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut received_trades: Vec<serde_json::Value> = vec![];
+                let mut nodes: Vec<trades::TradesTradesNodes> = vec![];
 
                 for _ in 0..10 {
                     let variables = trades::Variables {
@@ -290,35 +189,17 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
                         serde_json::from_slice(&response)?;
 
                     let data = response.data.unwrap();
-
-                    received_trades = data
-                        .trades
-                        .nodes
-                        .iter()
-                        .map(|t| {
-                            serde_json::json!({
-                                "addr": t.addr,
-                                "baseDenom": t.base_denom,
-                                "quoteDenom": t.quote_denom,
-                                "clearingPrice": t.clearing_price,
-                                "direction": format!("{:?}", t.direction).to_lowercase(),
-                            })
-                        })
-                        .collect();
+                    nodes = data.trades.nodes;
                 }
 
-                let expected_candle = serde_json::json!([
-                    {
-                        "addr": accounts.user6.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                    },
-                ]);
+                assert_that!(nodes.len()).is_equal_to(1);
 
-                assert_json_include!(actual: received_trades, expected: expected_candle);
-                assert_that!(received_trades).has_length(1);
+                let node = &nodes[0];
+                assert_that!(node.addr.as_str()).is_equal_to(accounts.user6.address().to_string().as_str());
+                assert_that!(node.base_denom.as_str()).is_equal_to("dango");
+                assert_that!(node.quote_denom.as_str()).is_equal_to("bridge/usdc");
+                assert_that!(node.clearing_price.as_str()).is_equal_to("27.5");
+                assert_that!(node.direction).is_equal_to(trades::Direction::ask);
 
                 Ok::<(), anyhow::Error>(())
             })

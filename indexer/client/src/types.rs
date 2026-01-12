@@ -9,7 +9,7 @@ macro_rules! generate_types {
             #[graphql(
                 schema_path = "src/schemas/schema.graphql",
                 query_path = $path,
-                response_derives = "Debug, Clone, PartialEq",
+                response_derives = "Debug, Clone, PartialEq, Eq",
                 variables_derives = "Debug, Clone, Default"
             )]
             pub struct $name;
