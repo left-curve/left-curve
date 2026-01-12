@@ -37,6 +37,8 @@ pub const RESUBSCRIBE_ATTEMPTS: u32 = 5;
 
 /// Timeout in milliseconds that we wait for receiving data before trying to resubscribe.
 pub const DATA_RECEIVE_TIMEOUT_MS: u64 = 200;
+/// Timeout in milliseconds for subscription requests.
+pub const SUBSCRIPTION_TIMEOUT_MS: u64 = 1000;
 
 #[derive(Clone, Debug)]
 pub struct PythClient {
@@ -105,7 +107,33 @@ impl PythClient {
         );
 
         for subscription in subscribe_requests {
-            let _ = client.subscribe(subscription).await;
+            match tokio::time::timeout(
+                Duration::from_millis(SUBSCRIPTION_TIMEOUT_MS),
+                client.subscribe(subscription.clone()),
+            )
+            .await
+            {
+                Ok(Ok(_)) => {
+                    info!(
+                        subscription_id = subscription.subscription_id.0,
+                        "Subscription request succeeded"
+                    );
+                },
+                Ok(Err(err)) => {
+                    warn!(
+                        subscription_id = subscription.subscription_id.0,
+                        error = %err,
+                        "Subscription request failed"
+                    );
+                },
+                Err(_) => {
+                    warn!(
+                        subscription_id = subscription.subscription_id.0,
+                        timeout_ms = SUBSCRIPTION_TIMEOUT_MS,
+                        "Sending subscription request timed out"
+                    );
+                },
+            }
         }
     }
 
@@ -566,15 +594,27 @@ impl PythClientTrait for PythClient {
 
             // If the code reaches here, it means the stream needs to be closed.
             for subscription_id in subscription_ids {
-                match client.unsubscribe(SubscriptionId(subscription_id)).await {
-                    Ok(_) => {
+                match tokio::time::timeout(
+                    Duration::from_millis(SUBSCRIPTION_TIMEOUT_MS),
+                    client.unsubscribe(SubscriptionId(subscription_id)),
+                )
+                .await
+                {
+                    Ok(Ok(_)) =>  {
                         info!(subscription_id, "Unsubscribed stream successfully");
                     },
-                    Err(err) => {
-                        error!(
+                    Ok(Err(err)) => {
+                        warn!(
                             subscription_id,
-                            error=%err,
+                            error = %err,
                             "Failed to unsubscribe stream"
+                        );
+                    },
+                    Err(_) => {
+                        warn!(
+                            subscription_id,
+                            timeout_ms = SUBSCRIPTION_TIMEOUT_MS,
+                            "Sending unsubscription request timed out"
                         );
                     },
                 };
