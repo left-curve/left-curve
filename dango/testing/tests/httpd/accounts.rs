@@ -52,18 +52,7 @@ async fn query_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = accounts::Variables {
-                    after: None,
-                    before: None,
-                    first: None,
-                    last: None,
-                    sort_by: None,
-                    block_height: None,
-                    user_index: None,
-                    address: None,
-                };
-
-                let request_body = Accounts::build_query(variables);
+                let request_body = Accounts::build_query(accounts::Variables::default());
 
                 let app = build_actix_app(dango_httpd_context);
                 let app = actix_web::test::init_service(app).await;
@@ -146,14 +135,8 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let variables = accounts::Variables {
-                    after: None,
-                    before: None,
-                    first: None,
-                    last: None,
-                    sort_by: None,
-                    block_height: None,
                     user_index: Some(user.user_index() as i64),
-                    address: None,
+                    ..Default::default()
                 };
 
                 let request_body = Accounts::build_query(variables);
@@ -217,14 +200,8 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let variables = accounts::Variables {
-                    after: None,
-                    before: None,
-                    first: None,
-                    last: None,
-                    sort_by: None,
-                    block_height: None,
                     user_index: Some(114514), // a random user index that doesn't exist
-                    address: None,
+                    ..Default::default()
                 };
 
                 let request_body = Accounts::build_query(variables);
@@ -282,14 +259,8 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let variables = accounts::Variables {
-                    after: None,
-                    before: None,
-                    first: None,
-                    last: None,
-                    sort_by: None,
-                    block_height: None,
                     user_index: Some(test_account1.user_index() as i64),
-                    address: None,
+                    ..Default::default()
                 };
 
                 let request_body = Accounts::build_query(variables.clone());
@@ -419,9 +390,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                             first,
                             last,
                             sort_by: Some(sort_by.clone()),
-                            block_height: None,
-                            user_index: None,
-                            address: None,
+                            ..Default::default()
                         };
 
                         let request_body = Accounts::build_query(variables);
@@ -798,7 +767,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let variables = query_app::Variables {
                     request: body_request.into_inner(),
-                    height: None,
+                    ..Default::default()
                 };
 
                 let request_body = QueryApp::build_query(variables);
@@ -872,7 +841,7 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let variables = query_app::Variables {
                     request: body_request.into_inner(),
-                    height: None,
+                    ..Default::default()
                 };
 
                 let request_body = QueryApp::build_query(variables);

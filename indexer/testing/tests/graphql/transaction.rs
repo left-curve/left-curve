@@ -30,8 +30,7 @@ async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = block::Variables { height: None };
-                let request_body = Block::build_query(variables);
+                let request_body = Block::build_query(block::Variables::default());
 
                 let app = build_app_service(httpd_context);
                 let app = actix_web::test::init_service(app).await;
@@ -63,18 +62,7 @@ async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
 async fn graphql_returns_transactions() -> anyhow::Result<()> {
     let (httpd_context, _client, accounts) = create_block().await?;
 
-    let variables = transactions::Variables {
-        after: None,
-        before: None,
-        first: None,
-        last: None,
-        sort_by: None,
-        hash: None,
-        block_height: None,
-        sender_address: None,
-    };
-
-    let request_body = Transactions::build_query(variables);
+    let request_body = Transactions::build_query(transactions::Variables::default());
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -136,9 +124,7 @@ async fn graphql_paginate_transactions() -> anyhow::Result<()> {
                             first,
                             last,
                             sort_by: Some(sort_by.clone()),
-                            hash: None,
-                            block_height: None,
-                            sender_address: None,
+                            ..Default::default()
                         };
 
                         let request_body = Transactions::build_query(variables);

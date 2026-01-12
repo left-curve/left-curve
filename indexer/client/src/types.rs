@@ -10,7 +10,7 @@ macro_rules! generate_types {
                 schema_path = "src/schemas/schema.graphql",
                 query_path = $path,
                 response_derives = "Debug, Clone, PartialEq",
-                variables_derives = "Debug, Clone"
+                variables_derives = "Debug, Clone, Default"
             )]
             pub struct $name;
 
@@ -199,5 +199,12 @@ generate_types! {
     {
         name: QueryStatus,
         path: "src/schemas/queries/queryStatus.graphql",
+    }
+}
+
+// Implement Default for enum types used as required fields in Variables
+impl Default for candles::CandleInterval {
+    fn default() -> Self {
+        Self::ONE_MINUTE
     }
 }

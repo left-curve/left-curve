@@ -16,15 +16,7 @@ use {
 async fn graphql_returns_blocks() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let variables = blocks::Variables {
-        after: None,
-        before: None,
-        first: None,
-        last: None,
-        sort_by: None,
-    };
-
-    let request_body = Blocks::build_query(variables);
+    let request_body = Blocks::build_query(blocks::Variables::default());
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -57,13 +49,7 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
 async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let variables = blocks::Variables {
-        after: None,
-        before: None,
-        first: None,
-        last: None,
-        sort_by: None,
-    };
+    let variables = blocks::Variables::default();
 
     let request_body = Blocks::build_query(variables.clone());
     let request_body2 = Blocks::build_query(variables);
@@ -142,8 +128,7 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = block::Variables { height: None };
-                let request_body = Block::build_query(variables);
+                let request_body = Block::build_query(block::Variables::default());
 
                 let app = build_app_service(httpd_context);
                 let app = actix_web::test::init_service(app).await;

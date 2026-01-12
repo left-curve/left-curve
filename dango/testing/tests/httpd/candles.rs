@@ -43,13 +43,10 @@ async fn query_candles() -> anyhow::Result<()> {
 
                 for _ in 0..10 {
                     let variables = candles::Variables {
-                        after: None,
-                        first: None,
                         base_denom: "dango".to_string(),
                         quote_denom: "bridge/usdc".to_string(),
                         interval: candles::CandleInterval::ONE_SECOND,
-                        earlier_than: None,
-                        later_than: None,
+                        ..Default::default()
                     };
 
                     let request_body = Candles::build_query(variables);
@@ -128,13 +125,11 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
                 for _ in 0..10 {
                     let variables = candles::Variables {
-                        after: None,
-                        first: None,
                         base_denom: "dango".to_string(),
                         quote_denom: "bridge/usdc".to_string(),
                         interval: candles::CandleInterval::ONE_SECOND,
                         earlier_than: Some("2025-07-24T07:00:00.000000000Z".to_string()),
-                        later_than: None,
+                        ..Default::default()
                     };
 
                     let request_body = Candles::build_query(variables);

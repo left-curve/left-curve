@@ -18,15 +18,7 @@ use {
 async fn graphql_returns_events() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let variables = events::Variables {
-        after: None,
-        before: None,
-        first: None,
-        last: None,
-        sort_by: None,
-    };
-
-    let request_body = Events::build_query(variables);
+    let request_body = Events::build_query(events::Variables::default());
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -59,15 +51,7 @@ async fn graphql_returns_events() -> anyhow::Result<()> {
 async fn graphql_returns_events_transaction_hashes() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let variables = events::Variables {
-        after: None,
-        before: None,
-        first: None,
-        last: None,
-        sort_by: None,
-    };
-
-    let request_body = Events::build_query(variables);
+    let request_body = Events::build_query(events::Variables::default());
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -397,18 +381,7 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
 async fn graphql_returns_nested_events() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let variables = transactions::Variables {
-        after: None,
-        before: None,
-        first: None,
-        last: None,
-        sort_by: None,
-        hash: None,
-        block_height: None,
-        sender_address: None,
-    };
-
-    let request_body = Transactions::build_query(variables);
+    let request_body = Transactions::build_query(transactions::Variables::default());
 
     let local_set = tokio::task::LocalSet::new();
 

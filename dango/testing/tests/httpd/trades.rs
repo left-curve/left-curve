@@ -37,13 +37,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = trades::Variables {
-                    after: None,
-                    first: None,
-                    addr: None,
-                };
-
-                let request_body = Trades::build_query(variables);
+                let request_body = Trades::build_query(trades::Variables::default());
 
                 let app = build_actix_app(dango_httpd_context);
                 let app = actix_web::test::init_service(app).await;
@@ -160,7 +154,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                     let variables = trades::Variables {
                         after: after.clone(),
                         first: Some(1),
-                        addr: None,
+                        ..Default::default()
                     };
 
                     let request_body = Trades::build_query(variables);
@@ -278,9 +272,8 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
 
                 for _ in 0..10 {
                     let variables = trades::Variables {
-                        after: None,
-                        first: None,
                         addr: Some(accounts.user6.address().to_string()),
+                        ..Default::default()
                     };
 
                     let request_body = Trades::build_query(variables);

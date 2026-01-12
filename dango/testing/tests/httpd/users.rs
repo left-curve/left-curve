@@ -35,17 +35,7 @@ async fn query_user() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = users::Variables {
-                    after: None,
-                    before: None,
-                    first: None,
-                    last: None,
-                    block_height: None,
-                    public_key: None,
-                    public_key_hash: None,
-                };
-
-                let request_body = Users::build_query(variables);
+                let request_body = Users::build_query(users::Variables::default());
 
                 let app = build_actix_app(dango_httpd_context);
                 let app = actix_web::test::init_service(app).await;
@@ -104,17 +94,7 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = users::Variables {
-                    after: None,
-                    before: None,
-                    first: None,
-                    last: None,
-                    block_height: None,
-                    public_key: None,
-                    public_key_hash: None,
-                };
-
-                let request_body = Users::build_query(variables);
+                let request_body = Users::build_query(users::Variables::default());
 
                 let app = build_actix_app(dango_httpd_context);
                 let app = actix_web::test::init_service(app).await;

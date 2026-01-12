@@ -51,15 +51,8 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let variables = transfers::Variables {
-                    after: None,
-                    before: None,
-                    first: None,
-                    last: None,
-                    sort_by: None,
                     block_height: Some(1),
-                    from_address: None,
-                    to_address: None,
-                    user_index: None,
+                    ..Default::default()
                 };
 
                 let request_body = Transfers::build_query(variables);
@@ -148,15 +141,8 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let variables = transfers::Variables {
-                    after: None,
-                    before: None,
-                    first: None,
-                    last: None,
-                    sort_by: None,
-                    block_height: None,
-                    from_address: None,
-                    to_address: None,
                     user_index: Some(user1.user_index() as i64),
+                    ..Default::default()
                 };
 
                 let request_body = Transfers::build_query(variables);
@@ -268,15 +254,8 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let variables = transfers::Variables {
-                    after: None,
-                    before: None,
-                    first: None,
-                    last: None,
-                    sort_by: None,
-                    block_height: None,
-                    from_address: None,
-                    to_address: None,
                     user_index: Some(114514), // a random user index that doesn't exist
+                    ..Default::default()
                 };
 
                 let request_body = Transfers::build_query(variables);
@@ -359,10 +338,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                             first,
                             last,
                             sort_by: Some(sort_by.clone()),
-                            block_height: None,
-                            from_address: None,
-                            to_address: None,
-                            user_index: None,
+                            ..Default::default()
                         };
 
                         let request_body = Transfers::build_query(variables);

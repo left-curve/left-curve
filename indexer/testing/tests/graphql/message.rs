@@ -16,19 +16,7 @@ use {
 async fn graphql_returns_messages() -> anyhow::Result<()> {
     let (httpd_context, _client, accounts) = create_block().await?;
 
-    let variables = messages::Variables {
-        after: None,
-        before: None,
-        first: None,
-        last: None,
-        sort_by: None,
-        block_height: None,
-        method_name: None,
-        contract_addr: None,
-        sender_addr: None,
-    };
-
-    let request_body = Messages::build_query(variables);
+    let request_body = Messages::build_query(messages::Variables::default());
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -89,10 +77,7 @@ async fn graphql_paginate_messages() -> anyhow::Result<()> {
                             first,
                             last,
                             sort_by: Some(sort_by.clone()),
-                            block_height: None,
-                            method_name: None,
-                            contract_addr: None,
-                            sender_addr: None,
+                            ..Default::default()
                         };
 
                         let request_body = Messages::build_query(variables);
