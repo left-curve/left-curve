@@ -1,6 +1,5 @@
 use {
     crate::build_actix_app,
-    assert_json_diff::assert_json_include,
     assertor::*,
     dango_genesis::Contracts,
     dango_indexer_clickhouse::{
@@ -188,14 +187,13 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     let request_body = GraphQLCustomRequest {
         name: "candles",
         query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-            "interval": "ONE_MINUTE",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
+        variables: [
+            ("base_denom".to_string(), serde_json::json!("dango")),
+            ("quote_denom".to_string(), serde_json::json!("bridge/usdc")),
+            ("interval".to_string(), serde_json::json!("ONE_MINUTE")),
+        ]
+        .into_iter()
+        .collect(),
     };
 
     let local_set = tokio::task::LocalSet::new();
@@ -225,6 +223,31 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
+                // Helper to verify candle fields
+                fn verify_candle(
+                    candle: &serde_json::Value,
+                    open: &str,
+                    high: &str,
+                    low: &str,
+                    close: &str,
+                    volume_base: &str,
+                    volume_quote: &str,
+                    min_block_height: i64,
+                    max_block_height: i64,
+                ) {
+                    assert_eq!(candle["baseDenom"], "dango");
+                    assert_eq!(candle["quoteDenom"], "bridge/usdc");
+                    assert_eq!(candle["interval"], "ONE_MINUTE");
+                    assert_eq!(candle["open"], open);
+                    assert_eq!(candle["high"], high);
+                    assert_eq!(candle["low"], low);
+                    assert_eq!(candle["close"], close);
+                    assert_eq!(candle["volumeBase"], volume_base);
+                    assert_eq!(candle["volumeQuote"], volume_quote);
+                    assert_eq!(candle["minBlockHeight"], min_block_height);
+                    assert_eq!(candle["maxBlockHeight"], max_block_height);
+                }
+
                 // 1st response is always the existing last candle
                 let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
                     &mut framed,
@@ -232,21 +255,18 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                 )
                 .await?;
 
-                let expected_json = serde_json::json!([{
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "interval": "ONE_MINUTE",
-                    "close": "25",
-                    "high": "27.5",
-                    "low": "25",
-                    "open": "27.5",
-                    "volumeBase": "50",
-                    "volumeQuote": "1312.5",
-                    "minBlockHeight": 2,
-                    "maxBlockHeight": 4,
-                }]);
-
-                assert_json_include!(actual: response.data, expected: expected_json);
+                assert!(!response.data.is_empty(), "Expected at least one candle");
+                verify_candle(
+                    &response.data[0],
+                    "27.5",
+                    "27.5",
+                    "25",
+                    "25",
+                    "50",
+                    "1312.5",
+                    2,
+                    4,
+                );
 
                 create_candle_tx_clone.send(2).await.unwrap();
 
@@ -271,21 +291,18 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                         continue;
                     }
 
-                    let expected_json = serde_json::json!([{
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "interval": "ONE_MINUTE",
-                        "close": "25",
-                        "high": "27.5",
-                        "low": "25",
-                        "open": "27.5",
-                        "minBlockHeight": 2,
-                        "maxBlockHeight": 6,
-                        "volumeBase": "75",
-                        "volumeQuote": "1937.5",
-                    }]);
-
-                    assert_json_include!(actual: response.data, expected: expected_json);
+                    assert!(!response.data.is_empty(), "Expected at least one candle");
+                    verify_candle(
+                        &response.data[0],
+                        "27.5",
+                        "27.5",
+                        "25",
+                        "25",
+                        "75",
+                        "1937.5",
+                        2,
+                        6,
+                    );
 
                     break;
                 }
@@ -379,14 +396,13 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
     let request_body = GraphQLCustomRequest {
         name: "candles",
         query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-            "interval": "ONE_MINUTE",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
+        variables: [
+            ("base_denom".to_string(), serde_json::json!("dango")),
+            ("quote_denom".to_string(), serde_json::json!("bridge/usdc")),
+            ("interval".to_string(), serde_json::json!("ONE_MINUTE")),
+        ]
+        .into_iter()
+        .collect(),
     };
 
     let local_set = tokio::task::LocalSet::new();
@@ -428,6 +444,20 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
+                // Helper to verify candle fields
+                fn verify_candle(candle: &serde_json::Value, max_block_height: i64) {
+                    assert_eq!(candle["baseDenom"], "dango");
+                    assert_eq!(candle["quoteDenom"], "bridge/usdc");
+                    assert_eq!(candle["interval"], "ONE_MINUTE");
+                    assert_eq!(candle["open"], "27.5");
+                    assert_eq!(candle["high"], "27.5");
+                    assert_eq!(candle["low"], "27.5");
+                    assert_eq!(candle["close"], "27.5");
+                    assert_eq!(candle["volumeBase"], "25");
+                    assert_eq!(candle["volumeQuote"], "687.5");
+                    assert_eq!(candle["maxBlockHeight"], max_block_height);
+                }
+
                 // 1st response is always the existing last candle
                 let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
                     &mut framed,
@@ -435,20 +465,8 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                 )
                 .await?;
 
-                let expected_json = serde_json::json!([{
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "maxBlockHeight": 2,
-                    "close": "27.5",
-                    "high": "27.5",
-                    "interval": "ONE_MINUTE",
-                    "low": "27.5",
-                    "open": "27.5",
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                }]);
-
-                assert_json_include!(actual: response.data, expected: expected_json);
+                assert!(!response.data.is_empty(), "Expected at least one candle");
+                verify_candle(&response.data[0], 2);
 
                 create_block_tx_clone.send(2).await.unwrap();
 
@@ -459,20 +477,8 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                 )
                 .await?;
 
-                let expected_json = serde_json::json!([{
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "maxBlockHeight": 3,
-                    "close": "27.5",
-                    "high": "27.5",
-                    "interval": "ONE_MINUTE",
-                    "low": "27.5",
-                    "open": "27.5",
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                }]);
-
-                assert_json_include!(actual: response.data, expected: expected_json);
+                assert!(!response.data.is_empty(), "Expected at least one candle");
+                verify_candle(&response.data[0], 3);
 
                 Ok::<(), anyhow::Error>(())
             })

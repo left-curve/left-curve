@@ -1,6 +1,6 @@
 use {
     crate::build_actix_app,
-    assert_json_diff::*,
+    assert_json_diff::assert_json_eq,
     assertor::*,
     dango_indexer_sql::entity,
     dango_testing::{
@@ -607,17 +607,12 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
       }
     "#;
 
-    let variables = serde_json::json!({
-        "userIndex": user_index,
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
     let request_body = GraphQLCustomRequest {
         name: "accounts",
         query: graphql_query,
-        variables,
+        variables: [("userIndex".to_string(), serde_json::json!(user_index))]
+            .into_iter()
+            .collect(),
     };
 
     let local_set = tokio::task::LocalSet::new();
@@ -648,13 +643,21 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
-                let expected_data = serde_json::json!({
-                    "users": [
-                        {
-                            "userIndex": user_index,
-                        },
-                    ],
-                });
+                // Helper to verify account has the expected user_index
+                let verify_account_user_index = |account: &serde_json::Value| {
+                    let users = account
+                        .get("users")
+                        .expect("Expected users field")
+                        .as_array()
+                        .expect("Expected users to be an array");
+                    assert!(!users.is_empty(), "Expected at least one user");
+                    let account_user_index = users[0]
+                        .get("userIndex")
+                        .expect("Expected userIndex field")
+                        .as_i64()
+                        .expect("Expected userIndex to be an integer");
+                    assert_that!(account_user_index).is_equal_to(user_index as i64);
+                };
 
                 // 1st response is always accounts from the last block if any
                 let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
@@ -668,7 +671,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
                     .first()
                     .expect("Expected at least one account");
 
-                assert_json_include!(actual: account, expected: expected_data);
+                verify_account_user_index(account);
 
                 create_account_tx.send(2).await.unwrap();
 
@@ -684,7 +687,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
                     .first()
                     .expect("Expected at least one account");
 
-                assert_json_include!(actual: account, expected: expected_data);
+                verify_account_user_index(account);
 
                 Ok::<(), anyhow::Error>(())
             })

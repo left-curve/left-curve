@@ -1,6 +1,5 @@
 use {
     crate::build_actix_app,
-    assert_json_diff::assert_json_include,
     assertor::*,
     dango_genesis::Contracts,
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
@@ -307,13 +306,12 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
     let request_body = GraphQLCustomRequest {
         name: "trades",
         query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
+        variables: [
+            ("base_denom".to_string(), serde_json::json!("dango")),
+            ("quote_denom".to_string(), serde_json::json!("bridge/usdc")),
+        ]
+        .into_iter()
+        .collect(),
     };
 
     let local_set = tokio::task::LocalSet::new();
@@ -342,7 +340,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
-                let mut received_trades = Vec::new();
+                let mut received_trades: Vec<serde_json::Value> = Vec::new();
 
                 create_tx_clone.send(1).await.unwrap();
 
@@ -355,50 +353,28 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
                     received_trades.push(response.data);
                 }
 
-                let expected_json = serde_json::json!([
-                    {
-                        "blockHeight": 2,
-                        "direction": "bid",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 2,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 2,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 2,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 4,
-                        "direction": "bid",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 4,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 4,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 4,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                ]);
+                // Verify we got 8 trades
+                assert_that!(received_trades.len()).is_equal_to(8);
 
-                assert_json_include!(actual: received_trades, expected: expected_json);
+                // Expected: 4 trades at block 2 (1 bid, 3 ask), 4 trades at block 4 (1 bid, 3 ask)
+                let expected_trades: Vec<(i64, &str)> = vec![
+                    (2, "bid"),
+                    (2, "ask"),
+                    (2, "ask"),
+                    (2, "ask"),
+                    (4, "bid"),
+                    (4, "ask"),
+                    (4, "ask"),
+                    (4, "ask"),
+                ];
+
+                for (trade, (expected_block, expected_direction)) in
+                    received_trades.iter().zip(expected_trades.iter())
+                {
+                    assert_eq!(trade["blockHeight"], *expected_block);
+                    assert_eq!(trade["direction"], *expected_direction);
+                    assert_eq!(trade["timeInForce"], "GTC");
+                }
 
                 Ok::<(), anyhow::Error>(())
             })

@@ -656,10 +656,9 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     let request_body = GraphQLCustomRequest {
         name: "transfers",
         query: graphql_query,
-        variables: serde_json::json!({"address": accounts.user1.address})
-            .as_object()
-            .unwrap()
-            .to_owned(),
+        variables: [("address".to_string(), serde_json::json!(accounts.user1.address))]
+            .into_iter()
+            .collect(),
     };
 
     let local_set = tokio::task::LocalSet::new();
