@@ -6,5 +6,8 @@ subscription SubscribeAccounts($userIndex: Int, $sinceBlockHeight: Int) {
     createdBlockHeight
     createdTxHash
     createdAt
+    users {
+      userIndex
+    }
   }
 }

@@ -2,7 +2,6 @@ use {
     crate::build_actix_app,
     assert_json_diff::assert_json_eq,
     assertor::*,
-    dango_indexer_sql::entity,
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
@@ -19,7 +18,7 @@ use {
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
-    indexer_client::{Accounts, QueryApp, accounts, query_app},
+    indexer_client::{Accounts, QueryApp, accounts, query_app, subscribe_accounts},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -489,17 +488,16 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
+    // Use typed subscription from indexer-client
     let graphql_query = r#"
       subscription Accounts {
         accounts {
-          id
-          address
           accountIndex
+          address
           accountType
-          createdAt
           createdBlockHeight
           createdTxHash
+          createdAt
           users { userIndex }
         }
       }
@@ -531,18 +529,17 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
-                // 1st response is always the existing last block
-                let response = parse_graphql_subscription_response::<Vec<entity::accounts::Model>>(
-                    &mut framed,
-                    name,
-                )
+                // 1st response - parse as typed subscription response
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_accounts::SubscribeAccountsAccounts>,
+                >(&mut framed, name)
                 .await?;
 
                 assert_that!(
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.created_block_height)
+                        .map(|a| a.created_block_height as i32)
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(vec![1]);
@@ -550,17 +547,16 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let response = parse_graphql_subscription_response::<Vec<entity::accounts::Model>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_accounts::SubscribeAccountsAccounts>,
+                >(&mut framed, name)
                 .await?;
 
                 assert_that!(
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.created_block_height)
+                        .map(|a| a.created_block_height as i32)
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(vec![3]);
@@ -592,16 +588,16 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
+    // Use typed subscription from indexer-client
     let graphql_query = r#"
       subscription Accounts($userIndex: Int) {
         accounts(userIndex: $userIndex) {
-          id
-          address
           accountIndex
+          address
           accountType
-          createdAt
           createdBlockHeight
+          createdTxHash
+          createdAt
           users { userIndex }
         }
       }
@@ -643,27 +639,18 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
-                // Helper to verify account has the expected user_index
-                let verify_account_user_index = |account: &serde_json::Value| {
-                    let users = account
-                        .get("users")
-                        .expect("Expected users field")
-                        .as_array()
-                        .expect("Expected users to be an array");
-                    assert!(!users.is_empty(), "Expected at least one user");
-                    let account_user_index = users[0]
-                        .get("userIndex")
-                        .expect("Expected userIndex field")
-                        .as_i64()
-                        .expect("Expected userIndex to be an integer");
-                    assert_that!(account_user_index).is_equal_to(user_index as i64);
-                };
+                // Helper to verify account has the expected user_index using typed response
+                let verify_account_user_index =
+                    |account: &subscribe_accounts::SubscribeAccountsAccounts| {
+                        assert!(!account.users.is_empty(), "Expected at least one user");
+                        assert_that!(account.users[0].user_index as i64)
+                            .is_equal_to(user_index as i64);
+                    };
 
                 // 1st response is always accounts from the last block if any
-                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_accounts::SubscribeAccountsAccounts>,
+                >(&mut framed, name)
                 .await?;
 
                 let account = response
@@ -676,10 +663,9 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_accounts::SubscribeAccountsAccounts>,
+                >(&mut framed, name)
                 .await?;
 
                 let account = response

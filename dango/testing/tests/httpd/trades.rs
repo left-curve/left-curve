@@ -14,7 +14,7 @@ use {
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
-    indexer_client::{Trades, trades},
+    indexer_client::{Trades, subscribe_trades, trades},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -281,15 +281,17 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
+    // Use typed subscription from indexer-client
     let graphql_query = r#"
-      subscription Trades($base_denom: String!, $quote_denom: String!) {
-          trades(baseDenom: $base_denom, quoteDenom: $quote_denom) {
+      subscription Trades($baseDenom: String!, $quoteDenom: String!) {
+          trades(baseDenom: $baseDenom, quoteDenom: $quoteDenom) {
             addr
             quoteDenom
             baseDenom
             direction
             timeInForce
+            blockHeight
+            createdAt
             filledBase
             filledQuote
             refundBase
@@ -297,8 +299,6 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
             feeBase
             feeQuote
             clearingPrice
-            createdAt
-            blockHeight
           }
       }
     "#;
@@ -307,8 +307,8 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
         name: "trades",
         query: graphql_query,
         variables: [
-            ("base_denom".to_string(), serde_json::json!("dango")),
-            ("quote_denom".to_string(), serde_json::json!("bridge/usdc")),
+            ("baseDenom".to_string(), serde_json::json!("dango")),
+            ("quoteDenom".to_string(), serde_json::json!("bridge/usdc")),
         ]
         .into_iter()
         .collect(),
@@ -340,15 +340,16 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
-                let mut received_trades: Vec<serde_json::Value> = Vec::new();
+                let mut received_trades: Vec<subscribe_trades::SubscribeTradesTrades> = Vec::new();
 
                 create_tx_clone.send(1).await.unwrap();
 
                 // We should receive a total of 8 trades
                 for _ in 1..=8 {
-                    let response =
-                        parse_graphql_subscription_response::<serde_json::Value>(&mut framed, name)
-                            .await?;
+                    let response = parse_graphql_subscription_response::<
+                        subscribe_trades::SubscribeTradesTrades,
+                    >(&mut framed, name)
+                    .await?;
 
                     received_trades.push(response.data);
                 }
@@ -357,23 +358,23 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
                 assert_that!(received_trades.len()).is_equal_to(8);
 
                 // Expected: 4 trades at block 2 (1 bid, 3 ask), 4 trades at block 4 (1 bid, 3 ask)
-                let expected_trades: Vec<(i64, &str)> = vec![
-                    (2, "bid"),
-                    (2, "ask"),
-                    (2, "ask"),
-                    (2, "ask"),
-                    (4, "bid"),
-                    (4, "ask"),
-                    (4, "ask"),
-                    (4, "ask"),
+                let expected_trades: Vec<(i64, subscribe_trades::Direction)> = vec![
+                    (2, subscribe_trades::Direction::bid),
+                    (2, subscribe_trades::Direction::ask),
+                    (2, subscribe_trades::Direction::ask),
+                    (2, subscribe_trades::Direction::ask),
+                    (4, subscribe_trades::Direction::bid),
+                    (4, subscribe_trades::Direction::ask),
+                    (4, subscribe_trades::Direction::ask),
+                    (4, subscribe_trades::Direction::ask),
                 ];
 
                 for (trade, (expected_block, expected_direction)) in
                     received_trades.iter().zip(expected_trades.iter())
                 {
-                    assert_eq!(trade["blockHeight"], *expected_block);
-                    assert_eq!(trade["direction"], *expected_direction);
-                    assert_eq!(trade["timeInForce"], "GTC");
+                    assert_eq!(trade.block_height, *expected_block);
+                    assert_eq!(trade.direction, *expected_direction);
+                    assert_eq!(trade.time_in_force, subscribe_trades::TimeInForce::GTC);
                 }
 
                 Ok::<(), anyhow::Error>(())

@@ -1,7 +1,6 @@
 use {
     crate::build_actix_app,
     assertor::*,
-    dango_indexer_sql::entity,
     dango_testing::{
         HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
     },
@@ -13,7 +12,7 @@ use {
     graphql_client::{GraphQLQuery, Response},
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
-    indexer_client::{Transfers, transfers},
+    indexer_client::{Transfers, subscribe_transfers, transfers},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -499,19 +498,18 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
+    // Use typed subscription from indexer-client
     let graphql_query = r#"
       subscription Transfer {
         transfers {
-          id
           idx
-          createdAt
           blockHeight
           txHash
           fromAddress
           toAddress
           amount
           denom
+          createdAt
         }
       }
     "#;
@@ -553,18 +551,16 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                         .await?;
 
                 // 1st response is always the existing last block
-                let response =
-                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_transfers::SubscribeTransfersTransfers>,
+                >(&mut framed, name)
+                .await?;
 
                 assert_that!(
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.block_height)
+                        .map(|t| t.block_height as i32)
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(vec![1, 1]);
@@ -572,18 +568,16 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let response =
-                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_transfers::SubscribeTransfersTransfers>,
+                >(&mut framed, name)
+                .await?;
 
                 assert_that!(
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.block_height)
+                        .map(|t| t.block_height as i32)
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(vec![2]);
@@ -591,18 +585,16 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await.unwrap();
 
                 // 3rd response
-                let response =
-                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_transfers::SubscribeTransfersTransfers>,
+                >(&mut framed, name)
+                .await?;
 
                 assert_that!(
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.block_height)
+                        .map(|t| t.block_height as i32)
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(vec![3]);
@@ -636,19 +628,18 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         )
         .should_succeed();
 
-    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
+    // Use typed subscription from indexer-client
     let graphql_query = r#"
       subscription Transfer($address: String) {
         transfers(address: $address) {
-          id
           idx
-          createdAt
           blockHeight
           txHash
           fromAddress
           toAddress
           amount
           denom
+          createdAt
         }
       }
     "#;
@@ -696,12 +687,10 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                         .await?;
 
                 // 1st response is always the existing last block
-                let response =
-                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_transfers::SubscribeTransfersTransfers>,
+                >(&mut framed, name)
+                .await?;
 
                 // 1st transfer because we filter on one address
                 assert_that!(
@@ -716,12 +705,10 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                 create_block_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let response =
-                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_transfers::SubscribeTransfersTransfers>,
+                >(&mut framed, name)
+                .await?;
 
                 assert_that!(
                     response
@@ -735,12 +722,10 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                 create_block_tx.send(3).await.unwrap();
 
                 // 3rd response
-                let response =
-                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_transfers::SubscribeTransfersTransfers>,
+                >(&mut framed, name)
+                .await?;
 
                 assert_that!(
                     response
