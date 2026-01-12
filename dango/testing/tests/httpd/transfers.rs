@@ -1,5 +1,5 @@
 use {
-    crate::{build_actix_app, paginate_models},
+    crate::build_actix_app,
     assertor::*,
     dango_indexer_sql::entity,
     dango_testing::{
@@ -10,14 +10,14 @@ use {
         account_factory::{self, AccountParams},
         constants::usdc,
     },
+    graphql_client::{GraphQLQuery, Response},
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
+    indexer_client::{Transfers, transfers},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     itertools::Itertools,
-    serde_json::json,
     tokio::sync::mpsc,
 };
 
@@ -45,75 +45,62 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Transfers($block_height: Int!) {
-        transfers(blockHeight: $block_height) {
-          nodes {
-            id
-            idx
-            blockHeight
-            txHash
-            fromAddress
-            toAddress
-            amount
-            denom
-            createdAt
-            accounts { address users { userIndex }}
-            fromAccount { address users { userIndex }}
-            toAccount { address users { userIndex }}
-          }
-          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { userIndex }} fromAccount { address users { userIndex }} toAccount { address users { userIndex }} } cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let variables = serde_json::json!({
-        "block_height": 1,
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "transfers",
-        query: graphql_query,
-        variables,
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
+                let variables = transfers::Variables {
+                    after: None,
+                    before: None,
+                    first: None,
+                    last: None,
+                    sort_by: None,
+                    block_height: Some(1),
+                    from_address: None,
+                    to_address: None,
+                    user_index: None,
+                };
+
+                let request_body = Transfers::build_query(variables);
+
                 let app = build_actix_app(dango_httpd_context);
+                let app = actix_web::test::init_service(app).await;
 
-                let response: PaginatedResponse<entity::transfers::Model> =
-                    call_paginated_graphql(app, request_body).await?;
+                let request = actix_web::test::TestRequest::post()
+                    .uri("/graphql")
+                    .set_json(&request_body)
+                    .to_request();
 
-                assert_that!(response.edges).has_length(2);
+                let response = actix_web::test::call_and_read_body(&app, request).await;
+                let response: Response<transfers::ResponseData> = serde_json::from_slice(&response)?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+
+                assert_that!(data.transfers.nodes).has_length(2);
 
                 assert_that!(
-                    response
-                        .edges
+                    data.transfers
+                        .nodes
                         .iter()
-                        .map(|t| t.node.block_height)
+                        .map(|t| t.block_height)
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(vec![1, 1]);
 
                 assert_that!(
-                    response
-                        .edges
+                    data.transfers
+                        .nodes
                         .iter()
-                        .map(|t| t.node.amount.as_str())
+                        .map(|t| t.amount.as_str())
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(vec!["100000000", "100000000"]);
 
-                response.edges.iter().for_each(|edge| {
+                data.transfers.nodes.iter().for_each(|node| {
                     assert!(
-                        !edge.node.tx_hash.is_empty(),
+                        !node.tx_hash.is_empty(),
                         "Transaction hash should not be empty."
                     );
                 });
@@ -154,62 +141,49 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Transfers($userIndex: String) {
-        transfers(userIndex: $userIndex) {
-          nodes {
-            id
-            idx
-            blockHeight
-            txHash
-            fromAddress
-            toAddress
-            amount
-            denom
-            createdAt
-            accounts { address users { userIndex }}
-            fromAccount { address users { userIndex }}
-            toAccount { address users { userIndex }}
-          }
-          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { userIndex }} fromAccount { address users { userIndex }} toAccount { address users { userIndex }} } cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let variables = serde_json::json!({
-        "userIndex": user1.user_index(),
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "transfers",
-        query: graphql_query,
-        variables,
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
+                let variables = transfers::Variables {
+                    after: None,
+                    before: None,
+                    first: None,
+                    last: None,
+                    sort_by: None,
+                    block_height: None,
+                    from_address: None,
+                    to_address: None,
+                    user_index: Some(user1.user_index() as i64),
+                };
 
-                let response: PaginatedResponse<serde_json::Value> =
-                    call_paginated_graphql(app, request_body).await?;
+                let request_body = Transfers::build_query(variables);
+
+                let app = build_actix_app(dango_httpd_context);
+                let app = actix_web::test::init_service(app).await;
+
+                let request = actix_web::test::TestRequest::post()
+                    .uri("/graphql")
+                    .set_json(&request_body)
+                    .to_request();
+
+                let response = actix_web::test::call_and_read_body(&app, request).await;
+                let response: Response<transfers::ResponseData> = serde_json::from_slice(&response)?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
 
                 // We expect two transfers:
                 // 1. When creating user1, from Gateway contract to user1's account. (amount: 150_000_000)
                 // 2. From user1 to user2. (amount: 100)
-                assert_that!(response.edges).has_length(2);
+                assert_that!(data.transfers.nodes).has_length(2);
 
                 assert_that!(
-                    response
-                        .edges
+                    data.transfers
+                        .nodes
                         .iter()
-                        .flat_map(|t| t.node.get("amount").unwrap().as_str())
+                        .map(|t| t.amount.as_str())
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(
@@ -219,20 +193,14 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                 );
 
                 assert_that!(
-                    response
-                        .edges
+                    data.transfers
+                        .nodes
                         .iter()
-                        .flat_map(|t| t
-                            .node
-                            .get("fromAccount")
-                            .unwrap()
-                            .as_object()
-                            .and_then(|o| o.get("users"))
-                            .and_then(|u| u.as_array())
-                            .and_then(|a| a.first())
-                            .and_then(|u| u.get("userIndex"))
-                            .and_then(|u| u.as_number())
-                            .and_then(|u| u.as_u64()))
+                        .filter_map(|t| t
+                            .from_account
+                            .as_ref()
+                            .and_then(|a| a.users.first())
+                            .map(|u| u.user_index as u64))
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(
@@ -242,20 +210,14 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                 );
 
                 assert_that!(
-                    response
-                        .edges
+                    data.transfers
+                        .nodes
                         .iter()
-                        .flat_map(|t| t
-                            .node
-                            .get("toAccount")
-                            .unwrap()
-                            .as_object()
-                            .and_then(|o| o.get("users"))
-                            .and_then(|u| u.as_array())
-                            .and_then(|a| a.first())
-                            .and_then(|u| u.get("userIndex"))
-                            .and_then(|u| u.as_number())
-                            .and_then(|u| u.as_u64()))
+                        .filter_map(|t| t
+                            .to_account
+                            .as_ref()
+                            .and_then(|a| a.users.first())
+                            .map(|u| u.user_index as u64))
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(
@@ -298,53 +260,40 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
         )
         .should_succeed();
 
-    let graphql_query = r#"
-      query Transfers($userIndex: String) {
-        transfers(userIndex: $userIndex) {
-          nodes {
-            id
-            idx
-            blockHeight
-            txHash
-            fromAddress
-            toAddress
-            amount
-            denom
-            createdAt
-            accounts { address users { userIndex }}
-            fromAccount { address users { userIndex }}
-            toAccount { address users { userIndex }}
-          }
-          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { userIndex }} fromAccount { address users { userIndex }} toAccount { address users { userIndex }} } cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let variables = serde_json::json!({
-        "userIndex": 114514, // a random user index that doesn't exist
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "transfers",
-        query: graphql_query,
-        variables,
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
+                let variables = transfers::Variables {
+                    after: None,
+                    before: None,
+                    first: None,
+                    last: None,
+                    sort_by: None,
+                    block_height: None,
+                    from_address: None,
+                    to_address: None,
+                    user_index: Some(114514), // a random user index that doesn't exist
+                };
+
+                let request_body = Transfers::build_query(variables);
+
                 let app = build_actix_app(dango_httpd_context);
+                let app = actix_web::test::init_service(app).await;
 
-                let response: PaginatedResponse<serde_json::Value> =
-                    call_paginated_graphql(app, request_body).await?;
+                let request = actix_web::test::TestRequest::post()
+                    .uri("/graphql")
+                    .set_json(&request_body)
+                    .to_request();
 
-                assert_that!(response.edges).is_empty();
+                let response = actix_web::test::call_and_read_body(&app, request).await;
+                let response: Response<transfers::ResponseData> = serde_json::from_slice(&response)?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+
+                assert_that!(data.transfers.nodes).is_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -382,29 +331,6 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Transfers($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
-        transfers(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
-          nodes {
-            id
-            idx
-            blockHeight
-            txHash
-            fromAddress
-            toAddress
-            amount
-            denom
-            createdAt
-            accounts { address users { userIndex }}
-            fromAccount { address users { userIndex }}
-            toAccount { address users { userIndex }}
-          }
-          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { userIndex }} fromAccount { address users { userIndex }} toAccount { address users { userIndex }} } cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
@@ -412,18 +338,83 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let transfers_count = 2;
 
+                // Helper to paginate through all transfers
+                async fn paginate_all_transfers(
+                    httpd_context: dango_httpd::context::Context,
+                    sort_by: transfers::TransferSortBy,
+                    first: Option<i64>,
+                    last: Option<i64>,
+                ) -> anyhow::Result<Vec<i64>> {
+                    let mut all_heights = vec![];
+                    let mut after: Option<String> = None;
+                    let mut before: Option<String> = None;
+
+                    loop {
+                        let variables = transfers::Variables {
+                            after: after.clone(),
+                            before: before.clone(),
+                            first,
+                            last,
+                            sort_by: Some(sort_by.clone()),
+                            block_height: None,
+                            from_address: None,
+                            to_address: None,
+                            user_index: None,
+                        };
+
+                        let request_body = Transfers::build_query(variables);
+                        let app = build_actix_app(httpd_context.clone());
+                        let app = actix_web::test::init_service(app).await;
+
+                        let request = actix_web::test::TestRequest::post()
+                            .uri("/graphql")
+                            .set_json(&request_body)
+                            .to_request();
+
+                        let response = actix_web::test::call_and_read_body(&app, request).await;
+                        let response: Response<transfers::ResponseData> =
+                            serde_json::from_slice(&response)?;
+
+                        let data = response.data.unwrap();
+
+                        match (first, last) {
+                            (Some(_), None) => {
+                                for node in data.transfers.nodes {
+                                    all_heights.push(node.block_height);
+                                }
+
+                                if !data.transfers.page_info.has_next_page {
+                                    break;
+                                }
+                                after = data.transfers.page_info.end_cursor;
+                            },
+                            (None, Some(_)) => {
+                                for node in data.transfers.nodes.into_iter().rev() {
+                                    all_heights.push(node.block_height);
+                                }
+
+                                if !data.transfers.page_info.has_previous_page {
+                                    break;
+                                }
+                                before = data.transfers.page_info.start_cursor;
+                            },
+                            _ => break,
+                        }
+                    }
+
+                    Ok(all_heights)
+                }
+
                 // 1. first with descending order
-                let block_heights = paginate_models::<entity::transfers::Model>(
+                let block_heights = paginate_all_transfers(
                     dango_httpd_context.clone(),
-                    graphql_query,
-                    "transfers",
-                    "BLOCK_HEIGHT_DESC",
+                    transfers::TransferSortBy::BLOCK_HEIGHT_DESC,
                     Some(transfers_count),
                     None,
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.block_height as u64)
+                .map(|h| h as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -436,17 +427,15 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 .is_equal_to((1..=10).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
-                let block_heights = paginate_models::<entity::transfers::Model>(
+                let block_heights = paginate_all_transfers(
                     dango_httpd_context.clone(),
-                    graphql_query,
-                    "transfers",
-                    "BLOCK_HEIGHT_ASC",
+                    transfers::TransferSortBy::BLOCK_HEIGHT_ASC,
                     Some(transfers_count),
                     None,
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.block_height as u64)
+                .map(|h| h as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -459,17 +448,15 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 .is_equal_to((1..=10).collect::<Vec<_>>());
 
                 // 3. last with descending order
-                let block_heights = paginate_models::<entity::transfers::Model>(
+                let block_heights = paginate_all_transfers(
                     dango_httpd_context.clone(),
-                    graphql_query,
-                    "transfers",
-                    "BLOCK_HEIGHT_DESC",
+                    transfers::TransferSortBy::BLOCK_HEIGHT_DESC,
                     None,
                     Some(transfers_count),
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.block_height as u64)
+                .map(|h| h as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -482,17 +469,15 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 .is_equal_to((1..=10).collect::<Vec<_>>());
 
                 // 4. last with ascending order
-                let block_heights = paginate_models::<entity::transfers::Model>(
+                let block_heights = paginate_all_transfers(
                     dango_httpd_context.clone(),
-                    graphql_query,
-                    "transfers",
-                    "BLOCK_HEIGHT_ASC",
+                    transfers::TransferSortBy::BLOCK_HEIGHT_ASC,
                     None,
                     Some(transfers_count),
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.block_height as u64)
+                .map(|h| h as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -535,6 +520,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
+    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
     let graphql_query = r#"
       subscription Transfer {
         transfers {
@@ -671,6 +657,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         )
         .should_succeed();
 
+    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
     let graphql_query = r#"
       subscription Transfer($address: String) {
         transfers(address: $address) {
@@ -690,7 +677,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     let request_body = GraphQLCustomRequest {
         name: "transfers",
         query: graphql_query,
-        variables: json!({"address": accounts.user1.address})
+        variables: serde_json::json!({"address": accounts.user1.address})
             .as_object()
             .unwrap()
             .to_owned(),
