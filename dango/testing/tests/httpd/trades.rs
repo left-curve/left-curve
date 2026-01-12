@@ -9,14 +9,15 @@ use {
         dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
+    graphql_client::{GraphQLQuery, Response},
     grug::{
         Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
+    indexer_client::{Trades, trades},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     std::sync::Arc,
     tokio::sync::{Mutex, mpsc},
@@ -31,52 +32,52 @@ async fn query_all_trades() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Trades($addr: String) {
-      trades(addr: $addr) {
-          nodes {
-            addr
-            quoteDenom
-            baseDenom
-            direction
-            timeInForce
-            filledBase
-            filledQuote
-            refundBase
-            refundQuote
-            feeBase
-            feeQuote
-            clearingPrice
-            createdAt
-            blockHeight
-          }
-          edges { node { addr quoteDenom baseDenom direction timeInForce filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "trades",
-        query: graphql_query,
-        variables: serde_json::json!({}).as_object().unwrap().clone(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context.clone());
+                let variables = trades::Variables {
+                    after: None,
+                    first: None,
+                    addr: None,
+                };
 
-                let response: PaginatedResponse<serde_json::Value> =
-                    call_paginated_graphql(app, request_body.clone()).await?;
+                let request_body = Trades::build_query(variables);
 
-                let received_trades = response
-                    .edges
-                    .into_iter()
-                    .map(|e| e.node)
-                    .collect::<Vec<_>>();
+                let app = build_actix_app(dango_httpd_context);
+                let app = actix_web::test::init_service(app).await;
+
+                let request = actix_web::test::TestRequest::post()
+                    .uri("/graphql")
+                    .set_json(&request_body)
+                    .to_request();
+
+                let response = actix_web::test::call_and_read_body(&app, request).await;
+                let response: Response<trades::ResponseData> = serde_json::from_slice(&response)?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+
+                let received_trades: Vec<_> = data
+                    .trades
+                    .nodes
+                    .iter()
+                    .map(|t| {
+                        serde_json::json!({
+                            "addr": t.addr,
+                            "baseDenom": t.base_denom,
+                            "quoteDenom": t.quote_denom,
+                            "clearingPrice": t.clearing_price,
+                            "direction": format!("{:?}", t.direction).to_lowercase(),
+                            "timeInForce": format!("{:?}", t.time_in_force),
+                            "filledBase": t.filled_base,
+                            "filledQuote": t.filled_quote,
+                            "refundBase": t.refund_base,
+                            "refundQuote": t.refund_quote,
+                        })
+                    })
+                    .collect();
 
                 let expected_candle = serde_json::json!([
                     {
@@ -147,31 +148,6 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Trades($addr: String, $first: Int, $after: String) {
-      trades(addr: $addr, first: $first, after: $after) {
-          nodes {
-            addr
-            quoteDenom
-            baseDenom
-            direction
-            timeInForce
-            filledBase
-            filledQuote
-            refundBase
-            refundQuote
-            feeBase
-            feeQuote
-            clearingPrice
-            createdAt
-            blockHeight
-          }
-          edges { node { addr quoteDenom baseDenom direction timeInForce filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
@@ -181,31 +157,43 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                 let mut after = None;
 
                 loop {
-                    let app = build_actix_app(dango_httpd_context.clone());
-
-                    let mut variables = serde_json::json!({"first": 1});
-                    if let Some(cursor) = after {
-                        variables["after"] = serde_json::json!(cursor);
-                    }
-
-                    let request_body = GraphQLCustomRequest {
-                        name: "trades",
-                        query: graphql_query,
-                        variables: variables.as_object().unwrap().clone(),
+                    let variables = trades::Variables {
+                        after: after.clone(),
+                        first: Some(1),
+                        addr: None,
                     };
 
-                    let response: PaginatedResponse<serde_json::Value> =
-                        call_paginated_graphql(app, request_body.clone()).await?;
+                    let request_body = Trades::build_query(variables);
+                    let app = build_actix_app(dango_httpd_context.clone());
+                    let app = actix_web::test::init_service(app).await;
 
-                    received_trades.append(
-                        &mut response
-                            .edges
-                            .into_iter()
-                            .map(|e| e.node)
-                            .collect::<Vec<_>>(),
-                    );
+                    let request = actix_web::test::TestRequest::post()
+                        .uri("/graphql")
+                        .set_json(&request_body)
+                        .to_request();
 
-                    after = response.page_info.end_cursor;
+                    let response = actix_web::test::call_and_read_body(&app, request).await;
+                    let response: Response<trades::ResponseData> =
+                        serde_json::from_slice(&response)?;
+
+                    let data = response.data.unwrap();
+
+                    for node in data.trades.nodes {
+                        received_trades.push(serde_json::json!({
+                            "addr": node.addr,
+                            "baseDenom": node.base_denom,
+                            "quoteDenom": node.quote_denom,
+                            "clearingPrice": node.clearing_price,
+                            "direction": format!("{:?}", node.direction).to_lowercase(),
+                            "timeInForce": format!("{:?}", node.time_in_force),
+                            "filledBase": node.filled_base,
+                            "filledQuote": node.filled_quote,
+                            "refundBase": node.refund_base,
+                            "refundQuote": node.refund_quote,
+                        }));
+                    }
+
+                    after = data.trades.page_info.end_cursor;
 
                     if after.is_none() {
                         break;
@@ -281,39 +269,6 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Trades($addr: String) {
-      trades(addr: $addr) {
-          nodes {
-            addr
-            quoteDenom
-            baseDenom
-            direction
-            filledBase
-            filledQuote
-            refundBase
-            refundQuote
-            feeBase
-            feeQuote
-            clearingPrice
-            createdAt
-            blockHeight
-          }
-          edges { node { addr quoteDenom baseDenom direction filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "trades",
-        query: graphql_query,
-        variables: serde_json::json!({"addr": accounts.user6.address()})
-            .as_object()
-            .unwrap()
-            .clone(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
@@ -322,16 +277,41 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
                 let mut received_trades: Vec<serde_json::Value> = vec![];
 
                 for _ in 0..10 {
+                    let variables = trades::Variables {
+                        after: None,
+                        first: None,
+                        addr: Some(accounts.user6.address().to_string()),
+                    };
+
+                    let request_body = Trades::build_query(variables);
                     let app = build_actix_app(dango_httpd_context.clone());
+                    let app = actix_web::test::init_service(app).await;
 
-                    let response: PaginatedResponse<serde_json::Value> =
-                        call_paginated_graphql(app, request_body.clone()).await?;
+                    let request = actix_web::test::TestRequest::post()
+                        .uri("/graphql")
+                        .set_json(&request_body)
+                        .to_request();
 
-                    received_trades = response
-                        .edges
-                        .into_iter()
-                        .map(|e| e.node)
-                        .collect::<Vec<_>>();
+                    let response = actix_web::test::call_and_read_body(&app, request).await;
+                    let response: Response<trades::ResponseData> =
+                        serde_json::from_slice(&response)?;
+
+                    let data = response.data.unwrap();
+
+                    received_trades = data
+                        .trades
+                        .nodes
+                        .iter()
+                        .map(|t| {
+                            serde_json::json!({
+                                "addr": t.addr,
+                                "baseDenom": t.base_denom,
+                                "quoteDenom": t.quote_denom,
+                                "clearingPrice": t.clearing_price,
+                                "direction": format!("{:?}", t.direction).to_lowercase(),
+                            })
+                        })
+                        .collect();
                 }
 
                 let expected_candle = serde_json::json!([
@@ -363,6 +343,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
+    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
     let graphql_query = r#"
       subscription Trades($base_denom: String!, $quote_denom: String!) {
           trades(baseDenom: $base_denom, quoteDenom: $quote_denom) {
