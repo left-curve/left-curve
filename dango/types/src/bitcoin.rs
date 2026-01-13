@@ -232,6 +232,9 @@ pub struct Transaction {
     pub outputs: BTreeMap<BitcoinAddress, Uint128>,
     /// The fee of the transaction.
     pub fee: Uint128,
+    /// The replace identifier of the transaction.
+    /// If this is set, it means that this transaction is a RBF replacement of the specified transaction.
+    pub replace: Option<u32>,
 }
 
 fn serialize_inputs<S>(
@@ -362,6 +365,13 @@ pub enum ExecuteMsg {
         minimum_deposit: Option<Uint128>,
         max_output_per_tx: Option<usize>,
         // TODO: Allow changing the vault address and guardian set? This requires resetting the UTXO set.
+    },
+    /// Replace an outbound transaction with a new one with a higher fee.
+    ReplaceByFee {
+        /// Identifier of the outbound transaction to replace.
+        tx_id: u32,
+        /// New fee rate in sats per Vbyte.
+        new_fee_rate: Uint128,
     },
     /// Update the fee rate in sats per Vbyte to calculate the fee for outbound transactions.
     UpdateFeeRate(Uint128),

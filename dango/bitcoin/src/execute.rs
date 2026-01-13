@@ -13,10 +13,10 @@ use {
     dango_types::{
         DangoQuerier,
         bitcoin::{
-            BitcoinSignature, Config, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD, InboundConfirmed,
-            InboundCredential, InboundMsg, InstantiateMsg, MultisigWallet, Network, OUTPUT_SIZE,
-            OutboundConfirmed, OutboundRequested, Recipient, SIGNATURE_SIZE, Transaction, Vout,
-            create_tx_in,
+            BitcoinAddress, BitcoinSignature, Config, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD,
+            InboundConfirmed, InboundCredential, InboundMsg, InstantiateMsg, MultisigWallet,
+            Network, OUTPUT_SIZE, OutboundConfirmed, OutboundRequested, Recipient, SIGNATURE_SIZE,
+            Transaction, Vout, create_tx_in,
         },
         gateway::{
             self, Remote,
@@ -156,6 +156,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             minimum_deposit,
             max_output_per_tx,
         } => update_config(ctx, fee_rate_updater, minimum_deposit, max_output_per_tx),
+        ExecuteMsg::ReplaceByFee {
+            tx_id,
+            new_fee_rate,
+        } => replace_by_fee(ctx, tx_id, new_fee_rate),
         ExecuteMsg::UpdateFeeRate(sats_per_vbyte) => update_fee_rate(ctx, sats_per_vbyte),
         ExecuteMsg::ObserveInbound(inbound_msg) => observe_inbound(
             ctx,
@@ -209,6 +213,75 @@ fn update_config(
     CONFIG.save(ctx.storage, &config)?;
 
     Ok(Response::new())
+}
+
+fn replace_by_fee(ctx: MutableCtx, tx_id: u32, new_fee_rate: Uint128) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    let config = CONFIG.load(ctx.storage)?;
+
+    let mut tx = OUTBOUNDS.load(ctx.storage, tx_id)?;
+
+    let size = estimate_tx_size(
+        &tx.to_btc_transaction(config.network)?,
+        config.multisig.threshold(),
+    );
+
+    // Calculate the new fee.
+    let mut new_fee = size * new_fee_rate;
+
+    // Calculate the difference between the new fee and the old fee.
+    let fee_diff = if new_fee > tx.fee {
+        new_fee - tx.fee
+    } else {
+        bail!(
+            "new fee {} is not greater than the old fee {}",
+            new_fee,
+            tx.fee
+        );
+    };
+
+    // In orde to increase the fee, we need to lower the output amount to the vault by fee_diff.
+    // If the remaining amount to the vault is less than dust amount, we remove the output entirely
+    // and use all for the fee.
+    let vault_address = MultisigWallet::new(&config.multisig, &Recipient::Vault)
+        .address(config.network)
+        .to_string();
+
+    let old_vault_amount = *tx
+        .outputs
+        .get(&vault_address)
+        .expect("vault output must exist to increase the fee");
+
+    let new_vault_amount = if fee_diff > old_vault_amount {
+        Uint128::ZERO
+    } else {
+        old_vault_amount - fee_diff
+    };
+
+    // Update the vault output or remove it if below minimum withdrawal.
+    if new_vault_amount < config.min_withdrawal {
+        tx.outputs.remove(&vault_address);
+        new_fee = tx.fee + old_vault_amount;
+    } else {
+        tx.outputs.insert(vault_address, new_vault_amount);
+    }
+
+    let (new_id, transaction) = store_withdraw_tx(
+        ctx.storage,
+        tx.inputs.clone(),
+        tx.outputs.clone(),
+        new_fee,
+        Some(tx_id),
+    )?;
+
+    Ok(Response::new().add_event(OutboundRequested {
+        id: new_id,
+        transaction,
+    })?)
 }
 
 fn update_fee_rate(ctx: MutableCtx, sats_per_vbyte: Uint128) -> anyhow::Result<Response> {
@@ -464,17 +537,16 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             UTXOS.remove(ctx.storage, (*amount, *hash, *vout));
         }
 
-        let (id, _) = OUTBOUND_ID.increment(ctx.storage)?;
-        let fee = transaction_builder.fee();
-        let transaction = Transaction {
-            inputs: transaction_builder.inputs,
-            outputs: tx_output,
-            fee,
-        };
+        // Store the outbound transaction.
+        let (id, transaction) = store_withdraw_tx(
+            ctx.storage,
+            transaction_builder.inputs.clone(),
+            tx_output,
+            transaction_builder.fee(),
+            None,
+        )?;
 
-        // Save the outbound transaction.
-        OUTBOUNDS.save(ctx.storage, id, &transaction)?;
-
+        // Emit the event.
         events.push(OutboundRequested { id, transaction });
     }
 
@@ -658,10 +730,34 @@ fn select_best_utxos(
     Ok(transaction_builder)
 }
 
+/// Increase the withdrawal ID and store the outbound transaction.
+fn store_withdraw_tx(
+    storage: &mut dyn Storage,
+    inputs: BTreeMap<(Hash256, Vout), (Uint128, Recipient)>,
+    outputs: BTreeMap<BitcoinAddress, Uint128>,
+    fee: Uint128,
+    replace: Option<u32>,
+) -> anyhow::Result<(u32, Transaction)> {
+    // Increment the outbound ID.
+    let (id, _) = OUTBOUND_ID.increment(storage)?;
+
+    let transaction = Transaction {
+        inputs,
+        outputs,
+        fee,
+        replace,
+    };
+
+    // Save the outbound transaction.
+    OUTBOUNDS.save(storage, id, &transaction)?;
+
+    Ok((id, transaction))
+}
+
 /// Helper struct used to build a transaction and calculate fees.
 struct TransactionBuilder {
     tx: BtcTransaction,
-    signature_size_per_input: Uint128,
+    threshold: u8,
     inputs: BTreeMap<(Hash256, Vout), (Uint128, Recipient)>,
     inputs_amount: Uint128,
     sats_per_vbyte: Uint128,
@@ -679,15 +775,13 @@ impl TransactionBuilder {
             inputs: BTreeMap::new(),
             outputs,
             fee: Uint128::ZERO,
+            replace: None,
         }
         .to_btc_transaction(config.network)?;
 
-        let signature_size_per_input = INPUT_SIGNATURES_OVERHEAD
-            + SIGNATURE_SIZE * Uint128::new(config.multisig.threshold() as u128);
-
         Ok(Self {
             tx,
-            signature_size_per_input,
+            threshold: config.multisig.threshold(),
             inputs: BTreeMap::new(),
             inputs_amount: Uint128::ZERO,
             sats_per_vbyte: config.sats_per_vbyte,
@@ -718,16 +812,9 @@ impl TransactionBuilder {
         self.inputs.contains_key(&(hash, vout))
     }
 
-    /// Calculate the fee for the current transaction in satoshis.
-    /// At this point, the transaction does not include signatures yet.
-    /// To calculate the fee, we consider the size of the transaction +
-    /// the size of the signatures + 1 output (for change back to the vault).
+    /// Calculate the fee for the current transaction in satoshis/vbytes.
     pub fn fee(&self) -> Uint128 {
-        let signatures_size =
-            Uint128::new(self.inputs.len() as u128) * self.signature_size_per_input;
-
-        (Uint128::new(self.tx.vsize() as u128) + signatures_size + OUTPUT_SIZE)
-            * self.sats_per_vbyte
+        estimate_tx_size(&self.tx, self.threshold) * self.sats_per_vbyte
     }
 
     /// Return the total amount needed to cover the withdraw_amount + fee.
@@ -756,4 +843,17 @@ impl TransactionBuilder {
             Uint128::ZERO
         }
     }
+}
+
+/// Estimate the size of a BTC transaction in vbytes.
+/// The transaction does not include signatures yet, so we need to estimate them.
+/// To calculate the size, we consider the size of the transaction +
+/// the size of the signatures + 1 output (for change back to the vault).
+fn estimate_tx_size(tx: &BtcTransaction, threshold: u8) -> Uint128 {
+    let signature_size_per_input =
+        INPUT_SIGNATURES_OVERHEAD + SIGNATURE_SIZE * Uint128::new(threshold as u128);
+
+    let signatures_size = Uint128::new(tx.input.len() as u128) * signature_size_per_input;
+
+    Uint128::new(tx.vsize() as u128) + signatures_size + OUTPUT_SIZE
 }
