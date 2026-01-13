@@ -5,7 +5,7 @@ use {
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         constants::dango,
-        dex, gateway, oracle, taxman, vesting, warp,
+        dex, gateway, oracle, referral, taxman, vesting, warp,
     },
     grug::{
         Addr, Binary, Coins, Config, Duration, GENESIS_SENDER, GenesisState, Hash256, HashExt,
@@ -37,6 +37,7 @@ where
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
+    let referral_code_hash = upload(&mut msgs, codes.referral);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
     let warp_code_hash = upload(&mut msgs, codes.warp);
@@ -211,6 +212,16 @@ where
         owner,
     )?;
 
+    // Instantiate the referral contract.
+    let referral = instantiate(
+        &mut msgs,
+        referral_code_hash,
+        &referral::InstantiateMsg {},
+        "dango/referral",
+        "dango/referral",
+        owner,
+    )?;
+
     // Instantiate the taxman contract.
     let taxman = instantiate(
         &mut msgs,
@@ -256,6 +267,7 @@ where
         gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         oracle,
+        referral,
         taxman,
         vesting,
         warp,

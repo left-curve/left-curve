@@ -3978,6 +3978,7 @@ dependencies = [
  "dango-dex",
  "dango-gateway",
  "dango-oracle",
+ "dango-referral",
  "dango-taxman",
  "dango-types",
  "dango-vesting",
@@ -4173,6 +4174,16 @@ dependencies = [
  "reqwest 0.12.23",
  "tokio",
  "tokio-stream",
+ "tracing",
+]
+
+[[package]]
+name = "dango-referral"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
  "tracing",
 ]
 

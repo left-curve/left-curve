@@ -77,6 +77,11 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_oracle::query))
             .build();
 
+        let referral = ContractBuilder::new(Box::new(dango_referral::instantiate))
+            .with_execute(Box::new(dango_referral::execute))
+            .with_query(Box::new(dango_referral::query))
+            .build();
+
         let taxman = ContractBuilder::new(Box::new(dango_taxman::instantiate))
             .with_execute(Box::new(dango_taxman::execute))
             .with_query(Box::new(dango_taxman::query))
@@ -110,6 +115,7 @@ impl GenesisCodes for RustVm {
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,
+            referral,
             taxman,
             vesting,
             warp,
