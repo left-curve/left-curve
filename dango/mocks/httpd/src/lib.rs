@@ -10,7 +10,7 @@ use {
     hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
     rand::Rng,
-    std::{net::TcpListener, sync::Arc, time::Duration},
+    std::{sync::Arc, time::Duration},
     tokio::{net::TcpStream, sync::Mutex},
 };
 pub use {
@@ -154,22 +154,12 @@ where
     .await
 }
 
-/// Get an available port for the mock server.
+/// Get a random port for the mock server.
 ///
-/// Generates a random port in the range 20000-60000 and verifies it's available
-/// by attempting to bind. If the port is in use, it tries another random port.
+/// Generates a random port in the range 20000-60000.
+/// With 40,000 possible ports, collision probability is very low.
 pub fn get_mock_socket_addr() -> u16 {
-    let mut rng = rand::thread_rng();
-
-    loop {
-        let port: u16 = rng.gen_range(20000..60000);
-
-        // Try to bind to verify the port is available
-        if TcpListener::bind(format!("127.0.0.1:{port}")).is_ok() {
-            return port;
-        }
-        // Port is in use, try another random port
-    }
+    rand::thread_rng().gen_range(20000..60000)
 }
 
 pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
