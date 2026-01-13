@@ -4140,6 +4140,7 @@ dependencies = [
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
+ "rand 0.8.5",
  "tokio",
  "tracing",
 ]
