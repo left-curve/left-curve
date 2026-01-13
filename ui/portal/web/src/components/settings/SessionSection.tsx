@@ -1,6 +1,7 @@
 import { useAccount, useConfig, useSessionKey } from "@left-curve/store";
 
 import {
+  Button,
   CurrentBlock,
   IconEdit,
   IconInfo,
@@ -19,6 +20,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { Link } from "@tanstack/react-router";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
@@ -68,8 +70,16 @@ const UserStatusSection: React.FC = () => {
         <div className="flex items-start gap-2">
           <IconInfo className="text-ink-tertiary-500" />
           <p className="diatype-m-bold text-ink-secondary-700">
-            {m["settings.session.userStatus"]()}
+            {m["settings.session.userStatus.title"]()}
           </p>
+        </div>
+        <p className="text-ink-tertiary-500 diatype-sm-regular pl-8 max-w-lg">
+          {m["settings.session.userStatus.description"]()}
+        </p>
+        <div className="pl-8 pt-2">
+          <Button as={Link} to="/bridge" variant="secondary" size="xs">
+            {m["settings.session.userStatus.button"]()}
+          </Button>
         </div>
       </div>
       <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-end md:justify-center gap-1">
