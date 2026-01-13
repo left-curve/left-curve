@@ -10,7 +10,11 @@ use {
     hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
     rand::Rng,
-    std::{sync::Arc, time::Duration},
+    std::{
+        collections::HashSet,
+        sync::{Arc, LazyLock, Mutex as StdMutex},
+        time::Duration,
+    },
     tokio::{net::TcpStream, sync::Mutex},
 };
 pub use {
@@ -154,12 +158,24 @@ where
     .await
 }
 
+/// Tracks ports already allocated to avoid collisions.
+static USED_PORTS: LazyLock<StdMutex<HashSet<u16>>> =
+    LazyLock::new(|| StdMutex::new(HashSet::new()));
+
 /// Get a random port for the mock server.
 ///
-/// Generates a random port in the range 20000-60000.
-/// With 40,000 possible ports, collision probability is very low.
+/// Generates a random port in the range 20000-60000, ensuring it hasn't
+/// been used by another test in this process.
 pub fn get_mock_socket_addr() -> u16 {
-    rand::thread_rng().gen_range(20000..60000)
+    let mut rng = rand::thread_rng();
+    let mut used = USED_PORTS.lock().unwrap();
+
+    loop {
+        let port = rng.gen_range(20000..60000);
+        if used.insert(port) {
+            return port;
+        }
+    }
 }
 
 pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
