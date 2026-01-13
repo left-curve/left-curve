@@ -31,13 +31,11 @@ macro_rules! generate_types {
                 dango_testing::Preset,
                 graphql_client::{GraphQLQuery, Response},
                 serde_json::json,
-                serial_test::serial,
             };
 
             $($(
                 paste::paste! {
                     #[tokio::test]
-                    #[serial]
                     async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
                         let port = get_mock_socket_addr();
 
@@ -242,7 +240,6 @@ macro_rules! generate_subscription_types {
                 dango_testing::Preset,
                 futures::StreamExt,
                 serde_json::json,
-                serial_test::serial,
                 std::time::Duration,
             };
 
@@ -252,7 +249,6 @@ macro_rules! generate_subscription_types {
             $($(
                 paste::paste! {
                     #[tokio::test]
-                    #[serial]
                     async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
                         let port = get_mock_socket_addr();
 

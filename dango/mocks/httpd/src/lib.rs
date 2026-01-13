@@ -9,7 +9,14 @@ use {
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
-    std::{net::TcpListener, sync::Arc, time::Duration},
+    std::{
+        net::TcpListener,
+        sync::{
+            Arc,
+            atomic::{AtomicU16, Ordering},
+        },
+        time::Duration,
+    },
     tokio::{net::TcpStream, sync::Mutex},
 };
 pub use {
@@ -153,12 +160,39 @@ where
     .await
 }
 
+/// Atomic counter for allocating unique test ports.
+/// Starts at 20000 to avoid conflicts with common services.
+static PORT_COUNTER: AtomicU16 = AtomicU16::new(20000);
+
+/// Get an available port for the mock server.
+///
+/// Uses an atomic counter to ensure unique ports across parallel tests,
+/// and verifies the port is available by attempting to bind to it.
+/// If the port is in use, it tries the next one.
 pub fn get_mock_socket_addr() -> u16 {
-    TcpListener::bind("127.0.0.1:0")
-        .expect("failed to bind to random port")
-        .local_addr()
-        .expect("failed to get local address")
-        .port()
+    loop {
+        let port = PORT_COUNTER.fetch_add(1, Ordering::SeqCst);
+
+        // Wrap around if we exceed valid port range
+        if port > 60000 {
+            PORT_COUNTER.store(20000, Ordering::SeqCst);
+            continue;
+        }
+
+        // Try to bind to verify the port is available
+        match TcpListener::bind(format!("127.0.0.1:{port}")) {
+            Ok(_listener) => {
+                // Port is available. The listener is dropped here, releasing the port
+                // for the actual server to use. There's a small race window, but it's
+                // acceptable for tests.
+                return port;
+            },
+            Err(_) => {
+                // Port is in use, try the next one
+                continue;
+            },
+        }
+    }
 }
 
 pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
