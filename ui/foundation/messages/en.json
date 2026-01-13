@@ -765,7 +765,7 @@
       "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
       "remaining": "Remaining time",
       "userStatus": {
-        "title": "User Status",
+        "title": "Account Status",
         "description": "Activate your account by making an initial deposit of at least $10.",
         "button": "Deposit now"
       },

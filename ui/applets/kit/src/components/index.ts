@@ -128,3 +128,4 @@ export { IconDango } from "./icons/IconDango";
 export { IconEdit } from "./icons/IconEdit";
 export { IconWalletWithCross } from "./icons/IconWalletWithCross";
 export { IconNotiStatus } from "./icons/IconNotiStatus";
+export { IconStatus } from "./icons/IconStatus";
