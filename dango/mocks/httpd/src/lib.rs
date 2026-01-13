@@ -12,7 +12,7 @@ use {
     rand::Rng,
     std::{
         collections::HashSet,
-        sync::{Arc, LazyLock, Mutex as StdMutex},
+        sync::{Arc, LazyLock, Mutex as StdMutex, mpsc},
         time::Duration,
     },
     tokio::{net::TcpStream, sync::Mutex},
@@ -154,6 +154,102 @@ where
         cors_allowed_origin,
         dango_httpd_context,
         shutdown_flag,
+    )
+    .await
+}
+
+/// Run the mock server with port 0 and send the actual bound port via a channel.
+/// This is useful for tests that need to run in parallel without port conflicts.
+pub async fn run_with_port_sender(
+    block_creation: BlockCreation,
+    cors_allowed_origin: Option<String>,
+    test_opt: TestOption,
+    genesis_opt: GenesisOption,
+    database_url: Option<String>,
+    port_sender: mpsc::Sender<u16>,
+) -> Result<(), Error> {
+    let indexer = indexer_sql::IndexerBuilder::default();
+
+    let indexer = if let Some(url) = database_url {
+        indexer.with_database_url(url)
+    } else {
+        indexer
+            .with_memory_database()
+            .with_database_max_connections(1)
+    };
+
+    let indexer = indexer.with_sqlx_pubsub().build().await?;
+
+    let indexer_context = indexer.context.clone();
+
+    let indexer_cache = indexer_cache::Cache::new_with_tempdir();
+    let indexer_cache_context = indexer_cache.context.clone();
+
+    let mut hooked_indexer = HookedIndexer::new();
+
+    // Create a separate context for dango indexer (shares DB but has independent pubsub)
+    let dango_context: dango_indexer_sql::context::Context = indexer
+        .context
+        .with_separate_pubsub()
+        .await
+        .map_err(|e| {
+            indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+                "Failed to create separate context for dango indexer: {e}",
+            ))
+        })?
+        .into();
+
+    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
+
+    hooked_indexer.add_indexer(indexer_cache).await.unwrap();
+    hooked_indexer.add_indexer(indexer).await.unwrap();
+    hooked_indexer.add_indexer(dango_indexer).await.unwrap();
+
+    let (suite, _test, _codes, _contracts, _mock_validator_sets) = setup_suite_with_db_and_vm(
+        MemDb::<SimpleCommitment>::new(),
+        RustVm::new(),
+        ProposalPreparer::new([""], ""), // FIXME: endpoints and access token
+        hooked_indexer,
+        RustVm::genesis_codes(),
+        test_opt,
+        genesis_opt,
+    );
+
+    let suite = Arc::new(Mutex::new(suite));
+
+    let mock_client = MockClient::new_shared(suite.clone(), block_creation);
+
+    let app = suite.lock().await.app.clone_without_indexer();
+
+    let indexer_httpd_context = indexer_httpd::context::Context::new(
+        indexer_cache_context,
+        indexer_context.clone(),
+        Arc::new(app),
+        Arc::new(mock_client),
+    );
+
+    let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+        "http://localhost:8123".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+    );
+
+    let dango_httpd_context = dango_httpd::context::Context::new(
+        indexer_httpd_context.clone(),
+        indexer_clickhouse_context.clone(),
+        dango_context,
+        None,
+    );
+
+    let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    dango_httpd::server::run_server_with_port_sender(
+        "127.0.0.1",
+        0, // Let the OS allocate an available port
+        cors_allowed_origin,
+        dango_httpd_context,
+        shutdown_flag,
+        port_sender,
     )
     .await
 }

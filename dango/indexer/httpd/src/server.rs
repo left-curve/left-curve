@@ -13,7 +13,7 @@ use {
     },
     indexer_httpd::routes,
     sentry_actix::Sentry,
-    std::sync::{Arc, atomic::AtomicBool},
+    std::sync::{Arc, atomic::AtomicBool, mpsc},
 };
 
 /// Custom 404 handler that serves a nice HTML page
@@ -149,6 +149,90 @@ where
     .bind((ip.to_string(), port))?
     .run()
     .await?;
+
+    Ok(())
+}
+
+/// Run the dango HTTP server and send the actual bound port via a channel.
+/// Use port 0 to let the OS allocate an available port.
+/// This is useful for tests that need to know the actual port after binding.
+pub async fn run_server_with_port_sender<I>(
+    ip: I,
+    port: u16,
+    cors_allowed_origin: Option<String>,
+    dango_httpd_context: crate::context::Context,
+    shutdown_flag: Arc<AtomicBool>,
+    port_sender: mpsc::Sender<u16>,
+) -> Result<(), indexer_httpd::error::Error>
+where
+    I: ToString + std::fmt::Display,
+{
+    let graphql_schema = crate::graphql::build_schema(dango_httpd_context.clone());
+
+    #[cfg(feature = "tracing")]
+    tracing::info!(%ip, port, "Starting dango httpd server (with port sender)");
+
+    #[cfg(feature = "metrics")]
+    let metrics = actix_web_metrics::ActixWebMetricsBuilder::new()
+        .build()
+        .unwrap();
+
+    #[cfg(feature = "metrics")]
+    indexer_httpd::middlewares::metrics::init_httpd_metrics();
+
+    let shutdown_flag_clone = shutdown_flag.clone();
+    let server = HttpServer::new(move || {
+        let mut cors = Cors::default()
+            .allowed_methods(vec!["POST", "GET", "OPTIONS"])
+            .allowed_headers(vec![
+                http::header::AUTHORIZATION,
+                http::header::ACCEPT,
+                http::header::CONTENT_TYPE,
+                http::header::HeaderName::from_static("sentry-trace"),
+                http::header::HeaderName::from_static("baggage"),
+            ])
+            .max_age(3600);
+
+        if let Some(origin) = cors_allowed_origin.as_deref() {
+            for origin in origin.split(',') {
+                cors = cors.allowed_origin(origin.trim());
+            }
+        } else {
+            cors = cors.allow_any_origin();
+        }
+
+        let app = App::new()
+            .wrap(ShutdownMiddleware::new(shutdown_flag_clone.clone()))
+            .wrap(Sentry::new())
+            .wrap(Logger::default())
+            .wrap(Compress::default())
+            .wrap(cors);
+
+        #[cfg(feature = "metrics")]
+        let app = app.wrap(metrics.clone());
+
+        app.configure(config_app(
+            dango_httpd_context.clone(),
+            graphql_schema.clone(),
+        ))
+    })
+    .workers(8)
+    .max_connections(10_000)
+    .backlog(8192)
+    .keep_alive(actix_web::http::KeepAlive::Os)
+    .worker_max_blocking_threads(16)
+    .bind((ip.to_string(), port))?;
+
+    // Get the actual bound port and send it via the channel
+    let addrs = server.addrs();
+    if let Some(addr) = addrs.first() {
+        let actual_port = addr.port();
+        #[cfg(feature = "tracing")]
+        tracing::info!(actual_port, "Server bound to port");
+        let _ = port_sender.send(actual_port);
+    }
+
+    server.run().await?;
 
     Ok(())
 }

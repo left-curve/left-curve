@@ -27,54 +27,55 @@ macro_rules! generate_types {
                 super::*,
                 assertor::*,
                 dango_genesis::GenesisOption,
-                dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
+                dango_mock_httpd::{BlockCreation, TestOption, wait_for_server_ready},
                 dango_testing::Preset,
                 graphql_client::{GraphQLQuery, Response},
                 serde_json::json,
-                serial_test::serial,
+                std::sync::mpsc,
             };
 
             $($(
                 paste::paste! {
                     #[tokio::test]
-                    #[serial]
                     async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
-                        let mut port = get_mock_socket_addr();
+                        // Create channel to receive the actual bound port
+                        let (port_tx, port_rx) = mpsc::channel::<u16>();
 
-                        // Retry with different ports if server fails to start
-                        for _ in 1..=10 {
-                            // Spawn server in separate thread with its own runtime
-                            let _server_handle = std::thread::spawn(move || {
-                                let rt = tokio::runtime::Builder::new_multi_thread()
-                                    .worker_threads(2)
-                                    .enable_all()
-                                    .build()
-                                    .unwrap();
-                                rt.block_on(async {
+                        // Spawn server in separate thread with its own runtime
+                        let _server_handle = std::thread::spawn(move || {
+                            let rt = tokio::runtime::Builder::new_multi_thread()
+                                .worker_threads(2)
+                                .enable_all()
+                                .build()
+                                .unwrap();
+                            rt.block_on(async {
+                                #[cfg(feature = "tracing")]
+                                tracing::info!("Starting mock HTTP server with port 0");
+
+                                if let Err(_error) = dango_mock_httpd::run_with_port_sender(
+                                    BlockCreation::OnBroadcast,
+                                    None,
+                                    TestOption::default(),
+                                    GenesisOption::preset_test(),
+                                    None,
+                                    port_tx,
+                                )
+                                .await
+                                {
                                     #[cfg(feature = "tracing")]
-                                    tracing::info!("Starting mock HTTP server on port {port}");
-
-                                    if let Err(_error) = dango_mock_httpd::run(
-                                        port,
-                                        BlockCreation::OnBroadcast,
-                                        None,
-                                        TestOption::default(),
-                                        GenesisOption::preset_test(),
-                                        None,
-                                    )
-                                    .await
-                                    {
-                                        #[cfg(feature = "tracing")]
-                                        tracing::error!("Error running mock HTTP server: {_error}");
-                                    }
-                                });
+                                    tracing::error!("Error running mock HTTP server: {_error}");
+                                }
                             });
+                        });
 
-                            if wait_for_server_ready(port).await.is_ok() {
-                                break;
-                            }
-                            port = get_mock_socket_addr();
-                        }
+                        // Wait for the server to send us the actual port
+                        let port = port_rx.recv().expect("Failed to receive port from server");
+
+                        #[cfg(feature = "tracing")]
+                        tracing::info!("Server started on port {port}");
+
+                        // Wait for server to be ready
+                        wait_for_server_ready(port).await?;
 
                         let url = format!("http://localhost:{port}/graphql");
 
@@ -244,12 +245,11 @@ macro_rules! generate_subscription_types {
                 super::*,
                 assertor::*,
                 dango_genesis::GenesisOption,
-                dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
+                dango_mock_httpd::{BlockCreation, TestOption, wait_for_server_ready},
                 dango_testing::Preset,
                 futures::StreamExt,
                 serde_json::json,
-                serial_test::serial,
-                std::time::Duration,
+                std::{sync::mpsc, time::Duration},
             };
 
             const MAX_RETRIES: u32 = 3;
@@ -258,44 +258,45 @@ macro_rules! generate_subscription_types {
             $($(
                 paste::paste! {
                     #[tokio::test]
-                    #[serial]
                     async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
-                        let mut port = get_mock_socket_addr();
+                        // Create channel to receive the actual bound port
+                        let (port_tx, port_rx) = mpsc::channel::<u16>();
 
-                        // Retry with different ports if server fails to start
-                        for _ in 1..=10 {
-                            // Spawn server in separate thread with its own runtime
-                            let _server_handle = std::thread::spawn(move || {
-                                let rt = tokio::runtime::Builder::new_multi_thread()
-                                    .worker_threads(2)
-                                    .enable_all()
-                                    .build()
-                                    .unwrap();
-                                rt.block_on(async {
+                        // Spawn server in separate thread with its own runtime
+                        let _server_handle = std::thread::spawn(move || {
+                            let rt = tokio::runtime::Builder::new_multi_thread()
+                                .worker_threads(2)
+                                .enable_all()
+                                .build()
+                                .unwrap();
+                            rt.block_on(async {
+                                #[cfg(feature = "tracing")]
+                                tracing::info!("Starting mock HTTP server with port 0");
+
+                                if let Err(_error) = dango_mock_httpd::run_with_port_sender(
+                                    BlockCreation::OnBroadcast,
+                                    None,
+                                    TestOption::default(),
+                                    GenesisOption::preset_test(),
+                                    None,
+                                    port_tx,
+                                )
+                                .await
+                                {
                                     #[cfg(feature = "tracing")]
-                                    tracing::info!("Starting mock HTTP server on port {port}");
-
-                                    if let Err(_error) = dango_mock_httpd::run(
-                                        port,
-                                        BlockCreation::OnBroadcast,
-                                        None,
-                                        TestOption::default(),
-                                        GenesisOption::preset_test(),
-                                        None,
-                                    )
-                                    .await
-                                    {
-                                        #[cfg(feature = "tracing")]
-                                        tracing::error!("Error running mock HTTP server: {_error}");
-                                    }
-                                });
+                                    tracing::error!("Error running mock HTTP server: {_error}");
+                                }
                             });
+                        });
 
-                            if wait_for_server_ready(port).await.is_ok() {
-                                break;
-                            }
-                            port = get_mock_socket_addr();
-                        }
+                        // Wait for the server to send us the actual port
+                        let port = port_rx.recv().expect("Failed to receive port from server");
+
+                        #[cfg(feature = "tracing")]
+                        tracing::info!("Server started on port {port}");
+
+                        // Wait for server to be ready
+                        wait_for_server_ready(port).await?;
 
                         let ws_url = format!("ws://localhost:{port}/graphql");
                         let client = crate::WsClient::new(&ws_url)?;
