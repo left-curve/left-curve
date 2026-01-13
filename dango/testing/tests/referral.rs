@@ -9,10 +9,7 @@ fn test() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test(TestOption::preset_test());
 
     // Initially, User1 has 0 referees.
-    assert_eq!(
-        query_referrer_count(&mut suite, contracts.referral.clone(), 1),
-        0
-    );
+    assert_eq!(query_referrer_count(&mut suite, contracts.referral, 1), 0);
 
     // Make User1 refer User2.
     suite
@@ -27,7 +24,7 @@ fn test() {
     // Ensure User2's referrer is User1.
     assert_eq!(
         suite
-            .query_wasm_smart(contracts.referral.clone(), QueryReferrerRequest {
+            .query_wasm_smart(contracts.referral, QueryReferrerRequest {
                 referee_index: 2
             })
             .should_succeed(),
@@ -35,10 +32,7 @@ fn test() {
     );
 
     // User1 should now have 1 referee.
-    assert_eq!(
-        query_referrer_count(&mut suite, contracts.referral.clone(), 1),
-        1
-    );
+    assert_eq!(query_referrer_count(&mut suite, contracts.referral, 1), 1);
 
     // Try to replace the User2 referrer (should fail).
     suite
@@ -54,7 +48,7 @@ fn test() {
     suite
         .execute(
             &mut accounts.user3,
-            contracts.referral.clone(),
+            contracts.referral,
             &ExecuteMsg::Referral { referrer_index: 1 },
             Coins::new(),
         )
@@ -62,7 +56,7 @@ fn test() {
 
     assert_eq!(
         suite
-            .query_wasm_smart(contracts.referral.clone(), QueryReferrerRequest {
+            .query_wasm_smart(contracts.referral, QueryReferrerRequest {
                 referee_index: 3
             })
             .should_succeed(),
@@ -70,16 +64,13 @@ fn test() {
     );
 
     // User1 should now have 2 referees.
-    assert_eq!(
-        query_referrer_count(&mut suite, contracts.referral.clone(), 1),
-        2
-    );
+    assert_eq!(query_referrer_count(&mut suite, contracts.referral, 1), 2);
 
     // Make User2 refer User4.
     suite
         .execute(
             &mut accounts.user4,
-            contracts.referral.clone(),
+            contracts.referral,
             &ExecuteMsg::Referral { referrer_index: 2 },
             Coins::new(),
         )
@@ -87,7 +78,7 @@ fn test() {
 
     assert_eq!(
         suite
-            .query_wasm_smart(contracts.referral.clone(), QueryReferrerRequest {
+            .query_wasm_smart(contracts.referral, QueryReferrerRequest {
                 referee_index: 4
             })
             .should_succeed(),
@@ -95,10 +86,7 @@ fn test() {
     );
 
     // User2 should now have 1 referee.
-    assert_eq!(
-        query_referrer_count(&mut suite, contracts.referral.clone(), 2),
-        1
-    );
+    assert_eq!(query_referrer_count(&mut suite, contracts.referral, 2), 1);
 }
 
 fn query_referrer_count(suite: &mut TestSuite, referral_contract: Addr, user: u32) -> u32 {

@@ -28,7 +28,7 @@ fn register_referral(ctx: MutableCtx, referrer_index: UserIndex) -> anyhow::Resu
     let user_index = ctx
         .querier
         .query_wasm_smart(account_factory, QueryAccountRequest {
-            address: ctx.sender.clone(),
+            address: ctx.sender,
         })?
         .params
         .into_single()
@@ -36,7 +36,7 @@ fn register_referral(ctx: MutableCtx, referrer_index: UserIndex) -> anyhow::Resu
 
     // Store the referral relationship.
     REFEREE.may_update(ctx.storage, user_index, |maybe_referrer| {
-        if let Some(_) = maybe_referrer {
+        if maybe_referrer.is_some() {
             anyhow::bail!("referral already registered for this user");
         }
         Ok(referrer_index)
