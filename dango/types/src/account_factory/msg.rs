@@ -71,6 +71,8 @@ pub enum ExecuteMsg {
         seed: u32,
         /// A signature over the `RegisterUserData`.
         signature: Signature,
+        /// Optional referrer user index.
+        referrer_index: Option<UserIndex>,
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
@@ -83,6 +85,8 @@ pub enum ExecuteMsg {
     /// For now, we only support setting the username once when it's unset.
     /// We don't support changing the username when it's already set.
     UpdateUsername(Username),
+    /// Register the sender as a referral with the given user index.
+    Referral { user: UserIndex },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -151,6 +155,12 @@ pub enum QueryMsg {
         start_after: Option<UserIndexOrName>,
         limit: Option<u32>,
     },
+    /// Query the referrer of a given user.
+    #[returns(Option<UserIndex>)]
+    Referrer { user: UserIndex },
+    /// Query the number of referees a given user has.
+    #[returns(u32)]
+    RefereeCount { user: UserIndex },
 }
 
 #[grug::derive(Serde)]

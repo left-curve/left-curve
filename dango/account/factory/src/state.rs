@@ -27,3 +27,9 @@ pub const ACCOUNT_COUNT_BY_USER: Counters<UserIndex, u8> = Counters::new("accoun
 pub const USER_NAMES_BY_INDEX: Map<UserIndex, Username> = Map::new("user_names__index");
 
 pub const USER_INDEXES_BY_NAME: Map<&Username, UserIndex> = Map::new("user_indexes__name");
+
+/// Maps a referee to their referrer.
+pub const REFEREE: Map<UserIndex, UserIndex> = Map::new("referee");
+
+/// Maps a referrer to the count of their referees.
+pub const REFEREE_COUNT: Map<UserIndex, u32> = Map::new("referee_count");

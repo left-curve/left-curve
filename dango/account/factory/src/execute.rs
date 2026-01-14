@@ -1,8 +1,8 @@
 use {
     crate::{
         ACCOUNT_COUNT_BY_USER, ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS,
-        MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USER_INDEXES_BY_NAME,
-        USER_NAMES_BY_INDEX, USERS_BY_KEY,
+        MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, REFEREE, REFEREE_COUNT,
+        USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
     },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
@@ -127,11 +127,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
             seed,
             signature,
-        } => register_user(ctx, key, key_hash, seed, signature),
+            referrer_index,
+        } => register_user(ctx, key, key_hash, seed, signature, referrer_index),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateAccount(updates) => update_account(ctx, updates),
         ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
+        ExecuteMsg::Referral { referrer_index } => referral(ctx, referrer_index),
     }
 }
 
@@ -141,6 +143,7 @@ fn register_user(
     key_hash: Hash256,
     seed: u32,
     signature: Signature,
+    referrer_index: Option<UserIndex>,
 ) -> anyhow::Result<Response> {
     // Verify the signature is valid.
     verify_signature(
@@ -158,6 +161,11 @@ fn register_user(
     // Save the key.
     KEYS.save(ctx.storage, (user_registered.user_index, key_hash), &key)?;
     USERS_BY_KEY.insert(ctx.storage, (key_hash, user_registered.user_index))?;
+
+    // If a referrer index is provided, register the referral relationship.
+    if let Some(referrer_index) = referrer_index {
+        store_referral_relationship(ctx.storage, user_registered.user_index, referrer_index)?;
+    };
 
     Ok(Response::new()
         .add_message(msg)
@@ -471,4 +479,43 @@ fn get_user_index_of_account_owner(
         AccountParams::Single(params) => Ok(params.owner),
         _ => bail!("sender is not a single signature account"),
     }
+}
+
+fn referral(ctx: MutableCtx, referrer_index: UserIndex) -> anyhow::Result<Response> {
+    // Retrieve the UserIndex of the sender.
+    let user_index = ACCOUNTS
+        .load(ctx.storage, ctx.sender)?
+        .params
+        .into_single()
+        .owner;
+
+    store_referral_relationship(ctx.storage, user_index, referrer_index)?;
+
+    Ok(Response::new())
+}
+
+fn store_referral_relationship(
+    storage: &mut dyn Storage,
+    user_index: UserIndex,
+    referrer_index: UserIndex,
+) -> anyhow::Result<()> {
+    // Store the referral relationship.
+    REFEREE.may_update(storage, user_index, |maybe_referrer| {
+        if maybe_referrer.is_some() {
+            anyhow::bail!("referral already registered for this user");
+        }
+        Ok(referrer_index)
+    })?;
+
+    // Increment the referrer's referee count.
+    REFEREE_COUNT.may_update(
+        storage,
+        referrer_index,
+        |maybe_count| -> anyhow::Result<u32> {
+            let count = maybe_count.unwrap_or(0);
+            Ok(count + 1)
+        },
+    )?;
+
+    Ok(())
 }

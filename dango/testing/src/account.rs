@@ -338,6 +338,7 @@ where
                     key: self.first_key(),
                     key_hash: self.first_key_hash(),
                     signature: self.sign_arbitrary(RegisterUserData { chain_id }).unwrap(),
+                    referrer_index: None,
                 },
                 funds,
             )

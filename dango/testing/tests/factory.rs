@@ -68,6 +68,7 @@ fn onboarding_without_deposit() {
                         chain_id: chain_id.clone(),
                     })
                     .unwrap(),
+                referrer_index: None,
             },
             Coins::new(),
         )
@@ -172,6 +173,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
                 key_hash: user.first_key_hash(),
                 seed: 3,
                 signature: user.sign_arbitrary(RegisterUserData { chain_id }).unwrap(),
+                referrer_index: None,
             },
             Coins::new(),
         )
@@ -268,6 +270,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
                 key_hash: user.first_key_hash(),
                 seed: 3,
                 signature,
+                referrer_index: None,
             },
             Coins::new(),
         )
@@ -325,6 +328,7 @@ fn update_key() {
                         chain_id: chain_id.clone(),
                     })
                     .unwrap(),
+                referrer_index: None,
             },
             Coins::new(),
         )
