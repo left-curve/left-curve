@@ -12,8 +12,9 @@
           "va": "0x75f38c6fcfc2fb8333e5c3ef89d13b7036abe3ff"
         },
         "oracle": "0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d",
-        "taxman": "0xda70a9c1417aee00f960fe896add9d571f9c365b",
-        "warp": "0x981e6817442143ce5128992c7ab4a317321f00e9"
+        "referral": "0x1f019d035f0bcacb2b354fdd6ed955fd4a278c99",
+        "taxman": "0xba88218166dbb57ae81f7e5043d95b0ee8f051e2",
+        "warp": "0x169d35f1c06babf5c340da3548f0c28cb3a83b57"
       },
       "maker_fee_rate": "0.0025",
       "minimum_deposit": {},
@@ -35,7 +36,7 @@
         },
         "upload": "nobody"
       },
-      "taxman": "0xda70a9c1417aee00f960fe896add9d571f9c365b"
+      "taxman": "0xba88218166dbb57ae81f7e5043d95b0ee8f051e2"
     },
     "msgs": [
       {
@@ -101,6 +102,11 @@
       {
         "upload": {
           "code": "DAAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
+          "code": "DQAAAAAAAAA="
         }
       },
       {
@@ -254,7 +260,7 @@
       {
         "instantiate": {
           "admin": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
-          "code_hash": "220DDE27AFEE4D537CAC96D85D6546F825153B90E828931B74E103807541BC42",
+          "code_hash": "B0BD73E6922C0D2496DBCB99EAC08EB5870090E59F6E06B1EB477D540002A5CD",
           "funds": {},
           "label": "dango/warp",
           "msg": {
@@ -768,6 +774,16 @@
           "admin": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
           "code_hash": "A111F275CC2E7588000001D300A31E76336D15B9D314CD1A1D8F3D3556975EED",
           "funds": {},
+          "label": "dango/referral",
+          "msg": {},
+          "salt": "ZGFuZ28vcmVmZXJyYWw="
+        }
+      },
+      {
+        "instantiate": {
+          "admin": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
+          "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
+          "funds": {},
           "label": "dango/taxman",
           "msg": {
             "config": {
@@ -867,7 +883,7 @@
       {
         "instantiate": {
           "admin": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
-          "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
+          "code_hash": "220DDE27AFEE4D537CAC96D85D6546F825153B90E828931B74E103807541BC42",
           "funds": {},
           "label": "dango/vesting",
           "msg": {

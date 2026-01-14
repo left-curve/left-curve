@@ -295,6 +295,7 @@ where
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,
+            referral,
             taxman,
             warp,
         },
