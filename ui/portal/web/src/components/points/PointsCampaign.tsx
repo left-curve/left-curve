@@ -8,9 +8,12 @@ import {
   Tabs,
   createContext,
 } from "@left-curve/applets-kit";
+import type React from "react";
 import { useState } from "react";
 
 import type { PropsWithChildren } from "react";
+import { PointsProfileTable } from "./PointsProfileTable";
+import { PointsHeader } from "./PointsHeader";
 
 type PointsCampaignTab = "profile" | "rewards";
 
@@ -26,7 +29,7 @@ const PointsCampaignContainer: React.FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <PointsCampaignProvider value={{ activeTab, setActiveTab }}>
-      <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit">
+      <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
         <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
           {children}
         </div>
@@ -48,48 +51,7 @@ const PointsCampaignHeader: React.FC = () => (
 const ProfileHeader: React.FC = () => {
   return (
     <div className="w-full rounded-xl shadow-account-card overflow-hidden bg-surface-disabled-gray">
-      <div className="p-4 lg:p-8 lg:pb-[30px] flex flex-col gap-4">
-        <div className="w-full rounded-xl bg-surface-tertiary-gray p-4 flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
-          <div className="flex flex-col items-center">
-            <p className="text-ink-secondary-rice h3-bold">16.300</p>
-            <p className="text-ink-tertiary-500 diatype-m-medium">My points</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <p className="text-ink-secondary-rice h3-bold">$75,000</p>
-            <p className="text-ink-tertiary-500 diatype-m-medium">My volume</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <p className="text-ink-secondary-rice h3-bold">#11,200</p>
-            <p className="text-ink-tertiary-500 diatype-m-medium">My rank</p>
-          </div>
-        </div>
-        <div className="flex flex-col lg:flex-row gap-4 w-full">
-          <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
-            <IconSwapMoney />
-            <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
-              <p className="text-ink-primary-900">3.000</p>
-              <p>Points</p>
-              <IconInfo />
-            </div>
-          </div>
-          <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
-            <IconSprout />
-            <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
-              <p className="text-ink-primary-900">12.000</p>
-              <p>Points</p>
-              <IconInfo />
-            </div>
-          </div>
-          <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
-            <IconFriendshipGroup />
-            <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
-              <p className="text-ink-primary-900">8.500</p>
-              <p>Points</p>
-              <IconInfo />
-            </div>
-          </div>
-        </div>
-      </div>
+      <PointsHeader />
       <img
         src="/images/banner-points-dango.png"
         alt="Points Banner"
@@ -99,9 +61,48 @@ const ProfileHeader: React.FC = () => {
   );
 };
 
-const ProfileTable: React.FC = () => <div>Profile table</div>;
+const ProfileTable: React.FC = () => {
+  return (
+    <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
+      <div className="px-6 py-4">
+        <p className="diatype-m-bold text-ink-primary-900">Point History</p>
+      </div>
+      <PointsProfileTable />
+      <div className="px-6 py-4 flex items-center justify-center">
+        <Button>Get Started!</Button>
+      </div>
+    </div>
+  );
+};
 
-const RewardsTable: React.FC = () => <div>Rewards table</div>;
+const RewardsTable: React.FC = () => {
+  return (
+    <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
+      <PointsHeader />
+      <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-tertiary-gray ">
+        <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl">Progress bar</div>
+        <div className="flex flex-col gap-3">
+          <p className="h3-bold text-ink-primary-900">My boxes</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
+            <p>Box</p>
+            <p>Box</p>
+            <p>Box</p>
+            <p>Box</p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <p className="h3-bold text-ink-primary-900">My NFTs</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
+            <p>NFT</p>
+            <p>NFT</p>
+            <p>NFT</p>
+            <p>NFT</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ProfileSection: React.FC = () => (
   <div className="flex flex-col gap-4 w-full">
