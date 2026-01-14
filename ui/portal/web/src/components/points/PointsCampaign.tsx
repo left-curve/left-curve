@@ -1,13 +1,4 @@
-import {
-  Button,
-  IconFriendshipGroup,
-  IconInfo,
-  IconSprout,
-  IconSwapMoney,
-  Tab,
-  Tabs,
-  createContext,
-} from "@left-curve/applets-kit";
+import { Button, Tab, Tabs, createContext } from "@left-curve/applets-kit";
 import type React from "react";
 import { useState } from "react";
 
@@ -76,29 +67,26 @@ const ProfileTable: React.FC = () => {
   );
 };
 
-const RewardsTable: React.FC = () => {
+const RewardsLoot: React.FC = () => {
   return (
-    <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
-      <PointsHeader />
-      <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-tertiary-gray ">
-        <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl">Progress bar</div>
-        <div className="flex flex-col gap-3">
-          <p className="h3-bold text-ink-primary-900">My boxes</p>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
-            <BoxCard variant="bronze" />
-            <BoxCard variant="silver" />
-            <BoxCard variant="gold" lock={true} />
-            <BoxCard variant="crystal" lock={true} />
-          </div>
+    <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-tertiary-gray rounded-b-xl">
+      <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl">Progress bar</div>
+      <div className="flex flex-col gap-3">
+        <p className="h3-bold text-ink-primary-900">My boxes</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
+          <BoxCard variant="bronze" />
+          <BoxCard variant="silver" />
+          <BoxCard variant="gold" lock={true} />
+          <BoxCard variant="crystal" lock={true} />
         </div>
-        <div className="flex flex-col gap-3">
-          <p className="h3-bold text-ink-primary-900">My NFTs</p>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
-            <p>NFT</p>
-            <p>NFT</p>
-            <p>NFT</p>
-            <p>NFT</p>
-          </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        <p className="h3-bold text-ink-primary-900">My NFTs</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
+          <p>NFT</p>
+          <p>NFT</p>
+          <p>NFT</p>
+          <p>NFT</p>
         </div>
       </div>
     </div>
@@ -113,8 +101,9 @@ const ProfileSection: React.FC = () => (
 );
 
 const RewardsSection: React.FC = () => (
-  <div className="flex flex-col gap-4 w-full">
-    <RewardsTable />
+  <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
+    <PointsHeader />
+    <RewardsLoot />
   </div>
 );
 

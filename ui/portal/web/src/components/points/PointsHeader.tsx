@@ -10,7 +10,7 @@ import type React from "react";
 export const PointsHeader: React.FC = () => {
   return (
     <div className="p-4 lg:p-8 lg:pb-[30px] flex flex-col gap-4 rounded-t-xl">
-      <div className="w-full rounded-xl bg-surface-tertiary-rice border border-outline-primary-gray/10 p-4 flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
+      <div className="w-full rounded-xl bg-surface-tertiary-rice border border-outline-primary-gray p-4 flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
         <div className="flex flex-col items-center">
           <p className="text-ink-secondary-rice h3-bold">16.300</p>
           <p className="text-ink-tertiary-500 diatype-m-medium">My points</p>
