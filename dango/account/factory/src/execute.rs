@@ -133,7 +133,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateAccount(updates) => update_account(ctx, updates),
         ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
-        ExecuteMsg::Referral { referrer_index } => referral(ctx, referrer_index),
+        ExecuteMsg::Referral { user } => referral(ctx, user),
     }
 }
 

@@ -82,7 +82,7 @@ fn referral_after_user_register() {
         .execute(
             &mut accounts.user2,
             contracts.account_factory,
-            &ExecuteMsg::Referral { referrer_index: 1 },
+            &ExecuteMsg::Referral { user: 1 },
             Coins::new(),
         )
         .should_succeed();
@@ -90,9 +90,7 @@ fn referral_after_user_register() {
     // Ensure User2's referrer is User1.
     assert_eq!(
         suite
-            .query_wasm_smart(contracts.account_factory, QueryReferrerRequest {
-                user: 2
-            })
+            .query_wasm_smart(contracts.account_factory, QueryReferrerRequest { user: 2 })
             .should_succeed(),
         Some(1)
     );
@@ -108,7 +106,7 @@ fn referral_after_user_register() {
         .execute(
             &mut accounts.user2,
             contracts.account_factory,
-            &ExecuteMsg::Referral { referrer_index: 3 },
+            &ExecuteMsg::Referral { user: 3 },
             Coins::new(),
         )
         .should_fail_with_error("referral already registered for this user");
@@ -118,16 +116,14 @@ fn referral_after_user_register() {
         .execute(
             &mut accounts.user3,
             contracts.account_factory,
-            &ExecuteMsg::Referral { referrer_index: 1 },
+            &ExecuteMsg::Referral { user: 1 },
             Coins::new(),
         )
         .should_succeed();
 
     assert_eq!(
         suite
-            .query_wasm_smart(contracts.account_factory, QueryReferrerRequest {
-                user: 3
-            })
+            .query_wasm_smart(contracts.account_factory, QueryReferrerRequest { user: 3 })
             .should_succeed(),
         Some(1)
     );
@@ -143,16 +139,14 @@ fn referral_after_user_register() {
         .execute(
             &mut accounts.user4,
             contracts.account_factory,
-            &ExecuteMsg::Referral { referrer_index: 2 },
+            &ExecuteMsg::Referral { user: 2 },
             Coins::new(),
         )
         .should_succeed();
 
     assert_eq!(
         suite
-            .query_wasm_smart(contracts.account_factory, QueryReferrerRequest {
-                user: 4
-            })
+            .query_wasm_smart(contracts.account_factory, QueryReferrerRequest { user: 4 })
             .should_succeed(),
         Some(2)
     );
