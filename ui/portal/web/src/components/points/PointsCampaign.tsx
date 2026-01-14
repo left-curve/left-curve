@@ -14,6 +14,7 @@ import { useState } from "react";
 import type { PropsWithChildren } from "react";
 import { PointsProfileTable } from "./PointsProfileTable";
 import { PointsHeader } from "./PointsHeader";
+import { BoxCard } from "./BoxCard";
 
 type PointsCampaignTab = "profile" | "rewards";
 
@@ -55,7 +56,7 @@ const ProfileHeader: React.FC = () => {
       <img
         src="/images/banner-points-dango.png"
         alt="Points Banner"
-        className="w-full min-h-[25rem] drag-none select-none"
+        className="w-full min-h-[25rem] drag-none select-none object-cover"
       />
     </div>
   );
@@ -84,10 +85,10 @@ const RewardsTable: React.FC = () => {
         <div className="flex flex-col gap-3">
           <p className="h3-bold text-ink-primary-900">My boxes</p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
-            <p>Box</p>
-            <p>Box</p>
-            <p>Box</p>
-            <p>Box</p>
+            <BoxCard variant="bronze" />
+            <BoxCard variant="silver" />
+            <BoxCard variant="gold" lock={true} />
+            <BoxCard variant="crystal" lock={true} />
           </div>
         </div>
         <div className="flex flex-col gap-3">

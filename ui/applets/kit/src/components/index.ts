@@ -133,3 +133,4 @@ export { IconGift } from "./icons/IconGift";
 export { IconSwapMoney } from "./icons/IconSwapMoney";
 export { IconSprout } from "./icons/IconSprout";
 export { IconFriendshipGroup } from "./icons/IconFriendshipGroup";
+export { IconLock } from "./icons/IconLock";
