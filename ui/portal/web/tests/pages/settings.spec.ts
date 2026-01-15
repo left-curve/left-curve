@@ -1,10 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { registerUser } from "./utils/registerUser";
+import { registerUser } from "../utils/registerUser";
 import {
   getAppliedTheme,
   getStoredSettings,
   waitForStorageHydration,
-} from "./utils/indexeddb";
+} from "../utils/indexeddb";
 
 test.describe("Settings Page", () => {
   test.describe("Not Authenticated", () => {
