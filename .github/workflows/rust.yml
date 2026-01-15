@@ -1469,6 +1469,7 @@ jobs:
           export INDEXER_URL="http://localhost:$DANGO_PORT"
           export UP_URL="http://localhost:$DANGO_PORT/up"
           export FAUCET_URL="http://localhost:$FAUCET_PORT/mint"
+          export CHAIN_ID="dango-1"
 
           docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml up -d --no-deps frontend
 
