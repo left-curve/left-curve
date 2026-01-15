@@ -67,10 +67,8 @@ restart-testnet:
 restart-mainnet:
   ansible-playbook restart-services.yml -e dango_network=mainnet
 
-# TODO: remove this once we really deployed
-reset-and-deploy-mainnet:
-  just stop-mainnet
-  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "faucet_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest", "reset_data": true}' --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
+# Note: the `reset-and-deploy-mainnet` command has been deleted.
+# We don't ever want to reset mainnet. Deleting the command so we don't do it by mistake.
 
 deploy-mainnet:
   ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "faucet_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
