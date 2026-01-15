@@ -6,6 +6,7 @@ import type { PropsWithChildren } from "react";
 import { PointsProfileTable } from "./PointsProfileTable";
 import { PointsHeader } from "./PointsHeader";
 import { BoxCard } from "./BoxCard";
+import { PointsProgressBar } from "./PointsProgressBar";
 
 type PointsCampaignTab = "profile" | "rewards";
 
@@ -70,7 +71,9 @@ const ProfileTable: React.FC = () => {
 const RewardsLoot: React.FC = () => {
   return (
     <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-tertiary-gray rounded-b-xl">
-      <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl">Progress bar</div>
+      <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl">
+        <PointsProgressBar currentVolume={75350} />
+      </div>
       <div className="flex flex-col gap-3">
         <p className="h3-bold text-ink-primary-900">My boxes</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
