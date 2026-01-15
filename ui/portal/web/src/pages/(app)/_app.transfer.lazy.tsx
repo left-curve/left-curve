@@ -67,7 +67,7 @@ function TransferApplet() {
 
   const isValid20HexAddress = isValidAddress(inputs.address?.value || "");
 
-  const { data: doesUserExist = false } = useQuery({
+  const { data: doesUserExist = false, isLoading } = useQuery({
     enabled: !!inputs.address?.value?.length,
     queryKey: ["transfer", inputs.address?.value],
     queryFn: async ({ signal }) => {
@@ -84,7 +84,11 @@ function TransferApplet() {
   });
 
   const showAddressWarning =
-    action === "send" && inputs.address?.value && isValid20HexAddress && !doesUserExist;
+    !isLoading &&
+    action === "send" &&
+    inputs.address?.value &&
+    isValid20HexAddress &&
+    !doesUserExist;
 
   const selectedCoin = coins.byDenom[selectedDenom];
 
@@ -159,7 +163,7 @@ function TransferApplet() {
                     asset={selectedCoin}
                     balances={balances}
                     controllers={controllers}
-                    isDisabled={isPending}
+                    isDisabled={isPending || !isConnected}
                     shouldValidate
                     showRange
                     showCoinSelector
@@ -187,7 +191,7 @@ function TransferApplet() {
                     })}
                     label="To"
                     placeholder="Wallet address or name"
-                    isDisabled={isPending}
+                    isDisabled={isPending || !isConnected}
                   />
                 </div>
 
@@ -196,7 +200,12 @@ function TransferApplet() {
                   fullWidth
                   className="mt-5"
                   isLoading={isPending}
-                  isDisabled={!isConnected || !!inputs.amount?.error}
+                  isDisabled={
+                    !isConnected ||
+                    !!inputs.amount?.error ||
+                    !isValid20HexAddress ||
+                    !!showAddressWarning
+                  }
                 >
                   {m["common.send"]()}
                 </Button>

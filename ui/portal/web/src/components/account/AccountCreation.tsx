@@ -1,4 +1,10 @@
-import { Modals, useApp, useInputs, useMediaQuery } from "@left-curve/applets-kit";
+import {
+  AuthenticatedButton,
+  Modals,
+  useApp,
+  useInputs,
+  useMediaQuery,
+} from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -62,7 +68,7 @@ export const Deposit: React.FC = () => {
 
   const { toast, showModal, subscriptions, settings } = useApp();
   const { coins } = useConfig();
-  const { username, userIndex, account } = useAccount();
+  const { username, userIndex, account, isConnected } = useAccount();
   const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 
@@ -131,7 +137,7 @@ export const Deposit: React.FC = () => {
       }}
     >
       <Input
-        isDisabled={isPending}
+        isDisabled={isPending || !isConnected}
         placeholder="0"
         {...register("amount", {
           strategy: "onChange",
@@ -163,9 +169,11 @@ export const Deposit: React.FC = () => {
         }
       />
       <div className="flex gap-4">
-        <Button type="submit" fullWidth isLoading={isPending} isDisabled={!!error}>
-          {m["common.continue"]()}
-        </Button>
+        <AuthenticatedButton>
+          <Button type="submit" fullWidth isLoading={isPending} isDisabled={!!error}>
+            {m["common.continue"]()}
+          </Button>
+        </AuthenticatedButton>
       </div>
     </form>
   );
