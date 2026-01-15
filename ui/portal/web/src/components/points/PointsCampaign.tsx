@@ -6,6 +6,7 @@ import type { PropsWithChildren } from "react";
 import { PointsProfileTable } from "./PointsProfileTable";
 import { PointsHeader } from "./PointsHeader";
 import { BoxCard } from "./BoxCard";
+import { NFTCard } from "./NFTCard";
 import { PointsProgressBar } from "./PointsProgressBar";
 
 type PointsCampaignTab = "profile" | "rewards";
@@ -86,11 +87,37 @@ const RewardsLoot: React.FC = () => {
       </div>
       <div className="flex flex-col gap-3">
         <p className="h3-bold text-ink-primary-900">My NFTs</p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
-          <p>NFT</p>
-          <p>NFT</p>
-          <p>NFT</p>
-          <p>NFT</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
+          <NFTCard
+            rarity="common"
+            quantity={4}
+            imageSrc="https://www.figma.com/api/mcp/asset/c3b5358b-c2b3-4bc0-a1d6-30117c53b423"
+          />
+          <NFTCard
+            rarity="uncommon"
+            quantity={2}
+            imageSrc="https://www.figma.com/api/mcp/asset/9680ed08-69ef-471f-83a5-813846101610"
+          />
+          <NFTCard
+            rarity="epic"
+            quantity={2}
+            imageSrc="https://www.figma.com/api/mcp/asset/fe211f83-4040-4023-ae76-da8967f68d53"
+          />
+          <NFTCard
+            rarity="golden"
+            quantity={2}
+            imageSrc="https://www.figma.com/api/mcp/asset/21afd773-9bb9-4cd4-a30c-dc9a356d0708"
+          />
+          <NFTCard
+            rarity="legendary"
+            quantity={2}
+            imageSrc="https://www.figma.com/api/mcp/asset/e21cd2e1-7549-4b53-8916-3d1713bb5699"
+          />
+          <NFTCard
+            rarity="rare"
+            quantity={2}
+            imageSrc="https://www.figma.com/api/mcp/asset/555ebcef-e6f2-490b-9c44-b72b36dad681"
+          />
         </div>
       </div>
     </div>
