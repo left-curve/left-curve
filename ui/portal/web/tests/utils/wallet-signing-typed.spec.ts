@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { injectMockWallet } from './utils/injectWallet';
+import { injectMockWallet } from './injectWallet';
 import { verifyTypedData } from 'viem';
 
 test('mock wallet signs typed data (EIP-712) correctly', async ({ page }) => {

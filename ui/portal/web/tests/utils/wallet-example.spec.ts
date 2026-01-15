@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { injectMockWallet } from './utils/injectWallet';
+import { injectMockWallet } from './injectWallet';
 
 test('mock wallet announces itself and handles requests', async ({ page }) => {
   // Inject the mock wallet before navigating
@@ -19,7 +19,7 @@ test('mock wallet announces itself and handles requests', async ({ page }) => {
         }
       };
       window.addEventListener('eip6963:announceProvider', handler);
-      
+
       // Request announcement to trigger the event if we missed the initial one
       window.dispatchEvent(new Event('eip6963:requestProvider'));
     });

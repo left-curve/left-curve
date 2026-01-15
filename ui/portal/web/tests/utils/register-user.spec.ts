@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerUser } from "./utils/registerUser";
+import { registerUser } from "./registerUser";
 
 test("User registration shows account info in header", async ({ page }) => {
   await registerUser(page);
