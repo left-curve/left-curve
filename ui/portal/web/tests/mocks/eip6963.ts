@@ -79,6 +79,7 @@ export const getEip6963MockWalletScript = (options: MockWalletOptions = {}) => {
               
             case 'personal_sign':
             case 'eth_sign':
+            case 'eth_signTypedData_v4':
               // Use exposed Playwright function if available
               if (window.mockWalletSign) {
                 try {

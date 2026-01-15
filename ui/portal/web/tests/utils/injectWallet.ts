@@ -36,6 +36,12 @@ export const injectMockWallet = async (page: Page, options: WalletInjectionOptio
         const [_, message] = params;
         return await account.signMessage({ message: { raw: message as Hex } });
       }
+      if (method === "eth_signTypedData_v4") {
+        // params: [address, data]
+        const [_, data] = params;
+        const typedData = JSON.parse(data);
+        return await account.signTypedData(typedData);
+      }
       throw new Error(`mockWalletSign: Unsupported method ${method}`);
     });
   }
