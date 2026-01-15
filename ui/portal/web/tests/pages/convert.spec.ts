@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { registerUser } from "./utils/registerUser";
-import { waitForStorageHydration } from "./utils/indexeddb";
+import { registerUser } from "../utils/registerUser";
+import { waitForStorageHydration } from "../utils/indexeddb";
 
 test.describe("Convert Applet", () => {
   test.describe("Not Authenticated", () => {

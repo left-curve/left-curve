@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { getStoredFavorites, waitForStorageHydration } from "./utils/indexeddb";
+import { getStoredFavorites, waitForStorageHydration } from "../utils/indexeddb";
 
 test.describe("Landing Page - Not Authenticated", () => {
   test.beforeEach(async ({ page }) => {
