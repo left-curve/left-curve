@@ -199,8 +199,10 @@ fn force_transfer(ctx: MutableCtx, from: Addr, to: Addr, coins: Coins) -> anyhow
 
 fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::Result<Response> {
     ensure!(
-        ctx.sender == sender || ctx.sender == recipient,
-        "only the sender or the recipient can recover an orphaned transfer"
+        ctx.sender == sender
+            || ctx.sender == recipient
+            || ctx.sender == ctx.querier.query_owner()?,
+        "only the sender, the recipient, or the chain owner can recover an orphaned transfer"
     );
 
     let Some(coins) = ORPHANED_TRANSFERS.may_take(ctx.storage, (sender, recipient))? else {
