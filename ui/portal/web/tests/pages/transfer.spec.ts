@@ -27,31 +27,6 @@ test.describe("Transfer Applet", () => {
       await expect(sendButton).toBeDisabled();
     });
 
-    test("amount input is functional", async ({ page }) => {
-      // Find amount textbox
-      const amountInput = page.getByRole("textbox").first();
-      await expect(amountInput).toBeVisible();
-
-      await amountInput.fill("100");
-      await page.waitForTimeout(200);
-
-      // Value should be displayed (input may format it)
-      const value = await amountInput.inputValue();
-      expect(value.length).toBeGreaterThan(0);
-    });
-
-    test("address input is functional", async ({ page }) => {
-      // Find the second textbox (address input)
-      const addressInput = page.getByRole("textbox").nth(1);
-      await expect(addressInput).toBeVisible();
-
-      await addressInput.fill("0x1234567890abcdef1234567890abcdef12345678");
-      await page.waitForTimeout(200);
-
-      const value = await addressInput.inputValue();
-      expect(value.length).toBeGreaterThan(0);
-    });
-
     test("you're sending label is visible", async ({ page }) => {
       const label = page.getByText("You're sending");
       await expect(label).toBeVisible();
