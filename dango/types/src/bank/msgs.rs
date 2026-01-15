@@ -46,6 +46,7 @@ pub enum ExecuteMsg {
     /// Note: The `receive` method isn't invoked when calling this.
     ForceTransfer { from: Addr, to: Addr, coins: Coins },
     /// Retrieve funds sent to a non-existing recipient.
+    /// Can only be called by the transfer's sender, recipient, or the chain owner.
     RecoverTransfer { sender: Addr, recipient: Addr },
 }
 
