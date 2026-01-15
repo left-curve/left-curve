@@ -30,7 +30,7 @@ if (SENTRY_DSN && SENTRY_ENV) {
 }
 
 let refreshing = false;
-navigator.serviceWorker.addEventListener("controllerchange", () => {
+navigator?.serviceWorker?.addEventListener("controllerchange", () => {
   if (!refreshing) {
     refreshing = true;
     window.location.reload();
