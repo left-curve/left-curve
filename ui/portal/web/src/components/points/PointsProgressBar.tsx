@@ -43,7 +43,6 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
   currentVolume,
   className,
 }) => {
-  const { isLg } = useMediaQuery();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 

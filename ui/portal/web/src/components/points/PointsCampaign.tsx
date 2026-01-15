@@ -69,18 +69,19 @@ const ProfileTable: React.FC = () => {
 };
 
 const RewardsLoot: React.FC = () => {
+  const currentVolume = 275350;
   return (
     <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-tertiary-gray rounded-b-xl">
       <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl">
-        <PointsProgressBar currentVolume={75350} />
+        <PointsProgressBar currentVolume={currentVolume} />
       </div>
       <div className="flex flex-col gap-3">
         <p className="h3-bold text-ink-primary-900">My boxes</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
-          <BoxCard variant="bronze" />
-          <BoxCard variant="silver" />
-          <BoxCard variant="gold" lock={true} />
-          <BoxCard variant="crystal" lock={true} />
+          <BoxCard variant="bronze" volume={currentVolume} />
+          <BoxCard variant="silver" volume={currentVolume} />
+          <BoxCard variant="gold" volume={currentVolume} />
+          <BoxCard variant="crystal" volume={currentVolume} />
         </div>
       </div>
       <div className="flex flex-col gap-3">
