@@ -113,8 +113,31 @@ macro_rules! generate_downcast {
     };
 }
 
+macro_rules! generate_try_downcast {
+    ($id:ident => $ret:ty) => {
+        paste! {
+            pub fn [<try_into_$id:snake>](self) -> Result<$ret, Self> {
+                match self {
+                    AccountParams::$id(value) => Ok(value),
+                    other => Err(other),
+                }
+            }
+        }
+    };
+    ($($id:ident => $ret:ty),+ $(,)?) => {
+        $(
+            generate_try_downcast!($id => $ret);
+        )+
+    };
+}
+
 impl AccountParams {
     generate_downcast! {
+        Single => single::Params,
+        Multi => multi::Params,
+    }
+
+    generate_try_downcast! {
         Single => single::Params,
         Multi => multi::Params,
     }
