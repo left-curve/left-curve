@@ -9,6 +9,7 @@ import type {
   Flatten,
   Hex,
   PairUpdate,
+  Prettify,
   Require,
   Transport,
   UID,
@@ -35,7 +36,7 @@ export type State = {
   chainId: ChainId;
   isMipdLoaded: boolean;
   current: UID | null;
-  userIndexAndName: Require<UserIndexAndName, "name"> | undefined;
+  userIndexAndName: Prettify<Require<UserIndexAndName, "name">> | undefined;
   userStatus: UserStatus | undefined;
   connectors: Map<UID, Connection>;
   status: ConnectionStatusType;
