@@ -1,9 +1,8 @@
 use {
     crate::{
-        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MAIN_ACCOUNT, NEXT_ACCOUNT_INDEX,
-        NEXT_USER_INDEX, USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
+        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
+        USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
     },
-    anyhow::bail,
     dango_types::{
         account_factory::{
             Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
@@ -79,14 +78,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             limit,
         } => {
             let res = forgot_username(ctx.storage, key_hash, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::MainAccountByUser { user } => {
-            let res = query_main_account_by_user(ctx.storage, user)?;
-            res.to_json_value()
-        },
-        QueryMsg::MainAccountByAddress { address } => {
-            let res = query_main_account_by_address(ctx.storage, address)?;
             res.to_json_value()
         },
     }
@@ -244,23 +235,6 @@ fn forgot_username(
         .collect()
 }
 
-fn query_main_account_by_user(storage: &dyn Storage, user: UserIndexOrName) -> StdResult<Addr> {
-    let user_index = get_user_index(storage, &user)?;
-    MAIN_ACCOUNT.load(storage, user_index)
-}
-
-fn query_main_account_by_address(storage: &dyn Storage, address: Addr) -> anyhow::Result<Addr> {
-    let account = ACCOUNTS.load(storage, address)?;
-
-    let Ok(account_params) = account.params.try_into_single() else {
-        bail!("only accounts type single have a main account")
-    };
-
-    Ok(query_main_account_by_user(
-        storage,
-        UserIndexOrName::Index(account_params.owner),
-    )?)
-}
 /// Error if the username doesn't exist.
 fn get_user_index(storage: &dyn Storage, user: &UserIndexOrName) -> StdResult<UserIndex> {
     match user {
