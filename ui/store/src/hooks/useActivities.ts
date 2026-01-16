@@ -49,7 +49,7 @@ export type ActivityRecord<key extends keyof Activities = keyof Activities> = {
 
 export function useActivities() {
   const queryClient = useQueryClient();
-  const { username = "", accounts, account } = useAccount();
+  const { username = "", accounts, account, refreshUserStatus, userStatus } = useAccount();
   const { refetch: refetchBalances } = useBalances({ address: account?.address });
   const { subscriptions } = useConfig();
   const userAddresses = useMemo(() => (accounts ? accounts.map((a) => a.address) : []), [accounts]);
@@ -152,6 +152,7 @@ export function useActivities() {
               case "sent":
               case "received": {
                 refetchBalances();
+                if (userStatus !== "active") refreshUserStatus?.();
                 const isSent = type === "sent";
                 const { to, from, user, coins } = data as {
                   to?: Address;
@@ -206,7 +207,7 @@ export function useActivities() {
       unsubscribeEvents();
       unsubscribeAccount();
     };
-  }, [addActivityRecord, userActivities, username, accounts, account, userAddresses]);
+  }, [addActivityRecord, userActivities, username, accounts, account, userAddresses, userStatus]);
 
   return {
     startActivities,
