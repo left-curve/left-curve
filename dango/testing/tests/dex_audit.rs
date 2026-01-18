@@ -114,12 +114,15 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
     // order on each side of the oracle price (200 +/- 0.3%) with 100% of the
     // liquidity.
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryLiquidityDepthRequest {
-            base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
-            bucket_size: ONE_TENTH,
-            limit: Some(10),
-        })
+        .query_wasm_smart(
+            contracts.dex,
+            dex::QueryLiquidityDepthRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                bucket_size: ONE_TENTH,
+                limit: Some(10),
+            },
+        )
         .should_succeed_and_equal(dex::LiquidityDepthResponse {
             bid_depth: Some(vec![(
                 Price::new(199_400_000), // 200 * (1 - 0.3%), considering 6 decimal difference between dango and usdc
