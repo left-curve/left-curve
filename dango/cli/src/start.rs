@@ -374,6 +374,7 @@ impl StartCmd {
             cfg.cors_allowed_origin.clone(),
             dango_httpd_context,
             shutdown_flag,
+            None,
         )
         .await
         .map_err(|err| {

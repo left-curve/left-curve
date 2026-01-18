@@ -79,15 +79,19 @@ where
     })
 }
 
-/// Run the dango HTTP server with dango-specific context
+/// Run the dango HTTP server with dango-specific context.
 /// The shutdown_flag should be set when signals are received to return 503 for new requests.
 /// Actix Web handles graceful shutdown automatically on SIGTERM/SIGINT.
+///
+/// If `port_sender` is provided, the actual bound port will be sent via the channel after binding.
+/// Use port 0 to let the OS allocate an available port (useful for tests).
 pub async fn run_server<I>(
     ip: I,
     port: u16,
     cors_allowed_origin: Option<String>,
     dango_httpd_context: crate::context::Context,
     shutdown_flag: Arc<AtomicBool>,
+    port_sender: Option<mpsc::Sender<u16>>,
 ) -> Result<(), indexer_httpd::error::Error>
 where
     I: ToString + std::fmt::Display,
@@ -96,81 +100,6 @@ where
 
     #[cfg(feature = "tracing")]
     tracing::info!(%ip, port, "Starting dango httpd server");
-
-    #[cfg(feature = "metrics")]
-    let metrics = actix_web_metrics::ActixWebMetricsBuilder::new()
-        .build()
-        .unwrap();
-
-    #[cfg(feature = "metrics")]
-    indexer_httpd::middlewares::metrics::init_httpd_metrics();
-
-    let shutdown_flag_clone = shutdown_flag.clone();
-    HttpServer::new(move || {
-        let mut cors = Cors::default()
-            .allowed_methods(vec!["POST", "GET", "OPTIONS"])
-            .allowed_headers(vec![
-                http::header::AUTHORIZATION,
-                http::header::ACCEPT,
-                http::header::CONTENT_TYPE,
-                http::header::HeaderName::from_static("sentry-trace"),
-                http::header::HeaderName::from_static("baggage"),
-            ])
-            .max_age(3600);
-
-        if let Some(origin) = cors_allowed_origin.as_deref() {
-            for origin in origin.split(',') {
-                cors = cors.allowed_origin(origin.trim());
-            }
-        } else {
-            cors = cors.allow_any_origin();
-        }
-
-        let app = App::new()
-            .wrap(ShutdownMiddleware::new(shutdown_flag_clone.clone()))
-            .wrap(Sentry::new())
-            .wrap(Logger::default())
-            .wrap(Compress::default())
-            .wrap(cors);
-
-        #[cfg(feature = "metrics")]
-        let app = app.wrap(metrics.clone());
-
-        app.configure(config_app(
-            dango_httpd_context.clone(),
-            graphql_schema.clone(),
-        ))
-    })
-    .workers(8)
-    .max_connections(10_000)
-    .backlog(8192)
-    .keep_alive(actix_web::http::KeepAlive::Os)
-    .worker_max_blocking_threads(16)
-    .bind((ip.to_string(), port))?
-    .run()
-    .await?;
-
-    Ok(())
-}
-
-/// Run the dango HTTP server and send the actual bound port via a channel.
-/// Use port 0 to let the OS allocate an available port.
-/// This is useful for tests that need to know the actual port after binding.
-pub async fn run_server_with_port_sender<I>(
-    ip: I,
-    port: u16,
-    cors_allowed_origin: Option<String>,
-    dango_httpd_context: crate::context::Context,
-    shutdown_flag: Arc<AtomicBool>,
-    port_sender: mpsc::Sender<u16>,
-) -> Result<(), indexer_httpd::error::Error>
-where
-    I: ToString + std::fmt::Display,
-{
-    let graphql_schema = crate::graphql::build_schema(dango_httpd_context.clone());
-
-    #[cfg(feature = "tracing")]
-    tracing::info!(%ip, port, "Starting dango httpd server (with port sender)");
 
     #[cfg(feature = "metrics")]
     let metrics = actix_web_metrics::ActixWebMetricsBuilder::new()
@@ -223,13 +152,14 @@ where
     .worker_max_blocking_threads(16)
     .bind((ip.to_string(), port))?;
 
-    // Get the actual bound port and send it via the channel
-    let addrs = server.addrs();
-    if let Some(addr) = addrs.first() {
+    // Send the actual bound port if a channel was provided
+    if let Some(sender) = port_sender
+        && let Some(addr) = server.addrs().first()
+    {
         let actual_port = addr.port();
         #[cfg(feature = "tracing")]
         tracing::info!(actual_port, "Server bound to port");
-        let _ = port_sender.send(actual_port);
+        let _ = sender.send(actual_port);
     }
 
     server.run().await?;

@@ -154,6 +154,7 @@ where
         cors_allowed_origin,
         dango_httpd_context,
         shutdown_flag,
+        None,
     )
     .await
 }
@@ -243,13 +244,13 @@ pub async fn run_with_port_sender(
     );
 
     let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    dango_httpd::server::run_server_with_port_sender(
+    dango_httpd::server::run_server(
         "127.0.0.1",
         0, // Let the OS allocate an available port
         cors_allowed_origin,
         dango_httpd_context,
         shutdown_flag,
-        port_sender,
+        Some(port_sender),
     )
     .await
 }
