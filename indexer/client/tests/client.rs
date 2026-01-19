@@ -8,6 +8,19 @@ use {
 
 mod utils;
 
+/// Temporary test to measure server startup time in CI.
+/// This test intentionally panics to show timing in CI output.
+/// Remove after getting the timing info.
+#[tokio::test(flavor = "multi_thread")]
+async fn measure_server_startup_time() {
+    let result = crate::utils::setup_client_test_with_timing().await.unwrap();
+    panic!(
+        "SERVER STARTUP TIMING: {} attempts, {:.2}ms - this panic is intentional to show timing in CI",
+        result.server_ready.attempts,
+        result.server_ready.elapsed_ms
+    );
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn broadcast() -> anyhow::Result<()> {
     let (client, mut accounts) = setup_client_test().await?;

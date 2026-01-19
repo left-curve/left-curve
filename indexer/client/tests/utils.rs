@@ -1,12 +1,23 @@
 use {
     dango_genesis::GenesisOption,
-    dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
+    dango_mock_httpd::{ServerReadyResult, get_mock_socket_addr, wait_for_server_ready},
     dango_testing::{Preset, TestAccounts, TestOption},
     grug::BlockCreation,
     indexer_client::HttpClient,
 };
 
+pub struct SetupResult {
+    pub client: HttpClient,
+    pub accounts: TestAccounts,
+    pub server_ready: ServerReadyResult,
+}
+
 pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
+    let result = setup_client_test_with_timing().await?;
+    Ok((result.client, result.accounts))
+}
+
+pub async fn setup_client_test_with_timing() -> anyhow::Result<SetupResult> {
     let port = get_mock_socket_addr();
 
     let (sx, rx) = tokio::sync::oneshot::channel();
@@ -37,12 +48,13 @@ pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
 
     let accounts = rx.await?;
 
-    wait_for_server_ready(port).await?;
+    let server_ready = wait_for_server_ready(port).await?;
 
-    Ok((
-        HttpClient::new(format!("http://localhost:{port}"))?,
+    Ok(SetupResult {
+        client: HttpClient::new(format!("http://localhost:{port}"))?,
         accounts,
-    ))
+        server_ready,
+    })
 }
 
 // Channel-based approach (commented out for comparison)
