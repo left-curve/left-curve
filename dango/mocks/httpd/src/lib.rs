@@ -275,36 +275,21 @@ pub fn get_mock_socket_addr() -> u16 {
     }
 }
 
-/// Result of waiting for server to be ready
-pub struct ServerReadyResult {
-    pub attempts: u32,
-    pub elapsed_ms: f64,
-}
-
-pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<ServerReadyResult> {
-    let start = std::time::Instant::now();
+/// Wait for the server to be ready to accept connections.
+/// CI measurements showed server starts in ~50ms (2 attempts).
+/// Using 30 attempts * 100ms = 3s max timeout for safety margin.
+pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
     for attempt in 1..=30 {
         match TcpStream::connect(format!("127.0.0.1:{port}")).await {
             Ok(_) => {
-                let elapsed = start.elapsed();
-                let elapsed_ms = elapsed.as_secs_f64() * 1000.0;
-                eprintln!(
-                    "Server ready on port {port} after {attempt} attempts ({elapsed_ms:.2}ms)",
-                );
-                return Ok(ServerReadyResult {
-                    attempts: attempt,
-                    elapsed_ms,
-                });
+                tracing::info!("Server ready on port {port} after {attempt} attempts");
+                return Ok(());
             },
             Err(_) => {
-                tokio::time::sleep(Duration::from_millis(50)).await;
+                tokio::time::sleep(Duration::from_millis(100)).await;
             },
         }
     }
 
-    let elapsed = start.elapsed();
-    bail!(
-        "server failed to start on port {port} after 30 attempts ({:.2}ms)",
-        elapsed.as_secs_f64() * 1000.0
-    )
+    bail!("server failed to start on port {port} after 30 attempts (3s)")
 }
