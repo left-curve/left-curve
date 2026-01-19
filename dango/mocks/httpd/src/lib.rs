@@ -281,7 +281,7 @@ pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
         match TcpStream::connect(format!("127.0.0.1:{port}")).await {
             Ok(_) => {
                 let elapsed = start.elapsed();
-                println!(
+                eprintln!(
                     "Server ready on port {port} after {attempt} attempts ({:.2}ms)",
                     elapsed.as_secs_f64() * 1000.0
                 );
