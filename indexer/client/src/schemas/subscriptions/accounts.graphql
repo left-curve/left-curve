@@ -1,0 +1,13 @@
+subscription SubscribeAccounts($userIndex: Int, $sinceBlockHeight: Int) {
+  accounts(userIndex: $userIndex, sinceBlockHeight: $sinceBlockHeight) {
+    accountIndex
+    address
+    accountType
+    createdBlockHeight
+    createdTxHash
+    createdAt
+    users {
+      userIndex
+    }
+  }
+}

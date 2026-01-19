@@ -12,6 +12,7 @@ version       = { workspace = true }
 [dependencies]
 anyhow                   = { workspace = true }
 dango-genesis            = { workspace = true }
+rand                     = { workspace = true }
 dango-httpd              = { workspace = true }
 dango-indexer-clickhouse = { workspace = true, features = ["tracing"] }
 dango-indexer-sql        = { workspace = true }

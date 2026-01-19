@@ -1,0 +1,18 @@
+subscription SubscribeTrades($baseDenom: String!, $quoteDenom: String!) {
+  trades(baseDenom: $baseDenom, quoteDenom: $quoteDenom) {
+    addr
+    quoteDenom
+    baseDenom
+    direction
+    timeInForce
+    blockHeight
+    createdAt
+    filledBase
+    filledQuote
+    refundBase
+    refundQuote
+    feeBase
+    feeQuote
+    clearingPrice
+  }
+}

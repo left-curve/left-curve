@@ -1,0 +1,19 @@
+query Messages($after: String, $before: String, $first: Int, $last: Int, $sortBy: MessageSortBy, $blockHeight: Int, $methodName: String, $contractAddr: String, $senderAddr: String) {
+  messages(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy, blockHeight: $blockHeight, methodName: $methodName, contractAddr: $contractAddr, senderAddr: $senderAddr) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      orderIdx
+      data
+      methodName
+      blockHeight
+      contractAddr
+      senderAddr
+      createdAt
+    }
+  }
+}

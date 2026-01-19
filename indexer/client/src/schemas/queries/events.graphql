@@ -1,0 +1,26 @@
+query Events($after: String, $before: String, $first: Int, $last: Int, $sortBy: EventSortBy) {
+  events(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      type
+      method
+      eventStatus
+      commitmentStatus
+      transactionType
+      transactionIdx
+      messageIdx
+      eventIdx
+      data
+      blockHeight
+      createdAt
+      transaction {
+        hash
+      }
+    }
+  }
+}

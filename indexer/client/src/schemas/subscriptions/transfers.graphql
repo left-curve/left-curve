@@ -1,0 +1,12 @@
+subscription SubscribeTransfers($address: String, $userIndex: Int, $sinceBlockHeight: Int) {
+  transfers(address: $address, userIndex: $userIndex, sinceBlockHeight: $sinceBlockHeight) {
+    idx
+    blockHeight
+    txHash
+    fromAddress
+    toAddress
+    amount
+    denom
+    createdAt
+  }
+}

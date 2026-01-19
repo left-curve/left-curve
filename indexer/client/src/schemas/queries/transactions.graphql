@@ -1,0 +1,34 @@
+query Transactions($after: String, $before: String, $first: Int, $last: Int, $sortBy: TransactionSortBy, $hash: String, $blockHeight: Int, $senderAddress: String) {
+  transactions(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy, hash: $hash, blockHeight: $blockHeight, senderAddress: $senderAddress) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      hash
+      blockHeight
+      transactionType
+      transactionIdx
+      sender
+      data
+      credential
+      hasSucceeded
+      errorMessage
+      gasWanted
+      gasUsed
+      createdAt
+      nestedEvents
+      messages {
+        orderIdx
+        data
+        methodName
+        blockHeight
+        contractAddr
+        senderAddr
+        createdAt
+      }
+    }
+  }
+}

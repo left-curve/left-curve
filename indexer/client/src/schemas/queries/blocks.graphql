@@ -1,0 +1,17 @@
+query Blocks($after: String, $before: String, $first: Int, $last: Int, $sortBy: BlockSortBy) {
+  blocks(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      blockHeight
+      hash
+      appHash
+      createdAt
+      cronsOutcomes
+    }
+  }
+}

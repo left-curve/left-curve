@@ -1,0 +1,19 @@
+subscription SubscribeCandles($baseDenom: String!, $quoteDenom: String!, $interval: CandleInterval!, $laterThan: DateTime) {
+  candles(baseDenom: $baseDenom, quoteDenom: $quoteDenom, interval: $interval, laterThan: $laterThan) {
+    quoteDenom
+    baseDenom
+    interval
+    minBlockHeight
+    maxBlockHeight
+    open
+    high
+    low
+    close
+    volumeBase
+    volumeQuote
+    timeStart
+    timeStartUnix
+    timeEnd
+    timeEndUnix
+  }
+}

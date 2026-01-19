@@ -1,0 +1,26 @@
+subscription SubscribeTransactions($sinceBlockHeight: Int) {
+  transactions(sinceBlockHeight: $sinceBlockHeight) {
+    hash
+    blockHeight
+    transactionType
+    transactionIdx
+    sender
+    data
+    credential
+    hasSucceeded
+    errorMessage
+    gasWanted
+    gasUsed
+    createdAt
+    nestedEvents
+    messages {
+      orderIdx
+      data
+      methodName
+      blockHeight
+      contractAddr
+      senderAddr
+      createdAt
+    }
+  }
+}

@@ -43,6 +43,29 @@ pub struct GraphQLCustomRequest<'a> {
     pub variables: serde_json::Map<String, serde_json::Value>,
 }
 
+impl<'a> GraphQLCustomRequest<'a> {
+    /// Creates a GraphQLCustomRequest from a typed QueryBody.
+    ///
+    /// The `field_name` should be the GraphQL field name in the subscription/query
+    /// response (e.g., "accounts" for SubscribeAccounts, "trades" for SubscribeTrades).
+    pub fn from_query_body<V: Serialize>(
+        body: graphql_client::QueryBody<V>,
+        field_name: &'a str,
+    ) -> Self {
+        let variables = serde_json::to_value(&body.variables)
+            .expect("Failed to serialize variables")
+            .as_object()
+            .cloned()
+            .unwrap_or_default();
+
+        Self {
+            name: field_name,
+            query: body.query,
+            variables,
+        }
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct GraphQLResponse {
     pub data: HashMap<String, serde_json::Value>,

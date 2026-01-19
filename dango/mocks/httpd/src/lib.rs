@@ -9,7 +9,12 @@ use {
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
-    std::{net::TcpListener, sync::Arc, time::Duration},
+    rand::Rng,
+    std::{
+        collections::HashSet,
+        sync::{Arc, LazyLock, Mutex as StdMutex, mpsc},
+        time::Duration,
+    },
     tokio::{net::TcpStream, sync::Mutex},
 };
 pub use {
@@ -149,31 +154,157 @@ where
         cors_allowed_origin,
         dango_httpd_context,
         shutdown_flag,
+        None,
     )
     .await
 }
 
-pub fn get_mock_socket_addr() -> u16 {
-    TcpListener::bind("127.0.0.1:0")
-        .expect("failed to bind to random port")
-        .local_addr()
-        .expect("failed to get local address")
-        .port()
+/// Run the mock server with port 0 and send the actual bound port via a channel.
+/// This is useful for tests that need to run in parallel without port conflicts.
+pub async fn run_with_port_sender(
+    block_creation: BlockCreation,
+    cors_allowed_origin: Option<String>,
+    test_opt: TestOption,
+    genesis_opt: GenesisOption,
+    database_url: Option<String>,
+    port_sender: mpsc::Sender<u16>,
+) -> Result<(), Error> {
+    let indexer = indexer_sql::IndexerBuilder::default();
+
+    let indexer = if let Some(url) = database_url {
+        indexer.with_database_url(url)
+    } else {
+        indexer
+            .with_memory_database()
+            .with_database_max_connections(1)
+    };
+
+    let indexer = indexer.with_sqlx_pubsub().build().await?;
+
+    let indexer_context = indexer.context.clone();
+
+    let indexer_cache = indexer_cache::Cache::new_with_tempdir();
+    let indexer_cache_context = indexer_cache.context.clone();
+
+    let mut hooked_indexer = HookedIndexer::new();
+
+    // Create a separate context for dango indexer (shares DB but has independent pubsub)
+    let dango_context: dango_indexer_sql::context::Context = indexer
+        .context
+        .with_separate_pubsub()
+        .await
+        .map_err(|e| {
+            indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+                "Failed to create separate context for dango indexer: {e}",
+            ))
+        })?
+        .into();
+
+    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
+
+    hooked_indexer.add_indexer(indexer_cache).await.unwrap();
+    hooked_indexer.add_indexer(indexer).await.unwrap();
+    hooked_indexer.add_indexer(dango_indexer).await.unwrap();
+
+    let (suite, _test, _codes, _contracts, _mock_validator_sets) = setup_suite_with_db_and_vm(
+        MemDb::<SimpleCommitment>::new(),
+        RustVm::new(),
+        ProposalPreparer::new([""], ""), // FIXME: endpoints and access token
+        hooked_indexer,
+        RustVm::genesis_codes(),
+        test_opt,
+        genesis_opt,
+    );
+
+    let suite = Arc::new(Mutex::new(suite));
+
+    let mock_client = MockClient::new_shared(suite.clone(), block_creation);
+
+    let app = suite.lock().await.app.clone_without_indexer();
+
+    let indexer_httpd_context = indexer_httpd::context::Context::new(
+        indexer_cache_context,
+        indexer_context.clone(),
+        Arc::new(app),
+        Arc::new(mock_client),
+    );
+
+    let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+        "http://localhost:8123".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+    );
+
+    let dango_httpd_context = dango_httpd::context::Context::new(
+        indexer_httpd_context.clone(),
+        indexer_clickhouse_context.clone(),
+        dango_context,
+        None,
+    );
+
+    let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    dango_httpd::server::run_server(
+        "127.0.0.1",
+        0, // Let the OS allocate an available port
+        cors_allowed_origin,
+        dango_httpd_context,
+        shutdown_flag,
+        Some(port_sender),
+    )
+    .await
 }
 
-pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
+/// Tracks ports already allocated to avoid collisions.
+static USED_PORTS: LazyLock<StdMutex<HashSet<u16>>> =
+    LazyLock::new(|| StdMutex::new(HashSet::new()));
+
+/// Get a random port for the mock server.
+///
+/// Generates a random port in the range 20000-60000, ensuring it hasn't
+/// been used by another test in this process.
+pub fn get_mock_socket_addr() -> u16 {
+    let mut rng = rand::thread_rng();
+    let mut used = USED_PORTS.lock().unwrap();
+
+    loop {
+        let port = rng.gen_range(20000..60000);
+        if used.insert(port) {
+            return port;
+        }
+    }
+}
+
+/// Result of waiting for server to be ready
+pub struct ServerReadyResult {
+    pub attempts: u32,
+    pub elapsed_ms: f64,
+}
+
+pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<ServerReadyResult> {
+    let start = std::time::Instant::now();
     for attempt in 1..=30 {
         match TcpStream::connect(format!("127.0.0.1:{port}")).await {
             Ok(_) => {
-                tracing::info!("Server ready on port {port} after {attempt} attempts");
-                return Ok(());
+                let elapsed = start.elapsed();
+                let elapsed_ms = elapsed.as_secs_f64() * 1000.0;
+                eprintln!(
+                    "Server ready on port {port} after {attempt} attempts ({elapsed_ms:.2}ms)",
+                );
+                return Ok(ServerReadyResult {
+                    attempts: attempt,
+                    elapsed_ms,
+                });
             },
             Err(_) => {
-                tracing::debug!("Attempt {attempt}: server not ready yet...");
                 tokio::time::sleep(Duration::from_millis(50)).await;
             },
         }
     }
 
-    bail!("server failed to start on port {port} after 30 attempts")
+    let elapsed = start.elapsed();
+    bail!(
+        "server failed to start on port {port} after 30 attempts ({:.2}ms)",
+        elapsed.as_secs_f64() * 1000.0
+    )
 }
