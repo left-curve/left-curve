@@ -7,8 +7,6 @@ use {
 };
 
 pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
-    // EXPERIMENT: Try random port approach with longer timeout
-    // The theory is that random ports should work if we give the server enough time to bind
     let port = get_mock_socket_addr();
 
     let (sx, rx) = tokio::sync::oneshot::channel();

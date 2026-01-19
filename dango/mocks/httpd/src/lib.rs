@@ -276,21 +276,26 @@ pub fn get_mock_socket_addr() -> u16 {
 }
 
 pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
-    // EXPERIMENT: Increased attempts from 30 to 100 and delay from 50ms to 100ms
-    // This gives the server up to 10 seconds to bind (vs previous 1.5 seconds)
-    // If random ports work, this should be enough time for the server to initialize
-    for attempt in 1..=100 {
+    let start = std::time::Instant::now();
+    for attempt in 1..=30 {
         match TcpStream::connect(format!("127.0.0.1:{port}")).await {
             Ok(_) => {
-                tracing::info!("Server ready on port {port} after {attempt} attempts");
+                let elapsed = start.elapsed();
+                println!(
+                    "Server ready on port {port} after {attempt} attempts ({:.2}ms)",
+                    elapsed.as_secs_f64() * 1000.0
+                );
                 return Ok(());
             },
             Err(_) => {
-                tracing::debug!("Attempt {attempt}: server not ready yet...");
-                tokio::time::sleep(Duration::from_millis(100)).await;
+                tokio::time::sleep(Duration::from_millis(50)).await;
             },
         }
     }
 
-    bail!("server failed to start on port {port} after 100 attempts")
+    let elapsed = start.elapsed();
+    bail!(
+        "server failed to start on port {port} after 30 attempts ({:.2}ms)",
+        elapsed.as_secs_f64() * 1000.0
+    )
 }
