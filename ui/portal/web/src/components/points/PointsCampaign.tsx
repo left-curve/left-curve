@@ -8,6 +8,7 @@ import { PointsHeader } from "./PointsHeader";
 import { BoxCard } from "./BoxCard";
 import { NFTCard } from "./NFTCard";
 import { PointsProgressBar } from "./PointsProgressBar";
+import { ChestOpeningProvider, useChestOpening } from "./useChestOpening";
 
 type PointsCampaignTab = "profile" | "rewards";
 
@@ -22,13 +23,15 @@ const PointsCampaignContainer: React.FC<PropsWithChildren> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<PointsCampaignTab>("profile");
 
   return (
-    <PointsCampaignProvider value={{ activeTab, setActiveTab }}>
-      <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
-        <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
-          {children}
+    <ChestOpeningProvider>
+      <PointsCampaignProvider value={{ activeTab, setActiveTab }}>
+        <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
+          <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
+            {children}
+          </div>
         </div>
-      </div>
-    </PointsCampaignProvider>
+      </PointsCampaignProvider>
+    </ChestOpeningProvider>
   );
 };
 
@@ -71,6 +74,8 @@ const ProfileTable: React.FC = () => {
 
 const RewardsLoot: React.FC = () => {
   const currentVolume = 275350;
+  const { openChest } = useChestOpening();
+
   return (
     <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-tertiary-gray rounded-b-xl">
       <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl">
@@ -79,10 +84,10 @@ const RewardsLoot: React.FC = () => {
       <div className="flex flex-col gap-3">
         <p className="h3-bold text-ink-primary-900">My boxes</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
-          <BoxCard variant="bronze" volume={currentVolume} />
-          <BoxCard variant="silver" volume={currentVolume} />
-          <BoxCard variant="gold" volume={currentVolume} />
-          <BoxCard variant="crystal" volume={currentVolume} />
+          <BoxCard variant="bronze" volume={currentVolume} onClick={() => openChest("bronze")} />
+          <BoxCard variant="silver" volume={currentVolume} onClick={() => openChest("silver")} />
+          <BoxCard variant="gold" volume={currentVolume} onClick={() => openChest("gold")} />
+          <BoxCard variant="crystal" volume={currentVolume} onClick={() => openChest("crystal")} />
         </div>
       </div>
       <div className="flex flex-col gap-3">
