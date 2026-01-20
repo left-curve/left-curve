@@ -100,6 +100,7 @@
             networks: yes
             volumes: yes
             builder_cache: yes
+          ignore_errors: true
       when: deployment_dir.stat.exists
 
     - name: Remove lock file
