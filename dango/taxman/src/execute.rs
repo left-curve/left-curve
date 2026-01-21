@@ -1,14 +1,17 @@
 use {
-    crate::{CONFIG, WITHHELD_FEE},
+    crate::{CONFIG, MAX_VOLUME_AGE, VOLUMES_BY_USER, WITHHELD_FEE},
     anyhow::ensure,
+    dango_account_factory::AccountQuerier,
     dango_types::{
-        DangoQuerier, bank,
+        DangoQuerier,
+        account_factory::{AccountParams, UserIndex},
+        bank,
         taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
     },
     grug::{
-        Addr, AuthCtx, AuthMode, Coins, ContractEvent, IsZero, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, QuerierExt, Response, StdResult, Tx, TxOutcome, Uint128,
-        coins,
+        Addr, AuthCtx, AuthMode, Bound, Coins, ContractEvent, Duration, IsZero, Map, Message,
+        MultiplyFraction, MutableCtx, Number, NumberConst, Order, QuerierExt, Response, StdResult,
+        Storage, Timestamp, Tx, TxOutcome, Udec128_6, Uint128, coins,
     },
     std::collections::BTreeMap,
 };
@@ -25,6 +28,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
         ExecuteMsg::Pay { ty, payments } => pay(ctx, ty, payments),
+        ExecuteMsg::ReportVolumes(volumes) => report_volumes(ctx, volumes),
     }
 }
 
@@ -77,6 +81,122 @@ fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow:
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(Response::new().add_events(events)?)
+}
+
+fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let now_volume = std::time::Instant::now();
+
+    let app_cfg = ctx.querier.query_dango_config()?;
+
+    ensure!(
+        ctx.sender == app_cfg.addresses.dex,
+        "only the dex contract can report volumes"
+    );
+
+    // Create account querier.
+    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
+
+    // Round the current timestamp _down_ to the nearest day.
+    let timestamp = ctx.block.timestamp - ctx.block.timestamp % Duration::from_days(1);
+
+    // Calculate the cutoff for purging old volume data. Data older than this
+    // will be deleted.
+    // Use `saturating_sub` because tests sometimes use small timestamps.
+    let cutoff = timestamp.saturating_sub(MAX_VOLUME_AGE);
+
+    for (user, volume) in volumes {
+        // Query the user's account info. If there isn't one (i.e. the user
+        // isn't registered through the account factory), skip.
+        let Some(account) = account_querier.query_account(user)? else {
+            continue;
+        };
+
+        // Get the user's user index. If the user is a multisig, skip.
+        let AccountParams::Single(params) = &account.params else {
+            continue;
+        };
+
+        increment_cumulative_volume(
+            VOLUMES_BY_USER,
+            ctx.storage,
+            params.owner,
+            timestamp,
+            volume,
+        )?;
+
+        purge_old_volume_data(VOLUMES_BY_USER, ctx.storage, params.owner, cutoff)?;
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_DURATION_STORE_VOLUME)
+            .record(now_volume.elapsed().as_secs_f64());
+    }
+
+    Ok(Response::new())
+}
+
+/// Increment the user's cumulative volume.
+/// If volume data for the same day already exists, add to it.
+/// If not, find the most recent data (default to 0 if no found) and add to it.
+fn increment_cumulative_volume(
+    map: Map<'static, (UserIndex, Timestamp), Udec128_6>,
+    storage: &mut dyn Storage,
+    user_index: UserIndex,
+    timestamp: Timestamp,
+    volume: Udec128_6,
+) -> StdResult<()> {
+    let existing_volume = map
+        .may_load(storage, (user_index, timestamp))?
+        .or({
+            map.prefix(user_index)
+                .values(
+                    storage,
+                    None,
+                    Some(Bound::Exclusive(timestamp)),
+                    Order::Descending,
+                )
+                .next()
+                .transpose()?
+        })
+        .unwrap_or(NumberConst::ZERO);
+
+    let new_volume = existing_volume.checked_add(volume)?;
+
+    map.save(storage, (user_index, timestamp), &new_volume)
+}
+
+/// Delete all volume data older than the `cutoff` timestamp, except the most
+/// recent one among them.
+/// We keep the most recent one, such that we can compute the volume between
+/// that time and now (by subtracting the cumulative volume now with the volume
+/// of that time).
+fn purge_old_volume_data(
+    map: Map<'static, (UserIndex, Timestamp), Udec128_6>,
+    storage: &mut dyn Storage,
+    user_index: UserIndex,
+    cutoff: Timestamp,
+) -> StdResult<()> {
+    // Find the most recent volume data no newer than the `cutoff` timestamp.
+    let max = map
+        .prefix(user_index)
+        .keys(
+            storage,
+            None,
+            Some(Bound::Inclusive(cutoff)),
+            Order::Descending,
+        )
+        .next()
+        .transpose()?
+        .unwrap_or(cutoff);
+
+    // Delete all volume data older (exclusive) than the most recent one.
+    // Use exclusive such that the most recent one is retained.
+    map.prefix(user_index)
+        .clear(storage, None, Some(Bound::Exclusive(max)));
+
+    Ok(())
 }
 
 // TODO: exempt the account factory from paying fee.

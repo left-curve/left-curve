@@ -1,19 +1,15 @@
 use {
     crate::{
-        MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
-        RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
+        MAX_ORACLE_STALENESS, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK,
         core::{
             FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders,
             mean::safe_arithmetic_mean,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
-    dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        account_factory::UserIndex,
-        constants::usdc,
         dex::{
             CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
             Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
@@ -21,12 +17,12 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
-        MetricsIterExt, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
-        Order as IterationOrder, PrimaryKey, Response, StdError, StdResult, Storage, SubMessage,
-        SubMsgResult, SudoCtx, Timestamp, TransferBuilder, Udec128, Udec128_6,
+        Addr, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MetricsIterExt,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        Response, StdError, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder,
+        Udec128, Udec128_6,
     },
-    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
+    std::collections::{BTreeMap, BTreeSet, HashMap},
 };
 
 /// Match and fill orders using the uniform price auction strategy.
@@ -81,12 +77,10 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
-    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
 
     let mut events = EventBuilder::new();
     let mut refunds = TransferBuilder::<DecCoins<6>>::new();
-    let mut volumes = HashMap::<Addr, Udec128_6>::new();
-    let mut volumes_by_user = HashMap::<UserIndex, Udec128_6>::new();
+    let mut volumes = BTreeMap::<Addr, Udec128_6>::new();
     let mut fees = DecCoins::<6>::new();
     let mut fee_payments = TransferBuilder::<DecCoins<6>>::new();
 
@@ -131,7 +125,6 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             ctx.block.height,
             app_cfg.addresses.dex,
             &mut oracle_querier,
-            &mut account_querier,
             app_cfg.maker_fee_rate.into_inner(),
             app_cfg.taker_fee_rate.into_inner(),
             denoms.0,
@@ -142,35 +135,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             &mut fees,
             &mut fee_payments,
             &mut volumes,
-            &mut volumes_by_user,
         )?;
-    }
-
-    #[cfg(feature = "metrics")]
-    let now_volume = std::time::Instant::now();
-
-    // Calculate the timestamp of `MAX_VOLUME_AGE` ago. Volume data older than
-    // this timestamp are to be purged from storage.
-    // Use `saturating_sub` because tests sometimes use small timestamps.
-    let cutoff = ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE);
-
-    // Save the updated volumes.
-    for (address, volume) in volumes {
-        VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
-
-        purge_old_volume_data(VOLUMES, &address, ctx.storage, cutoff)?;
-    }
-
-    for (user_index, volume) in volumes_by_user {
-        VOLUMES_BY_USER.save(ctx.storage, (user_index, ctx.block.timestamp), &volume)?;
-
-        purge_old_volume_data(VOLUMES_BY_USER, user_index, ctx.storage, cutoff)?;
-    }
-
-    #[cfg(feature = "metrics")]
-    {
-        metrics::histogram!(crate::metrics::LABEL_DURATION_STORE_VOLUME)
-            .record(now_volume.elapsed().as_secs_f64());
     }
 
     // Round refunds and fee to integer amounts. Round _down_ in both cases.
@@ -210,6 +175,15 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         } else {
             None
         })
+        .may_add_message(if !volumes.is_empty() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::ReportVolumes(volumes),
+                Coins::new(),
+            )?)
+        } else {
+            None
+        })
         .add_events(events)?)
 }
 
@@ -218,7 +192,6 @@ fn clear_orders_of_pair(
     current_block_height: u64,
     dex_addr: Addr,
     oracle_querier: &mut OracleQuerier,
-    account_querier: &mut AccountQuerier,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     base_denom: Denom,
@@ -228,8 +201,7 @@ fn clear_orders_of_pair(
     refunds: &mut TransferBuilder<DecCoins<6>>,
     fees: &mut DecCoins<6>,
     fee_payments: &mut TransferBuilder<DecCoins<6>>,
-    volumes: &mut HashMap<Addr, Udec128_6>,
-    volumes_by_user: &mut HashMap<UserIndex, Udec128_6>,
+    volumes: &mut BTreeMap<Addr, Udec128_6>,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "metrics")]
     let mut now = std::time::Instant::now();
@@ -631,15 +603,10 @@ fn clear_orders_of_pair(
         })?;
 
         // Record the order's trading volume.
-        update_trading_volumes(
-            storage,
-            account_querier,
-            &quote_denom,
-            filled_quote,
-            order.user,
-            volumes,
-            volumes_by_user,
-        )?;
+        volumes
+            .entry(order.user)
+            .or_default()
+            .checked_add_assign(filled_quote)?;
 
         #[cfg(feature = "metrics")]
         {
@@ -1024,105 +991,6 @@ fn refund_ioc_order(
 
         refunds.insert(order.user, refund_denom, refund_amount)?;
     }
-
-    Ok(())
-}
-
-/// Updates trading volumes for both user addresses and user indexes.
-///
-/// This is only done if the quote denom is USDC. Volumes are stored as USDC microunits.
-fn update_trading_volumes(
-    storage: &mut dyn Storage,
-    account_querier: &mut AccountQuerier,
-    quote_denom: &Denom,
-    filled_quote: Udec128_6,
-    order_user: Addr,
-    volumes: &mut HashMap<Addr, Udec128_6>,
-    volumes_by_user: &mut HashMap<UserIndex, Udec128_6>,
-) -> anyhow::Result<()> {
-    // Only track trading volumes where quote asset is USDC.
-    if quote_denom != &usdc::DENOM.clone() {
-        return Ok(());
-    }
-
-    // Record trading volume for the user's address.
-    {
-        match volumes.entry(order_user) {
-            Entry::Occupied(mut v) => {
-                v.get_mut().checked_add_assign(filled_quote)?;
-            },
-            Entry::Vacant(v) => {
-                let volume = VOLUMES
-                    .prefix(&order_user)
-                    .values(storage, None, None, IterationOrder::Descending)
-                    .next()
-                    .transpose()?
-                    .unwrap_or(Udec128_6::ZERO)
-                    .checked_add(filled_quote)?;
-
-                v.insert(volume);
-            },
-        }
-    }
-
-    // Record trading volume for the user's user index, if the trader is a
-    // single-signature account (skip for multisig accounts).
-    if let Some(user_index) = account_querier
-        .query_account(order_user)?
-        .and_then(|account| account.params.owner())
-    {
-        match volumes_by_user.entry(user_index) {
-            Entry::Occupied(mut v) => {
-                v.get_mut().checked_add_assign(filled_quote)?;
-            },
-            Entry::Vacant(v) => {
-                let volume = VOLUMES_BY_USER
-                    .prefix(user_index)
-                    .values(storage, None, None, IterationOrder::Descending)
-                    .next()
-                    .transpose()?
-                    .unwrap_or(Udec128_6::ZERO)
-                    .checked_add(filled_quote)?;
-
-                v.insert(volume);
-            },
-        }
-    }
-
-    Ok(())
-}
-
-/// Delete all volume data older than the `cutoff` timestamp, except the most
-/// recent one among them.
-/// We keep the most recent one, such that we can compute the volume between
-/// that time and now (by subtracting the cumulative volume now with the volume
-/// of that time).
-fn purge_old_volume_data<K>(
-    map: Map<'static, (K, Timestamp), Udec128_6>,
-    prefix: K,
-    storage: &mut dyn Storage,
-    cutoff: Timestamp,
-) -> StdResult<()>
-where
-    K: PrimaryKey + Copy,
-{
-    // Find the most recent volume data no newer than the `cutoff` timestamp.
-    let max = map
-        .prefix(prefix)
-        .keys(
-            storage,
-            None,
-            Some(Bound::Inclusive(cutoff)),
-            IterationOrder::Descending,
-        )
-        .next()
-        .transpose()?
-        .unwrap_or(cutoff);
-
-    // Delete all volume data older (exclusive) than the most recent one.
-    // Use exclusive such that the most recent one is retained.
-    map.prefix(prefix)
-        .clear(storage, None, Some(Bound::Exclusive(max)));
 
     Ok(())
 }

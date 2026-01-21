@@ -1,3 +1,5 @@
+use std::ops::{Div, Rem};
+
 #[cfg(feature = "chrono")]
 use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use {
@@ -222,6 +224,25 @@ where
 
     fn mul(self, rhs: U) -> Self::Output {
         Self(self.0 * Dec::<u128, 9>::new(rhs.into().into_inner()))
+    }
+}
+
+impl Div for Duration {
+    // Dividing a timestamp by another timestamp should yield a dimensionless
+    // quantity. We show this by returning the inner type `Dec<u128, 9>`
+    // (instead of another `Timestamp`) as output.
+    type Output = <Self as Inner>::U;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        self.0 / rhs.0
+    }
+}
+
+impl Rem for Duration {
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        Self(self.0 % rhs.0)
     }
 }
 
