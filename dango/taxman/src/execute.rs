@@ -1,5 +1,5 @@
 use {
-    crate::{CONFIG, MAX_VOLUME_AGE, VOLUMES_BY_USER, WITHHELD_FEE},
+    crate::{CONFIG, MAX_VOLUME_AGE, VOLUME_TIME_GRANULARITY, VOLUMES_BY_USER, WITHHELD_FEE},
     anyhow::ensure,
     dango_account_factory::AccountQuerier,
     dango_types::{
@@ -9,7 +9,7 @@ use {
         taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
     },
     grug::{
-        Addr, AuthCtx, AuthMode, Bound, Coins, ContractEvent, Duration, IsZero, Map, Message,
+        Addr, AuthCtx, AuthMode, Bound, Coins, ContractEvent, IsZero, Map, Message,
         MultiplyFraction, MutableCtx, Number, NumberConst, Order, QuerierExt, Response, StdResult,
         Storage, Timestamp, Tx, TxOutcome, Udec128_6, Uint128, coins,
     },
@@ -98,7 +98,7 @@ fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow
     let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
 
     // Round the current timestamp _down_ to the nearest day.
-    let timestamp = ctx.block.timestamp - ctx.block.timestamp % Duration::from_days(1);
+    let timestamp = ctx.block.timestamp - ctx.block.timestamp % VOLUME_TIME_GRANULARITY;
 
     // Calculate the cutoff for purging old volume data. Data older than this
     // will be deleted.
