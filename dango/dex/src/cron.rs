@@ -24,6 +24,8 @@ use {
     },
     std::collections::{BTreeMap, BTreeSet},
 };
+#[cfg(feature = "metrics")]
+use {grug::NumberConst, std::collections::HashMap};
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
