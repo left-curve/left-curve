@@ -1,7 +1,8 @@
 use {
-    dango_dex::{MAX_VOLUME_AGE, MINIMUM_LIQUIDITY, VOLUMES, VOLUMES_BY_USER},
+    dango_dex::MINIMUM_LIQUIDITY,
     dango_genesis::{Contracts, DexOption, GenesisOption},
     dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
+    dango_taxman::{MAX_VOLUME_AGE, VOLUMES_BY_USER},
     dango_testing::{
         BridgeOp, Preset, TestAccount, TestOption, TestSuite, setup_test_naive,
         setup_test_naive_with_custom_genesis,
@@ -19,12 +20,13 @@ use {
         },
         gateway::Remote,
         oracle::{self, PrecisionlessPrice, PriceSource},
+        taxman,
     },
     grug::{
-        Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
-        LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order,
-        QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Uint128,
-        UniqueVec, btree_map, btree_set, coin_pair, coins,
+        Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Duration,
+        Fraction, Inner, LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, Number,
+        NumberConst, Order, QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128,
+        Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
@@ -3137,7 +3139,14 @@ fn submit_standard_order(
 
 #[test]
 fn volume_tracking_works() {
-    let (mut suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, accounts, _, contracts, _) = setup_test_naive(TestOption {
+        // Taxman now tracks volumes with the granularity of 1 day. This test
+        // was written before this change was introduced. To make this test work
+        // with the smallest change, we simply set block time to 1 day, such that
+        // each trade is 1 day difference in time.
+        block_time: Duration::from_days(1),
+        ..Default::default()
+    });
 
     let mut user1_addr_1 = accounts.user1;
     let mut user1_addr_2 = user1_addr_1
@@ -3161,43 +3170,15 @@ fn volume_tracking_works() {
 
     // Query volumes before, should be 0
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user1_addr_1.user_index(),
             since: None,
         })
         .should_succeed_and_equal(Udec128::ZERO);
 
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::ZERO);
-
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_2.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::ZERO);
-
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
-            user: user1_addr_1.user_index(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::ZERO);
-
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::ZERO);
-
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_2.address(),
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
+            user: user2_addr_1.user_index(),
             since: None,
         })
         .should_succeed_and_equal(Udec128::ZERO);
@@ -3222,7 +3203,7 @@ fn volume_tracking_works() {
 
     // Query the volume for username user1, should be $200 = 200M USD microunits
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user1_addr_1.user_index(),
             since: None,
         })
@@ -3230,43 +3211,11 @@ fn volume_tracking_works() {
 
     // Query the volume for username user2, should be 200
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user2_addr_1.user_index(),
             since: None,
         })
         .should_succeed_and_equal(Udec128::new(200_000_000));
-
-    // Query the volume for user1 address 1, should be 200
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(200_000_000));
-
-    // Query the volume for user2 address 1, should be 200
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(200_000_000));
-
-    // Query the volume for user1 address 2, should be zero
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_2.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::ZERO);
-
-    // Query the volume for user2 address 2, should be zero
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_2.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::ZERO);
 
     // Submit a new order with user1 address 2
     submit_standard_order(&mut suite, &mut user1_addr_2, &contracts, Direction::Bid);
@@ -3278,7 +3227,7 @@ fn volume_tracking_works() {
 
     // Query the volume for username user1, should be $300 = 300M USD microunits
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user1_addr_1.user_index(),
             since: None,
         })
@@ -3286,54 +3235,22 @@ fn volume_tracking_works() {
 
     // Query the volume for username user2, should be 300
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user2_addr_1.user_index(),
             since: None,
         })
         .should_succeed_and_equal(Udec128::new(300_000_000));
 
-    // Query the volume for user1 address 1, should be 200
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(200_000_000));
-
-    // Query the volume for user1 address 2, should be 100
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_2.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
-    // Query the volume for user2 address 1, should be 200
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(200_000_000));
-
-    // Query the volume for user2 address 2, should be 100
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_2.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
     // Query the volume for both usernames since timestamp after first trade, should be 200
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user1_addr_1.user_index(),
             since: Some(timestamp_after_first_trade),
         })
         .should_succeed_and_equal(Udec128::new(200_000_000));
 
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user2_addr_1.user_index(),
             since: Some(timestamp_after_first_trade),
         })
@@ -3341,64 +3258,21 @@ fn volume_tracking_works() {
 
     // Query the volume for both usernames since timestamp after second trade, should be 100
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user1_addr_1.user_index(),
             since: Some(timestamp_after_second_trade),
         })
         .should_succeed_and_equal(Udec128::new(100_000_000));
 
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user2_addr_1.user_index(),
             since: Some(timestamp_after_second_trade),
         })
         .should_succeed_and_equal(Udec128::new(100_000_000));
 
-    // Query the volume for both users address 1 since timestamp after second trade, should be zero
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_1.address(),
-            since: Some(timestamp_after_second_trade),
-        })
-        .should_succeed_and_equal(Udec128::ZERO);
-
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_1.address(),
-            since: Some(timestamp_after_second_trade),
-        })
-        .should_succeed_and_equal(Udec128::ZERO);
-
-    // Query the volume for both users address 2 since timestamp after second trade, should be 100
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_2.address(),
-            since: Some(timestamp_after_second_trade),
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_2.address(),
-            since: Some(timestamp_after_second_trade),
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
     // Range over the stored volume data, ensure it's correct
-    let storage = suite.contract_storage(contracts.dex);
-    let volumes = VOLUMES
-        .range(&storage, None, None, Order::Ascending)
-        .collect::<StdResult<BTreeMap<_, _>>>()
-        .unwrap();
-    assert_eq!(volumes, btree_map! {
-        (user1_addr_1.address(), timestamp_after_first_trade)  => Udec128_6::new(100_000_000),
-        (user1_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
-        (user1_addr_2.address(), timestamp_after_third_trade)  => Udec128_6::new(100_000_000),
-        (user2_addr_1.address(), timestamp_after_first_trade)  => Udec128_6::new(100_000_000),
-        (user2_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
-        (user2_addr_2.address(), timestamp_after_third_trade)  => Udec128_6::new(100_000_000),
-    });
-
+    let storage = suite.contract_storage(contracts.taxman);
     let volumes_by_user = VOLUMES_BY_USER
         .range(&storage, None, None, Order::Ascending)
         .collect::<StdResult<BTreeMap<_, _>>>()
@@ -3429,22 +3303,7 @@ fn volume_tracking_works() {
 
     // Ensure the oldest data was removed. The first two entries for address 1 and 2 should be
     // replaced with one entry at the timestamp of MAX_VOLUME_AGE ago.
-    let storage = suite.contract_storage(contracts.dex);
-    let volumes = VOLUMES
-        .range(&storage, None, None, Order::Ascending)
-        .collect::<StdResult<BTreeMap<_, _>>>()
-        .unwrap();
-    assert_eq!(volumes, btree_map! {
-        // `user1_addr_1` has three trades: 1st, 2nd, 4th. Among which, 1st and 2nd
-        // are older than the cutoff. 2nd is kept, 1st is deleted.
-        (user1_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
-        (user1_addr_1.address(), timestamp_after_fourth_trade) => Udec128_6::new(300_000_000),
-        (user1_addr_2.address(), timestamp_after_third_trade)  => Udec128_6::new(100_000_000),
-        (user2_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
-        (user2_addr_1.address(), timestamp_after_fourth_trade) => Udec128_6::new(300_000_000),
-        (user2_addr_2.address(), timestamp_after_third_trade)  => Udec128_6::new(100_000_000),
-    });
-
+    let storage = suite.contract_storage(contracts.taxman);
     let volumes_by_user = VOLUMES_BY_USER
         .range(&storage, None, None, Order::Ascending)
         .collect::<StdResult<BTreeMap<_, _>>>()
@@ -3458,7 +3317,7 @@ fn volume_tracking_works() {
 
     // Query the volume for username user1, should be 400
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user1_addr_1.user_index(),
             since: None,
         })
@@ -3466,66 +3325,16 @@ fn volume_tracking_works() {
 
     // Query the volume for username user2, should be 400
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user2_addr_1.user_index(),
             since: None,
         })
         .should_succeed_and_equal(Udec128::new(400_000_000));
 
-    // Query the volume for user1 address 1, should be 300
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(300_000_000));
-
-    // Query the volume for user2 address 1, should be 300
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(300_000_000));
-
-    // Query the volume for user1 address 2, should still be 100
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_2.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
-    // Query the volume for user2 address 2, should still be 100
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_2.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
-    // Query the volume for user1 address 1 since timestamp after third trade,
-    // should return 100.
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_1.address(),
-            since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
-    // Query the volume for user2 address 1 since timestamp after third trade,
-    // should return 100.
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_1.address(),
-            since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
     // Query the volume for username user1 since timestamp after third trade,
     // should return 100.
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user1_addr_1.user_index(),
             since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
         })
@@ -3534,34 +3343,16 @@ fn volume_tracking_works() {
     // Query the volume for username user2 since timestamp after third trade,
     // should return 100.
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user2_addr_1.user_index(),
             since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
         })
         .should_succeed_and_equal(Udec128::new(100_000_000));
 
-    // Query the volume for user1 address 1 since timestamp after second trade,
-    // should fail as time is more than MAX_VOLUME_AGE ago.
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user1_addr_1.address(),
-            since: Some(timestamp_after_second_trade),
-        })
-        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
-
-    // Query the volume for user2 address 1 since timestamp after second trade,
-    // should fail as time is more than MAX_VOLUME_AGE ago.
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: user2_addr_1.address(),
-            since: Some(timestamp_after_second_trade),
-        })
-        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
-
     // Query the volume for username user1 since timestamp after second trade,
     // should fail as time is more than MAX_VOLUME_AGE ago.
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user1_addr_1.user_index(),
             since: Some(timestamp_after_second_trade),
         })
@@ -3570,7 +3361,7 @@ fn volume_tracking_works() {
     // Query the volume for username user2 since timestamp after second trade,
     // should fail as time is more than MAX_VOLUME_AGE ago.
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: user2_addr_1.user_index(),
             since: Some(timestamp_after_second_trade),
         })
@@ -3579,7 +3370,11 @@ fn volume_tracking_works() {
 
 #[test]
 fn volume_tracking_works_with_multiple_orders_from_same_user() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
+        // See comment in `volume_tracking_works` for the rationale of this.
+        block_time: Duration::from_days(1),
+        ..Default::default()
+    });
 
     // Submit two orders for DANGO/USDC and one for ETH/USDC with user1
     suite
@@ -3655,7 +3450,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     // - ETH pair: 117_304 * 852.485845 = 99_999_999.56188
     // Sum = 200_000_000 + 99_999_999.56188 = 299_999_999.56188
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: accounts.user1.user_index(),
             since: None,
         })
@@ -3663,37 +3458,21 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
 
     // Query the volume for username user2, should be 300
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: accounts.user2.user_index(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::from_str("299999999.56188").unwrap());
-
-    // Query the volume for user1 address, should be 300
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: accounts.user1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::from_str("299999999.56188").unwrap());
-
-    // Query the volume for user2 address, should be 300
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: accounts.user2.address(),
             since: None,
         })
         .should_succeed_and_equal(Udec128::from_str("299999999.56188").unwrap());
 
     // Query the volume for both usernames since timestamp after first trade, should be zero
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: accounts.user1.user_index(),
             since: Some(timestamp_after_first_trade),
         })
         .should_succeed_and_equal(Udec128::ZERO);
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: accounts.user2.user_index(),
             since: Some(timestamp_after_first_trade),
         })
@@ -3786,7 +3565,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     // Sum = 299_999_999.56188 + 200_000_000 + 199_999_999.12376 = 699_999_998.68564
     // New volume = 200_000_000 + 199_999_999.12376 = 399_999_999.12376
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: accounts.user1.user_index(),
             since: None,
         })
@@ -3794,52 +3573,36 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
 
     // Query the volume for username user2, should be 700
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: accounts.user2.user_index(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::from_str("699999998.68564").unwrap());
-
-    // Query the volume for user1 address, should be 700
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: accounts.user1.address(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::from_str("699999998.68564").unwrap());
-
-    // Query the volume for user2 address, should be 700
-    suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: accounts.user2.address(),
             since: None,
         })
         .should_succeed_and_equal(Udec128::from_str("699999998.68564").unwrap());
 
     // Query the volume for both usernames since timestamp after second trade, should be zero
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: accounts.user1.user_index(),
             since: Some(timestamp_after_second_trade),
         })
         .should_succeed_and_equal(Udec128::ZERO);
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
             user: accounts.user2.user_index(),
             since: Some(timestamp_after_second_trade),
         })
         .should_succeed_and_equal(Udec128::ZERO);
 
-    // Query the volume for both addresses since timestamp after the first trade, should be 400
+    // Query the volume for both usernames since timestamp after the first trade, should be 400
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: accounts.user1.address(),
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
+            user: accounts.user1.user_index(),
             since: Some(timestamp_after_first_trade),
         })
         .should_succeed_and_equal(Udec128::from_str("399999999.12376").unwrap());
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
-            user: accounts.user2.address(),
+        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
+            user: accounts.user2.user_index(),
             since: Some(timestamp_after_first_trade),
         })
         .should_succeed_and_equal(Udec128::from_str("399999999.12376").unwrap());

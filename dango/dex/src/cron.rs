@@ -10,6 +10,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
+        constants::usdc,
         dex::{
             CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
             Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
@@ -18,11 +19,10 @@ use {
     },
     grug::{
         Addr, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MetricsIterExt,
-        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        Response, StdError, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder,
-        Udec128, Udec128_6,
+        MultiplyFraction, MutableCtx, NonZero, Number, Order as IterationOrder, Response, StdError,
+        StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
     },
-    std::collections::{BTreeMap, BTreeSet, HashMap},
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 /// Match and fill orders using the uniform price auction strategy.
@@ -603,10 +603,13 @@ fn clear_orders_of_pair(
         })?;
 
         // Record the order's trading volume.
-        volumes
-            .entry(order.user)
-            .or_default()
-            .checked_add_assign(filled_quote)?;
+        // Only track trading volumes where quote asset is USDC.
+        if quote_denom == usdc::DENOM.clone() {
+            volumes
+                .entry(order.user)
+                .or_default()
+                .checked_add_assign(filled_quote)?;
+        }
 
         #[cfg(feature = "metrics")]
         {
