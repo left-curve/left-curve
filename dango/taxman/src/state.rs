@@ -17,5 +17,5 @@ pub const WITHHELD_FEE: Item<(Config, Uint128)> = Item::new("withheld_fee");
 /// A by B.
 ///
 /// The timestamps in this map are rounded down to the nearest day.
-/// The volume is in US dollar terms, in humanized unit.
+/// The volume is in USDC microunits, i.e. 1e-6 USDC.
 pub const VOLUMES_BY_USER: Map<(UserIndex, Timestamp), Udec128_6> = Map::new("volume__user");
