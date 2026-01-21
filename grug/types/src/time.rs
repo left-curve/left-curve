@@ -1,5 +1,3 @@
-use std::ops::{Div, Rem};
-
 #[cfg(feature = "chrono")]
 use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use {
@@ -7,7 +5,7 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{Dec, Int, IsZero, MathResult, Number, NumberConst, Uint128},
     serde::{Deserialize, Serialize},
-    std::ops::{Add, Mul, Sub},
+    std::ops::{Add, Div, Mul, Rem, Sub},
 };
 
 /// The number of nanoseconds in a microsecond.
