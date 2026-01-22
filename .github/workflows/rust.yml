@@ -1164,6 +1164,9 @@ jobs:
       DEPLOY_BACKEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
       DEPLOY_FRONTEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
     steps:
+      - name: Store secret to file
+        run: |
+          echo "$ANSIBLE_DEBIAN_PASSWORD" > /tmp/ansible_debian_password.txt
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref }}
