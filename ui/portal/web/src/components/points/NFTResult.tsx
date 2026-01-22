@@ -10,7 +10,7 @@ type NFTResultProps = {
 
 export const NFTResult: React.FC<NFTResultProps> = ({ nft, onContinue }) => {
   const handleShareToX = () => {
-    const text = `I just won a ${nft.label} NFT on Dango! 🎉`;
+    const text = `I just won a ${nft.label} NFT on Dango!`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
   };
@@ -22,7 +22,6 @@ export const NFTResult: React.FC<NFTResultProps> = ({ nft, onContinue }) => {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#4a4540]">
         <div className="w-6" />
         <p className="diatype-m-medium text-white/80">NFT Card</p>
@@ -37,7 +36,6 @@ export const NFTResult: React.FC<NFTResultProps> = ({ nft, onContinue }) => {
         </button>
       </div>
 
-      {/* NFT Display */}
       <div className="p-6 flex flex-col items-center gap-4">
         <motion.div
           className="w-full aspect-square max-w-[240px] lg:max-w-[280px] rounded-xl overflow-hidden bg-[#2a2520] flex items-center justify-center p-4"
@@ -54,7 +52,6 @@ export const NFTResult: React.FC<NFTResultProps> = ({ nft, onContinue }) => {
         </motion.div>
       </div>
 
-      {/* Actions */}
       <div className="px-6 pb-6 flex flex-col gap-3">
         <Button
           variant="secondary"

@@ -10,6 +10,9 @@ type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 type ChestOpeningOverlayProps = {
   variant: BoxVariant;
   onClose: () => void;
+  currentFrame: number;
+  animationFrames: string[] | null;
+  onAnimationComplete: () => void;
 };
 
 const CHEST_ASSETS: Record<BoxVariant, string> = {
@@ -22,7 +25,6 @@ const CHEST_ASSETS: Record<BoxVariant, string> = {
 const FLASH_IMAGE = "/images/points/flash.png";
 const FLASH_IMAGE2 = "/images/points/flash2.png";
 
-// TODO: Replace with actual NFT data from API
 const MOCK_NFTS: NFTItem[] = [
   {
     id: "common",
@@ -62,47 +64,33 @@ const MOCK_NFTS: NFTItem[] = [
   },
 ];
 
-// Keep references to prefetched images to prevent garbage collection
-const prefetchedImages: HTMLImageElement[] = [];
-
-// Prefetch all images on module load
-const prefetchImages = () => {
-  if (prefetchedImages.length > 0) return; // Already prefetched
-
-  const images = [
-    ...Object.values(CHEST_ASSETS),
-    FLASH_IMAGE,
-    FLASH_IMAGE2,
-    ...MOCK_NFTS.map((nft) => nft.imageSrc),
-  ];
-
-  images.forEach((src) => {
-    const img = new Image();
-    // Set crossOrigin for external URLs to enable caching
-    if (src.startsWith("http")) {
-      img.crossOrigin = "anonymous";
-    }
-    img.src = src;
-    prefetchedImages.push(img);
-  });
-};
-prefetchImages();
-
-// Export prefetch function so it can be called earlier from parent components
-export const prefetchChestImages = prefetchImages;
-
 type Phase = "chest" | "carousel" | "spinning" | "result";
 
-export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ variant, onClose }) => {
+export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
+  variant,
+  onClose,
+  currentFrame,
+  animationFrames,
+  onAnimationComplete,
+}) => {
   const [phase, setPhase] = useState<Phase>("chest");
   const [isShaking, setIsShaking] = useState(false);
   const [winningNFT, setWinningNFT] = useState<NFTItem | null>(null);
 
   const chestImage = CHEST_ASSETS[variant];
+  const hasAnimation = animationFrames !== null;
 
-  // Chest animation sequence
   useEffect(() => {
-    if (phase === "chest") {
+    if (phase === "chest" && hasAnimation && animationFrames) {
+      if (currentFrame >= animationFrames.length - 1) {
+        setPhase("carousel");
+        onAnimationComplete();
+      }
+    }
+  }, [phase, hasAnimation, currentFrame, animationFrames, onAnimationComplete]);
+
+  useEffect(() => {
+    if (phase === "chest" && !hasAnimation) {
       const shakeTimer = setTimeout(() => setIsShaking(true), 800);
       const transitionTimer = setTimeout(() => setPhase("carousel"), 1800);
       return () => {
@@ -110,7 +98,7 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ varian
         clearTimeout(transitionTimer);
       };
     }
-  }, [phase]);
+  }, [phase, hasAnimation]);
 
   const handleSpin = useCallback(() => {
     const randomIndex = Math.floor(Math.random() * MOCK_NFTS.length);
@@ -130,10 +118,8 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ varian
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
     >
-      {/* Dark backdrop */}
       <div className="absolute inset-0 bg-[#1a1714]" />
 
-      {/* Chest phase */}
       <AnimatePresence>
         {phase === "chest" && (
           <motion.div
@@ -144,7 +130,6 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ varian
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25, exit: { duration: 0.4, ease: "easeOut" } }}
           >
-            {/* Flash container with vignette mask */}
             <motion.div
               className="absolute w-[200vmax] h-[200vmax] pointer-events-none"
               initial={{ scale: 0.4, opacity: 0 }}
@@ -167,20 +152,18 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ varian
                 animate={{ rotate: isShaking ? 20 : 5 }}
                 transition={{ duration: 1.5, ease: "linear" }}
               />
-              {/* Vignette overlay to fade edges */}
               <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_0%,transparent_30%,#1a1714_70%)]" />
             </motion.div>
 
-            {/* Chest */}
             <motion.img
-              src={chestImage}
+              src={animationFrames ? animationFrames[currentFrame] : chestImage}
               alt={`${variant} chest`}
               className="relative z-10 w-[426px] h-[426px] lg:w-[646px] lg:h-[646px] object-contain"
               initial={{ scale: 0, opacity: 0 }}
               animate={{
                 scale: 1,
                 opacity: 1,
-                rotate: isShaking ? [0, -4, 4, -4, 4, -2, 2, 0] : 0,
+                rotate: !hasAnimation && isShaking ? [0, -4, 4, -4, 4, -2, 2, 0] : 0,
               }}
               exit={{ opacity: 0 }}
               transition={{
@@ -194,7 +177,6 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ varian
         )}
       </AnimatePresence>
 
-      {/* Carousel phase - stays visible during result */}
       <AnimatePresence>
         {(phase === "carousel" || phase === "spinning" || phase === "result") && (
           <motion.div
@@ -205,7 +187,6 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ varian
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            {/* Blurred ellipse background */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-[#EFDAA4]/50 blur-[250px] pointer-events-none -z-10" />
 
             <motion.p
@@ -268,7 +249,6 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ varian
         )}
       </AnimatePresence>
 
-      {/* Result flash - appears on top of carousel */}
       <AnimatePresence>
         {phase === "result" && (
           <motion.div
@@ -279,8 +259,6 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ varian
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            {/* Soft orange ellipse glow */}
-
             <motion.div
               className="absolute w-[200vmax] h-[200vmax] pointer-events-none"
               initial={{ scale: 0.6, opacity: 0 }}
@@ -294,14 +272,12 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({ varian
                 animate={{ rotate: 360 }}
                 transition={{ duration: 40, ease: "linear", repeat: Number.POSITIVE_INFINITY }}
               />
-              {/* Vignette overlay to fade edges */}
             </motion.div>
             <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_20%,transparent_50%,#1a1714_90%)]" />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Result modal - appears on top of flash */}
       <AnimatePresence>
         {phase === "result" && winningNFT && (
           <motion.div
