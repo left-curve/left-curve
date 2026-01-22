@@ -263,9 +263,9 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
             <motion.div
-              className="absolute w-[200vmax] h-[200vmax] pointer-events-none"
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 0.6, opacity: 1 }}
+              className="absolute w-[200vmax] h-[200vmax] pointer-events-none "
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 0.4, opacity: 1 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             >
               <motion.img

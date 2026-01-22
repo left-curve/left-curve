@@ -198,8 +198,7 @@ export const NFTCarousel: React.FC<NFTCarouselProps> = ({
   }, [isSpinning, targetNFT, spin]);
 
   useEffect(() => {
-    if (!isSpinning) {
-      hasSpunRef.current = false;
+    if (!isSpinning && !hasSpunRef.current) {
       motionX.set(initialOffset);
     }
   }, [isSpinning, motionX, initialOffset]);
