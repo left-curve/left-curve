@@ -79,6 +79,8 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
 
   const chestImage = CHEST_ASSETS[variant];
   const hasAnimation = animationFrames !== null;
+  const totalFrames = animationFrames?.length ?? 1;
+  const animationProgress = hasAnimation ? currentFrame / totalFrames : 0;
 
   useEffect(() => {
     if (phase === "chest" && hasAnimation && animationFrames) {
@@ -131,26 +133,27 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
             transition={{ duration: 0.25, exit: { duration: 0.4, ease: "easeOut" } }}
           >
             <motion.div
-              className="absolute w-[200vmax] h-[200vmax] pointer-events-none"
-              initial={{ scale: 0.4, opacity: 0 }}
+              className="absolute w-[200vmax] h-[200vmax] pointer-events-none flex items-center justify-center"
+              initial={{ scale: 0.2, opacity: 0.2 }}
               animate={{
-                scale: isShaking ? 1.1 : 0.7,
-                opacity: isShaking ? 0.9 : 0.4,
+                scale: hasAnimation ? 0.2 + animationProgress * 0.6 : isShaking ? 1.1 : 0.7,
+                opacity: hasAnimation ? 0.2 + animationProgress * 0.7 : isShaking ? 0.9 : 0.4,
               }}
               exit={{ scale: 1.3, opacity: 0 }}
               transition={{
-                scale: { duration: 0.8, ease: "easeOut" },
-                opacity: { duration: 0.5, ease: "easeOut" },
+                scale: { duration: hasAnimation ? 0.1 : 0.8, ease: "easeOut" },
+                opacity: { duration: hasAnimation ? 0.1 : 0.5, ease: "easeOut" },
                 exit: { duration: 0.3 },
               }}
             >
               <motion.img
                 src={FLASH_IMAGE}
-                alt=""
-                className="w-full h-full object-cover [filter:sepia(0.3)_saturate(1.5)_hue-rotate(-10deg)_blur(3px)]"
+                alt="flash"
+                className="w-full h-full object-contain"
+                style={{ marginTop: "5%" }}
                 initial={{ rotate: 0 }}
-                animate={{ rotate: isShaking ? 20 : 5 }}
-                transition={{ duration: 1.5, ease: "linear" }}
+                animate={{ rotate: hasAnimation ? animationProgress * 15 : isShaking ? 20 : 5 }}
+                transition={{ duration: hasAnimation ? 0.1 : 1.5, ease: "linear" }}
               />
               <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_0%,transparent_30%,#1a1714_70%)]" />
             </motion.div>

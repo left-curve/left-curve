@@ -73,7 +73,7 @@ const ProfileTable: React.FC = () => {
 };
 
 const RewardsLoot: React.FC = () => {
-  const currentVolume = 275350;
+  const currentVolume = 500350;
   const { openChest } = useChestOpening();
 
   return (
