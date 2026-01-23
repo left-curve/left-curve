@@ -149,7 +149,7 @@ jobs:
         run: |
           set -euo pipefail
           cosign verify \
-            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@refs/heads/main" \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@${{ github.ref }}" \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             "$IMAGE@$DIGEST" >/dev/null
       - name: CometBFT Docker Deploy Summary
