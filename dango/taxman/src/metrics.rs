@@ -1,3 +1,5 @@
+// This metric used to be part of the DEX contract. For compatibility, we keep
+// the `dex` in the label without changing it to `taxman`.
 pub const LABEL_DURATION_STORE_VOLUME: &str = "dango.contract.dex.store_volume.duration";
 
 pub fn init_metrics() {
