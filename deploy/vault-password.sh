@@ -1,10 +1,10 @@
 #!/bin/bash
 
 if [ -n "$ANSIBLE_VAULT_PASSWORD" ]; then
-  # CI/GitHub Actions - use environment variable
+  # Use cached environment variable (set by just add-passwords or CI)
   echo "$ANSIBLE_VAULT_PASSWORD"
-elif command -v pass >/dev/null 2>&1 && pass show dango/deploy-vault >/dev/null 2>&1; then
-  # Use pass (passwordstore.org) if available
+elif command -v pass >/dev/null 2>&1; then
+  # Use pass (passwordstore.org)
   pass show dango/deploy-vault
 elif command -v security >/dev/null 2>&1; then
   # macOS - use Keychain

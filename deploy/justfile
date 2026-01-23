@@ -141,3 +141,13 @@ add-deploy-key:
 add-debian-key:
   ./debian-key.sh | ssh-add - >/dev/null
   @echo "debian key added to ssh-agent. You can now run ansible-playbook normally."
+
+# Pre-fetch vault passwords into environment variables (memory only, no disk)
+# Spawns a new shell with passwords set. Exit the shell when done.
+add-passwords:
+  #!/bin/bash
+  VAULT=$(./vault-password.sh 2>/dev/null) || { echo "Failed to get vault password" >&2; exit 1; }
+  DEBIAN=$(./debian-password.sh 2>/dev/null) || { echo "Failed to get debian password" >&2; exit 1; }
+  export ANSIBLE_VAULT_PASSWORD="$VAULT"
+  export ANSIBLE_DEBIAN_PASSWORD="$DEBIAN"
+  exec $SHELL
