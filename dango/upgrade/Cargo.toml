@@ -9,6 +9,8 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 
 [dependencies]
-grug     = { workspace = true }
-grug-app = { workspace = true }
-tracing  = { workspace = true }
+dango-taxman = { workspace = true, features = ["library"] }
+dango-types  = { workspace = true }
+grug         = { workspace = true }
+grug-app     = { workspace = true }
+tracing      = { workspace = true }
