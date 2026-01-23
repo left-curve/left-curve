@@ -51,7 +51,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, block: BlockInfo) -> A
     tracing::info!("Deleted records in DEX contract VOLUMES_BY_USER");
 
     // Convert the volumes records to the new format expected by taxman.
-    // This involves too changes:
+    // This involves two changes:
     // 1. For each user, we only need to keep the most recent record.
     //    We will only start to utilize volume data by late Q1, so older data aren't necessary.
     //    To achieve this, we utilize the fact BTreeMap is sorted ascendingly.
