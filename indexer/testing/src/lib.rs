@@ -31,13 +31,9 @@ use {
 pub use indexer_client::PageInfo;
 
 pub mod block;
-pub mod graphql;
 pub mod setup;
 
 const DEFAULT_TIMEOUT_SECONDS: u64 = 5;
-
-// Re-export the configurable pagination function for use by other crates
-pub use graphql::paginate_models_with_app_builder;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
@@ -115,22 +111,6 @@ pub fn build_app_service(
     let graphql_schema = build_schema(app_ctx.clone());
 
     build_actix_app(app_ctx, graphql_schema)
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[allow(unused)]
-#[serde(rename_all = "camelCase")]
-pub struct PaginatedResponse<X> {
-    pub edges: Vec<Edge<X>>,
-    pub nodes: Vec<X>,
-    pub page_info: PageInfo,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[allow(unused)]
-pub struct Edge<X> {
-    pub node: X,
-    pub cursor: String,
 }
 
 pub async fn call_batch_graphql<R, A, S, B>(
@@ -448,27 +428,4 @@ where
     let app = App::new().wrap(Logger::default()).wrap(Compress::default());
 
     app.configure(config_app(app_ctx, graphql_schema))
-}
-
-/// Convenience function for paginated GraphQL calls
-pub async fn call_paginated_graphql<R, A, S, B>(
-    app: A,
-    request_body: GraphQLCustomRequest<'_>,
-) -> anyhow::Result<PaginatedResponse<R>>
-where
-    R: DeserializeOwned,
-    A: IntoServiceFactory<S, Request>,
-    S: ServiceFactory<
-            Request,
-            Config = AppConfig,
-            Response = ServiceResponse<B>,
-            Error = actix_web::Error,
-        >,
-    S::InitError: std::fmt::Debug,
-    B: MessageBody,
-{
-    let response: GraphQLCustomResponse<PaginatedResponse<R>> =
-        call_graphql(app, request_body).await?;
-
-    Ok(response.data)
 }
