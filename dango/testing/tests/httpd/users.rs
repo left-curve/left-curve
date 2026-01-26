@@ -8,7 +8,6 @@ use {
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
     indexer_client::{User, Users, user, users},
-    std::collections::HashMap,
 };
 
 #[tokio::test(flavor = "multi_thread")]
@@ -101,33 +100,20 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
 
                 assert_that!(first_user.user_index).is_equal_to(test_account.user_index() as i64);
 
-                // Manually check the public keys because the order is not guaranteed
-                let received_public_keys: Vec<HashMap<String, String>> = first_user
-                    .public_keys
+                // Check the public keys (order is not guaranteed)
+                let public_keys = &first_user.public_keys;
+                assert_that!(public_keys.len()).is_equal_to(2);
+
+                let has_new_key = public_keys
                     .iter()
-                    .map(|pk| {
-                        let mut map = HashMap::new();
-                        map.insert("publicKey".to_string(), pk.public_key.clone());
-                        map.insert("keyHash".to_string(), pk.key_hash.clone());
-                        map
-                    })
-                    .collect();
+                    .any(|p| p.public_key == pk.to_string() && p.key_hash == key_hash.to_string());
+                assert_that!(has_new_key).is_true();
 
-                assert_that!(received_public_keys).contains(HashMap::from([
-                    ("publicKey".to_string(), pk.to_string()),
-                    ("keyHash".to_string(), key_hash.to_string()),
-                ]));
-
-                assert_that!(received_public_keys).contains(HashMap::from([
-                    (
-                        "publicKey".to_string(),
-                        test_account.first_key().to_string(),
-                    ),
-                    (
-                        "keyHash".to_string(),
-                        test_account.first_key_hash().to_string(),
-                    ),
-                ]));
+                let has_original_key = public_keys.iter().any(|p| {
+                    p.public_key == test_account.first_key().to_string()
+                        && p.key_hash == test_account.first_key_hash().to_string()
+                });
+                assert_that!(has_original_key).is_true();
 
                 Ok::<(), anyhow::Error>(())
             })
