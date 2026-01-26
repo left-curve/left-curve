@@ -184,14 +184,14 @@ where
     .await
 }
 
-/// Tracks ports already allocated to avoid collisions.
+/// Tracks ports already allocated to avoid collisions within this process.
 static USED_PORTS: LazyLock<StdMutex<HashSet<u16>>> =
     LazyLock::new(|| StdMutex::new(HashSet::new()));
 
-/// Get a random port for the mock server.
+/// Get an available port for the mock server.
 ///
-/// Generates a random port in the range 20000-60000, ensuring it hasn't
-/// been used by another test in this process.
+/// Uses OS-assigned port allocation (binding to port 0) and tracks used ports
+/// to avoid collisions when multiple tests request ports in the same process.
 pub fn get_mock_socket_addr() -> u16 {
     let mut used = USED_PORTS.lock().unwrap();
 
