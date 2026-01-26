@@ -489,14 +489,14 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
-    let user_index = test_account1.user_index();
+    let user_index = test_account1.user_index() as i64;
 
     suite.app.indexer.wait_for_finish().await?;
 
     // Use typed subscription from indexer-client
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeAccounts::build_query(subscribe_accounts::Variables {
-            user_index: Some(user_index as i64),
+            user_index: Some(user_index),
             ..Default::default()
         }),
         "accounts",
@@ -530,25 +530,14 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
-                // Helper to verify account has the expected user_index using typed response
-                let verify_account_user_index =
-                    |account: &subscribe_accounts::SubscribeAccountsAccounts| {
-                        assert!(!account.users.is_empty(), "Expected at least one user");
-                        assert_that!(account.users[0].user_index).is_equal_to(user_index as i64);
-                    };
-
                 // 1st response is always accounts from the last block if any
                 let response = parse_graphql_subscription_response::<
                     Vec<subscribe_accounts::SubscribeAccountsAccounts>,
                 >(&mut framed, name)
                 .await?;
 
-                let account = response
-                    .data
-                    .first()
-                    .expect("Expected at least one account");
-
-                verify_account_user_index(account);
+                assert_that!(response.data.first().unwrap().users[0].user_index)
+                    .is_equal_to(user_index);
 
                 create_account_tx.send(2).await.unwrap();
 
@@ -558,12 +547,8 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
                 >(&mut framed, name)
                 .await?;
 
-                let account = response
-                    .data
-                    .first()
-                    .expect("Expected at least one account");
-
-                verify_account_user_index(account);
+                assert_that!(response.data.first().unwrap().users[0].user_index)
+                    .is_equal_to(user_index);
 
                 Ok::<(), anyhow::Error>(())
             })

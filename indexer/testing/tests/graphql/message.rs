@@ -238,12 +238,11 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 )
                 .await?;
 
-                assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
-                assert_that!(response.data.first().unwrap().method_name.as_str())
-                    .is_equal_to("transfer");
-                assert_that!(response.data.first().unwrap().sender_addr.as_str())
-                    .is_equal_to(owner_addr.as_str());
                 assert_that!(response.data).has_length(1);
+                let msg = response.data.first().unwrap();
+                assert_that!(msg.block_height).is_equal_to(1);
+                assert_that!(msg.method_name.as_str()).is_equal_to("transfer");
+                assert_that!(msg.sender_addr.as_str()).is_equal_to(owner_addr.as_str());
 
                 crate_block_tx.send(2).await?;
 
@@ -254,12 +253,11 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 )
                 .await?;
 
-                assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
-                assert_that!(response.data.first().unwrap().method_name.as_str())
-                    .is_equal_to("transfer");
-                assert_that!(response.data.first().unwrap().sender_addr.as_str())
-                    .is_equal_to(owner_addr.as_str());
                 assert_that!(response.data).has_length(1);
+                let msg = response.data.first().unwrap();
+                assert_that!(msg.block_height).is_equal_to(2);
+                assert_that!(msg.method_name.as_str()).is_equal_to("transfer");
+                assert_that!(msg.sender_addr.as_str()).is_equal_to(owner_addr.as_str());
 
                 crate_block_tx.send(3).await?;
 
@@ -270,12 +268,11 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 )
                 .await?;
 
-                assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
-                assert_that!(response.data.first().unwrap().method_name.as_str())
-                    .is_equal_to("transfer");
-                assert_that!(response.data.first().unwrap().sender_addr.as_str())
-                    .is_equal_to(owner_addr.as_str());
                 assert_that!(response.data).has_length(1);
+                let msg = response.data.first().unwrap();
+                assert_that!(msg.block_height).is_equal_to(3);
+                assert_that!(msg.method_name.as_str()).is_equal_to("transfer");
+                assert_that!(msg.sender_addr.as_str()).is_equal_to(owner_addr.as_str());
 
                 Ok::<(), anyhow::Error>(())
             })
