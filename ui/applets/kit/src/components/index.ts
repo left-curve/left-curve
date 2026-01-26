@@ -55,6 +55,7 @@ export { DepositAddressBox } from "./DepositAddressBox";
 export { ConnectWalletWithModal } from "./ConnectWalletWithModal";
 export { TruncateResponsive } from "./TruncateResponsive";
 export { WarningContainer } from "./WarningContainer";
+export { AuthenticatedButton } from "./AuthenticatedButton";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -128,3 +129,9 @@ export { IconDango } from "./icons/IconDango";
 export { IconEdit } from "./icons/IconEdit";
 export { IconWalletWithCross } from "./icons/IconWalletWithCross";
 export { IconNotiStatus } from "./icons/IconNotiStatus";
+export { IconStatus } from "./icons/IconStatus";
+export { IconGift } from "./icons/IconGift";
+export { IconSwapMoney } from "./icons/IconSwapMoney";
+export { IconSprout } from "./icons/IconSprout";
+export { IconFriendshipGroup } from "./icons/IconFriendshipGroup";
+export { IconLock } from "./icons/IconLock";

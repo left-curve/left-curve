@@ -185,7 +185,20 @@ export default defineConfig({
       },
     },
   },
-  html: { template: "public/index.html", title: "" },
+  html: {
+    template: "public/index.html",
+    title: "",
+    tags:
+      environment === "test" || environment === "dev"
+        ? [
+            { tag: "script", attrs: { src: "https://cdn.jsdelivr.net/npm/eruda" } },
+            {
+              tag: "script",
+              children: "if (window.innerWidth <= 1024) { eruda.init(); }",
+            },
+          ]
+        : [],
+  },
   performance: {
     prefetch: {
       type: "all-assets",

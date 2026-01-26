@@ -56,7 +56,7 @@ services:
       retries: 3
 
   cometbft:
-    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.19}
+    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.21}
     labels:
       <<: *common-labels
     ports:

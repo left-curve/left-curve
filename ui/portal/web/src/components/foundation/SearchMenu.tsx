@@ -182,7 +182,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({
   allApplets,
 }) => {
   const navigate = useNavigate();
-  const { applets, block, txs, account, contract } = searchResult;
+  const { applets, block, txs, account, contracts } = searchResult;
 
   return (
     <AnimatePresence mode="wait" custom={isVisible}>
@@ -287,16 +287,21 @@ const Body: React.FC<SearchMenuBodyProps> = ({
                   </Command.Item>
                 </Command.Group>
               ) : null}
-              {contract ? (
+              {contracts.length ? (
                 <Command.Group heading="Contracts">
-                  <Command.Item
-                    key={contract.address}
-                    value={contract.address}
-                    className="group"
-                    onSelect={() => [navigate({ to: `/contract/${contract.address}` }), hideMenu()]}
-                  >
-                    <SearchItem.Contract contract={contract} />
-                  </Command.Item>
+                  {contracts.map((contract) => (
+                    <Command.Item
+                      key={contract.address}
+                      value={contract.address}
+                      className="group"
+                      onSelect={() => [
+                        navigate({ to: `/contract/${contract.address}` }),
+                        hideMenu(),
+                      ]}
+                    >
+                      <SearchItem.Contract contract={contract} />
+                    </Command.Item>
+                  ))}
                 </Command.Group>
               ) : null}
             </Command.List>

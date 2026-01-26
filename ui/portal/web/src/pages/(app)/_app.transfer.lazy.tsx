@@ -67,7 +67,7 @@ function TransferApplet() {
 
   const isValid20HexAddress = isValidAddress(inputs.address?.value || "");
 
-  const { data: doesUserExist = false } = useQuery({
+  const { data: doesUserExist = false, isLoading } = useQuery({
     enabled: !!inputs.address?.value?.length,
     queryKey: ["transfer", inputs.address?.value],
     queryFn: async ({ signal }) => {
@@ -84,7 +84,11 @@ function TransferApplet() {
   });
 
   const showAddressWarning =
-    action === "send" && inputs.address?.value && isValid20HexAddress && !doesUserExist;
+    !isLoading &&
+    action === "send" &&
+    inputs.address?.value &&
+    isValid20HexAddress &&
+    !doesUserExist;
 
   const selectedCoin = coins.byDenom[selectedDenom];
 
@@ -159,7 +163,7 @@ function TransferApplet() {
                     asset={selectedCoin}
                     balances={balances}
                     controllers={controllers}
-                    isDisabled={isPending}
+                    isDisabled={isPending || !isConnected}
                     shouldValidate
                     showRange
                     showCoinSelector
@@ -187,7 +191,7 @@ function TransferApplet() {
                     })}
                     label="To"
                     placeholder="Wallet address or name"
-                    isDisabled={isPending}
+                    isDisabled={isPending || !isConnected}
                   />
                 </div>
 
@@ -196,7 +200,12 @@ function TransferApplet() {
                   fullWidth
                   className="mt-5"
                   isLoading={isPending}
-                  isDisabled={!isConnected || !!inputs.amount?.error}
+                  isDisabled={
+                    !isConnected ||
+                    !!inputs.amount?.error ||
+                    !isValid20HexAddress ||
+                    !!showAddressWarning
+                  }
                 >
                   {m["common.send"]()}
                 </Button>
@@ -204,25 +213,27 @@ function TransferApplet() {
               {showAddressWarning && <WarningTransferAccounts variant="send" />}
             </div>
           ) : (
-            <div className="flex flex-col w-full gap-4">
-              <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-surface-secondary-rice rounded-xl shadow-account-card p-4">
-                <div className="flex flex-col gap-1 items-center">
-                  <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
-                  <div className="flex gap-1">
-                    <TruncateText
-                      className="diatype-sm-medium text-ink-tertiary-500"
-                      text={account?.address}
-                    />
-                    <TextCopy
-                      copyText={account?.address}
-                      className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
-                    />
-                  </div>
-                </div>
-                <QRCode data={account?.address as string} />
-              </div>
+            <>
               <WarningTransferAccounts variant="receive" />
-            </div>
+              <div className="flex flex-col w-full gap-4">
+                <div className="flex flex-col w-full gap-6 items-center justify-center text-center ">
+                  <div className="flex flex-col gap-1 items-center">
+                    <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
+                    <div className="flex gap-1">
+                      <TruncateText
+                        className="diatype-sm-medium text-ink-tertiary-500"
+                        text={account?.address}
+                      />
+                      <TextCopy
+                        copyText={account?.address}
+                        className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+                      />
+                    </div>
+                  </div>
+                  <QRCode data={account?.address as string} size={220} />
+                </div>
+              </div>
+            </>
           )}
         </ResizerContainer>
       </div>

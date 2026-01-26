@@ -86,6 +86,12 @@ export {
   forgotUsername,
 } from "./queries/forgotUsername.js";
 
+export {
+  type GetAccountStatusParameters,
+  type GetAccountStatusReturnType,
+  getAccountStatus,
+} from "./queries/getAccountStatus.js";
+
 /* -------------------------------------------------------------------------- */
 /*                                  Mutations                                 */
 /* -------------------------------------------------------------------------- */

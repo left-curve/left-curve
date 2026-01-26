@@ -32,7 +32,7 @@ export const BridgeWithdraw = forwardRef((props: BridgeWithdrawProps, _ref) => {
   });
 
   return (
-    <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[25rem]">
+    <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray text-ink-secondary-700 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[25rem]">
       <IconButton
         className="hidden md:block absolute right-4 top-4"
         variant="link"

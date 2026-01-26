@@ -655,6 +655,8 @@
     "warning": {
       "deposit": "deposit",
       "withdraw": "withdraw",
+      "receiveTitle": "This address can only receive funds from other Dango accounts",
+      "receivePreMessage": "Funds sent from CEX or other blockchains, such as Ethereum, will be lost and cannot be recovered.",
       "receiveCex": "To fund your Dango address from a CEX or another blockchain such as Ethereum, use the {app} app.",
       "sendNonDango": "This account does not exist on Dango. Are you attempting to withdraw funds to Ethereum? Use the {app} app instead. Ethereum addresses and Dango addresses have the same format, but they are not the same."
     }
@@ -762,7 +764,11 @@
       "title": "Current Session",
       "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
       "remaining": "Remaining time",
-      "userStatus": "Account Status",
+      "userStatus": {
+        "title": "Account Status",
+        "description": "Activate your account by making an initial deposit of at least $10.",
+        "button": "Deposit now"
+      },
       "accountStatus": [
         {
           "declarations": ["input status"],
@@ -971,6 +977,9 @@
     "errors": {
       "minimumOrderSize": "Order size too small. Minimum order size is {minOrderSize} {symbol}"
     }
+  },
+  "points": {
+    "campaign": "Campaign"
   },
   "errors": {
     "validations": {

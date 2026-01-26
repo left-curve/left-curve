@@ -87,6 +87,7 @@ services:
 
   alertmanager-discord:
     image: benjojo/alertmanager-discord
+    restart: unless-stopped
     extra_hosts: *wg-hosts
     environment:
       - DISCORD_WEBHOOK={{ status_discord_webhook }}

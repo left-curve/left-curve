@@ -24,7 +24,7 @@ where
 
     let status = client.query_status(None).await?;
     println!(
-        "Connected to HTTP client. Current height: {}",
+        "Connected to Dango via HTTP. Current height: {}",
         status.last_finalized_block.height
     );
 

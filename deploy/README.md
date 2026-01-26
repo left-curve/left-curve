@@ -43,9 +43,18 @@ ssh-copy-id -i ~/.ssh/debian_deploy.pub username@public_ip
 
 ## Setup Ansible Vault
 
-### First time setup (macOS)
+### First time setup (recommended: pass)
 
-Add vault password to Keychain:
+If you have [pass](https://www.passwordstore.org/) installed, store the vault password:
+
+```bash
+pass insert dango/deploy-vault
+# Enter the password when prompted (ASK_TEAM_FOR_PASSWORD)
+```
+
+### First time setup (macOS Keychain fallback)
+
+If you don't have `pass`, you can use macOS Keychain. Add vault password to Keychain:
 
 ```bash
 security add-generic-password \
@@ -75,7 +84,14 @@ playbooks will try to decrypt that vault, and no extra CLI flags are needed.
 No one should need debian/sudo access to the servers, this is a critical
 access. But here is the process.
 
-Add debian password to Keychain:
+If you have [pass](https://www.passwordstore.org/) installed, store the debian password:
+
+```bash
+pass insert dango/debian-vault
+# Enter the password when prompted (ASK_TEAM_FOR_PASSWORD)
+```
+
+If you don't have `pass`, you can use macOS Keychain. Add debian password to Keychain:
 
 ```bash
 security add-generic-password \

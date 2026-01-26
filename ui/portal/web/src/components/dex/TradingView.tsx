@@ -28,7 +28,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
   const { base, quote } = coins;
   const { timeFormat, timeZone } = settings;
 
-  const [chartState, setChartState, hasLoaded] = useStorage<object>(`tradingview.${pairSymbol}`, {
+  const [chartState, setChartState, hasLoaded] = useStorage<object>(`tv_v1.${pairSymbol}`, {
     sync: true,
     version: 1.2,
     migrations: {
