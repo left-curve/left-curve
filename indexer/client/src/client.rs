@@ -1,5 +1,5 @@
 use {
-    crate::{Variables, broadcast_tx_sync, query_app, query_store, search_tx, simulate},
+    crate::{PageInfo, Variables, broadcast_tx_sync, query_app, query_store, search_tx, simulate},
     anyhow::{anyhow, bail, ensure},
     async_trait::async_trait,
     error_backtrace::BacktracedError,
@@ -12,7 +12,7 @@ use {
     },
     reqwest::IntoUrl,
     serde::Serialize,
-    std::str::FromStr,
+    std::{fmt::Debug, str::FromStr},
     url::Url,
 };
 
@@ -73,6 +73,92 @@ impl HttpClient {
             },
             None => bail!("no data returned from query: errors: {:?}", body.errors),
         }
+    }
+
+    /// Paginate through all results of a GraphQL query using cursor-based pagination.
+    ///
+    /// This method handles the pagination loop, collecting all items across pages.
+    /// It supports both forward pagination (using `first`) and backward pagination
+    /// (using `last`).
+    ///
+    /// # Arguments
+    ///
+    /// * `first` - Number of items to fetch per page when paginating forward (use with `None` for `last`)
+    /// * `last` - Number of items to fetch per page when paginating backward (use with `None` for `first`)
+    /// * `build_variables` - Closure that builds the query variables given pagination cursors
+    /// * `extract_page` - Closure that extracts the nodes and page info from the response data
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let all_accounts = client.paginate_all(
+    ///     Some(10), // fetch 10 per page, forward pagination
+    ///     None,
+    ///     |after, before, first, last| accounts::Variables {
+    ///         after,
+    ///         before,
+    ///         first: first.map(|f| f as i64),
+    ///         last: last.map(|l| l as i64),
+    ///         ..Default::default()
+    ///     },
+    ///     |data| {
+    ///         let page_info = PageInfo {
+    ///             start_cursor: data.accounts.page_info.start_cursor,
+    ///             end_cursor: data.accounts.page_info.end_cursor,
+    ///             has_next_page: data.accounts.page_info.has_next_page,
+    ///             has_previous_page: data.accounts.page_info.has_previous_page,
+    ///         };
+    ///         (data.accounts.nodes, page_info)
+    ///     },
+    /// ).await?;
+    /// ```
+    pub async fn paginate_all<V, N, BuildVariables, ExtractPage>(
+        &self,
+        first: Option<i64>,
+        last: Option<i64>,
+        build_variables: BuildVariables,
+        extract_page: ExtractPage,
+    ) -> Result<Vec<N>, anyhow::Error>
+    where
+        V: Variables + Serialize + Debug,
+        <V::Query as GraphQLQuery>::ResponseData: Debug,
+        BuildVariables: Fn(Option<String>, Option<String>, Option<i64>, Option<i64>) -> V,
+        ExtractPage: Fn(<V::Query as GraphQLQuery>::ResponseData) -> (Vec<N>, PageInfo),
+    {
+        let mut all_items = vec![];
+        let mut after: Option<String> = None;
+        let mut before: Option<String> = None;
+
+        loop {
+            let variables = build_variables(after.clone(), before.clone(), first, last);
+            let data = self.post_graphql(variables).await?;
+            let (nodes, page_info) = extract_page(data);
+
+            match (first, last) {
+                (Some(_), None) => {
+                    // Forward pagination
+                    all_items.extend(nodes);
+                    if !page_info.has_next_page {
+                        break;
+                    }
+                    after = page_info.end_cursor;
+                },
+                (None, Some(_)) => {
+                    // Backward pagination - items come in reverse order
+                    all_items.extend(nodes.into_iter().rev());
+                    if !page_info.has_previous_page {
+                        break;
+                    }
+                    before = page_info.start_cursor;
+                },
+                _ => {
+                    // Invalid: must specify exactly one of first or last
+                    bail!("paginate_all requires exactly one of `first` or `last` to be Some");
+                },
+            }
+        }
+
+        Ok(all_items)
     }
 }
 

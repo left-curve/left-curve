@@ -27,6 +27,9 @@ use {
     tokio::time::{Duration, timeout},
 };
 
+// Re-export PageInfo from indexer_client for use in pagination helpers
+pub use indexer_client::PageInfo;
+
 pub mod block;
 pub mod graphql;
 pub mod setup;
@@ -128,16 +131,6 @@ pub struct PaginatedResponse<X> {
 pub struct Edge<X> {
     pub node: X,
     pub cursor: String,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[allow(unused)]
-#[serde(rename_all = "camelCase")]
-pub struct PageInfo {
-    pub start_cursor: Option<String>,
-    pub end_cursor: Option<String>,
-    pub has_next_page: bool,
-    pub has_previous_page: bool,
 }
 
 pub async fn call_batch_graphql<R, A, S, B>(

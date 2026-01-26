@@ -2,6 +2,19 @@ pub trait Variables {
     type Query: graphql_client::GraphQLQuery<Variables = Self>;
 }
 
+/// Page info for cursor-based pagination in GraphQL responses.
+///
+/// This struct provides a common type for pagination metadata that can be
+/// extracted from the various generated GraphQL query response types.
+#[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageInfo {
+    pub start_cursor: Option<String>,
+    pub end_cursor: Option<String>,
+    pub has_next_page: bool,
+    pub has_previous_page: bool,
+}
+
 macro_rules! generate_types {
     ($({name: $name:ident, path: $path:literal, $(test_with: $var:expr)?}), * $(,)? ) => {
         $(
