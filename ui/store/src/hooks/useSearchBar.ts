@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useReducer, useState } from "react";
 import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
+import { useAppConfig } from "./useAppConfig.js";
 
 import { wait } from "@left-curve/dango/utils";
 import { isValidAddress } from "@left-curve/dango";
@@ -26,24 +27,34 @@ export type SearchBarResult = {
   block?: IndexedBlock;
   txs: IndexedTransaction[];
   applets: AppletMetadata[];
-  contract?: ContractInfo & { address: Address };
+  contracts: (ContractInfo & { address: Address })[];
   account?: Account;
 };
 
 export function useSearchBar(parameters: UseSearchBarParameters) {
   const applets = Object.values(parameters.applets);
   const { debounceMs = 300, favApplets } = parameters;
+  const { data: appConfig } = useAppConfig();
   const [searchText, setSearchText] = useState("");
+
+  const allContracts = useMemo(() => {
+    if (!appConfig) return [];
+    return Object.entries(appConfig.addresses)
+      .filter(([key]) => !key.startsWith("0x"))
+      .map(([key, value]) => ({ label: key, address: value })) as (ContractInfo & {
+      address: Address;
+    })[];
+  }, [appConfig]);
 
   const noResult: SearchBarResult = useMemo(
     () => ({
       block: undefined,
       txs: [],
       applets: Object.values(applets.filter((applet) => favApplets.includes(applet.id))),
-      contract: undefined,
+      contracts: allContracts,
       account: undefined,
     }),
-    [applets, favApplets],
+    [applets, favApplets, allContracts],
   );
 
   const [searchResult, setSearchResult] = useReducer(
@@ -75,6 +86,13 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
             keys: ["title", "description", (obj: AppletMetadata) => obj.keywords?.join()],
           })
           .map(({ obj }) => obj),
+        contracts: fuzzysort
+          .go(searchText, allContracts, {
+            threshold: 0.5,
+            all: false,
+            key: "label",
+          })
+          .map(({ obj }) => obj),
       });
 
       await wait(debounceMs);
@@ -97,7 +115,7 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
               setSearchResult({ account: account ? account : undefined });
             } else {
               setSearchResult({
-                contract: { ...contractInfo, address: searchText as Address },
+                contracts: [{ ...contractInfo, address: searchText as Address }],
               });
             }
           })(),
