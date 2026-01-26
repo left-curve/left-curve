@@ -1,15 +1,15 @@
 use {
     assert_json_diff::assert_json_eq,
     assertor::*,
-    graphql_client::{GraphQLQuery, Response},
+    graphql_client::GraphQLQuery,
     grug_types::{
         BroadcastClientExt, Coins, Denom, GasOption, Inner, Json, JsonSerExt, Message, Query,
         QueryAppConfigRequest, QueryBalanceRequest, ResultExt,
     },
     indexer_client::{QueryApp, query_app},
     indexer_testing::{
-        GraphQLCustomRequest, block::create_block, build_app_service, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, block::create_block, build_app_service, call_graphql_query,
+        call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     serde_json::json,
     std::str::FromStr,
@@ -32,19 +32,12 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
                     height: Some(1),
                 };
 
-                let request_body = QueryApp::build_query(variables);
-
                 let app = build_app_service(httpd_context);
-                let app = actix_web::test::init_service(app).await;
+                let query_body = QueryApp::build_query(variables);
 
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<query_app::ResponseData> =
-                    serde_json::from_slice(&response)?;
+                let response =
+                    call_graphql_query::<_, query_app::ResponseData, _, _, _>(app, query_body)
+                        .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();

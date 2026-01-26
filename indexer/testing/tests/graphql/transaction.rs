@@ -5,7 +5,7 @@ use {
     dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
     dango_testing::{Preset, TestOption},
     dango_types::constants::usdc,
-    graphql_client::{GraphQLQuery, Response},
+    graphql_client::GraphQLQuery,
     grug::{BlockCreation, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, Signer},
     grug_types::{BroadcastClient, BroadcastClientExt, Denom, GasOption},
     indexer_client::{Block, HttpClient, Transactions, block, transactions},
@@ -13,7 +13,8 @@ use {
     indexer_testing::{
         GraphQLCustomRequest,
         block::{create_block, create_blocks},
-        build_app_service, call_ws_graphql_stream, parse_graphql_subscription_response,
+        build_app_service, call_graphql_query, call_ws_graphql_stream,
+        parse_graphql_subscription_response,
     },
     sea_orm::EntityTrait,
     serde_json::json,
@@ -30,18 +31,11 @@ async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let request_body = Block::build_query(block::Variables::default());
-
                 let app = build_app_service(httpd_context);
-                let app = actix_web::test::init_service(app).await;
+                let query_body = Block::build_query(block::Variables::default());
 
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<block::ResponseData> = serde_json::from_slice(&response)?;
+                let response =
+                    call_graphql_query::<_, block::ResponseData, _, _, _>(app, query_body).await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -62,24 +56,17 @@ async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
 async fn graphql_returns_transactions() -> anyhow::Result<()> {
     let (httpd_context, _client, accounts) = create_block().await?;
 
-    let request_body = Transactions::build_query(transactions::Variables::default());
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
-                let app = actix_web::test::init_service(app).await;
+                let query_body = Transactions::build_query(transactions::Variables::default());
 
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<transactions::ResponseData> =
-                    serde_json::from_slice(&response)?;
+                let response =
+                    call_graphql_query::<_, transactions::ResponseData, _, _, _>(app, query_body)
+                        .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -127,18 +114,13 @@ async fn graphql_paginate_transactions() -> anyhow::Result<()> {
                             ..Default::default()
                         };
 
-                        let request_body = Transactions::build_query(variables);
                         let app = build_app_service(httpd_context.clone());
-                        let app = actix_web::test::init_service(app).await;
-
-                        let request = actix_web::test::TestRequest::post()
-                            .uri("/graphql")
-                            .set_json(&request_body)
-                            .to_request();
-
-                        let response = actix_web::test::call_and_read_body(&app, request).await;
-                        let response: Response<transactions::ResponseData> =
-                            serde_json::from_slice(&response)?;
+                        let query_body = Transactions::build_query(variables);
+                        let response =
+                            call_graphql_query::<_, transactions::ResponseData, _, _, _>(
+                                app, query_body,
+                            )
+                            .await?;
 
                         let data = response.data.unwrap();
 

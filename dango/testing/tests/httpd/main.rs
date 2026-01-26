@@ -52,9 +52,8 @@ pub fn build_actix_app(
 /// Helper function to make GraphQL queries in tests.
 ///
 /// This reduces boilerplate by handling:
-/// - Building and initializing the actix app
-/// - Creating and sending the HTTP request
-/// - Parsing the response
+/// - Building the dango actix app from context
+/// - Delegating to indexer_testing::call_graphql_query
 ///
 /// # Example
 /// ```ignore
@@ -72,17 +71,7 @@ where
     R: DeserializeOwned,
 {
     let app = build_actix_app(context);
-    let app = actix_web::test::init_service(app).await;
-
-    let request = actix_web::test::TestRequest::post()
-        .uri("/graphql")
-        .set_json(&query_body)
-        .to_request();
-
-    let response = actix_web::test::call_and_read_body(&app, request).await;
-    let response: graphql_client::Response<R> = serde_json::from_slice(&response)?;
-
-    Ok(response)
+    indexer_testing::call_graphql_query(app, query_body).await
 }
 
 /// Macro to generate pagination test helpers for GraphQL queries.

@@ -1,12 +1,13 @@
 use {
     assertor::*,
-    graphql_client::{GraphQLQuery, Response},
+    graphql_client::GraphQLQuery,
     grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
     indexer_client::{Messages, messages},
     indexer_testing::{
         GraphQLCustomRequest,
         block::{create_block, create_blocks},
-        build_app_service, call_ws_graphql_stream, parse_graphql_subscription_response,
+        build_app_service, call_graphql_query, call_ws_graphql_stream,
+        parse_graphql_subscription_response,
     },
     std::str::FromStr,
     tokio::sync::mpsc,
@@ -16,23 +17,17 @@ use {
 async fn graphql_returns_messages() -> anyhow::Result<()> {
     let (httpd_context, _client, accounts) = create_block().await?;
 
-    let request_body = Messages::build_query(messages::Variables::default());
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
-                let app = actix_web::test::init_service(app).await;
+                let query_body = Messages::build_query(messages::Variables::default());
 
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<messages::ResponseData> = serde_json::from_slice(&response)?;
+                let response =
+                    call_graphql_query::<_, messages::ResponseData, _, _, _>(app, query_body)
+                        .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -80,18 +75,12 @@ async fn graphql_paginate_messages() -> anyhow::Result<()> {
                             ..Default::default()
                         };
 
-                        let request_body = Messages::build_query(variables);
                         let app = build_app_service(httpd_context.clone());
-                        let app = actix_web::test::init_service(app).await;
-
-                        let request = actix_web::test::TestRequest::post()
-                            .uri("/graphql")
-                            .set_json(&request_body)
-                            .to_request();
-
-                        let response = actix_web::test::call_and_read_body(&app, request).await;
-                        let response: Response<messages::ResponseData> =
-                            serde_json::from_slice(&response)?;
+                        let query_body = Messages::build_query(variables);
+                        let response = call_graphql_query::<_, messages::ResponseData, _, _, _>(
+                            app, query_body,
+                        )
+                        .await?;
 
                         let data = response.data.unwrap();
 
