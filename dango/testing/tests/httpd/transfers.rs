@@ -1,5 +1,5 @@
 use {
-    crate::{build_actix_app, call_graphql_query},
+    crate::{PageInfo, build_actix_app, call_graphql_query, paginate_all},
     assertor::*,
     dango_testing::{
         HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
@@ -295,65 +295,47 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let transfers_count = 2;
 
-                // Helper to paginate through all transfers
-                async fn paginate_all_transfers(
-                    httpd_context: dango_httpd::context::Context,
-                    sort_by: transfers::TransferSortBy,
-                    first: Option<i64>,
-                    last: Option<i64>,
-                ) -> anyhow::Result<Vec<i64>> {
-                    let mut all_heights = vec![];
-                    let mut after: Option<String> = None;
-                    let mut before: Option<String> = None;
-
-                    loop {
-                        let variables = transfers::Variables {
-                            after: after.clone(),
-                            before: before.clone(),
+                // Helper to build the query with the given sort order
+                let paginate_transfers =
+                    |context: dango_httpd::context::Context,
+                     sort_by: transfers::TransferSortBy,
+                     first: Option<i64>,
+                     last: Option<i64>| async move {
+                        paginate_all(
+                            context,
                             first,
                             last,
-                            sort_by: Some(sort_by.clone()),
-                            ..Default::default()
-                        };
-
-                        let response = call_graphql_query::<_, transfers::ResponseData>(
-                            httpd_context.clone(),
-                            Transfers::build_query(variables),
+                            |after, before, first, last| {
+                                Transfers::build_query(transfers::Variables {
+                                    after,
+                                    before,
+                                    first,
+                                    last,
+                                    sort_by: Some(sort_by.clone()),
+                                    ..Default::default()
+                                })
+                            },
+                            |data: transfers::ResponseData| {
+                                let nodes = data
+                                    .transfers
+                                    .nodes
+                                    .into_iter()
+                                    .map(|n| n.block_height)
+                                    .collect();
+                                let page_info = PageInfo {
+                                    has_next_page: data.transfers.page_info.has_next_page,
+                                    has_previous_page: data.transfers.page_info.has_previous_page,
+                                    start_cursor: data.transfers.page_info.start_cursor,
+                                    end_cursor: data.transfers.page_info.end_cursor,
+                                };
+                                (nodes, page_info)
+                            },
                         )
-                        .await?;
-
-                        let data = response.data.unwrap();
-
-                        match (first, last) {
-                            (Some(_), None) => {
-                                for node in data.transfers.nodes {
-                                    all_heights.push(node.block_height);
-                                }
-
-                                if !data.transfers.page_info.has_next_page {
-                                    break;
-                                }
-                                after = data.transfers.page_info.end_cursor;
-                            },
-                            (None, Some(_)) => {
-                                for node in data.transfers.nodes.into_iter().rev() {
-                                    all_heights.push(node.block_height);
-                                }
-
-                                if !data.transfers.page_info.has_previous_page {
-                                    break;
-                                }
-                                before = data.transfers.page_info.start_cursor;
-                            },
-                            _ => break,
-                        }
-                    }
-
-                    Ok(all_heights)
-                }
+                        .await
+                    };
 
                 // 1. first with descending order
-                let block_heights = paginate_all_transfers(
+                let block_heights = paginate_transfers(
                     dango_httpd_context.clone(),
                     transfers::TransferSortBy::BLOCK_HEIGHT_DESC,
                     Some(transfers_count),
@@ -374,7 +356,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 .is_equal_to((1..=10).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
-                let block_heights = paginate_all_transfers(
+                let block_heights = paginate_transfers(
                     dango_httpd_context.clone(),
                     transfers::TransferSortBy::BLOCK_HEIGHT_ASC,
                     Some(transfers_count),
@@ -395,7 +377,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 .is_equal_to((1..=10).collect::<Vec<_>>());
 
                 // 3. last with descending order
-                let block_heights = paginate_all_transfers(
+                let block_heights = paginate_transfers(
                     dango_httpd_context.clone(),
                     transfers::TransferSortBy::BLOCK_HEIGHT_DESC,
                     None,
@@ -416,7 +398,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 .is_equal_to((1..=10).collect::<Vec<_>>());
 
                 // 4. last with ascending order
-                let block_heights = paginate_all_transfers(
+                let block_heights = paginate_transfers(
                     dango_httpd_context.clone(),
                     transfers::TransferSortBy::BLOCK_HEIGHT_ASC,
                     None,

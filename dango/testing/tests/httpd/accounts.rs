@@ -1,5 +1,5 @@
 use {
-    crate::{build_actix_app, call_graphql_query},
+    crate::{PageInfo, build_actix_app, call_graphql_query, paginate_all},
     assert_json_diff::assert_json_eq,
     assertor::*,
     dango_testing::{
@@ -300,65 +300,47 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let accounts_count = 2;
 
-                // Helper to paginate through all accounts
-                async fn paginate_all_accounts(
-                    httpd_context: dango_httpd::context::Context,
-                    sort_by: accounts::AccountSortBy,
-                    first: Option<i64>,
-                    last: Option<i64>,
-                ) -> anyhow::Result<Vec<i64>> {
-                    let mut all_heights = vec![];
-                    let mut after: Option<String> = None;
-                    let mut before: Option<String> = None;
-
-                    loop {
-                        let variables = accounts::Variables {
-                            after: after.clone(),
-                            before: before.clone(),
+                // Helper to build the query with the given sort order
+                let paginate_accounts =
+                    |context: dango_httpd::context::Context,
+                     sort_by: accounts::AccountSortBy,
+                     first: Option<i64>,
+                     last: Option<i64>| async move {
+                        paginate_all(
+                            context,
                             first,
                             last,
-                            sort_by: Some(sort_by.clone()),
-                            ..Default::default()
-                        };
-
-                        let response = call_graphql_query::<_, accounts::ResponseData>(
-                            httpd_context.clone(),
-                            Accounts::build_query(variables),
+                            |after, before, first, last| {
+                                Accounts::build_query(accounts::Variables {
+                                    after,
+                                    before,
+                                    first,
+                                    last,
+                                    sort_by: Some(sort_by.clone()),
+                                    ..Default::default()
+                                })
+                            },
+                            |data: accounts::ResponseData| {
+                                let nodes = data
+                                    .accounts
+                                    .nodes
+                                    .into_iter()
+                                    .map(|n| n.created_block_height)
+                                    .collect();
+                                let page_info = PageInfo {
+                                    has_next_page: data.accounts.page_info.has_next_page,
+                                    has_previous_page: data.accounts.page_info.has_previous_page,
+                                    start_cursor: data.accounts.page_info.start_cursor,
+                                    end_cursor: data.accounts.page_info.end_cursor,
+                                };
+                                (nodes, page_info)
+                            },
                         )
-                        .await?;
-
-                        let data = response.data.unwrap();
-
-                        match (first, last) {
-                            (Some(_), None) => {
-                                for node in data.accounts.nodes {
-                                    all_heights.push(node.created_block_height);
-                                }
-
-                                if !data.accounts.page_info.has_next_page {
-                                    break;
-                                }
-                                after = data.accounts.page_info.end_cursor;
-                            },
-                            (None, Some(_)) => {
-                                for node in data.accounts.nodes.into_iter().rev() {
-                                    all_heights.push(node.created_block_height);
-                                }
-
-                                if !data.accounts.page_info.has_previous_page {
-                                    break;
-                                }
-                                before = data.accounts.page_info.start_cursor;
-                            },
-                            _ => break,
-                        }
-                    }
-
-                    Ok(all_heights)
-                }
+                        .await
+                    };
 
                 // 1. first with descending order
-                let block_heights = paginate_all_accounts(
+                let block_heights = paginate_accounts(
                     dango_httpd_context.clone(),
                     accounts::AccountSortBy::BLOCK_HEIGHT_DESC,
                     Some(accounts_count),
@@ -379,7 +361,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                     .is_equal_to((1..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
-                let block_heights = paginate_all_accounts(
+                let block_heights = paginate_accounts(
                     dango_httpd_context.clone(),
                     accounts::AccountSortBy::BLOCK_HEIGHT_ASC,
                     Some(accounts_count),
@@ -394,7 +376,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                     .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 3. last with descending order
-                let block_heights = paginate_all_accounts(
+                let block_heights = paginate_accounts(
                     dango_httpd_context.clone(),
                     accounts::AccountSortBy::BLOCK_HEIGHT_DESC,
                     None,
@@ -409,7 +391,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                     .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 4. last with ascending order
-                let block_heights = paginate_all_accounts(
+                let block_heights = paginate_accounts(
                     dango_httpd_context.clone(),
                     accounts::AccountSortBy::BLOCK_HEIGHT_ASC,
                     None,
