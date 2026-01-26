@@ -362,6 +362,7 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
                 TestOption::default(),
                 GenesisOption::preset_test(),
                 None,
+                None,
                 |accounts, _, _, _, indexer_context| {
                     sx.send(accounts).unwrap();
                     sx2.send(indexer_context).unwrap();
