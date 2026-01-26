@@ -2,7 +2,7 @@ use {
     assertor::*,
     graphql_client::GraphQLQuery,
     grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
-    indexer_client::{Block, Blocks, block, blocks},
+    indexer_client::{Block, Blocks, SubscribeBlock, block, blocks, subscribe_block},
     indexer_testing::{
         GraphQLCustomRequest, PaginationDirection,
         block::{create_block, create_blocks},
@@ -202,23 +202,11 @@ async fn graphql_paginate_blocks() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
-    let graphql_query = r#"
-      subscription Block {
-        block {
-          blockHeight
-          createdAt
-          hash
-          appHash
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "block",
-        query: graphql_query,
-        variables: Default::default(),
-    };
+    // Use typed subscription from indexer-client
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeBlock::build_query(subscribe_block::Variables {}),
+        "block",
+    );
 
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
 
@@ -251,37 +239,33 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
                 let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
-                // Define a simple struct to capture subscription response
-                #[derive(serde::Deserialize, Debug)]
-                #[serde(rename_all = "camelCase")]
-                struct SubscriptionBlock {
-                    block_height: i64,
-                }
-
                 // 1st response is always the existing last block
-                let response =
-                    parse_graphql_subscription_response::<SubscriptionBlock>(&mut framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<
+                    subscribe_block::SubscribeBlockBlock,
+                >(&mut framed, name)
+                .await?;
 
-                assert_that!(response.block_height).is_equal_to(1);
+                assert_that!(response.data.block_height).is_equal_to(1);
 
                 crate_block_tx.send(2).await?;
 
                 // 2nd response
-                let response =
-                    parse_graphql_subscription_response::<SubscriptionBlock>(&mut framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<
+                    subscribe_block::SubscribeBlockBlock,
+                >(&mut framed, name)
+                .await?;
 
-                assert_that!(response.block_height).is_equal_to(2);
+                assert_that!(response.data.block_height).is_equal_to(2);
 
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let response =
-                    parse_graphql_subscription_response::<SubscriptionBlock>(&mut framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<
+                    subscribe_block::SubscribeBlockBlock,
+                >(&mut framed, name)
+                .await?;
 
-                assert_that!(response.block_height).is_equal_to(3);
+                assert_that!(response.data.block_height).is_equal_to(3);
 
                 Ok::<(), anyhow::Error>(())
             })

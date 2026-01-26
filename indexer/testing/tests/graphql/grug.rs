@@ -6,7 +6,7 @@ use {
         BroadcastClientExt, Coins, Denom, GasOption, Inner, Json, JsonSerExt, Message, Query,
         QueryAppConfigRequest, QueryBalanceRequest, ResultExt,
     },
-    indexer_client::{QueryApp, query_app},
+    indexer_client::{QueryApp, SubscribeQueryApp, query_app, subscribe_query_app},
     indexer_testing::{
         GraphQLCustomRequest, block::create_block, build_app_service, call_graphql_query,
         call_ws_graphql_stream, parse_graphql_subscription_response,
@@ -58,32 +58,20 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
-    let graphql_query = r#"
-      subscription QueryApp($request: String!, $block_interval: Int!) {
-        queryApp(request: $request, blockInterval: $block_interval) { response blockHeight }
-      }
-    "#;
-
+    // Use typed subscription from indexer-client
     let body_request = Query::Balance(QueryBalanceRequest {
         address: accounts["owner"].address,
         denom: Denom::from_str("ugrug")?,
     })
     .to_json_value()?;
 
-    let variables = json!({
-        "request": body_request,
-        "block_interval": 1,
-    })
-    .as_object()
-    .unwrap()
-    .clone();
-
-    let request_body = GraphQLCustomRequest {
-        name: "queryApp",
-        query: graphql_query,
-        variables,
-    };
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeQueryApp::build_query(subscribe_query_app::Variables {
+            request: body_request.into_inner(),
+            block_interval: 1,
+        }),
+        "queryApp",
+    );
 
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
 
@@ -117,34 +105,43 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
                 // 1st response
-                let response =
-                    parse_graphql_subscription_response::<Json>(&mut framed, name).await?;
+                let response = parse_graphql_subscription_response::<
+                    subscribe_query_app::SubscribeQueryAppQueryApp,
+                >(&mut framed, name)
+                .await?;
 
+                assert_that!(response.data.block_height).is_equal_to(1);
                 assert_json_eq!(
-                    response.data.into_inner(),
-                    json!({"response": {"balance": {"amount": "0", "denom": "ugrug"}}, "blockHeight": 1})
+                    response.data.response,
+                    json!({"balance": {"amount": "0", "denom": "ugrug"}})
                 );
 
                 crate_block_tx.send(2).await?;
 
                 // 2nd response
-                let response =
-                    parse_graphql_subscription_response::<Json>(&mut framed, name).await?;
+                let response = parse_graphql_subscription_response::<
+                    subscribe_query_app::SubscribeQueryAppQueryApp,
+                >(&mut framed, name)
+                .await?;
 
+                assert_that!(response.data.block_height).is_equal_to(2);
                 assert_json_eq!(
-                    response.data.into_inner(),
-                    json!({"response": {"balance": {"amount": "2000", "denom": "ugrug"}}, "blockHeight": 2})
+                    response.data.response,
+                    json!({"balance": {"amount": "2000", "denom": "ugrug"}})
                 );
 
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let response =
-                    parse_graphql_subscription_response::<Json>(&mut framed, name).await?;
+                let response = parse_graphql_subscription_response::<
+                    subscribe_query_app::SubscribeQueryAppQueryApp,
+                >(&mut framed, name)
+                .await?;
 
+                assert_that!(response.data.block_height).is_equal_to(3);
                 assert_json_eq!(
-                    response.data.into_inner(),
-                    json!({"response": {"balance": {"amount": "4000", "denom": "ugrug"}}, "blockHeight": 3})
+                    response.data.response,
+                    json!({"balance": {"amount": "4000", "denom": "ugrug"}})
                 );
 
                 Ok::<(), anyhow::Error>(())
