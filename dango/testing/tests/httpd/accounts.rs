@@ -1,5 +1,8 @@
 use {
-    crate::{PageInfo, build_actix_app, call_graphql_query, paginate_all},
+    crate::{
+        Accounts, PaginationDirection, accounts_query, build_actix_app, call_graphql_query,
+        paginate_accounts,
+    },
     assert_json_diff::assert_json_eq,
     assertor::*,
     dango_testing::{
@@ -18,9 +21,7 @@ use {
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
-    indexer_client::{
-        Accounts, QueryApp, SubscribeAccounts, accounts, query_app, subscribe_accounts,
-    },
+    indexer_client::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -53,9 +54,9 @@ async fn query_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response = call_graphql_query::<_, accounts::ResponseData>(
+                let response = call_graphql_query::<_, accounts_query::ResponseData>(
                     dango_httpd_context,
-                    Accounts::build_query(accounts::Variables::default()),
+                    Accounts::build_query(accounts_query::Variables::default()),
                 )
                 .await?;
 
@@ -65,10 +66,12 @@ async fn query_accounts() -> anyhow::Result<()> {
 
                 assert_that!(nodes.len()).is_equal_to(2);
 
-                assert_that!(nodes[0].account_type).is_equal_to(accounts::AccountType::single);
+                assert_that!(nodes[0].account_type)
+                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(nodes[0].users[0].user_index).is_equal_to(user2.user_index() as i64);
 
-                assert_that!(nodes[1].account_type).is_equal_to(accounts::AccountType::single);
+                assert_that!(nodes[1].account_type)
+                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(nodes[1].users[0].user_index).is_equal_to(user1.user_index() as i64);
 
                 Ok::<(), anyhow::Error>(())
@@ -102,12 +105,12 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = accounts::Variables {
+                let variables = accounts_query::Variables {
                     user_index: Some(user.user_index() as i64),
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, accounts::ResponseData>(
+                let response = call_graphql_query::<_, accounts_query::ResponseData>(
                     dango_httpd_context,
                     Accounts::build_query(variables),
                 )
@@ -119,7 +122,8 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
                 assert_that!(data.accounts.nodes).is_not_empty();
                 let first_account = &data.accounts.nodes[0];
 
-                assert_that!(first_account.account_type).is_equal_to(accounts::AccountType::single);
+                assert_that!(first_account.account_type)
+                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(first_account.users).is_not_empty();
                 assert_that!(first_account.users[0].user_index)
                     .is_equal_to(user.user_index() as i64);
@@ -155,12 +159,12 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = accounts::Variables {
+                let variables = accounts_query::Variables {
                     user_index: Some(114514), // a random user index that doesn't exist
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, accounts::ResponseData>(
+                let response = call_graphql_query::<_, accounts_query::ResponseData>(
                     dango_httpd_context,
                     Accounts::build_query(variables),
                 )
@@ -207,14 +211,14 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = accounts::Variables {
+                let variables = accounts_query::Variables {
                     user_index: Some(test_account1.user_index() as i64),
                     ..Default::default()
                 };
 
                 // Trying to figure out a bug
                 for _ in 0..10 {
-                    let response = call_graphql_query::<_, accounts::ResponseData>(
+                    let response = call_graphql_query::<_, accounts_query::ResponseData>(
                         dango_httpd_context.clone(),
                         Accounts::build_query(variables.clone()),
                     )
@@ -234,7 +238,7 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
                     sleep(std::time::Duration::from_millis(1000)).await;
                 }
 
-                let response = call_graphql_query::<_, accounts::ResponseData>(
+                let response = call_graphql_query::<_, accounts_query::ResponseData>(
                     dango_httpd_context,
                     Accounts::build_query(variables),
                 )
@@ -250,7 +254,7 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
 
                 // Check first account (test_account2)
                 assert_that!(data.accounts.nodes[0].account_type)
-                    .is_equal_to(accounts::AccountType::single);
+                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(data.accounts.nodes[0].address.as_str())
                     .is_equal_to(test_account2.address.inner().to_string().as_str());
                 assert_that!(data.accounts.nodes[0].users[0].user_index)
@@ -258,7 +262,7 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
 
                 // Check second account (test_account1)
                 assert_that!(data.accounts.nodes[1].account_type)
-                    .is_equal_to(accounts::AccountType::single);
+                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(data.accounts.nodes[1].address.as_str())
                     .is_equal_to(test_account1.address.inner().to_string().as_str());
                 assert_that!(data.accounts.nodes[1].users[0].user_index)
@@ -298,57 +302,21 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let accounts_count = 2;
-
-                // Helper to build the query with the given sort order
-                let paginate_accounts =
-                    |context: dango_httpd::context::Context,
-                     sort_by: accounts::AccountSortBy,
-                     first: Option<i64>,
-                     last: Option<i64>| async move {
-                        paginate_all(
-                            context,
-                            first,
-                            last,
-                            |after, before, first, last| {
-                                Accounts::build_query(accounts::Variables {
-                                    after,
-                                    before,
-                                    first,
-                                    last,
-                                    sort_by: Some(sort_by.clone()),
-                                    ..Default::default()
-                                })
-                            },
-                            |data: accounts::ResponseData| {
-                                let nodes = data
-                                    .accounts
-                                    .nodes
-                                    .into_iter()
-                                    .map(|n| n.created_block_height)
-                                    .collect();
-                                let page_info = PageInfo {
-                                    has_next_page: data.accounts.page_info.has_next_page,
-                                    has_previous_page: data.accounts.page_info.has_previous_page,
-                                    start_cursor: data.accounts.page_info.start_cursor,
-                                    end_cursor: data.accounts.page_info.end_cursor,
-                                };
-                                (nodes, page_info)
-                            },
-                        )
-                        .await
-                    };
+                let page_size = 2;
 
                 // 1. first with descending order
                 let block_heights = paginate_accounts(
                     dango_httpd_context.clone(),
-                    accounts::AccountSortBy::BLOCK_HEIGHT_DESC,
-                    Some(accounts_count),
-                    None,
+                    page_size,
+                    accounts_query::Variables {
+                        sort_by: Some(accounts_query::AccountSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?
                 .into_iter()
-                .map(|h| h as u64)
+                .map(|n| n.created_block_height as u64)
                 .collect::<Vec<_>>();
 
                 // Nonce 1: register first user
@@ -363,13 +331,16 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 // 2. first with ascending order
                 let block_heights = paginate_accounts(
                     dango_httpd_context.clone(),
-                    accounts::AccountSortBy::BLOCK_HEIGHT_ASC,
-                    Some(accounts_count),
-                    None,
+                    page_size,
+                    accounts_query::Variables {
+                        sort_by: Some(accounts_query::AccountSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?
                 .into_iter()
-                .map(|h| h as u64)
+                .map(|n| n.created_block_height as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(block_heights)
@@ -378,13 +349,16 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 // 3. last with descending order
                 let block_heights = paginate_accounts(
                     dango_httpd_context.clone(),
-                    accounts::AccountSortBy::BLOCK_HEIGHT_DESC,
-                    None,
-                    Some(accounts_count),
+                    page_size,
+                    accounts_query::Variables {
+                        sort_by: Some(accounts_query::AccountSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?
                 .into_iter()
-                .map(|h| h as u64)
+                .map(|n| n.created_block_height as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(block_heights)
@@ -393,13 +367,16 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 // 4. last with ascending order
                 let block_heights = paginate_accounts(
                     dango_httpd_context.clone(),
-                    accounts::AccountSortBy::BLOCK_HEIGHT_ASC,
-                    None,
-                    Some(accounts_count),
+                    page_size,
+                    accounts_query::Variables {
+                        sort_by: Some(accounts_query::AccountSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?
                 .into_iter()
-                .map(|h| h as u64)
+                .map(|n| n.created_block_height as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(block_heights)

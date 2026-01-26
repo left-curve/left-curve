@@ -1,5 +1,8 @@
 use {
-    crate::{PageInfo, build_actix_app, call_graphql_query, paginate_all},
+    crate::{
+        PaginationDirection, Transfers, build_actix_app, call_graphql_query, paginate_transfers,
+        transfers_query,
+    },
     assertor::*,
     dango_testing::{
         HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
@@ -12,7 +15,7 @@ use {
     graphql_client::GraphQLQuery,
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
-    indexer_client::{SubscribeTransfers, Transfers, subscribe_transfers, transfers},
+    indexer_client::{SubscribeTransfers, subscribe_transfers},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -49,12 +52,12 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = transfers::Variables {
+                let variables = transfers_query::Variables {
                     block_height: Some(1),
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, transfers::ResponseData>(
+                let response = call_graphql_query::<_, transfers_query::ResponseData>(
                     dango_httpd_context,
                     Transfers::build_query(variables),
                 )
@@ -131,12 +134,12 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = transfers::Variables {
+                let variables = transfers_query::Variables {
                     user_index: Some(user1.user_index() as i64),
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, transfers::ResponseData>(
+                let response = call_graphql_query::<_, transfers_query::ResponseData>(
                     dango_httpd_context,
                     Transfers::build_query(variables),
                 )
@@ -236,12 +239,12 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let variables = transfers::Variables {
+                let variables = transfers_query::Variables {
                     user_index: Some(114514), // a random user index that doesn't exist
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, transfers::ResponseData>(
+                let response = call_graphql_query::<_, transfers_query::ResponseData>(
                     dango_httpd_context,
                     Transfers::build_query(variables),
                 )
@@ -293,57 +296,21 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let transfers_count = 2;
-
-                // Helper to build the query with the given sort order
-                let paginate_transfers =
-                    |context: dango_httpd::context::Context,
-                     sort_by: transfers::TransferSortBy,
-                     first: Option<i64>,
-                     last: Option<i64>| async move {
-                        paginate_all(
-                            context,
-                            first,
-                            last,
-                            |after, before, first, last| {
-                                Transfers::build_query(transfers::Variables {
-                                    after,
-                                    before,
-                                    first,
-                                    last,
-                                    sort_by: Some(sort_by.clone()),
-                                    ..Default::default()
-                                })
-                            },
-                            |data: transfers::ResponseData| {
-                                let nodes = data
-                                    .transfers
-                                    .nodes
-                                    .into_iter()
-                                    .map(|n| n.block_height)
-                                    .collect();
-                                let page_info = PageInfo {
-                                    has_next_page: data.transfers.page_info.has_next_page,
-                                    has_previous_page: data.transfers.page_info.has_previous_page,
-                                    start_cursor: data.transfers.page_info.start_cursor,
-                                    end_cursor: data.transfers.page_info.end_cursor,
-                                };
-                                (nodes, page_info)
-                            },
-                        )
-                        .await
-                    };
+                let page_size = 2;
 
                 // 1. first with descending order
                 let block_heights = paginate_transfers(
                     dango_httpd_context.clone(),
-                    transfers::TransferSortBy::BLOCK_HEIGHT_DESC,
-                    Some(transfers_count),
-                    None,
+                    page_size,
+                    transfers_query::Variables {
+                        sort_by: Some(transfers_query::TransferSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?
                 .into_iter()
-                .map(|h| h as u64)
+                .map(|n| n.block_height as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -358,13 +325,16 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 // 2. first with ascending order
                 let block_heights = paginate_transfers(
                     dango_httpd_context.clone(),
-                    transfers::TransferSortBy::BLOCK_HEIGHT_ASC,
-                    Some(transfers_count),
-                    None,
+                    page_size,
+                    transfers_query::Variables {
+                        sort_by: Some(transfers_query::TransferSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?
                 .into_iter()
-                .map(|h| h as u64)
+                .map(|n| n.block_height as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -379,13 +349,16 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 // 3. last with descending order
                 let block_heights = paginate_transfers(
                     dango_httpd_context.clone(),
-                    transfers::TransferSortBy::BLOCK_HEIGHT_DESC,
-                    None,
-                    Some(transfers_count),
+                    page_size,
+                    transfers_query::Variables {
+                        sort_by: Some(transfers_query::TransferSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?
                 .into_iter()
-                .map(|h| h as u64)
+                .map(|n| n.block_height as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(
@@ -400,13 +373,16 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 // 4. last with ascending order
                 let block_heights = paginate_transfers(
                     dango_httpd_context.clone(),
-                    transfers::TransferSortBy::BLOCK_HEIGHT_ASC,
-                    None,
-                    Some(transfers_count),
+                    page_size,
+                    transfers_query::Variables {
+                        sort_by: Some(transfers_query::TransferSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?
                 .into_iter()
-                .map(|h| h as u64)
+                .map(|n| n.block_height as u64)
                 .collect::<Vec<_>>();
 
                 assert_that!(

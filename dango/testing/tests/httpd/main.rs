@@ -6,22 +6,28 @@ use {
         web,
     },
     dango_httpd::{graphql::build_schema, server::config_app},
+    graphql_client::GraphQLQuery,
+    indexer_client::PageInfo,
     serde::{Serialize, de::DeserializeOwned},
 };
 
-// Re-export PageInfo from indexer_testing for use in pagination helpers
-pub use indexer_testing::PageInfo;
+// Re-export query modules from indexer_client for use in tests
+pub use indexer_client::{
+    Accounts, Blocks, Events, Messages, Transactions, Transfers, accounts as accounts_query,
+    blocks as blocks_query, events as events_query, messages as messages_query,
+    transactions as transactions_query, transfers as transfers_query,
+};
 
-pub mod accounts;
-pub mod candles;
-pub mod grug;
-pub mod metrics;
-pub mod shutdown;
-pub mod trades;
-pub mod transfers;
-pub mod users;
+mod accounts;
+mod candles;
+mod grug;
+mod metrics;
+mod shutdown;
+mod trades;
+mod transfers;
+mod users;
 
-fn build_actix_app(
+pub fn build_actix_app(
     dango_httpd_context: dango_httpd::context::Context,
 ) -> App<
     impl ServiceFactory<
@@ -79,96 +85,141 @@ where
     Ok(response)
 }
 
-/// Helper function to paginate through all results of a GraphQL query.
+/// Macro to generate pagination test helpers for GraphQL queries.
 ///
-/// This handles the pagination loop for both forward (`first`) and backward (`last`) pagination.
+/// This generates a function that paginates through all results of a query
+/// using the actix test context (in-process, no actual HTTP).
 ///
 /// # Arguments
-/// * `context` - The httpd context
-/// * `first` - Number of items per page for forward pagination (use `Some(n)` with `last = None`)
-/// * `last` - Number of items per page for backward pagination (use `Some(n)` with `first = None`)
-/// * `build_query` - Closure that builds the query body given (after, before, first, last) params
-/// * `extract_page` - Closure that extracts (nodes, page_info) from the response data
 ///
-/// # Example
-/// ```ignore
-/// let block_heights = paginate_all(
-///     dango_httpd_context.clone(),
-///     Some(2), // first
-///     None,    // last
-///     |after, before, first, last| {
-///         Accounts::build_query(accounts::Variables {
-///             after,
-///             before,
-///             first,
-///             last,
-///             sort_by: Some(accounts::AccountSortBy::BLOCK_HEIGHT_DESC),
-///             ..Default::default()
-///         })
-///     },
-///     |data| {
-///         let nodes = data.accounts.nodes.into_iter().map(|n| n.created_block_height).collect();
-///         let page_info = PageInfo {
-///             has_next_page: data.accounts.page_info.has_next_page,
-///             has_previous_page: data.accounts.page_info.has_previous_page,
-///             start_cursor: data.accounts.page_info.start_cursor,
-///             end_cursor: data.accounts.page_info.end_cursor,
-///         };
-///         (nodes, page_info)
-///     },
-/// ).await?;
-/// ```
-pub async fn paginate_all<V, R, N, BuildQuery, ExtractPage>(
-    context: dango_httpd::context::Context,
-    first: Option<i64>,
-    last: Option<i64>,
-    build_query: BuildQuery,
-    extract_page: ExtractPage,
-) -> anyhow::Result<Vec<N>>
-where
-    V: Serialize,
-    R: DeserializeOwned,
-    BuildQuery: Fn(
-        Option<String>,
-        Option<String>,
-        Option<i64>,
-        Option<i64>,
-    ) -> graphql_client::QueryBody<V>,
-    ExtractPage: Fn(R) -> (Vec<N>, PageInfo),
-{
-    let mut all_items = vec![];
-    let mut after: Option<String> = None;
-    let mut before: Option<String> = None;
+/// * `$fn_name` - The name of the generated function
+/// * `$query_type` - The GraphQL query type (e.g., `Accounts`)
+/// * `$module` - The module containing the query types (e.g., `accounts`)
+/// * `$field` - The response field name (e.g., `accounts`)
+/// * `$node_type` - The node type returned by the query
+macro_rules! impl_test_paginate {
+    ($fn_name:ident, $query_type:ty, $module:ident, $field:ident, $node_type:ident) => {
+        /// Paginate through all results using the actix test context.
+        ///
+        /// # Arguments
+        ///
+        /// * `context` - The dango httpd context
+        /// * `page_size` - Number of items to fetch per page
+        /// * `variables` - Query variables (pagination fields will be overwritten)
+        /// * `direction` - Pagination direction: `Forward` or `Backward`
+        pub async fn $fn_name(
+            context: dango_httpd::context::Context,
+            page_size: i64,
+            mut variables: $module::Variables,
+            direction: PaginationDirection,
+        ) -> anyhow::Result<Vec<$module::$node_type>> {
+            let mut all_items = vec![];
+            let mut after: Option<String> = None;
+            let mut before: Option<String> = None;
 
-    loop {
-        let query_body = build_query(after.clone(), before.clone(), first, last);
+            loop {
+                variables.after = after.clone();
+                variables.before = before.clone();
 
-        let response = call_graphql_query::<V, R>(context.clone(), query_body).await?;
-
-        let data = response.data.expect("GraphQL response should have data");
-        let (nodes, page_info) = extract_page(data);
-
-        match (first, last) {
-            (Some(_), None) => {
-                all_items.extend(nodes);
-
-                if !page_info.has_next_page {
-                    break;
+                match direction {
+                    PaginationDirection::Forward => {
+                        variables.first = Some(page_size);
+                        variables.last = None;
+                    },
+                    PaginationDirection::Backward => {
+                        variables.first = None;
+                        variables.last = Some(page_size);
+                    },
                 }
-                after = page_info.end_cursor;
-            },
-            (None, Some(_)) => {
-                // For backward pagination, reverse the nodes to maintain order
-                all_items.extend(nodes.into_iter().rev());
 
-                if !page_info.has_previous_page {
-                    break;
+                let query_body = <$query_type>::build_query(variables.clone());
+                let response = call_graphql_query::<_, $module::ResponseData>(
+                    context.clone(),
+                    query_body,
+                )
+                .await?;
+
+                let data = response.data.expect("GraphQL response should have data");
+                let connection = data.$field;
+                let page_info = PageInfo {
+                    start_cursor: connection.page_info.start_cursor,
+                    end_cursor: connection.page_info.end_cursor,
+                    has_next_page: connection.page_info.has_next_page,
+                    has_previous_page: connection.page_info.has_previous_page,
+                };
+
+                match direction {
+                    PaginationDirection::Forward => {
+                        all_items.extend(connection.nodes);
+                        if !page_info.has_next_page {
+                            break;
+                        }
+                        after = page_info.end_cursor;
+                    },
+                    PaginationDirection::Backward => {
+                        all_items.extend(connection.nodes.into_iter().rev());
+                        if !page_info.has_previous_page {
+                            break;
+                        }
+                        before = page_info.start_cursor;
+                    },
                 }
-                before = page_info.start_cursor;
-            },
-            _ => break,
+            }
+
+            Ok(all_items)
         }
-    }
-
-    Ok(all_items)
+    };
 }
+
+/// Direction for pagination.
+#[derive(Clone, Copy)]
+pub enum PaginationDirection {
+    /// Paginate forward using `first` and `after`
+    Forward,
+    /// Paginate backward using `last` and `before`
+    Backward,
+}
+
+// Generate pagination test helpers for all paginated query types
+impl_test_paginate!(
+    paginate_accounts,
+    Accounts,
+    accounts_query,
+    accounts,
+    AccountsAccountsNodes
+);
+impl_test_paginate!(
+    paginate_transfers,
+    Transfers,
+    transfers_query,
+    transfers,
+    TransfersTransfersNodes
+);
+impl_test_paginate!(
+    paginate_transactions,
+    Transactions,
+    transactions_query,
+    transactions,
+    TransactionsTransactionsNodes
+);
+impl_test_paginate!(
+    paginate_blocks,
+    Blocks,
+    blocks_query,
+    blocks,
+    BlocksBlocksNodes
+);
+impl_test_paginate!(
+    paginate_events,
+    Events,
+    events_query,
+    events,
+    EventsEventsNodes
+);
+impl_test_paginate!(
+    paginate_messages,
+    Messages,
+    messages_query,
+    messages,
+    MessagesMessagesNodes
+);
