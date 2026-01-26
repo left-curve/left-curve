@@ -444,10 +444,10 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                     response
                         .data
                         .into_iter()
-                        .map(|a| a.created_block_height as i32)
+                        .map(|a| a.created_block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![1]);
+                .is_equal_to(vec![1i64]);
 
                 create_account_tx.send(2).await.unwrap();
 
@@ -461,10 +461,10 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                     response
                         .data
                         .into_iter()
-                        .map(|a| a.created_block_height as i32)
+                        .map(|a| a.created_block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![3]);
+                .is_equal_to(vec![3i64]);
 
                 Ok::<(), anyhow::Error>(())
             })

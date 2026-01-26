@@ -174,13 +174,13 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                             .from_account
                             .as_ref()
                             .and_then(|a| a.users.first())
-                            .map(|u| u.user_index as u64))
+                            .map(|u| u.user_index))
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(
                     // Transfer 1: sender is Gateway contract, which doesn't have a user index
                     // Transfer 2: sender is user1
-                    vec![user1.user_index() as u64],
+                    vec![user1.user_index() as i64],
                 );
 
                 assert_that!(
@@ -191,13 +191,13 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                             .to_account
                             .as_ref()
                             .and_then(|a| a.users.first())
-                            .map(|u| u.user_index as u64))
+                            .map(|u| u.user_index))
                         .collect::<Vec<_>>()
                 )
                 .is_equal_to(
                     // Transfer 1: recipient is user1
                     // Transfer 2: recipient is user2
-                    vec![user2.user_index() as u64, user1.user_index() as u64],
+                    vec![user2.user_index() as i64, user1.user_index() as i64],
                 );
 
                 Ok::<(), anyhow::Error>(())
@@ -447,10 +447,10 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.block_height as i32)
+                        .map(|t| t.block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![1, 1]);
+                .is_equal_to(vec![1i64, 1]);
 
                 crate_block_tx.send(2).await.unwrap();
 
@@ -464,10 +464,10 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.block_height as i32)
+                        .map(|t| t.block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![2]);
+                .is_equal_to(vec![2i64]);
 
                 crate_block_tx.send(3).await.unwrap();
 
@@ -481,10 +481,10 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.block_height as i32)
+                        .map(|t| t.block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![3]);
+                .is_equal_to(vec![3i64]);
 
                 Ok::<(), anyhow::Error>(())
             })
