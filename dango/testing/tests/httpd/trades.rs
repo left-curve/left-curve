@@ -1,5 +1,5 @@
 use {
-    crate::build_actix_app,
+    crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_genesis::Contracts,
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
@@ -8,7 +8,7 @@ use {
         dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
-    graphql_client::{GraphQLQuery, Response},
+    graphql_client::GraphQLQuery,
     grug::{
         Addr, Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
@@ -57,18 +57,11 @@ async fn query_all_trades() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let request_body = Trades::build_query(trades::Variables::default());
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<trades::ResponseData> = serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, trades::ResponseData>(
+                    dango_httpd_context,
+                    Trades::build_query(trades::Variables::default()),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -144,18 +137,11 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         ..Default::default()
                     };
 
-                    let request_body = Trades::build_query(variables);
-                    let app = build_actix_app(dango_httpd_context.clone());
-                    let app = actix_web::test::init_service(app).await;
-
-                    let request = actix_web::test::TestRequest::post()
-                        .uri("/graphql")
-                        .set_json(&request_body)
-                        .to_request();
-
-                    let response = actix_web::test::call_and_read_body(&app, request).await;
-                    let response: Response<trades::ResponseData> =
-                        serde_json::from_slice(&response)?;
+                    let response = call_graphql_query::<_, trades::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Trades::build_query(variables),
+                    )
+                    .await?;
 
                     let data = response.data.unwrap();
 
@@ -238,18 +224,11 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
                         ..Default::default()
                     };
 
-                    let request_body = Trades::build_query(variables);
-                    let app = build_actix_app(dango_httpd_context.clone());
-                    let app = actix_web::test::init_service(app).await;
-
-                    let request = actix_web::test::TestRequest::post()
-                        .uri("/graphql")
-                        .set_json(&request_body)
-                        .to_request();
-
-                    let response = actix_web::test::call_and_read_body(&app, request).await;
-                    let response: Response<trades::ResponseData> =
-                        serde_json::from_slice(&response)?;
+                    let response = call_graphql_query::<_, trades::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Trades::build_query(variables),
+                    )
+                    .await?;
 
                     let data = response.data.unwrap();
                     nodes = data.trades.nodes;

@@ -1,5 +1,5 @@
 use {
-    crate::build_actix_app,
+    crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_testing::{
         HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
@@ -9,7 +9,7 @@ use {
         account_factory::{self, AccountParams},
         constants::usdc,
     },
-    graphql_client::{GraphQLQuery, Response},
+    graphql_client::GraphQLQuery,
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
     indexer_client::{SubscribeTransfers, Transfers, subscribe_transfers, transfers},
@@ -54,19 +54,11 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let request_body = Transfers::build_query(variables);
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<transfers::ResponseData> =
-                    serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, transfers::ResponseData>(
+                    dango_httpd_context,
+                    Transfers::build_query(variables),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -144,19 +136,11 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let request_body = Transfers::build_query(variables);
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<transfers::ResponseData> =
-                    serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, transfers::ResponseData>(
+                    dango_httpd_context,
+                    Transfers::build_query(variables),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -257,19 +241,11 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let request_body = Transfers::build_query(variables);
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<transfers::ResponseData> =
-                    serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, transfers::ResponseData>(
+                    dango_httpd_context,
+                    Transfers::build_query(variables),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -340,18 +316,11 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                             ..Default::default()
                         };
 
-                        let request_body = Transfers::build_query(variables);
-                        let app = build_actix_app(httpd_context.clone());
-                        let app = actix_web::test::init_service(app).await;
-
-                        let request = actix_web::test::TestRequest::post()
-                            .uri("/graphql")
-                            .set_json(&request_body)
-                            .to_request();
-
-                        let response = actix_web::test::call_and_read_body(&app, request).await;
-                        let response: Response<transfers::ResponseData> =
-                            serde_json::from_slice(&response)?;
+                        let response = call_graphql_query::<_, transfers::ResponseData>(
+                            httpd_context.clone(),
+                            Transfers::build_query(variables),
+                        )
+                        .await?;
 
                         let data = response.data.unwrap();
 

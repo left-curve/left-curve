@@ -1,11 +1,11 @@
 use {
-    super::build_actix_app,
+    super::call_graphql_query,
     assertor::*,
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_user_public_key, create_user_and_account,
         setup_test_with_indexer,
     },
-    graphql_client::{GraphQLQuery, Response},
+    graphql_client::GraphQLQuery,
     grug_app::Indexer,
     indexer_client::{User, Users, user, users},
     std::collections::HashMap,
@@ -35,18 +35,11 @@ async fn query_user() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let request_body = Users::build_query(users::Variables::default());
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<users::ResponseData> = serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, users::ResponseData>(
+                    dango_httpd_context,
+                    Users::build_query(users::Variables::default()),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -94,18 +87,11 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let request_body = Users::build_query(users::Variables::default());
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<users::ResponseData> = serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, users::ResponseData>(
+                    dango_httpd_context,
+                    Users::build_query(users::Variables::default()),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -178,18 +164,11 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
                     user_index: test_account.user_index() as i64,
                 };
 
-                let request_body = User::build_query(variables);
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<user::ResponseData> = serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, user::ResponseData>(
+                    dango_httpd_context,
+                    User::build_query(variables),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();

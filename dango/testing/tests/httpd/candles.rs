@@ -1,5 +1,5 @@
 use {
-    crate::build_actix_app,
+    crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_genesis::Contracts,
     dango_indexer_clickhouse::{
@@ -11,7 +11,7 @@ use {
         dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
-    graphql_client::{GraphQLQuery, Response},
+    graphql_client::GraphQLQuery,
     grug::{
         Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
@@ -49,18 +49,11 @@ async fn query_candles() -> anyhow::Result<()> {
                         ..Default::default()
                     };
 
-                    let request_body = Candles::build_query(variables);
-                    let app = build_actix_app(dango_httpd_context.clone());
-                    let app = actix_web::test::init_service(app).await;
-
-                    let request = actix_web::test::TestRequest::post()
-                        .uri("/graphql")
-                        .set_json(&request_body)
-                        .to_request();
-
-                    let response = actix_web::test::call_and_read_body(&app, request).await;
-                    let response: Response<candles::ResponseData> =
-                        serde_json::from_slice(&response)?;
+                    let response = call_graphql_query::<_, candles::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Candles::build_query(variables),
+                    )
+                    .await?;
 
                     let data = response.data.unwrap();
                     nodes = data.candles.nodes;
@@ -113,18 +106,11 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
                         ..Default::default()
                     };
 
-                    let request_body = Candles::build_query(variables);
-                    let app = build_actix_app(dango_httpd_context.clone());
-                    let app = actix_web::test::init_service(app).await;
-
-                    let request = actix_web::test::TestRequest::post()
-                        .uri("/graphql")
-                        .set_json(&request_body)
-                        .to_request();
-
-                    let response = actix_web::test::call_and_read_body(&app, request).await;
-                    let response: Response<candles::ResponseData> =
-                        serde_json::from_slice(&response)?;
+                    let response = call_graphql_query::<_, candles::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Candles::build_query(variables),
+                    )
+                    .await?;
 
                     let data = response.data.unwrap();
                     nodes = data.candles.nodes;

@@ -1,5 +1,5 @@
 use {
-    crate::build_actix_app,
+    crate::{build_actix_app, call_graphql_query},
     assert_json_diff::assert_json_eq,
     assertor::*,
     dango_testing::{
@@ -11,7 +11,7 @@ use {
         auth::Nonce,
         constants::dango,
     },
-    graphql_client::{GraphQLQuery, Response},
+    graphql_client::GraphQLQuery,
     grug::{
         Addressable, Coin, Coins, Inner, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
         QueryResponse, ResultExt,
@@ -53,18 +53,11 @@ async fn query_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let request_body = Accounts::build_query(accounts::Variables::default());
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<accounts::ResponseData> = serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, accounts::ResponseData>(
+                    dango_httpd_context,
+                    Accounts::build_query(accounts::Variables::default()),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -114,18 +107,11 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let request_body = Accounts::build_query(variables);
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<accounts::ResponseData> = serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, accounts::ResponseData>(
+                    dango_httpd_context,
+                    Accounts::build_query(variables),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -174,18 +160,11 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let request_body = Accounts::build_query(variables);
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<accounts::ResponseData> = serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, accounts::ResponseData>(
+                    dango_httpd_context,
+                    Accounts::build_query(variables),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -233,21 +212,13 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let request_body = Accounts::build_query(variables.clone());
-
                 // Trying to figure out a bug
                 for _ in 0..10 {
-                    let app = build_actix_app(dango_httpd_context.clone());
-                    let app = actix_web::test::init_service(app).await;
-
-                    let request = actix_web::test::TestRequest::post()
-                        .uri("/graphql")
-                        .set_json(&request_body)
-                        .to_request();
-
-                    let response = actix_web::test::call_and_read_body(&app, request).await;
-                    let response: Response<accounts::ResponseData> =
-                        serde_json::from_slice(&response)?;
+                    let response = call_graphql_query::<_, accounts::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Accounts::build_query(variables.clone()),
+                    )
+                    .await?;
 
                     let data = response.data.unwrap();
 
@@ -263,16 +234,11 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
                     sleep(std::time::Duration::from_millis(1000)).await;
                 }
 
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<accounts::ResponseData> = serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, accounts::ResponseData>(
+                    dango_httpd_context,
+                    Accounts::build_query(variables),
+                )
+                .await?;
 
                 let data = response.data.unwrap();
 
@@ -355,18 +321,11 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                             ..Default::default()
                         };
 
-                        let request_body = Accounts::build_query(variables);
-                        let app = build_actix_app(httpd_context.clone());
-                        let app = actix_web::test::init_service(app).await;
-
-                        let request = actix_web::test::TestRequest::post()
-                            .uri("/graphql")
-                            .set_json(&request_body)
-                            .to_request();
-
-                        let response = actix_web::test::call_and_read_body(&app, request).await;
-                        let response: Response<accounts::ResponseData> =
-                            serde_json::from_slice(&response)?;
+                        let response = call_graphql_query::<_, accounts::ResponseData>(
+                            httpd_context.clone(),
+                            Accounts::build_query(variables),
+                        )
+                        .await?;
 
                         let data = response.data.unwrap();
 
@@ -692,19 +651,11 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let request_body = QueryApp::build_query(variables);
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<query_app::ResponseData> =
-                    serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, query_app::ResponseData>(
+                    dango_httpd_context,
+                    QueryApp::build_query(variables),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
@@ -766,19 +717,11 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let request_body = QueryApp::build_query(variables);
-
-                let app = build_actix_app(dango_httpd_context);
-                let app = actix_web::test::init_service(app).await;
-
-                let request = actix_web::test::TestRequest::post()
-                    .uri("/graphql")
-                    .set_json(&request_body)
-                    .to_request();
-
-                let response = actix_web::test::call_and_read_body(&app, request).await;
-                let response: Response<query_app::ResponseData> =
-                    serde_json::from_slice(&response)?;
+                let response = call_graphql_query::<_, query_app::ResponseData>(
+                    dango_httpd_context,
+                    QueryApp::build_query(variables),
+                )
+                .await?;
 
                 assert_that!(response.data).is_some();
                 let data = response.data.unwrap();
