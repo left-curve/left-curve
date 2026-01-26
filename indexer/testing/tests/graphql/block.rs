@@ -4,10 +4,10 @@ use {
     grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
     indexer_client::{Block, Blocks, block, blocks},
     indexer_testing::{
-        GraphQLCustomRequest,
+        GraphQLCustomRequest, PaginationDirection,
         block::{create_block, create_blocks},
-        build_app_service, call_batch_graphql_query, call_graphql_query, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        blocks_query, build_app_service, call_batch_graphql_query, call_graphql_query,
+        call_ws_graphql_stream, paginate_blocks, parse_graphql_subscription_response,
     },
     std::str::FromStr,
     tokio::sync::mpsc,
@@ -133,106 +133,62 @@ async fn graphql_paginate_blocks() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let blocks_count = 2;
-
-                // Helper to paginate through all blocks
-                async fn paginate_all_blocks(
-                    httpd_context: indexer_httpd::context::Context,
-                    sort_by: blocks::BlockSortBy,
-                    first: Option<i64>,
-                    last: Option<i64>,
-                ) -> anyhow::Result<Vec<i64>> {
-                    let mut all_heights = vec![];
-                    let mut after: Option<String> = None;
-                    let mut before: Option<String> = None;
-
-                    loop {
-                        let variables = blocks::Variables {
-                            after: after.clone(),
-                            before: before.clone(),
-                            first,
-                            last,
-                            sort_by: Some(sort_by.clone()),
-                        };
-
-                        let app = build_app_service(httpd_context.clone());
-                        let query_body = Blocks::build_query(variables);
-                        let response =
-                            call_graphql_query::<_, blocks::ResponseData, _, _, _>(app, query_body)
-                                .await?;
-
-                        let data = response.data.unwrap();
-
-                        match (first, last) {
-                            (Some(_), None) => {
-                                for node in data.blocks.nodes {
-                                    all_heights.push(node.block_height);
-                                }
-
-                                if !data.blocks.page_info.has_next_page {
-                                    break;
-                                }
-                                after = data.blocks.page_info.end_cursor;
-                            },
-                            (None, Some(_)) => {
-                                for node in data.blocks.nodes.into_iter().rev() {
-                                    all_heights.push(node.block_height);
-                                }
-
-                                if !data.blocks.page_info.has_previous_page {
-                                    break;
-                                }
-                                before = data.blocks.page_info.start_cursor;
-                            },
-                            _ => break,
-                        }
-                    }
-
-                    Ok(all_heights)
-                }
+                let page_size = 2;
 
                 // 1. first with descending order
-                let block_heights = paginate_all_blocks(
+                let blocks = paginate_blocks(
                     httpd_context.clone(),
-                    blocks::BlockSortBy::BLOCK_HEIGHT_DESC,
-                    Some(blocks_count),
-                    None,
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?;
-
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
                 assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
-                let block_heights = paginate_all_blocks(
+                let blocks = paginate_blocks(
                     httpd_context.clone(),
-                    blocks::BlockSortBy::BLOCK_HEIGHT_ASC,
-                    Some(blocks_count),
-                    None,
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?;
-
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
                 assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 3. last with descending order
-                let block_heights = paginate_all_blocks(
+                let blocks = paginate_blocks(
                     httpd_context.clone(),
-                    blocks::BlockSortBy::BLOCK_HEIGHT_DESC,
-                    None,
-                    Some(blocks_count),
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?;
-
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
                 assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 4. last with ascending order
-                let block_heights = paginate_all_blocks(
+                let blocks = paginate_blocks(
                     httpd_context.clone(),
-                    blocks::BlockSortBy::BLOCK_HEIGHT_ASC,
-                    None,
-                    Some(blocks_count),
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?;
-
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
                 assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())

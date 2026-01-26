@@ -8,13 +8,16 @@ use {
     graphql_client::GraphQLQuery,
     grug::{BlockCreation, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, Signer},
     grug_types::{BroadcastClient, BroadcastClientExt, Denom, GasOption},
-    indexer_client::{Block, HttpClient, Transactions, block, transactions},
+    indexer_client::{
+        Block, HttpClient, SubscribeTransactions, Transactions, block, subscribe_transactions,
+        transactions,
+    },
     indexer_sql::entity,
     indexer_testing::{
-        GraphQLCustomRequest,
+        GraphQLCustomRequest, PaginationDirection,
         block::{create_block, create_blocks},
-        build_app_service, call_graphql_query, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        build_app_service, call_graphql_query, call_ws_graphql_stream, paginate_transactions,
+        parse_graphql_subscription_response, transactions_query,
     },
     sea_orm::EntityTrait,
     serde_json::json,
@@ -91,109 +94,62 @@ async fn graphql_paginate_transactions() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let transactions_count = 2;
-
-                // Helper to paginate through all transactions
-                async fn paginate_all_transactions(
-                    httpd_context: indexer_httpd::context::Context,
-                    sort_by: transactions::TransactionSortBy,
-                    first: Option<i64>,
-                    last: Option<i64>,
-                ) -> anyhow::Result<Vec<i64>> {
-                    let mut all_heights = vec![];
-                    let mut after: Option<String> = None;
-                    let mut before: Option<String> = None;
-
-                    loop {
-                        let variables = transactions::Variables {
-                            after: after.clone(),
-                            before: before.clone(),
-                            first,
-                            last,
-                            sort_by: Some(sort_by.clone()),
-                            ..Default::default()
-                        };
-
-                        let app = build_app_service(httpd_context.clone());
-                        let query_body = Transactions::build_query(variables);
-                        let response =
-                            call_graphql_query::<_, transactions::ResponseData, _, _, _>(
-                                app, query_body,
-                            )
-                            .await?;
-
-                        let data = response.data.unwrap();
-
-                        match (first, last) {
-                            (Some(_), None) => {
-                                for node in data.transactions.nodes {
-                                    all_heights.push(node.block_height);
-                                }
-
-                                if !data.transactions.page_info.has_next_page {
-                                    break;
-                                }
-                                after = data.transactions.page_info.end_cursor;
-                            },
-                            (None, Some(_)) => {
-                                for node in data.transactions.nodes.into_iter().rev() {
-                                    all_heights.push(node.block_height);
-                                }
-
-                                if !data.transactions.page_info.has_previous_page {
-                                    break;
-                                }
-                                before = data.transactions.page_info.start_cursor;
-                            },
-                            _ => break,
-                        }
-                    }
-
-                    Ok(all_heights)
-                }
+                let page_size = 2;
 
                 // 1. first with descending order
-                let block_heights = paginate_all_transactions(
+                let txs = paginate_transactions(
                     httpd_context.clone(),
-                    transactions::TransactionSortBy::BLOCK_HEIGHT_DESC,
-                    Some(transactions_count),
-                    None,
+                    page_size,
+                    transactions_query::Variables {
+                        sort_by: Some(transactions_query::TransactionSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?;
-
+                let block_heights: Vec<_> = txs.iter().map(|t| t.block_height).collect();
                 assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
-                let block_heights = paginate_all_transactions(
+                let txs = paginate_transactions(
                     httpd_context.clone(),
-                    transactions::TransactionSortBy::BLOCK_HEIGHT_ASC,
-                    Some(transactions_count),
-                    None,
+                    page_size,
+                    transactions_query::Variables {
+                        sort_by: Some(transactions_query::TransactionSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?;
-
+                let block_heights: Vec<_> = txs.iter().map(|t| t.block_height).collect();
                 assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 3. last with descending order
-                let block_heights = paginate_all_transactions(
+                let txs = paginate_transactions(
                     httpd_context.clone(),
-                    transactions::TransactionSortBy::BLOCK_HEIGHT_DESC,
-                    None,
-                    Some(transactions_count),
+                    page_size,
+                    transactions_query::Variables {
+                        sort_by: Some(transactions_query::TransactionSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?;
-
+                let block_heights: Vec<_> = txs.iter().map(|t| t.block_height).collect();
                 assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 4. last with ascending order
-                let block_heights = paginate_all_transactions(
+                let txs = paginate_transactions(
                     httpd_context.clone(),
-                    transactions::TransactionSortBy::BLOCK_HEIGHT_ASC,
-                    None,
-                    Some(transactions_count),
+                    page_size,
+                    transactions_query::Variables {
+                        sort_by: Some(transactions_query::TransactionSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?;
-
+                let block_heights: Vec<_> = txs.iter().map(|t| t.block_height).collect();
                 assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
@@ -207,31 +163,11 @@ async fn graphql_paginate_transactions() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    // Subscriptions still use raw GraphQL since indexer-client doesn't support them yet
-    let graphql_query = r#"
-      subscription Transactions {
-        transactions {
-          data
-          credential
-          blockHeight
-          createdAt
-          transactionType
-          transactionIdx
-          sender
-          hash
-          hasSucceeded
-          errorMessage
-          gasWanted
-          gasUsed
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "transactions",
-        query: graphql_query,
-        variables: Default::default(),
-    };
+    // Use typed subscription from indexer-client
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeTransactions::build_query(subscribe_transactions::Variables::default()),
+        "transactions",
+    );
 
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
 
@@ -264,18 +200,10 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
-                // Define a simple struct to capture subscription response
-                #[derive(serde::Deserialize, Debug)]
-                #[serde(rename_all = "camelCase")]
-                struct SubscriptionTransaction {
-                    block_height: i64,
-                }
-
                 // 1st response is always the existing last block
-                let response = parse_graphql_subscription_response::<Vec<SubscriptionTransaction>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_transactions::SubscribeTransactionsTransactions>,
+                >(&mut framed, name)
                 .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
@@ -284,10 +212,9 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2nd response
-                let response = parse_graphql_subscription_response::<Vec<SubscriptionTransaction>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_transactions::SubscribeTransactionsTransactions>,
+                >(&mut framed, name)
                 .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
@@ -296,10 +223,9 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let response = parse_graphql_subscription_response::<Vec<SubscriptionTransaction>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_transactions::SubscribeTransactionsTransactions>,
+                >(&mut framed, name)
                 .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
