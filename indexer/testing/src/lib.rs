@@ -198,6 +198,74 @@ where
         .and_then(|mut responses| responses.pop().ok_or_else(|| anyhow!("no response found")))
 }
 
+/// Helper function to make typed GraphQL queries in tests.
+///
+/// This takes a typed `QueryBody<V>` from graphql_client and returns
+/// a typed `Response<R>`.
+pub async fn call_graphql_query<V, R, A, S, B>(
+    app: A,
+    query_body: graphql_client::QueryBody<V>,
+) -> anyhow::Result<graphql_client::Response<R>>
+where
+    V: Serialize,
+    R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
+{
+    let app = actix_web::test::init_service(app).await;
+
+    let request = actix_web::test::TestRequest::post()
+        .uri("/graphql")
+        .set_json(&query_body)
+        .to_request();
+
+    let response = actix_web::test::call_and_read_body(&app, request).await;
+    let response: graphql_client::Response<R> = serde_json::from_slice(&response)?;
+
+    Ok(response)
+}
+
+/// Helper function to make typed batched GraphQL queries in tests.
+///
+/// This takes a vector of typed `QueryBody<V>` from graphql_client and returns
+/// a vector of typed `Response<R>`.
+pub async fn call_batch_graphql_query<V, R, A, S, B>(
+    app: A,
+    query_bodies: Vec<graphql_client::QueryBody<V>>,
+) -> anyhow::Result<Vec<graphql_client::Response<R>>>
+where
+    V: Serialize,
+    R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
+{
+    let app = actix_web::test::init_service(app).await;
+
+    let request = actix_web::test::TestRequest::post()
+        .uri("/graphql")
+        .set_json(&query_bodies)
+        .to_request();
+
+    let response = actix_web::test::call_and_read_body(&app, request).await;
+    let responses: Vec<graphql_client::Response<R>> = serde_json::from_slice(&response)?;
+
+    Ok(responses)
+}
+
 pub async fn call_api<R>(
     app: App<
         impl ServiceFactory<
