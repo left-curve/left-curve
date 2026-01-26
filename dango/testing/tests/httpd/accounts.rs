@@ -305,7 +305,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 let page_size = 2;
 
                 // 1. first with descending order
-                let block_heights = paginate_accounts(
+                let block_heights: Vec<_> = paginate_accounts(
                     dango_httpd_context.clone(),
                     page_size,
                     accounts_query::Variables {
@@ -316,8 +316,8 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 )
                 .await?
                 .into_iter()
-                .map(|n| n.created_block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.created_block_height)
+                .collect();
 
                 // Nonce 1: register first user
                 // Nonce 2: fund first user
@@ -326,10 +326,10 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 // etc...
                 // The expected nonces where the accounts are created are 1, 3, 5, 7, ...
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
+                    .is_equal_to((1i64..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
-                let block_heights = paginate_accounts(
+                let block_heights: Vec<_> = paginate_accounts(
                     dango_httpd_context.clone(),
                     page_size,
                     accounts_query::Variables {
@@ -340,14 +340,14 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 )
                 .await?
                 .into_iter()
-                .map(|n| n.created_block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.created_block_height)
+                .collect();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
+                    .is_equal_to((1i64..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 3. last with descending order
-                let block_heights = paginate_accounts(
+                let block_heights: Vec<_> = paginate_accounts(
                     dango_httpd_context.clone(),
                     page_size,
                     accounts_query::Variables {
@@ -358,14 +358,14 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 )
                 .await?
                 .into_iter()
-                .map(|n| n.created_block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.created_block_height)
+                .collect();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
+                    .is_equal_to((1i64..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 4. last with ascending order
-                let block_heights = paginate_accounts(
+                let block_heights: Vec<_> = paginate_accounts(
                     dango_httpd_context.clone(),
                     page_size,
                     accounts_query::Variables {
@@ -376,11 +376,11 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 )
                 .await?
                 .into_iter()
-                .map(|n| n.created_block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.created_block_height)
+                .collect();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
+                    .is_equal_to((1i64..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })

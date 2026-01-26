@@ -119,12 +119,9 @@ async fn graphql_paginate_messages() -> anyhow::Result<()> {
                     Some(messages_count),
                     None,
                 )
-                .await?
-                .into_iter()
-                .map(|h| h as u64)
-                .collect::<Vec<_>>();
+                .await?;
 
-                assert_that!(block_heights).is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
                 let block_heights = paginate_all_messages(
@@ -133,12 +130,9 @@ async fn graphql_paginate_messages() -> anyhow::Result<()> {
                     Some(messages_count),
                     None,
                 )
-                .await?
-                .into_iter()
-                .map(|h| h as u64)
-                .collect::<Vec<_>>();
+                .await?;
 
-                assert_that!(block_heights).is_equal_to((1..=10).collect::<Vec<_>>());
+                assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 3. last with descending order
                 let block_heights = paginate_all_messages(
@@ -147,12 +141,9 @@ async fn graphql_paginate_messages() -> anyhow::Result<()> {
                     None,
                     Some(messages_count),
                 )
-                .await?
-                .into_iter()
-                .map(|h| h as u64)
-                .collect::<Vec<_>>();
+                .await?;
 
-                assert_that!(block_heights).is_equal_to((1..=10).collect::<Vec<_>>());
+                assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 4. last with ascending order
                 let block_heights = paginate_all_messages(
@@ -161,12 +152,9 @@ async fn graphql_paginate_messages() -> anyhow::Result<()> {
                     None,
                     Some(messages_count),
                 )
-                .await?
-                .into_iter()
-                .map(|h| h as u64)
-                .collect::<Vec<_>>();
+                .await?;
 
-                assert_that!(block_heights).is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })

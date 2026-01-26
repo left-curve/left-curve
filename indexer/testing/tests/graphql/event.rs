@@ -153,19 +153,10 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
                     Some(events_count),
                     None,
                 )
-                .await?
-                .into_iter()
-                .map(|h| h as u64)
-                .collect::<Vec<_>>();
+                .await?;
 
-                assert_that!(
-                    block_heights
-                        .clone()
-                        .into_iter()
-                        .unique()
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                assert_that!(block_heights.iter().copied().unique().collect::<Vec<_>>())
+                    .is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
 
@@ -176,19 +167,10 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
                     Some(events_count),
                     None,
                 )
-                .await?
-                .into_iter()
-                .map(|h| h as u64)
-                .collect::<Vec<_>>();
+                .await?;
 
-                assert_that!(
-                    block_heights
-                        .clone()
-                        .into_iter()
-                        .unique()
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to((1..=10).collect::<Vec<_>>());
+                assert_that!(block_heights.iter().copied().unique().collect::<Vec<_>>())
+                    .is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
 
@@ -199,19 +181,10 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
                     None,
                     Some(events_count),
                 )
-                .await?
-                .into_iter()
-                .map(|h| h as u64)
-                .collect::<Vec<_>>();
+                .await?;
 
-                assert_that!(
-                    block_heights
-                        .clone()
-                        .into_iter()
-                        .unique()
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to((1..=10).collect::<Vec<_>>());
+                assert_that!(block_heights.iter().copied().unique().collect::<Vec<_>>())
+                    .is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
 
@@ -222,19 +195,10 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
                     None,
                     Some(events_count),
                 )
-                .await?
-                .into_iter()
-                .map(|h| h as u64)
-                .collect::<Vec<_>>();
+                .await?;
 
-                assert_that!(
-                    block_heights
-                        .clone()
-                        .into_iter()
-                        .unique()
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                assert_that!(block_heights.iter().copied().unique().collect::<Vec<_>>())
+                    .is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
 

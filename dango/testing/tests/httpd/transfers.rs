@@ -299,7 +299,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 let page_size = 2;
 
                 // 1. first with descending order
-                let block_heights = paginate_transfers(
+                let block_heights: Vec<_> = paginate_transfers(
                     dango_httpd_context.clone(),
                     page_size,
                     transfers_query::Variables {
@@ -310,20 +310,14 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 )
                 .await?
                 .into_iter()
-                .map(|n| n.block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.block_height)
+                .collect();
 
-                assert_that!(
-                    block_heights
-                        .clone()
-                        .into_iter()
-                        .unique()
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                assert_that!(block_heights.iter().copied().unique().collect::<Vec<_>>())
+                    .is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
-                let block_heights = paginate_transfers(
+                let block_heights: Vec<_> = paginate_transfers(
                     dango_httpd_context.clone(),
                     page_size,
                     transfers_query::Variables {
@@ -334,20 +328,14 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 )
                 .await?
                 .into_iter()
-                .map(|n| n.block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.block_height)
+                .collect();
 
-                assert_that!(
-                    block_heights
-                        .clone()
-                        .into_iter()
-                        .unique()
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to((1..=10).collect::<Vec<_>>());
+                assert_that!(block_heights.iter().copied().unique().collect::<Vec<_>>())
+                    .is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 3. last with descending order
-                let block_heights = paginate_transfers(
+                let block_heights: Vec<_> = paginate_transfers(
                     dango_httpd_context.clone(),
                     page_size,
                     transfers_query::Variables {
@@ -358,20 +346,14 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 )
                 .await?
                 .into_iter()
-                .map(|n| n.block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.block_height)
+                .collect();
 
-                assert_that!(
-                    block_heights
-                        .clone()
-                        .into_iter()
-                        .unique()
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to((1..=10).collect::<Vec<_>>());
+                assert_that!(block_heights.iter().copied().unique().collect::<Vec<_>>())
+                    .is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 4. last with ascending order
-                let block_heights = paginate_transfers(
+                let block_heights: Vec<_> = paginate_transfers(
                     dango_httpd_context.clone(),
                     page_size,
                     transfers_query::Variables {
@@ -382,17 +364,11 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 )
                 .await?
                 .into_iter()
-                .map(|n| n.block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.block_height)
+                .collect();
 
-                assert_that!(
-                    block_heights
-                        .clone()
-                        .into_iter()
-                        .unique()
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                assert_that!(block_heights.iter().copied().unique().collect::<Vec<_>>())
+                    .is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })
