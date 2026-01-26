@@ -48,7 +48,7 @@ export const PointsProfileTable: React.FC = () => {
       columns={columns}
       style="simple"
       classNames={{
-        base: "rounded-none bg-surface-primary-rice p-0 …",
+        base: "rounded-none bg-surface-primary-rice p-0",
         header: "hidden",
         cell: "px-6 py-4",
         row: "border-b border-outline-secondary-gray last:border-b-0",
