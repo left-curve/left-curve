@@ -9,9 +9,9 @@ use {
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
-    rand::Rng,
     std::{
         collections::HashSet,
+        net::TcpListener,
         sync::{Arc, LazyLock, Mutex as StdMutex, mpsc},
         time::Duration,
     },
@@ -264,11 +264,15 @@ static USED_PORTS: LazyLock<StdMutex<HashSet<u16>>> =
 /// Generates a random port in the range 20000-60000, ensuring it hasn't
 /// been used by another test in this process.
 pub fn get_mock_socket_addr() -> u16 {
-    let mut rng = rand::thread_rng();
     let mut used = USED_PORTS.lock().unwrap();
 
     loop {
-        let port = rng.gen_range(20000..60000);
+        let port = TcpListener::bind("127.0.0.1:0")
+            .expect("failed to bind to random port")
+            .local_addr()
+            .expect("failed to get local address")
+            .port();
+
         if used.insert(port) {
             return port;
         }
