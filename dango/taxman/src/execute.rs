@@ -9,9 +9,9 @@ use {
         taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
     },
     grug::{
-        Addr, AuthCtx, AuthMode, Bound, Coins, ContractEvent, IsZero, Map, Message,
-        MultiplyFraction, MutableCtx, Number, NumberConst, Order, QuerierExt, Response, StdResult,
-        Storage, Timestamp, Tx, TxOutcome, Udec128_6, Uint128, coins,
+        Addr, AuthCtx, AuthMode, Coins, ContractEvent, IsZero, Map, Message, MultiplyFraction,
+        MutableCtx, Number, NumberConst, Order, QuerierExt, Response, StdResult, Storage,
+        Timestamp, Tx, TxOutcome, Udec128_6, Uint128, coins,
     },
     std::collections::BTreeMap,
 };
@@ -131,8 +131,6 @@ fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow
 }
 
 /// Increment the user's cumulative volume.
-/// If volume data for the same day already exists, add to it.
-/// If not, find the most recent data (default to 0 if no found) and add to it.
 fn increment_cumulative_volume(
     map: Map<'static, (UserIndex, Timestamp), Udec128_6>,
     storage: &mut dyn Storage,
@@ -140,20 +138,23 @@ fn increment_cumulative_volume(
     timestamp: Timestamp,
     volume: Udec128_6,
 ) -> StdResult<()> {
-    let existing_volume = map
-        .may_load(storage, (user_index, timestamp))?
-        .or({
-            map.prefix(user_index)
-                .values(
-                    storage,
-                    None,
-                    Some(Bound::Exclusive(timestamp)),
-                    Order::Descending,
-                )
-                .next()
-                .transpose()?
-        })
-        .unwrap_or(NumberConst::ZERO);
+    // Find the most recent record of the user's cumulative volume.
+    // If not found, default to zero.
+    let (existing_timestamp, existing_volume) = map
+        .prefix(user_index)
+        .range(storage, None, None, Order::Descending)
+        .next()
+        .transpose()?
+        .unwrap_or_default();
+
+    // The existing most recent record shouldn't be newer than the current timestamp.
+    // We ensure this in debug mode.
+    debug_assert!(
+        existing_timestamp <= timestamp,
+        "existing cumulative volume has a timestamp newer than the current time: {} > {}",
+        existing_timestamp.to_rfc3339_string(),
+        timestamp.to_rfc3339_string()
+    );
 
     let new_volume = existing_volume.checked_add(volume)?;
 
