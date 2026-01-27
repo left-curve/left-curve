@@ -4,6 +4,7 @@ import { twMerge, useApp } from "@left-curve/foundation";
 import type { AnyCoin } from "@left-curve/store/types";
 import type { SelectProps } from "./Select";
 import { usePrices } from "@left-curve/store";
+import { PairAssets } from "./PairAssets";
 
 export interface CoinSelectorProps extends Omit<SelectProps, "children"> {
   coins: AnyCoin[];
@@ -48,11 +49,15 @@ export const CoinSelector: React.FC<CoinSelectorProps> = ({
         <Select.Item key={coin.denom} value={coin.denom}>
           <div className="flex gap-2 items-center font-semibold w-full justify-between">
             <div className="flex gap-2 items-center">
-              <img
-                src={coin.logoURI}
-                alt={coin.symbol}
-                className={twMerge("w-8 h-8", classNames?.coin)}
-              />
+              {coin.type === "lp" ? (
+                <PairAssets assets={[coin.base, coin.quote]} />
+              ) : (
+                <img
+                  src={coin.logoURI}
+                  alt={coin.symbol}
+                  className={twMerge("w-8 h-8", classNames?.coin)}
+                />
+              )}
               <div className="flex flex-col">
                 <p>{coin.symbol}</p>
                 {withName && (
