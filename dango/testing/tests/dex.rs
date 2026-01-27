@@ -2,7 +2,7 @@ use {
     dango_dex::MINIMUM_LIQUIDITY,
     dango_genesis::{Contracts, DexOption, GenesisOption},
     dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
-    dango_taxman::{MAX_VOLUME_AGE, VOLUMES_BY_USER},
+    dango_taxman::VOLUMES_BY_USER,
     dango_testing::{
         BridgeOp, Preset, TestAccount, TestOption, TestSuite, setup_test_naive,
         setup_test_naive_with_custom_genesis,
@@ -24,9 +24,9 @@ use {
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Duration,
-        Fraction, Inner, LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, Number,
-        NumberConst, Order, QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128,
-        Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coin_pair, coins,
+        Fraction, Inner, LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
+        Order, QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6,
+        Uint128, UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
@@ -3285,87 +3285,6 @@ fn volume_tracking_works() {
         (user2_addr_1.user_index(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
         (user2_addr_1.user_index(), timestamp_after_third_trade)  => Udec128_6::new(300_000_000),
     });
-
-    // Fast forward by the duration of MAX_VOLUME_AGE
-    suite.increase_time(MAX_VOLUME_AGE);
-
-    // Submit a new order with user1 address 1, so that old volume entries are removed
-    submit_standard_order(&mut suite, &mut user1_addr_1, &contracts, Direction::Bid);
-
-    // User2 submit an opposite matching order with address 1
-    submit_standard_order(&mut suite, &mut user2_addr_1, &contracts, Direction::Ask);
-
-    // Get timestamp after trade
-    let timestamp_after_fourth_trade = suite.block.timestamp;
-
-    let timestamp_after_fourth_trade_minus_max_volume_age =
-        timestamp_after_fourth_trade.saturating_sub(MAX_VOLUME_AGE);
-
-    // Ensure the oldest data was removed. The first two entries for address 1 and 2 should be
-    // replaced with one entry at the timestamp of MAX_VOLUME_AGE ago.
-    let storage = suite.contract_storage(contracts.taxman);
-    let volumes_by_user = VOLUMES_BY_USER
-        .range(&storage, None, None, Order::Ascending)
-        .collect::<StdResult<BTreeMap<_, _>>>()
-        .unwrap();
-    assert_eq!(volumes_by_user, btree_map! {
-        (user1_addr_1.user_index(), timestamp_after_third_trade)  => Udec128_6::new(300_000_000),
-        (user1_addr_1.user_index(), timestamp_after_fourth_trade) => Udec128_6::new(400_000_000),
-        (user2_addr_1.user_index(), timestamp_after_third_trade)  => Udec128_6::new(300_000_000),
-        (user2_addr_1.user_index(), timestamp_after_fourth_trade) => Udec128_6::new(400_000_000),
-    });
-
-    // Query the volume for username user1, should be 400
-    suite
-        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
-            user: user1_addr_1.user_index(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(400_000_000));
-
-    // Query the volume for username user2, should be 400
-    suite
-        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
-            user: user2_addr_1.user_index(),
-            since: None,
-        })
-        .should_succeed_and_equal(Udec128::new(400_000_000));
-
-    // Query the volume for username user1 since timestamp after third trade,
-    // should return 100.
-    suite
-        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
-            user: user1_addr_1.user_index(),
-            since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
-    // Query the volume for username user2 since timestamp after third trade,
-    // should return 100.
-    suite
-        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
-            user: user2_addr_1.user_index(),
-            since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
-        })
-        .should_succeed_and_equal(Udec128::new(100_000_000));
-
-    // Query the volume for username user1 since timestamp after second trade,
-    // should fail as time is more than MAX_VOLUME_AGE ago.
-    suite
-        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
-            user: user1_addr_1.user_index(),
-            since: Some(timestamp_after_second_trade),
-        })
-        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
-
-    // Query the volume for username user2 since timestamp after second trade,
-    // should fail as time is more than MAX_VOLUME_AGE ago.
-    suite
-        .query_wasm_smart(contracts.taxman, taxman::QueryVolumeByUserRequest {
-            user: user2_addr_1.user_index(),
-            since: Some(timestamp_after_second_trade),
-        })
-        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
 }
 
 #[test]

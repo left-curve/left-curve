@@ -1,5 +1,5 @@
 use {
-    crate::{CONFIG, MAX_VOLUME_AGE, VOLUME_TIME_GRANULARITY, VOLUMES_BY_USER, WITHHELD_FEE},
+    crate::{CONFIG, VOLUME_TIME_GRANULARITY, VOLUMES_BY_USER, WITHHELD_FEE},
     anyhow::ensure,
     dango_account_factory::AccountQuerier,
     dango_types::{
@@ -100,11 +100,6 @@ fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow
     // Round the current timestamp _down_ to the nearest day.
     let timestamp = ctx.block.timestamp - ctx.block.timestamp % VOLUME_TIME_GRANULARITY;
 
-    // Calculate the cutoff for purging old volume data. Data older than this
-    // will be deleted.
-    // Use `saturating_sub` because tests sometimes use small timestamps.
-    let cutoff = timestamp.saturating_sub(MAX_VOLUME_AGE);
-
     for (user, volume) in volumes {
         // Query the user's account info. If there isn't one (i.e. the user
         // isn't registered through the account factory), skip.
@@ -124,8 +119,6 @@ fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow
             timestamp,
             volume,
         )?;
-
-        purge_old_volume_data(VOLUMES_BY_USER, ctx.storage, params.owner, cutoff)?;
     }
 
     #[cfg(feature = "metrics")]
@@ -165,38 +158,6 @@ fn increment_cumulative_volume(
     let new_volume = existing_volume.checked_add(volume)?;
 
     map.save(storage, (user_index, timestamp), &new_volume)
-}
-
-/// Delete all volume data older than the `cutoff` timestamp, except the most
-/// recent one among them.
-/// We keep the most recent one, such that we can compute the volume between
-/// that time and now (by subtracting the cumulative volume now with the volume
-/// of that time).
-fn purge_old_volume_data(
-    map: Map<'static, (UserIndex, Timestamp), Udec128_6>,
-    storage: &mut dyn Storage,
-    user_index: UserIndex,
-    cutoff: Timestamp,
-) -> StdResult<()> {
-    // Find the most recent volume data no newer than the `cutoff` timestamp.
-    let max = map
-        .prefix(user_index)
-        .keys(
-            storage,
-            None,
-            Some(Bound::Inclusive(cutoff)),
-            Order::Descending,
-        )
-        .next()
-        .transpose()?
-        .unwrap_or(cutoff);
-
-    // Delete all volume data older (exclusive) than the most recent one.
-    // Use exclusive such that the most recent one is retained.
-    map.prefix(user_index)
-        .clear(storage, None, Some(Bound::Exclusive(max)));
-
-    Ok(())
 }
 
 // TODO: exempt the account factory from paying fee.

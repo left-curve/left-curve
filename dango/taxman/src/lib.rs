@@ -6,7 +6,4 @@ mod state;
 
 pub use {execute::*, query::*, state::*};
 
-/// Maximum age of volume data to store.
-pub const MAX_VOLUME_AGE: grug::Duration = grug::Duration::from_weeks(3);
-
 pub const VOLUME_TIME_GRANULARITY: grug::Duration = grug::Duration::from_days(1);

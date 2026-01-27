@@ -1,6 +1,5 @@
 use {
-    crate::{CONFIG, MAX_VOLUME_AGE, VOLUMES_BY_USER},
-    anyhow::ensure,
+    crate::{CONFIG, VOLUMES_BY_USER},
     dango_types::{
         account_factory::UserIndex,
         taxman::{Config, QueryMsg},
@@ -35,14 +34,6 @@ fn query_volume_by_user(
     user: UserIndex,
     since: Option<Timestamp>,
 ) -> anyhow::Result<Udec128_6> {
-    // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
-    if let Some(since) = since {
-        ensure!(
-            ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE) <= since,
-            "the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago"
-        );
-    }
-
     let volume_now = VOLUMES_BY_USER
         .prefix(user)
         .values(ctx.storage, None, None, Order::Descending)
