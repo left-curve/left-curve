@@ -55,12 +55,12 @@ function TransferApplet() {
   const { register, reset, handleSubmit, inputs } = controllers;
 
   const { account, isConnected } = useAccount();
-  const { coins } = useConfig();
+  const { coins, getCoinInfo } = useConfig();
   const { data: signingClient } = useSigningClient();
   const publicClient = usePublicClient();
 
   const { refetch: refreshBalances, data: balances = {} } = useBalances({
-    address: account?.address,
+    address: account?.address as Address,
   });
 
   useWatchEffect(isConnected, (v) => !v && setAction("send"));
@@ -172,8 +172,8 @@ function TransferApplet() {
                       <CoinSelector
                         coins={
                           isConnected
-                            ? Object.keys({ "bridge/usdc": "", ...balances }).map(
-                                (denom) => coins.byDenom[denom],
+                            ? Object.keys({ "bridge/usdc": "", ...balances }).map((denom) =>
+                                getCoinInfo(denom),
                               )
                             : [coins.byDenom[selectedDenom]]
                         }
