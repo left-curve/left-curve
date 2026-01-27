@@ -12,9 +12,9 @@
 
 - Add the debian-deploy key:
 
-```bash
-ssh-copy-id -i ~/.ssh/debian_deploy.pub username@public_ip
-```
+  ```bash
+  ssh-copy-id -i ~/.ssh/debian_deploy.pub username@public_ip
+  ```
 
 - Add the host in `inventory` using its public IP
 
@@ -66,7 +66,7 @@ security add-generic-password \
 This shows you have the right password:
 
 ```bash
-❯ ./vault-password.sh|sha256
+❯ ./vault-password.sh | sha256
 2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
 ```
 
@@ -103,7 +103,7 @@ security add-generic-password \
 This shows you have the right password:
 
 ```bash
-❯ ./debian-password.sh|sha256
+❯ ./debian-password.sh | sha256
 b82a3865821fb1c7072cf58ca641811fd814c892109963f54fce675e7e9cfca5
 ```
 
@@ -120,6 +120,7 @@ directly into ssh-agent without writing to disk:
 `just add-deploy-key`
 
 Notes:
+
 - Ensure `ssh-agent` is running in your shell (`eval $(ssh-agent -s)` if needed).
 
 ## Manual Cosign Verification
