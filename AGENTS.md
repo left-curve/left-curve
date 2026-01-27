@@ -6,7 +6,7 @@ This document is a generic, evergreen guide for new agents working in this repos
 - Rust + TypeScript monorepo: smart contracts (Dango), node (Grug), indexers, SDK, and UI.
 - Primary Rust workspace in `Cargo.toml`; CLI of interest is `dango/cli`.
 - Config files for running nodes live under:
-  - `networks/localdango/configs/dango/config/app.toml`
+  - `localdango/configs/dango/config/app.toml`
   - `deploy/roles/full-app/templates/config/dango/app.toml`
 
 ## Conventions
@@ -39,7 +39,7 @@ If adding/upgrading these, align versions across crates to avoid trait/type mism
 ## Config Locations
 - Local user config: `~/.dango/config/app.toml`.
 - Templates to keep in sync:
-  - `networks/localdango/configs/dango/config/app.toml`
+  - `localdango/configs/dango/config/app.toml`
   - `deploy/roles/full-app/templates/config/dango/app.toml`
 
 ## Runtime & Signals
