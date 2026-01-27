@@ -59,13 +59,13 @@ stop-mainnet:
   ansible-playbook stop-services.yml -e dango_network=mainnet --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
 
 restart-devnet:
-  ansible-playbook restart-services.yml -e dango_network=devnet
+  ansible-playbook restart-services.yml -e dango_network=devnet --limit 100.96.253.40,100.107.248.71
 
 restart-testnet:
-  ansible-playbook restart-services.yml -e dango_network=testnet
+  ansible-playbook restart-services.yml -e dango_network=testnet --limit 100.90.163.19,100.109.200.70
 
 restart-mainnet:
-  ansible-playbook restart-services.yml -e dango_network=mainnet
+  ansible-playbook restart-services.yml -e dango_network=mainnet --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
 
 # Note: the `reset-and-deploy-mainnet` command has been deleted.
 # We don't ever want to reset mainnet. Deleting the command so we don't do it by mistake.
@@ -141,3 +141,13 @@ add-deploy-key:
 add-debian-key:
   ./debian-key.sh | ssh-add - >/dev/null
   @echo "debian key added to ssh-agent. You can now run ansible-playbook normally."
+
+# Pre-fetch vault passwords into environment variables (memory only, no disk)
+# Spawns a new shell with passwords set. Exit the shell when done.
+add-passwords:
+  #!/bin/bash
+  VAULT=$(./vault-password.sh 2>/dev/null) || { echo "Failed to get vault password" >&2; exit 1; }
+  DEBIAN=$(./debian-password.sh 2>/dev/null) || { echo "Failed to get debian password" >&2; exit 1; }
+  export ANSIBLE_VAULT_PASSWORD="$VAULT"
+  export ANSIBLE_DEBIAN_PASSWORD="$DEBIAN"
+  exec $SHELL

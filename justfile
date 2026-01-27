@@ -69,7 +69,7 @@ book:
 # Update CometBFT genesis files
 update-genesis:
   cargo run -p dango-scripts --example build_genesis -- \
-    networks/localdango/configs/cometbft/config/genesis.json \
+    localdango/configs/cometbft/config/genesis.json \
     deploy/roles/full-app/templates/config/cometbft/genesis.json
 
 # Update wasm artifacts used in tests
@@ -102,4 +102,4 @@ check-candles:
     INDEXER__CLICKHOUSE__DATABASE=testnet_dango_production \
     INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD} \
     RUST_LOG=info \
-    cargo run -p dango-cli indexer --home networks/localdango/configs/dango/ check-candles
+    cargo run -p dango-cli indexer --home localdango/configs/dango/ check-candles
