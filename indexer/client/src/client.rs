@@ -145,6 +145,9 @@ impl HttpClient {
                         break;
                     }
                     after = page_info.end_cursor;
+                    if after.is_none() {
+                        break;
+                    }
                 },
                 (None, Some(_)) => {
                     // Backward pagination - items come in reverse order
@@ -153,6 +156,9 @@ impl HttpClient {
                         break;
                     }
                     before = page_info.start_cursor;
+                    if before.is_none() {
+                        break;
+                    }
                 },
                 _ => {
                     // Invalid: must specify exactly one of first or last
@@ -220,6 +226,9 @@ macro_rules! impl_paginate_method {
                         break;
                     }
                     after = connection.page_info.end_cursor;
+                    if after.is_none() {
+                        break;
+                    }
                 }
 
                 Ok(all_items)
