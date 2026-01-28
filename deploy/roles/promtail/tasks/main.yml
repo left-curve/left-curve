@@ -21,3 +21,20 @@
     state: present
     recreate: always
 
+- name: Install systemd unit for Promtail compose
+  become: true
+  become_user: root
+  template:
+    src: promtail-compose.service.j2
+    dest: /etc/systemd/system/promtail-compose.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start promtail-compose service
+  become: true
+  become_user: root
+  systemd:
+    name: promtail-compose.service
+    enabled: true
+    state: started
+
