@@ -157,6 +157,9 @@ jobs:
 
   zizmor:
     name: Audit GitHub Actions
+    # Intentionally on ubuntu-latest, not self-hosted: this job gates
+    # self-hosted runner jobs, so it must run on a trusted runner to
+    # prevent a malicious workflow change from bypassing the audit.
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -670,7 +673,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - name: Restore cross cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         if: env.BACKEND_CHANGED == 'true'
         with:
           path: .cross-cache
@@ -707,6 +711,13 @@ jobs:
             -v $HOME/.cache/sccache:/tmp/sccache \
             $CROSS_IMAGE \
             bash -lc 'command -v sccache && sccache --show-stats || true'
+
+      - name: Save cross cache
+        if: env.BACKEND_CHANGED == 'true' && github.event_name == 'push'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .cross-cache
+          key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: build docker image
         if: env.BACKEND_CHANGED == 'true'

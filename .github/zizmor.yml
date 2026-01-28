@@ -1,10 +1,4 @@
 rules:
-  cache-poisoning:
-    ignore:
-      # The cross-cache in backend-build stores compiled build artifacts,
-      # which are re-verified by the compiler on use. The cache key
-      # includes the Cargo.lock hash, limiting poisoning risk.
-      - rust.yml
   self-hosted-runner:
     ignore:
       # Self-hosted runners are intentionally used for backend builds
