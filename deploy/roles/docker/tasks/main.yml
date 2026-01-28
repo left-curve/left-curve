@@ -118,8 +118,16 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: Ensure Docker running
+- name: Ensure Docker running and enabled on boot
   become: true
   ansible.builtin.service:
     name: docker
     state: started
+    enabled: true
+
+- name: Ensure containerd enabled on boot
+  become: true
+  ansible.builtin.service:
+    name: containerd
+    state: started
+    enabled: true
