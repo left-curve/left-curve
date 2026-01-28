@@ -150,16 +150,17 @@ jobs:
     name: Audit GitHub Actions
     runs-on: ubuntu-latest
     permissions:
-      security-events: write
       contents: read
       actions: read
     steps:
       - uses: actions/checkout@v4
       - uses: zizmorcore/zizmor-action@v0.4.1
+        with:
+          advanced-security: false
 
   format:
     name: Format
-    needs: [changes]
+    needs: [changes, zizmor]
     runs-on: [self-hosted]
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
@@ -793,7 +794,7 @@ jobs:
           BACKEND_CHANGED: ${{ env.BACKEND_CHANGED }}
 
   frontend-build:
-    needs: [changes]
+    needs: [changes, zizmor]
     permissions:
       packages: write
     timeout-minutes: 30
