@@ -41,6 +41,7 @@ jobs:
       actions: read
 
   deploy:
+    needs: [zizmor]
     permissions:
       contents: read
       packages: read
