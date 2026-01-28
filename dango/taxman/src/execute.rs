@@ -20,9 +20,9 @@ use {
         },
     },
     grug::{
-        Addr, AuthCtx, AuthMode, Coin, Coins, ContractEvent, Duration, Inner, IsZero, Message,
+        Addr, AuthCtx, AuthMode, Coin, Coins, ContractEvent, Duration, Inner, IsZero, Map, Message,
         MultiplyFraction, MutableCtx, Number, NumberConst, Order, QuerierExt, Response, StdError,
-        StdResult, Storage, Tx, TxOutcome, Udec128, Uint128, coins,
+        StdResult, Storage, Timestamp, Tx, TxOutcome, Udec128, Udec128_6, Uint128, coins,
     },
     std::{collections::BTreeMap, ops::Mul},
 };
@@ -462,84 +462,6 @@ fn set_share_ratio(ctx: MutableCtx, rate: ShareRatio) -> anyhow::Result<Response
     })?;
 
     Ok(Response::new())
-}
-
-fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow::Result<Response> {
-    #[cfg(feature = "metrics")]
-    let now_volume = std::time::Instant::now();
-
-    let app_cfg = ctx.querier.query_dango_config()?;
-
-    ensure!(
-        ctx.sender == app_cfg.addresses.dex,
-        "only the dex contract can report volumes"
-    );
-
-    // Create account querier.
-    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
-
-    // Round the current timestamp _down_ to the nearest day.
-    let timestamp = ctx.block.timestamp - ctx.block.timestamp % VOLUME_TIME_GRANULARITY;
-
-    for (user, volume) in volumes {
-        // Query the user's account info. If there isn't one (i.e. the user
-        // isn't registered through the account factory), skip.
-        let Some(account) = account_querier.query_account(user)? else {
-            continue;
-        };
-
-        // Get the user's user index. If the user is a multisig, skip.
-        let AccountParams::Single(params) = &account.params else {
-            continue;
-        };
-
-        increment_cumulative_volume(
-            VOLUMES_BY_USER,
-            ctx.storage,
-            params.owner,
-            timestamp,
-            volume,
-        )?;
-    }
-
-    #[cfg(feature = "metrics")]
-    {
-        metrics::histogram!(crate::metrics::LABEL_DURATION_STORE_VOLUME)
-            .record(now_volume.elapsed().as_secs_f64());
-    }
-
-    Ok(Response::new())
-}
-
-/// Increment the user's cumulative volume.
-fn increment_cumulative_volume(
-    map: Map<'static, (UserIndex, Timestamp), Udec128_6>,
-    storage: &mut dyn Storage,
-    user_index: UserIndex,
-    timestamp: Timestamp,
-    volume: Udec128_6,
-) -> StdResult<()> {
-    // Find the most recent record of the user's cumulative volume.
-    // If not found, default to zero.
-    let (existing_timestamp, existing_volume) = map
-        .prefix(user_index)
-        .range(storage, None, None, Order::Descending)
-        .next()
-        .transpose()?
-        .unwrap_or_default();
-
-    // The existing most recent record shouldn't be newer than the current timestamp.
-    // We ensure this in debug mode.
-    debug_assert!(
-        existing_timestamp <= timestamp,
-        "existing cumulative volume has a timestamp newer than the current time: {} > {}",
-        existing_timestamp.to_rfc3339_string(),
-        timestamp.to_rfc3339_string()
-    );
-
-    let new_volume = existing_volume.checked_add(volume)?;
-
-    map.save(storage, (user_index, timestamp), &new_volume)
 }
 
 fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow::Result<Response> {
