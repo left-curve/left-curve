@@ -128,13 +128,17 @@ jobs:
               - 'localdango/**'
               - ".force_localdango"
       - name: Add detected changes to summary
+        env:
+          BACKEND_STATUS: ${{ steps.filter.outputs.backend }}
+          FRONTEND_STATUS: ${{ steps.filter.outputs.frontend }}
+          LOCALDANGO_STATUS: ${{ steps.filter.outputs.localdango }}
         run: |
           echo "## 🔍 Detected Changes" >> $GITHUB_STEP_SUMMARY
           echo "| Component | Changes Detected |" >> $GITHUB_STEP_SUMMARY
           echo "| --------- | --------------- |" >> $GITHUB_STEP_SUMMARY
-          backend_status="${{ steps.filter.outputs.backend }}"
-          frontend_status="${{ steps.filter.outputs.frontend }}"
-          localdango_status="${{ steps.filter.outputs.localdango }}"
+          backend_status="$BACKEND_STATUS"
+          frontend_status="$FRONTEND_STATUS"
+          localdango_status="$LOCALDANGO_STATUS"
           if [ "$backend_status" = "true" ]; then
             echo "| backend | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
@@ -239,6 +243,14 @@ jobs:
 
       - name: Setup sccache (optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        env:
+          SCCACHE_BUCKET_SECRET: ${{ secrets.SCCACHE_BUCKET }}
+          SCCACHE_ENDPOINT_SECRET: ${{ secrets.SCCACHE_ENDPOINT }}
+          SCCACHE_REGION_SECRET: ${{ secrets.SCCACHE_REGION }}
+          SCCACHE_S3_KEY_PREFIX_SECRET: ${{ secrets.SCCACHE_S3_KEY_PREFIX }}
+          SCCACHE_S3_USE_SSL_SECRET: ${{ secrets.SCCACHE_S3_USE_SSL }}
+          AWS_ACCESS_KEY_ID_SECRET: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY_SECRET: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
           if ! command -v sccache >/dev/null 2>&1; then
@@ -262,14 +274,14 @@ jobs:
             echo "RUSTC_WRAPPER=sccache"
             echo "SCCACHE_DIR=$HOME/.cache/sccache"
             echo "SCCACHE_CACHE_SIZE=10G"
-            echo "SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
-            echo "SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
-            echo "SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
-            echo "SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
-            echo "SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+            echo "SCCACHE_BUCKET=$SCCACHE_BUCKET_SECRET"
+            echo "SCCACHE_ENDPOINT=$SCCACHE_ENDPOINT_SECRET"
+            echo "SCCACHE_REGION=$SCCACHE_REGION_SECRET"
+            echo "SCCACHE_S3_KEY_PREFIX=$SCCACHE_S3_KEY_PREFIX_SECRET"
+            echo "SCCACHE_S3_USE_SSL=$SCCACHE_S3_USE_SSL_SECRET"
             echo "SCCACHE_S3_FORCE_PATH_STYLE=1"
-            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
-            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+            echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_SECRET"
+            echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_SECRET"
           } >> $GITHUB_ENV
 
       - uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
@@ -358,14 +370,16 @@ jobs:
 
       - name: Start PostgreSQL with increased max_connections
         if: env.BACKEND_CHANGED == 'true'
+        env:
+          RUN_ID: ${{ github.run_id }}
         run: |
           # Start postgres manually to pass -c max_connections=500
           # (GitHub Actions services don't support passing command args)
           # With 24 cores running tests in parallel, each test using ~5 connections,
           # we need more than the default 100 max_connections
           docker run -d \
-            --name postgres-test-${{ github.run_id }} \
-            -e POSTGRES_PASSWORD=${{ env.PGPASSWORD }} \
+            --name postgres-test-$RUN_ID \
+            -e POSTGRES_PASSWORD=$PGPASSWORD \
             -p 127.0.0.1:6432:5432 \
             --health-cmd pg_isready \
             --health-interval 10s \
@@ -376,7 +390,7 @@ jobs:
 
           # Wait for postgres to be ready
           for i in {1..30}; do
-            if docker exec postgres-test-${{ github.run_id }} pg_isready -U postgres; then
+            if docker exec postgres-test-$RUN_ID pg_isready -U postgres; then
               echo "PostgreSQL is ready"
               break
             fi
@@ -385,10 +399,18 @@ jobs:
           done
 
           # Verify the setting
-          docker exec postgres-test-${{ github.run_id }} psql -U postgres -c "SHOW max_connections;"
+          docker exec postgres-test-$RUN_ID psql -U postgres -c "SHOW max_connections;"
 
       - name: Setup sccache (optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        env:
+          SCCACHE_BUCKET_SECRET: ${{ secrets.SCCACHE_BUCKET }}
+          SCCACHE_ENDPOINT_SECRET: ${{ secrets.SCCACHE_ENDPOINT }}
+          SCCACHE_REGION_SECRET: ${{ secrets.SCCACHE_REGION }}
+          SCCACHE_S3_KEY_PREFIX_SECRET: ${{ secrets.SCCACHE_S3_KEY_PREFIX }}
+          SCCACHE_S3_USE_SSL_SECRET: ${{ secrets.SCCACHE_S3_USE_SSL }}
+          AWS_ACCESS_KEY_ID_SECRET: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY_SECRET: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
           if ! command -v sccache >/dev/null 2>&1; then
@@ -412,14 +434,14 @@ jobs:
             echo "RUSTC_WRAPPER=sccache"
             echo "SCCACHE_DIR=$HOME/.cache/sccache"
             echo "SCCACHE_CACHE_SIZE=10G"
-            echo "SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
-            echo "SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
-            echo "SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
-            echo "SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
-            echo "SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+            echo "SCCACHE_BUCKET=$SCCACHE_BUCKET_SECRET"
+            echo "SCCACHE_ENDPOINT=$SCCACHE_ENDPOINT_SECRET"
+            echo "SCCACHE_REGION=$SCCACHE_REGION_SECRET"
+            echo "SCCACHE_S3_KEY_PREFIX=$SCCACHE_S3_KEY_PREFIX_SECRET"
+            echo "SCCACHE_S3_USE_SSL=$SCCACHE_S3_USE_SSL_SECRET"
             echo "SCCACHE_S3_FORCE_PATH_STYLE=1"
-            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
-            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+            echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_SECRET"
+            echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_SECRET"
           } >> $GITHUB_ENV
 
       - name: Install toolchain
@@ -490,7 +512,9 @@ jobs:
 
       - name: Cleanup PostgreSQL container
         if: always() && env.BACKEND_CHANGED == 'true'
-        run: docker rm -f postgres-test-${{ github.run_id }} || true
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: docker rm -f postgres-test-$RUN_ID || true
 
   backend-build:
     needs: [backend-test, changes]
@@ -514,7 +538,9 @@ jobs:
     steps:
       - name: Skip backend build (no backend changes)
         if: env.BACKEND_CHANGED != 'true'
-        run: echo "No backend changes detected. Skipping backend build for ${{ matrix.arch }}."
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
+        run: echo "No backend changes detected. Skipping backend build for $MATRIX_ARCH."
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         if: env.BACKEND_CHANGED == 'true'
         with:
@@ -523,6 +549,14 @@ jobs:
 
       - name: Enable sccache for cross (optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        env:
+          SCCACHE_BUCKET: ${{ secrets.SCCACHE_BUCKET }}
+          SCCACHE_ENDPOINT: ${{ secrets.SCCACHE_ENDPOINT }}
+          SCCACHE_REGION: ${{ secrets.SCCACHE_REGION }}
+          SCCACHE_S3_KEY_PREFIX: ${{ secrets.SCCACHE_S3_KEY_PREFIX }}
+          SCCACHE_S3_USE_SSL: ${{ secrets.SCCACHE_S3_USE_SSL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.cache/sccache" "$PWD/.cross-cache/cargo"
@@ -535,14 +569,14 @@ jobs:
           opts="$opts --user $(id -u):$(id -g)"
           # Provide a writable cargo home inside the container and persist it
           opts="$opts -e CARGO_HOME=/tmp/cargo -v $PWD/.cross-cache/cargo:/tmp/cargo"
-          [ -n "${{ secrets.SCCACHE_BUCKET }}" ] && opts="$opts -e SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
-          [ -n "${{ secrets.SCCACHE_ENDPOINT }}" ] && opts="$opts -e SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
-          [ -n "${{ secrets.SCCACHE_REGION }}" ] && opts="$opts -e SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
-          [ -n "${{ secrets.SCCACHE_S3_KEY_PREFIX }}" ] && opts="$opts -e SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
-          [ -n "${{ secrets.SCCACHE_S3_USE_SSL }}" ] && opts="$opts -e SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+          [ -n "$SCCACHE_BUCKET" ] && opts="$opts -e SCCACHE_BUCKET=$SCCACHE_BUCKET"
+          [ -n "$SCCACHE_ENDPOINT" ] && opts="$opts -e SCCACHE_ENDPOINT=$SCCACHE_ENDPOINT"
+          [ -n "$SCCACHE_REGION" ] && opts="$opts -e SCCACHE_REGION=$SCCACHE_REGION"
+          [ -n "$SCCACHE_S3_KEY_PREFIX" ] && opts="$opts -e SCCACHE_S3_KEY_PREFIX=$SCCACHE_S3_KEY_PREFIX"
+          [ -n "$SCCACHE_S3_USE_SSL" ] && opts="$opts -e SCCACHE_S3_USE_SSL=$SCCACHE_S3_USE_SSL"
           opts="$opts -e SCCACHE_S3_FORCE_PATH_STYLE=1"
-          [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && opts="$opts -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
-          [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && opts="$opts -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          [ -n "$AWS_ACCESS_KEY_ID" ] && opts="$opts -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+          [ -n "$AWS_SECRET_ACCESS_KEY" ] && opts="$opts -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
           # Mount the host cache directory into the container
           opts="$opts -v $HOME/.cache/sccache:/tmp/sccache"
           echo "CROSS_CONTAINER_OPTS=$opts" >> $GITHUB_ENV
@@ -550,49 +584,53 @@ jobs:
       - name: Set build config
         id: config
         if: env.BACKEND_CHANGED == 'true'
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
+          RUNNER_ARCH: ${{ runner.arch }}
+          RUNNER_OS: ${{ runner.os }}
         run: |
           set -euo pipefail
-          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
-            if [[ "${{ runner.arch }}" == "X64" ]]; then
+          if [[ "$MATRIX_ARCH" == "amd64" ]]; then
+            if [[ "$RUNNER_ARCH" == "X64" ]]; then
               echo "image=ghcr.io/left-curve/left-curve/native-builder:amd64" >> $GITHUB_OUTPUT
               echo "arch=x86_64" >> $GITHUB_OUTPUT
-            elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
-              # if [[ "${{ runner.os }}" == "macOS" ]]; then
-              #   echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}, cross doesn't work with this config (sadly). We should fix this."
+            elif [[ "$RUNNER_ARCH" == "ARM64" ]]; then
+              # if [[ "$RUNNER_OS" == "macOS" ]]; then
+              #   echo "Unsupported runner: OS=$RUNNER_OS, Arch=$RUNNER_ARCH, cross doesn't work with this config (sadly). We should fix this."
               #   exit 1
               # fi
 
               echo "image=ghcr.io/left-curve/left-curve/cross-builder-amd64" >> $GITHUB_OUTPUT
               echo "arch=arm64" >> $GITHUB_OUTPUT
             else
-              echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+              echo "Unsupported runner: OS=$RUNNER_OS, Arch=$RUNNER_ARCH"
               exit 1
             fi
             echo "target=x86_64-unknown-linux-gnu" >> $GITHUB_OUTPUT
             echo "platform=linux/amd64" >> $GITHUB_OUTPUT
             echo "suffix=amd64" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
-            if [[ "${{ runner.arch }}" == "X64" ]]; then
+          elif [[ "$MATRIX_ARCH" == "arm64" ]]; then
+            if [[ "$RUNNER_ARCH" == "X64" ]]; then
               echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
-            elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
-              if [[ "${{ runner.os }}" == "macOS" ]]; then
+            elif [[ "$RUNNER_ARCH" == "ARM64" ]]; then
+              if [[ "$RUNNER_OS" == "macOS" ]]; then
                 echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
-              elif [[ "${{ runner.os }}" == "Linux" ]]; then
+              elif [[ "$RUNNER_OS" == "Linux" ]]; then
                 # NOTE: I could use a native-builder in such case, but using cross to keep consistency
                 echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
               else
-                echo "Unsupported runner OS for ARM64: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+                echo "Unsupported runner OS for ARM64: OS=$RUNNER_OS, Arch=$RUNNER_ARCH"
                 exit 1
               fi
             else
-              echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+              echo "Unsupported runner: OS=$RUNNER_OS, Arch=$RUNNER_ARCH"
               exit 1
             fi
             echo "target=aarch64-unknown-linux-gnu" >> $GITHUB_OUTPUT
             echo "platform=linux/arm64" >> $GITHUB_OUTPUT
             echo "suffix=arm64" >> $GITHUB_OUTPUT
           else
-              echo "Unsupported matrix ${{ matrix.arch }}"
+              echo "Unsupported matrix $MATRIX_ARCH"
               exit 1
           fi
 
@@ -608,15 +646,18 @@ jobs:
 
       - name: Write Cross.toml
         if: env.BACKEND_CHANGED == 'true'
+        env:
+          CROSS_TARGET: ${{ steps.config.outputs.target }}
+          CROSS_IMAGE: ${{ steps.config.outputs.image }}
         run: |
-          echo "[target.${{ steps.config.outputs.target }}]" > Cross.toml
-          echo "image = \"${{ steps.config.outputs.image }}\"" >> Cross.toml
+          echo "[target.$CROSS_TARGET]" > Cross.toml
+          echo "image = \"$CROSS_IMAGE\"" >> Cross.toml
 
       - name: Set GIT_COMMIT
         if: env.BACKEND_CHANGED == 'true'
         run: |
           cp grug/types/src/git_info.rs grug/types/src/git_info.rs.in
-          sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" grug/types/src/git_info.rs.in > grug/types/src/git_info.rs
+          sed "s/{{GIT_COMMIT}}/$GIT_COMMIT/" grug/types/src/git_info.rs.in > grug/types/src/git_info.rs
           rm grug/types/src/git_info.rs.in
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -637,48 +678,59 @@ jobs:
 
       - name: pull cross docker builder image
         if: env.BACKEND_CHANGED == 'true'
+        env:
+          CROSS_IMAGE: ${{ steps.config.outputs.image }}
         run: |
-          docker pull ${{ steps.config.outputs.image }}
+          docker pull $CROSS_IMAGE
 
       - name: build binary with cross
         if: env.BACKEND_CHANGED == 'true'
         env:
           RUSTFLAGS: "-C debuginfo=2 -C force-frame-pointers=yes"
           CARGO_PROFILE_RELEASE_STRIP: "none"
+          CROSS_TARGET: ${{ steps.config.outputs.target }}
         run: |
           set -euo pipefail
-          mkdir -p .cross-cache/${{ steps.config.outputs.target }}
-          CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
-          cross build --target ${{ steps.config.outputs.target }} --release --verbose
+          mkdir -p .cross-cache/$CROSS_TARGET
+          CROSS_TARGET_CACHE=$(pwd)/.cross-cache/$CROSS_TARGET \
+          cross build --target $CROSS_TARGET --release --verbose
 
       - name: sccache stats (cross, optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        env:
+          CROSS_IMAGE: ${{ steps.config.outputs.image }}
         run: |
           # Best-effort: show stats in a fresh container with the same cache mounted.
           docker run --rm \
             --user $(id -u):$(id -g) \
             -e SCCACHE_DIR=/tmp/sccache \
             -v $HOME/.cache/sccache:/tmp/sccache \
-            ${{ steps.config.outputs.image }} \
+            $CROSS_IMAGE \
             bash -lc 'command -v sccache && sccache --show-stats || true'
 
       - name: build docker image
         if: env.BACKEND_CHANGED == 'true'
+        env:
+          BUILD_PLATFORM: ${{ steps.config.outputs.platform }}
+          CROSS_TARGET: ${{ steps.config.outputs.target }}
+          BUILD_SUFFIX: ${{ steps.config.outputs.suffix }}
         run: |
           set -euo pipefail
           docker buildx build \
             --push \
-            --platform ${{ steps.config.outputs.platform }} \
-            --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
-            --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
+            --platform $BUILD_PLATFORM \
+            --build-arg TARGET_ARCH=$CROSS_TARGET \
+            --build-arg GIT_COMMIT=$GIT_COMMIT \
             --provenance=false \
-            -t ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
+            -t ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-$BUILD_SUFFIX \
             -f docker/dango/Dockerfile .
 
       - name: Ensure Dango works
         if: env.BACKEND_CHANGED == 'true'
+        env:
+          BUILD_SUFFIX: ${{ steps.config.outputs.suffix }}
         run: |
-          docker run --rm ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} dango || true
+          docker run --rm ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-$BUILD_SUFFIX dango || true
 
   backend-push-manifest:
     permissions:
@@ -704,26 +756,30 @@ jobs:
 
       - name: Create and push multi-arch Docker manifest
         if: env.BACKEND_CHANGED == 'true'
+        env:
+          GIT_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          docker manifest create ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }} \
-            --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
-            --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
+          docker manifest create ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT \
+            --amend ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-amd64 \
+            --amend ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-arm64
 
-          docker manifest push --purge ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}
+          docker manifest push --purge ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT
 
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          if [ "$GIT_REF" == "refs/heads/main" ]; then
             docker manifest create ghcr.io/left-curve/left-curve/dango:latest \
-              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
-              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
+              --amend ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-amd64 \
+              --amend ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-arm64
 
             docker manifest push --purge ghcr.io/left-curve/left-curve/dango:latest
           fi
 
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            docker manifest create ghcr.io/left-curve/left-curve/dango:pr-${{ github.event.pull_request.number }}-latest \
-              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
-              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
-            docker manifest push --purge ghcr.io/left-curve/left-curve/dango:pr-${{ github.event.pull_request.number }}-latest
+          if [ "$EVENT_NAME" == "pull_request" ]; then
+            docker manifest create ghcr.io/left-curve/left-curve/dango:pr-$PR_NUMBER-latest \
+              --amend ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-amd64 \
+              --amend ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-arm64
+            docker manifest push --purge ghcr.io/left-curve/left-curve/dango:pr-$PR_NUMBER-latest
           fi
       - name: Install Cosign
         if: env.BACKEND_CHANGED == 'true'
@@ -735,15 +791,18 @@ jobs:
           COSIGN_EXPERIMENTAL: "true"
           COSIGN_YES: "true"
           COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@${{ github.ref }}"
+          GIT_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
 
-          images=("ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}")
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          images=("ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT")
+          if [ "$GIT_REF" = "refs/heads/main" ]; then
             images+=("ghcr.io/left-curve/left-curve/dango:latest")
           fi
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            images+=("ghcr.io/left-curve/left-curve/dango:pr-${{ github.event.pull_request.number }}-latest")
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            images+=("ghcr.io/left-curve/left-curve/dango:pr-$PR_NUMBER-latest")
           fi
 
           tmp_markdown="$(mktemp)"
@@ -791,15 +850,16 @@ jobs:
       - name: Docker Deploy Summary
         env:
           DIGEST_TABLE: ${{ steps.sign-backend.outputs.digest_table }}
+          GIT_REF: ${{ github.ref }}
         if: env.BACKEND_CHANGED == 'true'
         run: |
           echo "# 🐳 Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
           echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
           echo "| ---- | ------ |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Commit** | \`${{ env.GIT_COMMIT }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`$GIT_COMMIT\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Status** | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Image URL** | [ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango) |" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          echo "| **Image URL** | [ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango) |" >> $GITHUB_STEP_SUMMARY
+          if [ "$GIT_REF" == "refs/heads/main" ]; then
             echo "| **Latest tag:** | [ghcr.io/left-curve/left-curve/dango:latest](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango) |" >> $GITHUB_STEP_SUMMARY
           fi
           echo "| **Architectures** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
@@ -843,7 +903,9 @@ jobs:
     steps:
       - name: Skip frontend build (no frontend changes)
         if: env.FRONTEND_CHANGED != 'true'
-        run: echo "No frontend changes detected. Skipping frontend build for ${{ matrix.arch }}."
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
+        run: echo "No frontend changes detected. Skipping frontend build for $MATRIX_ARCH."
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         if: env.FRONTEND_CHANGED == 'true'
         with:
@@ -863,35 +925,43 @@ jobs:
       - name: Set build config
         id: config
         if: env.FRONTEND_CHANGED == 'true'
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
-          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+          if [[ "$MATRIX_ARCH" == "amd64" ]]; then
             echo "target=x86_64-unknown-linux-gnu" >> $GITHUB_OUTPUT
             echo "platform=linux/amd64" >> $GITHUB_OUTPUT
             echo "suffix=amd64" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+          elif [[ "$MATRIX_ARCH" == "arm64" ]]; then
             echo "target=aarch64-unknown-linux-gnu" >> $GITHUB_OUTPUT
             echo "platform=linux/arm64" >> $GITHUB_OUTPUT
             echo "suffix=arm64" >> $GITHUB_OUTPUT
           else
-              echo "Unsupported matrix ${{ matrix.arch }}"
+              echo "Unsupported matrix $MATRIX_ARCH"
               exit 1
           fi
 
       - name: build docker image
         if: env.FRONTEND_CHANGED == 'true'
+        env:
+          BUILD_PLATFORM: ${{ steps.config.outputs.platform }}
+          BUILD_TARGET: ${{ steps.config.outputs.target }}
+          BUILD_SUFFIX: ${{ steps.config.outputs.suffix }}
+          PRIVY_APP_ID: ${{ vars.PRIVY_APP_ID_DEV }}
+          PRIVY_CLIENT_ID: ${{ vars.PRIVY_CLIENT_ID_DEV }}
         run: |
           set -euo pipefail
           docker buildx build \
             --push \
-            --platform ${{ steps.config.outputs.platform }} \
-            --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
-            --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
-            --build-arg GITHUB_TOKEN=${{ env.GITHUB_TOKEN }} \
-            --build-arg PRIVY_APP_ID=${{ vars.PRIVY_APP_ID_DEV }} \
-            --build-arg PRIVY_CLIENT_ID=${{ vars.PRIVY_CLIENT_ID_DEV }} \
+            --platform $BUILD_PLATFORM \
+            --build-arg TARGET_ARCH=$BUILD_TARGET \
+            --build-arg GIT_COMMIT=$GIT_COMMIT \
+            --build-arg GITHUB_TOKEN=$GITHUB_TOKEN \
+            --build-arg PRIVY_APP_ID=$PRIVY_APP_ID \
+            --build-arg PRIVY_CLIENT_ID=$PRIVY_CLIENT_ID \
             --provenance=false \
-            -t ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
+            -t ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT-$BUILD_SUFFIX \
             -f docker/dango-frontend/Dockerfile .
 
   frontend-push-manifest:
@@ -918,27 +988,31 @@ jobs:
 
       - name: Create and push multi-arch Docker manifest
         if: env.FRONTEND_CHANGED == 'true'
+        env:
+          GIT_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          docker manifest create ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }} \
-            --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-amd64 \
-            --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-arm64
+          docker manifest create ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT \
+            --amend ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT-amd64 \
+            --amend ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT-arm64
 
-          docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}
+          docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT
 
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          if [ "$GIT_REF" == "refs/heads/main" ]; then
             docker manifest create ghcr.io/left-curve/left-curve/dango-frontend:latest \
-              --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-amd64 \
-              --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-arm64
+              --amend ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT-amd64 \
+              --amend ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT-arm64
 
             docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:latest
           fi
 
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            docker manifest create ghcr.io/left-curve/left-curve/dango-frontend:pr-${{ github.event.pull_request.number }}-latest\
-              --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-amd64 \
-              --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-arm64
+          if [ "$EVENT_NAME" == "pull_request" ]; then
+            docker manifest create ghcr.io/left-curve/left-curve/dango-frontend:pr-$PR_NUMBER-latest\
+              --amend ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT-amd64 \
+              --amend ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT-arm64
 
-            docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:pr-${{ github.event.pull_request.number }}-latest
+            docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:pr-$PR_NUMBER-latest
           fi
       - name: Install Cosign
         if: env.FRONTEND_CHANGED == 'true'
@@ -950,15 +1024,18 @@ jobs:
           COSIGN_EXPERIMENTAL: "true"
           COSIGN_YES: "true"
           COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@${{ github.ref }}"
+          GIT_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
 
-          images=("ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}")
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          images=("ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT")
+          if [ "$GIT_REF" = "refs/heads/main" ]; then
             images+=("ghcr.io/left-curve/left-curve/dango-frontend:latest")
           fi
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            images+=("ghcr.io/left-curve/left-curve/dango-frontend:pr-${{ github.event.pull_request.number }}-latest")
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            images+=("ghcr.io/left-curve/left-curve/dango-frontend:pr-$PR_NUMBER-latest")
           fi
 
           tmp_markdown="$(mktemp)"
@@ -1006,15 +1083,16 @@ jobs:
       - name: Frontend Docker Deploy Summary
         env:
           DIGEST_TABLE: ${{ steps.sign-frontend.outputs.digest_table }}
+          GIT_REF: ${{ github.ref }}
         if: env.FRONTEND_CHANGED == 'true'
         run: |
           echo "# 🎨 Frontend Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
           echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
           echo "| ---- | ------ |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Commit** | \`${{ env.GIT_COMMIT }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`$GIT_COMMIT\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Status** | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Image URL** | [ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango-frontend) |" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          echo "| **Image URL** | [ghcr.io/left-curve/left-curve/dango-frontend:$GIT_COMMIT](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango-frontend) |" >> $GITHUB_STEP_SUMMARY
+          if [ "$GIT_REF" == "refs/heads/main" ]; then
             echo "| **Latest tag:** | [ghcr.io/left-curve/left-curve/dango-frontend:latest](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango-frontend) |" >> $GITHUB_STEP_SUMMARY
           fi
           echo "| **Architectures** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
@@ -1054,19 +1132,26 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Determine deploy image tag
         id: determine-tags
+        env:
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+          FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
+          BACKEND_PUBLISHED: ${{ needs['backend-push-manifest'].outputs.published }}
+          FRONTEND_PUBLISHED: ${{ needs['frontend-push-manifest'].outputs.published }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           backend_tag="latest"
           frontend_tag="latest"
-          backend_changed="${{ needs.changes.outputs.backend }}"
-          frontend_changed="${{ needs.changes.outputs.frontend }}"
-          backend_published="${{ needs['backend-push-manifest'].outputs.published }}"
-          frontend_published="${{ needs['frontend-push-manifest'].outputs.published }}"
-          run_event="${{ github.event_name }}"
+          backend_changed="$BACKEND_CHANGED"
+          frontend_changed="$FRONTEND_CHANGED"
+          backend_published="$BACKEND_PUBLISHED"
+          frontend_published="$FRONTEND_PUBLISHED"
+          run_event="$EVENT_NAME"
           backend_image_url="ghcr.io/left-curve/left-curve/dango"
           frontend_image_url="ghcr.io/left-curve/left-curve/dango-frontend"
 
-          commit_tag="${{ env.GIT_COMMIT }}"
+          commit_tag="$GIT_COMMIT"
           pr_tag=""
 
           if [ "$backend_published" = "true" ]; then
@@ -1074,7 +1159,7 @@ jobs:
           elif docker manifest inspect "${backend_image_url}:${commit_tag}" >/dev/null 2>&1; then
             backend_tag="$commit_tag"
           elif [ "$run_event" = "pull_request" ]; then
-            pr_tag="pr-${{ github.event.pull_request.number }}-latest"
+            pr_tag="pr-${PR_NUMBER}-latest"
             if docker manifest inspect "${backend_image_url}:${pr_tag}" >/dev/null 2>&1; then
               backend_tag="$pr_tag"
             fi
@@ -1085,7 +1170,7 @@ jobs:
           elif docker manifest inspect "${frontend_image_url}:${commit_tag}" >/dev/null 2>&1; then
             frontend_tag="$commit_tag"
           elif [ "$run_event" = "pull_request" ]; then
-            pr_tag="pr-${{ github.event.pull_request.number }}-latest"
+            pr_tag="pr-${PR_NUMBER}-latest"
             if docker manifest inspect "${frontend_image_url}:${pr_tag}" >/dev/null 2>&1; then
               frontend_tag="$pr_tag"
             fi
@@ -1215,8 +1300,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Check DEPLOY_KEY is set
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
-          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+          if [ -z "$DEPLOY_KEY" ]; then
             echo "Missing DEPLOY_KEY secret"
             exit 1
           fi
@@ -1234,18 +1321,24 @@ jobs:
         run: |
           ansible-galaxy collection install -r deploy/requirements.yml
       - name: Run Ansible playbook
+        env:
+          GIT_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd deploy
 
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true}' -e github_sha=${{ env.GIT_COMMIT }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e ghcr_token=${{ secrets.GITHUB_TOKEN }} --limit 100.96.253.40,100.107.248.71
+          if [ "$GIT_REF" == "refs/heads/main" ]; then
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true}' -e github_sha=$GIT_COMMIT -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71
           fi
 
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
+          if [ "$EVENT_NAME" == "pull_request" ]; then
           # This deletes the existing deployment, but instead use `ansible-playbook delete-full-app.yml -e deployment_name=pr-<ID>` if you need
-          # ansible-playbook delete-existing-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
+          # ansible-playbook delete-existing-app.yml -e deployment_name=pr-${PR_NUMBER}
 
-          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true, "s3_enabled": false}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }} --limit 100.96.253.40,100.107.248.71
+          ansible-playbook full-app.yml -e dango_network=pr-${PR_NUMBER} -e deployment_name=pr-${PR_NUMBER} -e github_pr_number=${PR_NUMBER} -e github_sha=${PR_HEAD_SHA} -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR '"${PR_NUMBER}"'", "chain_id": "pr-'"${PR_NUMBER}"'", "cloudflare_tunnel_enabled": true, "s3_enabled": false}' -e deploy_env=preview -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71
           fi
 
   localdango:
