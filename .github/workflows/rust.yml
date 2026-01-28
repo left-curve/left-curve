@@ -163,7 +163,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
-      - name: Run zizmor
+      - name: Run zizmor (SARIF)
+        if: always()
         run: uvx zizmor --config .github/zizmor.yml --format=sarif .github/workflows/rust.yml > results.sarif
       - name: Upload SARIF
         if: always()
@@ -171,6 +172,8 @@ jobs:
         with:
           sarif_file: results.sarif
           category: zizmor
+      - name: Run zizmor (audit)
+        run: uvx zizmor --config .github/zizmor.yml .github/workflows/rust.yml
 
   format:
     name: Format
