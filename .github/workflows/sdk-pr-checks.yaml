@@ -44,7 +44,3 @@ jobs:
 
       - name: Doc Build Check
         run: pnpm doc
-
-      # DELIBERATE TEMPLATE INJECTION — testing zizmor gate
-      - name: Debug info
-        run: echo "${{ github.event.pull_request.title }}"
