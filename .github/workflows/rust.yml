@@ -146,6 +146,17 @@ jobs:
             echo "| localdango | ❌ No |" >> $GITHUB_STEP_SUMMARY
           fi
 
+  zizmor:
+    name: Audit GitHub Actions
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: zizmorcore/zizmor-action@v0.4.1
+
   format:
     name: Format
     needs: [changes]
