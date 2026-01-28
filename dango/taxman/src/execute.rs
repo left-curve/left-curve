@@ -136,8 +136,14 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
         // The second referrer gets 0% rebounded fee (10% - 10%).
         // The third referrer gets 15% rebounded fee (25% - 10%).
 
-        let mut last_referee = payer_account_params.owner;
+        // Retrieve the first referrer info. We keep the first referrer outside from the other referrers
+        // since we need to store extra data for him.
+        // If the payer doesn't have a referrer, skip rebounding.
+        let Some(first_referrer) = referrer_info(ctx.storage, payer_account_params.owner)? else {
+            continue;
+        };
 
+        let mut last_referee = first_referrer.user;
         let mut referrer_chain = Vec::with_capacity(MAX_REFERRER_CHAIN_DEPTH as usize + 1);
         for _ in 0..MAX_REFERRER_CHAIN_DEPTH {
             let Some(referrer_info) = referrer_info(ctx.storage, last_referee)? else {
@@ -147,11 +153,6 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
             last_referee = referrer_info.user;
             referrer_chain.push(referrer_info);
         }
-
-        // If the payer doesn't have a referrer, skip rebounding.
-        let Some(first_referrer) = referrer_chain.get(0) else {
-            continue;
-        };
 
         // Calculate the commission rebound for the payer.
         let payer_commission_rebund = first_referrer
@@ -351,15 +352,15 @@ fn referrer_info(
     storage: &mut dyn Storage,
     referee: Referee,
 ) -> anyhow::Result<Option<ReferrerInfo>> {
-    if let Some(referrer) = REFEREE_TO_REFERRER.may_load(storage, referee)? {
-        if let Some(share_ratio) = FEE_SHARE_RATIO.may_load(storage, referrer)? {
-            let commission_rebund = calculate_commission_rebund(storage, referrer)?;
-            return Ok(Some(ReferrerInfo {
-                user: referrer,
-                commission_rebund,
-                share_ratio,
-            }));
-        }
+    if let Some(referrer) = REFEREE_TO_REFERRER.may_load(storage, referee)?
+        && let Some(share_ratio) = FEE_SHARE_RATIO.may_load(storage, referrer)?
+    {
+        let commission_rebund = calculate_commission_rebund(storage, referrer)?;
+        return Ok(Some(ReferrerInfo {
+            user: referrer,
+            commission_rebund,
+            share_ratio,
+        }));
     }
 
     Ok(None)
@@ -395,7 +396,7 @@ fn set_referral(ctx: MutableCtx, referrer: Referrer, referee: Referee) -> anyhow
         match ctx
             .querier
             .query_wasm_smart(account_factory, QueryAccountRequest {
-                address: ctx.sender.clone(),
+                address: ctx.sender,
             }) {
             Ok(account) => {
                 let AccountParams::Single(account_params) = account.params else {
