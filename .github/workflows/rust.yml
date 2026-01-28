@@ -172,7 +172,7 @@ jobs:
       - uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
       - name: Run zizmor (SARIF)
         if: always()
-        run: uvx zizmor --config .github/zizmor.yml --format=sarif .github/workflows/rust.yml > results.sarif
+        run: uvx zizmor --config .github/zizmor.yml --format=sarif .github/workflows/rust.yml .github/workflows/cometbft.yml > results.sarif
       - name: Upload SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
@@ -180,7 +180,7 @@ jobs:
           sarif_file: results.sarif
           category: zizmor
       - name: Run zizmor (audit)
-        run: uvx zizmor --config .github/zizmor.yml .github/workflows/rust.yml
+        run: uvx zizmor --config .github/zizmor.yml .github/workflows/rust.yml .github/workflows/cometbft.yml
 
   format:
     name: Format

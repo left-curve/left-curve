@@ -4,3 +4,4 @@ rules:
       # Self-hosted runners are intentionally used for backend builds
       # and deployments. The zizmor audit itself gates these jobs.
       - rust.yml
+      - cometbft.yml
