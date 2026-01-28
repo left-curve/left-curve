@@ -157,6 +157,9 @@
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
                       inline: true
+                    - name: "Logs"
+                      value: "{{ '[View action logs](https://github.com/' ~ github_repo ~ '/actions/runs/' ~ lookup('env', 'GITHUB_RUN_ID') ~ ')' if (lookup('env', 'GITHUB_RUN_ID') | length > 0) else '-' }}"
+                      inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
           run_once: true
@@ -281,6 +284,9 @@
                       inline: true
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
+                      inline: true
+                    - name: "Logs"
+                      value: "{{ '[View action logs](https://github.com/' ~ github_repo ~ '/actions/runs/' ~ lookup('env', 'GITHUB_RUN_ID') ~ ')' if (lookup('env', 'GITHUB_RUN_ID') | length > 0) else '-' }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
@@ -407,6 +413,9 @@
                       inline: true
                     - name: "Commit"
                       value: "[{{ commit_short_sha }}](https://github.com/{{ github_repo }}/commit/{{ commit_short_sha }})"
+                      inline: true
+                    - name: "Logs"
+                      value: "{{ '[View action logs](https://github.com/' ~ github_repo ~ '/actions/runs/' ~ lookup('env', 'GITHUB_RUN_ID') ~ ')' if (lookup('env', 'GITHUB_RUN_ID') | length > 0) else '-' }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
