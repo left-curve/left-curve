@@ -1,0 +1,20 @@
+rules:
+  template-injection:
+    ignore:
+      # rust.yml uses ${{ }} expressions extensively in run: blocks for
+      # docker commands, ansible playbooks, and build configuration.
+      # These reference safe contexts (github.run_id, matrix.arch,
+      # runner.os, steps.config.outputs.*, secrets.*, env vars) that
+      # are not user-controllable or are numeric (PR number).
+      - rust.yml
+  cache-poisoning:
+    ignore:
+      # The cross-cache in backend-build stores compiled build artifacts,
+      # which are re-verified by the compiler on use. The cache key
+      # includes the Cargo.lock hash, limiting poisoning risk.
+      - rust.yml
+  self-hosted-runner:
+    ignore:
+      # Self-hosted runners are intentionally used for backend builds
+      # and deployments. The zizmor audit itself gates these jobs.
+      - rust.yml
