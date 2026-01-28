@@ -14,3 +14,11 @@ hyperlane_instance_dir: "{{ hyperlane_agents_dir }}/{{ hyperlane_instance_name }
 
 # Docker image tag
 hyperlane_agents_tag: "latest"
+
+# Metrics ports for Hyperlane agents (host bindings).
+hyperlane_metrics_network_offset: >-
+  {{ 10 if hyperlane_agents_network == 'testnet' else 0 }}
+hyperlane_validator_metrics_host_port: >-
+  {{ 9500 + hyperlane_metrics_network_offset }}
+hyperlane_relayer_metrics_host_port: >-
+  {{ 9501 + hyperlane_metrics_network_offset }}

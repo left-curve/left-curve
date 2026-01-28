@@ -3872,7 +3872,7 @@ dependencies = [
 
 [[package]]
 name = "dango-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "bip32",
@@ -3948,7 +3948,6 @@ name = "dango-dex"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "dango-account-factory",
  "dango-oracle",
  "dango-types",
  "grug",
@@ -4215,6 +4214,7 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-types",
+ "metrics",
 ]
 
 [[package]]
@@ -4309,6 +4309,8 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
+ "dango-taxman",
+ "dango-types",
  "grug",
  "grug-app",
  "tracing",

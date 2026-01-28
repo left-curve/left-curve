@@ -9,7 +9,7 @@
   tasks:
     - name: Generate shared timestamp
       set_fact:
-        timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+        timestamp: "{{ lookup('pipe', 'date -u +%Y%m%d%H%M%S') }}"
       run_once: true
 
     - name: Get current commit short SHA

@@ -13,6 +13,7 @@ version       = { workspace = true }
 # If enabled, Wasm exports won't be created. This allows this contract to be
 # imported into other contracts as a library.
 library = []
+metrics = ["dep:metrics"]
 
 [dependencies]
 anyhow                = { workspace = true }
@@ -21,3 +22,4 @@ dango-oracle          = { workspace = true }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
 grug-types            = { workspace = true }
+metrics               = { workspace = true, optional = true }

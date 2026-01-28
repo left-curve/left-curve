@@ -42,7 +42,7 @@ on:
       - ".force_frontend_rebuild"
       - ".force_localdango"
       - ".force_deploy"
-      - "networks/localdango/**"
+      - "localdango/**"
       # - "sdk/**"
       # - "ui/store/**"
       # - "ui/portal/**"
@@ -73,7 +73,7 @@ on:
       - ".force_frontend_rebuild"
       - ".force_localdango"
       - ".force_deploy"
-      - "networks/localdango/**"
+      - "localdango/**"
       # - "sdk/**"
       # - "ui/store/**"
       # - "ui/portal/**"
@@ -120,7 +120,7 @@ jobs:
               - 'docker/dango-frontend/**'
               - '.force_frontend_rebuild'
             localdango:
-              - 'networks/localdango/**'
+              - 'localdango/**'
               - ".force_localdango"
       - name: Add detected changes to summary
         run: |
@@ -1253,10 +1253,10 @@ jobs:
           CLICKHOUSE_PORT: 0
           DANGO_PORT: 0
           COMETBFT_PORT: 0
-          COMETBFT_TAG: v0.38.19
+          COMETBFT_TAG: v0.38.21
           PYTH__ACCESS_TOKEN: ${{ secrets.PYTH__ACCESS_TOKEN }}
         run: |
-          cd networks/localdango
+          cd localdango
           cp env-example .env
           docker compose --profile dango --profile dex-bot --profile faucet -f docker-compose.dango.yml -f docker-compose.yml down -v
 
@@ -1308,5 +1308,5 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          cd networks/localdango
+          cd localdango
           docker compose --profile dango down -v || true

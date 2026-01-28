@@ -30,6 +30,7 @@ services:
       retries: 3
   renderer:
     image: grafana/grafana-image-renderer:latest
+    restart: unless-stopped
     environment:
       - ENABLE_METRICS='true'
       - AUTH_TOKEN={{ lookup('env','GF_RENDERING_RENDERER_TOKEN') }}

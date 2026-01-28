@@ -2,7 +2,7 @@ use {
     crate::account_factory::UserIndex,
     core::str,
     grug::{
-        Addr, Bounded, Coins, Denom, Timestamp, Udec128, ZeroInclusiveOneExclusive,
+        Addr, Bounded, Coins, Denom, Timestamp, Udec128, Udec128_6, ZeroInclusiveOneExclusive,
         ZeroInclusiveOneInclusive,
     },
     std::collections::BTreeMap,
@@ -98,6 +98,9 @@ pub enum ExecuteMsg {
         ty: FeeType,
         payments: BTreeMap<Addr, Coins>,
     },
+    /// Report trading volumes of users.
+    /// Can only be called by the spot and perp DEX contracts.
+    ReportVolumes(BTreeMap<Addr, Udec128_6>),
     /// Callable by:
     /// 1. the account factory, when a user registers with a referral code;
     /// 2. a user, if he didn't provide a referral code when registering.
@@ -116,6 +119,15 @@ pub enum QueryMsg {
     /// Query the fee configurations.
     #[returns(Config)]
     Config {},
+    /// Returns the trading volume of a user since the specified timestamp.
+    #[returns(Udec128)]
+    VolumeByUser {
+        /// The user to query trading volume for.
+        user: UserIndex,
+        /// The start timestamp to query trading volume for. If not provided,
+        /// user's total trading volume since genesis will be returned.
+        since: Option<Timestamp>,
+    },
 }
 
 #[grug::derive(Serde)]

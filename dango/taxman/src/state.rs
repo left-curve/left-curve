@@ -3,12 +3,25 @@ use {
         account_factory::UserIndex,
         taxman::{Config, Referee, RefereeData, Referrer, ShareRatio, UserReferralData},
     },
-    grug::{IndexedMap, Item, Map, MultiIndex, Timestamp, Udec128, Uint128},
+    grug::{IndexedMap, Item, Map, MultiIndex, Timestamp, Udec128, Udec128_6, Uint128},
 };
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
 pub const WITHHELD_FEE: Item<(Config, Uint128)> = Item::new("withheld_fee");
+
+/// Cumulative trading volume in the spot and perps DEXs of individual users.
+///
+/// In Dango, this is used to determine a user's trading fee. The higher the
+/// volume of the last 30 days, the lower the fee rate.
+///
+/// To find a user's volume _in the last X days_, find the latest cumulative
+/// volume (A), find the cumulative volume from X days ago (B), then subtract
+/// A by B.
+///
+/// The timestamps in this map are rounded down to the nearest day.
+/// The volume is in USDC microunits, i.e. 1e-6 USDC.
+pub const VOLUMES_BY_USER: Map<(UserIndex, Timestamp), Udec128_6> = Map::new("volume__user");
 
 // Given a referee, find his referrer.
 pub const REFEREE_TO_REFERRER: Map<Referee, Referrer> = Map::new("referee_to_referrer");
@@ -49,17 +62,3 @@ pub struct ReferrerStatisticsIndex<'a> {
     pub volume: MultiIndex<'a, (Referrer, Referee), (Referrer, Udec128), RefereeData>,
     pub commission: MultiIndex<'a, (Referrer, Referee), (Referrer, Udec128), RefereeData>,
 }
-
-// mod test {
-//     use grug::MockStorage;
-
-//     use crate::REFERRER_TO_REFEREE_STATISTICS;
-
-//     #[test]
-//     fn test() {
-//         let mut storage = MockStorage::new();
-
-//         REFERRER_TO_REFEREE_STATISTICS.idx.volume.sub_prefix(1);
-//         REFERRER_TO_REFEREE_STATISTICS.idx.commission.sub_prefix(1);
-//     }
-// }

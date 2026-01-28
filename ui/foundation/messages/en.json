@@ -978,6 +978,9 @@
       "minimumOrderSize": "Order size too small. Minimum order size is {minOrderSize} {symbol}"
     }
   },
+  "points": {
+    "campaign": "Campaign"
+  },
   "errors": {
     "validations": {
       "amountIsRequired": "Amount is required",
