@@ -2,6 +2,7 @@
 tailscale_ip: "100.66.234.16"
 hostname: "inter2"
 wireguard_ip: "10.99.0.13"
+reboot_time: "13:00"
 dango_networks:
   - mainnet
 cloudflare_lb_enabled: true

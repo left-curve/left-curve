@@ -2,3 +2,4 @@
 tailscale_ip: "100.114.160.24"
 hostname: "ovh4"
 wireguard_ip: "10.99.0.4"
+reboot_time: "10:30"
