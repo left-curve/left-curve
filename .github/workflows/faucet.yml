@@ -23,7 +23,15 @@ on:
           - "testnet"
 
 jobs:
+  zizmor:
+    uses: ./.github/workflows/zizmor.yml
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
   deploy-faucet:
+    needs: [zizmor]
     permissions:
       packages: read
     runs-on: [self-hosted]

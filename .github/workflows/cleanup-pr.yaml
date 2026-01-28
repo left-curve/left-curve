@@ -7,7 +7,15 @@ on:
     types: [closed]
 
 jobs:
+  zizmor:
+    uses: ./.github/workflows/zizmor.yml
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
   cleanup-deployment:
+    needs: [zizmor]
     runs-on: [self-hosted]
     env:
       ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}

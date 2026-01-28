@@ -22,6 +22,13 @@ env:
   IMAGE_BASE: ghcr.io/left-curve/left-curve/hyperlane-agents
 
 jobs:
+  zizmor:
+    uses: ./.github/workflows/zizmor.yml
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
   prepare:
     name: Detect changes & resolve Hyperlane SHA
     runs-on: ubuntu-latest
@@ -96,7 +103,7 @@ jobs:
 
   build:
     name: Build & push Hyperlane agents images
-    needs: [prepare]
+    needs: [prepare, zizmor]
     if: needs.prepare.outputs.need_build == 'true'
     strategy:
       fail-fast: false
