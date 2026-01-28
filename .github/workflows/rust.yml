@@ -1184,6 +1184,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+      security-events: write
     steps:
       - name: Skip security check (no new image builds)
         if: env.FRONTEND_CHANGED != 'true' && env.BACKEND_CHANGED != 'true'
@@ -1218,11 +1219,12 @@ jobs:
         env:
           SBOM_DIR: sbom
           REPORT_DIR: vuln-reports
+          SARIF_DIR: sarif
           DANGO_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
           FRONTEND_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
         run: |
           set -euo pipefail
-          mkdir -p "$SBOM_DIR" "$REPORT_DIR"
+          mkdir -p "$SBOM_DIR" "$REPORT_DIR" "$SARIF_DIR"
           failed=false
           images=(
             "ghcr.io/left-curve/left-curve/dango:${DANGO_TAG}"
@@ -1233,7 +1235,9 @@ jobs:
             safe_name=$(echo "$image" | tr '/:@' '___')
             sbom_file="$SBOM_DIR/${safe_name}.cdx.json"
             report_file="$REPORT_DIR/${safe_name}.txt"
+            sarif_file="$SARIF_DIR/${safe_name}.sarif"
             syft scan "$image" -o cyclonedx-json > "$sbom_file"
+            grype "$image" --add-cpes-if-none -o sarif > "$sarif_file"
             if ! grype "$image" --fail-on high --only-fixed --add-cpes-if-none > "$report_file"; then
               echo "::warning::High severity vulnerabilities detected for $image"
               failed=true
@@ -1250,6 +1254,12 @@ jobs:
           path: |
             sbom
             vuln-reports
+      - name: Upload Grype SARIF
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
+        uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          sarif_file: sarif
+          category: grype
       - name: Enforce vulnerability policy
         if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         run: |

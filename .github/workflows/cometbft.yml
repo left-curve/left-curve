@@ -202,6 +202,43 @@ jobs:
             echo "| ghcr.io/${GH_REPOSITORY}/cometbft:${COMETBFT_GIT_TAG} | \`${DIGEST}\` |" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+  scan:
+    name: Scan CometBFT image
+    needs: [check-image, build-cometbft]
+    if: needs.check-image.outputs.skip_build == 'false' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Grype
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
+      - name: Scan image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
+        run: |
+          set -euo pipefail
+          mkdir -p sarif
+          grype "$IMAGE" --add-cpes-if-none -o sarif > sarif/cometbft.sarif
+      - name: Upload Grype SARIF
+        uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          sarif_file: sarif
+          category: grype-cometbft
+
   cometbft-manual-sign:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.cometbft_tag != '' }}
     name: Sign existing CometBFT image
