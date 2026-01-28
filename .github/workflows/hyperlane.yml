@@ -1,5 +1,7 @@
 name: Hyperlane Agents
 
+permissions: {}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -23,20 +25,24 @@ jobs:
   prepare:
     name: Detect changes & resolve Hyperlane SHA
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     outputs:
       docker_changed: ${{ steps.filter.outputs.hyperlane_agents }}
       hyperlane_sha: ${{ steps.hyperlane-sha.outputs.sha }}
       need_build: ${{ steps.decision.outputs.need_build }}
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ github.head_ref || github.ref }}
           fetch-depth: 100
+          persist-credentials: false
 
       - name: Determine affected paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
         with:
           filters: |
             hyperlane_agents:
@@ -44,7 +50,7 @@ jobs:
               - '.force_hyperlane_agents_rebuild'
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -64,11 +70,11 @@ jobs:
 
       - name: Decide whether we need to build
         id: decision
+        env:
+          DOCKER_CHANGED: ${{ steps.filter.outputs.hyperlane_agents }}
+          HYP_SHA: ${{ steps.hyperlane-sha.outputs.sha }}
         run: |
           set -euo pipefail
-
-          DOCKER_CHANGED="${{ steps.filter.outputs.hyperlane_agents }}"
-          HYP_SHA="${{ steps.hyperlane-sha.outputs.sha }}"
 
           NEED_BUILD="false"
 
@@ -110,41 +116,47 @@ jobs:
       HYP_SHA: ${{ needs.prepare.outputs.hyperlane_sha }}
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ github.head_ref || github.ref }}
+          persist-credentials: false
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify runner architecture matches build target
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+          RUNNER_ARCHITECTURE: ${{ runner.arch }}
         run: |
           set -euo pipefail
-          if [[ "${{ matrix.arch }}" == "amd64" && "${{ runner.arch }}" != "X64" ]]; then
-            echo "Warning: Building amd64 on non-X64 runner (${{ runner.arch }}). This will be slow."
-          elif [[ "${{ matrix.arch }}" == "arm64" && "${{ runner.arch }}" != "ARM64" ]]; then
-            echo "Warning: Building arm64 on non-ARM64 runner (${{ runner.arch }}). This will be very slow due to QEMU emulation."
+          if [[ "${BUILD_ARCH}" == "amd64" && "${RUNNER_ARCHITECTURE}" != "X64" ]]; then
+            echo "Warning: Building amd64 on non-X64 runner (${RUNNER_ARCHITECTURE}). This will be slow."
+          elif [[ "${BUILD_ARCH}" == "arm64" && "${RUNNER_ARCHITECTURE}" != "ARM64" ]]; then
+            echo "Warning: Building arm64 on non-ARM64 runner (${RUNNER_ARCHITECTURE}). This will be very slow due to QEMU emulation."
           else
-            echo "Building ${{ matrix.arch }} on native ${{ runner.arch }} runner - optimal!"
+            echo "Building ${BUILD_ARCH} on native ${RUNNER_ARCHITECTURE} runner - optimal!"
           fi
 
       - name: Build and push Docker image
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
 
-          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+          if [[ "${BUILD_ARCH}" == "amd64" ]]; then
             PLATFORM="linux/amd64"
             SUFFIX="amd64"
-          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+          elif [[ "${BUILD_ARCH}" == "arm64" ]]; then
             PLATFORM="linux/arm64"
             SUFFIX="arm64"
           else
-            echo "Unsupported arch: ${{ matrix.arch }}"
+            echo "Unsupported arch: ${BUILD_ARCH}"
             exit 1
           fi
 
@@ -164,15 +176,17 @@ jobs:
             -f docker/hyperlane/Dockerfile \
             .
       - name: Ensure image works
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
 
-          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+          if [[ "${BUILD_ARCH}" == "amd64" ]]; then
             SUFFIX="amd64"
-          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+          elif [[ "${BUILD_ARCH}" == "arm64" ]]; then
             SUFFIX="arm64"
           else
-            echo "Unsupported arch: ${{ matrix.arch }}"
+            echo "Unsupported arch: ${BUILD_ARCH}"
             exit 1
           fi
 
@@ -194,13 +208,15 @@ jobs:
       HYP_SHA: ${{ needs.prepare.outputs.hyperlane_sha }}
     steps:
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and push multi-arch manifest
+        env:
+          GIT_REF: ${{ github.ref }}
         run: |
           set -euo pipefail
 
@@ -212,7 +228,7 @@ jobs:
 
           docker manifest push --purge "${IMAGE_BASE}:${HYP_SHA}"
 
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "${GIT_REF}" = "refs/heads/main" ]; then
             echo "Updating latest tag for main branch"
             docker manifest create "${IMAGE_BASE}:latest" \
               --amend "${IMAGE_BASE}:${HYP_SHA}-amd64" \

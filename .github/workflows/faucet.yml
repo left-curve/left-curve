@@ -1,5 +1,7 @@
 name: Faucet bot
 
+permissions: {}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -31,14 +33,16 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.7.0
+        uses: webfactory/ssh-agent@836c84ec59a0e7bc0eabc79988384eb567561ee2 # v0.7.0
         with:
           ssh-private-key: ${{ secrets.DEPLOY_KEY }}
       - name: Install Ansible
@@ -52,13 +56,19 @@ jobs:
           ansible-galaxy collection install -r deploy/requirements.yml
       - name: Set target IP
         id: set_ip
+        env:
+          INPUT_ENVIRONMENT: ${{ github.event.inputs.environment }}
         run: |
-          if [ "${{ github.event.inputs.environment }}" = "devnet" ]; then
+          if [ "$INPUT_ENVIRONMENT" = "devnet" ]; then
             echo "SERVER_IP=100.96.253.40" >> $GITHUB_ENV
-          elif [ "${{ github.event.inputs.environment }}" = "testnet" ]; then
+          elif [ "$INPUT_ENVIRONMENT" = "testnet" ]; then
             echo "SERVER_IP=100.107.248.71" >> $GITHUB_ENV
           fi
       - name: Run Ansible playbook
+        env:
+          INPUT_ENVIRONMENT: ${{ github.event.inputs.environment }}
+          INPUT_FAUCET_VERSION: ${{ github.event.inputs.faucet_version }}
+          SERVER_IP: ${{ env.SERVER_IP }}
         run: |
           cd deploy
-          ansible-playbook bots.yml --limit ${{ env.SERVER_IP }} -e '{"dango_networks":["${{ github.event.inputs.environment }}"]}' -e faucet_version=${{ github.event.inputs.faucet_version }}
+          ansible-playbook bots.yml --limit "$SERVER_IP" -e '{"dango_networks":["'"$INPUT_ENVIRONMENT"'"]}' -e faucet_version="$INPUT_FAUCET_VERSION"

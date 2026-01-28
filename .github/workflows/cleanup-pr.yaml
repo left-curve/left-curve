@@ -1,5 +1,7 @@
 name: Cleanup PR
 
+permissions: {}
+
 on:
   pull_request:
     types: [closed]
@@ -11,15 +13,20 @@ jobs:
       ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
       ANSIBLE_DEBIAN_PASSWORD: ${{ secrets.ANSIBLE_DEBIAN_PASSWORD }}
     permissions:
+      contents: read
       packages: write
       deployments: write
 
     steps:
       - name: Delete PR deployments
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -e
 
-          echo "Starting deployment cleanup for PR ${{ github.event.pull_request.number }}"
+          echo "Starting deployment cleanup for PR ${PR_NUMBER}"
 
           ENVIRONMENTS=("preview-dango-frontend" "preview-dango-api" "preview-dango-metrics" "preview-faucet-bot" "preview-cometbft-p2p" "preview-cometbft-rpc" "preview-cometbft-abci" "preview-cometbft-metrics")
 
@@ -34,8 +41,8 @@ jobs:
             while true; do
               # Fetch deployments page
               response=$(curl -s -w "%{http_code}" \
-                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                "https://api.github.com/repos/${{ github.repository }}/deployments?environment=${env}&page=${page}&per_page=100")
+                -H "Authorization: token ${GH_TOKEN}" \
+                "https://api.github.com/repos/${GH_REPO}/deployments?environment=${env}&page=${page}&per_page=100")
 
               http_code="${response: -3}"
               response_body="${response%???}"
@@ -53,7 +60,7 @@ jobs:
 
               # Extract deployment IDs for this PR
               DEPLOYMENT_IDS=$(echo "$response_body" | \
-                jq -r --arg pr "PR ${{ github.event.pull_request.number }}" \
+                jq -r --arg pr "PR ${PR_NUMBER}" \
                   '.[] | select(.description | contains($pr)) | .id')
 
               # Deactivate deployments found on this page
@@ -62,9 +69,9 @@ jobs:
                   echo "  Deactivating deployment ID: $id"
 
                   deactivate_response=$(curl -s -w "%{http_code}" -X POST \
-                    -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "Authorization: token ${GH_TOKEN}" \
                     -H "Accept: application/vnd.github.v3+json" \
-                    "https://api.github.com/repos/${{ github.repository }}/deployments/${id}/statuses" \
+                    "https://api.github.com/repos/${GH_REPO}/deployments/${id}/statuses" \
                     -d '{"state":"inactive","description":"PR closed - deployment deactivated"}')
 
                   deactivate_code="${deactivate_response: -3}"
@@ -84,7 +91,7 @@ jobs:
             done
 
             if [ $env_deactivated -eq 0 ]; then
-              echo "  No deployments found for PR ${{ github.event.pull_request.number }}"
+              echo "  No deployments found for PR ${PR_NUMBER}"
             else
               echo "  Deactivated $env_deactivated deployment(s) in $env"
             fi
@@ -102,16 +109,20 @@ jobs:
           fi
 
       - name: Delete PR container images
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -e  # Exit on any error
 
-          echo "Starting cleanup for PR ${{ github.event.pull_request.number }}"
+          echo "Starting cleanup for PR ${PR_NUMBER}"
 
           # Get PR commits with error handling
           echo "Fetching PR commits..."
           PR_COMMITS_RESPONSE=$(curl -s -w "%{http_code}" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits")
+            -H "Authorization: token ${GH_TOKEN}" \
+            "https://api.github.com/repos/${GH_REPO}/pulls/${PR_NUMBER}/commits")
 
           HTTP_CODE="${PR_COMMITS_RESPONSE: -3}"
           if [ "$HTTP_CODE" -ne 200 ]; then
@@ -139,7 +150,7 @@ jobs:
 
             # Get version ID for this tag
             local versions_response=$(curl -s -w "%{http_code}" \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Authorization: token ${GH_TOKEN}" \
               "https://api.github.com/orgs/left-curve/packages/container/${package}/versions")
 
             local http_code="${versions_response: -3}"
@@ -164,7 +175,7 @@ jobs:
 
             echo "Deleting $package:$tag (ID: $version_id)"
             local delete_response=$(curl -s -w "%{http_code}" -X DELETE \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Authorization: token ${GH_TOKEN}" \
               "https://api.github.com/orgs/left-curve/packages/container/${package}/versions/${version_id}")
 
             local delete_code="${delete_response: -3}"
@@ -187,7 +198,7 @@ jobs:
           PACKAGES=("left-curve%2Fdango" "left-curve%2Fdango-frontend")
           for package in "${PACKAGES[@]}"; do
             TOTAL_ATTEMPTS=$((TOTAL_ATTEMPTS + 1))
-            if delete_image_versions "$package" "pr-${{ github.event.pull_request.number }}-latest"; then
+            if delete_image_versions "$package" "pr-${PR_NUMBER}-latest"; then
               SUCCESSFUL_DELETIONS=$((SUCCESSFUL_DELETIONS + 1))
             else
               FAILED_DELETIONS=$((FAILED_DELETIONS + 1))
@@ -232,18 +243,22 @@ jobs:
           ansible-galaxy collection install -r deploy/requirements.yml
 
       - name: Check DEPLOY_KEY is set
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
-          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+          if [ -z "${DEPLOY_KEY}" ]; then
             echo "Missing DEPLOY_KEY secret"
             exit 1
           fi
 
       - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.7.0
+        uses: webfactory/ssh-agent@836c84ec59a0e7bc0eabc79988384eb567561ee2 # v0.7.0
         with:
           ssh-private-key: ${{ secrets.DEPLOY_KEY }}
 
       - name: Cleanup actual containers
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           cd deploy
-          ansible-playbook delete-full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} --limit 100.96.253.40,100.107.248.71
+          ansible-playbook delete-full-app.yml -e deployment_name=pr-${PR_NUMBER} --limit 100.96.253.40,100.107.248.71
