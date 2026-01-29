@@ -26,48 +26,46 @@
     dest: "{{ ansible_facts['env']['HOME'] }}"
     mode: '0755'
 
+- name: Write .env for docker-compose
+  copy:
+    dest: "{{ deploy_dir }}/.env"
+    mode: "0600"
+    content: |
+      CONTAINER_NAME={{ container_name }}
+      CLICKHOUSE_VERSION={{ clickhouse_version }}
+      CLICKHOUSE_PASSWORD={{ clickhouse_password }}
+      TAILSCALE_IP={{ tailscale_ip }}
+      WIREGUARD_IP={{ wireguard_ip }}
+      DATA_DIR={{ data_dir }}
+      LOGS_DIR={{ logs_dir }}
+      CONFIG_DIR={{ config_dir }}
+
+- name: Copy docker-compose.yml
+  template:
+    src: docker-compose.yml
+    dest: "{{ deploy_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Stop existing clickhouse container (pre-compose migration)
+  docker_container:
+    name: "{{ container_name }}"
+    state: absent
+  ignore_errors: true
+
 - name: Create clickhouse network
   docker_network:
     name: clickhouse
 
-- name: Deploy clickhouse container
-  docker_container:
-    name: "{{ container_name }}"
-    image: "clickhouse/clickhouse-server:{{ clickhouse_version }}"
-    restart_policy: unless-stopped
-    state: started
-    recreate: true
-    networks:
-      - name: clickhouse
-    env:
-      CLICKHOUSE_SKIP_USER_SETUP: "1"
-    labels:
-      com.docker.compose.service: "clickhouse"
-      service_name: "clickhouse"
-      environment: "production"
-    ports:
-      - "127.0.0.1:9000:9000" # Native TCP interface
-      - "{{ tailscale_ip }}:9126:9126" # Prometheus metrics
-      - "{{ wireguard_ip }}:9126:9126" # Prometheus metrics
-    volumes:
-      - "{{ data_dir }}:/var/lib/clickhouse"
-      - "{{ logs_dir }}:/var/log/clickhouse-server"
-      - "{{ config_dir }}/config.xml:/etc/clickhouse-server/config.xml:ro"
-      - "{{ config_dir }}/users.xml:/etc/clickhouse-server/users.xml:ro"
-    ulimits:
-      - "nofile:262144:262144"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "clickhouse-client",
-          "--user",
-          "default",
-          "--password",
-          "{{ clickhouse_password }}",
-          "--query",
-          "SELECT 1"
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+- name: Pre-pull image (avoid downtime while pulling)
+  community.docker.docker_image:
+    name: "clickhouse/clickhouse-server:{{ clickhouse_version }}"
+    source: pull
+
+- name: Start clickhouse stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ deploy_dir }}"
+    pull: always
+    recreate: always
+    remove_orphans: true
+    wait: true
+    wait_timeout: 300
