@@ -999,5 +999,13 @@
       "query": "Query",
       "simulate": "Simulate"
     }
+  },
+  "accountCard": {
+    "copyWarning": {
+      "title": "THIS IS NOT AN ETHEREUM ADDRESS",
+      "descriptionPre": "Do NOT withdrawal directly from a centralized exchange (CEX) to this address, or send funds directly to this address from Ethereum or other EVM chains. Use the",
+      "descriptionLink": "deposit",
+      "descriptionPost": "app instead."
+    }
   }
 }

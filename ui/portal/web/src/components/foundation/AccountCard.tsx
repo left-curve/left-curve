@@ -12,9 +12,28 @@ import {
   IconClose,
   TextCopy,
   TruncateText,
+  toast,
   twMerge,
   useApp,
 } from "@left-curve/applets-kit";
+
+const showAddressWarningToast = () => {
+  toast.warning(
+    {
+      title: m["accountCard.copyWarning.title"](),
+      description: () => (
+        <p className="text-ink-tertiary-500 diatype-xs-medium">
+          {m["accountCard.copyWarning.descriptionPre"]()}{" "}
+          <a href="/bridge" className="underline">
+            {m["accountCard.copyWarning.descriptionLink"]()}
+          </a>{" "}
+          {m["accountCard.copyWarning.descriptionPost"]()}
+        </p>
+      ),
+    },
+    { duration: 8000 },
+  );
+};
 
 export const AccountCardOptions = {
   [AccountType.Single]: {
@@ -109,7 +128,11 @@ const AccountCard: React.FC<AccountCardProps> = ({
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
+          <TextCopy
+            copyText={address}
+            className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+            onCopy={showAddressWarningToast}
+          />
         </div>
       </div>
       <div className="flex gap-2 items-center relative z-10">
@@ -163,7 +186,11 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
               start={4}
               end={4}
             />
-            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
+            <TextCopy
+              copyText={address}
+              className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+              onCopy={showAddressWarningToast}
+            />
           </div>
         </div>
         <div className="flex flex-col gap-1 items-end">

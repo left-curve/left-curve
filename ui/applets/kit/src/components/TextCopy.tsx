@@ -3,10 +3,9 @@ import { useState } from "react";
 import { IconCopyCheck } from "./icons/IconCopyCheck";
 import { IconCopyNoCheck } from "./icons/IconCopyNoCheck";
 
-export const TextCopy: React.FC<React.SVGAttributes<HTMLOrSVGElement> & { copyText?: string }> = ({
-  copyText,
-  ...props
-}) => {
+export const TextCopy: React.FC<
+  React.SVGAttributes<HTMLOrSVGElement> & { copyText?: string; onCopy?: () => void }
+> = ({ copyText, onCopy, ...props }) => {
   const [copyIcon, setCopyIcon] = useState(<IconCopyNoCheck {...props} />);
 
   return (
@@ -17,6 +16,7 @@ export const TextCopy: React.FC<React.SVGAttributes<HTMLOrSVGElement> & { copyTe
         if (copyText) navigator.clipboard.writeText(copyText);
         setCopyIcon(<IconCopyCheck {...props} />);
         setTimeout(() => setCopyIcon(<IconCopyNoCheck {...props} />), 1000);
+        onCopy?.();
       }}
     >
       {copyIcon}
