@@ -52,6 +52,14 @@ pub struct ReferrerInfo {
 }
 
 #[grug::derive(Serde, Borsh)]
+pub struct CommissionReboundRatios {
+    /// Default commission rebund ratio, applied when no volume thresholds are met.
+    pub default: CommissionRebund,
+    /// Mapping from volume thresholds to commission rebund ratios.
+    pub volume_threshold: BTreeMap<Udec128, CommissionRebund>,
+}
+
+#[grug::derive(Serde, Borsh)]
 pub struct Config {
     pub fee_denom: Denom,
     /// Units of the fee token for each unit of gas consumed.
@@ -101,6 +109,8 @@ pub enum ExecuteMsg {
     /// Report trading volumes of users.
     /// Can only be called by the spot and perp DEX contracts.
     ReportVolumes(BTreeMap<Addr, Udec128_6>),
+    /// Update the commission rebound ratios.
+    CommissionReboundRatio(CommissionReboundRatios),
     /// Callable by:
     /// 1. the account factory, when a user registers with a referral code;
     /// 2. a user, if he didn't provide a referral code when registering.

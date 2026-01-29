@@ -1,7 +1,10 @@
 use {
     dango_types::{
         account_factory::UserIndex,
-        taxman::{Config, Referee, RefereeData, Referrer, ShareRatio, UserReferralData},
+        taxman::{
+            CommissionReboundRatios, Config, Referee, RefereeData, Referrer, ShareRatio,
+            UserReferralData,
+        },
     },
     grug::{IndexedMap, Item, Map, MultiIndex, Timestamp, Udec128, Udec128_6, Uint128},
 };
@@ -23,17 +26,21 @@ pub const WITHHELD_FEE: Item<(Config, Uint128)> = Item::new("withheld_fee");
 /// The volume is in USDC microunits, i.e. 1e-6 USDC.
 pub const VOLUMES_BY_USER: Map<(UserIndex, Timestamp), Udec128_6> = Map::new("volume__user");
 
-// Given a referee, find his referrer.
+/// Referral commission rebound ratio by referees volume.
+pub const COMMISSION_REBOUND_RATIOS: Item<CommissionReboundRatios> =
+    Item::new("commission_rebound_ratios");
+
+/// Given a referee, find his referrer.
 pub const REFEREE_TO_REFERRER: Map<Referee, Referrer> = Map::new("referee_to_referrer");
 
-// How much of the fee the referrer wishes to share with the referee.
+/// How much of the fee the referrer want to share with the referee.
 pub const FEE_SHARE_RATIO: Map<Referrer, ShareRatio> = Map::new("fee_share_ratio");
 
-// Stores the total (cumulative) data for an user.
-pub const USER_CUMULATIVE_DATA: Map<(UserIndex, Timestamp), UserReferralData> =
-    Map::new("user_cumulative_data");
+/// Stores the total (cumulative) data for an user related to the referral program by day.
+pub const USER_REFERRAL_DATA: Map<(UserIndex, Timestamp), UserReferralData> =
+    Map::new("user_referral_data");
 
-// Stores the statistics of referees for each referrer.
+/// Stores the statistics of referees for each referrer.
 pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
     (Referrer, Referee),
     RefereeData,

@@ -1,9 +1,10 @@
 use {
-    dango_taxman::VOLUME_TIME_GRANULARITY,
     grug::{Addr, BlockInfo, Inner, Order, StdResult, Storage, addr},
     grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
     std::collections::BTreeMap,
 };
+
+pub const VOLUME_TIME_GRANULARITY: grug::Duration = grug::Duration::from_days(1);
 
 /// Address of the DEX contract.
 const DEX: Addr = addr!("da32476efe31e535207f0ad690d337a4ebf54a22");
