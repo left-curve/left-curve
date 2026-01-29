@@ -1306,7 +1306,7 @@ jobs:
           pnpm test:e2e
 
       - name: Cleanup
-        if: always()
+        if: always() && (env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true')
         run: |
           cd localdango
           docker compose --profile dango down -v || true
