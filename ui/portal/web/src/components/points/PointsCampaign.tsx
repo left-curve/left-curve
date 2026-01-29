@@ -6,6 +6,7 @@ import type { PropsWithChildren } from "react";
 import { PointsProfileTable } from "./PointsProfileTable";
 import { PointsHeader } from "./PointsHeader";
 import { BoxCard } from "./BoxCard";
+import { LigueLevels } from "./LigueLevels";
 import { NFTCard } from "./NFTCard";
 import { PointsProgressBar } from "./PointsProgressBar";
 import { ChestOpeningProvider, useChestOpening } from "./useChestOpening";
@@ -49,11 +50,7 @@ const ProfileHeader: React.FC = () => {
   return (
     <div className="w-full rounded-xl shadow-account-card overflow-hidden bg-surface-disabled-gray">
       <PointsHeader />
-      <img
-        src="/images/banner-points-dango.png"
-        alt="Points Banner"
-        className="w-full min-h-[25rem] drag-none select-none object-cover"
-      />
+      <LigueLevels />
     </div>
   );
 };
