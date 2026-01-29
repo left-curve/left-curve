@@ -1,8 +1,10 @@
 use {
-    crate::{build_actix_app, paginate_models},
-    assert_json_diff::*,
+    crate::{
+        Accounts, PaginationDirection, accounts_query, build_actix_app, call_graphql_query,
+        paginate_accounts,
+    },
+    assert_json_diff::assert_json_eq,
     assertor::*,
-    dango_indexer_sql::entity,
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
@@ -12,15 +14,16 @@ use {
         auth::Nonce,
         constants::dango,
     },
+    graphql_client::GraphQLQuery,
     grug::{
-        Addressable, Coin, Coins, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
+        Addressable, Coin, Coins, Inner, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
         QueryResponse, ResultExt,
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
+    indexer_client::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
     indexer_testing::{
-        GraphQLCustomRequest, GraphQLCustomResponse, PaginatedResponse, call_graphql,
-        call_paginated_graphql, call_ws_graphql_stream, parse_graphql_subscription_response,
+        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     std::collections::BTreeSet,
     tokio::{sync::mpsc, time::sleep},
@@ -46,65 +49,30 @@ async fn query_accounts() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Accounts {
-        accounts {
-          nodes {
-            address
-            accountIndex
-            accountType
-            createdAt
-            createdBlockHeight
-            users { userIndex }
-          }
-          edges { node { address accountIndex accountType createdAt createdBlockHeight users { userIndex } }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "accounts",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
+                let response = call_graphql_query::<_, accounts_query::ResponseData>(
+                    dango_httpd_context,
+                    Accounts::build_query(accounts_query::Variables::default()),
+                )
+                .await?;
 
-                let response: PaginatedResponse<serde_json::Value> =
-                    call_paginated_graphql(app, request_body).await?;
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+                let nodes = &data.accounts.nodes;
 
-                let received_accounts = response
-                    .edges
-                    .into_iter()
-                    .map(|e| e.node)
-                    .collect::<Vec<_>>();
+                assert_that!(nodes.len()).is_equal_to(2);
 
-                let expected_data = serde_json::json!([
-                    {
-                        "accountType": "single",
-                        "users": [
-                            {
-                                "userIndex": user2.user_index(),
-                            },
-                        ],
-                    },
-                    {
-                        "accountType": "single",
-                        "users": [
-                            {
-                                "userIndex": user1.user_index(),
-                            },
-                        ],
-                    },
-                ]);
+                assert_that!(nodes[0].account_type)
+                    .is_equal_to(accounts_query::AccountType::single);
+                assert_that!(nodes[0].users[0].user_index).is_equal_to(user2.user_index() as i64);
 
-                assert_json_include!(actual: received_accounts, expected: expected_data);
+                assert_that!(nodes[1].account_type)
+                    .is_equal_to(accounts_query::AccountType::single);
+                assert_that!(nodes[1].users[0].user_index).is_equal_to(user1.user_index() as i64);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -132,59 +100,33 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Accounts($userIndex: String) {
-        accounts(userIndex: $userIndex) {
-          nodes {
-            address
-            accountIndex
-            accountType
-            createdAt
-            createdBlockHeight
-            users { userIndex }
-          }
-          edges { node { address accountIndex accountType createdAt createdBlockHeight users { userIndex } }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let variables = serde_json::json!({
-        "userIndex": user.user_index(),
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "accounts",
-        query: graphql_query,
-        variables,
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
+                let variables = accounts_query::Variables {
+                    user_index: Some(user.user_index() as i64),
+                    ..Default::default()
+                };
 
-                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
-                    app,
-                    request_body,
+                let response = call_graphql_query::<_, accounts_query::ResponseData>(
+                    dango_httpd_context,
+                    Accounts::build_query(variables),
                 )
                 .await?;
 
-                let expected_data = serde_json::json!({
-                    "accountType": "single",
-                    "users": [
-                        {
-                            "userIndex": user.user_index(),
-                        }
-                    ],
-                });
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
 
-                assert_json_include!(actual: response.data.edges[0].node, expected: expected_data);
+                assert_that!(data.accounts.nodes).is_not_empty();
+                let first_account = &data.accounts.nodes[0];
+
+                assert_that!(first_account.account_type)
+                    .is_equal_to(accounts_query::AccountType::single);
+                assert_that!(first_account.users).is_not_empty();
+                assert_that!(first_account.users[0].user_index)
+                    .is_equal_to(user.user_index() as i64);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -212,56 +154,26 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Accounts($userIndex: String) {
-      accounts(userIndex: $userIndex) {
-          nodes {
-            address
-            accountIndex
-            accountType
-            createdAt
-            createdBlockHeight
-            users { userIndex }
-          }
-          edges { node { address accountIndex accountType createdAt createdBlockHeight users { userIndex } }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let variables = serde_json::json!({
-        "userIndex": 114514, // a random user index that doesn't exist
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "accounts",
-        query: graphql_query,
-        variables,
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
+                let variables = accounts_query::Variables {
+                    user_index: Some(114514), // a random user index that doesn't exist
+                    ..Default::default()
+                };
 
-                let response =
-                    call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
+                let response = call_graphql_query::<_, accounts_query::ResponseData>(
+                    dango_httpd_context,
+                    Accounts::build_query(variables),
+                )
+                .await?;
 
-                let nodes = response
-                    .data
-                    .as_object()
-                    .and_then(|c| c.get("nodes"))
-                    .and_then(|c| c.as_array())
-                    .expect("Failed to get nodes")
-                    .iter()
-                    .collect::<Vec<_>>();
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
 
-                assert_that!(nodes).is_empty();
+                assert_that!(data.accounts.nodes).is_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -294,114 +206,67 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Accounts($userIndex: String) {
-      accounts(userIndex: $userIndex) {
-          nodes {
-            address
-            accountIndex
-            accountType
-            createdAt
-            createdBlockHeight
-            users { userIndex }
-          }
-          edges { node { address accountIndex accountType createdAt createdBlockHeight users { userIndex } }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let variables = serde_json::json!({
-        "userIndex": test_account1.user_index(),
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "accounts",
-        query: graphql_query,
-        variables,
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
+                let variables = accounts_query::Variables {
+                    user_index: Some(test_account1.user_index() as i64),
+                    ..Default::default()
+                };
+
                 // Trying to figure out a bug
                 for _ in 0..10 {
-                    let app = build_actix_app(dango_httpd_context.clone());
-
-                    let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
-                        app,
-                        request_body.clone(),
+                    let response = call_graphql_query::<_, accounts_query::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Accounts::build_query(variables.clone()),
                     )
                     .await?;
 
-                    let received_accounts = response
-                        .data
-                        .edges
-                        .into_iter()
-                        .map(|e| e.node)
-                        .collect::<Vec<_>>();
+                    let data = response.data.unwrap();
 
-                    if received_accounts.len() == 2 {
+                    if data.accounts.nodes.len() == 2 {
                         break;
                     }
 
                     tracing::error!(
-                        "Expected 2 accounts, got {received_accounts:#?}. Retrying...",
+                        "Expected 2 accounts, got {:#?}. Retrying...",
+                        data.accounts.nodes
                     );
 
                     sleep(std::time::Duration::from_millis(1000)).await;
                 }
 
-                let app = build_actix_app(dango_httpd_context);
-
-                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
-                    app,
-                    request_body,
+                let response = call_graphql_query::<_, accounts_query::ResponseData>(
+                    dango_httpd_context,
+                    Accounts::build_query(variables),
                 )
                 .await?;
 
-                let received_accounts = response
-                    .data
-                    .edges
-                    .into_iter()
-                    .map(|e| e.node)
-                    .collect::<Vec<_>>();
+                let data = response.data.unwrap();
 
                 assert!(
-                    received_accounts.len() == 2,
-                    "Received accounts: {received_accounts:#?}"
+                    data.accounts.nodes.len() == 2,
+                    "Received accounts: {:#?}",
+                    data.accounts.nodes
                 );
 
-                let expected_account = serde_json::json!(
-                {
-                    "accountType": "single",
-                    "address": test_account2.address.inner().to_string(),
-                    "users": [
-                        {
-                            "userIndex": test_account1.user_index(),
-                        },
-                    ],
-                });
+                // Check first account (test_account2)
+                assert_that!(data.accounts.nodes[0].account_type)
+                    .is_equal_to(accounts_query::AccountType::single);
+                assert_that!(data.accounts.nodes[0].address.as_str())
+                    .is_equal_to(test_account2.address.inner().to_string().as_str());
+                assert_that!(data.accounts.nodes[0].users[0].user_index)
+                    .is_equal_to(test_account1.user_index() as i64);
 
-                assert_json_include!(actual: received_accounts[0], expected: expected_account);
-
-                let expected_account = serde_json::json!(
-                {
-                    "accountType": "single",
-                    "address": test_account1.address.inner().to_string(),
-                    "users": [
-                        {
-                            "userIndex": test_account1.user_index(),
-                        },
-                    ],
-                });
-
-                assert_json_include!(actual: received_accounts[1], expected: expected_account);
+                // Check second account (test_account1)
+                assert_that!(data.accounts.nodes[1].account_type)
+                    .is_equal_to(accounts_query::AccountType::single);
+                assert_that!(data.accounts.nodes[1].address.as_str())
+                    .is_equal_to(test_account1.address.inner().to_string().as_str());
+                assert_that!(data.accounts.nodes[1].users[0].user_index)
+                    .is_equal_to(test_account1.user_index() as i64);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -432,44 +297,27 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Accounts($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
-        accounts(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
-          nodes {
-            id
-            address
-            accountIndex
-            accountType
-            createdAt
-            createdBlockHeight
-            createdTxHash
-          }
-          edges { node { id address accountIndex accountType createdAt createdBlockHeight createdTxHash } cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let accounts_count = 2;
+                let page_size = 2;
 
                 // 1. first with descending order
-                let block_heights = paginate_models::<entity::accounts::Model>(
+                let block_heights: Vec<_> = paginate_accounts(
                     dango_httpd_context.clone(),
-                    graphql_query,
-                    "accounts",
-                    "BLOCK_HEIGHT_DESC",
-                    Some(accounts_count),
-                    None,
+                    page_size,
+                    accounts_query::Variables {
+                        sort_by: Some(accounts_query::AccountSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.created_block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.created_block_height)
+                .collect();
 
                 // Nonce 1: register first user
                 // Nonce 2: fund first user
@@ -478,58 +326,61 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
                 // etc...
                 // The expected nonces where the accounts are created are 1, 3, 5, 7, ...
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
+                    .is_equal_to((1i64..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
-                let block_heights = paginate_models::<entity::accounts::Model>(
+                let block_heights: Vec<_> = paginate_accounts(
                     dango_httpd_context.clone(),
-                    graphql_query,
-                    "accounts",
-                    "BLOCK_HEIGHT_ASC",
-                    Some(accounts_count),
-                    None,
+                    page_size,
+                    accounts_query::Variables {
+                        sort_by: Some(accounts_query::AccountSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.created_block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.created_block_height)
+                .collect();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
+                    .is_equal_to((1i64..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 3. last with descending order
-                let block_heights = paginate_models::<entity::accounts::Model>(
+                let block_heights: Vec<_> = paginate_accounts(
                     dango_httpd_context.clone(),
-                    graphql_query,
-                    "accounts",
-                    "BLOCK_HEIGHT_DESC",
-                    None,
-                    Some(accounts_count),
+                    page_size,
+                    accounts_query::Variables {
+                        sort_by: Some(accounts_query::AccountSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.created_block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.created_block_height)
+                .collect();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
+                    .is_equal_to((1i64..=10).map(|x| x * 2 - 1).collect::<Vec<_>>());
 
                 // 4. last with ascending order
-                let block_heights = paginate_models::<entity::accounts::Model>(
+                let block_heights: Vec<_> = paginate_accounts(
                     dango_httpd_context.clone(),
-                    graphql_query,
-                    "accounts",
-                    "BLOCK_HEIGHT_ASC",
-                    None,
-                    Some(accounts_count),
+                    page_size,
+                    accounts_query::Variables {
+                        sort_by: Some(accounts_query::AccountSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
                 .await?
                 .into_iter()
-                .map(|a| a.created_block_height as u64)
-                .collect::<Vec<_>>();
+                .map(|n| n.created_block_height)
+                .collect();
 
                 assert_that!(block_heights)
-                    .is_equal_to((1..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
+                    .is_equal_to((1i64..=10).map(|x| x * 2 - 1).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -557,26 +408,11 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      subscription Accounts {
-        accounts {
-          id
-          address
-          accountIndex
-          accountType
-          createdAt
-          createdBlockHeight
-          createdTxHash
-          users { userIndex }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "accounts",
-        query: graphql_query,
-        variables: Default::default(),
-    };
+    // Use typed subscription from indexer-client
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeAccounts::build_query(subscribe_accounts::Variables::default()),
+        "accounts",
+    );
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -598,39 +434,37 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
-                // 1st response is always the existing last block
-                let response = parse_graphql_subscription_response::<Vec<entity::accounts::Model>>(
-                    &mut framed,
-                    name,
-                )
+                // 1st response - parse as typed subscription response
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_accounts::SubscribeAccountsAccounts>,
+                >(&mut framed, name)
                 .await?;
 
                 assert_that!(
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.created_block_height)
+                        .map(|a| a.created_block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![1]);
+                .is_equal_to(vec![1i64]);
 
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let response = parse_graphql_subscription_response::<Vec<entity::accounts::Model>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_accounts::SubscribeAccountsAccounts>,
+                >(&mut framed, name)
                 .await?;
 
                 assert_that!(
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.created_block_height)
+                        .map(|a| a.created_block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![3]);
+                .is_equal_to(vec![3i64]);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -655,36 +489,18 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
-    let user_index = test_account1.user_index();
+    let user_index = test_account1.user_index() as i64;
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      subscription Accounts($userIndex: String) {
-        accounts(userIndex: $userIndex) {
-          id
-          address
-          accountIndex
-          accountType
-          createdAt
-          createdBlockHeight
-          users { userIndex }
-        }
-      }
-    "#;
-
-    let variables = serde_json::json!({
-        "userIndex": user_index,
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "accounts",
-        query: graphql_query,
-        variables,
-    };
+    // Use typed subscription from indexer-client
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeAccounts::build_query(subscribe_accounts::Variables {
+            user_index: Some(user_index),
+            ..Default::default()
+        }),
+        "accounts",
+    );
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -714,43 +530,25 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
-                let expected_data = serde_json::json!({
-                    "users": [
-                        {
-                            "userIndex": user_index,
-                        },
-                    ],
-                });
-
                 // 1st response is always accounts from the last block if any
-                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_accounts::SubscribeAccountsAccounts>,
+                >(&mut framed, name)
                 .await?;
 
-                let account = response
-                    .data
-                    .first()
-                    .expect("Expected at least one account");
-
-                assert_json_include!(actual: account, expected: expected_data);
+                assert_that!(response.data.first().unwrap().users[0].user_index)
+                    .is_equal_to(user_index);
 
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_accounts::SubscribeAccountsAccounts>,
+                >(&mut framed, name)
                 .await?;
 
-                let account = response
-                    .data
-                    .first()
-                    .expect("Expected at least one account");
-
-                assert_json_include!(actual: account, expected: expected_data);
+                assert_that!(response.data.first().unwrap().users[0].user_index)
+                    .is_equal_to(user_index);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -781,47 +579,36 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
         .query_wasm_smart(accounts.owner.address(), QuerySeenNoncesRequest {})
         .should_succeed_and_equal((0..20).collect());
 
-    let graphql_query = r#"
-      query QueryApp($request: String!, $height: Int) {
-        queryApp(request: $request, height: $height)
-      }
-    "#;
-
-    // This fails because `QuerySeenNoncesRequest` doesn't serialize as `{"seen_nonces": {}}`
     let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
         contract: accounts.owner.address(),
         msg: (QueryMsg::SeenNonces {}).to_json_value()?,
     })
     .to_json_value()?;
 
-    let variables = serde_json::json!({
-        "request": body_request,
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "queryApp",
-        query: graphql_query,
-        variables,
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
+                let variables = query_app::Variables {
+                    request: body_request.into_inner(),
+                    ..Default::default()
+                };
 
-                let received_data: GraphQLCustomResponse<serde_json::Value> =
-                    call_graphql(app, request_body).await?;
+                let response = call_graphql_query::<_, query_app::ResponseData>(
+                    dango_httpd_context,
+                    QueryApp::build_query(variables),
+                )
+                .await?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
 
                 let expected_data =
                     QueryResponse::WasmSmart((0..20).collect::<BTreeSet<Nonce>>().to_json_value()?)
                         .to_json_value()?;
 
-                assert_json_eq!(received_data.data, expected_data);
+                assert_json_eq!(data.query_app, expected_data);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -858,43 +645,33 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query QueryApp($request: String!, $height: Int) {
-        queryApp(request: $request, height: $height)
-      }
-    "#;
-
     let body_request = grug_types::Query::Balance(QueryBalanceRequest {
         address: accounts.user1.address(),
         denom: dango::DENOM.clone(),
     })
     .to_json_value()?;
 
-    let variables = serde_json::json!({
-        "request": body_request,
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "queryApp",
-        query: graphql_query,
-        variables,
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
+                let variables = query_app::Variables {
+                    request: body_request.into_inner(),
+                    ..Default::default()
+                };
 
-                let received_data: GraphQLCustomResponse<serde_json::Value> =
-                    call_graphql(app, request_body).await?;
+                let response = call_graphql_query::<_, query_app::ResponseData>(
+                    dango_httpd_context,
+                    QueryApp::build_query(variables),
+                )
+                .await?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
 
                 let httpd_balance: Coin =
-                    Json::from_inner(received_data.data.get("balance").unwrap().to_owned())
+                    Json::from_inner(data.query_app.get("balance").unwrap().to_owned())
                         .deserialize_json()
                         .unwrap();
 
