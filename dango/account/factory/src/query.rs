@@ -1,7 +1,7 @@
 use {
     crate::{
         ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
-        USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
+        REFEREE, REFEREE_COUNT, USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
     },
     dango_types::{
         account_factory::{
@@ -78,6 +78,16 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             limit,
         } => {
             let res = forgot_username(ctx.storage, key_hash, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::Referrer {
+            user: referee_index,
+        } => {
+            let res = referrer(ctx.storage, referee_index)?;
+            res.to_json_value()
+        },
+        QueryMsg::RefereeCount { user } => {
+            let res = referee_count(ctx.storage, user);
             res.to_json_value()
         },
     }
@@ -241,4 +251,12 @@ fn get_user_index(storage: &dyn Storage, user: &UserIndexOrName) -> StdResult<Us
         UserIndexOrName::Index(index) => Ok(*index),
         UserIndexOrName::Name(name) => USER_INDEXES_BY_NAME.load(storage, name),
     }
+}
+
+fn referrer(storage: &dyn Storage, referee_index: UserIndex) -> StdResult<Option<UserIndex>> {
+    REFEREE.may_load(storage, referee_index)
+}
+
+fn referee_count(storage: &dyn Storage, user: UserIndex) -> u32 {
+    REFEREE_COUNT.load(storage, user).unwrap_or(0)
 }
