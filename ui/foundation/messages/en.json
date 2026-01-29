@@ -979,7 +979,26 @@
     }
   },
   "points": {
-    "campaign": "Campaign"
+    "campaign": "Campaign",
+    "leagues": {
+      "title": "Leagues",
+      "subtitle": "Earn points to climb your way up!",
+      "levels": [
+        {
+          "declarations": ["input level"],
+          "selectors": ["level"],
+          "match": {
+            "level=wood": "Wood",
+            "level=iron": "Iron",
+            "level=gold": "Gold",
+            "level=platinum": "Platinum",
+            "level=diamond": "Diamond",
+            "level=master": "Master",
+            "level=grandmaster": "Grandmaster"
+          }
+        }
+      ]
+    }
   },
   "errors": {
     "validations": {
