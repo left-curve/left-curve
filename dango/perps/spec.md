@@ -304,21 +304,19 @@ let skew = pair_state.long_oi - pair_state.short_oi;
 - If `skew` is negative, it means all traders combined have a net short exposure, and the counterparty vault has a net long exposure. To incentivize traders to go bakc to neutral, the vault will offer better prices for buying, and worse price for selling.
 - If `skew` is zero, it means the market is perfectly neutral, and the vault will not bias towards either buying or selling.
 
-The `skew_pricing` is determined as:
+Given a skew and a size, the execution price is calculated as:
 
 ```rust
 fn compute_exec_price(
     oracle_price: Dec128,
     skew: Dec,
-    order: Dec,
+    size: Dec,
     pair_params: PairParams,
 ) -> Dec128 {
-    // The skew if the order is fully executed.
-    // Note that both `skew` and `order.size` are signed numbers; positive means
-    // long/buy, negative means short/sell.
-    let skew_after = skew + order.size;
+    // The skew after the size is fulfilled.
+    let skew_after = skew + size;
 
-    // The average skew before and after the order is executed.
+    // The average skew before and after the size is fulfilled.
     let skew_average = (skew + skew_after) / 2;
 
     // Compute a premium based on the average skew and skew scaling factor.
