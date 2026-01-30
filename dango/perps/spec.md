@@ -364,11 +364,11 @@ Given a skew and a size, the execution price is calculated as:
 
 ```rust
 fn compute_exec_price(
-    oracle_price: Dec128,
+    oracle_price: Udec,
     skew: Dec,
     size: Dec,
     pair_params: PairParams,
-) -> Dec128 {
+) -> Udec {
     // The skew after the size is fulfilled.
     let skew_after = skew + size;
 
