@@ -1,5 +1,7 @@
 # Perpetual futures exchange: specifications
 
+Overview:
+
 - This is a perpetual futures (perps) exchange that uses the **peer-to-pool model**, similar to e.g. Ostium. A liquidity pool provides quotes (based on data including oracle price, open interest (OI), and the order's size). All orders are executed against the pool, with the pool taking the counterparty position (e.g. if a user opens a long position of 5 BTC, the pool takes the opposite: a short position of 5 BTC). We call the pool the **counterparty pool**. Empirically, traders in aggregate lose money in the long run, which means counterparty pool makes money. This is in contrary to the peer-to-peer model, where users place orders in an order book; a user's order is executed against other users' orders.
 - The exchange operates in **one-way mode**. Meaning, e.g., a user has exactly 1 position for each tradable asset. If an order is fulfilled for a user who already has a position in that asset, the position is modified. This is in contrary to **two-way mode**, where a user can have multiple positions in a single asset. When placing an order, the user can choose whether the order will create a new position or modify an existing one.
 - For now, the exchange supports only **cross margin**. Support for isolated margin may be added in a future update.
@@ -10,7 +12,14 @@ This spec is divided into three sections:
 - _Storage_ defines what data are to be saved in the smart contract's storage.
 - _Business logic_ defines how the smart contract should handle user requests through the API.
 
-Code snippets that follow are in Rust pseudo-code.
+Regarding code snippets:
+
+- Written in Rust-like pseudocode.
+- `Dec` is a signed fixed-point decimal number type. The size of perpetual futures contracts, the size of orders, etc. are represented by `Dec`.
+- `Udec` is an unsigned fixed-point decimal number type. The oracle price is represented by `Udec`.
+- `Uint` is an unsigned integer number type. The amount of the settlement currency and vault shares are represented by `Uint`.
+- In the pseudocode we ignore the conversion between these number types, except for when converting from decimal to integer, where it's necessary to specify whether it should be floored or ceiled.
+- We also assume all the math traits are implemented. E.g. we may directly multiply a `Dec` with a `Uint`.
 
 ## API
 
@@ -19,22 +28,39 @@ User may interact with the smart contract by dispatching the following execution
 ```rust
 enum ExecuteMsg {
     /// Add liquidity to the counterparty vault.
-    Deposit { min_shares_to_mint: Option<Uint128> },
+    ///
+    /// User must sent a non-zero amount of the settlement currency (defined in
+    /// `Params` below) as attachment of this function call.
+    Deposit {
+        /// Revert if less than this number of share is minted.
+        min_shares_to_mint: Option<Uint>,
+    },
 
     /// Request to withdraw funds from the counterparty vault.
     ///
     /// The request will be fulfilled after the cooldown period, defined in the
     /// global parameters.
-    Unlock { shares_to_burn: Uint128 },
+    Unlock {
+        /// The amount of vault shares the user wishes to burn.
+        /// Must be no more than the amount of vault shares the user owns.
+        shares_to_burn: Uint,
+    },
 
     /// Submit an order.
     SubmitOrder {
         // The pair ID can either be numerical or string-like.
         pair_id: PairId,
-        direction: Direction,
+        /// The amount of the futures contract to buy or sell.
+        ///
+        /// E.g. when trading in the BTCUSD-PERP pair, if 1 BTCUSD-PERP futures
+        /// contract represents 1 BTC, and the user specifies a `size` of 1, it
+        /// means the user wishes to increase his long exposure or decrease his
+        /// short exposure by 1 BTC.
+        ///
+        /// Positive for buy (increase long exposure, decrease short exposure);
+        /// negative for sell (decrease long exposure, increase short exposure).
+        size: Dec,
         price: PriceOption,
-        /// The amount of the futures contract, not the amount of the settlement asset.
-        amount: Uint128,
         time_in_force: TimeInForce,
     },
 
@@ -42,14 +68,11 @@ enum ExecuteMsg {
     ///
     /// This can happen during a liquidation (callable by anyone), or during
     /// auto-deleveraging (callable only by the administrator).
-    ForceClose { user: Addr },
-}
-
-enum Direction {
-    /// Buy -- increase long exposure, or decrease short exposure.
-    Bid,
-    /// Sell -- decrease long exposure, or increase short exposure.
-    Ask,
+    ForceClose {
+        /// The user's identifier. In the smart contract implementation, this
+        /// should be an account address.
+        user: UserId,
+    },
 }
 
 enum PriceOption {
@@ -73,10 +96,10 @@ enum PriceOption {
         /// ```plain
         /// exec_price >= marginal_price * (1 - max_slippage)
         /// ```
-        max_slippage: Udec128,
+        max_slippage: Udec,
     },
     /// The execution price must be equal to or better than the specified.
-    Limit(Udec128),
+    Limit(Udec),
 }
 
 enum TimeInForce {
@@ -119,16 +142,27 @@ struct PairParams {
     /// A scaling factor that determines how greatly an imbalance in open
     /// interest ("skew") should affect an order's execution price.
     /// The greater the value of the scaling factor, the less the effect.
-    pub skew_scale: Udec128,
+    pub skew_scale: Udec,
 
     /// The maximum extend to which skew can affect execution price.
     /// The execution price is capped in the range `[1 - max_abs_premium, 1 + max_abs_premium]`.
     /// This prevents an exploit where a trader fabricates a big skew to obtain
     /// an unusually favorable pricing.
     /// See the Mars Protocol hack: <https://x.com/neutron_org/status/2014048218598838459>.
-    pub max_abs_premium: Udec128,
+    pub max_abs_premium: Udec,
 
-    // TODO: max OI, max skew
+    /// The maximum allowed open interest for both long and short.
+    /// I.e. the following must be satisfied:
+    ///
+    /// - |pair_state.long_oi| <= pair_params.max_abs_oi
+    /// - |pair_state.short_oi| <= pair_params.max_abs_oi
+    pub max_abs_oi: Udec,
+
+    /// The maximum allowed difference between long and short OIs.
+    /// I.e. the following must be satisfied:
+    ///
+    /// - |pair_state.long_oi - pair_state.short_oi| <= pair_params.max_abs_skew
+    pub max_abs_skew: Udec,
 }
 ```
 
@@ -142,10 +176,12 @@ struct State {
     ///
     /// Note that this doesn't equal the amount of funds withdrawable by burning
     /// shares, which also needs to factor in the vault's _unrealized_ PnL.
-    pub vault_balance: Uint128,
+    pub vault_balance: Uint,
 
     /// Total supply of the vault's share token.
-    pub vault_share_supply: Uint128,
+    pub vault_share_supply: Uint,
+
+    // TODO: accumulator variables for computing the vault's PnL
 }
 ```
 
@@ -158,12 +194,14 @@ struct PairState {
     /// E.g. suppose one futures contract represents 1 satoshi (1e-8 BTC).
     /// If `long_oi` has a value of 1,000,000, it means all long positions combined
     /// are 1,000,000 satoshis.
-    pub long_oi: Uint128,
-
-    /// The sum of the absolute value of the sizes of all short positions.
     ///
-    /// This can only be non-negative.
-    pub short_oi: Uint128,
+    /// Should always be non-negative.
+    pub long_oi: Dec,
+
+    /// The sum of the sizes of all short positions.
+    ///
+    /// Should always be non-positive.
+    pub short_oi: Dec,
 }
 ```
 
@@ -171,68 +209,85 @@ struct PairState {
 
 For simplicity, we assume the settlement asset (defined by `settlement_denom` in `Params`) is USDT.
 
-### Counterparty pool
+### Deposit
 
 Ownership of liquidity in the vault is tracked by **shares**. Users deposit USDT coins to receive newly minted shares, or burn shares to redeem USDT coins.
 
-At any time, the vault's **withdrawable amount** of USDT is defined as:
+At any time, the vault's **equity** is defined as the vault's token balance (which reflects the total amount of deposit from liquidity providers and the vault's realized PnL) plus its unrealized PnL:
 
 ```rust
-let vault_withdrawable_balance = vault_state.balance + vault_unrealized_pnl;
+let vault_equity = vault_state.balance + (compute_vault_unrealized_pnl() / usdt_price);
 ```
-
-The calculation of `vault_unrealized_pnl` is explained in a later section.
-
-#### Deposit
 
 Suppose the vault receives `amount_received` units of USDT from user:
 
 ```rust
+const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value */;
+
+ensure!(amount_received > 0, "nothing to do");
+
 let shares_to_mint = if vault_share_supply != 0 {
     ensure!(
-        vault_withdrawable_balance > 0,
+        vault_equity > 0,
         "vault is in catastrohpic loss! deposit disabled"
+        // If the vault has positive shares (i.e. it isn't empty) but zero or
+        // negative equity, the protocol is insolvent, and require intervention
+        // e.g. a bailout. Disable deposits in this case.
     );
 
-    floor(amount_received * vault_state.share_supply / vault_withdrawable_balance)
+    // Round the number down, to the advantage of the protocol and disadvantage
+    // of the user. This is a principle we must follow throughout the codebase.
+    (amount_received * vault_state.share_supply / vault_equity).floor()
 } else {
-    floor(amount_received * DEFAULT_SHARES_PER_AMOUNT)
+    (amount_received * DEFAULT_SHARES_PER_AMOUNT).floor()
 };
+
+if let Some(min_shares_to_mint) = min_shares_to_mint {
+    ensure!(
+        shares_to_min >= min_shares_to_min,
+        "to few shares would be minted"
+    );
+}
 
 vault_state.balance += amount_received;
 vault_state.share_supply += shares_to_mint;
 ```
 
-Notes:
-
-1. `DEFAULT_SHARES_PER_AMOUNT` is a constant of value `1_000_000`.
-2. `shares_to_mint` is _floored_, to the advantage of the protocol and disadvantage of user. This is a principle we must follow for all roundings throughout the entire protocol.
-
-The contract should ensure `shares_to_mint` is no less than `min_shares_to_mint` (if specified), then mint the shares to the user.
-
-#### Withdrawing
+### Unlock
 
 Suppose user requests to burn `shares_to_burn` units of shares:
 
 ```rust
-// See note 1
-let amount_to_release = floor(vault_withdrawable_balance * shares_to_burn / vault_state.share_supply);
+ensure!(shares_to_burn > 0, "nothing to do");
+ensure!(user_share_balance >= shares_to_burn, "can't burn more than what you have");
 
-// See note 2
+// Similarly to deposit, first compute the vault's equity.
+let vault_equity = vault_state.balance + (compute_vault_unrealized_pnl() / usdt_price);
+
+let amount_to_release = (vault_equity * shares_to_burn / vault_state.share_supply).floor();
+
+ensure!(
+    vault_state.balance >= amount_to_release,
+    "the vault doesn't have sufficient balance to fulfill with this withdrawal"
+    // This can happen if the vault has a very positive unrealized PnL.
+    // In this case, the liquidity provider must wait until that PnL is realized
+    // (i.e. the losing positions from traders are either closed or liquidated)
+    // before withdrawing.
+);
+
 vault_state.balance -= amount_to_release;
-
-// See note 1
 vault_state.share_supply -= shares_to_burn;
+
+// Compute the time when the tokens can be released.
+let release_time = current_time + params.vault_cooldown_period;
+
+// Persist this withdrawal request in contract storage.
+// When release_time is reached, the tokens are automatically released to the user.
+// This can be achieved through a cronjob, which we ignore in this spec.
+save_withdraw_request(user, amount_to_release, release_time);
 ```
 
-Notes:
-
-1. It should always be true that `vault_state.share_supply` >= `shares_to_burn` > 0. Otherwise, panic.
-2. Gracefully bail if this subtraction underflows. This can happen if the vault has a very positive unrealized PnL. The user must wait until the PnL is realized (i.e. the traders who are in loss realizes their losses or are liquidated) before withdrawing.
-
-The contract should add the withdrawal requests to a queue, and automatically fulfills it once the cooldown period has elapsed.
-
-### Order settlement
+### Submit order
 
 To ensure the protocol's solvency and profitability, it's important the market is close to _neutral_, meaning there is roughly the same amount of long and short OI. We incentivize this through two mechanisms, **skew pricing** and **funding fee** (the latter to be explained in a later section).
 
@@ -251,9 +306,9 @@ The `skew_pricing` is determined as:
 ```rust
 fn compute_exec_price(
     oracle_price: Dec128,
-    skew: Int128,
-    order: &Order,
-    pair_params: &PairParams,
+    skew: Dec,
+    order: Dec,
+    pair_params: PairParams,
 ) -> Dec128 {
     // The skew if the order is fully executed.
     // Note that both `skew` and `order.size` are signed numbers; positive means
@@ -276,13 +331,6 @@ fn compute_exec_price(
 
 > TODO
 
-#### Out-of-scope features
-
-The following advanced order types are out-of-scope for now, but will be added in the future:
-
-- **Reduce only**: an order that can only reduce the absolute value of a position's size. It can't "flip" the position to the other direction.
-- **TP/SL**: automatically close the position is PnL reaches an upper or lower threshold.
-
 ### Funding fee
 
 > TODO
@@ -302,3 +350,11 @@ Since the vault takes on counterparty positions of every trader, its PnL should 
 ### Liquidation and deleveraging
 
 > TODO
+
+## Out-of-scope features
+
+The following are out-of-scope for now, but will be added in the future:
+
+- **Isolated margin**
+- **Reduce only**: an order that can only reduce the absolute value of a position's size. It can't "flip" the position to the other direction.
+- **TP/SL**: automatically close the position is PnL reaches an upper or lower threshold.
