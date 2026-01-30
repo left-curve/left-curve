@@ -98,8 +98,11 @@ enum PriceOption {
         /// ```
         max_slippage: Udec,
     },
-    /// The execution price must be equal to or better than the specified.
-    Limit(Udec),
+    /// Trade at the specified limit price.
+    Limit {
+        /// The execution price must be equal to or better than this price.
+        limit_price: Udec,
+    },
 }
 
 enum TimeInForce {
@@ -328,6 +331,12 @@ fn compute_exec_price(
     oracle_price * (1 + premium)
 }
 ```
+
+> TODO
+
+### Fulfillment of limit orders
+
+At the beginning of each block, validators submit the latest oracle prices. The contract is then triggered to scan the unfilled limited orders in its storage and look for ones that can be filled.
 
 > TODO
 
