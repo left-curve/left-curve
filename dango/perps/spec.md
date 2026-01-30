@@ -1,10 +1,9 @@
 # Perpetual futures exchange: specifications
 
-Overview:
-
 - This is a perpetual futures (perps) exchange that uses the **peer-to-pool model**, similar to e.g. Ostium. A liquidity pool provides quotes (based on data including oracle price, open interest (OI), and the order's size). All orders are executed against the pool, with the pool taking the counterparty position (e.g. if a user opens a long position of 5 BTC, the pool takes the opposite: a short position of 5 BTC). We call the pool the **counterparty pool**. Empirically, traders in aggregate lose money in the long run, which means counterparty pool makes money. This is in contrary to the peer-to-peer model, where users place orders in an order book; a user's order is executed against other users' orders.
 - The exchange operates in **one-way mode**. Meaning, e.g., a user has exactly 1 position for each tradable asset. If an order is fulfilled for a user who already has a position in that asset, the position is modified. This is in contrary to **two-way mode**, where a user can have multiple positions in a single asset. When placing an order, the user can choose whether the order will create a new position or modify an existing one.
-- For now, the exchange supports only **cross margin**. Support for isolated margin may be added in a future update.
+- To ensure the protocol's solvency and profitability, it's important the market is close to _neutral_, meaning there is roughly the same amount of long and short OI. We incentivize this through two mechanisms, **skew pricing** and **funding fee** (described in respective sections).
+- For now, the exchange supports only **cross margin**. Support for isolated margin may be added in a future update. Uniquely, margin is not handled by the exchange smart contract, but the user's account, which is itself a smart contract. The exchange contract would first fulfills an order, then the account contract would backrun it. During the backrun, the account contract checks the user's margin. If not sufficient, an error is thrown to revert all previous operations.
 
 This spec is divided into three sections:
 
@@ -219,41 +218,55 @@ Ownership of liquidity in the vault is tracked by **shares**. Users deposit USDT
 At any time, the vault's **equity** is defined as the vault's token balance (which reflects the total amount of deposit from liquidity providers and the vault's realized PnL) plus its unrealized PnL:
 
 ```rust
-let vault_equity = vault_state.balance + (compute_vault_unrealized_pnl() / usdt_price);
+fn compute_vault_equity(state: &State, usdt_price: Udec) -> Dec {
+    state.vault_balance + (compute_vault_unrealized_pnl() / usdt_price)
+}
 ```
 
 Suppose the vault receives `amount_received` units of USDT from user:
 
 ```rust
-const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value */;
+fn handle_deposit(
+    state: &mut State,
+    user_shares: &mut Map<UserId, Uint>,
+    usdt_price: Udec,
+    user_id: UserId,
+    amount_received: Uint,
+) {
+    const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value */;
 
-ensure!(amount_received > 0, "nothing to do");
+    ensure!(amount_received > 0, "nothing to do");
 
-let shares_to_mint = if vault_share_supply != 0 {
-    ensure!(
-        vault_equity > 0,
-        "vault is in catastrohpic loss! deposit disabled"
-        // If the vault has positive shares (i.e. it isn't empty) but zero or
-        // negative equity, the protocol is insolvent, and require intervention
-        // e.g. a bailout. Disable deposits in this case.
-    );
+    let shares_to_mint = if state.vault_share_supply != 0 {
+        let vault_equity = compute_vault_equity(state, usdt_price);
 
-    // Round the number down, to the advantage of the protocol and disadvantage
-    // of the user. This is a principle we must follow throughout the codebase.
-    (amount_received * vault_state.share_supply / vault_equity).floor()
-} else {
-    (amount_received * DEFAULT_SHARES_PER_AMOUNT).floor()
-};
+        ensure!(
+            vault_equity > 0,
+            "vault is in catastrohpic loss! deposit disabled"
+            // If the vault has positive shares (i.e. it isn't empty) but zero or
+            // negative equity, the protocol is insolvent, and require intervention
+            // e.g. a bailout. Disable deposits in this case.
+        );
 
-if let Some(min_shares_to_mint) = min_shares_to_mint {
-    ensure!(
-        shares_to_min >= min_shares_to_min,
-        "to few shares would be minted"
-    );
+        // Round the number down, to the advantage of the protocol and disadvantage
+        // of the user. This is a principle we must follow throughout the codebase.
+        (amount_received * state.vault_share_supply / vault_equity).floor()
+    } else {
+        (amount_received * DEFAULT_SHARES_PER_AMOUNT).floor()
+    };
+
+    if let Some(min_shares_to_mint) = min_shares_to_mint {
+        ensure!(
+            shares_to_mint >= min_shares_to_mint,
+            "to few shares would be minted"
+        );
+    }
+
+    state.vault_balance += amount_received;
+    state.vault_share_supply += shares_to_mint;
+
+    user_shares[user_id] += shares_to_mint;
 }
-
-vault_state.balance += amount_received;
-vault_state.share_supply += shares_to_mint;
 ```
 
 ### Unlock
@@ -261,43 +274,55 @@ vault_state.share_supply += shares_to_mint;
 Suppose user requests to burn `shares_to_burn` units of shares:
 
 ```rust
-ensure!(shares_to_burn > 0, "nothing to do");
-ensure!(user_share_balance >= shares_to_burn, "can't burn more than what you have");
+fn handle_unlock(
+    state: &mut State,
+    user_shares: &mut Map<UserId, Uint>,
+    unlocks: &mut Vec<Unlock>,
+    usdt_price: Udec,
+    user_id: UserId,
+    shares_to_burn: Uint,
+) {
+    ensure!(shares_to_burn > 0, "nothing to do");
+    ensure!(user_shares[user_id] >= shares_to_burn, "can't burn more than what you have");
 
-// Similarly to deposit, first compute the vault's equity.
-let vault_equity = vault_state.balance + (compute_vault_unrealized_pnl() / usdt_price);
+    // Similarly to deposit, first compute the vault's equity.
+    let vault_equity = compute_vault_equity(state, usdt_price);
 
-let amount_to_release = (vault_equity * shares_to_burn / vault_state.share_supply).floor();
+    // Again, note the direction of rounding.
+    let amount_to_release = (vault_equity * shares_to_burn / state.vault_share_supply).floor();
 
-ensure!(
-    vault_state.balance >= amount_to_release,
-    "the vault doesn't have sufficient balance to fulfill with this withdrawal"
-    // This can happen if the vault has a very positive unrealized PnL.
-    // In this case, the liquidity provider must wait until that PnL is realized
-    // (i.e. the losing positions from traders are either closed or liquidated)
-    // before withdrawing.
-);
+    ensure!(
+        state.vault_balance >= amount_to_release,
+        "the vault doesn't have sufficient balance to fulfill with this withdrawal"
+        // This can happen if the vault has a very positive unrealized PnL.
+        // In this case, the liquidity provider must wait until that PnL is realized
+        // (i.e. the losing positions from traders are either closed or liquidated)
+        // before withdrawing.
+    );
 
-vault_state.balance -= amount_to_release;
-vault_state.share_supply -= shares_to_burn;
+    state.vault_balance -= amount_to_release;
+    state.vault_share_supply -= shares_to_burn;
 
-// Compute the time when the tokens can be released.
-let release_time = current_time + params.vault_cooldown_period;
+    user_shares[user_id] -= shares_to_burn;
 
-// Persist this withdrawal request in contract storage.
-// When release_time is reached, the tokens are automatically released to the user.
-// This can be achieved through a cronjob, which we ignore in this spec.
-save_withdraw_request(user, amount_to_release, release_time);
+    // Compute the time when the tokens can be released.
+    let release_time = current_time + params.vault_cooldown_period;
+
+    // Persist this withdrawal request in contract storage.
+    // When release_time is reached, the tokens are automatically released to the user.
+    // This can be achieved through a cronjob, which we ignore in this spec.
+    unlocks.push(Unlock { user_id, amount_to_release, release_time });
+}
 ```
 
 ### Submit order
 
-To ensure the protocol's solvency and profitability, it's important the market is close to _neutral_, meaning there is roughly the same amount of long and short OI. We incentivize this through two mechanisms, **skew pricing** and **funding fee** (the latter to be explained in a later section).
+#### Skew pricing
 
 **Skew** is defined as:
 
 ```rust
-let skew = pair_state.long_oi - pair_state.short_oi;
+let skew = pair_state.long_oi + pair_state.short_oi;
 ```
 
 - If `skew` is positive, it means all traders combined have a net long exposure, and the counterparty vault has a net short exposure. To incentivize traders to go back to neutral, the vault will offer better prices for selling, and worse price for buying.
@@ -329,6 +354,8 @@ fn compute_exec_price(
     oracle_price * (1 + premium)
 }
 ```
+
+#### Handling the order
 
 > TODO
 
