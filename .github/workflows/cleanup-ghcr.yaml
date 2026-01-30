@@ -1,4 +1,7 @@
 name: Cleanup Old GHCR Images
+
+permissions: {}
+
 on:
   schedule:
     # every day at 3am UTC
@@ -11,9 +14,9 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     steps:
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
