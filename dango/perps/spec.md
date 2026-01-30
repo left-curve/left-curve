@@ -109,11 +109,15 @@ enum TimeInForce {
     /// (in the case of market orders) or limit price (limit orders).
     /// If not completely unfilled, persist the unfilled portion in contract
     /// storage until either fully filled or canceled.
+    ///
+    /// TODO: should GTC orders have an expiration time?
     GoodTilCanceled,
 
     /// Fill the order as much as possible under the constraint of max slippage
     /// or limit price. Cancel the unfilled portion.
     ImmediateOrCancel,
+
+    // TODO: FillOrKill - revert if the order can't be completely filled.
 }
 ```
 
@@ -217,8 +221,15 @@ struct UserState {
     /// The user's positions.
     pub positions: Map<PairId, Position>,
 
+    /// The user's unfilled GoodTilCanceled (GTC) limit orders.
+    pub gtc_orders: Vec<Order>,
+
     /// The user's vault withdrawals that are pending cooldown.
     pub unlocks: Vec<Unlock>,
+}
+
+struct Order {
+    // TODO
 }
 
 struct Position {
@@ -258,6 +269,7 @@ fn handle_deposit(
     state: &mut State,
     user_state: &mut UserState,
     amount_received: Uint,
+    min_shares_to_mint: Option<Uint>,
     usdt_price: Udec,
 ) {
     const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value */;
@@ -378,8 +390,8 @@ fn compute_exec_price(
     // Compute a premium based on the average skew and skew scaling factor.
     let premium = skew_average / pair_params.skew_scale;
 
-    // Bound the premium between [1 - max_abs_premium, 1 + max_abs_premium].
-    let premium = min(max(premium, 1 - pair_params.max_abs_premium), 1 + pair_params.max_abs_premium);
+    // Bound the premium between [-max_abs_premium, max_abs_premium].
+    let premium = min(max(premium, -pair_params.max_abs_premium), pair_params.max_abs_premium);
 
     // Apply the premium to the oracle price to arrive at the final execution price.
     oracle_price * (1 + premium)
