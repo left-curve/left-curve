@@ -4,8 +4,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity, Price},
     grug::{
-        Coin, CoinPair, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst,
-        PrevNumber, Sign, Udec128, Uint128,
+        Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, PrevNumber,
+        Sign, Udec128, Uint128,
     },
     std::ops::Sub,
 };
@@ -22,18 +22,22 @@ pub trait PassiveLiquidityPool {
     /// - `lp_token_supply`: The current total supply of LP tokens.
     /// - `deposit`: The funds to add to the pool. Note, this may be asymmetrical,
     ///   or in the extreme case, one-sided.
+    /// - `protocol_fee_rate`: The protocol taker fee rate to apply to the virtual
+    ///   swap portion of asymmetric deposits.
     ///
     /// ## Outputs
     ///
     /// - The updated pool reserves.
     /// - The amount of LP tokens to mint.
+    /// - The protocol fee amount to be collected in LP tokens.
     fn add_liquidity(
         &self,
         oracle_querier: &mut OracleQuerier,
         reserve: CoinPair,
         lp_token_supply: Uint128,
         deposit: CoinPair,
-    ) -> anyhow::Result<(CoinPair, Uint128)>;
+        protocol_fee_rate: Udec128,
+    ) -> anyhow::Result<(CoinPair, Uint128, Uint128)>;
 
     /// Remove a portion of the liquidity from the pool. This function mutates the pool reserves.
     ///
@@ -145,7 +149,8 @@ impl PassiveLiquidityPool for PairParams {
         mut reserve: CoinPair,
         lp_token_supply: Uint128,
         deposit: CoinPair,
-    ) -> anyhow::Result<(CoinPair, Uint128)> {
+        protocol_fee_rate: Udec128,
+    ) -> anyhow::Result<(CoinPair, Uint128, Uint128)> {
         // The deposit must have the same denoms as the reserve. This should
         // have been caught earlier in `execute::provide_liquidity`.
         // We assert this in debug builds only.
@@ -159,8 +164,7 @@ impl PassiveLiquidityPool for PairParams {
             );
         }
 
-        // If there isn't any liquidity in the pool yet, run the special logic
-        // for adding initial liquidity, then early return.
+        // For initial liquidity, no fees are charged.
         if lp_token_supply.is_zero() {
             let mint_amount = match &self.pool_type {
                 PassiveLiquidity::Xyk { .. } => xyk::add_initial_liquidity(&deposit)?,
@@ -171,7 +175,7 @@ impl PassiveLiquidityPool for PairParams {
 
             reserve.merge(deposit.clone())?;
 
-            return Ok((reserve, mint_amount));
+            return Ok((reserve, mint_amount, Uint128::ZERO));
         }
 
         // In case the deposit is asymmetrical, we need to apply a deposit fee.
@@ -200,42 +204,49 @@ impl PassiveLiquidityPool for PairParams {
         //   (a - x) / (A + x) = (b + x) / (B - x)
         //   The solution is:
         //   x = (a * B - A * b) / (a + A + b + B)
-        // - We charge a fee assuming this swap is to be carried out. The USD
-        //   value of the fee is:
-        //   x * swap_fee_rate
-        // - To charge the fee, we mint slightly less LP tokens corresponding to
-        //   the ratio:
-        //   x * swap_fee_rate / (a + b)
+        // - We charge two fees on this virtual swap:
+        //   1. Swap fee (goes to LPs by minting fewer tokens): x * swap_fee_rate
+        //   2. Taker fee (goes to taxman): x * protocol_fee_rate
+        //
+        // - The swap fee reduces LP tokens minted by: x * swap_fee_rate / (a + b)
+        // - The taker fee is charged as actual tokens from the oversupplied asset
         //
         // Related: Curve V2 also applies a fee for asymmetrical deposits:
         // https://github.com/curvefi/twocrypto-ng/blob/main/contracts/main/Twocrypto.vy#L1146-L1168
         // However, their math appears to be only suitable for the Curve V2 curve.
         // Our oracle approach is more generalizable to different pool types.
-        let fee_rate = {
-            let price = oracle_querier.query_price(reserve.first().denom, None)?;
-            let a = price.value_of_unit_amount_256::<24>(*deposit.first().amount)?;
-            let reserve_a = price.value_of_unit_amount_256::<24>(*reserve.first().amount)?;
+        let price = oracle_querier.query_price(reserve.first().denom, None)?;
+        let a = price.value_of_unit_amount_256::<24>(*deposit.first().amount)?;
+        let reserve_a = price.value_of_unit_amount_256::<24>(*reserve.first().amount)?;
 
-            let price = oracle_querier.query_price(reserve.second().denom, None)?;
-            let b = price.value_of_unit_amount_256::<24>(*deposit.second().amount)?;
-            let reserve_b = price.value_of_unit_amount_256::<24>(*reserve.second().amount)?;
+        let price = oracle_querier.query_price(reserve.second().denom, None)?;
+        let b = price.value_of_unit_amount_256::<24>(*deposit.second().amount)?;
+        let reserve_b = price.value_of_unit_amount_256::<24>(*reserve.second().amount)?;
 
-            let deposit_value = a.checked_add(b)?;
-            let reserve_value = reserve_a.checked_add(reserve_b)?;
+        let deposit_value = a.checked_add(b)?;
+        let reserve_value = reserve_a.checked_add(reserve_b)?;
 
-            // IMPORTANT!
-            // we have to be sure that abs( a * reserve_b - b * reserve_a ) is not approxed to 0
-            // because the low precision.
-            // For this reason, it make sense to keep 24 decimal places in value_of_unit_amount
-            // and use into_next() to avoid overflows.
-            // Otherwise the fee rate could be 0 even if very low amount of tokens are deposited even unbalance.
-            // Since we don't have gas price, this can be an attack vector.
-            abs_diff(a.checked_mul(reserve_b)?, b.checked_mul(reserve_a)?)
-                .checked_div(deposit_value.checked_add(reserve_value)?)?
-                .checked_mul(self.swap_fee_rate.into_next())?
-                .checked_div(deposit_value)?
-                .checked_into_prev()?
-        };
+        // IMPORTANT!
+        // we have to be sure that abs( a * reserve_b - b * reserve_a ) is not approxed to 0
+        // because the low precision.
+        // For this reason, it make sense to keep 24 decimal places in value_of_unit_amount
+        // and use into_next() to avoid overflows.
+        // Otherwise the fee rate could be 0 even if very low amount of tokens are deposited even unbalance.
+        // Since we don't have gas price, this can be an attack vector.
+        let swapped_value_in_usd = abs_diff(a.checked_mul(reserve_b)?, b.checked_mul(reserve_a)?)
+            .checked_div(deposit_value.checked_add(reserve_value)?)?;
+
+        let swapped_percentage_of_deposit = swapped_value_in_usd.checked_div(deposit_value)?;
+
+        let virtual_swap_fee_rate = swapped_percentage_of_deposit
+            .checked_into_prev()?
+            .checked_mul(self.swap_fee_rate.into_inner())?;
+
+        let virtual_protocol_fee_rate = swapped_percentage_of_deposit
+            .checked_into_prev()?
+            .checked_mul(protocol_fee_rate)?;
+
+        let total_fee_rate = virtual_swap_fee_rate.checked_add(virtual_protocol_fee_rate)?;
 
         let mint_ratio = match &self.pool_type {
             PassiveLiquidity::Xyk { .. } => {
@@ -246,16 +257,23 @@ impl PassiveLiquidityPool for PairParams {
             },
         };
 
+        let mint_amount_before_fee = lp_token_supply.checked_mul_dec_floor(mint_ratio)?;
         let mint_amount = {
-            let mint_amount_before_fee = lp_token_supply.checked_mul_dec_floor(mint_ratio)?;
-            let one_sub_fee_rate = Udec128::ONE.checked_sub(fee_rate)?;
+            let one_sub_total_fee_rate = Udec128::ONE.checked_sub(total_fee_rate)?;
 
-            mint_amount_before_fee.checked_mul_dec_floor(one_sub_fee_rate)?
+            mint_amount_before_fee.checked_mul_dec_floor(one_sub_total_fee_rate)?
+        };
+
+        let protocol_fee_amount = {
+            let one_sub_virtual_protocol_fee_rate =
+                Udec128::ONE.checked_sub(virtual_protocol_fee_rate)?;
+
+            mint_amount_before_fee.checked_mul_dec_ceil(one_sub_virtual_protocol_fee_rate)?
         };
 
         ensure!(mint_amount.is_non_zero(), "mint amount must be non-zero");
 
-        Ok((reserve, mint_amount))
+        Ok((reserve, mint_amount, protocol_fee_amount))
     }
 
     fn swap_exact_amount_in(
