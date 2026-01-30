@@ -337,6 +337,10 @@ fn handle_unlock(
     // Update user state.
     user_state.vault_shares -= shares_to_burn;
 
+    // Insert the new unlock into the user's state.
+    // Once the cooldown period elapses, the contract needs to be triggered to
+    // release the fund and remove this unlock. This is trivial and we ignore it
+    // in this spec.
     let end_time = current_time + params.vault_cooldown_period;
     user_state.unlocks.push(Unlock { amount_to_release, end_time });
 }
