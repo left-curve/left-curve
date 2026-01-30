@@ -207,6 +207,34 @@ struct PairState {
 }
 ```
 
+User-specific state:
+
+```rust
+struct UserState {
+    /// The amount of vault shares this user owns.
+    pub vault_shares: Uint,
+
+    /// The user's positions.
+    pub positions: Map<PairId, Position>,
+
+    /// The user's vault withdrawals that are pending cooldown.
+    pub unlocks: Vec<Unlock>,
+}
+
+struct Position {
+    // TODO
+}
+
+struct Unlock {
+    /// The amount of settlement currency to be released to the user once
+    /// cooldown completes.
+    pub amount_to_release: Uint,
+
+    /// The time when cooldown completes.
+    pub end_time: Timestamp,
+}
+```
+
 ## Business logic
 
 For simplicity, we assume the settlement asset (defined by `settlement_denom` in `Params`) is USDT.
@@ -228,15 +256,15 @@ Suppose the vault receives `amount_received` units of USDT from user:
 ```rust
 fn handle_deposit(
     state: &mut State,
-    user_shares: &mut Map<UserId, Uint>,
-    usdt_price: Udec,
-    user_id: UserId,
+    user_state: &mut UserState,
     amount_received: Uint,
+    usdt_price: Udec,
 ) {
     const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value */;
 
     ensure!(amount_received > 0, "nothing to do");
 
+    // Compute the number of shares to mint.
     let shares_to_mint = if state.vault_share_supply != 0 {
         let vault_equity = compute_vault_equity(state, usdt_price);
 
@@ -255,6 +283,7 @@ fn handle_deposit(
         (amount_received * DEFAULT_SHARES_PER_AMOUNT).floor()
     };
 
+    // Ensure the number of shares to mint is no less than the minimum.
     if let Some(min_shares_to_mint) = min_shares_to_mint {
         ensure!(
             shares_to_mint >= min_shares_to_mint,
@@ -262,10 +291,12 @@ fn handle_deposit(
         );
     }
 
+    // Update global state.
     state.vault_balance += amount_received;
     state.vault_share_supply += shares_to_mint;
 
-    user_shares[user_id] += shares_to_mint;
+    // Update user state.
+    user_state.vault_shares += shares_to_mint;
 }
 ```
 
@@ -276,14 +307,13 @@ Suppose user requests to burn `shares_to_burn` units of shares:
 ```rust
 fn handle_unlock(
     state: &mut State,
-    user_shares: &mut Map<UserId, Uint>,
-    unlocks: &mut Vec<Unlock>,
-    usdt_price: Udec,
-    user_id: UserId,
+    user_state: &mut UserState,
     shares_to_burn: Uint,
+    usdt_price: Udec,
+    current_time: Timestamp,
 ) {
     ensure!(shares_to_burn > 0, "nothing to do");
-    ensure!(user_shares[user_id] >= shares_to_burn, "can't burn more than what you have");
+    ensure!(user_state.vault_shares >= shares_to_burn, "can't burn more than what you have");
 
     // Similarly to deposit, first compute the vault's equity.
     let vault_equity = compute_vault_equity(state, usdt_price);
@@ -300,18 +330,15 @@ fn handle_unlock(
         // before withdrawing.
     );
 
+    // Update global state.
     state.vault_balance -= amount_to_release;
     state.vault_share_supply -= shares_to_burn;
 
-    user_shares[user_id] -= shares_to_burn;
+    // Update user state.
+    user_state.vault_shares -= shares_to_burn;
 
-    // Compute the time when the tokens can be released.
-    let release_time = current_time + params.vault_cooldown_period;
-
-    // Persist this withdrawal request in contract storage.
-    // When release_time is reached, the tokens are automatically released to the user.
-    // This can be achieved through a cronjob, which we ignore in this spec.
-    unlocks.push(Unlock { user_id, amount_to_release, release_time });
+    let end_time = current_time + params.vault_cooldown_period;
+    user_state.unlocks.push(Unlock { amount_to_release, end_time });
 }
 ```
 
