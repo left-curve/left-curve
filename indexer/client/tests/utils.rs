@@ -24,6 +24,7 @@ pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
                 TestOption::default(),
                 GenesisOption::preset_test(),
                 None,
+                None,
                 |accounts, _, _, _, _| {
                     sx.send(accounts).unwrap();
                 },

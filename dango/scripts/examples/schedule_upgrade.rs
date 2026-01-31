@@ -1,54 +1,29 @@
 use {
-    dango_client::{Secp256k1, Secret, SingleSigner},
-    grug::{Addr, BroadcastClientExt, GasOption, JsonSerExt, QueryClientExt, SearchTxClient, addr},
-    grug_app::GAS_COSTS,
-    hex_literal::hex,
+    grug::{Addr, Message, addr},
     indexer_client::HttpClient,
-    std::time::Duration,
 };
 
-const CHAIN_ID: &str = "dev-9"; // devnet = dev-9, testnet = dev-6
+const API_URL: &str = "https://api-mainnet.dango.zone/";
 
-const OWNER: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9");
+const OWNER_ADDRESS: Addr = addr!("149a2e2bc3ed63aeb0410416b9123d886af1f9cd");
 
-/// For demonstration purpose only; do not use this in production.
-const OWNER_PRIVATE_KEY: [u8; 32] =
-    hex!("8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177");
+const OWNER_SECRET_PATH: &str = "/Users/larry/.dango/keys/larry.json";
+
+struct MessageBuilder;
+
+#[async_trait::async_trait]
+impl dango_scripts::MessageBuilder for MessageBuilder {
+    async fn build_message(_client: &HttpClient) -> anyhow::Result<Message> {
+        Ok(Message::upgrade(
+            3961000,
+            "0.3.0",
+            Some("v0.3.0"),
+            Some("https://github.com/left-curve/left-curve/releases/tag/v0.3.0"),
+        ))
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = HttpClient::new("https://api-devnet.dango.zone/")?;
-
-    let mut owner = SingleSigner::new(OWNER, Secp256k1::from_bytes(OWNER_PRIVATE_KEY)?)
-        .with_query_user_index(&client)
-        .await?
-        .with_query_nonce(&client)
-        .await?;
-
-    let outcome = client
-        .upgrade(
-            &mut owner,
-            "0.1.0", // should match the cargo version of dango-cli
-            2551000,
-            None::<String>,
-            None::<String>,
-            GasOption::Simulate {
-                scale: 2.,
-                flat_increase: GAS_COSTS.secp256k1_verify,
-            },
-            CHAIN_ID,
-        )
-        .await?;
-    println!("tx broadcasted:\n{}", outcome.tx_hash);
-
-    println!("\nwaiting 5 seconds for transaction to confirm...");
-    tokio::time::sleep(Duration::from_secs(5)).await;
-
-    let outcome = client.search_tx(outcome.tx_hash).await?;
-    println!("\ntransaction:\n{}", outcome.to_json_string_pretty()?);
-
-    let next_upgrade = client.query_next_upgrade(None).await?;
-    println!("\nnext upgrade:\n{}", next_upgrade.to_json_string_pretty()?);
-
-    Ok(())
+    dango_scripts::send_message::<MessageBuilder>(API_URL, OWNER_SECRET_PATH, OWNER_ADDRESS).await
 }

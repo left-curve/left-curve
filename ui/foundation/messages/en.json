@@ -978,6 +978,28 @@
       "minimumOrderSize": "Order size too small. Minimum order size is {minOrderSize} {symbol}"
     }
   },
+  "points": {
+    "campaign": "Campaign",
+    "leagues": {
+      "title": "Leagues",
+      "subtitle": "Earn points to climb your way up!",
+      "levels": [
+        {
+          "declarations": ["input level"],
+          "selectors": ["level"],
+          "match": {
+            "level=wood": "Wood",
+            "level=iron": "Iron",
+            "level=gold": "Gold",
+            "level=platinum": "Platinum",
+            "level=diamond": "Diamond",
+            "level=master": "Master",
+            "level=grandmaster": "Grandmaster"
+          }
+        }
+      ]
+    }
+  },
   "errors": {
     "validations": {
       "amountIsRequired": "Amount is required",
@@ -995,6 +1017,14 @@
       "execute": "Execute",
       "query": "Query",
       "simulate": "Simulate"
+    }
+  },
+  "accountCard": {
+    "copyWarning": {
+      "title": "THIS IS NOT AN ETHEREUM ADDRESS",
+      "descriptionPre": "Do NOT withdrawal directly from a centralized exchange (CEX) to this address, or send funds directly to this address from Ethereum or other EVM chains. Use the",
+      "descriptionLink": "deposit",
+      "descriptionPost": "app instead."
     }
   }
 }

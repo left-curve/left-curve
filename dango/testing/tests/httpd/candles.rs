@@ -1,6 +1,6 @@
 use {
-    crate::build_actix_app,
-    assert_json_diff::assert_json_include,
+    crate::{build_actix_app, call_graphql_query},
+    assertor::*,
     dango_genesis::Contracts,
     dango_indexer_clickhouse::{
         entities::pair_price::PairPrice, indexer::candles::cache::CandleCache,
@@ -11,14 +11,15 @@ use {
         dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
+    graphql_client::GraphQLQuery,
     grug::{
         Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
+    indexer_client::{Candles, SubscribeCandles, candles, subscribe_candles},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     std::{collections::HashMap, sync::Arc},
     tokio::sync::{Mutex, mpsc},
@@ -33,76 +34,45 @@ async fn query_candles() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Candles($base_denom: String!, $quote_denom: String!, $interval: String) {
-      candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval) {
-          nodes {
-            timeStart
-            open
-            high
-            low
-            close
-            volumeBase
-            volumeQuote
-            quoteDenom
-            baseDenom
-            interval
-            minBlockHeight
-            maxBlockHeight
-          }
-          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom minBlockHeight maxBlockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "candles",
-        query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-            "interval": "ONE_SECOND",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut received_candles: Vec<serde_json::Value> = vec![];
+                let mut nodes: Vec<candles::CandlesCandlesNodes> = vec![];
 
                 for _ in 0..10 {
-                    let app = build_actix_app(dango_httpd_context.clone());
+                    let variables = candles::Variables {
+                        base_denom: "dango".to_string(),
+                        quote_denom: "bridge/usdc".to_string(),
+                        interval: candles::CandleInterval::ONE_SECOND,
+                        ..Default::default()
+                    };
 
-                    let response: PaginatedResponse<serde_json::Value> =
-                        call_paginated_graphql(app, request_body.clone()).await?;
+                    let response = call_graphql_query::<_, candles::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Candles::build_query(variables),
+                    )
+                    .await?;
 
-                    received_candles = response
-                        .edges
-                        .into_iter()
-                        .map(|e| e.node)
-                        .collect::<Vec<_>>();
+                    let data = response.data.unwrap();
+                    nodes = data.candles.nodes;
                 }
 
-                let expected_candle = serde_json::json!({
-                    "timeStart": "1971-01-01T00:00:00.000000000Z",
-                    "open": "27.5",
-                    "high": "27.5",
-                    "low": "27.5",
-                    "close": "27.5",
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                    "interval": "ONE_SECOND",
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                });
+                assert_that!(nodes.len()).is_equal_to(1);
 
-                assert_json_include!(actual: received_candles, expected: [expected_candle]);
+                let candle = &nodes[0];
+                assert_that!(candle.time_start.as_str())
+                    .is_equal_to("1971-01-01T00:00:00.000000000Z");
+                assert_that!(candle.open.as_str()).is_equal_to("27.5");
+                assert_that!(candle.high.as_str()).is_equal_to("27.5");
+                assert_that!(candle.low.as_str()).is_equal_to("27.5");
+                assert_that!(candle.close.as_str()).is_equal_to("27.5");
+                assert_that!(candle.volume_base.as_str()).is_equal_to("25");
+                assert_that!(candle.volume_quote.as_str()).is_equal_to("687.5");
+                assert_that!(candle.interval).is_equal_to(candles::CandleInterval::ONE_SECOND);
+                assert_that!(candle.base_denom.as_str()).is_equal_to("dango");
+                assert_that!(candle.quote_denom.as_str()).is_equal_to("bridge/usdc");
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -120,77 +90,46 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Candles($base_denom: String!, $quote_denom: String!, $interval: String, $earlierThan: DateTime) {
-      candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, earlierThan: $earlierThan) {
-          nodes {
-            timeStart
-            open
-            high
-            low
-            close
-            volumeBase
-            volumeQuote
-            quoteDenom
-            baseDenom
-            interval
-            minBlockHeight
-            maxBlockHeight
-          }
-          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom minBlockHeight maxBlockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "candles",
-        query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-            "interval": "ONE_SECOND",
-            "earlierThan": "2025-07-24T07:00:00.000000000Z",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut received_candles: Vec<serde_json::Value> = vec![];
+                let mut nodes: Vec<candles::CandlesCandlesNodes> = vec![];
 
                 for _ in 0..10 {
-                    let app = build_actix_app(dango_httpd_context.clone());
+                    let variables = candles::Variables {
+                        base_denom: "dango".to_string(),
+                        quote_denom: "bridge/usdc".to_string(),
+                        interval: candles::CandleInterval::ONE_SECOND,
+                        earlier_than: Some("2025-07-24T07:00:00.000000000Z".to_string()),
+                        ..Default::default()
+                    };
 
-                    let response: PaginatedResponse<serde_json::Value> =
-                        call_paginated_graphql(app, request_body.clone()).await?;
+                    let response = call_graphql_query::<_, candles::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Candles::build_query(variables),
+                    )
+                    .await?;
 
-                    received_candles = response
-                        .edges
-                        .into_iter()
-                        .map(|e| e.node)
-                        .collect::<Vec<_>>();
+                    let data = response.data.unwrap();
+                    nodes = data.candles.nodes;
                 }
 
-                let expected_candle = serde_json::json!({
-                    "timeStart": "1971-01-01T00:00:00.000000000Z",
-                    "open": "27.5",
-                    "high": "27.5",
-                    "low": "27.5",
-                    "close": "27.5",
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                    "interval": "ONE_SECOND",
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                });
+                assert_that!(nodes.len()).is_equal_to(1);
 
-                assert_json_include!(actual: received_candles, expected: [expected_candle]);
+                let candle = &nodes[0];
+                assert_that!(candle.time_start.as_str())
+                    .is_equal_to("1971-01-01T00:00:00.000000000Z");
+                assert_that!(candle.open.as_str()).is_equal_to("27.5");
+                assert_that!(candle.high.as_str()).is_equal_to("27.5");
+                assert_that!(candle.low.as_str()).is_equal_to("27.5");
+                assert_that!(candle.close.as_str()).is_equal_to("27.5");
+                assert_that!(candle.volume_base.as_str()).is_equal_to("25");
+                assert_that!(candle.volume_quote.as_str()).is_equal_to("687.5");
+                assert_that!(candle.interval).is_equal_to(candles::CandleInterval::ONE_SECOND);
+                assert_that!(candle.base_denom.as_str()).is_equal_to("dango");
+                assert_that!(candle.quote_denom.as_str()).is_equal_to("bridge/usdc");
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -211,37 +150,16 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
-          candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
-              timeStart
-              open
-              high
-              low
-              close
-              volumeBase
-              volumeQuote
-              quoteDenom
-              baseDenom
-              interval
-              minBlockHeight
-              maxBlockHeight
-          }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "candles",
-        query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-            "interval": "ONE_MINUTE",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
-    };
+    // Use typed subscription from indexer-client
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeCandles::build_query(subscribe_candles::Variables {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            interval: subscribe_candles::CandleInterval::ONE_MINUTE,
+            later_than: None,
+        }),
+        "candles",
+    );
 
     let local_set = tokio::task::LocalSet::new();
     let suite = Arc::new(Mutex::new(suite));
@@ -270,67 +188,79 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
+                // Helper to verify candle fields using typed response
+                fn verify_candle(
+                    candle: &subscribe_candles::SubscribeCandlesCandles,
+                    open: &str,
+                    high: &str,
+                    low: &str,
+                    close: &str,
+                    volume_base: &str,
+                    volume_quote: &str,
+                    min_block_height: i64,
+                    max_block_height: i64,
+                ) {
+                    assert_eq!(candle.base_denom, "dango");
+                    assert_eq!(candle.quote_denom, "bridge/usdc");
+                    assert_eq!(
+                        candle.interval,
+                        subscribe_candles::CandleInterval::ONE_MINUTE
+                    );
+                    assert_eq!(candle.open, open);
+                    assert_eq!(candle.high, high);
+                    assert_eq!(candle.low, low);
+                    assert_eq!(candle.close, close);
+                    assert_eq!(candle.volume_base, volume_base);
+                    assert_eq!(candle.volume_quote, volume_quote);
+                    assert_eq!(candle.min_block_height, min_block_height);
+                    assert_eq!(candle.max_block_height, max_block_height);
+                }
+
                 // 1st response is always the existing last candle
-                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_candles::SubscribeCandlesCandles>,
+                >(&mut framed, name)
                 .await?;
 
-                let expected_json = serde_json::json!([{
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "interval": "ONE_MINUTE",
-                    "close": "25",
-                    "high": "27.5",
-                    "low": "25",
-                    "open": "27.5",
-                    "volumeBase": "50",
-                    "volumeQuote": "1312.5",
-                    "minBlockHeight": 2,
-                    "maxBlockHeight": 4,
-                }]);
-
-                assert_json_include!(actual: response.data, expected: expected_json);
+                assert!(!response.data.is_empty(), "Expected at least one candle");
+                verify_candle(
+                    &response.data[0],
+                    "27.5",
+                    "27.5",
+                    "25",
+                    "25",
+                    "50",
+                    "1312.5",
+                    2,
+                    4,
+                );
 
                 create_candle_tx_clone.send(2).await.unwrap();
 
                 loop {
                     // 2nd response
-                    let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                        &mut framed,
-                        name,
-                    )
+                    let response = parse_graphql_subscription_response::<
+                        Vec<subscribe_candles::SubscribeCandlesCandles>,
+                    >(&mut framed, name)
                     .await?;
 
                     // This because blocks aren't indexed in order
-                    if response
-                        .data
-                        .first()
-                        .unwrap()
-                        .get("maxBlockHeight")
-                        .and_then(|v| v.as_u64())
-                        .unwrap()
-                        < 6
-                    {
+                    if response.data.first().unwrap().max_block_height < 6 {
                         continue;
                     }
 
-                    let expected_json = serde_json::json!([{
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "interval": "ONE_MINUTE",
-                        "close": "25",
-                        "high": "27.5",
-                        "low": "25",
-                        "open": "27.5",
-                        "minBlockHeight": 2,
-                        "maxBlockHeight": 6,
-                        "volumeBase": "75",
-                        "volumeQuote": "1937.5",
-                    }]);
-
-                    assert_json_include!(actual: response.data, expected: expected_json);
+                    assert!(!response.data.is_empty(), "Expected at least one candle");
+                    verify_candle(
+                        &response.data[0],
+                        "27.5",
+                        "27.5",
+                        "25",
+                        "25",
+                        "75",
+                        "1937.5",
+                        2,
+                        6,
+                    );
 
                     break;
                 }
@@ -401,37 +331,16 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
-          candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
-              timeStart
-              open
-              high
-              low
-              close
-              volumeBase
-              volumeQuote
-              quoteDenom
-              baseDenom
-              interval
-              minBlockHeight
-              maxBlockHeight
-          }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "candles",
-        query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-            "interval": "ONE_MINUTE",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
-    };
+    // Use typed subscription from indexer-client
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeCandles::build_query(subscribe_candles::Variables {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            interval: subscribe_candles::CandleInterval::ONE_MINUTE,
+            later_than: None,
+        }),
+        "candles",
+    );
 
     let local_set = tokio::task::LocalSet::new();
     let suite = Arc::new(Mutex::new(suite));
@@ -472,51 +381,45 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
+                // Helper to verify candle fields using typed response
+                fn verify_candle(
+                    candle: &subscribe_candles::SubscribeCandlesCandles,
+                    max_block_height: i64,
+                ) {
+                    assert_eq!(candle.base_denom, "dango");
+                    assert_eq!(candle.quote_denom, "bridge/usdc");
+                    assert_eq!(
+                        candle.interval,
+                        subscribe_candles::CandleInterval::ONE_MINUTE
+                    );
+                    assert_eq!(candle.open, "27.5");
+                    assert_eq!(candle.high, "27.5");
+                    assert_eq!(candle.low, "27.5");
+                    assert_eq!(candle.close, "27.5");
+                    assert_eq!(candle.volume_base, "25");
+                    assert_eq!(candle.volume_quote, "687.5");
+                    assert_eq!(candle.max_block_height, max_block_height);
+                }
+
                 // 1st response is always the existing last candle
-                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_candles::SubscribeCandlesCandles>,
+                >(&mut framed, name)
                 .await?;
 
-                let expected_json = serde_json::json!([{
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "maxBlockHeight": 2,
-                    "close": "27.5",
-                    "high": "27.5",
-                    "interval": "ONE_MINUTE",
-                    "low": "27.5",
-                    "open": "27.5",
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                }]);
-
-                assert_json_include!(actual: response.data, expected: expected_json);
+                assert!(!response.data.is_empty(), "Expected at least one candle");
+                verify_candle(&response.data[0], 2);
 
                 create_block_tx_clone.send(2).await.unwrap();
 
                 // 2nd response
-                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                    &mut framed,
-                    name,
-                )
+                let response = parse_graphql_subscription_response::<
+                    Vec<subscribe_candles::SubscribeCandlesCandles>,
+                >(&mut framed, name)
                 .await?;
 
-                let expected_json = serde_json::json!([{
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "maxBlockHeight": 3,
-                    "close": "27.5",
-                    "high": "27.5",
-                    "interval": "ONE_MINUTE",
-                    "low": "27.5",
-                    "open": "27.5",
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                }]);
-
-                assert_json_include!(actual: response.data, expected: expected_json);
+                assert!(!response.data.is_empty(), "Expected at least one candle");
+                verify_candle(&response.data[0], 3);
 
                 Ok::<(), anyhow::Error>(())
             })

@@ -1,13 +1,13 @@
 use {
     assertor::*,
+    graphql_client::GraphQLQuery,
     grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
-    indexer_sql::entity,
+    indexer_client::{Block, Blocks, SubscribeBlock, block, blocks, subscribe_block},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse,
+        GraphQLCustomRequest, PaginationDirection,
         block::{create_block, create_blocks},
-        build_app_service, call_batch_graphql, call_graphql, call_ws_graphql_stream,
-        graphql::paginate_models,
-        parse_graphql_subscription_response,
+        blocks_query, build_app_service, call_batch_graphql_query, call_graphql_query,
+        call_ws_graphql_stream, paginate_blocks, parse_graphql_subscription_response,
     },
     std::str::FromStr,
     tokio::sync::mpsc,
@@ -17,43 +17,20 @@ use {
 async fn graphql_returns_blocks() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let graphql_query = r#"
-      query Blocks {
-        blocks {
-          nodes {
-            id
-            blockHeight
-          }
-          edges {
-            node {
-              id
-              blockHeight
-            }
-            cursor
-          }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "blocks",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
+                let query_body = Blocks::build_query(blocks::Variables::default());
 
                 let response =
-                    call_graphql::<PaginatedResponse<grug_types::Json>, _, _, _>(app, request_body)
-                        .await?;
+                    call_graphql_query::<_, blocks::ResponseData, _, _, _>(app, query_body).await?;
 
-                assert_that!(response.edges).is_not_empty();
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+                assert_that!(data.blocks.nodes).is_not_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -66,47 +43,24 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
 async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let graphql_query = r#"
-      query Blocks {
-        blocks {
-          nodes {
-            id
-            blockHeight
-          }
-          edges {
-            node {
-              id
-              blockHeight
-            }
-            cursor
-          }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "blocks",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
+                let variables = blocks::Variables::default();
+                let query_bodies = vec![
+                    Blocks::build_query(variables.clone()),
+                    Blocks::build_query(variables),
+                ];
 
                 let responses =
-                    call_batch_graphql::<PaginatedResponse<grug_types::Json>, _, _, _>(app, vec![
-                        request_body.clone(),
-                        request_body,
-                    ])
-                    .await?;
+                    call_batch_graphql_query::<_, blocks::ResponseData, _, _, _>(app, query_bodies)
+                        .await?;
 
-                assert_that!(responses[0].edges).is_not_empty();
-                assert_that!(responses[1].edges).is_not_empty();
+                assert_that!(responses[0].data.as_ref().unwrap().blocks.nodes).is_not_empty();
+                assert_that!(responses[1].data.as_ref().unwrap().blocks.nodes).is_not_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -120,46 +74,22 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
     // NOTE: It's necessary to capture the client in a variable named `_client`
     // here. It can't be named just an underscore (`_`) or dropped (`..`).
     // Otherwise, the indexer is dropped and the test fails.
-    // You can see multiple instances of this throughout this file.
     let (httpd_context, _client, ..) = create_block().await?;
-
-    let graphql_query = r#"
-      query Block($height: Int) {
-        block(height: $height) {
-          id
-          blockHeight
-          appHash
-          hash
-          createdAt
-          transactionsCount
-        }
-      }
-    "#;
-
-    let variables = serde_json::json!({
-        "height": 1,
-    })
-    .as_object()
-    .unwrap()
-    .to_owned();
-
-    let request_body = GraphQLCustomRequest {
-        name: "block",
-        query: graphql_query,
-        variables,
-    };
 
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
-            tokio::task::spawn_local(async {
+            tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
+                let query_body = Block::build_query(block::Variables { height: Some(1) });
 
                 let response =
-                    call_graphql::<entity::blocks::Model, _, _, _>(app, request_body).await?;
+                    call_graphql_query::<_, block::ResponseData, _, _, _>(app, query_body).await?;
 
-                assert_that!(response.block_height).is_equal_to(1);
+                assert_that!(response.data).is_some();
+                let block = response.data.unwrap().block.unwrap();
+                assert_that!(block.block_height).is_equal_to(1);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -172,35 +102,20 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
 async fn graphql_returns_last_block() -> anyhow::Result<()> {
     let (httpd_context, _client, ..) = create_block().await?;
 
-    let graphql_query = r#"
-      query Block {
-        block {
-          id
-          blockHeight
-          appHash
-          hash
-          createdAt
-          transactionsCount
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "block",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
-            tokio::task::spawn_local(async {
+            tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
+                let query_body = Block::build_query(block::Variables::default());
 
                 let response =
-                    call_graphql::<entity::blocks::Model, _, _, _>(app, request_body).await?;
-                assert_that!(response.block_height).is_equal_to(1);
+                    call_graphql_query::<_, block::ResponseData, _, _, _>(app, query_body).await?;
+
+                assert_that!(response.data).is_some();
+                let block = response.data.unwrap().block.unwrap();
+                assert_that!(block.block_height).is_equal_to(1);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -213,102 +128,68 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
 async fn graphql_paginate_blocks() -> anyhow::Result<()> {
     let (httpd_context, _client, _) = create_blocks(10).await?;
 
-    let graphql_query = r#"
-    query Blocks($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
-        blocks(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
-          nodes {
-            id
-            blockHeight
-            createdAt
-            hash
-            appHash
-            transactionsCount
-          }
-          edges {
-            node {
-              id
-              blockHeight
-              createdAt
-              hash
-              appHash
-              transactionsCount
-            }
-            cursor
-          }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let blocks_count = 2;
+                let page_size = 2;
 
                 // 1. first with descending order
-                let block_heights = paginate_models::<entity::blocks::Model>(
+                let blocks = paginate_blocks(
                     httpd_context.clone(),
-                    graphql_query,
-                    "blocks",
-                    "BLOCK_HEIGHT_DESC",
-                    Some(blocks_count),
-                    None,
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
-                .await?
-                .into_iter()
-                .map(|a| a.block_height as u64)
-                .collect::<Vec<_>>();
-
-                assert_that!(block_heights).is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                .await?;
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
+                assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 // 2. first with ascending order
-                let block_heights = paginate_models::<entity::blocks::Model>(
+                let blocks = paginate_blocks(
                     httpd_context.clone(),
-                    graphql_query,
-                    "blocks",
-                    "BLOCK_HEIGHT_ASC",
-                    Some(blocks_count),
-                    None,
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
                 )
-                .await?
-                .into_iter()
-                .map(|a| a.block_height as u64)
-                .collect::<Vec<_>>();
-
-                assert_that!(block_heights).is_equal_to((1..=10).collect::<Vec<_>>());
+                .await?;
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
+                assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 3. last with descending order
-                let block_heights = paginate_models::<entity::blocks::Model>(
+                let blocks = paginate_blocks(
                     httpd_context.clone(),
-                    graphql_query,
-                    "blocks",
-                    "BLOCK_HEIGHT_DESC",
-                    None,
-                    Some(blocks_count),
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
-                .await?
-                .into_iter()
-                .map(|a| a.block_height as u64)
-                .collect::<Vec<_>>();
-
-                assert_that!(block_heights).is_equal_to((1..=10).collect::<Vec<_>>());
+                .await?;
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
+                assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
 
                 // 4. last with ascending order
-                let block_heights = paginate_models::<entity::blocks::Model>(
+                let blocks = paginate_blocks(
                     httpd_context.clone(),
-                    graphql_query,
-                    "blocks",
-                    "BLOCK_HEIGHT_ASC",
-                    None,
-                    Some(blocks_count),
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
                 )
-                .await?
-                .into_iter()
-                .map(|a| a.block_height as u64)
-                .collect::<Vec<_>>();
-                assert_that!(block_heights).is_equal_to((1..=10).rev().collect::<Vec<_>>());
+                .await?;
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
+                assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -321,24 +202,11 @@ async fn graphql_paginate_blocks() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    let graphql_query = r#"
-      subscription Block {
-        block {
-          id
-          blockHeight
-          createdAt
-          hash
-          appHash
-          transactionsCount
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "block",
-        query: graphql_query,
-        variables: Default::default(),
-    };
+    // Use typed subscription from indexer-client
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeBlock::build_query(subscribe_block::Variables {}),
+        "block",
+    );
 
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
 
@@ -372,29 +240,32 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
                 // 1st response is always the existing last block
-                let response =
-                    parse_graphql_subscription_response::<entity::blocks::Model>(&mut framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<
+                    subscribe_block::SubscribeBlockBlock,
+                >(&mut framed, name)
+                .await?;
 
-                assert_that!(response.block_height).is_equal_to(1);
+                assert_that!(response.data.block_height).is_equal_to(1);
 
                 crate_block_tx.send(2).await?;
 
                 // 2nd response
-                let response =
-                    parse_graphql_subscription_response::<entity::blocks::Model>(&mut framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<
+                    subscribe_block::SubscribeBlockBlock,
+                >(&mut framed, name)
+                .await?;
 
-                assert_that!(response.block_height).is_equal_to(2);
+                assert_that!(response.data.block_height).is_equal_to(2);
 
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let response =
-                    parse_graphql_subscription_response::<entity::blocks::Model>(&mut framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<
+                    subscribe_block::SubscribeBlockBlock,
+                >(&mut framed, name)
+                .await?;
 
-                assert_that!(response.block_height).is_equal_to(3);
+                assert_that!(response.data.block_height).is_equal_to(3);
 
                 Ok::<(), anyhow::Error>(())
             })

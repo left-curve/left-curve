@@ -1,0 +1,36 @@
+query Block($height: Int) {
+  block(height: $height) {
+    blockHeight
+    hash
+    appHash
+    createdAt
+    cronsOutcomes
+    transactions {
+      hash
+      blockHeight
+      transactionType
+      transactionIdx
+      sender
+      data
+      credential
+      hasSucceeded
+      errorMessage
+      gasWanted
+      gasUsed
+      createdAt
+    }
+    flattenEvents {
+      type
+      method
+      eventStatus
+      commitmentStatus
+      transactionType
+      transactionIdx
+      messageIdx
+      eventIdx
+      data
+      blockHeight
+      createdAt
+    }
+  }
+}

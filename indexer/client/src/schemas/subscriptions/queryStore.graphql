@@ -1,0 +1,7 @@
+subscription SubscribeQueryStore($key: String!, $prove: Boolean! = false, $blockInterval: Int! = 10) {
+  queryStore(key: $key, prove: $prove, blockInterval: $blockInterval) {
+    value
+    proof
+    blockHeight
+  }
+}

@@ -1,3 +1,4 @@
+import { getAccountStatus, getUsernameByIndex } from "@left-curve/dango/actions";
 import { type Config, ConnectionStatus } from "../types/store.js";
 
 export type ReconnectReturnType = void;
@@ -16,6 +17,8 @@ export async function reconnect<config extends Config>(
     ...x,
     status: x.connectors.size > 0 ? ConnectionStatus.Reconnecting : ConnectionStatus.Disconnected,
   }));
+
+  const client = config.getClient();
 
   let current = config.state.current;
 
@@ -48,10 +51,27 @@ export async function reconnect<config extends Config>(
     } catch (_) {}
   }
 
+  const userIndexAndName = await (async () => {
+    if (!config.state.userIndexAndName) return;
+    const { index } = config.state.userIndexAndName;
+    const name = await getUsernameByIndex(client, { index });
+    return { index, name: name || `User #${index}` };
+  })();
+
+  const userStatus = await (async () => {
+    if (!config.state.userStatus || !config.state.current) return;
+    const address = config.state.connectors.get(config.state.current)?.account?.address;
+    if (!address) return;
+    const status = await getAccountStatus(client, { address }).catch(() => undefined);
+    return status;
+  })();
+
   config.setState((x) => ({
     ...x,
     connectors,
     current,
+    userIndexAndName,
+    userStatus,
     status: connectors.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
   }));
 

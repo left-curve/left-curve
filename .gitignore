@@ -75,13 +75,13 @@ dango/scripts/examples/*.tar
 dango/scripts/examples/*.tar.gz
 !pyth/client/testdata/
 
-# Network data
-networks/**/configs/cometbft/config/addrbook.json
-networks/**/configs/cometbft/config/write-file-atomic-*
-networks/**/configs/backups
-networks/**/data
-networks/**/indexer
-networks/**/logs
+# LocalDango
+localdango/**/configs/cometbft/config/addrbook.json
+localdango/**/configs/cometbft/config/write-file-atomic-*
+localdango/**/configs/backups
+localdango/**/data
+localdango/**/indexer
+localdango/**/logs
 
 # GraphiQL
 docker/graphiql/dist

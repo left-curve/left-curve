@@ -13,7 +13,7 @@ use {
     },
     indexer_httpd::routes,
     sentry_actix::Sentry,
-    std::sync::{Arc, atomic::AtomicBool},
+    std::sync::{Arc, atomic::AtomicBool, mpsc},
 };
 
 /// Custom 404 handler that serves a nice HTML page
@@ -79,15 +79,19 @@ where
     })
 }
 
-/// Run the dango HTTP server with dango-specific context
+/// Run the dango HTTP server with dango-specific context.
 /// The shutdown_flag should be set when signals are received to return 503 for new requests.
 /// Actix Web handles graceful shutdown automatically on SIGTERM/SIGINT.
+///
+/// If `port_sender` is provided, the actual bound port will be sent via the channel after binding.
+/// Use port 0 to let the OS allocate an available port (useful for tests).
 pub async fn run_server<I>(
     ip: I,
     port: u16,
     cors_allowed_origin: Option<String>,
     dango_httpd_context: crate::context::Context,
     shutdown_flag: Arc<AtomicBool>,
+    port_sender: Option<mpsc::Sender<u16>>,
 ) -> Result<(), indexer_httpd::error::Error>
 where
     I: ToString + std::fmt::Display,
@@ -106,7 +110,7 @@ where
     indexer_httpd::middlewares::metrics::init_httpd_metrics();
 
     let shutdown_flag_clone = shutdown_flag.clone();
-    HttpServer::new(move || {
+    let server = HttpServer::new(move || {
         let mut cors = Cors::default()
             .allowed_methods(vec!["POST", "GET", "OPTIONS"])
             .allowed_headers(vec![
@@ -146,9 +150,19 @@ where
     .backlog(8192)
     .keep_alive(actix_web::http::KeepAlive::Os)
     .worker_max_blocking_threads(16)
-    .bind((ip.to_string(), port))?
-    .run()
-    .await?;
+    .bind((ip.to_string(), port))?;
+
+    // Send the actual bound port if a channel was provided
+    if let Some(sender) = port_sender
+        && let Some(addr) = server.addrs().first()
+    {
+        let actual_port = addr.port();
+        #[cfg(feature = "tracing")]
+        tracing::info!(actual_port, "Server bound to port");
+        let _ = sender.send(actual_port);
+    }
+
+    server.run().await?;
 
     Ok(())
 }

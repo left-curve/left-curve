@@ -31,7 +31,7 @@ const Body: React.FC<SearchMenuProps> = ({
   allApplets,
   onSelect,
 }) => {
-  const { applets, block, txs, account, contract } = searchResult;
+  const { applets, block, txs, account, contracts } = searchResult;
 
   const groups = useMemo(() => {
     const out: Array<{ key: string; title: string; items: React.ReactNode[] }> = [];
@@ -122,11 +122,11 @@ const Body: React.FC<SearchMenuProps> = ({
       });
     }
 
-    if (contract) {
+    if (contracts) {
       out.push({
         key: "contracts",
         title: "Contracts",
-        items: [
+        items: contracts.map((contract) => [
           <Pressable
             key={`contract-${contract.address}`}
             className="w-full"
@@ -136,12 +136,12 @@ const Body: React.FC<SearchMenuProps> = ({
           >
             <SearchItem.Contract contract={contract} />
           </Pressable>,
-        ],
+        ]),
       });
     }
 
     return out;
-  }, [applets, allApplets, block, txs, account, contract, onSelect, isSearching]);
+  }, [applets, allApplets, block, txs, account, contracts, onSelect, isSearching]);
 
   return (
     <AnimatePresence>

@@ -4,7 +4,6 @@ import { createStore } from "zustand/vanilla";
 import { createPublicClient } from "@left-curve/dango";
 import { plainObject, uid } from "@left-curve/dango/utils";
 
-import pkgJson from "../package.json" with { type: "json" };
 import { eip6963 } from "./connectors/eip6963.js";
 import { type EventData, createEmitter } from "./createEmitter.js";
 import { createMipdStore } from "./mipd.js";
@@ -187,15 +186,14 @@ export function createConfig<
     };
   }
 
-  const currentVersion = Number.parseInt(pkgJson.version);
   const stateCreator = storage
     ? persist(getInitialState, {
         name: "store",
         version,
         storage,
-        migrate(state, version) {
+        migrate(state, savedVersion) {
           const persistedState = state as State;
-          if (version === currentVersion) return persistedState;
+          if (version === savedVersion) return persistedState;
 
           const initialState = getInitialState();
           return { ...initialState };

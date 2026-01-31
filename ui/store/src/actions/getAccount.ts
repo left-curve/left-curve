@@ -1,5 +1,6 @@
 import { changeAccount as changeAccountAction } from "./changeAccount.js";
 import { refreshAccounts as refreshAccountsAction } from "./refreshAccounts.js";
+import { refreshUserStatus as refreshUserStatusAction } from "./refreshUserStatus.js";
 
 import type {
   Account,
@@ -33,6 +34,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       status: "connected";
       changeAccount: (address: Address) => void;
       refreshAccounts: () => Promise<void>;
+      refreshUserStatus: () => void;
     }
   | {
       username: Username | undefined;
@@ -52,6 +54,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       status: "reconnecting";
       changeAccount: undefined;
       refreshAccounts: undefined;
+      refreshUserStatus: undefined;
     }
   | {
       username: Username | undefined;
@@ -71,6 +74,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       status: "connecting";
       changeAccount: undefined;
       refreshAccounts: undefined;
+      refreshUserStatus: undefined;
     }
   | {
       username: undefined;
@@ -90,6 +94,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       status: "disconnected";
       changeAccount: undefined;
       refreshAccounts: undefined;
+      refreshUserStatus: undefined;
     };
 
 const disconnected = {
@@ -110,6 +115,7 @@ const disconnected = {
   status: "disconnected",
   changeAccount: undefined,
   refreshAccounts: undefined,
+  refreshUserStatus: undefined,
 } as const;
 
 export function getAccount<
@@ -128,6 +134,10 @@ export function getAccount<
 
   const changeAccount = (address: Address) => {
     changeAccountAction(config, { address, connectorUId: connectorUId! });
+  };
+
+  const refreshUserStatus = () => {
+    refreshUserStatusAction(config, { connectorUId: connectorUId! });
   };
 
   const refreshAccounts = async () => {
@@ -164,6 +174,7 @@ export function getAccount<
         status,
         changeAccount,
         refreshAccounts,
+        refreshUserStatus,
       };
     case "reconnecting":
       return {
@@ -184,6 +195,7 @@ export function getAccount<
         status,
         changeAccount: undefined,
         refreshAccounts: undefined,
+        refreshUserStatus: undefined,
       };
     case "connecting":
       return {
@@ -204,6 +216,7 @@ export function getAccount<
         status,
         changeAccount: undefined,
         refreshAccounts: undefined,
+        refreshUserStatus: undefined,
       };
     case "disconnected":
       return disconnected;

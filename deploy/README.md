@@ -12,9 +12,9 @@
 
 - Add the debian-deploy key:
 
-```bash
-ssh-copy-id -i ~/.ssh/debian_deploy.pub username@public_ip
-```
+  ```bash
+  ssh-copy-id -i ~/.ssh/debian_deploy.pub username@public_ip
+  ```
 
 - Add the host in `inventory` using its public IP
 
@@ -43,9 +43,18 @@ ssh-copy-id -i ~/.ssh/debian_deploy.pub username@public_ip
 
 ## Setup Ansible Vault
 
-### First time setup (macOS)
+### First time setup (recommended: pass)
 
-Add vault password to Keychain:
+If you have [pass](https://www.passwordstore.org/) installed, store the vault password:
+
+```bash
+pass insert dango/deploy-vault
+# Enter the password when prompted (ASK_TEAM_FOR_PASSWORD)
+```
+
+### First time setup (macOS Keychain fallback)
+
+If you don't have `pass`, you can use macOS Keychain. Add vault password to Keychain:
 
 ```bash
 security add-generic-password \
@@ -57,7 +66,7 @@ security add-generic-password \
 This shows you have the right password:
 
 ```bash
-❯ ./vault-password.sh|sha256
+❯ ./vault-password.sh | sha256
 2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
 ```
 
@@ -75,7 +84,14 @@ playbooks will try to decrypt that vault, and no extra CLI flags are needed.
 No one should need debian/sudo access to the servers, this is a critical
 access. But here is the process.
 
-Add debian password to Keychain:
+If you have [pass](https://www.passwordstore.org/) installed, store the debian password:
+
+```bash
+pass insert dango/debian-vault
+# Enter the password when prompted (ASK_TEAM_FOR_PASSWORD)
+```
+
+If you don't have `pass`, you can use macOS Keychain. Add debian password to Keychain:
 
 ```bash
 security add-generic-password \
@@ -87,7 +103,7 @@ security add-generic-password \
 This shows you have the right password:
 
 ```bash
-❯ ./debian-password.sh|sha256
+❯ ./debian-password.sh | sha256
 b82a3865821fb1c7072cf58ca641811fd814c892109963f54fce675e7e9cfca5
 ```
 
@@ -104,6 +120,7 @@ directly into ssh-agent without writing to disk:
 `just add-deploy-key`
 
 Notes:
+
 - Ensure `ssh-agent` is running in your shell (`eval $(ssh-agent -s)` if needed).
 
 ## Manual Cosign Verification

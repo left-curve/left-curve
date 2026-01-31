@@ -20,6 +20,7 @@ const chain = window.dango.chain;
 export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
   chain,
+  version: 1,
   transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true, lazy: false }),
   coins,
   connectors: [
