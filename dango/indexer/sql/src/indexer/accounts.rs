@@ -1,9 +1,7 @@
 use {
     crate::{entity, error::Error},
     dango_types::{
-        account_factory::{
-            AccountParams, AccountRegistered, KeyDisowned, KeyOwned, UserRegistered,
-        },
+        account_factory::{AccountRegistered, KeyDisowned, KeyOwned, UserRegistered},
         config::AppConfig,
     },
     grug::{BlockAndBlockOutcomeWithHttpDetails, EventName, Json, JsonDeExt},
@@ -202,7 +200,6 @@ pub(crate) async fn save_accounts(
             let new_account = entity::accounts::ActiveModel {
                 id: Set(new_account_id),
                 address: Set(account_registered_event.address.to_string()),
-                account_type: Set(account_registered_event.clone().params.ty()),
                 account_index: Set(account_registered_event.account_index as i32),
                 created_at: Set(created_at),
                 created_block_height: Set(block.block.info.height as i64),
@@ -213,55 +210,27 @@ pub(crate) async fn save_accounts(
                 .exec_without_returning(&txn)
                 .await?;
 
-            match account_registered_event.params {
-                AccountParams::Single(params) => {
-                    let user_index = params.owner;
+            let user_index = account_registered_event.owner;
 
-                    if let Some(user_id) = entity::users::Entity::find()
-                        .column(entity::users::Column::Id)
-                        .filter(entity::users::Column::UserIndex.eq(user_index))
-                        .one(&txn)
-                        .await?
-                        .map(|user| user.id)
-                    {
-                        let new_account_user = entity::accounts_users::ActiveModel {
-                            id: Set(Uuid::new_v4()),
-                            account_id: Set(new_account_id),
-                            user_id: Set(user_id),
-                        };
+            if let Some(user_id) = entity::users::Entity::find()
+                .column(entity::users::Column::Id)
+                .filter(entity::users::Column::UserIndex.eq(user_index))
+                .one(&txn)
+                .await?
+                .map(|user| user.id)
+            {
+                let new_account_user = entity::accounts_users::ActiveModel {
+                    id: Set(Uuid::new_v4()),
+                    account_id: Set(new_account_id),
+                    user_id: Set(user_id),
+                };
 
-                        #[cfg(feature = "metrics")]
-                        counter!("indexer.dango.hooks.accounts.total").increment(1);
+                #[cfg(feature = "metrics")]
+                counter!("indexer.dango.hooks.accounts.total").increment(1);
 
-                        entity::accounts_users::Entity::insert(new_account_user)
-                            .exec_without_returning(&txn)
-                            .await?;
-                    }
-                },
-                AccountParams::Multi(params) => {
-                    for user_index in params.members.keys() {
-                        if let Some(user_id) = entity::users::Entity::find()
-                            .column(entity::users::Column::Id)
-                            .filter(entity::users::Column::UserIndex.eq(*user_index))
-                            .one(&txn)
-                            .await?
-                            .map(|user| user.id)
-                        {
-                            let new_account_user = entity::accounts_users::ActiveModel {
-                                id: Set(Uuid::new_v4()),
-                                account_id: Set(new_account_id),
-                                user_id: Set(user_id),
-                            };
-
-                            #[cfg(feature = "metrics")]
-                            counter!("indexer.dango.hooks.accounts.total").increment(1);
-
-                            entity::accounts_users::Entity::insert(new_account_user)
-                                .exec_without_returning(&txn)
-                                .await?;
-                        }
-                    }
-                },
+                entity::accounts_users::Entity::insert(new_account_user)
+                    .exec_without_returning(&txn)
+                    .await?;
             }
         }
     }

@@ -6,8 +6,8 @@ use {
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
-        account::single,
-        account_factory::{self, Account, AccountParams, RegisterUserData, UserIndexOrName},
+        account,
+        account_factory::{self, Account, RegisterUserData, UserIndexOrName},
         auth::AccountStatus,
         bank,
         constants::usdc,
@@ -50,7 +50,7 @@ fn onboarding_without_deposit() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -75,7 +75,7 @@ fn onboarding_without_deposit() {
 
     // The account should have been created in the `Inactive` state.
     suite
-        .query_wasm_smart(user.address(), single::QueryStatusRequest {})
+        .query_wasm_smart(user.address(), account::QueryStatusRequest {})
         .should_succeed_and_equal(AccountStatus::Inactive);
 
     // Attempting to send a transaction at this time. `CheckTx` should fail.
@@ -107,7 +107,7 @@ fn onboarding_without_deposit() {
 
     // Account should have been activated.
     suite
-        .query_wasm_smart(user.address(), single::QueryStatusRequest {})
+        .query_wasm_smart(user.address(), account::QueryStatusRequest {})
         .should_succeed_and_equal(AccountStatus::Active);
 
     // Try again, should succeed.
@@ -120,9 +120,7 @@ fn onboarding_without_deposit() {
         .execute(
             &mut user,
             contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Single(single::Params::new(user_index)),
-            },
+            &account_factory::ExecuteMsg::RegisterAccount {},
             Coins::new(),
         )
         .should_succeed();
@@ -158,7 +156,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -203,13 +201,13 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
                 // We have 10 genesis accounts (owner + users 1-9), indexed from
                 // zero, so this one should have the index of 10.
                 index: 10,
-                params: AccountParams::Single(single::Params::new(user.user_index())),
+                owner: user.user_index(),
             },
         });
 
     // The newly created account should be active.
     suite
-        .query_wasm_smart(user.address(), single::QueryStatusRequest {})
+        .query_wasm_smart(user.address(), account::QueryStatusRequest {})
         .should_succeed_and_equal(AccountStatus::Active);
 
     // The newly created account should have zero balance.
@@ -234,7 +232,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -305,7 +303,7 @@ fn update_key() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         0,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -440,9 +438,7 @@ fn single_signature_account_count_limit() {
             .execute(
                 &mut accounts.user1,
                 contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Single(single::Params::new(user_index)),
-                },
+                &account_factory::ExecuteMsg::RegisterAccount {},
                 Coins::new(),
             )
             .should_succeed();
@@ -461,9 +457,7 @@ fn single_signature_account_count_limit() {
         .execute(
             &mut accounts.user1,
             contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Single(single::Params::new(user_index)),
-            },
+            &account_factory::ExecuteMsg::RegisterAccount {},
             Coins::new(),
         )
         .should_fail_with_error(format!("user {user_index} has reached max account count"));

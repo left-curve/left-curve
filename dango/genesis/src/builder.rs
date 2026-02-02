@@ -1,8 +1,7 @@
 use {
     crate::{Codes, Contracts, GenesisOption},
     dango_types::{
-        account_factory::{self, AccountType},
-        bank,
+        account_factory, bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         constants::dango,
         dex, gateway, oracle, taxman, vesting, warp,
@@ -27,9 +26,8 @@ where
     let mut msgs = Vec::new();
 
     // Upload all the codes and compute code hashes.
+    let account_code_hash = upload(&mut msgs, codes.account);
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
-    let account_multi_code_hash = upload(&mut msgs, codes.account_multi);
-    let account_single_code_hash = upload(&mut msgs, codes.account_single);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let dex_code_hash = upload(&mut msgs, codes.dex);
     let gateway_code_hash = upload(&mut msgs, codes.gateway);
@@ -64,7 +62,7 @@ where
         .iter()
         .map(|user| {
             let salt = user.salt.to_bytes();
-            Addr::derive(account_factory, account_single_code_hash, &salt)
+            Addr::derive(account_factory, account_code_hash, &salt)
         })
         .collect::<Vec<_>>();
 
@@ -76,10 +74,7 @@ where
         &mut msgs,
         account_factory_code_hash,
         &account_factory::InstantiateMsg {
-            code_hashes: btree_map! {
-                AccountType::Multi => account_multi_code_hash,
-                AccountType::Single => account_single_code_hash,
-            },
+            account_code_hash,
             users,
         },
         "dango/account_factory",

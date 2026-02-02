@@ -1,11 +1,7 @@
 use {
     assertor::*,
     dango_testing::{TestOption, setup_test_with_indexer},
-    dango_types::{
-        account::single,
-        account_factory::{self, AccountParams},
-        constants::usdc,
-    },
+    dango_types::{account_factory, constants::usdc},
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
@@ -20,9 +16,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
     let msgs = vec![
         Message::execute(
             contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
-            },
+            &account_factory::ExecuteMsg::RegisterAccount {},
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap(),

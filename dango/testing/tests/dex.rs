@@ -8,8 +8,6 @@ use {
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
-        account::single::Params,
-        account_factory::AccountParams,
         config::AppConfig,
         constants::{atom, dango, eth, usdc, xrp},
         dex::{
@@ -3153,7 +3151,6 @@ fn volume_tracking_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Single(Params::new(user1_addr_1.user_index())),
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap();
@@ -3163,7 +3160,6 @@ fn volume_tracking_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Single(Params::new(user2_addr_1.user_index())),
             Coins::one(dango::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap();

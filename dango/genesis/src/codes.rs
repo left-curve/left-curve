@@ -1,7 +1,7 @@
 use {
     crate::Codes,
     dango_types::config::Hyperlane,
-    grug::{Binary, ContractBuilder, ContractWrapper},
+    grug::{Binary, ContractBuilder, ContractWrapper, Empty, StdResult},
     grug_vm_rust::RustVm,
 };
 
@@ -23,17 +23,16 @@ impl GenesisCodes for RustVm {
             .with_authenticate(Box::new(dango_account_factory::authenticate))
             .build();
 
-        let account_multi = ContractBuilder::new(Box::new(dango_account_multi::instantiate))
-            .with_authenticate(Box::new(dango_account_multi::authenticate))
-            .with_receive(Box::new(dango_account_multi::receive))
-            .with_execute(Box::new(dango_account_multi::execute))
-            .with_query(Box::new(dango_account_multi::query))
-            .build();
+        // Previously this was the multisig account code hash, now removed.
+        let _account_multi = ContractBuilder::new(Box::new(|_, _: Empty| -> StdResult<_> {
+            unreachable!("the multisig contract has been deleted");
+        }))
+        .build();
 
-        let account_single = ContractBuilder::new(Box::new(dango_account_single::instantiate))
-            .with_authenticate(Box::new(dango_account_single::authenticate))
-            .with_receive(Box::new(dango_account_single::receive))
-            .with_query(Box::new(dango_account_single::query))
+        let account = ContractBuilder::new(Box::new(dango_account::instantiate))
+            .with_authenticate(Box::new(dango_account::authenticate))
+            .with_receive(Box::new(dango_account::receive))
+            .with_query(Box::new(dango_account::query))
             .build();
 
         let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
@@ -103,9 +102,8 @@ impl GenesisCodes for RustVm {
         }
 
         Codes {
+            account,
             account_factory,
-            account_multi,
-            account_single,
             bank,
             dex,
             gateway,

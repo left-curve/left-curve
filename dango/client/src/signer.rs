@@ -2,7 +2,7 @@ use {
     crate::Secret,
     anyhow::anyhow,
     dango_types::{
-        account::single,
+        account,
         account_factory::{self, UserIndex, UserIndexOrName},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
         config::AppConfig,
@@ -48,7 +48,7 @@ where
             .addresses
             .account_factory;
 
-        client
+        Ok(client
             .query_wasm_smart(
                 account_factory,
                 account_factory::QueryAccountRequest {
@@ -57,9 +57,7 @@ where
                 None,
             )
             .await?
-            .params
-            .owner()
-            .ok_or_else(|| anyhow!("account {} is not a single signature account", self.address))
+            .owner)
     }
 
     pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
@@ -70,7 +68,7 @@ where
         // If the account hasn't sent any transaction yet, use 0 as nonce.
         // Otherwise, use the latest seen nonce + 1.
         let nonce = client
-            .query_wasm_smart(self.address, single::QuerySeenNoncesRequest {}, None)
+            .query_wasm_smart(self.address, account::QuerySeenNoncesRequest {}, None)
             .await?
             .last()
             .map(|newest_nonce| newest_nonce + 1)

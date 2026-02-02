@@ -3812,29 +3812,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-account"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-auth",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-account-factory"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-auth",
- "dango-types",
- "grug",
-]
-
-[[package]]
-name = "dango-account-multi"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-account-factory",
- "dango-auth",
- "dango-types",
- "grug",
- "test-case",
-]
-
-[[package]]
-name = "dango-account-single"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -3970,9 +3958,8 @@ name = "dango-genesis"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-account",
  "dango-account-factory",
- "dango-account-multi",
- "dango-account-single",
  "dango-bank",
  "dango-dex",
  "dango-gateway",

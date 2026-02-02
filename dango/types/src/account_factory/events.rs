@@ -1,6 +1,6 @@
 use {
     crate::{
-        account_factory::{AccountIndex, AccountParams, UserIndex},
+        account_factory::{AccountIndex, UserIndex},
         auth::Key,
     },
     grug::{Addr, Hash256},
@@ -21,21 +21,13 @@ pub struct UserRegistered {
 pub struct AccountRegistered {
     pub account_index: AccountIndex,
     pub address: Addr,
-    pub params: AccountParams,
+    pub owner: UserIndex,
 }
 
 /// An event indicating a username begins to own an account.
 #[grug::derive(Serde)]
 #[grug::event("account_owned")]
 pub struct AccountOwned {
-    pub user_index: UserIndex,
-    pub address: Addr,
-}
-
-/// An event indicating a username ceases to own an account.
-#[grug::derive(Serde)]
-#[grug::event("account_disowned")]
-pub struct AccountDisowned {
     pub user_index: UserIndex,
     pub address: Addr,
 }

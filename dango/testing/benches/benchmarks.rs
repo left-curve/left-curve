@@ -5,8 +5,7 @@ use {
     dango_genesis::{Codes, Contracts},
     dango_testing::{TestAccounts, TestSuite, setup_benchmark_rust},
     dango_types::{
-        account::single,
-        account_factory::{self, AccountParams, Salt},
+        account_factory::{self, Salt},
         constants::usdc,
     },
     grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins},
@@ -46,9 +45,7 @@ where
         .map(|i| {
             Message::execute(
                 contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
-                },
+                &account_factory::ExecuteMsg::RegisterAccount {},
                 if i < 100 {
                     coins! { usdc::DENOM.clone() => 100_000_000 }
                 } else {
@@ -70,7 +67,7 @@ where
 
     // Make a block that contains 100 transactions.
     // The i-th transaction is the i-th sender sending coins to the i-receiver.
-    let code_account_single = codes.account_single.into().hash256();
+    let code_account_single = codes.account.into().hash256();
     (0..100)
         .map(|i| {
             // Predict the sender address.

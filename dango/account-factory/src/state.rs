@@ -1,12 +1,12 @@
 use {
     dango_types::{
-        account_factory::{Account, AccountIndex, AccountType, UserIndex, Username},
+        account_factory::{Account, AccountIndex, UserIndex, Username},
         auth::Key,
     },
-    grug::{Addr, Counter, Counters, Hash256, Map, Set},
+    grug::{Addr, Counter, Counters, Hash256, Item, Map, Set},
 };
 
-pub const CODE_HASHES: Map<AccountType, Hash256> = Map::new("hash");
+pub const CODE_HASH: Item<Hash256> = Item::new("hash");
 
 pub const NEXT_USER_INDEX: Counter<UserIndex> = Counter::new("user_index", 0, 1);
 

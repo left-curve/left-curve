@@ -10,7 +10,7 @@ use {
         setup_test_with_indexer,
     },
     dango_types::{
-        account::single::{QueryMsg, QuerySeenNoncesRequest},
+        account::{QueryMsg, QuerySeenNoncesRequest},
         auth::Nonce,
         constants::dango,
     },
