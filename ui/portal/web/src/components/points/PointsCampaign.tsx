@@ -1,17 +1,27 @@
-import { Button, Tab, Tabs, createContext } from "@left-curve/applets-kit";
+import { Button, ResizerContainer, Tab, Tabs, createContext } from "@left-curve/applets-kit";
 import type React from "react";
 import { useState } from "react";
 
 import type { PropsWithChildren } from "react";
-import { PointsProfileTable } from "./PointsProfileTable";
 import { PointsHeader } from "./PointsHeader";
-import { BoxCard } from "./BoxCard";
-import { LigueLevels } from "./LigueLevels";
-import { NFTCard } from "./NFTCard";
-import { PointsProgressBar } from "./PointsProgressBar";
-import { ChestOpeningProvider, useChestOpening } from "./useChestOpening";
+import { UserPointsProvider } from "./useUserPoints";
+import { LigueLevels, PointsProfileTable } from "./profile";
+import {
+  BoxCard,
+  NFTCard,
+  PointsProgressBar,
+  ChestOpeningProvider,
+  useChestOpening,
+} from "./rewards";
+import {
+  ReferralStats,
+  CommissionRates,
+  MyCommission,
+  ReferralFaqs,
+  type ReferralMode,
+} from "./referral";
 
-type PointsCampaignTab = "profile" | "rewards";
+type PointsCampaignTab = "profile" | "rewards" | "referral";
 
 const [PointsCampaignProvider, usePointsCampaign] = createContext<{
   activeTab: PointsCampaignTab;
@@ -24,15 +34,17 @@ const PointsCampaignContainer: React.FC<PropsWithChildren> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<PointsCampaignTab>("profile");
 
   return (
-    <ChestOpeningProvider>
-      <PointsCampaignProvider value={{ activeTab, setActiveTab }}>
-        <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
-          <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
-            {children}
+    <UserPointsProvider>
+      <ChestOpeningProvider>
+        <PointsCampaignProvider value={{ activeTab, setActiveTab }}>
+          <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
+            <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
+              {children}
+            </div>
           </div>
-        </div>
-      </PointsCampaignProvider>
-    </ChestOpeningProvider>
+        </PointsCampaignProvider>
+      </ChestOpeningProvider>
+    </UserPointsProvider>
   );
 };
 
@@ -70,7 +82,7 @@ const ProfileTable: React.FC = () => {
 };
 
 const RewardsLoot: React.FC = () => {
-  const currentVolume = 500350;
+  const currentVolume = 490000;
   const { openChest } = useChestOpening();
 
   return (
@@ -140,6 +152,30 @@ const RewardsSection: React.FC = () => (
   </div>
 );
 
+const ReferralSection: React.FC = () => {
+  const [referralMode, setReferralMode] = useState<ReferralMode>("affiliate");
+
+  return (
+    <div className="flex flex-col gap-6 w-full">
+      <ResizerContainer
+        layoutId="referra-container"
+        className="bg-surface-disabled-gray rounded-xl shadow-account-card overflow-hidden"
+      >
+        <PointsHeader />
+        <ResizerContainer
+          layoutId="referral-stats"
+          className="p-4 lg:p-8 bg-surface-primary-gray rounded-b-xl flex flex-col gap-6"
+        >
+          <ReferralStats mode={referralMode} onModeChange={setReferralMode} />
+          {referralMode === "affiliate" && <CommissionRates />}
+        </ResizerContainer>
+      </ResizerContainer>
+      <MyCommission mode={referralMode} />
+      <ReferralFaqs />
+    </div>
+  );
+};
+
 const PointsCampaignTabs: React.FC = () => {
   const { activeTab, setActiveTab } = usePointsCampaign();
 
@@ -153,9 +189,11 @@ const PointsCampaignTabs: React.FC = () => {
       >
         <Tab title="profile">Profile</Tab>
         <Tab title="rewards">Rewards</Tab>
+        <Tab title="referral">Referral</Tab>
       </Tabs>
       {activeTab === "profile" ? <ProfileSection /> : null}
       {activeTab === "rewards" ? <RewardsSection /> : null}
+      {activeTab === "referral" ? <ReferralSection /> : null}
     </div>
   );
 };
