@@ -200,6 +200,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       disableClosing: true,
     },
   },
+  [Modals.AddressWarning]: {
+    component: lazy(() =>
+      import("./AddressWarning").then(({ AddressWarning }) => ({
+        default: AddressWarning,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {

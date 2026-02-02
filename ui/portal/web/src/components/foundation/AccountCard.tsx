@@ -1,4 +1,5 @@
 import { useBalances, usePrices } from "@left-curve/store";
+import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { type Account, AccountType, type AccountTypes } from "@left-curve/dango/types";
@@ -10,30 +11,12 @@ import {
   IconButton,
   IconChevronDownFill,
   IconClose,
+  Modals,
   TextCopy,
   TruncateText,
-  toast,
   twMerge,
   useApp,
 } from "@left-curve/applets-kit";
-
-const showAddressWarningToast = () => {
-  toast.warning(
-    {
-      title: m["accountCard.copyWarning.title"](),
-      description: () => (
-        <p className="text-ink-tertiary-500 diatype-xs-medium">
-          {m["accountCard.copyWarning.descriptionPre"]()}{" "}
-          <a href="/bridge" className="underline">
-            {m["accountCard.copyWarning.descriptionLink"]()}
-          </a>{" "}
-          {m["accountCard.copyWarning.descriptionPost"]()}
-        </p>
-      ),
-    },
-    { duration: 8000 },
-  );
-};
 
 export const AccountCardOptions = {
   [AccountType.Single]: {
@@ -71,6 +54,8 @@ const AccountCard: React.FC<AccountCardProps> = ({
 }) => {
   const { address, type } = account;
   const name = `${m["common.account"]()} #${account?.index}`;
+  const { showModal } = useApp();
+  const navigate = useNavigate();
 
   const { bgColor, badge, img, imgClassName, text } = AccountCardOptions[type];
 
@@ -131,7 +116,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
           <TextCopy
             copyText={address}
             className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
-            onCopy={showAddressWarningToast}
+            onCopy={() => showModal(Modals.AddressWarning, { navigate })}
           />
         </div>
       </div>
@@ -158,8 +143,9 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
 
   const { data: balances = {} } = useBalances({ address });
   const { calculateBalance } = usePrices();
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
+  const navigate = useNavigate();
 
   const totalBalance = calculateBalance(balances, {
     format: true,
@@ -189,7 +175,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
             <TextCopy
               copyText={address}
               className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
-              onCopy={showAddressWarningToast}
+              onCopy={() => showModal(Modals.AddressWarning, { navigate })}
             />
           </div>
         </div>
