@@ -20,6 +20,30 @@
   roles:
     - traefik
 
+- hosts: traefik
+  remote_user: debian
+  become: true
+  vars_files:
+    - vaults/debian/root_vault.yml
+  tasks:
+    - name: Install systemd unit for traefik compose
+      template:
+        src: roles/traefik/templates/traefik-compose.service.j2
+        dest: /etc/systemd/system/traefik-compose.service
+        mode: '0644'
+      notify: Reload systemd
+
+    - name: Enable and start traefik-compose service
+      systemd:
+        name: traefik-compose.service
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true
+
 # - hosts: traefik
 #   remote_user: "debian"
 #   tasks:

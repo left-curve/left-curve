@@ -1,0 +1,20 @@
+[Unit]
+Description=Traefik Docker Compose stack
+Requires=docker.service
+Wants=network-online.target tailscaled.service wg-quick@wg0.service
+After=docker.service network-online.target tailscaled.service wg-quick@wg0.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+User={{ deploy_user }}
+WorkingDirectory={{ traefik_dir }}
+Environment="DOCKER_HOST=unix:///var/run/docker.sock"
+ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose-{{ hostname }}.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f docker-compose.yml -f docker-compose-{{ hostname }}.yml stop
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
