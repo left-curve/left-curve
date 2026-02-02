@@ -10,7 +10,6 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import type { useNavigate } from "@tanstack/react-router";
 import type { ModalRef } from "./RootModal";
 
 export const AddressWarning = forwardRef<ModalRef>((_, ref) => {
