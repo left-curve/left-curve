@@ -998,11 +998,15 @@
     }
   },
   "accountCard": {
-    "copyWarning": {
-      "title": "THIS IS NOT AN ETHEREUM ADDRESS",
-      "descriptionPre": "Do NOT withdrawal directly from a centralized exchange (CEX) to this address, or send funds directly to this address from Ethereum or other EVM chains. Use the",
-      "descriptionLink": "deposit",
-      "descriptionPost": "app instead."
+    "addressWarning": {
+      "title": "This Is Not an Ethereum Address",
+      "doNot": "Do not",
+      "bullet1": "withdraw directly from a Centralized Exchange (CEX) to this address.",
+      "bullet2": "send funds from Ethereum or other EVM chains to this address.",
+      "descriptionPre": "To fund your Dango account, use the",
+      "descriptionLink": "Deposit app",
+      "descriptionPost": "instead.",
+      "button": "I understand"
     }
   }
 }
