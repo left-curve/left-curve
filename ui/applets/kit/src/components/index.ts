@@ -56,6 +56,7 @@ export { ConnectWalletWithModal } from "./ConnectWalletWithModal";
 export { TruncateResponsive } from "./TruncateResponsive";
 export { WarningContainer } from "./WarningContainer";
 export { AuthenticatedButton } from "./AuthenticatedButton";
+export { ProgressBar } from "./ProgressBar";
 
 /* ---------------------------------- Icons --------------------------------- */
 
