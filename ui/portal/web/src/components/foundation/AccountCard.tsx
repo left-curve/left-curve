@@ -55,7 +55,6 @@ const AccountCard: React.FC<AccountCardProps> = ({
   const { address, type } = account;
   const name = `${m["common.account"]()} #${account?.index}`;
   const { showModal } = useApp();
-  const navigate = useNavigate();
 
   const { bgColor, badge, img, imgClassName, text } = AccountCardOptions[type];
 
@@ -116,7 +115,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
           <TextCopy
             copyText={address}
             className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
-            onCopy={() => showModal(Modals.AddressWarning, { navigate })}
+            onCopy={() => showModal(Modals.AddressWarning)}
           />
         </div>
       </div>
@@ -145,7 +144,6 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
   const { calculateBalance } = usePrices();
   const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
-  const navigate = useNavigate();
 
   const totalBalance = calculateBalance(balances, {
     format: true,
@@ -175,7 +173,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
             <TextCopy
               copyText={address}
               className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
-              onCopy={() => showModal(Modals.AddressWarning, { navigate })}
+              onCopy={() => showModal(Modals.AddressWarning)}
             />
           </div>
         </div>

@@ -13,26 +13,17 @@ import {
 import type { useNavigate } from "@tanstack/react-router";
 import type { ModalRef } from "./RootModal";
 
-type AddressWarningProps = {
-  navigate: ReturnType<typeof useNavigate>;
-};
+export const AddressWarning = forwardRef<ModalRef>((_, ref) => {
+  const { hideModal, navigate } = useApp();
 
-export const AddressWarning = forwardRef<ModalRef, AddressWarningProps>(
-  ({ navigate: _navigate_ }, ref) => {
-    const { hideModal } = useApp();
+  useImperativeHandle(ref, () => ({
+    triggerOnClose: () => {},
+  }));
 
-    useImperativeHandle(ref, () => ({
-      triggerOnClose: () => {},
-    }));
-
-    const navigate = (parameters: Parameters<typeof _navigate_>[0]) => {
-      _navigate_(parameters);
-      hideModal();
-    };
-
-    const handleGoToDeposit = () => {
-      navigate({ to: "/bridge" });
-    };
+  const handleGoToDeposit = () => {
+    navigate("/bridge");
+    hideModal();
+  };
 
   return (
     <div className="flex flex-col bg-surface-primary-rice rounded-xl relative max-w-[400px]">
@@ -77,5 +68,4 @@ export const AddressWarning = forwardRef<ModalRef, AddressWarningProps>(
       </div>
     </div>
   );
-  },
-);
+});
