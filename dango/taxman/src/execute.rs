@@ -1,8 +1,7 @@
 use {
     crate::{
-        COMMISSION_REBOUND_RATIOS, CONFIG, FEE_SHARE_RATIO, MAX_REFERRER_CHAIN_DEPTH,
-        REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, VOLUMES_BY_USER,
-        WITHHELD_FEE,
+        CONFIG, FEE_SHARE_RATIO, MAX_REFERRER_CHAIN_DEPTH, REFEREE_TO_REFERRER,
+        REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, VOLUMES_BY_USER, WITHHELD_FEE,
     },
     anyhow::{bail, ensure},
     dango_account_factory::AccountQuerier,
@@ -15,9 +14,8 @@ use {
         },
         bank,
         taxman::{
-            CommissionReboundRatios, CommissionRebund, Config, ExecuteMsg, FeeType, InstantiateMsg,
-            ReceiveFee, Referee, RefereeData, Referral, Referrer, ReferrerInfo, ShareRatio,
-            UserReferralData,
+            CommissionRebund, Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee, Referee,
+            RefereeData, Referral, Referrer, ReferrerInfo, ShareRatio, UserReferralData,
         },
     },
     grug::{
@@ -41,10 +39,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
         ExecuteMsg::Pay { ty, payments } => pay(ctx, ty, payments),
         ExecuteMsg::ReportVolumes(volumes) => report_volumes(ctx, volumes),
-        ExecuteMsg::CommissionReboundRatio(commission_rebound_ratios) => {
-            set_commission_rebound(ctx, commission_rebound_ratios)
-        },
-
         ExecuteMsg::SetReferral { referrer, referee } => set_referral(ctx, referrer, referee),
         ExecuteMsg::SetFeeShareRatio(bounded) => set_share_ratio(ctx, bounded),
     }
@@ -177,20 +171,6 @@ fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow
     Ok(Response::new())
 }
 
-fn set_commission_rebound(
-    ctx: MutableCtx,
-    commission_rebound_ratios: CommissionReboundRatios,
-) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ctx.querier.query_owner()?,
-        "you don't have the right, O you don't have the right"
-    );
-
-    COMMISSION_REBOUND_RATIOS.save(ctx.storage, &commission_rebound_ratios)?;
-
-    Ok(Response::new())
-}
-
 fn set_referral(ctx: MutableCtx, referrer: Referrer, referee: Referee) -> anyhow::Result<Response> {
     // Ensure referrer and referee are not the same.
     ensure!(
@@ -201,40 +181,42 @@ fn set_referral(ctx: MutableCtx, referrer: Referrer, referee: Referee) -> anyhow
     // Ensure the referrer has set the fee share ratio.
     ensure!(
         FEE_SHARE_RATIO.may_load(ctx.storage, referrer)?.is_some(),
-        "referrer has not set fee share ratio"
+        "user {referrer} has not set fee share ratio"
     );
 
     // Ensure the caller is either the account factory or the referee himself.
     let account_factory = ctx.querier.query_account_factory()?;
 
-    // Retrieve the user index of the sender.
-    let sender_user_index =
-        match ctx
-            .querier
-            .query_wasm_smart(account_factory, QueryAccountRequest {
-                address: ctx.sender,
-            }) {
-            Ok(account) => {
-                let AccountParams::Single(account_params) = account.params else {
-                    bail!("only single accounts can set referral");
-                };
+    if ctx.sender != account_factory {
+        // Retrieve the user index of the sender.
+        let sender_user_index =
+            match ctx
+                .querier
+                .query_wasm_smart(account_factory, QueryAccountRequest {
+                    address: ctx.sender,
+                }) {
+                Ok(account) => {
+                    let AccountParams::Single(account_params) = account.params else {
+                        bail!("only single accounts can set referral");
+                    };
 
-                account_params.owner
-            },
-            Err(_) => {
-                bail!("unable to retrieve account info for address {}", ctx.sender);
-            },
-        };
+                    account_params.owner
+                },
+                Err(_) => {
+                    bail!("unable to retrieve account info for address {}", ctx.sender);
+                },
+            };
 
-    ensure!(
-        ctx.sender == account_factory || sender_user_index == referee,
-        "only account factory or the referee himself can set referral"
-    );
+        ensure!(
+            sender_user_index == referee,
+            "only account factory or the referee himself can set referral"
+        );
+    }
 
     REFEREE_TO_REFERRER.may_update(ctx.storage, referee, |maybe_referrer| {
         // If the referral is already set, it's not allowed to change.
         if maybe_referrer.is_some() {
-            anyhow::bail!("referral already set, cannot change");
+            anyhow::bail!("user {referee} already has a referrer and it can't be changed",);
         }
         Ok(referrer)
     })?;
@@ -257,16 +239,36 @@ fn set_referral(ctx: MutableCtx, referrer: Referrer, referee: Referee) -> anyhow
 }
 
 fn set_share_ratio(ctx: MutableCtx, rate: ShareRatio) -> anyhow::Result<Response> {
-    let user_index = ctx
+    let account_params = ctx
         .querier
         .query_wasm_smart(ctx.querier.query_account_factory()?, QueryAccountRequest {
             address: ctx.sender,
         })?
-        .params
-        .into_single()
-        .owner;
+        .params;
 
-    FEE_SHARE_RATIO.may_update(ctx.storage, user_index, |maybe_rate| {
+    let AccountParams::Single(params) = account_params else {
+        bail!("only single accounts can set fee share ratio");
+    };
+
+    // In order to set the share ratio and be a referrer, the user must have
+    // traded at least 10k.
+    let traded_volume = VOLUMES_BY_USER
+        .prefix(params.owner)
+        .values(ctx.storage, None, None, Order::Descending)
+        .next()
+        .transpose()?
+        .unwrap_or(Udec128_6::ZERO);
+
+    let volume_to_be_referrer = CONFIG.load(ctx.storage)?.referral.volume_to_be_referrer;
+
+    ensure!(
+        traded_volume.into_int() >= volume_to_be_referrer,
+        "you must have at least a volume of ${} to become a referrer, traded volume: ${}",
+        volume_to_be_referrer,
+        traded_volume.into_int()
+    );
+
+    FEE_SHARE_RATIO.may_update(ctx.storage, params.owner, |maybe_rate| {
         if let Some(existing_rate) = maybe_rate {
             ensure!(
                 rate.inner() >= existing_rate.inner(),
@@ -698,16 +700,16 @@ fn calculate_commission_rebund(
 
     // Calculate the volume the referees traded in the last 30 days.
     let referees_volume = data_last
-        .referee_volume
-        .checked_sub(data_since.referee_volume)?;
+        .referees_volume
+        .checked_sub(data_since.referees_volume)?;
 
     // Determine the commission rebund ratio based on the referees volume.
-    let commission_rebound_ratios = COMMISSION_REBOUND_RATIOS.load(ctx.storage)?;
+    let referral_config = CONFIG.load(ctx.storage)?.referral;
 
-    let mut referrer_commission_rebound = commission_rebound_ratios.default;
+    let mut referrer_commission_rebound = referral_config.commission_rebound_default;
 
-    for (volume_threshold, commission_rebound) in commission_rebound_ratios.volume_threshold {
-        if referees_volume >= volume_threshold {
+    for (volume_threshold, commission_rebound) in referral_config.commission_rebound_by_volume {
+        if referees_volume.into_int() >= volume_threshold {
             referrer_commission_rebound = commission_rebound;
         } else {
             break;

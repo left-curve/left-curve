@@ -2,8 +2,8 @@ use {
     crate::account_factory::UserIndex,
     core::str,
     grug::{
-        Addr, Bounded, Coins, Denom, Timestamp, Udec128, Udec128_6, ZeroInclusiveOneExclusive,
-        ZeroInclusiveOneInclusive,
+        Addr, Bounded, Coins, Denom, NumberConst, Timestamp, Udec128, Udec128_6, Uint128,
+        ZeroInclusiveOneExclusive, ZeroInclusiveOneInclusive,
     },
     std::collections::BTreeMap,
 };
@@ -16,6 +16,7 @@ pub type Referee = UserIndex;
 
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
+/// Store all the cumulative data for an user related to the referral program.
 pub struct UserReferralData {
     /// Total trading volume made by the user (USD).
     pub volume: Udec128,
@@ -24,7 +25,7 @@ pub struct UserReferralData {
     /// Total number of referees referred by the user.
     pub referee_count: u32,
     /// Total trading volume made by the user's direct referees (USD).
-    pub referee_volume: Udec128,
+    pub referees_volume: Udec128,
     /// Total commission rebounded to the user's direct referees (USD).
     pub referees_commission_rebounded: Udec128,
 }
@@ -52,11 +53,24 @@ pub struct ReferrerInfo {
 }
 
 #[grug::derive(Serde, Borsh)]
-pub struct CommissionReboundRatios {
+
+pub struct ReferralConfig {
+    /// Minimum volume required for a user to become a referrer.
+    pub volume_to_be_referrer: Uint128,
     /// Default commission rebund ratio, applied when no volume thresholds are met.
-    pub default: CommissionRebund,
+    pub commission_rebound_default: CommissionRebund,
     /// Mapping from volume thresholds to commission rebund ratios.
-    pub volume_threshold: BTreeMap<Udec128, CommissionRebund>,
+    pub commission_rebound_by_volume: BTreeMap<Uint128, CommissionRebund>,
+}
+
+impl Default for ReferralConfig {
+    fn default() -> Self {
+        Self {
+            volume_to_be_referrer: Default::default(),
+            commission_rebound_default: CommissionRebund::new_unchecked(Udec128::ZERO),
+            commission_rebound_by_volume: Default::default(),
+        }
+    }
 }
 
 #[grug::derive(Serde, Borsh)]
@@ -64,6 +78,8 @@ pub struct Config {
     pub fee_denom: Denom,
     /// Units of the fee token for each unit of gas consumed.
     pub fee_rate: Udec128,
+    // Config for the referral program.
+    pub referral: ReferralConfig,
 }
 
 #[grug::derive(Serde)]
@@ -109,8 +125,6 @@ pub enum ExecuteMsg {
     /// Report trading volumes of users.
     /// Can only be called by the spot and perp DEX contracts.
     ReportVolumes(BTreeMap<Addr, Udec128_6>),
-    /// Update the commission rebound ratios.
-    CommissionReboundRatio(CommissionReboundRatios),
     /// Callable by:
     /// 1. the account factory, when a user registers with a referral code;
     /// 2. a user, if he didn't provide a referral code when registering.
@@ -138,6 +152,12 @@ pub enum QueryMsg {
         /// user's total trading volume since genesis will be returned.
         since: Option<Timestamp>,
     },
+    /// Query the referref of the user.
+    #[returns(Option<Referrer>)]
+    Referrer { user: Referee },
+    /// Query the stats of an user for the referral program.
+    #[returns(UserReferralData)]
+    ReferralStats { user: UserIndex },
 }
 
 #[grug::derive(Serde)]

@@ -1,10 +1,7 @@
 use {
     dango_types::{
         account_factory::UserIndex,
-        taxman::{
-            CommissionReboundRatios, Config, Referee, RefereeData, Referrer, ShareRatio,
-            UserReferralData,
-        },
+        taxman::{Config, Referee, RefereeData, Referrer, ShareRatio, UserReferralData},
     },
     grug::{IndexedMap, Item, Map, MultiIndex, Timestamp, Udec128, Udec128_6, Uint128},
 };
@@ -25,10 +22,6 @@ pub const WITHHELD_FEE: Item<(Config, Uint128)> = Item::new("withheld_fee");
 /// The timestamps in this map are rounded down to the nearest day.
 /// The volume is in USDC microunits, i.e. 1e-6 USDC.
 pub const VOLUMES_BY_USER: Map<(UserIndex, Timestamp), Udec128_6> = Map::new("volume__user");
-
-/// Referral commission rebound ratio by referees volume.
-pub const COMMISSION_REBOUND_RATIOS: Item<CommissionReboundRatios> =
-    Item::new("commission_rebound_ratios");
 
 /// Given a referee, find his referrer.
 pub const REFEREE_TO_REFERRER: Map<Referee, Referrer> = Map::new("referee_to_referrer");
