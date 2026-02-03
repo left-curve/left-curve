@@ -60,6 +60,11 @@ enum ExecuteMsg {
         /// negative for sell (decrease long exposure, increase short exposure).
         size: Dec,
         kind: OrderKind,
+        /// If true, only the closing portion of the order is executed; any
+        /// opening portion is discarded. If false, if the opening portion
+        /// would violate OI constraints, the entire order (including the
+        /// closing portion) is reverted.
+        reduce_only: bool,
     },
 
     /// Forcibly close all of a user's positions.
@@ -159,16 +164,6 @@ struct PairParams {
     ///
     /// This constraint does not apply to reducing positions.
     pub max_abs_oi: Udec,
-
-    /// The maximum allowed difference between long and short OIs.
-    /// I.e. the following must be satisfied:
-    ///
-    /// - |pair_state.long_oi + pair_state.short_oi| <= pair_params.max_abs_skew
-    ///
-    /// (Note that `short_oi` is always non-positive).
-    ///
-    /// This constraint does not apply to reducing positions.
-    pub max_abs_skew: Udec,
 
     // TODO: min order size (either in number of contracts or in USD; to be decided)
 }
@@ -370,17 +365,21 @@ fn handle_unlock(
 The main challenge for handling orders is it may not be possible to execute an order fully, due to a number of constraints:
 
 1. **Max OI**: the long or short OI can't exceed a set maximum.
-2. **Max Skew**: the difference between long and short OI can't exceed a set maximum.
-3. **Target price**: the worst acceptable execution price of the order, specified by the user.
+2. **Target price**: the worst acceptable execution price of the order, specified by the user.
 
 An order may consists of two portions: one portion that reduces or closes an existing position (the "**closing portion**"); a portion that opens a new or increases an existing position (the "**opening portion**"). E.g. a user has a position of +50 contracts;
 
 - an buy order of +100 contracts consists of -0 contract that reduces the existing position, and +100 contracts of increasing the current position;
 - a sell order of -100 contracts consists of -50 contracts that reduces the existing long position, and -50 contracts of opening a new short position.
 
-The closing portion is not subject to constraints (1) and (2). The opening portion is subject to (1) and (2), and may be partially filled up to the constraint limits. However, the target price constraint (3) uses **all-or-nothing** semantics: if the execution price of the (possibly OI/skew-constrained) fill would exceed the target price, the entire fill is rejected.
+The closing portion is never subject to the OI constraint. The opening portion is subject to the OI constraint. The behavior when the opening portion would violate the OI constraint depends on the `reduce_only` flag:
 
-For each order, upon receiving it, we compute the maximum fillable size under OI/skew constraints, then check if the execution price satisfies the target price. If a portion is left unfilled, it depends on the order kind: for market orders, the unfilled portion is canceled (immediate-or-cancel behavior); for limit orders, the unfilled portion is persisted in the contract storage until either it becomes fillable later as oracle price and OI change, or the user cancels it (good-til-canceled behavior).
+- **`reduce_only = true`**: Only the closing portion is executed; the opening portion is discarded. This allows users to close or reduce positions even when OI is at its limit.
+- **`reduce_only = false`**: If the opening portion would violate OI constraints, the entire order (including any closing portion) is reverted. This is all-or-nothing semantics.
+
+The target price constraint (2) also uses **all-or-nothing** semantics: if the execution price of the fill would exceed the target price, the entire fill is rejected.
+
+For each order, upon receiving it, we decompose it into closing and opening portions, check OI constraints on the opening portion, and then check if the execution price satisfies the target price. If a portion is left unfilled, it depends on the order kind: for market orders, the unfilled portion is canceled (immediate-or-cancel behavior); for limit orders, the unfilled portion is persisted in the contract storage until either it becomes fillable later as oracle price and OI change, or the user cancels it (good-til-canceled behavior).
 
 #### Skew pricing
 
@@ -522,31 +521,6 @@ fn compute_max_opening_from_oi(
 }
 ```
 
-#### Max fillable from skew constraint
-
-We then compute the maximum fillable amount based on the max skew constraint. This applies only to the opening portion of the order.
-
-```rust
-fn compute_max_opening_from_skew(
-    opening_size: Dec,
-    skew: Dec,
-    max_abs_skew: Udec,
-) -> Dec {
-    // After fill, |skew + fill| <= max_abs_skew
-    // Note: closing portion already applied, skew may have changed
-
-    if opening_size > 0 {
-        // skew + s <= max_abs_skew
-        min(opening_size, max_abs_skew - skew)
-    } else if opening_size < 0 {
-        // skew + s >= -max_abs_skew
-        max(opening_size, -max_abs_skew - skew)
-    } else {
-        0
-    }
-}
-```
-
 #### Putting things together
 
 The following combines the above together:
@@ -560,6 +534,7 @@ fn handle_submit_order(
     oracle_price: Udec,
     size: Dec,
     kind: OrderKind,
+    reduce_only: bool,
 ) {
     ensure!(size != 0, "nothing to do");
 
@@ -570,59 +545,56 @@ fn handle_submit_order(
         .unwrap_or(Dec::ZERO);
     let is_buy = size > 0;
 
-    // Decompose into closing and opening portions
+    // Step 1: Decompose into closing and opening portions
     let (closing_size, opening_size) = decompose_fill(size, user_pos);
 
-    // Closing is always allowed; compute max opening from OI/skew constraints
-    // (Applied to current state, since closing happens "first" conceptually)
-    let skew_after_close = skew + closing_size;
+    // Step 2: Check OI constraint on opening portion
+    let max_opening_from_oi = compute_max_opening_from_oi(opening_size, pair_state, pair_params.max_abs_oi);
 
-    let max_opening_oi = compute_max_opening_from_oi(opening_size, pair_state, pair_params.max_abs_oi);
-    let max_opening_skew = compute_max_opening_from_skew(opening_size, skew_after_close, pair_params.max_abs_skew);
-
-    let max_opening = if is_buy {
-        min(max_opening_oi, max_opening_skew)
+    let oi_violated = if is_buy {
+        max_opening_from_oi < opening_size
     } else {
-        max(max_opening_oi, max_opening_skew)
+        max_opening_from_oi > opening_size
     };
 
-    // The maximum fill from OI/skew is closing + constrained opening
-    let max_from_oi_skew = closing_size + max_opening;
-
-    // Ensure fill has correct sign
-    let fill_size = if is_buy {
-        max(Dec::ZERO, min(size, max_from_oi_skew))
+    // Step 3: Determine fill based on reduce_only flag and OI constraint
+    let fill_size = if oi_violated {
+        if reduce_only {
+            // reduce_only=true: execute only closing portion, discard opening
+            closing_size
+        } else {
+            // reduce_only=false: OI violation reverts entire order
+            return; // Or: ensure!(false, "OI constraint violated");
+        }
     } else {
-        min(Dec::ZERO, max(size, max_from_oi_skew))
+        // OI not violated: execute full order
+        size
     };
 
-    // Compute target price and check price constraint (all-or-nothing)
-    let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
-
-    // Execute the fill if it passes the price check
+    // Step 4: Check price constraint (all-or-nothing on entire fill)
     if fill_size != Dec::ZERO {
+        let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
         let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
-        // All-or-nothing price check: reject entire order if price exceeds target
         let price_ok = if is_buy {
             exec_price <= target_price
         } else {
             exec_price >= target_price
         };
 
-        if price_ok {
-            execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
-
-            // Check margin requirement; revert all state changes if insufficient.
-            // See "PnL" section for details.
-            ensure_margin_requirement(user_state)?;
-        } else {
-            // Price constraint violated: treat as unfilled
-            fill_size = Dec::ZERO;
+        if !price_ok {
+            // Price constraint violated: entire order fails
+            return; // Or handle as unfilled based on order kind
         }
+
+        // Step 5: Execute the fill
+        execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
+
+        // Step 6: Check margin requirement; revert all state changes if insufficient
+        ensure_margin_requirement(user_state)?;
     }
 
-    // Handle unfilled portion based on order kind
+    // Step 7: Handle unfilled portion based on order kind
     let unfilled_size = size - fill_size;
     if unfilled_size != Dec::ZERO {
         match kind {
@@ -689,5 +661,4 @@ Since the vault takes on counterparty positions of every trader, its PnL should 
 The following are out-of-scope for now, but will be added in the future:
 
 - **Isolated margin**
-- **Reduce only**: an order that can only reduce the absolute value of a position's size. It can't "flip" the position to the other direction.
 - **TP/SL**: automatically close the position is PnL reaches an upper or lower threshold.
