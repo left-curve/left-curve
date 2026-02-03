@@ -3,7 +3,7 @@
 - This is a perpetual futures (perps) exchange that uses the **peer-to-pool model**, similar to e.g. Ostium. A liquidity pool provides quotes (based on data including oracle price, open interest (OI), and the order's size). All orders are executed against the pool, with the pool taking the counterparty position (e.g. if a user opens a long position of 5 BTC, the pool takes the opposite: a short position of 5 BTC). We call the pool the **counterparty pool**. Empirically, traders in aggregate lose money in the long run, which means counterparty pool makes money. This is in contrary to the peer-to-peer model, where users place orders in an order book; a user's order is executed against other users' orders.
 - The exchange operates in **one-way mode**. Meaning, e.g., a user has exactly 1 position for each tradable asset. If an order is fulfilled for a user who already has a position in that asset, the position is modified. This is in contrary to **two-way mode**, where a user can have multiple positions in a single asset. When placing an order, the user can choose whether the order will create a new position or modify an existing one.
 - To ensure the protocol's solvency and profitability, it's important the market is close to _neutral_, meaning there is roughly the same amount of long and short OI. We incentivize this through two mechanisms, **skew pricing** and **funding fee** (described in respective sections).
-- For now, the exchange supports only **cross margin**. Support for isolated margin may be added in a future update. Uniquely, margin is not handled by the exchange smart contract, but the user's account, which is itself a smart contract. The exchange contract would first fulfills an order, then the account contract would backrun it. During the backrun, the account contract checks the user's margin. If not sufficient, an error is thrown to revert all previous operations.
+- For now, the exchange supports only **cross margin**. Support for isolated margin may be added in a future update. After executing a fill, the contract checks whether the user satisfies margin requirements. If the margin check fails, the transaction is reverted, undoing all state changes.
 
 This spec is divided into three sections:
 
@@ -612,6 +612,10 @@ fn handle_submit_order(
 
         if price_ok {
             execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
+
+            // Check margin requirement; revert all state changes if insufficient.
+            // See "PnL" section for details.
+            ensure_margin_requirement(user_state)?;
         } else {
             // Price constraint violated: treat as unfilled
             fill_size = Dec::ZERO;
@@ -648,7 +652,23 @@ At the beginning of each block, validators submit the latest oracle prices. The 
 
 > TODO
 
-### PnL
+### PnL and margin requirement
+
+#### Margin requirement
+
+After executing a fill, we check whether the user satisfies the margin requirement. If the check fails, the function errors and all state changes (including the fill itself) are reverted.
+
+```rust
+/// Ensures the user has sufficient margin for their positions.
+/// Errors if margin requirement is not met, causing all state changes to revert.
+fn ensure_margin_requirement(user_state: &UserState) -> Result<(), Error> {
+    // TODO: Implement margin calculation
+    // - Compute total position value across all pairs
+    // - Compute unrealized PnL
+    // - Check that collateral >= required margin
+    Ok(())
+}
+```
 
 #### User position PnL
 
