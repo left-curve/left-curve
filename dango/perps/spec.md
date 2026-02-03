@@ -371,16 +371,16 @@ The main challenge for handling orders is it may not be possible to execute an o
 
 1. **Max OI**: the long or short OI can't exceed a set maximum.
 2. **Max Skew**: the difference between long and short OI can't exceed a set maximum.
-3. **Target price**: the worst acceptible execution price of the order, specified by the user.
+3. **Target price**: the worst acceptable execution price of the order, specified by the user.
 
 An order may consists of two portions: one portion that reduces or closes an existing position (the "**closing portion**"); a portion that opens a new or increases an existing position (the "**opening portion**"). E.g. a user has a position of +50 contracts;
 
 - an buy order of +100 contracts consists of -0 contract that reduces the existing position, and +100 contracts of increasing the current position;
 - a sell order of -100 contracts consists of -50 contracts that reduces the existing long position, and -50 contracts of opening a new short position.
 
-The closing position is not subject to constraints (1) and (2). The opening portion is subject to (1) and (2). Together, the overall execution price of both portions must satisfy (3).
+The closing portion is not subject to constraints (1) and (2). The opening portion is subject to (1) and (2), and may be partially filled up to the constraint limits. However, the target price constraint (3) uses **all-or-nothing** semantics: if the execution price of the (possibly OI/skew-constrained) fill would exceed the target price, the entire fill is rejected.
 
-For each order, upon receiving it, we fill it as much as possible under these constraints. If a portion is left unfilled, it depends on the order kind: for market orders, the unfilled portion is canceled (immediate-or-cancel behavior); for limit orders, the unfilled portion is persisted in the contract storage until either it becomes fillable later as oracle price and OI change, or the user cancels it (good-til-canceled behavior).
+For each order, upon receiving it, we compute the maximum fillable size under OI/skew constraints, then check if the execution price satisfies the target price. If a portion is left unfilled, it depends on the order kind: for market orders, the unfilled portion is canceled (immediate-or-cancel behavior); for limit orders, the unfilled portion is persisted in the contract storage until either it becomes fillable later as oracle price and OI change, or the user cancels it (good-til-canceled behavior).
 
 #### Skew pricing
 
@@ -524,7 +524,7 @@ fn compute_max_opening_from_oi(
 
 #### Max fillable from skew constraint
 
-We then compute the maximum fillable amount based on the max OI constraint. This applies only to the opening portion of the order.
+We then compute the maximum fillable amount based on the max skew constraint. This applies only to the opening portion of the order.
 
 ```rust
 fn compute_max_opening_from_skew(
@@ -543,115 +543,6 @@ fn compute_max_opening_from_skew(
         max(opening_size, -max_abs_skew - skew)
     } else {
         0
-    }
-}
-```
-
-#### Max fillable from target price constraint
-
-This is the complex part due to premium clamping. The execution price formula:
-
-```plain
-premium(s) = clamp((skew + s/2) / skew_scale, -M, M)
-exec_price(s) = oracle_price * (1 + premium(s))
-```
-
-The premium is piecewise linear in `s`:
-
-- **Lower clamped region**: `s <= 2*(-M*K - skew)` → `premium = -M`
-- **Unclamped region**: `2*(-M*K - skew) < s < 2*(M*K - skew)` → `premium = (skew + s/2)/K`
-- **Upper clamped region**: `s >= 2*(M*K - skew)` → `premium = +M`
-
-```rust
-fn compute_max_from_price(
-    size: Dec,
-    skew: Dec,
-    pair_params: &PairParams,
-    oracle_price: Udec,
-    target_price: Udec,
-) -> Dec {
-    let K = pair_params.skew_scale;
-    let M = pair_params.max_abs_premium;
-
-    // Target premium: exec_price = oracle_price * (1 + premium)
-    // For buy: need premium <= target_premium
-    // For sell: need premium >= target_premium
-    let target_premium = target_price / oracle_price - 1;
-
-    // Clamping boundaries (values of s where clamping kicks in)
-    let s_clamp_lower = 2 * (-M * K - skew);  // premium = -M for s <= this
-    let s_clamp_upper = 2 * (M * K - skew);   // premium = +M for s >= this
-
-    if size > 0 {
-        // BUY: need premium(s) <= target_premium
-
-        // Case 1: target_premium >= M
-        // Even the max clamped premium satisfies constraint
-        if target_premium >= M {
-            return Dec::MAX;
-        }
-
-        // Case 2: target_premium < -M
-        // Even the min premium (at s=0) doesn't satisfy
-        // Wait, at s=0, premium = clamp(skew/K, -M, M)
-        // Need to check marginal premium
-        let marginal_premium = clamp(skew / K, -M, M);
-        if marginal_premium > target_premium {
-            return 0;  // Can't fill anything
-        }
-
-        // Case 3: In the middle, solve analytically
-        // In unclamped region: (skew + s/2) / K <= target_premium
-        // s <= 2 * (K * target_premium - skew)
-        let s_unclamped = 2 * (K * target_premium - skew);
-
-        if s_unclamped <= 0 {
-            return 0;
-        }
-
-        // Check if we hit the upper clamp before the price limit
-        if s_unclamped <= s_clamp_upper {
-            // Price limit is reached in unclamped region
-            s_unclamped
-        } else {
-            // We would enter upper clamped region
-            // In that region, premium = M, exec_price = oracle_price * (1 + M)
-            if M <= target_premium {
-                Dec::MAX  // Clamped price still satisfies
-            } else {
-                // Can only go up to where clamping starts
-                max(0, s_clamp_upper)
-            }
-        }
-    } else {
-        // SELL (size < 0): need premium(s) >= target_premium
-
-        if target_premium <= -M {
-            return Dec::MIN;  // Even min clamped premium satisfies
-        }
-
-        let marginal_premium = clamp(skew / K, -M, M);
-        if marginal_premium < target_premium {
-            return 0;  // Can't fill anything
-        }
-
-        // In unclamped region: (skew + s/2) / K >= target_premium
-        // s >= 2 * (K * target_premium - skew)
-        let s_unclamped = 2 * (K * target_premium - skew);
-
-        if s_unclamped >= 0 {
-            return 0;
-        }
-
-        if s_unclamped >= s_clamp_lower {
-            s_unclamped
-        } else {
-            if -M >= target_premium {
-                Dec::MIN
-            } else {
-                min(0, s_clamp_lower)
-            }
-        }
     }
 }
 ```
@@ -698,28 +589,33 @@ fn handle_submit_order(
     // The maximum fill from OI/skew is closing + constrained opening
     let max_from_oi_skew = closing_size + max_opening;
 
-    // Compute price constraint for the entire fill
-    let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
-    let max_from_price = compute_max_from_price(size, skew, pair_params, oracle_price, target_price);
-
-    // Combine all constraints
-    let max_fill = if is_buy {
-        min(max_from_oi_skew, max_from_price)
-    } else {
-        max(max_from_oi_skew, max_from_price)
-    };
-
     // Ensure fill has correct sign
     let fill_size = if is_buy {
-        max(Dec::ZERO, min(size, max_fill))
+        max(Dec::ZERO, min(size, max_from_oi_skew))
     } else {
-        min(Dec::ZERO, max(size, max_fill))
+        min(Dec::ZERO, max(size, max_from_oi_skew))
     };
 
-    // Execute the fill
+    // Compute target price and check price constraint (all-or-nothing)
+    let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
+
+    // Execute the fill if it passes the price check
     if fill_size != Dec::ZERO {
         let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
-        execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
+
+        // All-or-nothing price check: reject entire order if price exceeds target
+        let price_ok = if is_buy {
+            exec_price <= target_price
+        } else {
+            exec_price >= target_price
+        };
+
+        if price_ok {
+            execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
+        } else {
+            // Price constraint violated: treat as unfilled
+            fill_size = Dec::ZERO;
+        }
     }
 
     // Handle unfilled portion based on order kind
