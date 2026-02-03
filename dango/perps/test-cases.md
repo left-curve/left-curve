@@ -22,7 +22,7 @@ max_abs_skew = 300
 
 ## Test Case Summary Table
 
-| #   | Scenario                   | user_pos | long_oi | short_oi | skew | size | price_option | fill     | Limiting        |
+| #   | Scenario                   | user_pos | long_oi | short_oi | skew | size | kind         | fill     | Limiting        |
 | --- | -------------------------- | -------- | ------- | -------- | ---- | ---- | ------------ | -------- | --------------- |
 | 1   | New long, unconstrained    | 0        | 100     | -100     | 0    | +50  | Market(5%)   | **+50**  | None            |
 | 2   | New short, unconstrained   | 0        | 100     | -100     | 0    | -50  | Market(5%)   | **-50**  | None            |

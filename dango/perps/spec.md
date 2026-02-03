@@ -59,8 +59,7 @@ enum ExecuteMsg {
         /// Positive for buy (increase long exposure, decrease short exposure);
         /// negative for sell (decrease long exposure, increase short exposure).
         size: Dec,
-        price: PriceOption,
-        time_in_force: TimeInForce,
+        kind: OrderKind,
     },
 
     /// Forcibly close all of a user's positions.
@@ -74,9 +73,12 @@ enum ExecuteMsg {
     },
 }
 
-enum PriceOption {
+enum OrderKind {
     /// Trade at the current price quoted by the counterparty pool, optionally
     /// with a slippage tolerance.
+    ///
+    /// If it's not possible to fill the order in full, the unfilled portion is
+    /// canceled.
     Market {
         /// The execution price must not be worse than the _marginal price_ plus
         /// this slippage.
@@ -99,26 +101,15 @@ enum PriceOption {
     },
 
     /// Trade at the specified limit price.
+    ///
+    /// If it's not possible to fill the order in full, and the user hasn't
+    /// reached the maximum open order count, the unfilled portion is persisted
+    /// in the contract storage, either filled later when the necessary conditions
+    /// are met or canceled by the user.
     Limit {
         /// The execution price must be equal to or better than this price.
         limit_price: Udec,
     },
-}
-
-enum TimeInForce {
-    /// Fill the order as much as possible under the constraint of max slippage
-    /// (in the case of market orders) or limit price (limit orders).
-    /// If not completely unfilled, persist the unfilled portion in contract
-    /// storage until either fully filled or canceled.
-    ///
-    /// TODO: should GTC orders have an expiration time?
-    GoodTilCanceled,
-
-    /// Fill the order as much as possible under the constraint of max slippage
-    /// or limit price. Cancel the unfilled portion.
-    ImmediateOrCancel,
-
-    // TODO: FillOrKill - revert if the order can't be completely filled.
 }
 ```
 
@@ -242,7 +233,8 @@ struct UserState {
 struct Order {
     pub pair_id: PairId,
     pub size: Dec,
-    pub price_option: PriceOption,
+    /// Limit orders are always GTC, so we only need to store the limit price.
+    pub limit_price: Udec,
 }
 
 struct Position {
@@ -388,7 +380,7 @@ An order may consists of two portions: one portion that reduces or closes an exi
 
 The closing position is not subject to constraints (1) and (2). The opening portion is subject to (1) and (2). Together, the overall execution price of both portions must satisfy (3).
 
-For each order, upon receiving it, we fill it as much as possible under these constraints. If a portion is left unfilled, it depends on the order's `time_in_force` parameter: for immediate-or-cancel (IOC) orders, we cancel the unfilled portion; for gool-til-canceled (GTC) orders, we persist the order in the contract storage until either it becomes fillable later as oracle price and OI change, or the user cancels it.
+For each order, upon receiving it, we fill it as much as possible under these constraints. If a portion is left unfilled, it depends on the order kind: for market orders, the unfilled portion is canceled (immediate-or-cancel behavior); for limit orders, the unfilled portion is persisted in the contract storage until either it becomes fillable later as oracle price and OI change, or the user cancels it (good-til-canceled behavior).
 
 #### Skew pricing
 
@@ -479,14 +471,14 @@ We then compute the order's target price. The user can specify this in two ways:
 
 ```rust
 fn compute_target_price(
-    price_option: PriceOption,
+    kind: OrderKind,
     oracle_price: Udec,
     skew: Dec,
     pair_params: &PairParams,
     is_buy: bool,
 ) -> Udec {
-    match price_option {
-        PriceOption::Market { max_slippage } => {
+    match kind {
+        OrderKind::Market { max_slippage } => {
             // Marginal price is the execution price for an infinitesimal order
             let marginal_premium = clamp(
                 skew / pair_params.skew_scale,
@@ -501,7 +493,7 @@ fn compute_target_price(
                 marginal_price * (1 - max_slippage)
             }
         }
-        PriceOption::Limit { limit_price } => limit_price,
+        OrderKind::Limit { limit_price } => limit_price,
     }
 }
 ```
@@ -676,8 +668,7 @@ fn handle_submit_order(
     pair_id: PairId,
     oracle_price: Udec,
     size: Dec,
-    price_option: PriceOption,
-    time_in_force: TimeInForce,
+    kind: OrderKind,
 ) {
     ensure!(size != 0, "nothing to do");
 
@@ -708,7 +699,7 @@ fn handle_submit_order(
     let max_from_oi_skew = closing_size + max_opening;
 
     // Compute price constraint for the entire fill
-    let target_price = compute_target_price(&price_option, oracle_price, skew, pair_params, is_buy);
+    let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
     let max_from_price = compute_max_from_price(size, skew, pair_params, oracle_price, target_price);
 
     // Combine all constraints
@@ -731,19 +722,19 @@ fn handle_submit_order(
         execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
     }
 
-    // Handle unfilled portion
+    // Handle unfilled portion based on order kind
     let unfilled_size = size - fill_size;
     if unfilled_size != Dec::ZERO {
-        match time_in_force {
-            TimeInForce::ImmediateOrCancel => {
-                // Discard unfilled portion (no-op)
+        match kind {
+            OrderKind::Market { .. } => {
+                // Market orders are IOC: discard unfilled portion (no-op)
             },
-            TimeInForce::GoodTilCanceled => {
-                // Store for later fulfillment
+            OrderKind::Limit { limit_price } => {
+                // Limit orders are GTC: store for later fulfillment
                 user_state.gtc_orders.push(Order {
                     pair_id,
                     size: unfilled_size,
-                    price_option,
+                    limit_price,
                 });
             },
         }
