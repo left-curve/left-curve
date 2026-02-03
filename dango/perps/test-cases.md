@@ -22,26 +22,26 @@ max_abs_skew = 300
 
 ## Test Case Summary Table
 
-| #   | Scenario                   | user_pos | long_oi | short_oi | skew | size | kind         | fill     | Limiting        |
-| --- | -------------------------- | -------- | ------- | -------- | ---- | ---- | ------------ | -------- | --------------- |
-| 1   | New long, unconstrained    | 0        | 100     | -100     | 0    | +50  | Market(5%)   | **+50**  | None            |
-| 2   | New short, unconstrained   | 0        | 100     | -100     | 0    | -50  | Market(5%)   | **-50**  | None            |
-| 3   | Add long, skew over limit  | 0        | 480     | -100     | 380  | +50  | Market(10%)  | **0**    | Skew (>max)     |
-| 4   | Add short, skew over limit | 0        | 100     | -480     | -380 | -50  | Market(10%)  | **0**    | Skew (>max)     |
-| 5   | Add long, skew-limited     | 0        | 200     | -50      | 150  | +200 | Market(10%)  | **+150** | Skew (room=150) |
-| 6   | Add short, skew-limited    | 0        | 50      | -200     | -150 | -200 | Market(10%)  | **-150** | Skew (room=150) |
-| 7   | Close long fully           | +100     | 200     | -100     | 100  | -100 | Market(1%)   | **-100** | None (closing)  |
-| 8   | Close short fully          | -100     | 100     | -200     | -100 | +100 | Market(1%)   | **+100** | None (closing)  |
-| 9   | Flip long→short            | +100     | 200     | -100     | 100  | -150 | Market(5%)   | **-150** | None            |
-| 10  | Flip, opening limited      | +100     | 200     | -480     | -280 | -150 | Market(5%)   | **-120** | OI (room=20)    |
-| 11  | Buy, price-limited         | 0        | 100     | -100     | 0    | +100 | Market(1%)   | **+20**  | Price           |
-| 12  | Sell, price-limited        | 0        | 100     | -100     | 0    | -100 | Market(1%)   | **-20**  | Price           |
-| 13  | Limit buy, partial         | 0        | 100     | -100     | 0    | +50  | Limit(101.5) | **+30**  | Limit price     |
-| 14  | Limit buy, no fill         | 0        | 100     | -100     | 0    | +50  | Limit(99)    | **0**    | Limit<marginal  |
-| 15  | Limit sell, partial        | 0        | 100     | -100     | 0    | -50  | Limit(98.5)  | **-30**  | Limit price     |
-| 16  | Limit sell, no fill        | 0        | 100     | -100     | 0    | -50  | Limit(101)   | **0**    | Limit>marginal  |
-| 17  | Close at max OI            | +100     | 500     | -100     | 400  | -100 | Market(5%)   | **-100** | None (closing)  |
-| 18  | Close at max skew          | +50      | 350     | -50      | 300  | -50  | Market(5%)   | **-50**  | None (closing)  |
+| #   | Scenario                   | user_pos | long_oi | short_oi | skew | size | kind         | fill     | exec_price | Limiting        |
+| --- | -------------------------- | -------- | ------- | -------- | ---- | ---- | ------------ | -------- | ---------- | --------------- |
+| 1   | New long, unconstrained    | 0        | 100     | -100     | 0    | +50  | Market(5%)   | **+50**  | 102.5      | None            |
+| 2   | New short, unconstrained   | 0        | 100     | -100     | 0    | -50  | Market(5%)   | **-50**  | 97.5       | None            |
+| 3   | Add long, skew over limit  | 0        | 480     | -100     | 380  | +50  | Market(10%)  | **0**    | -          | Skew (>max)     |
+| 4   | Add short, skew over limit | 0        | 100     | -480     | -380 | -50  | Market(10%)  | **0**    | -          | Skew (>max)     |
+| 5   | Add long, skew-limited     | 0        | 200     | -50      | 150  | +200 | Market(10%)  | **+150** | 105        | Skew (room=150) |
+| 6   | Add short, skew-limited    | 0        | 50      | -200     | -150 | -200 | Market(10%)  | **-150** | 95         | Skew (room=150) |
+| 7   | Close long fully           | +100     | 200     | -100     | 100  | -100 | Market(1%)   | **-100** | 105        | None (closing)  |
+| 8   | Close short fully          | -100     | 100     | -200     | -100 | +100 | Market(1%)   | **+100** | 95         | None (closing)  |
+| 9   | Flip long→short            | +100     | 200     | -100     | 100  | -150 | Market(5%)   | **-150** | 102.5      | None            |
+| 10  | Flip, opening limited      | +100     | 200     | -480     | -280 | -150 | Market(5%)   | **-120** | 95         | OI (room=20)    |
+| 11  | Buy, price-limited         | 0        | 100     | -100     | 0    | +100 | Market(1%)   | **+20**  | 101        | Price           |
+| 12  | Sell, price-limited        | 0        | 100     | -100     | 0    | -100 | Market(1%)   | **-20**  | 99         | Price           |
+| 13  | Limit buy, partial         | 0        | 100     | -100     | 0    | +50  | Limit(101.5) | **+30**  | 101.5      | Limit price     |
+| 14  | Limit buy, no fill         | 0        | 100     | -100     | 0    | +50  | Limit(99)    | **0**    | -          | Limit<marginal  |
+| 15  | Limit sell, partial        | 0        | 100     | -100     | 0    | -50  | Limit(98.5)  | **-30**  | 98.5       | Limit price     |
+| 16  | Limit sell, no fill        | 0        | 100     | -100     | 0    | -50  | Limit(101)   | **0**    | -          | Limit>marginal  |
+| 17  | Close at max OI            | +100     | 500     | -100     | 400  | -100 | Market(5%)   | **-100** | 105        | None (closing)  |
+| 18  | Close at max skew          | +50      | 350     | -50      | 300  | -50  | Market(5%)   | **-50**  | 105        | None (closing)  |
 
 ## Detailed Calculations
 
