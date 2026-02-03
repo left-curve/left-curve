@@ -97,6 +97,7 @@ enum PriceOption {
         /// ```
         max_slippage: Udec,
     },
+
     /// Trade at the specified limit price.
     Limit {
         /// The execution price must be equal to or better than this price.
@@ -138,6 +139,8 @@ struct Params {
     /// The waiting period between a withdrawal from the counterparty vault is
     /// requested and is fulfilled.
     pub vault_cooldown_period: Duration,
+
+    // TODO: max number of open order per user
 }
 ```
 
@@ -162,13 +165,21 @@ struct PairParams {
     ///
     /// - |pair_state.long_oi| <= pair_params.max_abs_oi
     /// - |pair_state.short_oi| <= pair_params.max_abs_oi
+    ///
+    /// This constraint does not apply to reducing positions.
     pub max_abs_oi: Udec,
 
     /// The maximum allowed difference between long and short OIs.
     /// I.e. the following must be satisfied:
     ///
-    /// - |pair_state.long_oi - pair_state.short_oi| <= pair_params.max_abs_skew
+    /// - |pair_state.long_oi + pair_state.short_oi| <= pair_params.max_abs_skew
+    ///
+    /// (Note that `short_oi` is always non-positive).
+    ///
+    /// This constraint does not apply to reducing positions.
     pub max_abs_skew: Udec,
+
+    // TODO: min order size (either in number of contracts or in USD; to be decided)
 }
 ```
 
@@ -292,9 +303,9 @@ fn handle_deposit(
 
         // Round the number down, to the advantage of the protocol and disadvantage
         // of the user. This is a principle we must follow throughout the codebase.
-        (amount_received * state.vault_share_supply / vault_equity).floor()
+        floor(amount_received * state.vault_share_supply / vault_equity)
     } else {
-        (amount_received * DEFAULT_SHARES_PER_AMOUNT).floor()
+        floor(amount_received * DEFAULT_SHARES_PER_AMOUNT)
     };
 
     // Ensure the number of shares to mint is no less than the minimum.
@@ -333,7 +344,7 @@ fn handle_unlock(
     let vault_equity = compute_vault_equity(state, usdt_price);
 
     // Again, note the direction of rounding.
-    let amount_to_release = (vault_equity * shares_to_burn / state.vault_share_supply).floor();
+    let amount_to_release = floor(vault_equity * shares_to_burn / state.vault_share_supply);
 
     ensure!(
         state.vault_balance >= amount_to_release,
@@ -362,13 +373,34 @@ fn handle_unlock(
 
 ### Submit order
 
+#### Constraints
+
+The main challenge for handling orders is it may not be possible to execute an order fully, due to a number of constraints:
+
+1. **Max OI**: the long or short OI can't exceed a set maximum.
+2. **Max Skew**: the difference between long and short OI can't exceed a set maximum.
+3. **Target price**: the worst acceptible execution price of the order, specified by the user.
+
+An order may consists of two portions: one portion that reduces or closes an existing position (the "**closing portion**"); a portion that opens a new or increases an existing position (the "**opening portion**"). E.g. a user has a position of +50 contracts;
+
+- an buy order of +100 contracts consists of -0 contract that reduces the existing position, and +100 contracts of increasing the current position;
+- a sell order of -100 contracts consists of -50 contracts that reduces the existing long position, and -50 contracts of opening a new short position.
+
+The closing position is not subject to constraints (1) and (2). The opening portion is subject to (1) and (2). Together, the overall execution price of both portions must satisfy (3).
+
+For each order, upon receiving it, we fill it as much as possible under these constraints. If a portion is left unfilled, it depends on the order's `time_in_force` parameter: for immediate-or-cancel (IOC) orders, we cancel the unfilled portion; for gool-til-canceled (GTC) orders, we persist the order in the contract storage until either it becomes fillable later as oracle price and OI change, or the user cancels it.
+
 #### Skew pricing
+
+The pricing offered by the counterparty vault depends not only on the oracle price at the time, but also on the skew, and the order's size (i.e. how the order would change the skew).
 
 **Skew** is defined as:
 
 ```rust
 let skew = pair_state.long_oi + pair_state.short_oi;
 ```
+
+Note that `short_oi` is non-positive.
 
 - If `skew` is positive, it means all traders combined have a net long exposure, and the counterparty vault has a net short exposure. To incentivize traders to go back to neutral, the vault will offer better prices for selling, and worse price for buying.
 - If `skew` is negative, it means all traders combined have a net short exposure, and the counterparty vault has a net long exposure. To incentivize traders to go bakc to neutral, the vault will offer better prices for buying, and worse price for selling.
@@ -393,27 +425,21 @@ fn compute_exec_price(
     let premium = skew_average / pair_params.skew_scale;
 
     // Bound the premium between [-max_abs_premium, max_abs_premium].
-    let premium = min(max(premium, -pair_params.max_abs_premium), pair_params.max_abs_premium);
+    let premium = clamp(premium, -pair_params.max_abs_premium, pair_params.max_abs_premium);
 
     // Apply the premium to the oracle price to arrive at the final execution price.
     oracle_price * (1 + premium)
 }
+
+/// Bound the value `x` within the range `[min, max]`.
+fn clamp(x: Dec, min: Dec, max: Dex) -> Dec {
+    min(max(x, min), max)
+}
 ```
 
-#### Handling the order
+#### Decompose order into closing vs opening
 
-The algorithm for handling `ExecuteMsg::SubmitOrder` finds the maximum fillable amount under multiple constraints:
-
-1. `max_abs_oi` — caps on long and short open interest
-2. `max_abs_skew` — cap on the difference between long and short OI
-3. Price constraint — `max_slippage` (market) or `limit_price` (limit)
-
-**Key principles:**
-
-- Closing an existing position is always allowed (OI/skew constraints apply only to the "opening" portion)
-- `PriceOption` and `TimeInForce` are orthogonal — all combinations are valid
-
-##### Step 1: Decompose Fill into Closing vs Opening
+On receiving an order, we first decompose it into closing and opening portions.
 
 ```rust
 /// Returns (closing_size, opening_size) where closing_size reduces existing
@@ -444,13 +470,16 @@ fn decompose_fill(size: Dec, user_pos: Dec) -> (Dec, Dec) {
 }
 ```
 
-##### Step 2: Compute Target Price
+#### Compute target price
 
-The target price is the worst acceptable execution price for the order.
+We then compute the order's target price. The user can specify this in two ways:
+
+- Market: the best available price in the market, plus/minus a maximum slippage. The best available price is also known as the **marginal price**, i.e. the price for executing an order of infinitesimal size.
+- Limit: the user directly gives the price.
 
 ```rust
 fn compute_target_price(
-    price_option: &PriceOption,
+    price_option: PriceOption,
     oracle_price: Udec,
     skew: Dec,
     pair_params: &PairParams,
@@ -472,12 +501,14 @@ fn compute_target_price(
                 marginal_price * (1 - max_slippage)
             }
         }
-        PriceOption::Limit { limit_price } => *limit_price,
+        PriceOption::Limit { limit_price } => limit_price,
     }
 }
 ```
 
-##### Step 3: Max Fillable from OI Constraint (Opening Portion Only)
+#### Max fillable from OI constraint
+
+We then compute the maximum fillable amount based on the max OI constraint. This applies only to the opening portion of the order.
 
 ```rust
 fn compute_max_opening_from_oi(
@@ -499,7 +530,9 @@ fn compute_max_opening_from_oi(
 }
 ```
 
-##### Step 4: Max Fillable from Skew Constraint (Opening Portion Only)
+#### Max fillable from skew constraint
+
+We then compute the maximum fillable amount based on the max OI constraint. This applies only to the opening portion of the order.
 
 ```rust
 fn compute_max_opening_from_skew(
@@ -522,7 +555,7 @@ fn compute_max_opening_from_skew(
 }
 ```
 
-##### Step 5: Max Fillable from Price Constraint (Entire Fill)
+#### Max fillable from target price constraint
 
 This is the complex part due to premium clamping. The execution price formula:
 
@@ -631,7 +664,9 @@ fn compute_max_from_price(
 }
 ```
 
-##### Step 6: Main Handler
+#### Putting things together
+
+The following combines the above together:
 
 ```rust
 fn handle_submit_order(
@@ -702,7 +737,7 @@ fn handle_submit_order(
         match time_in_force {
             TimeInForce::ImmediateOrCancel => {
                 // Discard unfilled portion (no-op)
-            }
+            },
             TimeInForce::GoodTilCanceled => {
                 // Store for later fulfillment
                 user_state.gtc_orders.push(Order {
@@ -710,7 +745,7 @@ fn handle_submit_order(
                     size: unfilled_size,
                     price_option,
                 });
-            }
+            },
         }
     }
 }
