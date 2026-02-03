@@ -218,18 +218,8 @@ struct UserState {
     /// The user's positions.
     pub positions: Map<PairId, Position>,
 
-    /// The user's unfilled GoodTilCanceled (GTC) limit orders.
-    pub gtc_orders: Vec<Order>,
-
     /// The user's vault withdrawals that are pending cooldown.
     pub unlocks: Vec<Unlock>,
-}
-
-struct Order {
-    pub pair_id: PairId,
-    pub size: Dec,
-    /// Limit orders are always GTC, so we only need to store the limit price.
-    pub limit_price: Udec,
 }
 
 struct Position {
@@ -243,6 +233,29 @@ struct Unlock {
 
     /// The time when cooldown completes.
     pub end_time: Timestamp,
+}
+```
+
+GTC limit orders are stored in indexed maps for efficient scanning:
+
+```rust
+/// Buy orders indexed for descending price iteration (most competitive first).
+/// Key: (pair_id, inverted_limit_price, created_at, order_id)
+/// where inverted_limit_price = MAX_PRICE - limit_price, so ascending iteration
+/// yields descending prices.
+const BUY_ORDERS: Map<(PairId, Udec, Timestamp, OrderId), Order> = Map::new("bids");
+
+/// Sell orders indexed for ascending price iteration (most competitive first).
+/// Key: (pair_id, limit_price, created_at, order_id)
+const SELL_ORDERS: Map<(PairId, Udec, Timestamp, OrderId), Order> = Map::new("asks");
+
+/// The Order struct stored as values in the indexed maps.
+/// The key already encodes pair_id, limit_price, and created_at,
+/// so the value only needs user_id, size, and reduce_only.
+struct Order {
+    pub user_id: UserId,
+    pub size: Dec,
+    pub reduce_only: bool,
 }
 ```
 
@@ -419,6 +432,21 @@ fn compute_exec_price(
     let premium = clamp(premium, -pair_params.max_abs_premium, pair_params.max_abs_premium);
 
     // Apply the premium to the oracle price to arrive at the final execution price.
+    oracle_price * (1 + premium)
+}
+
+/// Maginal price is the execution price of an order of infinitesimal size.
+/// This is requivalent to calling
+///
+/// ```rust
+/// compute_exec_price(oracle_price, skew, 0, pair_params)
+/// ```
+///
+/// but slightly optimized, since we know the size is zero.
+fn compute_marginal_price(oracle_price: Udec, skew: Dec, pair_params: &PairParams) -> Udec {
+    let premium = skew / pair_params.skew_scale;
+    let premium = clamp(premium, -pair_params.max_abs_premium, pair_params.max_abs_premium);
+
     oracle_price * (1 + premium)
 }
 
@@ -602,12 +630,24 @@ fn handle_submit_order(
                 // Market orders are IOC: discard unfilled portion (no-op)
             },
             OrderKind::Limit { limit_price } => {
-                // Limit orders are GTC: store for later fulfillment
-                user_state.gtc_orders.push(Order {
-                    pair_id,
+                // Limit orders are GTC: store in indexed map for later fulfillment
+                let order = Order {
+                    user_id,
                     size: unfilled_size,
-                    limit_price,
-                });
+                    reduce_only,
+                };
+                let order_id = generate_order_id();
+                let created_at = current_timestamp();
+
+                if unfilled_size > Dec::ZERO {
+                    // Buy order: store with inverted price for descending iteration
+                    let key = (pair_id, MAX_PRICE - limit_price, created_at, order_id);
+                    BUY_ORDERS.save(key, order);
+                } else {
+                    // Sell order: store with normal price for ascending iteration
+                    let key = (pair_id, limit_price, created_at, order_id);
+                    SELL_ORDERS.save(key, order);
+                }
             },
         }
     }
@@ -616,9 +656,278 @@ fn handle_submit_order(
 
 ### Fulfillment of limit orders
 
-At the beginning of each block, validators submit the latest oracle prices. The contract is then triggered to scan the unfilled limited orders in its storage and look for ones that can be filled.
+At the beginning of each block, validators submit the latest oracle prices. The contract is then triggered to scan the unfilled limit orders in its storage and look for ones that can be filled.
 
-> TODO
+#### Key insight
+
+The execution price depends on skew and order size:
+
+```plain
+exec_price = oracle_price * (1 + clamp((skew + size/2) / K, -M, M))
+```
+
+The **marginal price** (exec_price for infinitesimal size) provides a cutoff:
+
+```plain
+marginal_price = oracle_price * (1 + clamp(skew / K, -M, M))
+```
+
+For a **buy** order to be fillable: `exec_price <= limit_price`
+
+- Since `exec_price >= marginal_price` for buys (adding buy size increases price), if `limit_price < marginal_price`, the order is definitely unfillable
+- More competitive buy = higher limit_price (willing to pay more)
+
+For a **sell** order to be fillable: `exec_price >= limit_price`
+
+- Since `exec_price <= marginal_price` for sells (adding sell size decreases price), if `limit_price > marginal_price`, the order is definitely unfillable
+- More competitive sell = lower limit_price (willing to accept less)
+
+#### Algorithm
+
+```rust
+fn fulfill_limit_orders_for_pair(
+    pair_id: PairId,
+    oracle_price: Udec,
+    pair_state: &mut PairState,
+    pair_params: &PairParams,
+) {
+    let mut skew = pair_state.long_oi + pair_state.short_oi;
+
+    // Phase 1: Process buy orders (highest limit_price first)
+    fulfill_buy_orders(pair_id, oracle_price, &mut skew, pair_state, pair_params);
+
+    // Phase 2: Process sell orders (lowest limit_price first)
+    fulfill_sell_orders(pair_id, oracle_price, &mut skew, pair_state, pair_params);
+}
+
+fn fulfill_buy_orders(
+    pair_id: PairId,
+    oracle_price: Udec,
+    skew: &mut Dec,
+    pair_state: &mut PairState,
+    pair_params: &PairParams,
+) {
+    // Iterate buy orders: highest limit_price first (via inverted price key),
+    // then oldest first (ascending created_at)
+    let iter = BUY_ORDERS.prefix(pair_id).range(..);
+
+    for (key, order) in iter {
+        // Recover limit_price from inverted storage
+        let limit_price = MAX_PRICE - key.inverted_limit_price;
+
+        // Compute current marginal price
+        let marginal_price = compute_marginal_price(oracle_price, *skew, pair_params);
+
+        // Cutoff: if limit_price < marginal_price, this and all subsequent
+        // orders are unfillable (subsequent orders have even lower limit_price)
+        if limit_price < marginal_price {
+            break;
+        }
+
+        // Compute actual execution price for this order's size
+        let exec_price = compute_exec_price(oracle_price, *skew, order.size, pair_params);
+
+        // Check price constraint
+        if exec_price > limit_price {
+            // Order is too large to fill at current skew; skip but continue
+            // scanning (smaller orders with lower prices might still be fillable)
+            continue;
+        }
+
+        // Load user state and check OI constraint
+        let mut user_state = load_user_state(order.user_id);
+        let user_pos = user_state.positions
+            .get(&pair_id)
+            .map(|p| p.size)
+            .unwrap_or(Dec::ZERO);
+        let (closing_size, opening_size) = decompose_fill(order.size, user_pos);
+
+        let max_opening = compute_max_opening_from_oi(opening_size, pair_state, pair_params.max_abs_oi);
+        let oi_violated = max_opening < opening_size;
+
+        if oi_violated {
+            if order.reduce_only {
+                // Execute only closing portion
+                if closing_size == Dec::ZERO {
+                    continue;  // Nothing to fill
+                }
+
+                let fill_size = closing_size;
+                let fill_exec_price = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
+
+                if fill_exec_price > limit_price {
+                    continue;  // Still exceeds limit
+                }
+
+                execute_fill(pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
+                *skew += fill_size;
+
+                // Check margin requirement
+                if !check_margin_requirement(&user_state) {
+                    revert_fill();
+                    continue;
+                }
+
+                // Commit changes
+                save_user_state(user_state);
+
+                // Update order: reduce size or remove if fully filled
+                let remaining = order.size - fill_size;
+                if remaining == Dec::ZERO {
+                    BUY_ORDERS.remove(key);
+                } else {
+                    BUY_ORDERS.save(key, Order { size: remaining, ..order });
+                }
+            } else {
+                // All-or-nothing: skip this order
+                continue;
+            }
+        } else {
+            // Fill entire order
+            execute_fill(pair_state, &mut user_state, pair_id, order.size, exec_price);
+            *skew += order.size;
+
+            // Check margin requirement
+            if !check_margin_requirement(&user_state) {
+                revert_fill();
+                continue;
+            }
+
+            // Commit changes
+            save_user_state(user_state);
+
+            // Remove filled order
+            BUY_ORDERS.remove(key);
+        }
+    }
+}
+
+fn fulfill_sell_orders(
+    pair_id: PairId,
+    oracle_price: Udec,
+    skew: &mut Dec,
+    pair_state: &mut PairState,
+    pair_params: &PairParams,
+) {
+    // Iterate sell orders: lowest limit_price first, then oldest first
+    let iter = SELL_ORDERS.prefix(pair_id).range(..);
+
+    for (key, order) in iter {
+        let limit_price = key.limit_price;
+
+        // Compute current marginal price
+        let marginal_price = compute_marginal_price(oracle_price, *skew, pair_params);
+
+        // Cutoff: if limit_price > marginal_price, this and all subsequent
+        // orders are unfillable (subsequent orders have even higher limit_price)
+        if limit_price > marginal_price {
+            break;
+        }
+
+        // Compute actual execution price for this order's size (negative for sells)
+        let exec_price = compute_exec_price(oracle_price, *skew, order.size, pair_params);
+
+        // Check price constraint (for sells: exec_price must be >= limit_price)
+        if exec_price < limit_price {
+            // Order is too large to fill at current skew; skip but continue
+            continue;
+        }
+
+        // Load user state and check OI constraint
+        let mut user_state = load_user_state(order.user_id);
+        let user_pos = user_state.positions
+            .get(&pair_id)
+            .map(|p| p.size)
+            .unwrap_or(Dec::ZERO);
+        let (closing_size, opening_size) = decompose_fill(order.size, user_pos);
+
+        let max_opening = compute_max_opening_from_oi(opening_size, pair_state, pair_params.max_abs_oi);
+        let oi_violated = max_opening > opening_size;  // Note: reversed for sells (negative)
+
+        if oi_violated {
+            if order.reduce_only {
+                // Execute only closing portion
+                if closing_size == Dec::ZERO {
+                    continue;  // Nothing to fill
+                }
+
+                let fill_size = closing_size;
+                let fill_exec_price = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
+
+                if fill_exec_price < limit_price {
+                    continue;  // Still below limit
+                }
+
+                execute_fill(pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
+                *skew += fill_size;
+
+                // Check margin requirement
+                if !check_margin_requirement(&user_state) {
+                    revert_fill();
+                    continue;
+                }
+
+                // Commit changes
+                save_user_state(user_state);
+
+                // Update order
+                let remaining = order.size - fill_size;
+                if remaining == Dec::ZERO {
+                    SELL_ORDERS.remove(key);
+                } else {
+                    SELL_ORDERS.save(key, Order { size: remaining, ..order });
+                }
+            } else {
+                // All-or-nothing: skip this order
+                continue;
+            }
+        } else {
+            // Fill entire order
+            execute_fill(pair_state, &mut user_state, pair_id, order.size, exec_price);
+            *skew += order.size;
+
+            // Check margin requirement
+            if !check_margin_requirement(&user_state) {
+                revert_fill();
+                continue;
+            }
+
+            // Commit changes
+            save_user_state(user_state);
+
+            // Remove filled order
+            SELL_ORDERS.remove(key);
+        }
+    }
+}
+```
+
+#### Why this algorithm finds all fillable orders
+
+1. **Price ordering ensures we try the most competitive orders first** - this respects price-time priority
+
+2. **The marginal price cutoff is correct:**
+   - For buys: `exec_price >= marginal_price` always (adding size increases price)
+   - So if `limit_price < marginal_price`, then `limit_price < marginal_price <= exec_price`, meaning unfillable
+   - All orders after the cutoff have even lower limit prices → all unfillable
+
+3. **We don't stop on a single unfillable order:**
+   - An order might be unfillable due to its large size, not its price
+   - We `continue` to check smaller orders with (potentially) lower prices
+   - We only `break` when the price itself is past the marginal price cutoff
+
+4. **Skew updates correctly:**
+   - After each fill, skew changes
+   - We recompute marginal_price in each iteration
+   - For buys: filling increases skew → increases marginal_price → cutoff moves up
+   - This means fewer buy orders become fillable, but we've already processed the most competitive ones
+
+#### Edge cases
+
+- **Order partially filled (reduce_only)**: Update the stored order with remaining size
+- **Margin check fails**: Revert the fill, skip the order (leave in storage for future blocks)
+- **Multiple pairs**: Process each pair independently
+- **Same timestamp**: Ordering within same (price, timestamp) is arbitrary; use order_id as tiebreaker
 
 ### Funding fee
 
