@@ -229,7 +229,9 @@ struct UserState {
 }
 
 struct Order {
-    // TODO
+    pub pair_id: PairId,
+    pub size: Dec,
+    pub price_option: PriceOption,
 }
 
 struct Position {
@@ -400,7 +402,319 @@ fn compute_exec_price(
 
 #### Handling the order
 
-> TODO
+The algorithm for handling `ExecuteMsg::SubmitOrder` finds the maximum fillable amount under multiple constraints:
+
+1. `max_abs_oi` — caps on long and short open interest
+2. `max_abs_skew` — cap on the difference between long and short OI
+3. Price constraint — `max_slippage` (market) or `limit_price` (limit)
+
+**Key principles:**
+
+- Closing an existing position is always allowed (OI/skew constraints apply only to the "opening" portion)
+- `PriceOption` and `TimeInForce` are orthogonal — all combinations are valid
+
+##### Step 1: Decompose Fill into Closing vs Opening
+
+```rust
+/// Returns (closing_size, opening_size) where closing_size reduces existing
+/// exposure and opening_size creates new exposure.
+/// Both have the same sign as the original size (or are zero).
+fn decompose_fill(size: Dec, user_pos: Dec) -> (Dec, Dec) {
+    if size == 0 {
+        return (0, 0);
+    }
+
+    // Closing occurs when size and position have opposite signs
+    if size > 0 && user_pos < 0 {
+        // Buy order, user has short position
+        // Closing portion: min(size, |user_pos|)
+        let closing = min(size, -user_pos);
+        let opening = size - closing;
+        (closing, opening)
+    } else if size < 0 && user_pos > 0 {
+        // Sell order, user has long position
+        // Closing portion: max(size, -user_pos) [both negative]
+        let closing = max(size, -user_pos);
+        let opening = size - closing;
+        (closing, opening)
+    } else {
+        // No closing: size and position have same sign (or position is zero)
+        (0, size)
+    }
+}
+```
+
+##### Step 2: Compute Target Price
+
+The target price is the worst acceptable execution price for the order.
+
+```rust
+fn compute_target_price(
+    price_option: &PriceOption,
+    oracle_price: Udec,
+    skew: Dec,
+    pair_params: &PairParams,
+    is_buy: bool,
+) -> Udec {
+    match price_option {
+        PriceOption::Market { max_slippage } => {
+            // Marginal price is the execution price for an infinitesimal order
+            let marginal_premium = clamp(
+                skew / pair_params.skew_scale,
+                -pair_params.max_abs_premium,
+                pair_params.max_abs_premium
+            );
+            let marginal_price = oracle_price * (1 + marginal_premium);
+
+            if is_buy {
+                marginal_price * (1 + max_slippage)
+            } else {
+                marginal_price * (1 - max_slippage)
+            }
+        }
+        PriceOption::Limit { limit_price } => *limit_price,
+    }
+}
+```
+
+##### Step 3: Max Fillable from OI Constraint (Opening Portion Only)
+
+```rust
+fn compute_max_opening_from_oi(
+    opening_size: Dec,
+    pair_state: &PairState,
+    max_abs_oi: Udec,
+) -> Dec {
+    if opening_size > 0 {
+        // Opening a long: increases long_oi
+        let room = max_abs_oi - pair_state.long_oi;
+        min(opening_size, room)
+    } else if opening_size < 0 {
+        // Opening a short: increases |short_oi|
+        let room = max_abs_oi - pair_state.short_oi.abs();
+        max(opening_size, -room)
+    } else {
+        0
+    }
+}
+```
+
+##### Step 4: Max Fillable from Skew Constraint (Opening Portion Only)
+
+```rust
+fn compute_max_opening_from_skew(
+    opening_size: Dec,
+    skew: Dec,
+    max_abs_skew: Udec,
+) -> Dec {
+    // After fill, |skew + fill| <= max_abs_skew
+    // Note: closing portion already applied, skew may have changed
+
+    if opening_size > 0 {
+        // skew + s <= max_abs_skew
+        min(opening_size, max_abs_skew - skew)
+    } else if opening_size < 0 {
+        // skew + s >= -max_abs_skew
+        max(opening_size, -max_abs_skew - skew)
+    } else {
+        0
+    }
+}
+```
+
+##### Step 5: Max Fillable from Price Constraint (Entire Fill)
+
+This is the complex part due to premium clamping. The execution price formula:
+
+```plain
+premium(s) = clamp((skew + s/2) / skew_scale, -M, M)
+exec_price(s) = oracle_price * (1 + premium(s))
+```
+
+The premium is piecewise linear in `s`:
+
+- **Lower clamped region**: `s <= 2*(-M*K - skew)` → `premium = -M`
+- **Unclamped region**: `2*(-M*K - skew) < s < 2*(M*K - skew)` → `premium = (skew + s/2)/K`
+- **Upper clamped region**: `s >= 2*(M*K - skew)` → `premium = +M`
+
+```rust
+fn compute_max_from_price(
+    size: Dec,
+    skew: Dec,
+    pair_params: &PairParams,
+    oracle_price: Udec,
+    target_price: Udec,
+) -> Dec {
+    let K = pair_params.skew_scale;
+    let M = pair_params.max_abs_premium;
+
+    // Target premium: exec_price = oracle_price * (1 + premium)
+    // For buy: need premium <= target_premium
+    // For sell: need premium >= target_premium
+    let target_premium = target_price / oracle_price - 1;
+
+    // Clamping boundaries (values of s where clamping kicks in)
+    let s_clamp_lower = 2 * (-M * K - skew);  // premium = -M for s <= this
+    let s_clamp_upper = 2 * (M * K - skew);   // premium = +M for s >= this
+
+    if size > 0 {
+        // BUY: need premium(s) <= target_premium
+
+        // Case 1: target_premium >= M
+        // Even the max clamped premium satisfies constraint
+        if target_premium >= M {
+            return Dec::MAX;
+        }
+
+        // Case 2: target_premium < -M
+        // Even the min premium (at s=0) doesn't satisfy
+        // Wait, at s=0, premium = clamp(skew/K, -M, M)
+        // Need to check marginal premium
+        let marginal_premium = clamp(skew / K, -M, M);
+        if marginal_premium > target_premium {
+            return 0;  // Can't fill anything
+        }
+
+        // Case 3: In the middle, solve analytically
+        // In unclamped region: (skew + s/2) / K <= target_premium
+        // s <= 2 * (K * target_premium - skew)
+        let s_unclamped = 2 * (K * target_premium - skew);
+
+        if s_unclamped <= 0 {
+            return 0;
+        }
+
+        // Check if we hit the upper clamp before the price limit
+        if s_unclamped <= s_clamp_upper {
+            // Price limit is reached in unclamped region
+            s_unclamped
+        } else {
+            // We would enter upper clamped region
+            // In that region, premium = M, exec_price = oracle_price * (1 + M)
+            if M <= target_premium {
+                Dec::MAX  // Clamped price still satisfies
+            } else {
+                // Can only go up to where clamping starts
+                max(0, s_clamp_upper)
+            }
+        }
+    } else {
+        // SELL (size < 0): need premium(s) >= target_premium
+
+        if target_premium <= -M {
+            return Dec::MIN;  // Even min clamped premium satisfies
+        }
+
+        let marginal_premium = clamp(skew / K, -M, M);
+        if marginal_premium < target_premium {
+            return 0;  // Can't fill anything
+        }
+
+        // In unclamped region: (skew + s/2) / K >= target_premium
+        // s >= 2 * (K * target_premium - skew)
+        let s_unclamped = 2 * (K * target_premium - skew);
+
+        if s_unclamped >= 0 {
+            return 0;
+        }
+
+        if s_unclamped >= s_clamp_lower {
+            s_unclamped
+        } else {
+            if -M >= target_premium {
+                Dec::MIN
+            } else {
+                min(0, s_clamp_lower)
+            }
+        }
+    }
+}
+```
+
+##### Step 6: Main Handler
+
+```rust
+fn handle_submit_order(
+    pair_state: &mut PairState,
+    pair_params: &PairParams,
+    user_state: &mut UserState,
+    pair_id: PairId,
+    oracle_price: Udec,
+    size: Dec,
+    price_option: PriceOption,
+    time_in_force: TimeInForce,
+) {
+    ensure!(size != 0, "nothing to do");
+
+    let skew = pair_state.long_oi + pair_state.short_oi;
+    let user_pos = user_state.positions
+        .get(&pair_id)
+        .map(|p| p.size)
+        .unwrap_or(Dec::ZERO);
+    let is_buy = size > 0;
+
+    // Decompose into closing and opening portions
+    let (closing_size, opening_size) = decompose_fill(size, user_pos);
+
+    // Closing is always allowed; compute max opening from OI/skew constraints
+    // (Applied to current state, since closing happens "first" conceptually)
+    let skew_after_close = skew + closing_size;
+
+    let max_opening_oi = compute_max_opening_from_oi(opening_size, pair_state, pair_params.max_abs_oi);
+    let max_opening_skew = compute_max_opening_from_skew(opening_size, skew_after_close, pair_params.max_abs_skew);
+
+    let max_opening = if is_buy {
+        min(max_opening_oi, max_opening_skew)
+    } else {
+        max(max_opening_oi, max_opening_skew)
+    };
+
+    // The maximum fill from OI/skew is closing + constrained opening
+    let max_from_oi_skew = closing_size + max_opening;
+
+    // Compute price constraint for the entire fill
+    let target_price = compute_target_price(&price_option, oracle_price, skew, pair_params, is_buy);
+    let max_from_price = compute_max_from_price(size, skew, pair_params, oracle_price, target_price);
+
+    // Combine all constraints
+    let max_fill = if is_buy {
+        min(max_from_oi_skew, max_from_price)
+    } else {
+        max(max_from_oi_skew, max_from_price)
+    };
+
+    // Ensure fill has correct sign
+    let fill_size = if is_buy {
+        max(Dec::ZERO, min(size, max_fill))
+    } else {
+        min(Dec::ZERO, max(size, max_fill))
+    };
+
+    // Execute the fill
+    if fill_size != Dec::ZERO {
+        let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
+        execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
+    }
+
+    // Handle unfilled portion
+    let unfilled_size = size - fill_size;
+    if unfilled_size != Dec::ZERO {
+        match time_in_force {
+            TimeInForce::ImmediateOrCancel => {
+                // Discard unfilled portion (no-op)
+            }
+            TimeInForce::GoodTilCanceled => {
+                // Store for later fulfillment
+                user_state.gtc_orders.push(Order {
+                    pair_id,
+                    size: unfilled_size,
+                    price_option,
+                });
+            }
+        }
+    }
+}
+```
 
 ### Fulfillment of limit orders
 
