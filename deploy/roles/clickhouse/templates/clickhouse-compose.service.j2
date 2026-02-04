@@ -8,7 +8,7 @@ After=docker.service network-online.target tailscaled.service wg-quick@wg0.servi
 Type=oneshot
 RemainAfterExit=true
 User={{ deploy_user }}
-WorkingDirectory={{ clickhouse_dir }}
+WorkingDirectory={{ deploy_dir }}
 Environment="DOCKER_HOST=unix:///var/run/docker.sock"
 ExecStartPre=/bin/sh -c 'until tailscale status --peers=false 2>/dev/null | grep -q "^100\\."; do sleep 1; done'
 ExecStartPre=/bin/sh -c 'until ip addr show wg0 2>/dev/null | grep -q "inet 10\\.99\\."; do sleep 1; done'

@@ -1,8 +1,8 @@
 ---
 clickhouse_version: "latest"
 clickhouse_password: "{{ lookup('env','CLICKHOUSE_PASSWORD') }}"
-clickhouse_dir: "/home/{{ deploy_user }}/clickhouse"
-data_dir: "{{ clickhouse_dir }}/data"
-logs_dir: "{{ clickhouse_dir }}/logs"
-config_dir: "{{ clickhouse_dir }}/config"
+deploy_dir: "/home/{{ deploy_user }}/clickhouse"
+data_dir: "{{ deploy_dir }}/data"
+logs_dir: "{{ deploy_dir }}/logs"
+config_dir: "{{ deploy_dir }}/config"
 container_name: "clickhouse"

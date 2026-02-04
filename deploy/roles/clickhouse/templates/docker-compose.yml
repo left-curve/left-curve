@@ -1,35 +1,35 @@
-networks:
-  clickhouse:
-    name: clickhouse
-
 services:
   clickhouse:
-    image: clickhouse/clickhouse-server:{{ clickhouse_version }}
-    container_name: {{ container_name }}
+    image: "clickhouse/clickhouse-server:${CLICKHOUSE_VERSION}"
     restart: unless-stopped
+    container_name: "${CONTAINER_NAME}"
+    hostname: "${CONTAINER_NAME}"
     networks:
       - clickhouse
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
     labels:
-      com.docker.compose.service: "clickhouse"
       service_name: "clickhouse"
       environment: "production"
     ports:
       - "127.0.0.1:9000:9000"
-      - "{{ tailscale_ip }}:9126:9126"
-      - "{{ wireguard_ip }}:9126:9126"
+      - "${TAILSCALE_IP}:9126:9126"
+      - "${WIREGUARD_IP}:9126:9126"
     volumes:
-      - "{{ data_dir }}:/var/lib/clickhouse"
-      - "{{ logs_dir }}:/var/log/clickhouse-server"
-      - "{{ config_dir }}/config.xml:/etc/clickhouse-server/config.xml:ro"
-      - "{{ config_dir }}/users.xml:/etc/clickhouse-server/users.xml:ro"
+      - "${DATA_DIR}:/var/lib/clickhouse"
+      - "${LOGS_DIR}:/var/log/clickhouse-server"
+      - "${CONFIG_DIR}/config.xml:/etc/clickhouse-server/config.xml:ro"
+      - "${CONFIG_DIR}/users.xml:/etc/clickhouse-server/users.xml:ro"
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
     healthcheck:
-      test: ["CMD", "clickhouse-client", "--user", "default", "--password", "{{ clickhouse_password }}", "--query", "SELECT 1"]
+      test: ["CMD", "clickhouse-client", "--user", "default", "--password", "${CLICKHOUSE_PASSWORD}", "--query", "SELECT 1"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+networks:
+  clickhouse:
+    name: clickhouse

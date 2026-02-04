@@ -23,18 +23,37 @@
 - name: Copy backup script
   template:
     src: "make_clickhouse_backup.sh"
-    dest: "{{ clickhouse_dir }}"
+    dest: "{{ deploy_dir }}"
     mode: '0755'
+
+- name: Write .env for docker-compose
+  copy:
+    dest: "{{ deploy_dir }}/.env"
+    mode: "0600"
+    content: |
+      CONTAINER_NAME={{ container_name }}
+      CLICKHOUSE_VERSION={{ clickhouse_version }}
+      CLICKHOUSE_PASSWORD={{ clickhouse_password }}
+      TAILSCALE_IP={{ tailscale_ip }}
+      WIREGUARD_IP={{ wireguard_ip }}
+      DATA_DIR={{ data_dir }}
+      LOGS_DIR={{ logs_dir }}
+      CONFIG_DIR={{ config_dir }}
 
 - name: Copy docker-compose.yml
   template:
     src: docker-compose.yml
-    dest: "{{ clickhouse_dir }}/docker-compose.yml"
+    dest: "{{ deploy_dir }}/docker-compose.yml"
     mode: '0644'
+
+- name: Pre-pull image (avoid downtime while pulling)
+  community.docker.docker_image:
+    name: "clickhouse/clickhouse-server:{{ clickhouse_version }}"
+    source: pull
 
 - name: Deploy clickhouse stack
   community.docker.docker_compose_v2:
-    project_src: "{{ clickhouse_dir }}"
+    project_src: "{{ deploy_dir }}"
     pull: always
     recreate: always
     remove_orphans: true
