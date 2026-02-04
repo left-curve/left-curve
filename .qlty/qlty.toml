@@ -1,3 +1,4 @@
+file_types    = ["rust"]
 test_patterns = ["**/testing/**"]
 
 [smells.function-parameters]
