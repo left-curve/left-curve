@@ -24,7 +24,7 @@ const AffiliateStats: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 w-full">
-      <div className="w-full rounded-xl bg-surface-disabled-gray p-4 lg:p-6 flex flex-col gap-6">
+      <div className="w-full rounded-xl bg-surface-disabled-gray p-4 lg:p-6 flex flex-col gap-6 shadow-account-card">
         <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
           <div className="flex flex-col items-center lg:items-start">
             <div className="flex items-center gap-1">

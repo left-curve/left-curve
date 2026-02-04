@@ -199,7 +199,7 @@ export const Table = <T,>({
 
 const tabsVariants = tv({
   slots: {
-    base: "grid rounded-xxs w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
+    base: "grid rounded-xl w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
     header: "whitespace-nowrap",
     cell: "",
     row: "",
@@ -209,15 +209,15 @@ const tabsVariants = tv({
       default: {
         base: "bg-surface-secondary-rice shadow-account-card px-4 pt-4 gap-4",
         header:
-          "p-4 last:text-end bg-surface-secondary-green text-ink-tertiary-500 first:rounded-l-xxs diatype-xs-bold last:justify-end last:rounded-r-xxs text-start",
+          "p-4 last:text-end bg-surface-secondary-green text-ink-tertiary-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
         cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end text-start",
         row: "border-b border-outline-secondary-gray last:border-b-0",
       },
       simple: {
         base: "text-ink-tertiary-500 border-separate gap-2",
         header: "p-2 text-ink-tertiary-500 diatype-xs-regular last:text-end text-start",
-        cell: "px-2 py-1 last:text-end diatype-xs-medium first:rounded-l-xxs last:rounded-r-xxs group-hover:bg-surface-tertiary-rice",
-        row: "rounded-xxs group",
+        cell: "px-2 py-1 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-surface-tertiary-rice",
+        row: "rounded-xl group",
       },
     },
   },
