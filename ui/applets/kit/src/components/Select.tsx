@@ -9,9 +9,11 @@ import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 import { tv } from "tailwind-variants";
 import { twMerge } from "@left-curve/foundation";
 
-import type { PropsWithChildren, ReactElement } from "react";
+import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
+
+type SelectItemPropsInternal = { value: string; children?: ReactNode };
 
 const [Provider, useSelect] = createContext<{
   selected: string;
@@ -90,8 +92,8 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
                 {
                   (
                     Children.toArray(children).find(
-                      (e) => isValidElement(e) && selected === (e as ReactElement).props.value,
-                    ) as { props: { children: ReactElement } }
+                      (e) => isValidElement(e) && selected === (e as ReactElement<SelectItemPropsInternal>).props.value,
+                    ) as ReactElement<SelectItemPropsInternal> | undefined
                   )?.props.children
                 }
               </span>
@@ -171,8 +173,8 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
   const { base, trigger } = slots;
 
   const SelectedItem = Children.toArray(children).find(
-    (e) => isValidElement(e) && selected === (e as ReactElement).props.value,
-  ) as { props: { children: ReactElement } };
+    (e) => isValidElement(e) && selected === (e as ReactElement<SelectItemPropsInternal>).props.value,
+  ) as ReactElement<SelectItemPropsInternal> | undefined;
 
   return (
     <div className={twMerge("relative md:hidden block", base(), classNames?.base)}>
@@ -182,11 +184,11 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
         onChange={(e) => setSelected(e.target.value)}
       >
         {Children.toArray(children).map((child) => {
-          if (isValidElement(child)) {
-            const { value } = child.props as SelectItemProps;
+          if (isValidElement<SelectItemPropsInternal>(child)) {
+            const { value, children: childContent } = child.props;
             return (
               <option key={value} value={value}>
-                {typeof child.props.children === "string" ? child.props.children : value}
+                {typeof childContent === "string" ? childContent : value}
               </option>
             );
           }

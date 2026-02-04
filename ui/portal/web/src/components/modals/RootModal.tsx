@@ -221,7 +221,7 @@ export const RootModal: React.FC = () => {
   const { modal, hideModal } = useApp();
   const { isMd } = useMediaQuery();
 
-  const sheetRef = useRef<SheetRef>();
+  const sheetRef = useRef<SheetRef>(null);
   const outlineRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<{ triggerOnClose: () => void } | null>(null);
 
