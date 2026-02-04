@@ -111,6 +111,23 @@
     recreate: always
     wait: true
 
+- name: Install systemd unit for Cloudflared compose
+  become: true
+  become_user: root
+  template:
+    src: cloudflared-compose.service.j2
+    dest: /etc/systemd/system/cloudflared-compose.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start cloudflared-compose service
+  become: true
+  become_user: root
+  systemd:
+    name: cloudflared-compose.service
+    enabled: true
+    state: started
+
 - name: Ensure per-host CNAME → tunnel
   community.general.cloudflare_dns:
     zone: "{{ dango_domain }}"

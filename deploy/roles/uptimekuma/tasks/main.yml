@@ -19,3 +19,20 @@
     pull: missing
     state: present
     recreate: always
+
+- name: Install systemd unit for Uptime Kuma compose
+  become: true
+  become_user: root
+  template:
+    src: uptimekuma-compose.service.j2
+    dest: /etc/systemd/system/uptimekuma-compose.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start uptimekuma-compose service
+  become: true
+  become_user: root
+  systemd:
+    name: uptimekuma-compose.service
+    enabled: true
+    state: started

@@ -17,6 +17,15 @@
   remote_user: "{{ deploy_user }}"
   collections:
     - community.docker
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
   roles:
     - traefik
 
@@ -25,6 +34,15 @@
   become: true
   vars_files:
     - vaults/debian/root_vault.yml
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
   tasks:
     - name: Install systemd unit for traefik compose
       template:
