@@ -46,36 +46,19 @@ export const CommissionRates: React.FC = () => {
   const columns: TableColumn<CommissionTier> = [
     {
       header: "Tier",
-      cell: ({ row }) => (
-        <Cell.Text className="text-ink-primary-900 diatype-m-medium" text={row.original.tier} />
-      ),
+      cell: ({ row }) => <Cell.Text text={row.original.tier} />,
     },
     {
       header: "Trading Volume",
-      cell: ({ row }) => (
-        <Cell.Text
-          className="text-ink-primary-900 diatype-m-medium"
-          text={row.original.tradingVolume}
-        />
-      ),
+      cell: ({ row }) => <Cell.Text text={row.original.tradingVolume} />,
     },
     {
       header: "30-day Referral Volume",
-      cell: ({ row }) => (
-        <Cell.Text
-          className="text-ink-primary-900 diatype-m-medium"
-          text={row.original.thirtyDayReferralVolume}
-        />
-      ),
+      cell: ({ row }) => <Cell.Text text={row.original.thirtyDayReferralVolume} />,
     },
     {
       header: "Commission",
-      cell: ({ row }) => (
-        <Cell.Text
-          className="text-ink-primary-900 diatype-m-bold"
-          text={row.original.commission}
-        />
-      ),
+      cell: ({ row }) => <Cell.Text text={row.original.commission} />,
     },
   ];
 
@@ -85,13 +68,8 @@ export const CommissionRates: React.FC = () => {
       <Table
         data={mockCommissionTiers}
         columns={columns}
-        style="simple"
         classNames={{
-          base: "rounded-xl bg-surface-primary-rice border border-outline-secondary-gray overflow-hidden",
-          header:
-            "bg-surface-tertiary-rice text-ink-tertiary-500 diatype-s-medium border-b border-outline-secondary-gray",
-          cell: "px-4 py-3",
-          row: "border-b border-outline-secondary-gray last:border-b-0",
+          base: "p-0 bg-transparent shadow-none",
         }}
       />
     </div>
