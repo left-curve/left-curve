@@ -1,5 +1,18 @@
-file_types    = ["rust"]
 test_patterns = ["**/testing/**"]
+
+exclude_patterns = [
+  "**/*.css",
+  "**/*.html",
+  "**/*.json",
+  "**/*.md",
+  "**/*.ts",
+  "**/*.tsx",
+  "**/*.yaml",
+  "**/*.yml",
+  "**/build/**",
+  "**/dist/**",
+  "**/node_modules/**",
+]
 
 [smells.function-parameters]
 threshold = 20 # default: 5; https://docs.qlty.sh/qlty-toml#smellsnamethreshold
