@@ -10,5 +10,7 @@
   "line-length": false,
   "no-alt-text": false,
   "no-bare-urls": false,
-  "no-inline-html": false
+  "no-inline-html": false,
+  "no-duplicate-heading": false,
+  "no-space-in-emphasis": false
 }
