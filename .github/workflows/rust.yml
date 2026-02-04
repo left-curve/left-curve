@@ -1266,6 +1266,7 @@ jobs:
             # Use this if other services fail
             # docker compose logs
             docker compose logs faucet --tail=10
+            docker compose logs dex-bot-init --tail=10
             docker compose logs dex-bot --tail=10
             docker compose logs cometbft --tail=100
             docker compose logs dango --tail=100
