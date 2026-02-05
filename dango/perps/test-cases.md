@@ -328,7 +328,9 @@ max_abs_oi = 500
 | 8   | Skew changes affect subsequent | First fill changes skew, second order unfillable   |
 | 9   | OI blocks, reduce_only=false   | Order skipped entirely                             |
 | 10  | OI blocks, reduce_only=true    | Only closing portion filled, order updated         |
-| 11  | Mixed buy and sell orders      | Both processed; buy phase then sell phase          |
+| 11  | Mixed buy and sell orders      | Interleaved by timestamp                           |
+| 12  | Interleaved multiple orders    | Timestamp ordering across multiple orders          |
+| 13  | Timestamp tiebreaker           | Same timestamp: buy wins                           |
 
 ### Detailed Calculations
 
@@ -635,38 +637,140 @@ max_abs_oi = 500
 
 ---
 
-#### Test 11: Mixed buy and sell orders
+#### Test 11: Mixed buy and sell orders (interleaved by timestamp)
 
 **Initial State:**
 
 - long_oi=100, short_oi=-100, skew=0
-- BUY_ORDERS: [{limit_price=103, size=+30, user_pos=0, reduce_only=false}]
-- SELL_ORDERS: [{limit_price=97, size=-30, user_pos=0, reduce_only=false}]
+- BUY_ORDERS: [{limit_price=103, size=+30, created_at=t2, user_pos=0, reduce_only=false}]
+- SELL_ORDERS: [{limit_price=97, size=-30, created_at=t1, user_pos=0, reduce_only=false}]
 
 **Trigger:** Oracle price = 100
 
-**Buy Phase:**
+**Interleaved Processing (sell is older, processed first):**
 
-1. marginal_price = 100, limit(103) >= marginal(100) → continue
-2. exec_price = 100 * (1 + 30/2/1000) = 100 * 1.015 = **101.5**
-3. Price check: exec(101.5) <= limit(103) → fill
-4. skew → 0+30 = 30
+**Step 1: Process Sell (t=t1)**
 
-**Sell Phase (with updated skew=30):**
+1. marginal_price = 100 * (1 + clamp(0/1000, -0.05, 0.05)) = 100 * 1.0 = **100**
+2. Cutoff check: limit(97) <= marginal(100) → **PASS**
+3. exec_price = 100 * (1 + clamp((0 + (-30)/2)/1000, -0.05, 0.05)) = 100 * 0.985 = **98.5**
+4. Price check: exec(98.5) >= limit(97) → fill
+5. skew → 0 + (-30) = -30
 
-1. marginal_price = 100 * (1 + 30/1000) = 100 * 1.03 = **103**
-2. Cutoff check: limit(97) <= marginal(103) → **PASS**
-3. exec_price = 100 * (1 + clamp((30-30/2)/1000, -0.05, 0.05)) = 100 * 1.015 = **101.5**
-4. Price check: exec(101.5) >= limit(97) → fill
-5. skew → 30-30 = 0
+**Step 2: Process Buy (t=t2)**
+
+1. marginal_price = 100 * (1 + clamp(-30/1000, -0.05, 0.05)) = 100 * 0.97 = **97**
+2. Cutoff check: limit(103) >= marginal(97) → **PASS**
+3. exec_price = 100 * (1 + clamp((-30 + 30/2)/1000, -0.05, 0.05)) = 100 * 0.985 = **98.5**
+4. Price check: exec(98.5) <= limit(103) → fill
+5. skew → -30 + 30 = 0
 
 **Result:**
 
 - long_oi=130, short_oi=-130, skew=0
 - BUY_ORDERS: [] (order removed)
 - SELL_ORDERS: [] (order removed)
-- Buy filled at exec_price = **101.5**
-- Sell filled at exec_price = **101.5**
+- Sell filled at exec_price = **98.5** (processed first due to earlier timestamp)
+- Buy filled at exec_price = **98.5** (processed second)
+
+**Compare to old two-phase behavior:**
+
+| Algorithm         | Buy exec_price | Sell exec_price | Note                              |
+| ----------------- | -------------- | --------------- | --------------------------------- |
+| Old (buys first)  | 101.5          | 101.5           | Buyers get worse price            |
+| New (interleaved) | 98.5           | 98.5            | Fair: older order processed first |
+
+---
+
+#### Test 12: Interleaved processing with multiple orders
+
+**Initial State:**
+
+- long_oi=100, short_oi=-100, skew=0
+- BUY_ORDERS:
+  - Order B1: {limit_price=103, created_at=t1, size=+20, user_pos=0, reduce_only=false}
+  - Order B2: {limit_price=102, created_at=t4, size=+20, user_pos=0, reduce_only=false}
+- SELL_ORDERS:
+  - Order S1: {limit_price=97, created_at=t2, size=-20, user_pos=0, reduce_only=false}
+  - Order S2: {limit_price=98, created_at=t3, size=-20, user_pos=0, reduce_only=false}
+
+**Trigger:** Oracle price = 100
+
+**Processing order by timestamp: t1(B1) → t2(S1) → t3(S2) → t4(B2)**
+
+**Step 1: Process B1 (t=t1, limit=103)**
+
+1. marginal_price = 100, limit(103) >= marginal(100) → continue
+2. exec_price = 100 * (1 + 20/2/1000) = 100 * 1.01 = **101**
+3. Price check: exec(101) <= limit(103) → fill
+4. skew → 0 + 20 = +20
+
+**Step 2: Process S1 (t=t2, limit=97)**
+
+1. marginal_price = 100 * (1 + 20/1000) = **102**
+2. Cutoff check: limit(97) <= marginal(102) → **PASS**
+3. exec_price = 100 * (1 + clamp((20 + (-20)/2)/1000, -0.05, 0.05)) = 100 * 1.01 = **101**
+4. Price check: exec(101) >= limit(97) → fill
+5. skew → 20 + (-20) = 0
+
+**Step 3: Process S2 (t=t3, limit=98)**
+
+1. marginal_price = 100 * (1 + 0/1000) = **100**
+2. Cutoff check: limit(98) <= marginal(100) → **PASS**
+3. exec_price = 100 * (1 + clamp((0 + (-20)/2)/1000, -0.05, 0.05)) = 100 * 0.99 = **99**
+4. Price check: exec(99) >= limit(98) → fill
+5. skew → 0 + (-20) = -20
+
+**Step 4: Process B2 (t=t4, limit=102)**
+
+1. marginal_price = 100 * (1 + (-20)/1000) = **98**
+2. Cutoff check: limit(102) >= marginal(98) → **PASS**
+3. exec_price = 100 * (1 + clamp((-20 + 20/2)/1000, -0.05, 0.05)) = 100 * 0.99 = **99**
+4. Price check: exec(99) <= limit(102) → fill
+5. skew → -20 + 20 = 0
+
+**Result:**
+
+- long_oi=140, short_oi=-140, skew=0
+- All orders filled in timestamp order
+- Execution prices: B1=101, S1=101, S2=99, B2=99
+
+---
+
+#### Test 13: Timestamp tiebreaker (buy wins)
+
+**Initial State:**
+
+- long_oi=100, short_oi=-100, skew=0
+- BUY_ORDERS: [{limit_price=103, created_at=t1, size=+20, user_pos=0, reduce_only=false}]
+- SELL_ORDERS: [{limit_price=97, created_at=t1, size=-20, user_pos=0, reduce_only=false}]
+
+**Trigger:** Oracle price = 100
+
+**Interleaved Processing (same timestamp, buy wins tiebreaker):**
+
+**Step 1: Process Buy (t=t1, wins tiebreaker)**
+
+1. marginal_price = 100, limit(103) >= marginal(100) → continue
+2. exec_price = 100 * (1 + 20/2/1000) = 100 * 1.01 = **101**
+3. Price check: exec(101) <= limit(103) → fill
+4. skew → 0 + 20 = +20
+
+**Step 2: Process Sell (t=t1)**
+
+1. marginal_price = 100 * (1 + 20/1000) = **102**
+2. Cutoff check: limit(97) <= marginal(102) → **PASS**
+3. exec_price = 100 * (1 + clamp((20 + (-20)/2)/1000, -0.05, 0.05)) = 100 * 1.01 = **101**
+4. Price check: exec(101) >= limit(97) → fill
+5. skew → 20 + (-20) = 0
+
+**Result:**
+
+- long_oi=120, short_oi=-120, skew=0
+- BUY_ORDERS: [] (order removed)
+- SELL_ORDERS: [] (order removed)
+- Buy filled at exec_price = **101** (processed first due to tiebreaker)
+- Sell filled at exec_price = **101** (processed second)
 
 ### Analysis Notes
 
@@ -685,21 +789,24 @@ Each fill changes the skew, which affects:
 For buys: filling increases skew → increases marginal price → cutoff moves up → fewer subsequent buys fillable.
 For sells: filling decreases skew → decreases marginal price → cutoff moves down → fewer subsequent sells fillable.
 
-#### Note 3: Two-phase processing
+#### Note 3: Interleaved processing
 
-Buy orders and sell orders are processed in separate phases. The skew after the buy phase becomes the starting skew for the sell phase, which can significantly affect sell order execution prices.
+Buy orders and sell orders are processed in an interleaved manner based on timestamp. Within each side, the best-priced order is always considered (highest for buys, lowest for sells). Between the two "head" orders, the older one is processed first. This ensures neither buyers nor sellers have a systematic advantage from processing order.
+
+When timestamps are equal, buy orders are processed first (documented tiebreaker).
 
 ### Conclusion
 
 All test cases verify the algorithm correctly handles:
 
-| Category                     | Behavior                                  | Tests |
-| ---------------------------- | ----------------------------------------- | ----- |
-| Basic fills                  | Fill when price conditions met            | 1, 2  |
-| Cutoff (marginal price)      | Break when limit vs marginal fails        | 3, 4  |
-| Size-based skip              | Continue when exec > limit (buys)         | 5     |
-| Price-time priority          | Highest/lowest price first, then oldest   | 6, 7  |
-| Skew dynamics                | Fills affect subsequent order eligibility | 8     |
-| OI constraint (reduce=false) | Skip order entirely                       | 9     |
-| OI constraint (reduce=true)  | Partial fill (closing only), update order | 10    |
-| Mixed orders                 | Both buy and sell phases execute          | 11    |
+| Category                     | Behavior                                  | Tests  |
+| ---------------------------- | ----------------------------------------- | ------ |
+| Basic fills                  | Fill when price conditions met            | 1, 2   |
+| Cutoff (marginal price)      | Break when limit vs marginal fails        | 3, 4   |
+| Size-based skip              | Continue when exec > limit (buys)         | 5      |
+| Price-time priority          | Highest/lowest price first, then oldest   | 6, 7   |
+| Skew dynamics                | Fills affect subsequent order eligibility | 8      |
+| OI constraint (reduce=false) | Skip order entirely                       | 9      |
+| OI constraint (reduce=true)  | Partial fill (closing only), update order | 10     |
+| Interleaved processing       | Older timestamp processed first           | 11, 12 |
+| Timestamp tiebreaker         | Buy wins when timestamps equal            | 13     |
