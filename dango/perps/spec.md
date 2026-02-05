@@ -801,8 +801,8 @@ fn handle_submit_order(
             // reduce_only=true: execute only closing portion, discard opening
             closing_size
         } else {
-            // reduce_only=false: OI violation reverts entire order
-            return; // Or: ensure!(false, "OI constraint violated");
+            // reduce_only=false: order is unfillable
+            0
         }
     } else {
         // OI not violated: execute full order
