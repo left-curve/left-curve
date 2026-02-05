@@ -1,8 +1,13 @@
-import { Cell, Pagination, Tab, Table, Tabs, twMerge } from "@left-curve/applets-kit";
+import { Cell, Pagination, Select, Tab, Table, Tabs, twMerge } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import type { ReferralMode } from "./ReferralStats";
+
+type ChartMetric = "commission" | "volume";
+type ChartPeriod = "7D" | "30D" | "90D";
+
+const StatisticsChart = lazy(() => import("./StatisticsChart"));
 
 type CommissionTab = "my-commission" | "my-referees" | "statistics";
 type RebateTab = "my-rebates" | "statistics";
@@ -25,11 +30,6 @@ type RebateRow = {
   rebates: string;
   tradingVolume: string;
   date: string;
-};
-
-type StatisticsData = {
-  date: string;
-  values: number[];
 };
 
 const mockCommissionData: CommissionRow[] = [
@@ -69,15 +69,6 @@ const mockRebateData: RebateRow[] = [
   { rebates: "$9.63", tradingVolume: "$75.96", date: "2024-08-07" },
   { rebates: "$50.00", tradingVolume: "$64.00", date: "2024-07-08" },
   { rebates: "$73.45", tradingVolume: "...", date: "2024-01-01" },
-];
-
-const mockStatisticsData: StatisticsData[] = [
-  { date: "2024-01-02", values: [2500, 1500, 800] },
-  { date: "2024-01-06", values: [1800, 1200, 600] },
-  { date: "2024-01-10", values: [3200, 2000, 1000] },
-  { date: "2024-01-14", values: [2800, 1800, 900] },
-  { date: "2024-01-18", values: [4200, 2500, 1200] },
-  { date: "2024-01-22", values: [3500, 2200, 1100] },
 ];
 
 const CommissionTable: React.FC = () => {
@@ -204,85 +195,11 @@ const RebateTable: React.FC = () => {
   );
 };
 
-const BAR_COLORS = ["bg-[#C5C76E]", "bg-[#A8AA4A]", "bg-[#8B8D3D]"];
-
-const StatisticsChart: React.FC = () => {
-  const [metric, setMetric] = useState<"commission" | "volume">("commission");
-  const [period, setPeriod] = useState<"7D" | "30D" | "90D">("7D");
-
-  const maxValue = Math.max(...mockStatisticsData.flatMap((d) => d.values));
-  const totalValue = mockStatisticsData.reduce(
-    (acc, d) => acc + d.values.reduce((a, b) => a + b, 0),
-    0,
-  );
-
-  return (
-    <div className="p-4 lg:p-6 bg-surface-primary-rice">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <select
-            value={metric}
-            onChange={(e) => setMetric(e.target.value as "commission" | "volume")}
-            className="px-3 py-1.5 rounded-lg border border-outline-secondary-gray bg-surface-tertiary-rice text-ink-primary-900 diatype-s-medium cursor-pointer"
-          >
-            <option value="commission">Commission</option>
-            <option value="volume">Volume</option>
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-ink-tertiary-500 diatype-s-medium">Period:</span>
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value as "7D" | "30D" | "90D")}
-            className="px-3 py-1.5 rounded-lg border border-outline-secondary-gray bg-surface-tertiary-rice text-ink-primary-900 diatype-s-medium cursor-pointer"
-          >
-            <option value="7D">7D</option>
-            <option value="30D">30D</option>
-            <option value="90D">90D</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="relative h-[200px] lg:h-[280px]">
-        <div className="absolute top-0 right-0 flex flex-col items-end">
-          <p className="text-ink-tertiary-500 diatype-xs-medium">Jul 17, 2025</p>
-          <p className="text-ink-primary-900 diatype-m-bold">${totalValue.toLocaleString()}</p>
-          <p className="text-primitives-warning-500 diatype-xs-medium">$1,791</p>
-        </div>
-
-        <div className="flex items-end justify-between h-full pt-12 pb-8 gap-2 lg:gap-4">
-          {mockStatisticsData.map((data) => {
-            const totalHeight = data.values.reduce((a, b) => a + b, 0);
-            const heightPercent = (totalHeight / maxValue) * 100;
-
-            return (
-              <div key={data.date} className="flex-1 flex flex-col items-center gap-2">
-                <div
-                  className="w-full max-w-[60px] flex flex-col-reverse rounded-t-sm overflow-hidden"
-                  style={{ height: `${heightPercent}%` }}
-                >
-                  {data.values.map((value, i) => {
-                    const segmentPercent = (value / totalHeight) * 100;
-                    return (
-                      <div
-                        key={`${data.date}-${i}`}
-                        className={twMerge("w-full", BAR_COLORS[i % BAR_COLORS.length])}
-                        style={{ height: `${segmentPercent}%` }}
-                      />
-                    );
-                  })}
-                </div>
-                <p className="text-ink-tertiary-500 diatype-xs-medium whitespace-nowrap">
-                  {data.date.slice(5)}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
+const ChartLoading: React.FC = () => (
+  <div className="p-4 lg:p-6 bg-surface-primary-gray h-[300px] flex items-center justify-center">
+    <p className="text-ink-tertiary-500 diatype-m-medium">Loading chart...</p>
+  </div>
+);
 
 type MyCommissionProps = {
   mode: ReferralMode;
@@ -291,12 +208,21 @@ type MyCommissionProps = {
 export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
   const [affiliateTab, setAffiliateTab] = useState<CommissionTab>("my-commission");
   const [traderTab, setTraderTab] = useState<RebateTab>("my-rebates");
+  const [chartMetric, setChartMetric] = useState<ChartMetric>("commission");
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("7D");
 
   const isAffiliate = mode === "affiliate";
+  const showStatisticsSelects =
+    (isAffiliate && affiliateTab === "statistics") || (!isAffiliate && traderTab === "statistics");
 
   return (
     <div className="w-full flex flex-col rounded-xl border border-outline-secondary-gray overflow-hidden bg-surface-primary-gray">
-      <div className="p-4 pb-0">
+      <div
+        className={twMerge(
+          "p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4",
+          !showStatisticsSelects && "lg:pb-0",
+        )}
+      >
         {isAffiliate ? (
           <Tabs
             layoutId="commission-tabs"
@@ -317,12 +243,41 @@ export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
             <Tab title="statistics">Statistics</Tab>
           </Tabs>
         )}
+        {showStatisticsSelects && (
+          <div className="flex items-center gap-2">
+            <Select
+              value={chartMetric}
+              onChange={(value) => setChartMetric(value as ChartMetric)}
+              classNames={{ trigger: "max-h-[38px]" }}
+            >
+              <Select.Item value="commission">Commission</Select.Item>
+              <Select.Item value="volume">Volume</Select.Item>
+            </Select>
+            <Select
+              value={chartPeriod}
+              onChange={(value) => setChartPeriod(value as ChartPeriod)}
+              classNames={{ trigger: "max-h-[38px]" }}
+            >
+              <Select.Item value="7D">Period: 7D</Select.Item>
+              <Select.Item value="30D">Period: 30D</Select.Item>
+              <Select.Item value="90D">Period: 90D</Select.Item>
+            </Select>
+          </div>
+        )}
       </div>
       {isAffiliate && affiliateTab === "my-commission" && <CommissionTable />}
       {isAffiliate && affiliateTab === "my-referees" && <MyRefereesTable />}
-      {isAffiliate && affiliateTab === "statistics" && <StatisticsChart />}
+      {isAffiliate && affiliateTab === "statistics" && (
+        <Suspense fallback={<ChartLoading />}>
+          <StatisticsChart metric={chartMetric} period={chartPeriod} />
+        </Suspense>
+      )}
       {!isAffiliate && traderTab === "my-rebates" && <RebateTable />}
-      {!isAffiliate && traderTab === "statistics" && <StatisticsChart />}
+      {!isAffiliate && traderTab === "statistics" && (
+        <Suspense fallback={<ChartLoading />}>
+          <StatisticsChart metric={chartMetric} period={chartPeriod} />
+        </Suspense>
+      )}
     </div>
   );
 };
