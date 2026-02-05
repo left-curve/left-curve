@@ -763,6 +763,7 @@ fn compute_max_opening_from_oi(
 
 ```rust
 fn handle_submit_order(
+    state: &mut State,
     pair_state: &mut PairState,
     pair_params: &PairParams,
     user_state: &mut UserState,
@@ -834,7 +835,7 @@ fn handle_submit_order(
 
         if price_ok {
             // Step 8: Execute the fill
-            execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
+            execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
         }
     }
 
@@ -875,6 +876,129 @@ fn handle_submit_order(
         }
     }
 }
+
+/// Execute a fill, updating positions and settling PnL for any closing portion.
+fn execute_fill(
+    state: &mut State,
+    pair_state: &mut PairState,
+    user_state: &mut UserState,
+    pair_id: PairId,
+    fill_size: Dec,
+    exec_price: Udec,
+) {
+    let position = user_state.positions.get_mut(&pair_id);
+
+    // Decompose into closing and opening portions
+    let user_pos = position.map(|p| p.size).unwrap_or(Dec::ZERO);
+    let (closing_size, opening_size) = decompose_fill(fill_size, user_pos);
+
+    // Settle PnL for closing portion
+    if closing_size != Dec::ZERO {
+        if let Some(pos) = position {
+            let pnl = compute_pnl_to_realize(pos, closing_size, exec_price);
+            settle_pnl(state, user_state, pnl);
+
+            // Update cost_basis proportionally
+            let close_ratio = abs(closing_size) / abs(pos.size);
+            pos.cost_basis = floor(pos.cost_basis * (1 - close_ratio));
+        }
+    }
+
+    // Update position size
+    if let Some(pos) = position {
+        pos.size += fill_size;
+
+        // Add to cost_basis for opening portion
+        if opening_size != Dec::ZERO {
+            pos.cost_basis += floor(abs(opening_size) * exec_price);
+        }
+
+        // Remove position if fully closed
+        if pos.size == Dec::ZERO {
+            user_state.positions.remove(&pair_id);
+        }
+    } else if opening_size != Dec::ZERO {
+        // Create new position
+        user_state.positions.insert(pair_id, Position {
+            size: fill_size,
+            cost_basis: floor(abs(opening_size) * exec_price),
+        });
+    }
+
+    // Update OI
+    if fill_size > Dec::ZERO {
+        pair_state.long_oi += fill_size;
+    } else {
+        pair_state.short_oi += fill_size;
+    }
+}
+
+/// Compute the PnL to be realized when closing a portion of a position.
+///
+/// Named `compute_pnl_to_realize` (not `compute_realized_pnl`) to distinguish
+/// from PnL that was already realized in the past, which will be tracked
+/// separately in UserState.
+///
+/// PnL = (exit_value - entry_value) for longs
+/// PnL = (entry_value - exit_value) for shorts
+///
+/// Where:
+/// - entry_value = proportional cost_basis for the closed portion
+/// - exit_value = |closing_size| * exec_price
+///
+/// TODO: This is a placeholder. Full implementation depends on:
+/// - Funding fee accumulation
+/// - Precise cost basis tracking
+fn compute_pnl_to_realize(
+    position: &Position,
+    closing_size: Dec,  // Same sign as position (negative for shorts)
+    exec_price: Udec,
+) -> Dec {
+    if closing_size == Dec::ZERO || position.size == Dec::ZERO {
+        return Dec::ZERO;
+    }
+
+    // Proportion of position being closed
+    let close_ratio = abs(closing_size) / abs(position.size);
+
+    // Entry value (proportional cost basis)
+    let entry_value = position.cost_basis * close_ratio;
+
+    // Exit value
+    let exit_value = abs(closing_size) * exec_price;
+
+    // PnL direction depends on position direction
+    if position.size > Dec::ZERO {
+        // Long position: profit when exit > entry
+        exit_value - entry_value
+    } else {
+        // Short position: profit when entry > exit
+        entry_value - exit_value
+    }
+}
+
+/// Settle realized PnL between user and vault.
+///
+/// - Positive PnL (user wins): vault pays user
+/// - Negative PnL (user loses): user pays vault
+fn settle_pnl(
+    state: &mut State,
+    user_state: &mut UserState,
+    pnl: Dec,
+) {
+    if pnl > Dec::ZERO {
+        // User wins: transfer from vault to user
+        let amount = floor(pnl);
+        state.vault_balance = state.vault_balance.saturating_sub(amount);
+        user_state.margin += amount;
+    } else if pnl < Dec::ZERO {
+        // User loses: transfer from user to vault
+        let amount = floor(-pnl);
+        user_state.margin = user_state.margin.saturating_sub(amount);
+        state.vault_balance += amount;
+    }
+    // pnl == 0: no transfer needed
+}
 ```
 
 ### Fulfillment of limit orders
@@ -889,6 +1013,7 @@ Importantly, we execute both order types in an interleaving manner, which is nec
 
 ```rust
 fn fulfill_limit_orders_for_pair(
+    state: &mut State,
     pair_id: PairId,
     oracle_price: Udec,
     pair_state: &mut PairState,
@@ -928,9 +1053,9 @@ fn fulfill_limit_orders_for_pair(
         };
 
         if process_buy {
-            try_fill_buy_order(&mut buy_iter, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_buy_order(&mut buy_iter, state, oracle_price, &mut skew, pair_state, pair_params);
         } else {
-            try_fill_sell_order(&mut sell_iter, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_sell_order(&mut sell_iter, state, oracle_price, &mut skew, pair_state, pair_params);
         }
     }
 }
@@ -944,6 +1069,7 @@ fn fulfill_limit_orders_for_pair(
 /// margin" backing the new position).
 fn try_fill_buy_order(
     iter: &mut Peekable<impl Iterator<Item = (BuyOrderKey, Order)>>,
+    state: &mut State,
     oracle_price: Udec,
     skew: &mut Dec,
     pair_state: &mut PairState,
@@ -990,7 +1116,7 @@ fn try_fill_buy_order(
                 return;  // Still exceeds limit
             }
 
-            execute_fill(pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
+            execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
             *skew += fill_size;
 
             // Release reserved margin for the filled portion (closing only, so no opening margin)
@@ -1013,7 +1139,7 @@ fn try_fill_buy_order(
         }
     } else {
         // Fill entire order
-        execute_fill(pair_state, &mut user_state, pair_id, order.size, exec_price);
+        execute_fill(state, pair_state, &mut user_state, pair_id, order.size, exec_price);
         *skew += order.size;
 
         // Release reserved margin for this order
@@ -1038,6 +1164,7 @@ fn try_fill_buy_order(
 /// margin" backing the new position).
 fn try_fill_sell_order(
     iter: &mut Peekable<impl Iterator<Item = (SellOrderKey, Order)>>,
+    state: &mut State,
     oracle_price: Udec,
     skew: &mut Dec,
     pair_state: &mut PairState,
@@ -1082,7 +1209,7 @@ fn try_fill_sell_order(
                 return;  // Still below limit
             }
 
-            execute_fill(pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
+            execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
             *skew += fill_size;
 
             // Release reserved margin for the filled portion (closing only, so no opening margin)
@@ -1105,7 +1232,7 @@ fn try_fill_sell_order(
         }
     } else {
         // Fill entire order
-        execute_fill(pair_state, &mut user_state, pair_id, order.size, exec_price);
+        execute_fill(state, pair_state, &mut user_state, pair_id, order.size, exec_price);
         *skew += order.size;
 
         // Release reserved margin for this order
