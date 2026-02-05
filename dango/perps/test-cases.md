@@ -331,6 +331,7 @@ max_abs_oi = 500
 | 11  | Mixed buy and sell orders      | Interleaved by timestamp                           |
 | 12  | Interleaved multiple orders    | Timestamp ordering across multiple orders          |
 | 13  | Timestamp tiebreaker           | Same timestamp: buy wins                           |
+| 14  | Cutoff unblocked by other side | Sell changes skew, making blocked buy fillable     |
 
 ### Detailed Calculations
 
@@ -772,6 +773,71 @@ max_abs_oi = 500
 - Buy filled at exec_price = **101** (processed first due to tiebreaker)
 - Sell filled at exec_price = **101** (processed second)
 
+---
+
+#### Test 14: Cutoff unblocked by other side
+
+This test verifies that when one side hits the marginal price cutoff, processing the other side can change the skew enough to make the first side fillable again.
+
+**Initial State:**
+
+- long_oi=150, short_oi=-100, skew=50
+- BUY_ORDERS: [{limit_price=104, created_at=t1, size=+20, user_pos=0, reduce_only=false}]
+- SELL_ORDERS: [{limit_price=97, created_at=t2, size=-100, user_pos=0, reduce_only=false}]
+
+**Trigger:** Oracle price = 100
+
+**Processing (correct algorithm):**
+
+**Iteration 1:**
+
+1. marginal_price = 100 * (1 + clamp(50/1000, -0.05, 0.05)) = 100 * 1.05 = **105**
+2. buy_fillable? limit(104) >= marginal(105)? **NO**
+3. sell_fillable? limit(97) <= marginal(105)? **YES**
+4. Only sell is fillable → process sell
+5. exec_price = 100 * (1 + clamp((50 + (-100)/2)/1000, -0.05, 0.05)) = 100 * 1.0 = **100**
+6. Price check: exec(100) >= limit(97) → fill
+7. skew → 50 + (-100) = **-50**
+
+**Iteration 2:**
+
+1. marginal_price = 100 * (1 + clamp(-50/1000, -0.05, 0.05)) = 100 * 0.95 = **95**
+2. buy_fillable? limit(104) >= marginal(95)? **YES** (now fillable!)
+3. sell_fillable? No more sells
+4. Only buy is fillable → process buy
+5. exec_price = 100 * (1 + clamp((-50 + 20/2)/1000, -0.05, 0.05)) = 100 * 0.96 = **96**
+6. Price check: exec(96) <= limit(104) → fill
+7. skew → -50 + 20 = **-30**
+
+**Iteration 3:**
+
+1. marginal_price = 100 * (1 + clamp(-30/1000, -0.05, 0.05)) = 100 * 0.97 = **97**
+2. buy_fillable? No more buys
+3. sell_fillable? No more sells
+4. (false, false) → **break**
+
+**Result:**
+
+- long_oi=170, short_oi=-200, skew=-30
+- BUY_ORDERS: [] (order removed)
+- SELL_ORDERS: [] (order removed)
+- Sell filled at exec_price = **100**
+- Buy filled at exec_price = **96**
+
+**Compare to buggy algorithm (drain-on-cutoff):**
+
+The buggy algorithm would:
+
+1. Buy is older (t1) → try buy first
+2. limit(104) < marginal(105) → cutoff, return false
+3. Drain sells → skew=-50, marginal=95
+4. Exit loop ← BUG: buy never reconsidered!
+
+| Algorithm | Buy filled? | Sell filled? | Note                               |
+| --------- | ----------- | ------------ | ---------------------------------- |
+| Buggy     | **NO**      | YES          | Buy unfairly left in queue         |
+| Correct   | YES         | YES          | Both filled; skew change unblocked |
+
 ### Analysis Notes
 
 #### Note 1: Cutoff vs Continue behavior
@@ -799,14 +865,15 @@ When timestamps are equal, buy orders are processed first (documented tiebreaker
 
 All test cases verify the algorithm correctly handles:
 
-| Category                     | Behavior                                  | Tests  |
-| ---------------------------- | ----------------------------------------- | ------ |
-| Basic fills                  | Fill when price conditions met            | 1, 2   |
-| Cutoff (marginal price)      | Break when limit vs marginal fails        | 3, 4   |
-| Size-based skip              | Continue when exec > limit (buys)         | 5      |
-| Price-time priority          | Highest/lowest price first, then oldest   | 6, 7   |
-| Skew dynamics                | Fills affect subsequent order eligibility | 8      |
-| OI constraint (reduce=false) | Skip order entirely                       | 9      |
-| OI constraint (reduce=true)  | Partial fill (closing only), update order | 10     |
-| Interleaved processing       | Older timestamp processed first           | 11, 12 |
-| Timestamp tiebreaker         | Buy wins when timestamps equal            | 13     |
+| Category                     | Behavior                                  | Tests   |
+| ---------------------------- | ----------------------------------------- | ------- |
+| Basic fills                  | Fill when price conditions met            | 1, 2    |
+| Cutoff (marginal price)      | Break when limit vs marginal fails        | 3, 4    |
+| Size-based skip              | Continue when exec > limit (buys)         | 5       |
+| Price-time priority          | Highest/lowest price first, then oldest   | 6, 7    |
+| Skew dynamics                | Fills affect subsequent order eligibility | 8, 14   |
+| OI constraint (reduce=false) | Skip order entirely                       | 9       |
+| OI constraint (reduce=true)  | Partial fill (closing only), update order | 10      |
+| Interleaved processing       | Older timestamp processed first           | 11, 12  |
+| Timestamp tiebreaker         | Buy wins when timestamps equal            | 13      |
+| Cutoff re-evaluation         | Other side can unblock a cutoff           | 14      |

@@ -678,77 +678,64 @@ fn fulfill_limit_orders_for_pair(
     let mut sell_iter = SELL_ORDERS.prefix(pair_id).range(..).peekable();
 
     loop {
-        let buy_head = buy_iter.peek();
-        let sell_head = sell_iter.peek();
+        // Compute marginal price at current skew
+        let marginal_price = compute_marginal_price(oracle_price, skew, pair_params);
 
-        // Determine which side to process next based on timestamp
-        let process_buy = match (buy_head, sell_head) {
-            (None, None) => break,
-            (Some(_), None) => true,
-            (None, Some(_)) => false,
-            (Some((buy_key, _)), Some((sell_key, _))) => {
-                // Compare timestamps; buy wins ties
-                buy_key.created_at <= sell_key.created_at
+        // Check if each side's head order passes the cutoff
+        let buy_fillable = buy_iter.peek().map_or(false, |(key, _)| {
+            let limit_price = MAX_PRICE - key.inverted_limit_price;
+            limit_price >= marginal_price
+        });
+
+        let sell_fillable = sell_iter.peek().map_or(false, |(key, _)| {
+            key.limit_price <= marginal_price
+        });
+
+        // Determine which side to process
+        let process_buy = match (buy_fillable, sell_fillable) {
+            (false, false) => break,  // Neither side can make progress
+            (true, false) => true,    // Only buys fillable
+            (false, true) => false,   // Only sells fillable
+            (true, true) => {
+                // Both fillable: pick older timestamp (buy wins ties)
+                let buy_ts = buy_iter.peek().unwrap().0.created_at;
+                let sell_ts = sell_iter.peek().unwrap().0.created_at;
+                buy_ts <= sell_ts
             }
         };
 
         if process_buy {
-            // Try to fill the next buy order
-            // Returns false if no more buys are fillable (cutoff reached)
-            if !try_fill_next_buy(&mut buy_iter, oracle_price, &mut skew, pair_state, pair_params) {
-                // No more fillable buys; drain remaining sells
-                while try_fill_next_sell(&mut sell_iter, oracle_price, &mut skew, pair_state, pair_params) {}
-                break;
-            }
+            try_fill_buy_order(&mut buy_iter, oracle_price, &mut skew, pair_state, pair_params);
         } else {
-            // Try to fill the next sell order
-            // Returns false if no more sells are fillable (cutoff reached)
-            if !try_fill_next_sell(&mut sell_iter, oracle_price, &mut skew, pair_state, pair_params) {
-                // No more fillable sells; drain remaining buys
-                while try_fill_next_buy(&mut buy_iter, oracle_price, &mut skew, pair_state, pair_params) {}
-                break;
-            }
+            try_fill_sell_order(&mut sell_iter, oracle_price, &mut skew, pair_state, pair_params);
         }
     }
 }
 
 /// Attempts to fill the next buy order from the iterator.
-/// Returns true if processing should continue (order was filled or skipped),
-/// false if no more buys are fillable (cutoff reached or queue exhausted).
-fn try_fill_next_buy(
+/// The caller has already verified that this order passes the marginal price cutoff.
+/// Always advances the iterator.
+fn try_fill_buy_order(
     iter: &mut Peekable<impl Iterator<Item = (BuyOrderKey, Order)>>,
     oracle_price: Udec,
     skew: &mut Dec,
     pair_state: &mut PairState,
     pair_params: &PairParams,
-) -> bool {
-    let Some((key, order)) = iter.peek() else {
-        return false; // Queue exhausted
-    };
+) {
+    // Advance the iterator
+    let (key, order) = iter.next().unwrap();
 
     // Recover limit_price from inverted storage
     let limit_price = MAX_PRICE - key.inverted_limit_price;
-
-    // Compute current marginal price
-    let marginal_price = compute_marginal_price(oracle_price, *skew, pair_params);
-
-    // Cutoff: if limit_price < marginal_price, this and all subsequent
-    // orders are unfillable (subsequent orders have even lower limit_price)
-    if limit_price < marginal_price {
-        return false; // Cutoff reached
-    }
-
-    // Advance the iterator now that we've decided to process this order
-    let (key, order) = iter.next().unwrap();
 
     // Compute actual execution price for this order's size
     let exec_price = compute_exec_price(oracle_price, *skew, order.size, pair_params);
 
     // Check price constraint
     if exec_price > limit_price {
-        // Order is too large to fill at current skew; skip but continue
-        // scanning (smaller orders with lower prices might still be fillable)
-        return true;
+        // Order is too large to fill at current skew; skip
+        // (smaller orders with lower prices might still be fillable)
+        return;
     }
 
     // Load user state and check OI constraint
@@ -766,14 +753,14 @@ fn try_fill_next_buy(
         if order.reduce_only {
             // Execute only closing portion
             if closing_size == Dec::ZERO {
-                return true;  // Nothing to fill, continue scanning
+                return;  // Nothing to fill
             }
 
             let fill_size = closing_size;
             let fill_exec_price = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
 
             if fill_exec_price > limit_price {
-                return true;  // Still exceeds limit, continue scanning
+                return;  // Still exceeds limit
             }
 
             execute_fill(pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
@@ -782,7 +769,7 @@ fn try_fill_next_buy(
             // Check margin requirement
             if !check_margin_requirement(&user_state) {
                 revert_fill();
-                return true;
+                return;
             }
 
             // Commit changes
@@ -797,7 +784,7 @@ fn try_fill_next_buy(
             }
         } else {
             // All-or-nothing: skip this order
-            return true;
+            return;
         }
     } else {
         // Fill entire order
@@ -807,7 +794,7 @@ fn try_fill_next_buy(
         // Check margin requirement
         if !check_margin_requirement(&user_state) {
             revert_fill();
-            return true;
+            return;
         }
 
         // Commit changes
@@ -816,45 +803,30 @@ fn try_fill_next_buy(
         // Remove filled order
         BUY_ORDERS.remove(key);
     }
-
-    true // Continue processing
 }
 
 /// Attempts to fill the next sell order from the iterator.
-/// Returns true if processing should continue (order was filled or skipped),
-/// false if no more sells are fillable (cutoff reached or queue exhausted).
-fn try_fill_next_sell(
+/// The caller has already verified that this order passes the marginal price cutoff.
+/// Always advances the iterator.
+fn try_fill_sell_order(
     iter: &mut Peekable<impl Iterator<Item = (SellOrderKey, Order)>>,
     oracle_price: Udec,
     skew: &mut Dec,
     pair_state: &mut PairState,
     pair_params: &PairParams,
-) -> bool {
-    let Some((key, order)) = iter.peek() else {
-        return false; // Queue exhausted
-    };
+) {
+    // Advance the iterator
+    let (key, order) = iter.next().unwrap();
 
     let limit_price = key.limit_price;
-
-    // Compute current marginal price
-    let marginal_price = compute_marginal_price(oracle_price, *skew, pair_params);
-
-    // Cutoff: if limit_price > marginal_price, this and all subsequent
-    // orders are unfillable (subsequent orders have even higher limit_price)
-    if limit_price > marginal_price {
-        return false; // Cutoff reached
-    }
-
-    // Advance the iterator now that we've decided to process this order
-    let (key, order) = iter.next().unwrap();
 
     // Compute actual execution price for this order's size (negative for sells)
     let exec_price = compute_exec_price(oracle_price, *skew, order.size, pair_params);
 
     // Check price constraint (for sells: exec_price must be >= limit_price)
     if exec_price < limit_price {
-        // Order is too large to fill at current skew; skip but continue
-        return true;
+        // Order is too large to fill at current skew; skip
+        return;
     }
 
     // Load user state and check OI constraint
@@ -872,14 +844,14 @@ fn try_fill_next_sell(
         if order.reduce_only {
             // Execute only closing portion
             if closing_size == Dec::ZERO {
-                return true;  // Nothing to fill, continue scanning
+                return;  // Nothing to fill
             }
 
             let fill_size = closing_size;
             let fill_exec_price = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
 
             if fill_exec_price < limit_price {
-                return true;  // Still below limit, continue scanning
+                return;  // Still below limit
             }
 
             execute_fill(pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
@@ -888,7 +860,7 @@ fn try_fill_next_sell(
             // Check margin requirement
             if !check_margin_requirement(&user_state) {
                 revert_fill();
-                return true;
+                return;
             }
 
             // Commit changes
@@ -903,7 +875,7 @@ fn try_fill_next_sell(
             }
         } else {
             // All-or-nothing: skip this order
-            return true;
+            return;
         }
     } else {
         // Fill entire order
@@ -913,7 +885,7 @@ fn try_fill_next_sell(
         // Check margin requirement
         if !check_margin_requirement(&user_state) {
             revert_fill();
-            return true;
+            return;
         }
 
         // Commit changes
@@ -922,8 +894,6 @@ fn try_fill_next_sell(
         // Remove filled order
         SELL_ORDERS.remove(key);
     }
-
-    true // Continue processing
 }
 ```
 
@@ -933,22 +903,30 @@ fn try_fill_next_sell(
 
 2. **Timestamp interleaving ensures fairness between sides** - neither buyers nor sellers get a systematic advantage from being processed first
 
-3. **The marginal price cutoff is correct:**
-   - For buys: `exec_price >= marginal_price` always (adding size increases price)
-   - So if `limit_price < marginal_price`, then `limit_price < marginal_price <= exec_price`, meaning unfillable
-   - All subsequent buy orders have even lower limit prices → all unfillable
+3. **Fillability is rechecked each iteration:**
+   - We compute `marginal_price` at the start of each loop iteration
+   - Both sides are checked against the current marginal price
+   - An order that was unfillable can become fillable after the other side executes
+   - Example: buy at limit=104 is unfillable when marginal=105, but after a sell executes and moves marginal to 95, the buy becomes fillable
 
-4. **We don't stop on a single unfillable order:**
+4. **Correct termination when `(false, false)`:**
+   - Both sides must be past their respective cutoffs
+   - If buy is blocked (`limit < marginal`) and sell is blocked (`limit > marginal`), processing either would move marginal in the wrong direction for the other
+   - A buy fill increases marginal → makes sells even more blocked
+   - A sell fill decreases marginal → makes buys even more blocked
+   - So neither side can help unblock the other → true termination
+
+5. **We don't stop on a single unfillable order:**
    - An order might be unfillable due to its large size, not its price
-   - We return `true` to check smaller orders with (potentially) lower prices
-   - We only return `false` (cutoff) when the price itself is past the marginal price
+   - We advance the iterator and continue checking subsequent orders
+   - Only when the head order fails the cutoff do we consider that side blocked
 
-5. **Skew updates correctly with interleaving:**
+6. **Skew updates correctly with interleaving:**
    - After each fill (buy or sell), skew changes
-   - We recompute marginal_price before each order
-   - A buy fill increases skew → increases marginal_price → harder for subsequent buys
-   - A sell fill decreases skew → decreases marginal_price → harder for subsequent sells
-   - Interleaving means these effects alternate, providing more balanced execution
+   - We recompute marginal_price at the start of each iteration
+   - A buy fill increases skew → increases marginal_price → can unblock sells
+   - A sell fill decreases skew → decreases marginal_price → can unblock buys
+   - This is why we must recheck both sides each iteration, not just continue with one side
 
 #### Edge cases
 
