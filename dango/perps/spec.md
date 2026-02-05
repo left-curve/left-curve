@@ -196,7 +196,7 @@ struct PairParams {
     /// The greater the value of the scaling factor, the less the effect.
     pub skew_scale: Udec,
 
-    /// The maximum extend to which skew can affect execution price.
+    /// The maximum extent to which skew can affect execution price.
     /// The execution price is capped in the range `[1 - max_abs_premium, 1 + max_abs_premium]`.
     /// This prevents an exploit where a trader fabricates a big skew to obtain
     /// an unusually favorable pricing.
@@ -211,6 +211,14 @@ struct PairParams {
     ///
     /// This constraint does not apply to reducing positions.
     pub max_abs_oi: Udec,
+
+    /// Maximum funding velocity, as a fraction per day.
+    ///
+    /// When skew == skew_scale, the funding rate changes by this much per day.
+    /// When skew == 0, the rate drifts back toward zero at this speed.
+    ///
+    /// Typical range: 0.01 to 0.10 (1% to 10% per day).
+    pub max_funding_velocity: Udec,
 
     /// Initial margin ratio for this pair.
     ///
@@ -263,6 +271,33 @@ struct PairState {
     ///
     /// Should always be non-positive.
     pub short_oi: Dec,
+
+    /// Current instantaneous funding rate (fraction per day).
+    ///
+    /// Positive = longs pay shorts (and vault collects the net).
+    /// Negative = shorts pay longs (and vault collects the net).
+    ///
+    /// The rate changes over time according to the velocity model:
+    ///   rate' = rate + velocity * elapsed_days
+    pub funding_rate: Dec,
+
+    /// Timestamp of last funding accrual.
+    pub last_funding_time: Timestamp,
+
+    /// Cumulative funding per unit of position size, in settlement currency.
+    ///
+    /// This is an ever-increasing accumulator. To compute a position's accrued
+    /// funding, take the difference between the current value and the position's
+    /// `entry_funding_per_unit`.
+    pub cumulative_funding_per_unit: Dec,
+
+    /// Sum of `position.size * position.entry_funding_per_unit` across all open
+    /// positions for this pair.
+    ///
+    /// Used to compute the vault's unrealized funding without iterating over
+    /// all positions:
+    ///   vault_unrealized_funding = oi_weighted_entry_funding - cumulative_funding_per_unit * skew
+    pub oi_weighted_entry_funding: Dec,
 }
 ```
 
@@ -310,7 +345,14 @@ struct Position {
     /// Used for PnL calculation: PnL = current_value - cost_basis
     pub cost_basis: Uint,
 
-    // ... other fields TBD (e.g., entry price, realized PnL, funding accumulated)
+    /// Value of `pair_state.cumulative_funding_per_unit` when this position
+    /// was last opened, modified, or had funding settled.
+    ///
+    /// Used to compute accrued funding:
+    ///   accrued = position.size * (current_cumulative - entry_funding_per_unit)
+    ///
+    /// Positive accrued funding means the trader owes the vault.
+    pub entry_funding_per_unit: Dec,
 }
 
 struct Unlock {
@@ -354,11 +396,29 @@ For simplicity, we assume the settlement asset (defined by `settlement_currency`
 
 Ownership of liquidity in the vault is tracked by **shares**. Users deposit USDT coins to receive newly minted shares, or burn shares to redeem USDT coins.
 
-At any time, the vault's **equity** is defined as the vault's token balance (which reflects the total amount of deposit from liquidity providers and the vault's realized PnL) plus its unrealized PnL:
+At any time, the vault's **equity** is defined as the vault's token balance (which reflects the total amount of deposit from liquidity providers and the vault's realized PnL) plus its unrealized PnL and unrealized funding:
 
 ```rust
-fn compute_vault_equity(state: &State, usdt_price: Udec) -> Dec {
-    state.vault_margin + (compute_vault_unrealized_pnl() / usdt_price)
+fn compute_vault_equity(
+    state: &State,
+    pair_states: &Map<PairId, PairState>,
+    pair_params_map: &Map<PairId, PairParams>,
+    oracle_prices: &Map<PairId, Udec>,
+    usdt_price: Udec,
+    current_time: Timestamp,
+) -> Dec {
+    let unrealized_pnl = compute_vault_unrealized_pnl();
+
+    let mut unrealized_funding = Dec::ZERO;
+    for (pair_id, pair_state) in pair_states {
+        let oracle_price = oracle_prices[&pair_id];
+        let pair_params = pair_params_map[&pair_id];
+        unrealized_funding += compute_vault_unrealized_funding_for_pair(
+            pair_state, pair_params, oracle_price, current_time,
+        );
+    }
+
+    state.vault_margin + ((unrealized_pnl + unrealized_funding) / usdt_price)
 }
 ```
 
@@ -382,7 +442,7 @@ fn handle_deposit_liquidity(
 
         ensure!(
             vault_equity > 0,
-            "vault is in catastrohpic loss! deposit disabled"
+            "vault is in catastrophic loss! deposit disabled"
             // If the vault has positive shares (i.e. it isn't empty) but zero or
             // negative equity, the protocol is insolvent, and require intervention
             // e.g. a bailout. Disable deposits in this case.
@@ -627,7 +687,7 @@ let skew = pair_state.long_oi + pair_state.short_oi;
 Note that `short_oi` is non-positive.
 
 - If `skew` is positive, it means all traders combined have a net long exposure, and the counterparty vault has a net short exposure. To incentivize traders to go back to neutral, the vault will offer better prices for selling, and worse price for buying.
-- If `skew` is negative, it means all traders combined have a net short exposure, and the counterparty vault has a net long exposure. To incentivize traders to go bakc to neutral, the vault will offer better prices for buying, and worse price for selling.
+- If `skew` is negative, it means all traders combined have a net short exposure, and the counterparty vault has a net long exposure. To incentivize traders to go back to neutral, the vault will offer better prices for buying, and worse price for selling.
 - If `skew` is zero, it means the market is perfectly neutral, and the vault will not bias towards either buying or selling.
 
 Given a skew and a size, the execution price is calculated as:
@@ -655,8 +715,8 @@ fn compute_exec_price(
     oracle_price * (1 + premium)
 }
 
-/// Maginal price is the execution price of an order of infinitesimal size.
-/// This is requivalent to calling
+/// Marginal price is the execution price of an order of infinitesimal size.
+/// This is equivalent to calling
 ///
 /// ```rust
 /// compute_exec_price(oracle_price, skew, 0, pair_params)
@@ -671,7 +731,7 @@ fn compute_marginal_price(oracle_price: Udec, skew: Dec, pair_params: &PairParam
 }
 
 /// Bound the value `x` within the range `[min, max]`.
-fn clamp(x: Dec, min: Dec, max: Dex) -> Dec {
+fn clamp(x: Dec, min: Dec, max: Dec) -> Dec {
     min(max(x, min), max)
 }
 ```
@@ -784,8 +844,12 @@ fn handle_submit_order(
     size: Dec,
     kind: OrderKind,
     reduce_only: bool,
+    current_time: Timestamp,
 ) {
     ensure!(size != 0, "nothing to do");
+
+    // Accrue funding before any OI changes
+    accrue_funding(pair_state, pair_params, oracle_price, current_time);
 
     let skew = pair_state.long_oi + pair_state.short_oi;
     let user_pos = user_state.positions
@@ -887,7 +951,12 @@ fn handle_submit_order(
     }
 }
 
-/// Execute a fill, updating positions and settling PnL for any closing portion.
+/// Execute a fill, updating positions and settling PnL and funding for any
+/// closing portion.
+///
+/// IMPORTANT: The caller must call `accrue_funding` before calling this
+/// function. This ensures `cumulative_funding_per_unit` is up-to-date
+/// before we settle per-position funding and update `oi_weighted_entry_funding`.
 fn execute_fill(
     state: &mut State,
     pair_state: &mut PairState,
@@ -902,9 +971,14 @@ fn execute_fill(
     let user_pos = position.map(|p| p.size).unwrap_or(Dec::ZERO);
     let (closing_size, opening_size) = decompose_fill(fill_size, user_pos);
 
-    // Settle PnL for closing portion
-    if closing_size != Dec::ZERO {
-        if let Some(pos) = position {
+    // Settle accrued funding and price PnL for existing position
+    if let Some(pos) = position {
+        // Settle funding BEFORE modifying the position.
+        // This also updates oi_weighted_entry_funding.
+        settle_funding(state, pair_state, user_state, pos);
+
+        // Settle price PnL for the closing portion
+        if closing_size != Dec::ZERO {
             let pnl = compute_pnl_to_realize(pos, closing_size, exec_price);
             settle_pnl(state, user_state, pnl);
 
@@ -914,8 +988,13 @@ fn execute_fill(
         }
     }
 
-    // Update position size
+    // Update position size and oi_weighted_entry_funding
     if let Some(pos) = position {
+        // Remove old contribution to oi_weighted_entry_funding
+        // (settle_funding already set entry to current cumulative, so this
+        // removes the post-settlement contribution before we change the size)
+        pair_state.oi_weighted_entry_funding -= pos.size * pos.entry_funding_per_unit;
+
         pos.size += fill_size;
 
         // Add to cost_basis for opening portion
@@ -923,16 +1002,25 @@ fn execute_fill(
             pos.cost_basis += floor(abs(opening_size) * exec_price);
         }
 
-        // Remove position if fully closed
+        // Remove position if fully closed, or re-add contribution
         if pos.size == Dec::ZERO {
             user_state.positions.remove(&pair_id);
+            // oi_weighted_entry_funding contribution already removed above
+        } else {
+            // entry_funding_per_unit stays at current cumulative (set by settle_funding)
+            pair_state.oi_weighted_entry_funding += pos.size * pos.entry_funding_per_unit;
         }
     } else if opening_size != Dec::ZERO {
         // Create new position
+        let entry_funding = pair_state.cumulative_funding_per_unit;
         user_state.positions.insert(pair_id, Position {
             size: fill_size,
             cost_basis: floor(abs(opening_size) * exec_price),
+            entry_funding_per_unit: entry_funding,
         });
+
+        // Add new contribution to oi_weighted_entry_funding
+        pair_state.oi_weighted_entry_funding += fill_size * entry_funding;
     }
 
     // Update OI based on opening/closing portions
@@ -1041,7 +1129,11 @@ fn fulfill_limit_orders_for_pair(
     oracle_price: Udec,
     pair_state: &mut PairState,
     pair_params: &PairParams,
+    current_time: Timestamp,
 ) {
+    // Accrue funding before any OI changes
+    accrue_funding(pair_state, pair_params, oracle_price, current_time);
+
     let mut skew = pair_state.long_oi + pair_state.short_oi;
 
     // Get iterators for both queues (sorted by price-time within each)
@@ -1276,7 +1368,190 @@ fn try_fill_sell_order(
 
 ### Funding fee
 
-> TODO
+Funding fees incentivize the market toward neutrality (equal long and short OI) by charging the majority side and paying the minority side. We use a **velocity-based** model (Synthetix V2/V3 style): the funding _rate_ changes over time at a velocity proportional to the current skew. This gives the rate "memory" -- even if the skew briefly touches zero, the rate persists, providing a stronger and more sustained incentive for rebalancing than a simple proportional model.
+
+**Flow**: Bilateral. The majority side pays, the minority side receives, and the vault collects the net difference (`skew * delta_accumulator`). This means the vault profits from funding whenever the market is skewed (which is most of the time), regardless of which side is dominant.
+
+#### Funding velocity
+
+The funding velocity determines how quickly the funding rate changes. It is proportional to the current skew:
+
+```rust
+/// Compute the current funding velocity (rate of change of the funding rate).
+///
+/// velocity = (skew / skew_scale) * max_funding_velocity
+///
+/// The velocity has the same sign as the skew:
+/// - Positive skew (net long) → positive velocity → rate increases → longs pay more
+/// - Negative skew (net short) → negative velocity → rate decreases → shorts pay more
+/// - Zero skew → zero velocity → rate stays constant (drifts toward 0 naturally
+///   only when the rate overshoots past zero)
+fn compute_funding_velocity(
+    pair_state: &PairState,
+    pair_params: &PairParams,
+) -> Dec {
+    let skew = pair_state.long_oi + pair_state.short_oi;
+    (skew / pair_params.skew_scale) * pair_params.max_funding_velocity
+}
+```
+
+#### Current funding rate
+
+The funding rate evolves linearly between accruals:
+
+```rust
+/// Compute the current funding rate, accounting for time elapsed since
+/// the last accrual.
+///
+/// current_rate = last_rate + velocity * elapsed_days
+///
+/// Note: the rate is NOT clamped. It can grow unboundedly if the skew
+/// persists. This is intentional -- extreme skew should produce extreme
+/// rates to strongly incentivize rebalancing.
+fn compute_current_funding_rate(
+    pair_state: &PairState,
+    pair_params: &PairParams,
+    current_time: Timestamp,
+) -> Dec {
+    let elapsed_secs = current_time - pair_state.last_funding_time;
+    let elapsed_days = elapsed_secs / 86400;
+
+    let velocity = compute_funding_velocity(pair_state, pair_params);
+
+    pair_state.funding_rate + velocity * elapsed_days
+}
+```
+
+#### Unrecorded funding per unit
+
+Between accruals, funding accumulates but hasn't yet been recorded in `cumulative_funding_per_unit`. We compute this unrecorded portion using trapezoidal integration (the rate changes linearly, so the integral is exact):
+
+```rust
+/// Compute the funding per unit of position size that has accrued since
+/// the last accrual but not yet been recorded, along with the current
+/// funding rate.
+///
+/// Returns `(unrecorded_funding_per_unit, current_rate)`.
+///
+/// Uses trapezoidal integration: the rate changes linearly from
+/// `last_rate` to `current_rate` over the elapsed period, so the
+/// average rate is their midpoint.
+///
+/// unrecorded = avg_rate * elapsed_days * oracle_price
+///
+/// The oracle_price converts from "fraction of position size per day"
+/// to settlement currency per contract.
+///
+/// The current rate is returned alongside the unrecorded funding to
+/// avoid redundant computation (the rate is already needed for the
+/// trapezoidal integration).
+fn compute_unrecorded_funding_per_unit(
+    pair_state: &PairState,
+    pair_params: &PairParams,
+    oracle_price: Udec,
+    current_time: Timestamp,
+) -> (Dec, Dec) {
+    let elapsed_secs = current_time - pair_state.last_funding_time;
+    let elapsed_days = elapsed_secs / 86400;
+
+    let current_rate = compute_current_funding_rate(pair_state, pair_params, current_time);
+    let avg_rate = (pair_state.funding_rate + current_rate) / 2;
+
+    (avg_rate * elapsed_days * oracle_price, current_rate)
+}
+```
+
+#### Accruing funding (global)
+
+This function updates the global pair state to reflect accumulated funding. It **must** be called before any operation that changes OI (fills, liquidations) to ensure the accumulator is up-to-date.
+
+```rust
+/// Accrue funding for a pair: update the cumulative accumulator,
+/// the current rate, and the timestamp.
+///
+/// MUST be called before any OI-changing operation (execute_fill,
+/// liquidation) to ensure correct accounting.
+fn accrue_funding(
+    pair_state: &mut PairState,
+    pair_params: &PairParams,
+    oracle_price: Udec,
+    current_time: Timestamp,
+) {
+    let (unrecorded, current_rate) = compute_unrecorded_funding_per_unit(
+        pair_state,
+        pair_params,
+        oracle_price,
+        current_time,
+    );
+
+    // Update the funding rate, funding accumulator, and timestamp.
+    pair_state.funding_rate = current_rate;
+    pair_state.last_funding_time = current_time;
+    pair_state.cumulative_funding_per_unit += unrecorded;
+}
+```
+
+#### Per-position accrued funding
+
+```rust
+/// Compute the funding accrued by a specific position since it was
+/// last touched (opened, modified, or had funding settled).
+///
+/// accrued = position.size * (current_cumulative - entry_cumulative)
+///
+/// Sign convention:
+/// - Positive result = trader owes vault (cost to the trader)
+/// - Negative result = vault owes trader (credit to the trader)
+///
+/// This follows from:
+/// - When rate > 0: longs pay (size > 0 produces positive accrued)
+/// - When rate < 0: shorts pay (size < 0, delta < 0, product is positive)
+fn compute_accrued_funding(
+    position: &Position,
+    pair_state: &PairState,
+) -> Dec {
+    let delta = pair_state.cumulative_funding_per_unit - position.entry_funding_per_unit;
+    position.size * delta
+}
+```
+
+#### Settling funding for a position
+
+When a position is touched (opened, modified, closed, or liquidated), its accrued funding is settled -- transferred between the trader and the vault -- and the position's entry point is reset.
+
+```rust
+/// Settle accrued funding for a position. Transfers funds between the
+/// trader's margin and the vault.
+///
+/// This function:
+/// 1. Computes the accrued funding since the position was last touched.
+/// 2. Transfers the amount (positive = user pays vault, negative = vault pays user).
+/// 3. Updates oi_weighted_entry_funding to remove the old contribution.
+/// 4. Resets the position's entry_funding_per_unit to the current cumulative value.
+/// 5. Updates oi_weighted_entry_funding to add the new contribution.
+///
+/// Steps 3-5 maintain the invariant:
+///   oi_weighted_entry_funding = Σ (pos.size * pos.entry_funding_per_unit)
+fn settle_funding(
+    state: &mut State,
+    pair_state: &mut PairState,
+    user_state: &mut UserState,
+    position: &mut Position,
+) {
+    let accrued = compute_accrued_funding(position, pair_state);
+
+    // Transfer funding between user and vault.
+    // Positive accrued = user pays vault. Negative = vault pays user.
+    // We reuse settle_pnl with negated sign (accrued funding is a cost to the
+    // trader, so it's negative PnL from their perspective).
+    settle_pnl(state, user_state, -accrued);
+
+    // Update the oi_weighted_entry_funding accumulator:
+    // Remove old contribution, update entry point, add new contribution.
+    pair_state.oi_weighted_entry_funding -= position.size * position.entry_funding_per_unit;
+    position.entry_funding_per_unit = pair_state.cumulative_funding_per_unit;
+    pair_state.oi_weighted_entry_funding += position.size * position.entry_funding_per_unit;
+}
 
 ### PnL and margin requirement
 
@@ -1288,7 +1563,51 @@ fn try_fill_sell_order(
 
 Since the vault takes on counterparty positions of every trader, its PnL should be the reverse of the total PnL of all traders combined. However, it's not feasible to loop over all trader positions and sum them up. Instead, we calculate based on global accumulator values.
 
-> TODO
+> TODO (price PnL accumulators)
+
+#### Vault unrealized funding
+
+The vault's unrealized funding for a pair can be computed from the global accumulators without iterating over individual positions:
+
+```rust
+/// Compute the vault's unrealized funding for a single pair.
+///
+/// The total accrued funding across all positions is:
+///   Σ pos.size * (cumulative - pos.entry_funding_per_unit)
+///   = cumulative * Σ pos.size - Σ (pos.size * pos.entry_funding_per_unit)
+///   = cumulative * skew - oi_weighted_entry_funding
+///
+/// The vault receives the opposite of what traders owe, so:
+///   vault_unrealized_funding = oi_weighted_entry_funding - cumulative * skew
+///
+/// Additionally, we must include funding that has accrued since the last
+/// `accrue_funding` call (the "unrecorded" portion).
+///
+/// Positive result = vault is owed money. Negative = vault owes traders.
+fn compute_vault_unrealized_funding_for_pair(
+    pair_state: &PairState,
+    pair_params: &PairParams,
+    oracle_price: Udec,
+    current_time: Timestamp,
+) -> Dec {
+    let skew = pair_state.long_oi + pair_state.short_oi;
+
+    // Funding already recorded in the accumulator
+    let recorded = pair_state.oi_weighted_entry_funding
+        - pair_state.cumulative_funding_per_unit * skew;
+
+    // Funding accrued since last accrue_funding call
+    let (unrecorded_per_unit, _) = compute_unrecorded_funding_per_unit(
+        pair_state,
+        pair_params,
+        oracle_price,
+        current_time,
+    );
+    let unrecorded = -skew * unrecorded_per_unit;
+
+    recorded + unrecorded
+}
+```
 
 ### Liquidation and deleveraging
 
