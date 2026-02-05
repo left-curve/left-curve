@@ -37,8 +37,8 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
 }) => {
   const [isOpen, setIsOpen] = useControlledState(controlledIsOpen, onOpenChange, false);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
-  const openTimeout = useRef<ReturnType<typeof setTimeout>>();
-  const closeTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const openTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const closeTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const triggerRef = useRef<HTMLDivElement | null>(null);
 
   const handleOpen = () => {

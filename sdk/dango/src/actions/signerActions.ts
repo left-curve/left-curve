@@ -7,7 +7,8 @@ import { type DexMutationActions, dexMutationActions } from "./dex/dexActions.js
 
 import type { Transport } from "@left-curve/sdk/types";
 
-import type { DangoClient, Signer } from "../types/index.js";
+import type { DangoClient } from "../types/clients.js";
+import type { Signer } from "../types/signer.js";
 
 export type SignerActions = AppMutationActions & AccountFactoryMutationActions & DexMutationActions;
 

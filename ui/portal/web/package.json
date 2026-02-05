@@ -35,7 +35,7 @@
     "react-scan": "^0.4.3",
     "workbox-webpack-plugin": "^7.3.0",
     "workbox-window": "^7.3.0",
-    "cmdk": "^1.0.4",
+    "cmdk": "^1.1.1",
     "zod": "catalog:"
   },
   "optionalDependencies": {

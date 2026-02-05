@@ -5,9 +5,11 @@ import { useControlledState } from "@left-curve/foundation";
 import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactElement } from "react";
 import type { VariantProps } from "tailwind-variants";
 import { useHasMounted } from "../hooks/useHasMounted.js";
+
+type TabElementProps = { title: string; isActive?: boolean; color?: string };
 
 export interface TabsProps extends VariantProps<typeof tabsVariants> {
   onTabChange?: (tab: string) => void;
@@ -40,7 +42,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
     if (defaultKey) return defaultKey;
 
     if (tabs.length > 0) {
-      return typeof tabs[0] === "string" ? tabs[0] : (tabs[0] as React.ReactElement).props.title;
+      return typeof tabs[0] === "string" ? tabs[0] : (tabs[0] as ReactElement<TabElementProps>).props.title;
     }
     return "";
   });
@@ -63,7 +65,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
     >
       {tabs.map((e) => {
         const isKey = typeof e === "string";
-        const elemKey = isKey ? e : (e as React.ReactElement).props.title;
+        const elemKey = isKey ? e : (e as ReactElement<TabElementProps>).props.title;
         const isActive = elemKey === activeTab;
 
         return (
@@ -81,7 +83,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
                 fullWidth={fullWidth}
               />
             ) : (
-              cloneElement(e as React.ReactElement, { isActive, color })
+              cloneElement(e as ReactElement<TabElementProps>, { isActive, color })
             )}
             {isActive && hasMounted ? (
               <motion.div
