@@ -3,7 +3,7 @@
 - This is a perpetual futures (perps) exchange that uses the **peer-to-pool model**, similar to e.g. Ostium. A liquidity pool provides quotes (based on data including oracle price, open interest (OI), and the order's size). All orders are executed against the pool, with the pool taking the counterparty position (e.g. if a user opens a long position of 5 BTC, the pool takes the opposite: a short position of 5 BTC). We call the pool the **counterparty pool**. Empirically, traders in aggregate lose money in the long run, which means counterparty pool makes money. This is in contrary to the peer-to-peer model, where users place orders in an order book; a user's order is executed against other users' orders.
 - The exchange operates in **one-way mode**. Meaning, e.g., a user has exactly 1 position for each tradable asset. If an order is fulfilled for a user who already has a position in that asset, the position is modified. This is in contrary to **two-way mode**, where a user can have multiple positions in a single asset. When placing an order, the user can choose whether the order will create a new position or modify an existing one.
 - To ensure the protocol's solvency and profitability, it's important the market is close to _neutral_, meaning there is roughly the same amount of long and short OI. We incentivize this through two mechanisms, **skew pricing** and **funding fee** (described in respective sections).
-- For now, the exchange supports only **cross margin**. Support for isolated margin may be added in a future update. After executing a fill, the contract checks whether the user satisfies margin requirements. If the margin check fails, the transaction is reverted, undoing all state changes.
+- For now, the exchange supports only **cross margin**. Support for isolated margin may be added in a future update. The exchange uses **margin reservation at order placement**: when submitting an order, the required margin is calculated upfront and reserved, preventing withdrawal. This eliminates the need to check margin at execution time and ensures predictable order outcomes.
 
 This spec is divided into three sections:
 
@@ -26,11 +26,15 @@ User may interact with the smart contract by dispatching the following execution
 
 ```rust
 enum ExecuteMsg {
+    // -------------------------------------------------------------------------
+    // Liquidity Provider (LP) Methods
+    // -------------------------------------------------------------------------
+
     /// Add liquidity to the counterparty vault.
     ///
-    /// User must sent a non-zero amount of the settlement currency (defined in
+    /// User must send a non-zero amount of the settlement currency (defined in
     /// `Params` below) as attachment of this function call.
-    Deposit {
+    DepositLiquidity {
         /// Revert if less than this number of share is minted.
         min_shares_to_mint: Option<Uint>,
     },
@@ -39,16 +43,39 @@ enum ExecuteMsg {
     ///
     /// The request will be fulfilled after the cooldown period, defined in the
     /// global parameters.
-    Unlock {
+    UnlockLiquidity {
         /// The amount of vault shares the user wishes to burn.
         /// Must be no more than the amount of vault shares the user owns.
         shares_to_burn: Uint,
+    },
+
+    // -------------------------------------------------------------------------
+    // Trader Methods
+    // -------------------------------------------------------------------------
+
+    /// Deposit funds into the user's trading balance.
+    ///
+    /// User must send a non-zero amount of the settlement currency as attachment
+    /// of this function call.
+    ///
+    /// This is for **trading**, not liquidity provision. The trading balance
+    /// serves as collateral for opening and maintaining positions.
+    DepositMargin {},
+
+    /// Withdraw funds from the user's trading balance.
+    ///
+    /// Can only withdraw up to the available margin (total balance minus used
+    /// margin minus reserved margin).
+    WithdrawMargin {
+        /// The amount of settlement currency to withdraw.
+        amount: Uint,
     },
 
     /// Submit an order.
     SubmitOrder {
         // The pair ID can either be numerical or string-like.
         pair_id: PairId,
+
         /// The amount of the futures contract to buy or sell.
         ///
         /// E.g. when trading in the BTCUSD-PERP pair, if 1 BTCUSD-PERP futures
@@ -59,12 +86,25 @@ enum ExecuteMsg {
         /// Positive for buy (increase long exposure, decrease short exposure);
         /// negative for sell (decrease long exposure, increase short exposure).
         size: Dec,
+
+        /// The order type: market, limit, etc.
         kind: OrderKind,
+
         /// If true, only the closing portion of the order is executed; any
         /// opening portion is discarded. If false, if the opening portion
         /// would violate OI constraints, the entire order (including the
         /// closing portion) is reverted.
         reduce_only: bool,
+    },
+
+    /// Cancel a pending limit order.
+    ///
+    /// Releases the margin reserved for this order back to available margin.
+    CancelOrder {
+        /// The pair ID of the order to cancel.
+        pair_id: PairId,
+        /// The order ID to cancel.
+        order_id: OrderId,
     },
 
     /// Forcibly close all of a user's positions.
@@ -165,6 +205,14 @@ struct PairParams {
     /// This constraint does not apply to reducing positions.
     pub max_abs_oi: Udec,
 
+    /// Initial margin ratio for this pair.
+    ///
+    /// Determines the minimum collateral required to open a position.
+    /// E.g., 0.05 = 5% = 20x maximum leverage.
+    ///
+    /// Required margin = position_size * price * initial_margin_ratio
+    pub initial_margin_ratio: Udec,
+
     // TODO: min order size (either in number of contracts or in USD; to be decided)
 }
 ```
@@ -212,18 +260,47 @@ User-specific state:
 
 ```rust
 struct UserState {
+    // -------------------------------------------------------------------------
+    // Liquidity Provider (LP) fields
+    // -------------------------------------------------------------------------
+
     /// The amount of vault shares this user owns.
     pub vault_shares: Uint,
 
-    /// The user's positions.
-    pub positions: Map<PairId, Position>,
-
     /// The user's vault withdrawals that are pending cooldown.
     pub unlocks: Vec<Unlock>,
+
+    // -------------------------------------------------------------------------
+    // Trader fields
+    // -------------------------------------------------------------------------
+
+    /// Trading collateral balance in settlement currency (e.g., USDT).
+    pub margin: Uint,
+
+    /// Margin reserved for pending limit orders.
+    ///
+    /// When a limit order is placed but not immediately filled, the required
+    /// margin is reserved (locked) to ensure the user can cover the position
+    /// if/when the order executes.
+    pub reserved_margin: Uint,
+
+    /// The user's open positions.
+    pub positions: Map<PairId, Position>,
 }
 
 struct Position {
-    // TODO
+    /// Position size in contracts.
+    ///
+    /// Positive = long position (profits when price increases).
+    /// Negative = short position (profits when price decreases).
+    pub size: Dec,
+
+    /// Total cost to open this position, in settlement currency.
+    ///
+    /// Used for PnL calculation: PnL = current_value - cost_basis
+    pub cost_basis: Uint,
+
+    // ... other fields TBD (e.g., entry price, realized PnL, funding accumulated)
 }
 
 struct Unlock {
@@ -263,7 +340,7 @@ struct Order {
 
 For simplicity, we assume the settlement asset (defined by `settlement_denom` in `Params`) is USDT.
 
-### Deposit
+### Vault deposit
 
 Ownership of liquidity in the vault is tracked by **shares**. Users deposit USDT coins to receive newly minted shares, or burn shares to redeem USDT coins.
 
@@ -278,7 +355,7 @@ fn compute_vault_equity(state: &State, usdt_price: Udec) -> Dec {
 Suppose the vault receives `amount_received` units of USDT from user:
 
 ```rust
-fn handle_deposit(
+fn handle_deposit_liquidity(
     state: &mut State,
     user_state: &mut UserState,
     amount_received: Uint,
@@ -325,12 +402,12 @@ fn handle_deposit(
 }
 ```
 
-### Unlock
+### Vault withdrawal
 
 Suppose user requests to burn `shares_to_burn` units of shares:
 
 ```rust
-fn handle_unlock(
+fn handle_unlock_liquidity(
     state: &mut State,
     user_state: &mut UserState,
     shares_to_burn: Uint,
@@ -363,11 +440,144 @@ fn handle_unlock(
     user_state.vault_shares -= shares_to_burn;
 
     // Insert the new unlock into the user's state.
-    // Once the cooldown period elapses, the contract needs to be triggered to
-    // release the fund and remove this unlock. This is trivial and we ignore it
-    // in this spec.
     let end_time = current_time + params.vault_cooldown_period;
     user_state.unlocks.push(Unlock { amount_to_release, end_time });
+}
+```
+
+Once the cooldown period elapses, the contract needs to be triggered to release the fund and remove this unlock. This is trivial and we ignore it in this spec.
+
+### Margin deposit
+
+Traders deposit settlement currency to their trading balance before opening positions:
+
+```rust
+fn handle_deposit_margin(
+    user_state: &mut UserState,
+    amount_received: Uint,
+) {
+    user_state.margin += amount_received;
+}
+```
+
+### Margin withdrawal
+
+Traders can withdraw available margin (funds not backing positions or reserved for orders):
+
+```rust
+fn handle_withdraw_margin(
+    user_state: &mut UserState,
+    amount: Uint,
+) {
+    ensure!(amount > 0, "nothing to do");
+
+    ensure!(
+      amount < compute_available_margin(user_state),
+      "insufficient available margin"
+    );
+
+    user_state.margin -= amount;
+
+    // Transfer `amount` of settlement currency to user.
+}
+```
+
+Margin is the collateral required to open and maintain positions. We distinguish three types:
+
+- **Used margin**: Collateral currently backing open positions
+- **Reserved margin**: Collateral locked for pending limit orders (not yet filled)
+- **Available margin**: `balance - used_margin - reserved_margin`
+
+```rust
+/// Compute the margin available for withdrawal.
+fn compute_available_margin(
+    user_state: &UserState,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_params_map: &Map<PairId, PairParams>,
+) -> Uint {
+    user_state.balance
+        .saturate_sub(compute_used_margin(user_state, oracle_prices, pair_params_map))
+        .saturating_sub(user_state.reserved_margin)
+}
+
+/// Compute the margin currently used by open positions.
+///
+/// For each position, the used margin is:
+///   |position_size| * current_price * initial_margin_ratio
+fn compute_used_margin(
+    user_state: &UserState,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_params_map: &Map<PairId, PairParams>,
+) -> Uint {
+    let mut total = 0;
+
+    for (pair_id, position) in &user_state.positions {
+        let oracle_price = oracle_prices[&pair_id];
+        let pair_params = pair_params_map[&pair_id];
+
+        // Used margin = |size| * price * initial_margin_ratio
+        let margin = abs(position).size * oracle_price * pair_params.initial_margin_ratio;
+
+        total += floor(margin);
+    }
+
+    total
+}
+```
+
+### Cancel order
+
+Users can cancel pending limit orders to release their reserved margin:
+
+```rust
+fn handle_cancel_order(
+    user_state: &mut UserState,
+    pair_id: PairId,
+    order_id: OrderId,
+    pair_params: &PairParams,
+) {
+    // Find and remove the order from the appropriate order book
+    let order = if let Some(order) = remove_buy_order(pair_id, order_id) {
+        order
+    } else if let Some(order) = remove_sell_order(pair_id, order_id) {
+        order
+    } else {
+        ensure!(false, "order not found");
+    };
+
+    // Ensure the user owns this order
+    ensure!(order.user_id == caller_user_id, "not your order");
+
+    // Compute and release the reserved margin for this order
+    let user_pos = user_state.positions
+        .get(&pair_id)
+        .map(|p| p.size)
+        .unwrap_or(Dec::ZERO);
+    let (_, opening_size) = decompose_fill(order.size, user_pos);
+
+    // For cancellation, we need to recover the limit_price from the order key
+    // (implementation detail: the order key contains the limit price)
+    let reserved = compute_required_margin(opening_size, limit_price, pair_params);
+    user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved);
+}
+
+/// Compute the margin required for the opening portion of an order.
+///
+/// Only the opening portion (new exposure) requires margin.
+/// The closing portion releases margin.
+fn compute_required_margin(
+    opening_size: Dec,
+    worst_case_price: Udec,
+    pair_params: &PairParams,
+) -> Uint {
+    if opening_size == Dec::ZERO {
+        return Uint::ZERO;
+    }
+
+    // Required margin = |opening_size| * worst_case_price * initial_margin_ratio
+    let margin = abs(opening_size) * worst_case_price * pair_params.initial_margin_ratio;
+
+    ceil(margin)  // Round up to be conservative (disadvantage to user)
 }
 ```
 
@@ -551,13 +761,13 @@ fn compute_max_opening_from_oi(
 
 #### Putting things together
 
-The following combines the above together:
-
 ```rust
 fn handle_submit_order(
     pair_state: &mut PairState,
     pair_params: &PairParams,
     user_state: &mut UserState,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_params_map: &Map<PairId, PairParams>,
     pair_id: PairId,
     oracle_price: Udec,
     size: Dec,
@@ -599,9 +809,21 @@ fn handle_submit_order(
         size
     };
 
-    // Step 4: Check price constraint (all-or-nothing on entire fill)
+    // Step 4: Compute the target price. This is the worst possible price the
+    // order may be filled at.
+    let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
+
+    // Step 5: Compute required margin for the opening portion of the ENTIRE order
+    // (not just fill_size, but the full opening_size including unfilled)
+    let (_, full_opening_size) = decompose_fill(size, user_pos);
+    let required_margin = compute_required_margin(full_opening_size, target_price, pair_params);
+
+    // Step 6: Check available margin BEFORE any execution
+    let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map);
+    ensure!(available_margin >= required_margin, "insufficient margin");
+
+    // Step 7: Check price constraint (all-or-nothing on entire fill)
     if fill_size != Dec::ZERO {
-        let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
         let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
         let price_ok = if is_buy {
@@ -610,19 +832,13 @@ fn handle_submit_order(
             exec_price >= target_price
         };
 
-        if !price_ok {
-            // Price constraint violated: entire order fails
-            return; // Or handle as unfilled based on order kind
+        if price_ok {
+            // Step 8: Execute the fill
+            execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
         }
-
-        // Step 5: Execute the fill
-        execute_fill(pair_state, user_state, pair_id, fill_size, exec_price);
-
-        // Step 6: Check margin requirement; revert all state changes if insufficient
-        ensure_margin_requirement(user_state)?;
     }
 
-    // Step 7: Handle unfilled portion based on order kind
+    // Step 9: Handle unfilled portion based on order kind
     let unfilled_size = size - fill_size;
     if unfilled_size != Dec::ZERO {
         match kind {
@@ -630,7 +846,14 @@ fn handle_submit_order(
                 // Market orders are IOC: discard unfilled portion (no-op)
             },
             OrderKind::Limit { limit_price } => {
-                // Limit orders are GTC: store in indexed map for later fulfillment
+                // Step 10: Reserve margin for the unfilled portion
+                // The filled portion's margin is now "used margin" (backing the position)
+                // The unfilled portion needs margin reserved for potential future execution
+                let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos + fill_size);
+                let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params);
+                user_state.reserved_margin += margin_to_reserve;
+
+                // Store limit order as GTC
                 let order = Order {
                     user_id,
                     size: unfilled_size,
@@ -715,6 +938,10 @@ fn fulfill_limit_orders_for_pair(
 /// Attempts to fill the next buy order from the iterator.
 /// The caller has already verified that this order passes the marginal price cutoff.
 /// Always advances the iterator.
+///
+/// NOTE: No margin check is performed here. Margin was reserved when the order
+/// was placed. Upon fill, we release the reserved margin (it converts to "used
+/// margin" backing the new position).
 fn try_fill_buy_order(
     iter: &mut Peekable<impl Iterator<Item = (BuyOrderKey, Order)>>,
     oracle_price: Udec,
@@ -766,11 +993,9 @@ fn try_fill_buy_order(
             execute_fill(pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
             *skew += fill_size;
 
-            // Check margin requirement
-            if !check_margin_requirement(&user_state) {
-                revert_fill();
-                return;
-            }
+            // Release reserved margin for the filled portion (closing only, so no opening margin)
+            // The unfilled opening portion's margin stays reserved
+            // (No change to reserved_margin here since we only filled closing portion)
 
             // Commit changes
             save_user_state(user_state);
@@ -791,11 +1016,10 @@ fn try_fill_buy_order(
         execute_fill(pair_state, &mut user_state, pair_id, order.size, exec_price);
         *skew += order.size;
 
-        // Check margin requirement
-        if !check_margin_requirement(&user_state) {
-            revert_fill();
-            return;
-        }
+        // Release reserved margin for this order
+        // The margin now becomes "used margin" backing the position
+        let reserved_for_order = compute_required_margin(opening_size, limit_price, pair_params);
+        user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order);
 
         // Commit changes
         save_user_state(user_state);
@@ -808,6 +1032,10 @@ fn try_fill_buy_order(
 /// Attempts to fill the next sell order from the iterator.
 /// The caller has already verified that this order passes the marginal price cutoff.
 /// Always advances the iterator.
+///
+/// NOTE: No margin check is performed here. Margin was reserved when the order
+/// was placed. Upon fill, we release the reserved margin (it converts to "used
+/// margin" backing the new position).
 fn try_fill_sell_order(
     iter: &mut Peekable<impl Iterator<Item = (SellOrderKey, Order)>>,
     oracle_price: Udec,
@@ -857,11 +1085,9 @@ fn try_fill_sell_order(
             execute_fill(pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
             *skew += fill_size;
 
-            // Check margin requirement
-            if !check_margin_requirement(&user_state) {
-                revert_fill();
-                return;
-            }
+            // Release reserved margin for the filled portion (closing only, so no opening margin)
+            // The unfilled opening portion's margin stays reserved
+            // (No change to reserved_margin here since we only filled closing portion)
 
             // Commit changes
             save_user_state(user_state);
@@ -882,11 +1108,10 @@ fn try_fill_sell_order(
         execute_fill(pair_state, &mut user_state, pair_id, order.size, exec_price);
         *skew += order.size;
 
-        // Check margin requirement
-        if !check_margin_requirement(&user_state) {
-            revert_fill();
-            return;
-        }
+        // Release reserved margin for this order
+        // The margin now becomes "used margin" backing the position
+        let reserved_for_order = compute_required_margin(opening_size, limit_price, pair_params);
+        user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order);
 
         // Commit changes
         save_user_state(user_state);
@@ -902,22 +1127,6 @@ fn try_fill_sell_order(
 > TODO
 
 ### PnL and margin requirement
-
-#### Margin requirement
-
-After executing a fill, we check whether the user satisfies the margin requirement. If the check fails, the function errors and all state changes (including the fill itself) are reverted.
-
-```rust
-/// Ensures the user has sufficient margin for their positions.
-/// Errors if margin requirement is not met, causing all state changes to revert.
-fn ensure_margin_requirement(user_state: &UserState) -> Result<(), Error> {
-    // TODO: Implement margin calculation
-    // - Compute total position value across all pairs
-    // - Compute unrealized PnL
-    // - Check that collateral >= required margin
-    Ok(())
-}
-```
 
 #### User position PnL
 

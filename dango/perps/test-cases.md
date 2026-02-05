@@ -865,15 +865,399 @@ When timestamps are equal, buy orders are processed first (documented tiebreaker
 
 All test cases verify the algorithm correctly handles:
 
-| Category                     | Behavior                                  | Tests   |
-| ---------------------------- | ----------------------------------------- | ------- |
-| Basic fills                  | Fill when price conditions met            | 1, 2    |
-| Cutoff (marginal price)      | Break when limit vs marginal fails        | 3, 4    |
-| Size-based skip              | Continue when exec > limit (buys)         | 5       |
-| Price-time priority          | Highest/lowest price first, then oldest   | 6, 7    |
-| Skew dynamics                | Fills affect subsequent order eligibility | 8, 14   |
-| OI constraint (reduce=false) | Skip order entirely                       | 9       |
-| OI constraint (reduce=true)  | Partial fill (closing only), update order | 10      |
-| Interleaved processing       | Older timestamp processed first           | 11, 12  |
-| Timestamp tiebreaker         | Buy wins when timestamps equal            | 13      |
-| Cutoff re-evaluation         | Other side can unblock a cutoff           | 14      |
+| Category                     | Behavior                                  | Tests  |
+| ---------------------------- | ----------------------------------------- | ------ |
+| Basic fills                  | Fill when price conditions met            | 1, 2   |
+| Cutoff (marginal price)      | Break when limit vs marginal fails        | 3, 4   |
+| Size-based skip              | Continue when exec > limit (buys)         | 5      |
+| Price-time priority          | Highest/lowest price first, then oldest   | 6, 7   |
+| Skew dynamics                | Fills affect subsequent order eligibility | 8, 14  |
+| OI constraint (reduce=false) | Skip order entirely                       | 9      |
+| OI constraint (reduce=true)  | Partial fill (closing only), update order | 10     |
+| Interleaved processing       | Older timestamp processed first           | 11, 12 |
+| Timestamp tiebreaker         | Buy wins when timestamps equal            | 13     |
+| Cutoff re-evaluation         | Other side can unblock a cutoff           | 14     |
+
+## Margin Reservation
+
+Test cases for the margin reservation system that validates margin at order placement time.
+
+### Test Parameters
+
+```plain
+oracle_price = 100
+K (skew_scale) = 1000
+M (max_abs_premium) = 0.05 (5%)
+max_abs_oi = 500
+initial_margin_ratio = 0.05 (5% = 20x max leverage)
+```
+
+### Key Formulas
+
+- `used_margin = sum(|position_size| * oracle_price * initial_margin_ratio)` for all positions
+- `available_margin = balance - used_margin - reserved_margin`
+- `required_margin = |opening_size| * worst_case_price * initial_margin_ratio`
+- For limit orders: `worst_case_price = limit_price`
+- For market orders: `worst_case_price = marginal_price * (1 ± max_slippage)`
+
+### Test Case Summary Table
+
+| #   | Scenario                              | balance | used | reserved | available | required | Result               |
+| --- | ------------------------------------- | ------- | ---- | -------- | --------- | -------- | -------------------- |
+| 1   | New position, sufficient margin       | 1000    | 0    | 0        | 1000      | 500      | Order accepted       |
+| 2   | New position, insufficient margin     | 100     | 0    | 0        | 100       | 500      | Order rejected       |
+| 3   | Existing position uses margin         | 1000    | 500  | 0        | 500       | 500      | Order accepted       |
+| 4   | Reserved margin blocks order          | 1000    | 0    | 600      | 400       | 500      | Order rejected       |
+| 5   | Closing position requires no margin   | 100     | 500  | 0        | 0*        | 0        | Order accepted       |
+| 6   | Partial close + opening               | 600     | 500  | 0        | 100       | 250      | Order rejected       |
+| 7   | Limit order reserves margin           | 1000    | 0    | 0        | 1000      | 500      | reserved → 500       |
+| 8   | Cancel order releases reserved margin | 1000    | 0    | 500      | 500       | -        | reserved → 0         |
+| 9   | GTC fill releases reserved margin     | 1000    | 0    | 500      | 500       | -        | reserved → 0, used ↑ |
+| 10  | Withdrawal blocked by reserved margin | 1000    | 0    | 600      | 400       | -        | Withdraw 500 fails   |
+| 11  | Withdrawal blocked by used margin     | 1000    | 600  | 0        | 400       | -        | Withdraw 500 fails   |
+| 12  | Withdrawal succeeds with available    | 1000    | 300  | 200      | 500       | -        | Withdraw 400 OK      |
+
+*Note: When closing a position, used_margin is calculated on current position, but required_margin is 0 since opening_size=0.
+
+### Detailed Calculations
+
+#### Test 1: New position, sufficient margin
+
+**Initial State:**
+
+- balance=1000, used_margin=0, reserved_margin=0
+- user_pos=0, long_oi=100, short_oi=-100, skew=0
+
+**Order:** Market buy +100 contracts, max_slippage=5%
+
+**Calculation:**
+
+1. decompose_fill(+100, 0): closing=0, opening=+100
+2. worst_case_price = marginal_price * (1 + 0.05) = 100 * 1.05 = **105**
+3. required_margin = |100| * 105 * 0.05 = **525**
+4. available_margin = 1000 - 0 - 0 = **1000**
+5. Check: available(1000) >= required(525) → **PASS**
+6. Order accepted, executes at exec_price = 102.5
+
+**Result:**
+
+- Order fills, position opened
+- used_margin becomes 100 * 100 * 0.05 = 500 (at current oracle price)
+
+---
+
+#### Test 2: New position, insufficient margin
+
+**Initial State:**
+
+- balance=100, used_margin=0, reserved_margin=0
+- user_pos=0, long_oi=100, short_oi=-100, skew=0
+
+**Order:** Market buy +100 contracts, max_slippage=5%
+
+**Calculation:**
+
+1. decompose_fill(+100, 0): closing=0, opening=+100
+2. worst_case_price = 100 * 1.05 = **105**
+3. required_margin = |100| * 105 * 0.05 = **525**
+4. available_margin = 100 - 0 - 0 = **100**
+5. Check: available(100) >= required(525) → **FAIL**
+
+**Result:**
+
+- Order rejected with "insufficient margin"
+- No state changes
+
+---
+
+#### Test 3: Existing position uses margin
+
+**Initial State:**
+
+- balance=1000, user_pos=+100 (existing long)
+- used_margin = 100 * 100 * 0.05 = **500**
+- reserved_margin=0
+
+**Order:** Market buy +100 contracts (increase long), max_slippage=5%
+
+**Calculation:**
+
+1. decompose_fill(+100, +100): closing=0, opening=+100
+2. worst_case_price = 100 * 1.05 = **105**
+3. required_margin = |100| * 105 * 0.05 = **525**
+4. available_margin = 1000 - 500 - 0 = **500**
+5. Check: available(500) >= required(525) → **FAIL**
+
+**Result:**
+
+- Order rejected with "insufficient margin"
+
+**Alternative:** With balance=1100:
+
+- available = 1100 - 500 - 0 = 600 >= 525 → Order accepted
+
+---
+
+#### Test 4: Reserved margin blocks order
+
+**Initial State:**
+
+- balance=1000, used_margin=0
+- reserved_margin=600 (from pending limit order)
+- user_pos=0
+
+**Order:** Market buy +100 contracts, max_slippage=5%
+
+**Calculation:**
+
+1. decompose_fill(+100, 0): closing=0, opening=+100
+2. required_margin = 100 * 105 * 0.05 = **525**
+3. available_margin = 1000 - 0 - 600 = **400**
+4. Check: available(400) >= required(525) → **FAIL**
+
+**Result:**
+
+- Order rejected with "insufficient margin"
+- User must cancel pending order to free up reserved margin
+
+---
+
+#### Test 5: Closing position requires no margin
+
+**Initial State:**
+
+- balance=100, user_pos=+100 (long position)
+- used_margin = 100 * 100 * 0.05 = **500**
+- reserved_margin=0
+- (Note: balance < used_margin is possible if position has unrealized loss)
+
+**Order:** Market sell -100 contracts (close entire long)
+
+**Calculation:**
+
+1. decompose_fill(-100, +100): closing=-100, opening=0
+2. opening_size = 0, so required_margin = **0**
+3. available_margin = 100 - 500 - 0 = **0** (saturating_sub)
+4. Check: available(0) >= required(0) → **PASS**
+
+**Result:**
+
+- Order accepted, position closed
+- used_margin → 0 (no position)
+- Balance may change based on realized PnL
+
+---
+
+#### Test 6: Partial close + opening (flip position)
+
+**Initial State:**
+
+- balance=600, user_pos=+100 (long position)
+- used_margin = 100 * 100 * 0.05 = **500**
+- reserved_margin=0
+
+**Order:** Market sell -150 contracts (close long, open short)
+
+**Calculation:**
+
+1. decompose_fill(-150, +100): closing=-100, opening=-50
+2. worst_case_price (for sell) = marginal_price * (1 - slippage) = 100 * 0.95 = **95**
+3. required_margin = |-50| * 95 * 0.05 = **237.5** → ceil = **238**
+4. available_margin = 600 - 500 - 0 = **100**
+5. Check: available(100) >= required(238) → **FAIL**
+
+**Result:**
+
+- Order rejected with "insufficient margin"
+- User can submit with reduce_only=true to just close the long
+
+---
+
+#### Test 7: Limit order reserves margin
+
+**Initial State:**
+
+- balance=1000, used_margin=0, reserved_margin=0
+- user_pos=0, skew=0
+
+**Order:** Limit buy +100 contracts at limit_price=105
+
+**Calculation:**
+
+1. decompose_fill(+100, 0): closing=0, opening=+100
+2. worst_case_price = limit_price = **105**
+3. required_margin = 100 * 105 * 0.05 = **525**
+4. available_margin = 1000 - 0 - 0 = **1000**
+5. Check: available(1000) >= required(525) → **PASS**
+6. Price check: exec_price(102.5) <= limit_price(105) → fill immediately
+7. No unfilled portion → no margin to reserve
+
+**Alternative:** Limit buy at limit_price=99 (below marginal):
+
+- Price check fails, entire order goes to GTC storage
+- reserved_margin += 100 * 99 * 0.05 = **495**
+
+**Result (limit=99):**
+
+- reserved_margin = 0 → **495**
+- Order stored in BUY_ORDERS for later fulfillment
+
+---
+
+#### Test 8: Cancel order releases reserved margin
+
+**Initial State:**
+
+- balance=1000, used_margin=0, reserved_margin=500
+- Pending buy order: size=+100, limit_price=100
+
+**Action:** Cancel order
+
+**Calculation:**
+
+1. Load order, verify ownership
+2. Compute reserved margin for order:
+   - decompose_fill(+100, user_pos): opening=+100
+   - reserved = 100 * 100 * 0.05 = **500**
+3. user_state.reserved_margin -= 500
+
+**Result:**
+
+- reserved_margin = 500 → **0**
+- available_margin = 1000 - 0 - 0 = **1000**
+
+---
+
+#### Test 9: GTC fill releases reserved margin
+
+**Initial State:**
+
+- balance=1000, used_margin=0, reserved_margin=500
+- Pending buy order in storage: size=+100, limit_price=105, user_pos=0
+
+**Trigger:** Oracle price drops, order becomes fillable
+
+**Calculation:**
+
+1. Order fills at exec_price (e.g., 100)
+2. Position created: user_pos = +100
+3. Release reserved margin:
+   - opening_size = +100
+   - reserved_for_order = 100 * 105 * 0.05 = **525** (but we only reserved 500, use stored value)
+   - user_state.reserved_margin -= 500
+4. Position now uses margin:
+   - used_margin = 100 * 100 * 0.05 = **500** (at current oracle price)
+
+**Result:**
+
+- reserved_margin = 500 → **0**
+- used_margin = 0 → **500**
+- available_margin = 1000 - 500 - 0 = **500**
+
+---
+
+#### Test 10: Withdrawal blocked by reserved margin
+
+**Initial State:**
+
+- balance=1000, used_margin=0, reserved_margin=600
+
+**Action:** Withdraw 500 USDT
+
+**Calculation:**
+
+1. available_margin = 1000 - 0 - 600 = **400**
+2. Check: amount(500) <= available(400) → **FAIL**
+
+**Result:**
+
+- Withdrawal rejected with "insufficient available margin"
+- User must cancel pending orders to free up reserved margin
+
+---
+
+#### Test 11: Withdrawal blocked by used margin
+
+**Initial State:**
+
+- balance=1000, used_margin=600, reserved_margin=0
+
+**Action:** Withdraw 500 USDT
+
+**Calculation:**
+
+1. available_margin = 1000 - 600 - 0 = **400**
+2. Check: amount(500) <= available(400) → **FAIL**
+
+**Result:**
+
+- Withdrawal rejected with "insufficient available margin"
+- User must close positions to free up used margin
+
+---
+
+#### Test 12: Withdrawal succeeds with available margin
+
+**Initial State:**
+
+- balance=1000, used_margin=300, reserved_margin=200
+
+**Action:** Withdraw 400 USDT
+
+**Calculation:**
+
+1. available_margin = 1000 - 300 - 200 = **500**
+2. Check: amount(400) <= available(500) → **PASS**
+3. balance -= 400
+
+**Result:**
+
+- balance = 1000 → **600**
+- available_margin = 600 - 300 - 200 = **100**
+
+### Analysis Notes
+
+#### Note 1: LP vs Trader separation
+
+The margin system only applies to **trading balance** (`user_state.balance`), not vault shares. These are completely separate:
+
+- **Vault shares** (`user_state.vault_shares`): LP activity, counterparty risk
+- **Trading balance** (`user_state.balance`): Trader collateral for positions
+
+A user can deposit 1000 USDT to vault (LP) and separately deposit 1000 USDT to trading balance (trader). The two pools don't interact.
+
+#### Note 2: Worst-case price rationale
+
+For margin reservation, we use the worst-case execution price:
+
+- **Buy orders**: Limit price (maximum the user will pay)
+- **Sell orders**: Limit price (minimum the user will receive)
+- **Market orders**: Marginal price ± slippage
+
+This ensures we reserve enough margin even if the actual execution price is worse than expected.
+
+#### Note 3: Closing portion releases margin
+
+When a position is closed:
+
+1. The closing portion requires no new margin (opening_size = 0)
+2. The used_margin decreases as position size decreases
+3. This frees up margin for other activities
+
+This is why users can always close positions even with low balance—closing never requires additional margin.
+
+### Conclusion
+
+All test cases verify the margin reservation system correctly handles:
+
+| Category                  | Behavior                              | Tests |
+| ------------------------- | ------------------------------------- | ----- |
+| New position margin check | Reject if available < required        | 1, 2  |
+| Existing position margin  | Used margin reduces available         | 3     |
+| Reserved margin blocks    | Reserved margin reduces available     | 4     |
+| Closing needs no margin   | Opening_size=0 means required=0       | 5     |
+| Flip position margin      | Closing releases, opening requires    | 6     |
+| Limit order reservation   | Unfilled portion reserves margin      | 7     |
+| Cancel releases margin    | Reserved margin returned to available | 8     |
+| Fill releases reservation | Reserved → used margin on fill        | 9     |
+| Withdrawal restrictions   | Cannot withdraw more than available   | 10-12 |
