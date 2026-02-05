@@ -1,4 +1,4 @@
-import { Button, IconLink, ProgressBar, Tab, Tabs, TextCopy } from "@left-curve/applets-kit";
+import { Button, IconLink, Input, ProgressBar, Tab, Tabs, TextCopy } from "@left-curve/applets-kit";
 import type React from "react";
 import { useState } from "react";
 
@@ -120,53 +120,52 @@ const TraderStats: React.FC = () => {
   const [referralCode, setReferralCode] = useState("");
 
   return (
-    <div className="flex flex-col gap-4 w-full">
-      <div className="w-full rounded-xl bg-surface-tertiary-rice border border-outline-primary-gray p-4 flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
-        <div className="flex flex-col items-center">
-          <p className="text-ink-secondary-rice h3-bold">15%</p>
+    <div className="w-full flex flex-col gap-6 pb-[153px] lg:pb-0">
+      <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-between">
+        <div className="flex flex-col items-center lg:items-start">
+          <p className="text-utility-warning-600 h3-bold">15%</p>
           <p className="text-ink-tertiary-500 diatype-m-medium">Rebate Rate</p>
         </div>
         <div className="flex flex-col items-center">
-          <p className="text-ink-secondary-rice h3-bold">$320.50</p>
+          <p className="text-utility-warning-600 h3-bold">$320.50</p>
           <p className="text-ink-tertiary-500 diatype-m-medium">Total Rebates</p>
         </div>
-        <div className="flex flex-col items-center">
-          <p className="text-ink-secondary-rice h3-bold">$1,450.00</p>
+        <div className="flex flex-col items-center lg:items-end">
+          <p className="text-utility-warning-600 h3-bold">$1,450.00</p>
           <p className="text-ink-tertiary-500 diatype-m-medium">Total Trading Volume</p>
         </div>
       </div>
 
-      <div className="w-full rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 border border-outline-primary-gray p-6 flex flex-col lg:flex-row gap-6 items-center">
-        <div className="flex-1">
-          <img
-            src="/images/referral/trader-banner.png"
-            alt="Trader banner"
-            className="w-[200px] h-[200px] object-contain mx-auto"
-          />
-        </div>
-        <div className="flex-1 flex flex-col gap-4">
-          <div>
-            <h3 className="exposure-m-italic text-ink-primary-900">
+      <div className="w-full h-px bg-outline-secondary-gray" />
+
+      <div className="min-h-[280px] lg:min-h-[180px]">
+        <div className="relative z-10 flex flex-col gap-8 lg:max-w-sm">
+          <div className="flex flex-col gap-2">
+            <h3 className="display-heading-xs text-ink-primary-900 max-w-sm">
               Refer friends and unlock more rewards together!
             </h3>
-            <p className="text-ink-tertiary-500 diatype-m-regular mt-2">
-              Get up to 15% fee rebate by submitting your friend's referral code.
+            <p className="text-ink-tertiary-500 diatype-m-regular max-w-sm">
+              Get up to <span className="text-utility-success-500 font-bold">15%</span> fee rebates
+              by submitting your friend's referral code!
             </p>
           </div>
-          <div className="flex flex-col gap-2">
-            <p className="text-ink-tertiary-500 diatype-s-medium">Referral Code</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={referralCode}
-                onChange={(e) => setReferralCode(e.target.value)}
-                placeholder="Enter your Friend's referral code"
-                className="flex-1 px-4 py-2 rounded-lg border border-outline-primary-gray bg-surface-primary-gray text-ink-primary-900 diatype-m-regular placeholder:text-ink-tertiary-500"
-              />
-              <Button variant="secondary">Submit</Button>
-            </div>
-          </div>
+          <Input
+            label="Referral Code"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value)}
+            placeholder="Enter your friend's referral code"
+            endContent={
+              <Button variant="link" className="p-0">
+                Submit
+              </Button>
+            }
+          />
         </div>
+        <img
+          src="/images/characters/friends.svg"
+          alt="Refer friends"
+          className="absolute bottom-[-5rem] lg:bottom-[-6rem] right-1/2 translate-x-1/2 lg:right-[3rem] lg:translate-x-0 w-[260px] lg:w-[320px] h-auto object-contain pointer-events-none"
+        />
       </div>
     </div>
   );
