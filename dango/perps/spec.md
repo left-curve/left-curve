@@ -472,7 +472,7 @@ fn handle_withdraw_margin(
     ensure!(amount > 0, "nothing to do");
 
     ensure!(
-      amount < compute_available_margin(user_state),
+      amount <= compute_available_margin(user_state),
       "insufficient available margin"
     );
 
@@ -495,8 +495,8 @@ fn compute_available_margin(
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
 ) -> Uint {
-    user_state.balance
-        .saturate_sub(compute_used_margin(user_state, oracle_prices, pair_params_map))
+    user_state.margin
+        .saturating_sub(compute_used_margin(user_state, oracle_prices, pair_params_map))
         .saturating_sub(user_state.reserved_margin)
 }
 
@@ -516,7 +516,7 @@ fn compute_used_margin(
         let pair_params = pair_params_map[&pair_id];
 
         // Used margin = |size| * price * initial_margin_ratio
-        let margin = abs(position).size * oracle_price * pair_params.initial_margin_ratio;
+        let margin = abs(position.size) * oracle_price * pair_params.initial_margin_ratio;
 
         total += floor(margin);
     }
@@ -925,11 +925,21 @@ fn execute_fill(
         });
     }
 
-    // Update OI
-    if fill_size > Dec::ZERO {
-        pair_state.long_oi += fill_size;
-    } else {
-        pair_state.short_oi += fill_size;
+    // Update OI based on opening/closing portions
+    // Opening portion increases OI on the respective side
+    if opening_size > Dec::ZERO {
+        pair_state.long_oi += opening_size;
+    } else if opening_size < Dec::ZERO {
+        pair_state.short_oi += opening_size;
+    }
+
+    // Closing portion decreases OI on the opposite side
+    if closing_size > Dec::ZERO {
+        // Buying to close a short: short_oi becomes less negative
+        pair_state.short_oi += closing_size;
+    } else if closing_size < Dec::ZERO {
+        // Selling to close a long: long_oi decreases
+        pair_state.long_oi += closing_size;
     }
 }
 
@@ -951,7 +961,7 @@ fn execute_fill(
 /// - Precise cost basis tracking
 fn compute_pnl_to_realize(
     position: &Position,
-    closing_size: Dec,  // Same sign as position (negative for shorts)
+    closing_size: Dec,  // Same sign as the order (positive for buys, negative for sells)
     exec_price: Udec,
 ) -> Dec {
     if closing_size == Dec::ZERO || position.size == Dec::ZERO {
@@ -1053,9 +1063,9 @@ fn fulfill_limit_orders_for_pair(
         };
 
         if process_buy {
-            try_fill_buy_order(&mut buy_iter, state, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_buy_order(&mut buy_iter, pair_id, state, oracle_price, &mut skew, pair_state, pair_params);
         } else {
-            try_fill_sell_order(&mut sell_iter, state, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_sell_order(&mut sell_iter, pair_id, state, oracle_price, &mut skew, pair_state, pair_params);
         }
     }
 }
@@ -1069,6 +1079,7 @@ fn fulfill_limit_orders_for_pair(
 /// margin" backing the new position).
 fn try_fill_buy_order(
     iter: &mut Peekable<impl Iterator<Item = (BuyOrderKey, Order)>>,
+    pair_id: PairId,
     state: &mut State,
     oracle_price: Udec,
     skew: &mut Dec,
@@ -1164,6 +1175,7 @@ fn try_fill_buy_order(
 /// margin" backing the new position).
 fn try_fill_sell_order(
     iter: &mut Peekable<impl Iterator<Item = (SellOrderKey, Order)>>,
+    pair_id: PairId,
     state: &mut State,
     oracle_price: Udec,
     skew: &mut Dec,
