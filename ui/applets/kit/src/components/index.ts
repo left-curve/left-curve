@@ -137,3 +137,4 @@ export { IconSprout } from "./icons/IconSprout";
 export { IconFriendshipGroup } from "./icons/IconFriendshipGroup";
 export { IconLock } from "./icons/IconLock";
 export { IconWarningTriangle } from "./icons/IconWarningTriangle";
+export { IconFlash } from "./icons/IconFlash";

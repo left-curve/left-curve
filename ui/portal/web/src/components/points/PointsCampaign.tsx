@@ -4,22 +4,11 @@ import { useState } from "react";
 
 import type { PropsWithChildren } from "react";
 import { PointsHeader } from "./PointsHeader";
-import { UserPointsProvider } from "./useUserPoints";
-import { LigueLevels, PointsProfileTable } from "./profile";
-import {
-  BoxCard,
-  NFTCard,
-  PointsProgressBar,
-  ChestOpeningProvider,
-  useChestOpening,
-} from "./rewards";
-import {
-  ReferralStats,
-  CommissionRates,
-  MyCommission,
-  ReferralFaqs,
-  type ReferralMode,
-} from "./referral";
+import { BoxesSection, NFTsSection, OATsSection } from "./rewards";
+import { LigueLevels } from "./LigueLevels";
+import { PointsProgressBar } from "./PointsProgressBar";
+import { ChestOpeningProvider, useChestOpening } from "./useChestOpening";
+import { PointsProfileTable } from "./PointsProfileTable";
 
 type PointsCampaignTab = "profile" | "rewards" | "referral";
 
@@ -86,30 +75,13 @@ const RewardsLoot: React.FC = () => {
   const { openChest } = useChestOpening();
 
   return (
-    <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-tertiary-gray rounded-b-xl">
-      <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl">
+    <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-primary-gray rounded-b-xl">
+      <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl shadow-account-card">
         <PointsProgressBar currentVolume={currentVolume} />
       </div>
-      <div className="flex flex-col gap-3">
-        <p className="h3-bold text-ink-primary-900">My boxes</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
-          <BoxCard variant="bronze" volume={currentVolume} onClick={() => openChest("bronze")} />
-          <BoxCard variant="silver" volume={currentVolume} onClick={() => openChest("silver")} />
-          <BoxCard variant="gold" volume={currentVolume} onClick={() => openChest("gold")} />
-          <BoxCard variant="crystal" volume={currentVolume} onClick={() => openChest("crystal")} />
-        </div>
-      </div>
-      <div className="flex flex-col gap-3">
-        <p className="h3-bold text-ink-primary-900">My NFTs</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
-          <NFTCard rarity="common" quantity={4} imageSrc="/images/points/nft/common.png" />
-          <NFTCard rarity="uncommon" quantity={2} imageSrc="/images/points/nft/uncommon.png" />
-          <NFTCard rarity="epic" quantity={2} imageSrc="/images/points/nft/epic.png" />
-          <NFTCard rarity="golden" quantity={2} imageSrc="/images/points/nft/mythic.png" />
-          <NFTCard rarity="legendary" quantity={2} imageSrc="/images/points/nft/legendary.png" />
-          <NFTCard rarity="rare" quantity={2} imageSrc="/images/points/nft/rare.png" />
-        </div>
-      </div>
+      <BoxesSection volume={currentVolume} onOpenChest={openChest} />
+      <NFTsSection />
+      <OATsSection />
     </div>
   );
 };
@@ -122,7 +94,7 @@ const ProfileSection: React.FC = () => (
 );
 
 const RewardsSection: React.FC = () => (
-  <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
+  <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
     <PointsHeader />
     <RewardsLoot />
   </div>
