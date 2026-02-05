@@ -1,7 +1,7 @@
 import { twMerge } from "@left-curve/applets-kit";
 import type React from "react";
 
-type NFTRarity = "common" | "uncommon" | "epic" | "golden" | "legendary" | "rare";
+export type NFTRarity = "common" | "uncommon" | "epic" | "golden" | "legendary" | "rare";
 
 type NFTCardProps = {
   rarity: NFTRarity;

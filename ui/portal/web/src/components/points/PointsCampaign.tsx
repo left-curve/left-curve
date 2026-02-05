@@ -5,10 +5,9 @@ import { useState } from "react";
 import type { PropsWithChildren } from "react";
 import { PointsProfileTable } from "./PointsProfileTable";
 import { PointsHeader } from "./PointsHeader";
-import { BoxCard } from "./BoxCard";
 import { LigueLevels } from "./LigueLevels";
-import { NFTCard } from "./NFTCard";
 import { PointsProgressBar } from "./PointsProgressBar";
+import { BoxesSection, NFTsSection, OATsSection } from "./rewards";
 import { ChestOpeningProvider, useChestOpening } from "./useChestOpening";
 
 type PointsCampaignTab = "profile" | "rewards";
@@ -70,58 +69,17 @@ const ProfileTable: React.FC = () => {
 };
 
 const RewardsLoot: React.FC = () => {
-  const currentVolume = 500350;
+  const currentVolume = 248000;
   const { openChest } = useChestOpening();
 
   return (
-    <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-tertiary-gray rounded-b-xl">
-      <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl">
+    <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-primary-gray rounded-b-xl">
+      <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl shadow-account-card">
         <PointsProgressBar currentVolume={currentVolume} />
       </div>
-      <div className="flex flex-col gap-3">
-        <p className="h3-bold text-ink-primary-900">My boxes</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
-          <BoxCard variant="bronze" volume={currentVolume} onClick={() => openChest("bronze")} />
-          <BoxCard variant="silver" volume={currentVolume} onClick={() => openChest("silver")} />
-          <BoxCard variant="gold" volume={currentVolume} onClick={() => openChest("gold")} />
-          <BoxCard variant="crystal" volume={currentVolume} onClick={() => openChest("crystal")} />
-        </div>
-      </div>
-      <div className="flex flex-col gap-3">
-        <p className="h3-bold text-ink-primary-900">My NFTs</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
-          <NFTCard
-            rarity="common"
-            quantity={4}
-            imageSrc="https://www.figma.com/api/mcp/asset/c3b5358b-c2b3-4bc0-a1d6-30117c53b423"
-          />
-          <NFTCard
-            rarity="uncommon"
-            quantity={2}
-            imageSrc="https://www.figma.com/api/mcp/asset/9680ed08-69ef-471f-83a5-813846101610"
-          />
-          <NFTCard
-            rarity="epic"
-            quantity={2}
-            imageSrc="https://www.figma.com/api/mcp/asset/fe211f83-4040-4023-ae76-da8967f68d53"
-          />
-          <NFTCard
-            rarity="golden"
-            quantity={2}
-            imageSrc="https://www.figma.com/api/mcp/asset/21afd773-9bb9-4cd4-a30c-dc9a356d0708"
-          />
-          <NFTCard
-            rarity="legendary"
-            quantity={2}
-            imageSrc="https://www.figma.com/api/mcp/asset/e21cd2e1-7549-4b53-8916-3d1713bb5699"
-          />
-          <NFTCard
-            rarity="rare"
-            quantity={2}
-            imageSrc="https://www.figma.com/api/mcp/asset/555ebcef-e6f2-490b-9c44-b72b36dad681"
-          />
-        </div>
-      </div>
+      <BoxesSection volume={currentVolume} onOpenChest={openChest} />
+      <NFTsSection />
+      <OATsSection />
     </div>
   );
 };
@@ -134,7 +92,7 @@ const ProfileSection: React.FC = () => (
 );
 
 const RewardsSection: React.FC = () => (
-  <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
+  <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
     <PointsHeader />
     <RewardsLoot />
   </div>
