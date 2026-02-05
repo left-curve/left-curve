@@ -33,12 +33,12 @@ const FLASH_IMAGE = "/images/points/flash.png";
 const FLASH_IMAGE2 = "/images/points/flash2.png";
 
 const NFT_IMAGES = [
-  "https://www.figma.com/api/mcp/asset/c3b5358b-c2b3-4bc0-a1d6-30117c53b423",
-  "https://www.figma.com/api/mcp/asset/9680ed08-69ef-471f-83a5-813846101610",
-  "https://www.figma.com/api/mcp/asset/fe211f83-4040-4023-ae76-da8967f68d53",
-  "https://www.figma.com/api/mcp/asset/21afd773-9bb9-4cd4-a30c-dc9a356d0708",
-  "https://www.figma.com/api/mcp/asset/e21cd2e1-7549-4b53-8916-3d1713bb5699",
-  "https://www.figma.com/api/mcp/asset/555ebcef-e6f2-490b-9c44-b72b36dad681",
+  "/images/points/nft/common.png",
+  "/images/points/nft/uncommon.png",
+  "/images/points/nft/epic.png",
+  "/images/points/nft/mythic.png",
+  "/images/points/nft/legendary.png",
+  "/images/points/nft/rare.png",
 ];
 
 const prefetchedImages: HTMLImageElement[] = [];
