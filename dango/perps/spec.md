@@ -1003,9 +1003,12 @@ fn settle_pnl(
         user_state.margin += amount;
     } else if pnl < Dec::ZERO {
         // User loses: transfer from user to vault
-        let amount = floor(-pnl);
-        user_state.margin = user_state.margin.saturating_sub(amount);
-        state.vault_balance += amount;
+        let loss = floor(-pnl);
+        let user_pays = min(loss, user_state.margin);
+        // Bad debt (loss - user_pays) is absorbed by the vault - they simply
+        // don't receive payment for it. Proper liquidation should prevent this.
+        user_state.margin -= user_pays;
+        state.vault_balance += user_pays;
     }
     // pnl == 0: no transfer needed
 }
