@@ -428,131 +428,6 @@ const ORDERS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order> =
 
 For simplicity, we assume the settlement asset (defined by `settlement_currency` in `Params`) is USDT.
 
-### Vault deposit
-
-Ownership of liquidity in the vault is tracked by **shares**. Users deposit USDT coins to receive newly minted shares, or burn shares to redeem USDT coins.
-
-At any time, the vault's **equity** is defined as the vault's token balance (which reflects the total amount of deposit from liquidity providers and the vault's realized PnL) plus its unrealized PnL and unrealized funding:
-
-```rust
-fn compute_vault_equity(
-    state: &State,
-    pair_states: &Map<PairId, PairState>,
-    pair_params_map: &Map<PairId, PairParams>,
-    oracle_prices: &Map<PairId, Udec>,
-    usdt_price: Udec,
-    current_time: Timestamp,
-) -> Dec {
-    let unrealized_pnl = compute_vault_unrealized_pnl();
-
-    let mut unrealized_funding = Dec::ZERO;
-    for (pair_id, pair_state) in pair_states {
-        let oracle_price = oracle_prices[&pair_id];
-        let pair_params = pair_params_map[&pair_id];
-        unrealized_funding += compute_vault_unrealized_funding_for_pair(
-            pair_state, pair_params, oracle_price, current_time,
-        );
-    }
-
-    state.vault_margin + ((unrealized_pnl + unrealized_funding) / usdt_price)
-}
-```
-
-Suppose the vault receives `amount_received` units of USDT from user:
-
-```rust
-fn handle_deposit_liquidity(
-    state: &mut State,
-    user_state: &mut UserState,
-    amount_received: Uint,
-    min_shares_to_mint: Option<Uint>,
-    usdt_price: Udec,
-) {
-    const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value, e.g. 1_000_000 */;
-
-    ensure!(amount_received > 0, "nothing to do");
-
-    // Compute the number of shares to mint.
-    let shares_to_mint = if state.vault_share_supply != 0 {
-        let vault_equity = compute_vault_equity(state, usdt_price);
-
-        ensure!(
-            vault_equity > 0,
-            "vault is in catastrophic loss! deposit disabled"
-            // If the vault has positive shares (i.e. it isn't empty) but zero or
-            // negative equity, the protocol is insolvent, and require intervention
-            // e.g. a bailout. Disable deposits in this case.
-        );
-
-        // Round the number down, to the advantage of the protocol and disadvantage
-        // of the user. This is a principle we must follow throughout the codebase.
-        floor(amount_received * state.vault_share_supply / vault_equity)
-    } else {
-        floor(amount_received * DEFAULT_SHARES_PER_AMOUNT)
-    };
-
-    // Ensure the number of shares to mint is no less than the minimum.
-    if let Some(min_shares_to_mint) = min_shares_to_mint {
-        ensure!(
-            shares_to_mint >= min_shares_to_mint,
-            "to few shares would be minted"
-        );
-    }
-
-    // Update global state.
-    state.vault_margin += amount_received;
-    state.vault_share_supply += shares_to_mint;
-
-    // Update user state.
-    user_state.vault_shares += shares_to_mint;
-}
-```
-
-### Vault withdrawal
-
-Suppose user requests to burn `shares_to_burn` units of shares:
-
-```rust
-fn handle_unlock_liquidity(
-    state: &mut State,
-    user_state: &mut UserState,
-    shares_to_burn: Uint,
-    usdt_price: Udec,
-    current_time: Timestamp,
-) {
-    ensure!(shares_to_burn > 0, "nothing to do");
-    ensure!(user_state.vault_shares >= shares_to_burn, "can't burn more than what you have");
-
-    // Similarly to deposit, first compute the vault's equity.
-    let vault_equity = compute_vault_equity(state, usdt_price);
-
-    // Again, note the direction of rounding.
-    let amount_to_release = floor(vault_equity * shares_to_burn / state.vault_share_supply);
-
-    ensure!(
-        state.vault_margin >= amount_to_release,
-        "the vault doesn't have sufficient balance to fulfill with this withdrawal"
-        // This can happen if the vault has a very positive unrealized PnL.
-        // In this case, the liquidity provider must wait until that PnL is realized
-        // (i.e. the losing positions from traders are either closed or liquidated)
-        // before withdrawing.
-    );
-
-    // Update global state.
-    state.vault_margin -= amount_to_release;
-    state.vault_share_supply -= shares_to_burn;
-
-    // Update user state.
-    user_state.vault_shares -= shares_to_burn;
-
-    // Insert the new unlock into the user's state.
-    let end_time = current_time + params.vault_cooldown_period;
-    user_state.unlocks.push(Unlock { amount_to_release, end_time });
-}
-```
-
-Once the cooldown period elapses, the contract needs to be triggered to release the fund and remove this unlock. This is trivial and we ignore it in this spec.
-
 ### Margin deposit
 
 Traders deposit settlement currency to their trading balance before opening positions:
@@ -592,7 +467,7 @@ Margin is the collateral required to open and maintain positions. We distinguish
 
 - **Used margin**: Collateral currently backing open positions
 - **Reserved margin**: Collateral locked for pending limit orders (not yet filled)
-- **Available margin**: `balance - used_margin - reserved_margin`
+- **Available margin**: `margin - used_margin - reserved_margin`
 
 ```rust
 /// Compute the margin available for withdrawal.
@@ -673,17 +548,16 @@ fn handle_cancel_order(
 /// The closing portion releases margin.
 fn compute_required_margin(
     opening_size: Dec,
-    worst_case_price: Udec,
+    limit_price: Udec,
     pair_params: &PairParams,
 ) -> Uint {
     if opening_size == Dec::ZERO {
         return Uint::ZERO;
     }
 
-    // Required margin = |opening_size| * worst_case_price * initial_margin_ratio
-    let margin = abs(opening_size) * worst_case_price * pair_params.initial_margin_ratio;
+    let required_margin = abs(opening_size) * limit_price * pair_params.initial_margin_ratio;
 
-    ceil(margin)  // Round up to be conservative (disadvantage to user)
+    ceil(required_margin)  // Round up to be conservative (disadvantage to user)
 }
 ```
 
@@ -1590,23 +1464,59 @@ fn settle_funding(
 }
 ```
 
-### PnL and margin requirement
-
-#### User position PnL
+### Liquidation and deleveraging
 
 > TODO
 
-#### Vault PnL
+### Counterparty vault
 
-Since the vault takes on counterparty positions of every trader, its PnL should be the reverse of the total PnL of all traders combined. However, it's not feasible to loop over all trader positions and sum them up. Instead, we calculate based on global accumulator values.
+Ownership of liquidity in the vault is tracked by **shares**. Users deposit USDT coins to receive newly minted shares, or burn shares to redeem USDT. The amount of shares to be minted is determined by the total supply shares and the vault's current **equity**.
 
-> TODO (price PnL accumulators)
+#### Vault equity
 
-#### Vault unrealized funding
-
-The vault's unrealized funding for a pair can be computed from the global accumulators without iterating over individual positions:
+The vault's equity is defined as the vault's token balance (which reflects the total amount of deposit from liquidity providers and the vault's realized PnL) plus its unrealized PnL and unrealized funding:
 
 ```rust
+fn compute_vault_equity(
+    state: &State,
+    pair_states: &Map<PairId, PairState>,
+    pair_params_map: &Map<PairId, PairParams>,
+    oracle_prices: &Map<PairId, Udec>,
+    usdt_price: Udec,
+    current_time: Timestamp,
+) -> Dec {
+    let unrealized_pnl = compute_vault_unrealized_pnl();
+
+    let unrealized_funding = compute_vault_unrealized_funding(
+        pair_states,
+        pair_params_map,
+        oracle_prices,
+        current_time,
+    );
+
+    state.vault_margin + ((unrealized_pnl + unrealized_funding) / usdt_price)
+}
+
+fn compute_vault_unrealized_funding(
+    pair_states: &Map<PairId, PairState>,
+    pair_params_map: &Map<PairId, PairParams>,
+    oracle_prices: &Map<PairId, Udec>,
+    usdt_price: Udec,
+    current_time: Timestamp,
+) -> Dec {
+    let mut unrealized_funding = Dec::ZERO;
+
+    for (pair_id, pair_state) in pair_states {
+        let oracle_price = oracle_prices[&pair_id];
+        let pair_params = pair_params_map[&pair_id];
+        unrealized_funding += compute_vault_unrealized_funding_for_pair(
+            pair_state, pair_params, oracle_price, current_time,
+        );
+    }
+
+    unrealized_funding
+}
+
 /// Compute the vault's unrealized funding for a single pair.
 ///
 /// The total accrued funding across all positions is:
@@ -1646,9 +1556,102 @@ fn compute_vault_unrealized_funding_for_pair(
 }
 ```
 
-### Liquidation and deleveraging
+#### Handling deposit
 
-> TODO
+Suppose the vault receives `amount_received` units of USDT from user:
+
+```rust
+fn handle_deposit_liquidity(
+    state: &mut State,
+    user_state: &mut UserState,
+    amount_received: Uint,
+    min_shares_to_mint: Option<Uint>,
+    usdt_price: Udec,
+) {
+    const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value, e.g. 1_000_000 */;
+
+    ensure!(amount_received > 0, "nothing to do");
+
+    // Compute the number of shares to mint.
+    let shares_to_mint = if state.vault_share_supply != 0 {
+        let vault_equity = compute_vault_equity(state, usdt_price);
+
+        ensure!(
+            vault_equity > 0,
+            "vault is in catastrophic loss! deposit disabled"
+            // If the vault has positive shares (i.e. it isn't empty) but zero or
+            // negative equity, the protocol is insolvent, and require intervention
+            // e.g. a bailout. Disable deposits in this case.
+        );
+
+        // Round the number down, to the advantage of the protocol and disadvantage
+        // of the user. This is a principle we must follow throughout the codebase.
+        floor(amount_received * state.vault_share_supply / vault_equity)
+    } else {
+        floor(amount_received * DEFAULT_SHARES_PER_AMOUNT)
+    };
+
+    // Ensure the number of shares to mint is no less than the minimum.
+    if let Some(min_shares_to_mint) = min_shares_to_mint {
+        ensure!(
+            shares_to_mint >= min_shares_to_mint,
+            "to few shares would be minted"
+        );
+    }
+
+    // Update global state.
+    state.vault_margin += amount_received;
+    state.vault_share_supply += shares_to_mint;
+
+    // Update user state.
+    user_state.vault_shares += shares_to_mint;
+}
+```
+
+#### Handling withdrawal
+
+Suppose user requests to burn `shares_to_burn` units of shares:
+
+```rust
+fn handle_unlock_liquidity(
+    state: &mut State,
+    user_state: &mut UserState,
+    shares_to_burn: Uint,
+    usdt_price: Udec,
+    current_time: Timestamp,
+) {
+    ensure!(shares_to_burn > 0, "nothing to do");
+    ensure!(user_state.vault_shares >= shares_to_burn, "can't burn more than what you have");
+
+    // Similarly to deposit, first compute the vault's equity.
+    let vault_equity = compute_vault_equity(state, usdt_price);
+
+    // Again, note the direction of rounding.
+    let amount_to_release = floor(vault_equity * shares_to_burn / state.vault_share_supply);
+
+    ensure!(
+        state.vault_margin >= amount_to_release,
+        "the vault doesn't have sufficient balance to fulfill with this withdrawal"
+        // This can happen if the vault has a very positive unrealized PnL.
+        // In this case, the liquidity provider must wait until that PnL is realized
+        // (i.e. the losing positions from traders are either closed or liquidated)
+        // before withdrawing.
+    );
+
+    // Update global state.
+    state.vault_margin -= amount_to_release;
+    state.vault_share_supply -= shares_to_burn;
+
+    // Update user state.
+    user_state.vault_shares -= shares_to_burn;
+
+    // Insert the new unlock into the user's state.
+    let end_time = current_time + params.vault_cooldown_period;
+    user_state.unlocks.push(Unlock { amount_to_release, end_time });
+}
+```
+
+Once the cooldown period elapses, the contract needs to be triggered to release the fund and remove this unlock. This is trivial and we ignore it in this spec.
 
 ## Out-of-scope features
 
