@@ -117,6 +117,22 @@ impl Duration {
         self.into_days() / DAYS_PER_WEEK
     }
 
+    /// Returns the largest multiple of `rhs` that is less than or equal to `self`.
+    ///
+    /// In other words, this floors `self` to a whole number of `rhs` intervals.
+    ///
+    /// # Example
+    /// `Duration::from_days(5.2).truncate_to(Duration::from_days(1))`
+    /// returns `Duration::from_days(5)`.
+    pub fn truncate_to(self, rhs: Self) -> Self {
+        self - self % rhs
+    }
+
+    /// Return the duration rounded down to the nearest day.
+    pub fn truncate_to_days(self) -> Self {
+        self.truncate_to(Self::from_days(1))
+    }
+
     /// Convert the `grug::Duration` to a `std::time::Duration`.
     ///
     /// ## Panics

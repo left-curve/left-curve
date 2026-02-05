@@ -1,6 +1,9 @@
 use {
     dango_testing::setup_test_naive,
-    dango_types::{constants::usdc, taxman},
+    dango_types::{
+        constants::usdc,
+        taxman::{self, ReferralConfig},
+    },
     grug::{
         Addressable, BalanceChange, Coins, Inner, MultiplyFraction, ResultExt, Udec128, Uint128,
         btree_map,
@@ -28,6 +31,7 @@ fn fee_rate_update_works() {
                 new_cfg: taxman::Config {
                     fee_denom: usdc::DENOM.clone(),
                     fee_rate: OLD_FEE_RATE,
+                    referral: ReferralConfig::default(),
                 },
             },
             Coins::new(),
@@ -53,6 +57,7 @@ fn fee_rate_update_works() {
                 new_cfg: taxman::Config {
                     fee_denom: usdc::DENOM.clone(),
                     fee_rate: NEW_FEE_RATE,
+                    referral: ReferralConfig::default(),
                 },
             },
             Coins::new(),
