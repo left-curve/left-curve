@@ -2,19 +2,21 @@ use {
     dango_account_factory::{ACCOUNT_COUNT_BY_USER, MAX_ACCOUNTS_PER_USER},
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
-        Factory, HyperlaneTestSuite, Preset, TestAccount, setup_test_naive,
-        setup_test_naive_with_custom_genesis,
+        Factory, HyperlaneTestSuite, Preset, TestAccount, TestOption, TestSuite, setup_test,
+        setup_test_naive, setup_test_naive_with_custom_genesis,
     },
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, RegisterUserData, UserIndexOrName},
+        account_factory::{
+            self, Account, AccountParams, RegisterUserData, UserIndex, UserIndexOrName,
+        },
         auth::AccountStatus,
         bank,
         constants::usdc,
     },
     grug::{
-        Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
-        Signer, StorageQuerier, Uint128, btree_map, coins,
+        Addr, Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt,
+        ResultExt, Signer, StorageQuerier, Uint128, btree_map, coins,
     },
     hyperlane_types::constants::solana,
 };
@@ -467,4 +469,151 @@ fn single_signature_account_count_limit() {
             Coins::new(),
         )
         .should_fail_with_error(format!("user {user_index} has reached max account count"));
+}
+
+#[test]
+fn main_account() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test(TestOption::default());
+
+    // Query user 1's main account.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryMainAccountByUserRequest {
+                user: UserIndexOrName::Index(1),
+            },
+        )
+        .should_succeed_and_equal(accounts.user1.address());
+
+    // Check MainByAddress query works.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryMainAccountByAddressRequest {
+                address: accounts.user1.address(),
+            },
+        )
+        .should_succeed_and_equal(accounts.user1.address());
+
+    // Update main account to another single-signature account.
+    {
+        // Create another single account for user 1.
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::RegisterAccount {
+                    params: AccountParams::Single(single::Params::new(1)),
+                },
+                Coins::new(),
+            )
+            .should_succeed();
+
+        let new_single = get_latest_account_created(&suite, contracts.account_factory, 1);
+
+        // Update main account to the new single-signature account.
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::UpdateMainAccount {
+                    address: new_single,
+                },
+                Coins::new(),
+            )
+            .should_succeed();
+
+        // Ensure the main account has been updated.
+        suite
+            .query_wasm_smart(
+                contracts.account_factory,
+                account_factory::QueryMainAccountByUserRequest {
+                    user: UserIndexOrName::Index(1),
+                },
+            )
+            .should_succeed_and_equal(new_single);
+    }
+
+    // Attempt to set a main account to an account owned by another user should fail.
+    {
+        // Update the main account of user 1 with an account owned by user 2.
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::UpdateMainAccount {
+                    address: accounts.user2.address(),
+                },
+                Coins::new(),
+            )
+            .should_fail_with_error(
+                "the account is owned by user index 2 but the sender has user index 1",
+            );
+    }
+
+    // TODO: This part of the test is commented out because multi-signature
+    // accounts are currently blocked. Once multi-signature accounts are
+    // re-enabled, this part of the test should be uncommented.
+
+    // Attempt to set the main account to a multi-signature account should fail.
+    // {
+    //     // Create a multi-signature account for user 1.
+    //     suite
+    //         .execute(
+    //             &mut accounts.user1,
+    //             contracts.account_factory,
+    //             &account_factory::ExecuteMsg::RegisterAccount {
+    //                 params: AccountParams::Multi(multi::Params {
+    //                     members: btree_map!(1u32 => NonZero::new(100).unwrap()),
+    //                     voting_period: NonZero::new(Duration::from_seconds(1)).unwrap(),
+    //                     threshold: NonZero::new(1).unwrap(),
+    //                     timelock: None,
+    //                 }),
+    //             },
+    //             Coins::new(),
+    //         )
+    //         .should_succeed();
+
+    //     let new_multi = get_latest_account_created(&suite, contracts.account_factory, 1);
+
+    //     // Update the main account to the multi-signature account should fail.
+    //     suite
+    //         .execute(
+    //             &mut accounts.user1,
+    //             contracts.account_factory,
+    //             &account_factory::ExecuteMsg::UpdateMainAccount { address: new_multi },
+    //             Coins::new(),
+    //         )
+    //         .should_fail_with_error("only account type single can be set as main account");
+
+    //     // Query the main account with the multi-signature account should fail
+    //     suite
+    //         .query_wasm_smart(
+    //             contracts.account_factory,
+    //             account_factory::QueryMainAccountByAddressRequest { address: new_multi },
+    //         )
+    //         .should_fail_with_error("only accounts type single have a main account");
+    // }
+}
+
+fn get_latest_account_created(
+    suite: &TestSuite,
+    account_factory: Addr,
+    user_index: UserIndex,
+) -> Addr {
+    let user_accounts = suite
+        .query_wasm_smart(
+            account_factory,
+            account_factory::QueryAccountsByUserRequest {
+                user: UserIndexOrName::Index(user_index),
+            },
+        )
+        .should_succeed();
+
+    // Take the account with the highest index.
+    user_accounts
+        .into_iter()
+        .max_by_key(|(_, account)| account.index)
+        .map(|(address, _)| address)
+        .unwrap()
 }
