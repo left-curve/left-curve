@@ -23,7 +23,7 @@
 - name: Copy backup script
   template:
     src: "make_clickhouse_backup.sh"
-    dest: "{{ ansible_facts['env']['HOME'] }}"
+    dest: "{{ deploy_dir }}"
     mode: '0755'
 
 - name: Write .env for docker-compose
@@ -46,22 +46,12 @@
     dest: "{{ deploy_dir }}/docker-compose.yml"
     mode: '0644'
 
-- name: Stop existing clickhouse container (pre-compose migration)
-  docker_container:
-    name: "{{ container_name }}"
-    state: absent
-  ignore_errors: true
-
-- name: Create clickhouse network
-  docker_network:
-    name: clickhouse
-
 - name: Pre-pull image (avoid downtime while pulling)
   community.docker.docker_image:
     name: "clickhouse/clickhouse-server:{{ clickhouse_version }}"
     source: pull
 
-- name: Start clickhouse stack
+- name: Deploy clickhouse stack
   community.docker.docker_compose_v2:
     project_src: "{{ deploy_dir }}"
     pull: always

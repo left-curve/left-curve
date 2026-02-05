@@ -1,4 +1,4 @@
 ---
-promtail_dir: "{{ ansible_facts['env']['HOME'] }}/promtail"
+promtail_dir: "{{ deploy_home }}/promtail"
 promtail_port: 9080
 loki_url: "http://ovh3:3100"

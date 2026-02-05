@@ -32,4 +32,4 @@ services:
 
 networks:
   clickhouse:
-    external: true
+    name: clickhouse

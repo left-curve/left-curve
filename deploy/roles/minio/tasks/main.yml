@@ -22,3 +22,20 @@
     pull: missing
     state: present
     recreate: always
+
+- name: Install systemd unit for Minio compose
+  become: true
+  become_user: root
+  template:
+    src: minio-compose.service.j2
+    dest: /etc/systemd/system/minio-compose.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start minio-compose service
+  become: true
+  become_user: root
+  systemd:
+    name: minio-compose.service
+    enabled: true
+    state: started

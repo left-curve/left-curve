@@ -6,6 +6,15 @@
   vars:
   vars_files:
     - roles/full-app/vars/main.yml
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
   tasks:
     - name: Generate shared timestamp
       set_fact:
@@ -316,6 +325,15 @@
     - community.clickhouse
     - amazon.aws
   pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+
     - name: Load postgres vars
       include_vars: "roles/full-app/vars/included_postgres.yml"
       when: deploy_includes_postgres
