@@ -1,8 +1,9 @@
 import { twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
+import { useUserPoints, type UserLeague } from "../useUserPoints";
 
-type LigueLevelKey = "wood" | "iron" | "gold" | "platinum" | "diamond" | "master" | "grandmaster";
+type LigueLevelKey = UserLeague;
 
 type LigueLevel = {
   key: LigueLevelKey;
@@ -84,15 +85,15 @@ const LigueLevelItem: React.FC<LigueLevelItemProps> = ({ level, state }) => {
       />
       <div
         className={twMerge(
-          "w-full  flex flex-col items-center justify-end rounded-t-sm bg-gradient-to-b from-[#807668] to-surface-primary-rice",
+          "w-full  flex flex-col items-center justify-end rounded-t-sm bg-gradient-to-b from-surface-quaternary-rice-hover to-surface-primary-rice",
           level.pillarClasses,
-          isFuture && "from-[#a0a0a0]",
+          isFuture && "from-surface-tertiary-gray",
         )}
       >
         {isCurrent && (
           <>
-            <div className="absolute left-[0.5rem] top-0 w-[2px] h-full bg-gradient-to-b from-white/40 to-surface-primary-rice" />
-            <div className="absolute right-[0.5rem] top-0 w-[2px] h-full bg-gradient-to-b from-white/40 to-surface-primary-rice" />
+            <div className="absolute left-[0.5rem] top-0 w-[2px] h-full bg-gradient-to-b from-fg-secondary-rice to-surface-primary-rice" />
+            <div className="absolute right-[0.5rem] top-0 w-[2px] h-full bg-gradient-to-b from-fg-secondary-rice to-surface-primary-rice" />
           </>
         )}
         <p
@@ -113,8 +114,10 @@ type LigueLevelsProps = {
   currentLevel?: LigueLevelKey;
 };
 
-export const LigueLevels: React.FC<LigueLevelsProps> = ({ currentLevel = "master" }) => {
-  const currentLevelIndex = LIGUE_LEVELS.findIndex((l) => l.key === currentLevel);
+export const LigueLevels: React.FC<LigueLevelsProps> = ({ currentLevel }) => {
+  const { league } = useUserPoints();
+  const level = currentLevel ?? league;
+  const currentLevelIndex = LIGUE_LEVELS.findIndex((l) => l.key === level);
 
   return (
     <div className="w-full min-h-[18rem] lg:min-h-[28rem] bg-surface-primary-rice rounded-b-xl p-4 lg:p-8 flex flex-col">
