@@ -207,6 +207,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.EditCommissionRate]: {
+    component: lazy(() =>
+      import("./EditCommissionRate").then(({ EditCommissionRate }) => ({
+        default: EditCommissionRate,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {

@@ -26,6 +26,7 @@ export const Modals = {
   BridgeWithdraw: "bridge-withdraw",
   BridgeDeposit: "bridge-deposit",
   AddressWarning: "address-warning",
+  EditCommissionRate: "edit-commission-rate",
 };
 
 export type ModalRef = {
