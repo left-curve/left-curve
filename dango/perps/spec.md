@@ -897,45 +897,6 @@ fn try_fill_sell_order(
 }
 ```
 
-#### Why this algorithm finds all fillable orders
-
-1. **Price ordering within each side ensures we try the most competitive orders first** - this respects price-time priority within each side (buys and sells)
-
-2. **Timestamp interleaving ensures fairness between sides** - neither buyers nor sellers get a systematic advantage from being processed first
-
-3. **Fillability is rechecked each iteration:**
-   - We compute `marginal_price` at the start of each loop iteration
-   - Both sides are checked against the current marginal price
-   - An order that was unfillable can become fillable after the other side executes
-   - Example: buy at limit=104 is unfillable when marginal=105, but after a sell executes and moves marginal to 95, the buy becomes fillable
-
-4. **Correct termination when `(false, false)`:**
-   - Both sides must be past their respective cutoffs
-   - If buy is blocked (`limit < marginal`) and sell is blocked (`limit > marginal`), processing either would move marginal in the wrong direction for the other
-   - A buy fill increases marginal → makes sells even more blocked
-   - A sell fill decreases marginal → makes buys even more blocked
-   - So neither side can help unblock the other → true termination
-
-5. **We don't stop on a single unfillable order:**
-   - An order might be unfillable due to its large size, not its price
-   - We advance the iterator and continue checking subsequent orders
-   - Only when the head order fails the cutoff do we consider that side blocked
-
-6. **Skew updates correctly with interleaving:**
-   - After each fill (buy or sell), skew changes
-   - We recompute marginal_price at the start of each iteration
-   - A buy fill increases skew → increases marginal_price → can unblock sells
-   - A sell fill decreases skew → decreases marginal_price → can unblock buys
-   - This is why we must recheck both sides each iteration, not just continue with one side
-
-#### Edge cases
-
-- **Order partially filled (reduce_only)**: Update the stored order with remaining size
-- **Margin check fails**: Revert the fill, skip the order (leave in storage for future blocks)
-- **Multiple pairs**: Process each pair independently
-- **Same timestamp within side**: Ordering within same (price, timestamp) is arbitrary; use order_id as tiebreaker
-- **Same timestamp between sides**: Buy order is processed first (documented tiebreaker)
-
 ### Funding fee
 
 > TODO

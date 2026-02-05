@@ -12,5 +12,6 @@
   "no-bare-urls": false,
   "no-inline-html": false,
   "no-duplicate-heading": false,
-  "no-space-in-emphasis": false
+  "no-space-in-emphasis": false,
+  "no-emphasis-as-heading": false
 }
