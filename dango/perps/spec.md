@@ -1,9 +1,9 @@
 # Perpetual futures exchange: specifications
 
-- This is a perpetual futures (perps) exchange that uses the **peer-to-pool model**, similar to e.g. Ostium. A liquidity pool provides quotes (based on data including oracle price, open interest (OI), and the order's size). All orders are executed against the pool, with the pool taking the counterparty position (e.g. if a user opens a long position of 5 BTC, the pool takes the opposite: a short position of 5 BTC). We call the pool the **counterparty pool**. Empirically, traders in aggregate lose money in the long run, which means counterparty pool makes money. This is in contrary to the peer-to-peer model, where users place orders in an order book; a user's order is executed against other users' orders.
-- The exchange operates in **one-way mode**. Meaning, e.g., a user has exactly 1 position for each tradable asset. If an order is fulfilled for a user who already has a position in that asset, the position is modified. This is in contrary to **two-way mode**, where a user can have multiple positions in a single asset. When placing an order, the user can choose whether the order will create a new position or modify an existing one.
+- This is a perpetual futures (perps) exchange that uses the **peer-to-pool model**, similar to e.g. Ostium, Synthetix V3, and Gains Network. A liquidity pool provides quotes (based on oracle price, open interest (OI), and the order's size). All orders are executed against the pool, with the pool taking the counterparty position (e.g. if a user opens a long position of 5 BTC, the pool takes the opposite: a short position of 5 BTC). We call the pool the **counterparty vault**. This is in contrary to the peer-to-peer model, where users place orders in an order book; a user's order is executed against other users' orders. The pool makes profit in two way: from users in aggregate losing (which is the case over the long run, empirically), and taking a cut from trading fees.
+- The exchange operates in **one-way mode**. Meaning, e.g., a user has exactly 1 position for each tradable asset. If an order is fulfilled for a user who already has a position in that asset, we modify the existing position, insteading of creating a new one. This is in contrary to **two-way mode**, where a user can have multiple positions in a single asset; when placing an order, the user can choose whether the order will create a new position or modify an existing one.
 - To ensure the protocol's solvency and profitability, it's important the market is close to _neutral_, meaning there is roughly the same amount of long and short OI. We incentivize this through two mechanisms, **skew pricing** and **funding fee** (described in respective sections).
-- For now, the exchange supports only **cross margin**. Support for isolated margin may be added in a future update. The exchange uses **margin reservation at order placement**: when submitting an order, the required margin is calculated upfront and reserved, preventing withdrawal. This eliminates the need to check margin at execution time and ensures predictable order outcomes.
+- For now, the exchange supports only **cross margin**. Support for isolated margin may be added in a future update.
 
 This spec is divided into three sections:
 
@@ -27,13 +27,13 @@ User may interact with the smart contract by dispatching the following execution
 ```rust
 enum ExecuteMsg {
     // -------------------------------------------------------------------------
-    // Liquidity Provider (LP) Methods
+    // Counterparty Vault Methods
     // -------------------------------------------------------------------------
 
     /// Add liquidity to the counterparty vault.
     ///
     /// User must send a non-zero amount of the settlement currency (defined in
-    /// `Params` below) as attachment of this function call.
+    /// `Params` below) as attachment to this function call.
     DepositLiquidity {
         /// Revert if less than this number of share is minted.
         min_shares_to_mint: Option<Uint>,
@@ -50,22 +50,28 @@ enum ExecuteMsg {
     },
 
     // -------------------------------------------------------------------------
-    // Trader Methods
+    // Trading Methods
     // -------------------------------------------------------------------------
 
     /// Deposit funds into the user's trading balance.
     ///
-    /// User must send a non-zero amount of the settlement currency as attachment
-    /// of this function call.
+    /// ## Note
     ///
-    /// This is for **trading**, not liquidity provision. The trading balance
-    /// serves as collateral for opening and maintaining positions.
+    /// In the actual implementation, the user's margin is simply the entire token
+    /// balance managed by the bank contract. It isn't necessary to deposit tokens
+    /// into the perps contract. But in this spec we make the deposit action explicit
+    /// for clarity.
     DepositMargin {},
 
     /// Withdraw funds from the user's trading balance.
     ///
     /// Can only withdraw up to the available margin (total balance minus used
     /// margin minus reserved margin).
+    ///
+    /// ## Note
+    ///
+    /// In the actual implementation, this is equivalent to sending tokens away
+    /// from one's account. The margin check can happen in the bank contract.
     WithdrawMargin {
         /// The amount of settlement currency to withdraw.
         amount: Uint,
@@ -79,7 +85,7 @@ enum ExecuteMsg {
         /// The amount of the futures contract to buy or sell.
         ///
         /// E.g. when trading in the BTCUSD-PERP pair, if 1 BTCUSD-PERP futures
-        /// contract represents 1 BTC, and the user specifies a `size` of 1, it
+        /// contract represents 1 BTC, and the user specifies a `size` of +1, it
         /// means the user wishes to increase his long exposure or decrease his
         /// short exposure by 1 BTC.
         ///
@@ -103,6 +109,7 @@ enum ExecuteMsg {
     CancelOrder {
         /// The pair ID of the order to cancel.
         pair_id: PairId,
+
         /// The order ID to cancel.
         order_id: OrderId,
     },
@@ -119,7 +126,7 @@ enum ExecuteMsg {
 }
 
 enum OrderKind {
-    /// Trade at the current price quoted by the counterparty pool, optionally
+    /// Trade at the current price quoted by the counterparty vault, optionally
     /// with a slippage tolerance.
     ///
     /// If it's not possible to fill the order in full, the unfilled portion is
@@ -128,7 +135,7 @@ enum OrderKind {
         /// The execution price must not be worse than the _marginal price_ plus
         /// this slippage.
         ///
-        /// Marginal price is the price that the counterparty pool may quote for
+        /// Marginal price is the price that the counterparty vault may quote for
         /// an order of infinitesimal size.
         ///
         /// For bids / buy orders, the execution price satisfy:
@@ -170,7 +177,7 @@ The global parameters apply to all trading pairs:
 struct Params {
     /// Denomination of the asset used for the settlement of perpetual futures
     /// contracts. Typically a USD stablecoin.
-    pub settlement_denom: Denom,
+    pub settlement_currency: Denom,
 
     /// The waiting period between a withdrawal from the counterparty vault is
     /// requested and is fulfilled.
@@ -223,11 +230,14 @@ Global state:
 
 ```rust
 struct State {
-    /// The sum of all user deposits and the vault's realized PnL.
+    /// The vault's margin.
+    ///
+    /// This should equal the sum of all user deposits and the vault's realized PnL.
     ///
     /// Note that this doesn't equal the amount of funds withdrawable by burning
-    /// shares, which also needs to factor in the vault's _unrealized_ PnL.
-    pub vault_balance: Uint,
+    /// shares (i.e. its "equity"), which also needs to factor in the vault's
+    /// _unrealized_ PnL.
+    pub vault_margin: Uint,
 
     /// Total supply of the vault's share token.
     pub vault_share_supply: Uint,
@@ -261,7 +271,7 @@ User-specific state:
 ```rust
 struct UserState {
     // -------------------------------------------------------------------------
-    // Liquidity Provider (LP) fields
+    // Counterparty Vault State
     // -------------------------------------------------------------------------
 
     /// The amount of vault shares this user owns.
@@ -271,7 +281,7 @@ struct UserState {
     pub unlocks: Vec<Unlock>,
 
     // -------------------------------------------------------------------------
-    // Trader fields
+    // Trading State
     // -------------------------------------------------------------------------
 
     /// Trading collateral balance in settlement currency (e.g., USDT).
@@ -338,7 +348,7 @@ struct Order {
 
 ## Business logic
 
-For simplicity, we assume the settlement asset (defined by `settlement_denom` in `Params`) is USDT.
+For simplicity, we assume the settlement asset (defined by `settlement_currency` in `Params`) is USDT.
 
 ### Vault deposit
 
@@ -348,7 +358,7 @@ At any time, the vault's **equity** is defined as the vault's token balance (whi
 
 ```rust
 fn compute_vault_equity(state: &State, usdt_price: Udec) -> Dec {
-    state.vault_balance + (compute_vault_unrealized_pnl() / usdt_price)
+    state.vault_margin + (compute_vault_unrealized_pnl() / usdt_price)
 }
 ```
 
@@ -362,7 +372,7 @@ fn handle_deposit_liquidity(
     min_shares_to_mint: Option<Uint>,
     usdt_price: Udec,
 ) {
-    const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value */;
+    const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value, e.g. 1_000_000 */;
 
     ensure!(amount_received > 0, "nothing to do");
 
@@ -394,7 +404,7 @@ fn handle_deposit_liquidity(
     }
 
     // Update global state.
-    state.vault_balance += amount_received;
+    state.vault_margin += amount_received;
     state.vault_share_supply += shares_to_mint;
 
     // Update user state.
@@ -424,7 +434,7 @@ fn handle_unlock_liquidity(
     let amount_to_release = floor(vault_equity * shares_to_burn / state.vault_share_supply);
 
     ensure!(
-        state.vault_balance >= amount_to_release,
+        state.vault_margin >= amount_to_release,
         "the vault doesn't have sufficient balance to fulfill with this withdrawal"
         // This can happen if the vault has a very positive unrealized PnL.
         // In this case, the liquidity provider must wait until that PnL is realized
@@ -433,7 +443,7 @@ fn handle_unlock_liquidity(
     );
 
     // Update global state.
-    state.vault_balance -= amount_to_release;
+    state.vault_margin -= amount_to_release;
     state.vault_share_supply -= shares_to_burn;
 
     // Update user state.
@@ -999,7 +1009,7 @@ fn settle_pnl(
     if pnl > Dec::ZERO {
         // User wins: transfer from vault to user
         let amount = floor(pnl);
-        state.vault_balance = state.vault_balance.saturating_sub(amount);
+        state.vault_margin = state.vault_margin.saturating_sub(amount);
         user_state.margin += amount;
     } else if pnl < Dec::ZERO {
         // User loses: transfer from user to vault
@@ -1008,7 +1018,7 @@ fn settle_pnl(
         // Bad debt (loss - user_pays) is absorbed by the vault - they simply
         // don't receive payment for it. Proper liquidation should prevent this.
         user_state.margin -= user_pays;
-        state.vault_balance += user_pays;
+        state.vault_margin += user_pays;
     }
     // pnl == 0: no transfer needed
 }
