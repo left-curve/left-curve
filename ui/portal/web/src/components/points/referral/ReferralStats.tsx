@@ -5,11 +5,13 @@ import {
   IconLink,
   IconUser,
   Input,
+  Modals,
   ProgressBar,
   Tab,
   Tabs,
   TextCopy,
   twMerge,
+  useApp,
 } from "@left-curve/applets-kit";
 import type React from "react";
 import { useState } from "react";
@@ -25,6 +27,7 @@ const UNLOCK_VOLUME = 10000;
 const TIER_2_VOLUME = 100000;
 
 const AffiliateStats: React.FC = () => {
+  const { showModal } = useApp();
   const currentVolume = 11000;
   const isUnlocked = currentVolume >= UNLOCK_VOLUME;
   const targetVolume = isUnlocked ? TIER_2_VOLUME : UNLOCK_VOLUME;
@@ -41,7 +44,10 @@ const AffiliateStats: React.FC = () => {
           <div className="flex flex-col items-center lg:items-start">
             <div className="flex items-center gap-1">
               <p className="text-primitives-warning-500 h3-bold">10% / 5%</p>
-              <IconEdit className="w-6 h-6 text-fg-secondary-500 mb-1 hover:text-ink-secondary-blue cursor-pointer" />
+              <IconEdit
+                className="w-6 h-6 text-fg-secondary-500 mb-1 hover:text-ink-secondary-blue cursor-pointer"
+                onClick={() => showModal(Modals.EditCommissionRate)}
+              />
             </div>
             <p className="text-ink-tertiary-500 diatype-m-medium">Commission Rate (You/ Referee)</p>
           </div>
@@ -151,7 +157,7 @@ const TraderStats: React.FC = () => {
       </div>
 
       {hasReferrer ? (
-        <div className="w-full rounded-xl bg-surface-tertiary-gray p-4 flex items-center justify-between">
+        <div className="w-full rounded-xl bg-surface-tertiary-gray px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <IconUser className="w-5 h-5 text-primitives-blue-light-400" />
             <p className="text-ink-primary-900 diatype-m-medium">Your Referrer</p>
