@@ -10,32 +10,59 @@ groups:
       summary: "Prometheus metrics {{ $labels.instance }} down"
       description: "{{ $labels.instance }} of {{ $labels.job }} has been down for more than 10 minutes."
 
-  - alert: HighCpuLoad
-    expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
-    for: 5m
+  - alert: HighCpuLoadWarning
+    expr: (1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) * 100 > 80
+    for: 15m
     labels:
       severity: warning
     annotations:
-      summary: "High CPU load on instance {{ $labels.instance }}"
-      description: "{{ $labels.instance }} has CPU load above 80% for more than 5 minutes."
+      summary: "High CPU load on {{ $labels.instance }} (warning)"
+      description: "CPU usage > 80% for 15m. Investigate sustained load."
 
-  - alert: HighMemoryUsage
+  - alert: HighCpuLoadCritical
+    expr: (1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) * 100 > 90
+    for: 15m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High CPU load on {{ $labels.instance }} (critical)"
+      description: "CPU usage > 90% for 15m. Likely saturation."
+
+  - alert: HighMemoryUsageWarning
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on {{ $labels.instance }} (warning)"
+      description: "Memory usage > 85% for 10m. Check processes and caches."
+
+  - alert: HighMemoryUsageCritical
     expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "High memory usage on instance {{ $labels.instance }}"
-      description: "{{ $labels.instance }} has memory usage above 85% for more than 5 minutes."
-
-  - alert: DiskSpaceLow
-    expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 90
     for: 5m
     labels:
       severity: critical
     annotations:
-      summary: "Disk space low on instance {{ $labels.instance }}"
-      description: "{{ $labels.instance }} has less than 10% disk space available on {{ $labels.mountpoint }}."
+      summary: "High memory usage on {{ $labels.instance }} (critical)"
+      description: "Memory usage > 95% for 5m. Risk of OOM."
+
+  - alert: DiskSpaceLowWarning
+    expr: ((1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs",device!~"ram.*|loop.*",mountpoint!~"/run($|/)|/var/lib/docker($|/)|/var/lib/containers($|/)"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs",device!~"ram.*|loop.*",mountpoint!~"/run($|/)|/var/lib/docker($|/)|/var/lib/containers($|/)"})) * 100) > 80 and on(instance,device,mountpoint) node_filesystem_readonly == 0
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Disk space low on {{ $labels.instance }}: {{ $labels.mountpoint }} (warning)"
+      description: "Filesystem {{ $labels.device }} at {{ $labels.mountpoint }} > 80% for 10m."
+
+  - alert: DiskSpaceLowCritical
+    expr: ((1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs",device!~"ram.*|loop.*",mountpoint!~"/run($|/)|/var/lib/docker($|/)|/var/lib/containers($|/)"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs",device!~"ram.*|loop.*",mountpoint!~"/run($|/)|/var/lib/docker($|/)|/var/lib/containers($|/)"})) * 100) > 90 and on(instance,device,mountpoint) node_filesystem_readonly == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Disk space low on {{ $labels.instance }}: {{ $labels.mountpoint }} (critical)"
+      description: "Filesystem {{ $labels.device }} at {{ $labels.mountpoint }} > 90% for 5m."
 
 - name: application-alerts
   rules:
