@@ -159,7 +159,7 @@ const ReferralSection: React.FC = () => {
     <div className="flex flex-col gap-6 w-full">
       <ResizerContainer
         layoutId="referra-container"
-        className="bg-surface-disabled-gray rounded-xl shadow-account-card overflow-hidden"
+        className="bg-surface-disabled-gray rounded-xl shadow-account-card overflow-hidden relative"
       >
         <PointsHeader />
         <ResizerContainer
