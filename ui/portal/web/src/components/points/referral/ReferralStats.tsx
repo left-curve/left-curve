@@ -1,6 +1,7 @@
 import {
   Badge,
   Button,
+  IconEdit,
   IconLink,
   IconUser,
   Input,
@@ -36,11 +37,11 @@ const AffiliateStats: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 w-full">
       <div className="w-full rounded-xl bg-surface-disabled-gray p-4 lg:p-6 flex flex-col gap-6 shadow-account-card relative">
-        <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
+        <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-between">
           <div className="flex flex-col items-center lg:items-start">
             <div className="flex items-center gap-1">
               <p className="text-primitives-warning-500 h3-bold">10% / 5%</p>
-              <IconLink className="w-4 h-4 text-primitives-warning-500" />
+              <IconEdit className="w-6 h-6 text-fg-secondary-500 mb-1 hover:text-ink-secondary-blue cursor-pointer" />
             </div>
             <p className="text-ink-tertiary-500 diatype-m-medium">Commission Rate (You/ Referee)</p>
           </div>
@@ -93,11 +94,8 @@ const AffiliateStats: React.FC = () => {
                 <p className="text-ink-tertiary-500 diatype-m-medium">My Referral Code</p>
                 <div className="flex items-center gap-2">
                   <p className="text-ink-primary-900 diatype-m-bold">{referralCode}</p>
-                  <TextCopy
-                    copyText={referralCode}
-                    className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
-                  />
-                  <IconLink className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
+                  <TextCopy copyText={referralCode} className="w-5 h-5 text-ink-tertiary-500" />
+                  <IconEdit className="w-5 h-5 text-ink-tertiary-500 hover:text-ink-secondary-blue cursor-pointer" />
                 </div>
               </div>
             </div>
