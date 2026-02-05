@@ -169,7 +169,9 @@ enum OrderKind {
 
 Storage is divided into _parameters_, which are set by the administrator and not changed by user operations (adding/removing liquidity, opening/closing orders, liquidation), and _state_, which are updated by user operations.
 
-### Parameters
+### Data structures
+
+#### Parameters
 
 The global parameters apply to all trading pairs:
 
@@ -232,7 +234,7 @@ struct PairParams {
 }
 ```
 
-### State
+#### State
 
 Global state:
 
@@ -365,19 +367,9 @@ struct Unlock {
 }
 ```
 
-GTC limit orders are stored in indexed maps for efficient scanning:
+#### Order
 
 ```rust
-/// Buy orders indexed for descending price iteration (most competitive first).
-/// Key: (pair_id, inverted_limit_price, created_at, order_id)
-/// where inverted_limit_price = MAX_PRICE - limit_price, so ascending iteration
-/// yields descending prices.
-const BUY_ORDERS: Map<(PairId, Udec, Timestamp, OrderId), Order> = Map::new("bids");
-
-/// Sell orders indexed for ascending price iteration (most competitive first).
-/// Key: (pair_id, limit_price, created_at, order_id)
-const SELL_ORDERS: Map<(PairId, Udec, Timestamp, OrderId), Order> = Map::new("asks");
-
 /// The Order struct stored as values in the indexed maps.
 /// The key already encodes pair_id, limit_price, and created_at,
 /// so the value only needs user_id, size, and reduce_only.
@@ -386,6 +378,50 @@ struct Order {
     pub size: Dec,
     pub reduce_only: bool,
 }
+
+/// An order's direction: buying or selling.
+enum Direction {
+    /// Buying
+    Bid,
+    /// Selling
+    Ask,
+}
+
+struct OrderIndexes {
+    /// Index the orders by order ID, so that an order can be retrieve by:
+    ///
+    /// ```rust
+    /// ORDERS.idx.order_id.load(order_id)
+    /// ```
+    pub order_id: UniqueIndex< /* ... */ >,
+}
+```
+
+### Storage layout
+
+```rust
+/// Global parameters.
+const PARAMS: Item<Params> = Item::new("params");
+
+/// Pair-specific parameters.
+const PAIR_PARAMS: Map<PairId, Params> = Map::new("pair_params");
+
+/// Global state.
+const STATE: Item<State> = Item::new("state");
+
+/// Pair-specific states.
+const PAIR_STATES: Map<PairId, PairState> = Map::new("pair_state");
+
+/// User states.
+const USER_STATES: Map<UserId, UserState> = Map::new("user_state");
+
+/// Buy orders indexed for descending price iteration (most competitive first).
+/// Key: (pair_id, inverted_limit_price, created_at, order_id)
+/// where inverted_limit_price = MAX_PRICE - limit_price, so ascending iteration
+/// yields descending prices.
+const ORDERS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order> = IndexedMap::new("order", OrderIndexes {
+    order_id: UniqueIndex::new(/* ... */),
+});
 ```
 
 ## Business logic
@@ -1552,6 +1588,7 @@ fn settle_funding(
     position.entry_funding_per_unit = pair_state.cumulative_funding_per_unit;
     pair_state.oi_weighted_entry_funding += position.size * position.entry_funding_per_unit;
 }
+```
 
 ### PnL and margin requirement
 
