@@ -1,4 +1,15 @@
-import { Button, IconLink, Input, ProgressBar, Tab, Tabs, TextCopy } from "@left-curve/applets-kit";
+import {
+  Badge,
+  Button,
+  IconLink,
+  IconUser,
+  Input,
+  ProgressBar,
+  Tab,
+  Tabs,
+  TextCopy,
+  twMerge,
+} from "@left-curve/applets-kit";
 import type React from "react";
 import { useState } from "react";
 
@@ -13,7 +24,7 @@ const UNLOCK_VOLUME = 10000;
 const TIER_2_VOLUME = 100000;
 
 const AffiliateStats: React.FC = () => {
-  const currentVolume = 5000;
+  const currentVolume = 11000;
   const isUnlocked = currentVolume >= UNLOCK_VOLUME;
   const targetVolume = isUnlocked ? TIER_2_VOLUME : UNLOCK_VOLUME;
   const progress = Math.min((currentVolume / targetVolume) * 100, 100);
@@ -24,7 +35,7 @@ const AffiliateStats: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 w-full">
-      <div className="w-full rounded-xl bg-surface-disabled-gray p-4 lg:p-6 flex flex-col gap-6 shadow-account-card">
+      <div className="w-full rounded-xl bg-surface-disabled-gray p-4 lg:p-6 flex flex-col gap-6 shadow-account-card relative">
         <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
           <div className="flex flex-col items-center lg:items-start">
             <div className="flex items-center gap-1">
@@ -54,63 +65,66 @@ const AffiliateStats: React.FC = () => {
           }}
         />
 
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 bg-surface-primary-rice rounded-xl p-4 flex justify-between items-center">
-            <p className="text-ink-tertiary-500 diatype-m-medium">Total Referees</p>
-            <p className="text-ink-primary-900 diatype-m-bold">50</p>
-          </div>
-          <div className="flex-1 bg-surface-primary-rice rounded-xl p-4 flex justify-between items-center">
-            <p className="text-ink-tertiary-500 diatype-m-medium">Total Active Referees</p>
-            <p className="text-ink-primary-900 diatype-m-bold">50</p>
-          </div>
-        </div>
-
-        {isUnlocked ? (
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1 bg-surface-primary-rice rounded-xl p-4 flex justify-between items-center">
-              <p className="text-ink-tertiary-500 diatype-m-medium">My Referral Link</p>
-              <div className="flex items-center gap-2">
-                <p className="text-ink-primary-900 diatype-m-bold">{referralLink}</p>
-                <TextCopy
-                  copyText={referralLink}
-                  className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
-                />
-              </div>
+            <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
+              <p className="text-ink-tertiary-500 diatype-m-medium">Total Referees</p>
+              <p className="text-ink-primary-900 diatype-m-bold">50</p>
             </div>
-            <div className="flex-1 bg-surface-primary-rice rounded-xl p-4 flex justify-between items-center">
-              <p className="text-ink-tertiary-500 diatype-m-medium">My Referral Code</p>
-              <div className="flex items-center gap-2">
-                <p className="text-ink-primary-900 diatype-m-bold">{referralCode}</p>
-                <TextCopy
-                  copyText={referralCode}
-                  className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
-                />
-                <IconLink className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
-              </div>
+            <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
+              <p className="text-ink-tertiary-500 diatype-m-medium">Total Active Referees</p>
+              <p className="text-ink-primary-900 diatype-m-bold">50</p>
             </div>
           </div>
-        ) : (
-          <div className="w-full rounded-xl bg-surface-disabled-gray p-6 relative overflow-hidden min-h-[180px]">
-            <div className="relative z-10 max-w-[60%] lg:max-w-[50%]">
-              <h3 className="exposure-m-italic text-ink-primary-900">
-                Unlock your referral code with{" "}
-                <span className="text-primitives-warning-500">$10k</span> volume!
-              </h3>
-              <p className="text-ink-tertiary-500 diatype-m-regular mt-2">
-                Invite your friends and earn up to{" "}
-                <span className="text-primitives-warning-500 font-bold">30%</span> commission.
-              </p>
-              <Button variant="primary" className="mt-4">
-                Trade now
-              </Button>
+
+          {isUnlocked ? (
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
+                <p className="text-ink-tertiary-500 diatype-m-medium">My Referral Link</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-ink-primary-900 diatype-m-bold">{referralLink}</p>
+                  <TextCopy
+                    copyText={referralLink}
+                    className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
+                <p className="text-ink-tertiary-500 diatype-m-medium">My Referral Code</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-ink-primary-900 diatype-m-bold">{referralCode}</p>
+                  <TextCopy
+                    copyText={referralCode}
+                    className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+                  />
+                  <IconLink className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
+                </div>
+              </div>
             </div>
-            <img
-              src="/images/points/referral-banner.png"
-              alt="Referral banner"
-              className="absolute bottom-0 right-0 w-[200px] lg:w-[280px] h-auto object-contain pointer-events-none"
-            />
-          </div>
-        )}
+          ) : (
+            <div className="min-h-[280px] lg:min-h-[180px] mt-4">
+              <div className="relative z-10 flex flex-col gap-4 lg:max-w-sm">
+                <div className="flex flex-col gap-2">
+                  <h3 className="display-heading-xs text-ink-primary-900 max-w-sm">
+                    Unlock your referral code with $10k volume!
+                  </h3>
+                  <p className="text-ink-tertiary-500 diatype-m-regular max-w-sm">
+                    Invite your friends and earn up to{" "}
+                    <span className="text-utility-success-500 font-bold">30%</span> commission.
+                  </p>
+                </div>
+                <Button variant="primary" size="sm">
+                  Trade now
+                </Button>
+              </div>
+              <img
+                src="/images/points/referral-banner.png"
+                alt="Referral banner"
+                className="absolute bottom-0 right-1/2 translate-x-1/2 lg:right-[3rem] lg:translate-x-0 w-[200px] lg:w-auto h-auto object-contain pointer-events-none"
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -118,9 +132,11 @@ const AffiliateStats: React.FC = () => {
 
 const TraderStats: React.FC = () => {
   const [referralCode, setReferralCode] = useState("");
+  const hasReferrer = true; // Mock: change to false to see the input view
+  const referrerName = "Scranton";
 
   return (
-    <div className="w-full flex flex-col gap-6 pb-[153px] lg:pb-0">
+    <div className={twMerge("w-full flex flex-col gap-6", !hasReferrer && "pb-[153px] lg:pb-0")}>
       <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-between">
         <div className="flex flex-col items-center lg:items-start">
           <p className="text-utility-warning-600 h3-bold">15%</p>
@@ -136,37 +152,48 @@ const TraderStats: React.FC = () => {
         </div>
       </div>
 
-      <div className="w-full h-px bg-outline-secondary-gray" />
-
-      <div className="min-h-[280px] lg:min-h-[180px]">
-        <div className="relative z-10 flex flex-col gap-8 lg:max-w-sm">
-          <div className="flex flex-col gap-2">
-            <h3 className="display-heading-xs text-ink-primary-900 max-w-sm">
-              Refer friends and unlock more rewards together!
-            </h3>
-            <p className="text-ink-tertiary-500 diatype-m-regular max-w-sm">
-              Get up to <span className="text-utility-success-500 font-bold">15%</span> fee rebates
-              by submitting your friend's referral code!
-            </p>
+      {hasReferrer ? (
+        <div className="w-full rounded-xl bg-surface-tertiary-gray p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <IconUser className="w-5 h-5 text-primitives-blue-light-400" />
+            <p className="text-ink-primary-900 diatype-m-medium">Your Referrer</p>
           </div>
-          <Input
-            label="Referral Code"
-            value={referralCode}
-            onChange={(e) => setReferralCode(e.target.value)}
-            placeholder="Enter your friend's referral code"
-            endContent={
-              <Button variant="link" className="p-0">
-                Submit
-              </Button>
-            }
-          />
+          <Badge text={referrerName} color="blue" />
         </div>
-        <img
-          src="/images/characters/friends.svg"
-          alt="Refer friends"
-          className="absolute bottom-[-5rem] lg:bottom-[-6rem] right-1/2 translate-x-1/2 lg:right-[3rem] lg:translate-x-0 w-[260px] lg:w-[320px] h-auto object-contain pointer-events-none"
-        />
-      </div>
+      ) : (
+        <>
+          <div className="w-full h-px bg-outline-secondary-gray" />
+          <div className="min-h-[280px] lg:min-h-[180px]">
+            <div className="relative z-10 flex flex-col gap -8 lg:max-w-sm">
+              <div className="flex flex-col gap-2">
+                <h3 className="display-heading-xs text-ink-primary-900 max-w-sm">
+                  Refer friends and unlock more rewards together!
+                </h3>
+                <p className="text-ink-tertiary-500 diatype-m-regular max-w-sm">
+                  Get up to <span className="text-utility-success-500 font-bold">15%</span> fee
+                  rebates by submitting your friend's referral code!
+                </p>
+              </div>
+              <Input
+                label="Referral Code"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+                placeholder="Enter your friend's referral code"
+                endContent={
+                  <Button variant="link" className="p-0">
+                    Submit
+                  </Button>
+                }
+              />
+            </div>
+            <img
+              src="/images/characters/friends.svg"
+              alt="Refer friends"
+              className="absolute bottom-[-5rem] lg:bottom-[-6rem] right-1/2 translate-x-1/2 lg:right-[3rem] lg:translate-x-0 w-[260px] lg:w-[320px] h-auto object-contain pointer-events-none"
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -181,7 +208,11 @@ export const ReferralStats: React.FC<ReferralStatsProps> = ({ mode, onModeChange
           selectedTab={mode}
           onTabChange={(value) => onModeChange(value as ReferralMode)}
         >
-          <Tab title="affiliate">Affiliate</Tab>
+          <Tab title="affiliate">
+            <span className="flex items-center gap-2">
+              Affiliate <Badge text="Tier 1" color="rice" />
+            </span>
+          </Tab>
           <Tab title="trader">Trader</Tab>
         </Tabs>
       </div>
