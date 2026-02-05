@@ -1658,4 +1658,4 @@ Once the cooldown period elapses, the contract needs to be triggered to release 
 The following are out-of-scope for now, but will be added in the future:
 
 - **Isolated margin**
-- **TP/SL**: automatically close the position is PnL reaches an upper or lower threshold.
+- **TP/SL**: automatically close the position if PnL reaches an upper or lower threshold.
