@@ -251,8 +251,6 @@ struct State {
 
     /// Total supply of the vault's share token.
     pub vault_share_supply: Uint,
-
-    // TODO: accumulator variables for computing the vault's PnL
 }
 ```
 
@@ -300,6 +298,17 @@ struct PairState {
     /// all positions:
     ///   vault_unrealized_funding = oi_weighted_entry_funding - cumulative_funding_per_unit * skew
     pub oi_weighted_entry_funding: Dec,
+
+    /// Sum of `sign(position.size) * position.cost_basis` across all open
+    /// positions for this pair, where sign is +1 for longs and -1 for shorts.
+    ///
+    /// Equivalently: Σ position.size * (position.cost_basis / |position.size|),
+    /// i.e. OI-weighted average entry price, paralleling `oi_weighted_entry_funding`.
+    ///
+    /// Used to compute the vault's unrealized price PnL without iterating over
+    /// all positions:
+    ///   vault_unrealized_pnl = oi_weighted_entry_price - oracle_price * skew
+    pub oi_weighted_entry_price: Dec,
 }
 ```
 
@@ -883,6 +892,11 @@ fn execute_fill(
 
     // Settle accrued funding and price PnL for existing position
     if let Some(pos) = position {
+        // Remove old contribution to oi_weighted_entry_price BEFORE any
+        // cost_basis or size modifications. Must happen here (not in the
+        // second block) because cost_basis is modified below for closing.
+        pair_state.oi_weighted_entry_price -= sign(pos.size) * pos.cost_basis; // sign(x) = +1 if x > 0, -1 if x < 0, 0 if x = 0
+
         // Settle funding BEFORE modifying the position.
         // This also updates oi_weighted_entry_funding.
         settle_funding(state, pair_state, user_state, pos);
@@ -916,9 +930,11 @@ fn execute_fill(
         if pos.size == Dec::ZERO {
             user_state.positions.remove(&pair_id);
             // oi_weighted_entry_funding contribution already removed above
+            // oi_weighted_entry_price contribution already removed in block above
         } else {
             // entry_funding_per_unit stays at current cumulative (set by settle_funding)
             pair_state.oi_weighted_entry_funding += pos.size * pos.entry_funding_per_unit;
+            pair_state.oi_weighted_entry_price += sign(pos.size) * pos.cost_basis;
         }
     } else if opening_size != Dec::ZERO {
         // Create new position
@@ -931,6 +947,10 @@ fn execute_fill(
 
         // Add new contribution to oi_weighted_entry_funding
         pair_state.oi_weighted_entry_funding += fill_size * entry_funding;
+
+        // Add new contribution to oi_weighted_entry_price
+        let cost_basis = floor(abs(opening_size) * exec_price);
+        pair_state.oi_weighted_entry_price += sign(fill_size) * cost_basis;
     }
 
     // Update OI based on opening/closing portions
@@ -1485,7 +1505,7 @@ fn compute_vault_equity(
     usdt_price: Udec,
     current_time: Timestamp,
 ) -> Dec {
-    let unrealized_pnl = compute_vault_unrealized_pnl(/* TODO */);
+    let unrealized_pnl = compute_vault_unrealized_pnl(pair_states, oracle_prices);
 
     let unrealized_funding = compute_vault_unrealized_funding(
         pair_states,
@@ -1495,6 +1515,25 @@ fn compute_vault_equity(
     );
 
     state.vault_margin + ((unrealized_pnl + unrealized_funding) / usdt_price)
+}
+
+fn compute_vault_unrealized_pnl(
+    pair_states: &Map<PairId, PairState>,
+    oracle_prices: &Map<PairId, Udec>,
+) -> Dec {
+    let mut total = Dec::ZERO;
+
+    for (pair_id, pair_state) in pair_states {
+        let oracle_price = oracle_prices[&pair_id];
+        let skew = pair_state.long_oi + pair_state.short_oi;
+
+        // vault_pnl = -(total_trader_pnl)
+        //           = -(oracle_price * skew - oi_weighted_entry_price)
+        //           = oi_weighted_entry_price - oracle_price * skew
+        total += pair_state.oi_weighted_entry_price - oracle_price * skew;
+    }
+
+    total
 }
 
 fn compute_vault_unrealized_funding(
@@ -1509,8 +1548,12 @@ fn compute_vault_unrealized_funding(
     for (pair_id, pair_state) in pair_states {
         let oracle_price = oracle_prices[&pair_id];
         let pair_params = pair_params_map[&pair_id];
+
         unrealized_funding += compute_vault_unrealized_funding_for_pair(
-            pair_state, pair_params, oracle_price, current_time,
+            pair_state,
+            pair_params,
+            oracle_price,
+            current_time,
         );
     }
 

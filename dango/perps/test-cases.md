@@ -1261,3 +1261,228 @@ All test cases verify the margin reservation system correctly handles:
 | Cancel releases margin    | Reserved margin returned to available | 8     |
 | Fill releases reservation | Reserved → used margin on fill        | 9     |
 | Withdrawal restrictions   | Cannot withdraw more than available   | 10-12 |
+
+## Vault Unrealized PnL
+
+Test cases for the `oi_weighted_entry_price` accumulator and `compute_vault_unrealized_pnl` function.
+
+### Test Parameters
+
+```plain
+Pair: BTCUSD
+oracle_price = 50,000
+K (skew_scale) = 1000
+M (max_abs_premium) = 0.05 (5%)
+```
+
+### Key Formulas
+
+- `oi_weighted_entry_price = Σ sign(pos.size) * pos.cost_basis`
+- `skew = long_oi + short_oi`
+- `vault_unrealized_pnl = oi_weighted_entry_price - oracle_price * skew`
+
+### Test 1: Multi-position vault unrealized PnL
+
+Four positions covering all quadrants (long/short × profit/loss from the vault's perspective):
+
+| #   | User  | size | entry_price | cost_basis                  | sign(size) * cost_basis |
+| --- | ----- | ---- | ----------- | --------------------------- | ----------------------- |
+| 1   | Alice | +2   | 48,000      | floor(2 * 48,000) = 96,000  | +96,000                 |
+| 2   | Bob   | -3   | 52,000      | floor(3 * 52,000) = 156,000 | -156,000                |
+| 3   | Carol | +1   | 51,000      | floor(1 * 51,000) = 51,000  | +51,000                 |
+| 4   | Dave  | -1   | 49,000      | floor(1 * 49,000) = 49,000  | -49,000                 |
+
+**Step 1: Compute `oi_weighted_entry_price`**
+
+```plain
+oi_weighted_entry_price = 96,000 + (-156,000) + 51,000 + (-49,000)
+                        = -58,000
+```
+
+**Step 2: Compute OI and skew**
+
+```plain
+long_oi  = 2 + 1 = +3
+short_oi = -3 + (-1) = -4
+skew     = 3 + (-4) = -1
+```
+
+**Step 3: Compute vault unrealized PnL**
+
+```plain
+vault_unrealized_pnl = oi_weighted_entry_price - oracle_price * skew
+                     = -58,000 - 50,000 * (-1)
+                     = -58,000 + 50,000
+                     = -8,000
+```
+
+**Step 4: Verify against per-position manual calculation**
+
+The vault is the counterparty to all traders. For each trader's position, the vault holds the opposite. The vault's unrealized PnL per position is the negative of the trader's unrealized PnL:
+
+| #   | Trader PnL formula                                 | Trader PnL | Vault PnL |
+| --- | -------------------------------------------------- | ---------- | --------- |
+| 1   | (50,000 - 48,000) * 2 = +4,000 (long, price up)    | +4,000     | -4,000    |
+| 2   | (52,000 - 50,000) * 3 = +6,000 (short, price down) | +6,000     | -6,000    |
+| 3   | (50,000 - 51,000) * 1 = -1,000 (long, price down)  | -1,000     | +1,000    |
+| 4   | (49,000 - 50,000) * 1 = -1,000 (short, price up)   | -1,000     | +1,000    |
+
+```plain
+vault_unrealized_pnl = -4,000 + (-6,000) + 1,000 + 1,000 = -8,000 ✓
+```
+
+The accumulator-based computation matches the per-position calculation.
+
+### Test 2: Accumulator maintenance through fills
+
+This test verifies that `oi_weighted_entry_price` is correctly maintained through a sequence of fills: open, partial close, and flip.
+
+**Parameters:**
+
+```plain
+Pair: BTCUSD
+oracle_price = 50,000 (constant throughout; skew pricing ignored for clarity)
+```
+
+**Step 1: Alice opens long +4 at entry_price = 50,000**
+
+```plain
+cost_basis = floor(4 * 50,000) = 200,000
+sign(size) = +1
+```
+
+Accumulator update (new position branch):
+
+```plain
+oi_weighted_entry_price += sign(+4) * 200,000 = +200,000
+
+oi_weighted_entry_price = 200,000
+long_oi = 4, short_oi = 0, skew = 4
+vault_unrealized_pnl = 200,000 - 50,000 * 4 = 0 ✓ (just opened at current price)
+```
+
+**Step 2: Bob opens short -2 at entry_price = 50,000**
+
+```plain
+cost_basis = floor(2 * 50,000) = 100,000
+sign(size) = -1
+```
+
+Accumulator update (new position branch):
+
+```plain
+oi_weighted_entry_price += sign(-2) * 100,000 = -100,000
+
+oi_weighted_entry_price = 200,000 + (-100,000) = 100,000
+long_oi = 4, short_oi = -2, skew = 2
+vault_unrealized_pnl = 100,000 - 50,000 * 2 = 0 ✓
+```
+
+**Step 3: Alice partial-closes -2 at exec_price = 52,000** (oracle still 50,000)
+
+Before modification:
+
+```plain
+Alice: size = +4, cost_basis = 200,000
+Remove old contribution: oi_weighted_entry_price -= sign(+4) * 200,000 = -200,000
+oi_weighted_entry_price = 100,000 - 200,000 = -100,000
+```
+
+Close portion updates cost_basis:
+
+```plain
+close_ratio = 2 / 4 = 0.5
+cost_basis = floor(200,000 * (1 - 0.5)) = 100,000
+```
+
+After modification (position not fully closed):
+
+```plain
+Alice: size = +4 + (-2) = +2, cost_basis = 100,000
+Add new contribution: oi_weighted_entry_price += sign(+2) * 100,000 = +100,000
+oi_weighted_entry_price = -100,000 + 100,000 = 0
+```
+
+Verify:
+
+```plain
+long_oi = 4 - 2 = 2, short_oi = -2, skew = 0
+vault_unrealized_pnl = 0 - 50,000 * 0 = 0
+```
+
+Per-position check:
+
+```plain
+Alice: (50,000 - 50,000) * 2 = 0 (remaining long at entry 50,000)
+Bob:   (50,000 - 50,000) * 2 = 0 (short at entry 50,000)
+Total trader PnL = 0, vault PnL = 0 ✓
+```
+
+Note: Alice realized PnL of (52,000 - 50,000) * 2 = 4,000 on the closed portion, which was settled to margins. The vault's _unrealized_ PnL only reflects open positions.
+
+**Step 4: Alice flips to short -3 (fill_size = -5) at exec_price = 51,000** (oracle still 50,000)
+
+Before modification:
+
+```plain
+Alice: size = +2, cost_basis = 100,000
+Remove old contribution: oi_weighted_entry_price -= sign(+2) * 100,000 = -100,000
+oi_weighted_entry_price = 0 - 100,000 = -100,000
+```
+
+Decompose fill(-5, +2): closing = -2, opening = -3
+
+Close the remaining long:
+
+```plain
+close_ratio = 2 / 2 = 1.0
+cost_basis = floor(100,000 * (1 - 1.0)) = 0
+```
+
+Open new short:
+
+```plain
+cost_basis = 0 + floor(3 * 51,000) = 153,000
+```
+
+After modification:
+
+```plain
+Alice: size = +2 + (-5) = -3, cost_basis = 153,000
+Add new contribution: oi_weighted_entry_price += sign(-3) * 153,000 = -153,000
+oi_weighted_entry_price = -100,000 + (-153,000) = -253,000
+```
+
+Verify:
+
+```plain
+long_oi = 2 - 2 = 0, short_oi = -2 + (-3) = -5, skew = -5
+vault_unrealized_pnl = -253,000 - 50,000 * (-5) = -253,000 + 250,000 = -3,000
+```
+
+Per-position check:
+
+```plain
+Alice: short -3 at entry 51,000 → (51,000 - 50,000) * 3 = +3,000 trader PnL
+Bob:   short -2 at entry 50,000 → (50,000 - 50,000) * 2 = 0 trader PnL
+Total trader PnL = +3,000, vault PnL = -3,000 ✓
+```
+
+### Analysis Notes
+
+#### Note 1: Ordering of accumulator removal
+
+The removal of the old `oi_weighted_entry_price` contribution **must** happen in the first block of `execute_fill` (before `cost_basis` is modified for the closing portion), not in the second block. This is different from `oi_weighted_entry_funding`, where the old contribution is removed in the second block (since `entry_funding_per_unit` is updated by `settle_funding`, not by the closing logic).
+
+#### Note 2: Vault unrealized PnL sign convention
+
+The formula `vault_unrealized_pnl = oi_weighted_entry_price - oracle_price * skew` gives a positive result when the vault is in profit (traders are losing in aggregate) and a negative result when the vault is in loss (traders are winning).
+
+### Conclusion
+
+| Category                   | Behavior                                           | Tests |
+| -------------------------- | -------------------------------------------------- | ----- |
+| Multi-position computation | Accumulator matches per-position sum               | 1     |
+| Open position              | New contribution added correctly                   | 2.1-2 |
+| Partial close              | Old removed before cost_basis change, new re-added | 2.3   |
+| Flip position              | Close + open handled in single fill                | 2.4   |
