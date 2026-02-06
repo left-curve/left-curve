@@ -1485,7 +1485,7 @@ fn compute_vault_equity(
     usdt_price: Udec,
     current_time: Timestamp,
 ) -> Dec {
-    let unrealized_pnl = compute_vault_unrealized_pnl();
+    let unrealized_pnl = compute_vault_unrealized_pnl(/* TODO */);
 
     let unrealized_funding = compute_vault_unrealized_funding(
         pair_states,
@@ -1657,5 +1657,11 @@ Once the cooldown period elapses, the contract needs to be triggered to release 
 
 The following are out-of-scope for now, but will be added in the future:
 
+v1.5 (to be shipped in relatively near future):
+
 - **Isolated margin**
 - **TP/SL**: automatically close the position if PnL reaches an upper or lower threshold.
+
+v2 (to be shipped in further future):
+
+- **Partial fill of orders**: see [v2.md](./v2.md).
