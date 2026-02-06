@@ -1198,12 +1198,16 @@ jobs:
         run: |
           cd deploy
 
-          # Skip signature verification if no new images were built in this workflow run
+          # Skip signature verification for images that weren't built in this workflow run
           # Ansible needs boolean false, not string "false", so we include it in the JSON
           VERIFY_SIGS_JSON=""
           if [ "$BACKEND_CHANGED" != "true" ] && [ "$FRONTEND_CHANGED" != "true" ]; then
-            echo "No backend/frontend changes - skipping cosign signature verification"
+            echo "No backend/frontend changes - skipping all cosign signature verification"
             VERIFY_SIGS_JSON=', "verify_signatures": false'
+          else
+            # Only verify signatures for images that were actually built
+            VERIFY_SIGS_JSON=', "verify_backend_signature": '"$( [ "$BACKEND_CHANGED" = "true" ] && echo "true" || echo "false" )"''
+            VERIFY_SIGS_JSON+=', "verify_frontend_signature": '"$( [ "$FRONTEND_CHANGED" = "true" ] && echo "true" || echo "false" )"''
           fi
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
