@@ -236,7 +236,7 @@ struct PairParams {
     /// Notional = |opening_size| * oracle_price.
     ///
     /// Only enforced on the opening portion — closing is always allowed.
-    pub min_order_notional: Udec,
+    pub min_opening_notional: Udec,
 }
 ```
 
@@ -883,9 +883,9 @@ fn compute_fill_size_from_oi(
 #### Validate notional constraints
 
 ```rust
-/// Validate minimum order notional constraint.
+/// Validate minimum opening notional constraint.
 /// If the order opens or increases exposure, the opening notional must meet
-/// `min_order_notional`. Closing portions are exempt so users can always exit.
+/// `min_opening_notional`. Closing portions are exempt so users can always exit.
 fn validate_notional_constraints(
     opening_size: Dec,
     user_pos: Dec,
@@ -898,7 +898,7 @@ fn validate_notional_constraints(
         // Closing is exempt so users can always exit positions.
         let opening_notional = abs(opening_size) * oracle_price;
         ensure!(
-            opening_notional >= pair_params.min_order_notional,
+            opening_notional >= pair_params.min_opening_notional,
             "opening notional below minimum"
         );
     }
