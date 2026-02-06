@@ -813,6 +813,18 @@ fn compute_target_price(
         OrderKind::Limit { limit_price } => limit_price,
     }
 }
+
+/// Check whether the execution price satisfies the price constraint.
+///
+/// - For buys:  exec_price <= target_price  (buyer won't pay more)
+/// - For sells: exec_price >= target_price  (seller won't accept less)
+fn check_price_constraint(exec_price: Udec, target_price: Udec, is_buy: bool) -> bool {
+    if is_buy {
+        exec_price <= target_price
+    } else {
+        exec_price >= target_price
+    }
+}
 ```
 
 #### Max fillable from OI constraint
@@ -835,6 +847,81 @@ fn compute_max_opening_from_oi(
         max(opening_size, -room)
     } else {
         0
+    }
+}
+
+/// Determine the actual fill size after applying the open interest constraint.
+///
+/// The closing portion is never subject to OI limits. The opening portion may
+/// be capped by `max_abs_oi`. Behavior when OI is violated:
+/// - `reduce_only = true`: fill only the closing portion (partial fill).
+/// - `reduce_only = false`: fill nothing (all-or-nothing semantics).
+///
+/// Returns the fill size, which may be the full order, the closing portion
+/// only, or zero.
+fn compute_fill_size_from_oi(
+    size: Dec,
+    closing_size: Dec,
+    opening_size: Dec,
+    is_buy: bool,
+    reduce_only: bool,
+    pair_state: &PairState,
+    max_abs_oi: Udec,
+) -> Dec {
+    let max_opening = compute_max_opening_from_oi(opening_size, pair_state, max_abs_oi);
+
+    let oi_violated = if is_buy {
+        max_opening < opening_size
+    } else {
+        max_opening > opening_size
+    };
+
+    if oi_violated {
+        if reduce_only {
+            closing_size
+        } else {
+            Dec::ZERO
+        }
+    } else {
+        size
+    }
+}
+```
+
+#### Validate notional constraints
+
+```rust
+/// Validate minimum order notional and minimum position notional constraints.
+///
+/// - If the order is purely closing (opening_size == 0), the remaining position
+///   must either be fully closed or remain above `min_position_notional`.
+/// - If the order opens or increases exposure, the opening notional must meet
+///   `min_order_notional`. Closing portions are exempt so users can always exit.
+fn validate_notional_constraints(
+    opening_size: Dec,
+    user_pos: Dec,
+    size: Dec,
+    oracle_price: Udec,
+    pair_params: &PairParams,
+) {
+    if opening_size == Dec::ZERO {
+        // Pure close: enforce minimum position notional.
+        // The position must be either fully closed, or the remaining notional
+        // must be above the minimum.
+        let remaining_size = user_pos + size;
+        let remaining_notional = abs(remaining_size) * oracle_price;
+        ensure!(
+            remaining_size == 0 || remaining_notional >= pair_params.min_position_notional,
+            "remaining position notional below minimum; close the full position instead"
+        );
+    } else {
+        // Opening or increasing a position: enforce minimum order notional.
+        // Closing is exempt so users can always exit positions.
+        let opening_notional = abs(opening_size) * oracle_price;
+        ensure!(
+            opening_notional >= pair_params.min_order_notional,
+            "opening notional below minimum"
+        );
     }
 }
 ```
@@ -870,84 +957,36 @@ fn handle_submit_order(
         .unwrap_or(Dec::ZERO);
     let is_buy = size > 0;
 
-    // Step 1: Decompose into closing and opening portions
+    // Step 1: Decompose into closing and opening portions (called ONCE)
     let (closing_size, opening_size) = decompose_fill(size, user_pos);
 
-    // Enforce minimum order size and minimum position size.
-    if opening_size == Dec::ZERO {
-        // If the order is a pure close -- enforce minimum position notional.
-        // The position must be either fully closed, or the remaining notional be
-        // greater than the minimum.
-        let remaining_size = user_pos + size;
-        let remaining_notional = abs(remaining_size) * oracle_price;
-        ensure!(
-            remaining_size == 0 || remaining_notional >= pair_params.min_position_notional,
-            "remaining position notional below minimum; close the full position instead"
-        );
-    }
-    else {
-        // If the order opens or increases a position -- enforce minimum order notional.
-        // Closing is exempt so users can always exit positions.
-        let opening_notional = abs(opening_size) * oracle_price;
-        ensure!(
-            opening_notional >= pair_params.min_order_notional,
-            "opening notional below minimum"
-        );
-    }
+    // Step 2: Validate notional constraints
+    validate_notional_constraints(opening_size, user_pos, size, oracle_price, pair_params);
 
-    // Step 2: Check OI constraint on opening portion
-    let max_opening_from_oi = compute_max_opening_from_oi(opening_size, pair_state, pair_params.max_abs_oi);
+    // Step 3: Check OI constraint and determine fill size
+    let fill_size = compute_fill_size_from_oi(
+        size, closing_size, opening_size, is_buy, reduce_only,
+        pair_state, pair_params.max_abs_oi,
+    );
 
-    let oi_violated = if is_buy {
-        max_opening_from_oi < opening_size
-    } else {
-        max_opening_from_oi > opening_size
-    };
-
-    // Step 3: Determine fill based on reduce_only flag and OI constraint
-    let fill_size = if oi_violated {
-        if reduce_only {
-            // reduce_only=true: execute only closing portion, discard opening
-            closing_size
-        } else {
-            // reduce_only=false: order is unfillable
-            0
-        }
-    } else {
-        // OI not violated: execute full order
-        size
-    };
-
-    // Step 4: Compute the target price. This is the worst possible price the
-    // order may be filled at.
+    // Step 4: Compute the target price (worst acceptable execution price)
     let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
 
-    // Step 5: Compute required margin for the opening portion of the ENTIRE order
-    // (not just fill_size, but the full opening_size including unfilled)
-    let (_, full_opening_size) = decompose_fill(size, user_pos);
-    let required_margin = compute_required_margin(full_opening_size, target_price, pair_params);
-
-    // Step 6: Check available margin BEFORE any execution
+    // Step 5: Check margin for the full opening portion (including unfilled)
+    let required_margin = compute_required_margin(opening_size, target_price, pair_params);
     let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states);
     ensure!(available_margin >= required_margin, "insufficient margin");
 
-    // Step 7: Check price constraint (all-or-nothing on entire fill)
+    // Step 6: Check price constraint and execute fill
     if fill_size != Dec::ZERO {
         let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
-        let price_ok = if is_buy {
-            exec_price <= target_price
-        } else {
-            exec_price >= target_price
-        };
-
-        if price_ok {
-            // Step 8: Execute the fill
+        if check_price_constraint(exec_price, target_price, is_buy) {
             execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
         }
     }
 
-    // Step 9: Handle unfilled portion based on order kind
+    // Step 7: Handle unfilled portion
     let unfilled_size = size - fill_size;
     if unfilled_size != Dec::ZERO {
         match kind {
@@ -955,42 +994,69 @@ fn handle_submit_order(
                 // Market orders are IOC: discard unfilled portion (no-op)
             },
             OrderKind::Limit { limit_price } => {
-                // Enforce maximum open orders
-                ensure!(
-                    user_state.open_order_count < params.max_open_orders,
-                    "too many open orders"
+                let user_pos_after_fill = user_pos + fill_size;
+                store_limit_order(
+                    params, user_state, pair_params, pair_id, user_id,
+                    unfilled_size, limit_price, reduce_only,
+                    user_pos_after_fill, current_time,
                 );
-
-                // Step 10: Reserve margin for the unfilled portion
-                // The filled portion's margin is now "used margin" (backing the position)
-                // The unfilled portion needs margin reserved for potential future execution
-                let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos + fill_size);
-                let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params);
-                user_state.reserved_margin += margin_to_reserve;
-
-                // Increment open order count
-                user_state.open_order_count += 1;
-
-                // Store limit order as GTC
-                let order = Order {
-                    user_id,
-                    size: unfilled_size,
-                    reduce_only,
-                };
-                let order_id = generate_order_id();
-                let created_at = current_timestamp();
-
-                if unfilled_size > Dec::ZERO {
-                    // Buy order: store with inverted price for descending iteration
-                    let key = (pair_id, MAX_PRICE - limit_price, created_at, order_id);
-                    BUY_ORDERS.save(key, order);
-                } else {
-                    // Sell order: store with normal price for ascending iteration
-                    let key = (pair_id, limit_price, created_at, order_id);
-                    SELL_ORDERS.save(key, order);
-                }
             },
         }
+    }
+}
+
+/// Store the unfilled portion of a limit order for later fulfillment (GTC).
+///
+/// Validates the user's open order count, reserves margin for the opening
+/// portion of the unfilled size, and persists the order in the appropriate
+/// side of the order book.
+///
+/// Buy orders are stored with inverted price (MAX_PRICE - limit_price) so
+/// ascending iteration yields descending price order.
+fn store_limit_order(
+    params: &Params,
+    user_state: &mut UserState,
+    pair_params: &PairParams,
+    pair_id: PairId,
+    user_id: UserId,
+    unfilled_size: Dec,
+    limit_price: Udec,
+    reduce_only: bool,
+    user_pos_after_fill: Dec,
+    current_time: Timestamp,
+) {
+    // Enforce maximum open orders
+    ensure!(
+        user_state.open_order_count < params.max_open_orders,
+        "too many open orders"
+    );
+
+    // Reserve margin for the opening portion of the unfilled size.
+    // The filled portion's margin is now "used margin" (backing the position);
+    // the unfilled portion needs margin reserved for potential future execution.
+    let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos_after_fill);
+    let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params);
+    user_state.reserved_margin += margin_to_reserve;
+
+    // Increment open order count
+    user_state.open_order_count += 1;
+
+    // Store limit order as GTC
+    let order = Order {
+        user_id,
+        size: unfilled_size,
+        reduce_only,
+    };
+    let order_id = generate_order_id();
+
+    if unfilled_size > Dec::ZERO {
+        // Buy order: store with inverted price for descending iteration
+        let key = (pair_id, MAX_PRICE - limit_price, current_time, order_id);
+        BUY_ORDERS.save(key, order);
+    } else {
+        // Sell order: store with normal price for ascending iteration
+        let key = (pair_id, limit_price, current_time, order_id);
+        SELL_ORDERS.save(key, order);
     }
 }
 
@@ -1222,23 +1288,25 @@ fn fulfill_limit_orders_for_pair(
         };
 
         if process_buy {
-            try_fill_buy_order(&mut buy_iter, pair_id, state, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_limit_order(&mut buy_iter, pair_id, true, state, oracle_price, &mut skew, pair_state, pair_params);
         } else {
-            try_fill_sell_order(&mut sell_iter, pair_id, state, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_limit_order(&mut sell_iter, pair_id, false, state, oracle_price, &mut skew, pair_state, pair_params);
         }
     }
 }
 
-/// Attempts to fill the next buy order from the iterator.
-/// The caller has already verified that this order passes the marginal price cutoff.
-/// Always advances the iterator.
+/// Attempt to fill the next limit order from the given side of the book.
 ///
-/// NOTE: No margin check is performed here. Margin was reserved when the order
-/// was placed. Upon fill, we release the reserved margin (it converts to "used
-/// margin" backing the new position).
-fn try_fill_buy_order(
-    iter: &mut Peekable<impl Iterator<Item = (BuyOrderKey, Order)>>,
+/// The caller has already verified that this order passes the marginal price
+/// cutoff. Always advances the iterator.
+///
+/// NOTE: No margin check is performed here. Margin was reserved when the
+/// order was placed. Upon fill, the reserved margin converts to "used margin"
+/// backing the new position.
+fn try_fill_limit_order(
+    iter: &mut Peekable<impl Iterator<Item = (OrderKey, Order)>>,
     pair_id: PairId,
+    is_buy: bool,
     state: &mut State,
     oracle_price: Udec,
     skew: &mut Dec,
@@ -1248,20 +1316,25 @@ fn try_fill_buy_order(
     // Advance the iterator
     let (key, order) = iter.next().unwrap();
 
-    // Recover limit_price from inverted storage
-    let limit_price = MAX_PRICE - key.inverted_limit_price;
+    // Recover limit_price: buy orders use inverted storage
+    let limit_price = if is_buy {
+        MAX_PRICE - key.inverted_limit_price
+    } else {
+        key.limit_price
+    };
+    let order_book = if is_buy { &BUY_ORDERS } else { &SELL_ORDERS };
 
-    // Compute actual execution price for this order's size
+    // Compute actual execution price for this order's full size
     let exec_price = compute_exec_price(oracle_price, *skew, order.size, pair_params);
 
-    // Check price constraint
-    if exec_price > limit_price {
+    // Check price constraint on full order
+    if !check_price_constraint(exec_price, limit_price, is_buy) {
         // Order is too large to fill at current skew; skip
-        // (smaller orders with lower prices might still be fillable)
+        // (smaller orders with different prices might still be fillable)
         return;
     }
 
-    // Load user state and check OI constraint
+    // Load user state and decompose into closing/opening portions
     let mut user_state = load_user_state(order.user_id);
     let user_pos = user_state.positions
         .get(&pair_id)
@@ -1269,166 +1342,55 @@ fn try_fill_buy_order(
         .unwrap_or(Dec::ZERO);
     let (closing_size, opening_size) = decompose_fill(order.size, user_pos);
 
-    let max_opening = compute_max_opening_from_oi(opening_size, pair_state, pair_params.max_abs_oi);
-    let oi_violated = max_opening < opening_size;
+    // Determine fill size from OI constraint
+    let fill_size = compute_fill_size_from_oi(
+        order.size, closing_size, opening_size, is_buy, order.reduce_only,
+        pair_state, pair_params.max_abs_oi,
+    );
 
-    if oi_violated {
-        if order.reduce_only {
-            // Execute only closing portion
-            if closing_size == Dec::ZERO {
-                return;  // Nothing to fill
-            }
-
-            let fill_size = closing_size;
-            let fill_exec_price = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
-
-            if fill_exec_price > limit_price {
-                return;  // Still exceeds limit
-            }
-
-            execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
-            *skew += fill_size;
-
-            // Release reserved margin for the filled portion (closing only, so no opening margin)
-            // The unfilled opening portion's margin stays reserved
-            // (No change to reserved_margin here since we only filled closing portion)
-
-            // Commit changes
-            save_user_state(user_state);
-
-            // Update order: reduce size or remove if fully filled
-            let remaining = order.size - fill_size;
-            if remaining == Dec::ZERO {
-                user_state.open_order_count -= 1;
-                BUY_ORDERS.remove(key);
-            } else {
-                BUY_ORDERS.save(key, Order { size: remaining, ..order });
-            }
-
-            // Commit changes
-            save_user_state(user_state);
-        } else {
-            // All-or-nothing: skip this order
-            return;
-        }
-    } else {
-        // Fill entire order
-        execute_fill(state, pair_state, &mut user_state, pair_id, order.size, exec_price);
-        *skew += order.size;
-
-        // Release reserved margin for this order
-        // The margin now becomes "used margin" backing the position
-        let reserved_for_order = compute_required_margin(opening_size, limit_price, pair_params);
-        user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order);
-
-        user_state.open_order_count -= 1;
-
-        // Commit changes
-        save_user_state(user_state);
-
-        // Remove filled order
-        BUY_ORDERS.remove(key);
-    }
-}
-
-/// Attempts to fill the next sell order from the iterator.
-/// The caller has already verified that this order passes the marginal price cutoff.
-/// Always advances the iterator.
-///
-/// NOTE: No margin check is performed here. Margin was reserved when the order
-/// was placed. Upon fill, we release the reserved margin (it converts to "used
-/// margin" backing the new position).
-fn try_fill_sell_order(
-    iter: &mut Peekable<impl Iterator<Item = (SellOrderKey, Order)>>,
-    pair_id: PairId,
-    state: &mut State,
-    oracle_price: Udec,
-    skew: &mut Dec,
-    pair_state: &mut PairState,
-    pair_params: &PairParams,
-) {
-    // Advance the iterator
-    let (key, order) = iter.next().unwrap();
-
-    let limit_price = key.limit_price;
-
-    // Compute actual execution price for this order's size (negative for sells)
-    let exec_price = compute_exec_price(oracle_price, *skew, order.size, pair_params);
-
-    // Check price constraint (for sells: exec_price must be >= limit_price)
-    if exec_price < limit_price {
-        // Order is too large to fill at current skew; skip
+    if fill_size == Dec::ZERO {
+        // All-or-nothing: OI violated and not reduce_only; skip
         return;
     }
 
-    // Load user state and check OI constraint
-    let mut user_state = load_user_state(order.user_id);
-    let user_pos = user_state.positions
-        .get(&pair_id)
-        .map(|p| p.size)
-        .unwrap_or(Dec::ZERO);
-    let (closing_size, opening_size) = decompose_fill(order.size, user_pos);
-
-    let max_opening = compute_max_opening_from_oi(opening_size, pair_state, pair_params.max_abs_oi);
-    let oi_violated = max_opening > opening_size;  // Note: reversed for sells (negative)
-
-    if oi_violated {
-        if order.reduce_only {
-            // Execute only closing portion
-            if closing_size == Dec::ZERO {
-                return;  // Nothing to fill
-            }
-
-            let fill_size = closing_size;
-            let fill_exec_price = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
-
-            if fill_exec_price < limit_price {
-                return;  // Still below limit
-            }
-
-            execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
-            *skew += fill_size;
-
-            // Release reserved margin for the filled portion (closing only, so no opening margin)
-            // The unfilled opening portion's margin stays reserved
-            // (No change to reserved_margin here since we only filled closing portion)
-
-            // Commit changes
-            save_user_state(user_state);
-
-            // Update order
-            let remaining = order.size - fill_size;
-            if remaining == Dec::ZERO {
-                user_state.open_order_count -= 1;
-                SELL_ORDERS.remove(key);
-            } else {
-                SELL_ORDERS.save(key, Order { size: remaining, ..order });
-            }
-
-            // Commit changes
-            save_user_state(user_state);
-        } else {
-            // All-or-nothing: skip this order
+    // If fill was reduced (closing-only), recompute exec price for smaller size
+    // and re-check price constraint
+    let fill_exec_price = if fill_size != order.size {
+        let recomputed = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
+        if !check_price_constraint(recomputed, limit_price, is_buy) {
             return;
         }
+        recomputed
     } else {
-        // Fill entire order
-        execute_fill(state, pair_state, &mut user_state, pair_id, order.size, exec_price);
-        *skew += order.size;
+        exec_price
+    };
 
-        // Release reserved margin for this order
-        // The margin now becomes "used margin" backing the position
+    // Execute the fill
+    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
+    *skew += fill_size;
+
+    // Update order book and reserved margin
+    if fill_size == order.size {
+        // Full fill: release reserved margin and remove order
         let reserved_for_order = compute_required_margin(opening_size, limit_price, pair_params);
         user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order);
 
         user_state.open_order_count -= 1;
-
-        // Commit changes
-        save_user_state(user_state);
-
-        // Remove filled order
-        SELL_ORDERS.remove(key);
+        order_book.remove(key);
+    } else {
+        // Partial fill (closing-only): update order with remaining size.
+        // No change to reserved_margin since only the closing portion was filled.
+        let remaining = order.size - fill_size;
+        if remaining == Dec::ZERO {
+            user_state.open_order_count -= 1;
+            order_book.remove(key);
+        } else {
+            order_book.save(key, Order { size: remaining, ..order });
+        }
     }
+
+    // Commit changes
+    save_user_state(user_state);
 }
 ```
 
