@@ -474,13 +474,27 @@ Traders can withdraw available margin (funds not backing positions or reserved f
 
 ```rust
 fn handle_withdraw_margin(
+    state: &mut State,
     user_state: &mut UserState,
+    pair_states: &mut Map<PairId, PairState>,
+    pair_params_map: &Map<PairId, PairParams>,
+    oracle_prices: &Map<PairId, Udec>,
     amount: Uint,
+    current_time: Timestamp,
 ) {
     ensure!(amount > 0, "nothing to do");
 
+    // Accrue funding for all pairs the user has positions in,
+    // so that the equity calculation is up-to-date.
+    for (pair_id, _) in &user_state.positions {
+        let pair_state = pair_states.get_mut(&pair_id);
+        let pair_params = &pair_params_map[&pair_id];
+        let oracle_price = oracle_prices[&pair_id];
+        accrue_funding(pair_state, pair_params, oracle_price, current_time);
+    }
+
     ensure!(
-      amount <= compute_available_margin(user_state),
+      amount <= compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states),
       "insufficient available margin"
     );
 
@@ -494,7 +508,8 @@ Margin is the collateral required to open and maintain positions. We distinguish
 
 - **Used margin**: Collateral currently backing open positions
 - **Reserved margin**: Collateral locked for pending limit orders (not yet filled)
-- **Available margin**: `margin - used_margin - reserved_margin`
+- **Equity**: `margin + unrealized_pnl - accrued_funding` (the user's true economic balance)
+- **Available margin**: `max(0, equity - used_margin - reserved_margin)`
 
 ```rust
 /// Compute the margin available for withdrawal.
@@ -502,10 +517,16 @@ fn compute_available_margin(
     user_state: &UserState,
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
+    pair_states: &Map<PairId, PairState>,
 ) -> Uint {
-    user_state.margin
-        .saturating_sub(compute_used_margin(user_state, oracle_prices, pair_params_map))
-        .saturating_sub(user_state.reserved_margin)
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
+    let used = compute_used_margin(user_state, oracle_prices, pair_params_map);
+
+    // equity - used - reserved, floored at zero.
+    // Equity is Dec (signed) since unrealized PnL can make it negative.
+    let available = equity - used - user_state.reserved_margin;
+
+    max(floor(available), 0)
 }
 
 /// Compute the margin currently used by open positions.
@@ -530,6 +551,56 @@ fn compute_used_margin(
     }
 
     total
+}
+
+/// Compute the unrealized PnL for a position at the current oracle price.
+///
+/// For longs:  unrealized_pnl = |size| * oracle_price - cost_basis
+/// For shorts: unrealized_pnl = cost_basis - |size| * oracle_price
+///
+/// Positive = position is in profit. Negative = position is in loss.
+fn compute_position_unrealized_pnl(
+    position: &Position,
+    oracle_price: Udec,
+) -> Dec {
+    let mark_value = abs(position.size) * oracle_price;
+
+    if position.size > Dec::ZERO {
+        mark_value - position.cost_basis
+    } else {
+        position.cost_basis - mark_value
+    }
+}
+
+/// Compute the user's equity: margin balance adjusted for unrealized PnL
+/// and accrued funding across all open positions.
+///
+/// equity = margin + Σ unrealized_pnl - Σ accrued_funding
+///
+/// Accrued funding sign convention: positive = trader owes vault (cost),
+/// so subtracting it reduces equity when the trader owes.
+///
+/// NOTE: For maximum accuracy, `accrue_funding` should be called for each
+/// pair before invoking this function, so that `cumulative_funding_per_unit`
+/// is up-to-date.
+fn compute_user_equity(
+    user_state: &UserState,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_states: &Map<PairId, PairState>,
+) -> Dec {
+    let mut total_unrealized_pnl = Dec::ZERO;
+    let mut total_accrued_funding = Dec::ZERO;
+
+    for (pair_id, position) in &user_state.positions {
+        let oracle_price = oracle_prices[&pair_id];
+        let pair_state = &pair_states[&pair_id];
+
+        total_unrealized_pnl += compute_position_unrealized_pnl(position, oracle_price);
+        total_accrued_funding += compute_accrued_funding(position, pair_state);
+    }
+
+    // margin is Uint; convert to Dec for signed arithmetic
+    user_state.margin + total_unrealized_pnl - total_accrued_funding
 }
 ```
 
@@ -779,6 +850,7 @@ fn handle_submit_order(
     user_state: &mut UserState,
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
+    pair_states: &Map<PairId, PairState>,
     pair_id: PairId,
     oracle_price: Udec,
     size: Dec,
@@ -856,7 +928,7 @@ fn handle_submit_order(
     let required_margin = compute_required_margin(full_opening_size, target_price, pair_params);
 
     // Step 6: Check available margin BEFORE any execution
-    let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map);
+    let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states);
     ensure!(available_margin >= required_margin, "insufficient margin");
 
     // Step 7: Check price constraint (all-or-nothing on entire fill)
