@@ -1,3 +1,5 @@
+// Trigger issue
+
 import ReactDOM from "react-dom/client";
 import { App } from "./app";
 import { router } from "./app.router";
