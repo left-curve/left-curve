@@ -237,14 +237,6 @@ struct PairParams {
     ///
     /// Only enforced on the opening portion — closing is always allowed.
     pub min_order_notional: Udec,
-
-    /// Minimum notional value (in USD) for a position to remain open.
-    /// Notional = |remaining_size| * oracle_price.
-    ///
-    /// A partial close that would leave a position with notional below this
-    /// threshold is rejected. The user must either close fully or keep the
-    /// position above the minimum. Full closes are always allowed.
-    pub min_position_notional: Udec,
 }
 ```
 
@@ -891,12 +883,9 @@ fn compute_fill_size_from_oi(
 #### Validate notional constraints
 
 ```rust
-/// Validate minimum order notional and minimum position notional constraints.
-///
-/// - If the order is purely closing (opening_size == 0), the remaining position
-///   must either be fully closed or remain above `min_position_notional`.
-/// - If the order opens or increases exposure, the opening notional must meet
-///   `min_order_notional`. Closing portions are exempt so users can always exit.
+/// Validate minimum order notional constraint.
+/// If the order opens or increases exposure, the opening notional must meet
+/// `min_order_notional`. Closing portions are exempt so users can always exit.
 fn validate_notional_constraints(
     opening_size: Dec,
     user_pos: Dec,
@@ -904,17 +893,7 @@ fn validate_notional_constraints(
     oracle_price: Udec,
     pair_params: &PairParams,
 ) {
-    if opening_size == Dec::ZERO {
-        // Pure close: enforce minimum position notional.
-        // The position must be either fully closed, or the remaining notional
-        // must be above the minimum.
-        let remaining_size = user_pos + size;
-        let remaining_notional = abs(remaining_size) * oracle_price;
-        ensure!(
-            remaining_size == 0 || remaining_notional >= pair_params.min_position_notional,
-            "remaining position notional below minimum; close the full position instead"
-        );
-    } else {
+    if opening_size != Dec::ZERO {
         // Opening or increasing a position: enforce minimum order notional.
         // Closing is exempt so users can always exit positions.
         let opening_notional = abs(opening_size) * oracle_price;
