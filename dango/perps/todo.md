@@ -12,9 +12,11 @@ Issues identified during spec review that are not yet addressed. Ordered roughly
 
 ## High
 
-- ~~**No oracle staleness check.** The DEX module uses `MAX_ORACLE_STALENESS = 500ms`. The perps spec should reference a similar safeguard -- stale oracle prices in a leveraged perps exchange are far more dangerous than in spot DEX.~~ Oracle staleness check is encapsulated in the `OracleQuerier` helper struct.
+- ~~**No oracle staleness check.** The DEX module uses `MAX_ORACLE_STALENESS = 500ms`. The perps spec should reference a similar safeguard -- stale oracle prices in a leveraged perps exchange are far more dangerous than in spot DEX.~~
+  - Oracle staleness check is encapsulated in the `OracleQuerier` helper struct.
 
-- **Vault withdrawal doesn't guard against negative equity.** `handle_unlock_liquidity` computes `amount_to_release = floor(vault_equity * shares / supply)`. If vault_equity is negative (insolvency), this underflows or returns 0, but the function doesn't explicitly check. The deposit side checks for this (`vault_equity > 0`), but withdrawal should too.
+- ~~**Vault withdrawal doesn't guard against negative equity.** `handle_unlock_liquidity` computes `amount_to_release = floor(vault_equity * shares / supply)`. If vault_equity is negative (insolvency), this underflows or returns 0, but the function doesn't explicitly check. The deposit side checks for this (`vault_equity > 0`), but withdrawal should too.~~
+  - Fixed.
 
 ## Medium
 

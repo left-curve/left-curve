@@ -1669,6 +1669,15 @@ fn handle_unlock_liquidity(
     // Similarly to deposit, first compute the vault's equity.
     let vault_equity = compute_vault_equity(state, usdt_price);
 
+    ensure!(
+        vault_equity > 0,
+        "vault is in catastrophic loss! withdrawal disabled"
+        // If equity is zero or negative, shares currently have no redeemable
+        // value. Halting withdrawals (rather than burning shares for 0) preserves
+        // the LP's claim in case the vault recovers (e.g. losing traders get
+        // liquidated or prices revert). This mirrors the deposit-side check.
+    );
+
     // Again, note the direction of rounding.
     let amount_to_release = floor(vault_equity * shares_to_burn / state.vault_share_supply);
 
