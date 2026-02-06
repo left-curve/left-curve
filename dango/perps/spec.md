@@ -438,7 +438,13 @@ const USER_STATES: Map<UserId, UserState> = Map::new("user_state");
 /// Key: (pair_id, inverted_limit_price, created_at, order_id)
 /// where inverted_limit_price = MAX_PRICE - limit_price, so ascending iteration
 /// yields descending prices.
-const ORDERS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order> = IndexedMap::new("order", OrderIndexes {
+const BIDS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order> = IndexedMap::new("bid", OrderIndexes {
+    order_id: UniqueIndex::new(/* ... */),
+});
+
+/// Sell orders indexed for ascending price iteration (more competitive first).
+/// Key: (pair_id, limit_price, created_at, order_id)
+const ASKS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order> = IndexedMap::new("ask", OrderIndexes {
     order_id: UniqueIndex::new(/* ... */),
 });
 ```
@@ -1031,11 +1037,11 @@ fn store_limit_order(
     if unfilled_size > Dec::ZERO {
         // Buy order: store with inverted price for descending iteration
         let key = (pair_id, MAX_PRICE - limit_price, current_time, order_id);
-        BUY_ORDERS.save(key, order);
+        BIDS.save(key, order);
     } else {
         // Sell order: store with normal price for ascending iteration
         let key = (pair_id, limit_price, current_time, order_id);
-        SELL_ORDERS.save(key, order);
+        ASKS.save(key, order);
     }
 }
 
@@ -1236,20 +1242,20 @@ fn fulfill_limit_orders_for_pair(
     let mut skew = pair_state.long_oi + pair_state.short_oi;
 
     // Get iterators for both queues (sorted by price-time within each)
-    let mut buy_iter = BUY_ORDERS.prefix(pair_id).range(..).peekable();
-    let mut sell_iter = SELL_ORDERS.prefix(pair_id).range(..).peekable();
+    let mut bids = BIDS.prefix(pair_id).range(..).peekable();
+    let mut asks = ASKS.prefix(pair_id).range(..).peekable();
 
     loop {
         // Compute marginal price at current skew
         let marginal_price = compute_marginal_price(oracle_price, skew, pair_params);
 
         // Check if each side's head order passes the cutoff
-        let buy_fillable = buy_iter.peek().map_or(false, |(key, _)| {
+        let buy_fillable = bids.peek().map_or(false, |(key, _)| {
             let limit_price = MAX_PRICE - key.inverted_limit_price;
             limit_price >= marginal_price
         });
 
-        let sell_fillable = sell_iter.peek().map_or(false, |(key, _)| {
+        let sell_fillable = asks.peek().map_or(false, |(key, _)| {
             key.limit_price <= marginal_price
         });
 
@@ -1260,16 +1266,16 @@ fn fulfill_limit_orders_for_pair(
             (false, true) => false,   // Only sells fillable
             (true, true) => {
                 // Both fillable: pick older timestamp (buy wins ties)
-                let buy_ts = buy_iter.peek().unwrap().0.created_at;
-                let sell_ts = sell_iter.peek().unwrap().0.created_at;
+                let buy_ts = bids.peek().unwrap().0.created_at;
+                let sell_ts = asks.peek().unwrap().0.created_at;
                 buy_ts <= sell_ts
             }
         };
 
         if process_buy {
-            try_fill_limit_order(&mut buy_iter, pair_id, true, state, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_limit_order(&mut bids, pair_id, true, state, oracle_price, &mut skew, pair_state, pair_params);
         } else {
-            try_fill_limit_order(&mut sell_iter, pair_id, false, state, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_limit_order(&mut asks, pair_id, false, state, oracle_price, &mut skew, pair_state, pair_params);
         }
     }
 }
