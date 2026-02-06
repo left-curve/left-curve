@@ -1005,6 +1005,8 @@ jobs:
     outputs:
       backend_tag: ${{ steps.determine-tags.outputs.backend_tag }}
       frontend_tag: ${{ steps.determine-tags.outputs.frontend_tag }}
+      backend_digest: ${{ steps.determine-tags.outputs.backend_digest }}
+      frontend_digest: ${{ steps.determine-tags.outputs.frontend_digest }}
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -1050,16 +1052,39 @@ jobs:
               frontend_tag="$pr_tag"
             fi
           fi
-          echo "Backend deploy image tag: $backend_tag"
-          echo "Frontend deploy image tag: $frontend_tag"
+          # Resolve digests for immutable image references
+          # This prevents drift when using mutable tags like 'latest'
+          backend_digest=""
+          frontend_digest=""
+
+          if docker manifest inspect "${backend_image_url}:${backend_tag}" >/dev/null 2>&1; then
+            backend_digest=$(docker manifest inspect "${backend_image_url}:${backend_tag}" -v 2>/dev/null | jq -r '
+              if type == "array" then .[0].Descriptor.digest
+              elif .Descriptor.digest then .Descriptor.digest
+              else .digest // empty
+              end' || echo "")
+          fi
+
+          if docker manifest inspect "${frontend_image_url}:${frontend_tag}" >/dev/null 2>&1; then
+            frontend_digest=$(docker manifest inspect "${frontend_image_url}:${frontend_tag}" -v 2>/dev/null | jq -r '
+              if type == "array" then .[0].Descriptor.digest
+              elif .Descriptor.digest then .Descriptor.digest
+              else .digest // empty
+              end' || echo "")
+          fi
+
+          echo "Backend deploy image tag: $backend_tag (digest: ${backend_digest:-unknown})"
+          echo "Frontend deploy image tag: $frontend_tag (digest: ${frontend_digest:-unknown})"
           echo "## Deploy Image Tags" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Tag |" >> $GITHUB_STEP_SUMMARY
-          echo "| --------- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| backend | \`$backend_tag\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| frontend | \`$frontend_tag\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| commit | \`$commit_tag\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Tag | Digest |" >> $GITHUB_STEP_SUMMARY
+          echo "| --------- | --- | ------ |" >> $GITHUB_STEP_SUMMARY
+          echo "| backend | \`$backend_tag\` | \`${backend_digest:-N/A}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| frontend | \`$frontend_tag\` | \`${frontend_digest:-N/A}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| commit | \`$commit_tag\` | - |" >> $GITHUB_STEP_SUMMARY
           echo "backend_tag=$backend_tag" >> "$GITHUB_OUTPUT"
           echo "frontend_tag=$frontend_tag" >> "$GITHUB_OUTPUT"
+          echo "backend_digest=$backend_digest" >> "$GITHUB_OUTPUT"
+          echo "frontend_digest=$frontend_digest" >> "$GITHUB_OUTPUT"
 
   security-artifacts:
     name: Generate SBOMs and Scan Images
@@ -1163,6 +1188,8 @@ jobs:
       ANSIBLE_DEBIAN_PASSWORD: ${{ secrets.ANSIBLE_DEBIAN_PASSWORD }}
       DEPLOY_BACKEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
       DEPLOY_FRONTEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
+      DEPLOY_BACKEND_DIGEST: ${{ needs.set-image-tags.outputs.backend_digest }}
+      DEPLOY_FRONTEND_DIGEST: ${{ needs.set-image-tags.outputs.frontend_digest }}
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
       FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
     steps:
@@ -1198,23 +1225,27 @@ jobs:
         run: |
           cd deploy
 
-          # Skip signature verification if no new images were built in this workflow run
+          # Skip signature verification for images that weren't built in this workflow run
           # Ansible needs boolean false, not string "false", so we include it in the JSON
           VERIFY_SIGS_JSON=""
           if [ "$BACKEND_CHANGED" != "true" ] && [ "$FRONTEND_CHANGED" != "true" ]; then
-            echo "No backend/frontend changes - skipping cosign signature verification"
+            echo "No backend/frontend changes - skipping all cosign signature verification"
             VERIFY_SIGS_JSON=', "verify_signatures": false'
+          else
+            # Only verify signatures for images that were actually built
+            VERIFY_SIGS_JSON=', "verify_backend_signature": '"$( [ "$BACKEND_CHANGED" = "true" ] && echo "true" || echo "false" )"''
+            VERIFY_SIGS_JSON+=', "verify_frontend_signature": '"$( [ "$FRONTEND_CHANGED" = "true" ] && echo "true" || echo "false" )"''
           fi
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true'"$VERIFY_SIGS_JSON"'}' -e github_sha=${{ env.GIT_COMMIT }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e ghcr_token=${{ secrets.GITHUB_TOKEN }} --limit 100.96.253.40,100.107.248.71
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true'"$VERIFY_SIGS_JSON"'}' -e github_sha=${{ env.GIT_COMMIT }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e dango_image_digest=${{ env.DEPLOY_BACKEND_DIGEST }} -e frontend_image_digest=${{ env.DEPLOY_FRONTEND_DIGEST }} -e ghcr_token=${{ secrets.GITHUB_TOKEN }} --limit 100.96.253.40,100.107.248.71
           fi
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
           # This deletes the existing deployment, but instead use `ansible-playbook delete-full-app.yml -e deployment_name=pr-<ID>` if you need
           # ansible-playbook delete-existing-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
 
-          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true, "s3_enabled": false'"$VERIFY_SIGS_JSON"'}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }} --limit 100.96.253.40,100.107.248.71
+          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e dango_image_digest=${{ env.DEPLOY_BACKEND_DIGEST }} -e frontend_image_digest=${{ env.DEPLOY_FRONTEND_DIGEST }} -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}", "chain_id": "pr-${{ github.event.pull_request.number }}", "cloudflare_tunnel_enabled": true, "s3_enabled": false'"$VERIFY_SIGS_JSON"'}' -e deploy_env=preview -e ghcr_token=${{ secrets.GITHUB_TOKEN }} --limit 100.96.253.40,100.107.248.71
           fi
 
   localdango:

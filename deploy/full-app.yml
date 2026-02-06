@@ -342,19 +342,20 @@
       when: deploy_includes_clickhouse
     - name: Build cosign verification image list
       set_fact:
-        deploy_cosign_images:
-          - service: "dango"
-            image: "ghcr.io/left-curve/left-curve/dango"
-            tag: "{{ dango_image_tag }}"
-            identity_regexp: "{{ cosign_identity_rust_regexp }}"
-          - service: "dango-frontend"
-            image: "ghcr.io/left-curve/left-curve/dango-frontend"
-            tag: "{{ frontend_image_tag }}"
-            identity_regexp: "{{ cosign_identity_rust_regexp }}"
-          - service: "cometbft"
-            image: "ghcr.io/left-curve/left-curve/cometbft"
-            tag: "{{ cometbft_tag }}"
-            identity_regexp: "{{ cosign_identity_cometbft_regexp }}"
+        deploy_cosign_images: >-
+          {{
+            (verify_backend_signature | default(true) | bool) | ternary(
+              [{'service': 'dango', 'image': 'ghcr.io/left-curve/left-curve/dango', 'tag': dango_image_tag, 'identity_regexp': cosign_identity_rust_regexp}],
+              []
+            )
+            +
+            (verify_frontend_signature | default(true) | bool) | ternary(
+              [{'service': 'dango-frontend', 'image': 'ghcr.io/left-curve/left-curve/dango-frontend', 'tag': frontend_image_tag, 'identity_regexp': cosign_identity_rust_regexp}],
+              []
+            )
+            +
+            [{'service': 'cometbft', 'image': 'ghcr.io/left-curve/left-curve/cometbft', 'tag': cometbft_tag, 'identity_regexp': cosign_identity_cometbft_regexp}]
+          }}
     - name: Set dango and cometbft hosts
       set_fact:
         dango_host: "{{ deployment_name }}-dango-1"
