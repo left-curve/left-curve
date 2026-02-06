@@ -185,7 +185,9 @@ struct Params {
     /// requested and is fulfilled.
     pub vault_cooldown_period: Duration,
 
-    // TODO: max number of open order per user
+    /// Maximum number of resting limit orders a single user may have
+    /// across all pairs. Prevents storage bloat from order spam.
+    pub max_open_orders: u32,
 }
 ```
 
@@ -230,7 +232,19 @@ struct PairParams {
     /// Required margin = position_size * price * initial_margin_ratio
     pub initial_margin_ratio: Udec,
 
-    // TODO: min order size (either in number of contracts or in USD; to be decided)
+    /// Minimum notional value (in USD) for the opening portion of an order.
+    /// Notional = |opening_size| * oracle_price.
+    ///
+    /// Only enforced on the opening portion — closing is always allowed.
+    pub min_order_notional: Udec,
+
+    /// Minimum notional value (in USD) for a position to remain open.
+    /// Notional = |remaining_size| * oracle_price.
+    ///
+    /// A partial close that would leave a position with notional below this
+    /// threshold is rejected. The user must either close fully or keep the
+    /// position above the minimum. Full closes are always allowed.
+    pub min_position_notional: Udec,
 }
 ```
 
@@ -339,6 +353,10 @@ struct UserState {
     /// margin is reserved (locked) to ensure the user can cover the position
     /// if/when the order executes.
     pub reserved_margin: Uint,
+
+    /// Number of resting limit orders this user currently has on the book.
+    /// Incremented when a limit order is stored, decremented on fill or cancel.
+    pub open_order_count: u32,
 
     /// The user's open positions.
     pub positions: Map<PairId, Position>,
@@ -549,6 +567,8 @@ fn handle_cancel_order(
     // (implementation detail: the order key contains the limit price)
     let reserved = compute_required_margin(opening_size, limit_price, pair_params);
     user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved);
+
+    user_state.open_order_count -= 1;
 }
 
 /// Compute the margin required for the opening portion of an order.
@@ -752,6 +772,7 @@ fn compute_max_opening_from_oi(
 
 ```rust
 fn handle_submit_order(
+    params: &Params,
     state: &mut State,
     pair_state: &mut PairState,
     pair_params: &PairParams,
@@ -779,6 +800,28 @@ fn handle_submit_order(
 
     // Step 1: Decompose into closing and opening portions
     let (closing_size, opening_size) = decompose_fill(size, user_pos);
+
+    // Enforce minimum order size and minimum position size.
+    if opening_size == Dec::ZERO {
+        // If the order is a pure close -- enforce minimum position notional.
+        // The position must be either fully closed, or the remaining notional be
+        // greater than the minimum.
+        let remaining_size = user_pos + size;
+        let remaining_notional = abs(remaining_size) * oracle_price;
+        ensure!(
+            remaining_size == 0 || remaining_notional >= pair_params.min_position_notional,
+            "remaining position notional below minimum; close the full position instead"
+        );
+    }
+    else {
+        // If the order opens or increases a position -- enforce minimum order notional.
+        // Closing is exempt so users can always exit positions.
+        let opening_notional = abs(opening_size) * oracle_price;
+        ensure!(
+            opening_notional >= pair_params.min_order_notional,
+            "opening notional below minimum"
+        );
+    }
 
     // Step 2: Check OI constraint on opening portion
     let max_opening_from_oi = compute_max_opening_from_oi(opening_size, pair_state, pair_params.max_abs_oi);
@@ -840,12 +883,21 @@ fn handle_submit_order(
                 // Market orders are IOC: discard unfilled portion (no-op)
             },
             OrderKind::Limit { limit_price } => {
+                // Enforce maximum open orders
+                ensure!(
+                    user_state.open_order_count < params.max_open_orders,
+                    "too many open orders"
+                );
+
                 // Step 10: Reserve margin for the unfilled portion
                 // The filled portion's margin is now "used margin" (backing the position)
                 // The unfilled portion needs margin reserved for potential future execution
                 let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos + fill_size);
                 let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params);
                 user_state.reserved_margin += margin_to_reserve;
+
+                // Increment open order count
+                user_state.open_order_count += 1;
 
                 // Store limit order as GTC
                 let order = Order {
@@ -1175,10 +1227,14 @@ fn try_fill_buy_order(
             // Update order: reduce size or remove if fully filled
             let remaining = order.size - fill_size;
             if remaining == Dec::ZERO {
+                user_state.open_order_count -= 1;
                 BUY_ORDERS.remove(key);
             } else {
                 BUY_ORDERS.save(key, Order { size: remaining, ..order });
             }
+
+            // Commit changes
+            save_user_state(user_state);
         } else {
             // All-or-nothing: skip this order
             return;
@@ -1192,6 +1248,8 @@ fn try_fill_buy_order(
         // The margin now becomes "used margin" backing the position
         let reserved_for_order = compute_required_margin(opening_size, limit_price, pair_params);
         user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order);
+
+        user_state.open_order_count -= 1;
 
         // Commit changes
         save_user_state(user_state);
@@ -1269,10 +1327,14 @@ fn try_fill_sell_order(
             // Update order
             let remaining = order.size - fill_size;
             if remaining == Dec::ZERO {
+                user_state.open_order_count -= 1;
                 SELL_ORDERS.remove(key);
             } else {
                 SELL_ORDERS.save(key, Order { size: remaining, ..order });
             }
+
+            // Commit changes
+            save_user_state(user_state);
         } else {
             // All-or-nothing: skip this order
             return;
@@ -1286,6 +1348,8 @@ fn try_fill_sell_order(
         // The margin now becomes "used margin" backing the position
         let reserved_for_order = compute_required_margin(opening_size, limit_price, pair_params);
         user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order);
+
+        user_state.open_order_count -= 1;
 
         // Commit changes
         save_user_state(user_state);

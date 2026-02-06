@@ -22,6 +22,8 @@ Issues identified during spec review that are not yet addressed. Ordered roughly
 
 - **`cost_basis` rounding drift on repeated partial closes.** Each partial close does `floor(cost_basis * (1 - close_ratio))`, accumulating rounding errors. After many small closes, the remaining cost_basis can diverge meaningfully from the true proportional entry cost. Consider tracking `entry_price` alongside cost_basis, or computing cost_basis from entry_price on demand.
 
-- **No minimum position/order size.** _(Already noted as TODO in spec.)_ Without this, dust positions can grief the system -- tiny positions that cost more gas to liquidate than they're worth.
+- ~~**No minimum position/order size.** _(Already noted as TODO in spec.)_ Without this, dust positions can grief the system -- tiny positions that cost more gas to liquidate than they're worth.~~
+  - Fixed. Added `min_order_notional` and `min_position_notional` to `PairParams`.
 
-- **No maximum open orders per user.** _(Already noted as TODO in spec.)_ Without this, a user can create an unbounded number of limit orders, bloating storage.
+- ~~**No maximum open orders per user.** _(Already noted as TODO in spec.)_ Without this, a user can create an unbounded number of limit orders, bloating storage.~~
+  - Fixed. Added `max_open_orders` to `Params` and `open_order_count` to `UserState`.
