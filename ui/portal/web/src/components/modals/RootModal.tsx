@@ -14,7 +14,7 @@ export type ModalRef = {
 
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   [Modals.AddKey]: {
-    component: lazy(() => import("./AddKey").then(({ AddKeyModal }) => ({ default: AddKeyModal }))),
+    component: lazy(() => import("./AddKeyModal").then(({ AddKeyModal }) => ({ default: AddKeyModal }))),
   },
   [Modals.RemoveKey]: {
     component: lazy(() => import("./RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey }))),
@@ -210,7 +210,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
 };
 
 type ModalDefinition = {
-  component: React.LazyExoticComponent<React.ForwardRefExoticComponent<any>>;
+  component: React.LazyExoticComponent<React.ComponentType<any>>;
   options?: {
     header?: string;
     disableClosing?: boolean;
