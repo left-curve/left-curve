@@ -4,11 +4,23 @@ import { useState } from "react";
 
 import type { PropsWithChildren } from "react";
 import { PointsHeader } from "./PointsHeader";
-import { BoxesSection, NFTsSection, OATsSection } from "./rewards";
-import { LigueLevels } from "./LigueLevels";
-import { PointsProgressBar } from "./PointsProgressBar";
-import { ChestOpeningProvider, useChestOpening } from "./useChestOpening";
-import { PointsProfileTable } from "./PointsProfileTable";
+import { LigueLevels, PointsProfileTable } from "./profile";
+import {
+  BoxesSection,
+  ChestOpeningProvider,
+  NFTsSection,
+  OATsSection,
+  PointsProgressBar,
+  useChestOpening,
+} from "./rewards";
+import {
+  CommissionRates,
+  MyCommission,
+  ReferralFaqs,
+  ReferralStats,
+  type ReferralMode,
+} from "./referral";
+import { UserPointsProvider } from "./useUserPoints";
 
 type PointsCampaignTab = "profile" | "rewards" | "referral";
 
