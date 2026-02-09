@@ -107,10 +107,9 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
           animate={{
             left: activeLayout.left,
             width: activeLayout.width,
-            height: activeLayout.height,
           }}
           transition={{ type: "spring", bounce: 0.1, duration: 0.25 }}
-          className={twMerge(styles["animated-element"](), "absolute top-1")}
+          className={twMerge(styles["animated-element"](), "absolute")}
         />
       )}
       {tabs.map((e) => {
@@ -160,21 +159,22 @@ const tabsVariants = tv({
       green: {
         base: "bg-surface-tertiary-green",
         "animated-element":
-          "bg-surface-primary-green [box-shadow:0px_4px_6px_2px_#1919191F] rounded-[10px]",
+          "top-1 bottom-1 bg-surface-primary-green [box-shadow:0px_4px_6px_2px_#1919191F] rounded-[10px]",
       },
       red: {
         base: "bg-surface-secondary-red",
-        "animated-element": "bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] rounded-[10px]",
+        "animated-element":
+          "top-1 bottom-1 bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] rounded-[10px]",
       },
       "light-green": {
         base: "bg-surface-secondary-green",
         "animated-element":
-          "bg-surface-button-green [box-shadow:0px_4px_6px_2px_#1919191F] rounded-[10px]",
+          "top-1 bottom-1 bg-surface-button-green [box-shadow:0px_4px_6px_2px_#1919191F] rounded-[10px]",
       },
       "line-red": {
         base: "p-0",
         button: "border-b-[1px] border-outline-secondary-gray pt-0",
-        "animated-element": "bg-primitives-red-light-400 !h-[2px] !top-auto bottom-[-1px]",
+        "animated-element": "h-[2px] top-auto bottom-[-1px] bg-primitives-red-light-400",
       },
     },
     fullWidth: {
