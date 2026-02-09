@@ -419,6 +419,7 @@
     "wallets": "Wallets",
     "didntReceiveCode": "Didn't receive the code?",
     "enterYou": "Enter your",
+    "enterYourEmail": "Enter your email",
     "requetFromFaucet": "Request Funds from Faucet",
     "errors": {
       "invalidVerificationCode": "Invalid verification code",
