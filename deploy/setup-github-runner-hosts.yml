@@ -47,3 +47,11 @@
         curl -sL https://just.systems/install.sh | bash -s -- --to /usr/local/bin
       args:
         creates: /usr/local/bin/just
+
+    - name: Install zizmor
+      ansible.builtin.shell: |
+        pipx install zizmor
+      args:
+        creates: /home/{{ runner_user }}/.local/bin/zizmor
+      become: yes
+      become_user: "{{ runner_user }}"
