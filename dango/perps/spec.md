@@ -188,6 +188,15 @@ struct Params {
     /// Maximum number of resting limit orders a single user may have
     /// across all pairs. Prevents storage bloat from order spam.
     pub max_open_orders: u32,
+
+    /// Fee paid to the liquidator as a fraction of the total notional value
+    /// of positions being liquidated.
+    ///
+    /// E.g., 0.0005 = 0.05%. For $100,000 total notional, fee = $50.
+    ///
+    /// Capped at the user's remaining margin after position closure.
+    /// Typical range: 0.0002 to 0.001 (0.02% to 0.1%).
+    pub liquidation_fee_rate: Udec,
 }
 ```
 
@@ -231,6 +240,18 @@ struct PairParams {
     ///
     /// Required margin = position_size * price * initial_margin_ratio
     pub initial_margin_ratio: Udec,
+
+    /// Maintenance margin ratio for this pair.
+    ///
+    /// Must be strictly less than `initial_margin_ratio`.
+    ///
+    /// When a user's equity falls below the sum of maintenance margins
+    /// across all their positions, the user becomes eligible for liquidation.
+    ///
+    /// E.g., 0.025 = 2.5% → positions liquidated when effective leverage exceeds 40x.
+    ///
+    /// maintenance_margin = |position_size| * oracle_price * maintenance_margin_ratio
+    pub maintenance_margin_ratio: Udec,
 
     /// Minimum notional value (in USD) for the opening portion of an order.
     /// Notional = |opening_size| * oracle_price.
@@ -413,6 +434,14 @@ struct OrderIndexes {
     /// ORDERS.idx.order_id.load(order_id)
     /// ```
     pub order_id: UniqueIndex< /* ... */ >,
+
+    /// Index the orders by user ID, so that we can retrieve all orders submitted
+    /// by a user by:
+    ///
+    /// ```rust
+    /// ORDERS.idx.user_id.prefix(user_id).range(...)
+    /// ```
+    pub user_id: MultiIndex< /* ... */ >,
 }
 ```
 
@@ -440,12 +469,14 @@ const USER_STATES: Map<UserId, UserState> = Map::new("user_state");
 /// yields descending prices.
 const BIDS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order> = IndexedMap::new("bid", OrderIndexes {
     order_id: UniqueIndex::new(/* ... */),
+    user_id: MultiIndex::new(/* ... */),
 });
 
 /// Sell orders indexed for ascending price iteration (more competitive first).
 /// Key: (pair_id, limit_price, created_at, order_id)
 const ASKS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order> = IndexedMap::new("ask", OrderIndexes {
     order_id: UniqueIndex::new(/* ... */),
+    user_id: MultiIndex::new(/* ... */),
 });
 ```
 
@@ -1569,7 +1600,208 @@ fn settle_funding(
 
 ### Liquidation and deleveraging
 
-> TODO
+When a user's equity drops below their total maintenance margin, any third party ("liquidator") may call `handle_force_close` to liquidate the user. All positions are closed at skew-adjusted prices, pending limit orders are cancelled, and the liquidator receives a fee proportional to the total notional value of the liquidated positions.
+
+#### Maintenance margin
+
+The maintenance margin mirrors `compute_used_margin` but uses the lower `maintenance_margin_ratio` instead of `initial_margin_ratio`:
+
+```rust
+/// Compute the total maintenance margin across all open positions.
+///
+/// Maintenance margin uses the same oracle-price basis as `compute_used_margin`
+/// and `compute_user_equity` for consistent comparison.
+fn compute_maintenance_margin(
+    user_state: &UserState,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_params_map: &Map<PairId, PairParams>,
+) -> Uint {
+    let mut total = 0;
+
+    for (pair_id, position) in &user_state.positions {
+        let oracle_price = oracle_prices[&pair_id];
+        let pair_params = pair_params_map[&pair_id];
+
+        // Maintenance margin = |size| * oracle_price * maintenance_margin_ratio
+        let margin = abs(position.size) * oracle_price * pair_params.maintenance_margin_ratio;
+
+        total += ceil(margin);  // Round up (conservative, disadvantage to user)
+    }
+
+    total
+}
+```
+
+#### Liquidation check
+
+```rust
+/// Returns true if the user is eligible for liquidation.
+///
+/// A user is liquidatable when their equity (margin + unrealized PnL - accrued
+/// funding) falls below their total maintenance margin.
+///
+/// NOTE: `accrue_funding` should be called for each pair before invoking this
+/// function, so that `cumulative_funding_per_unit` is up-to-date.
+fn is_liquidatable(
+    user_state: &UserState,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_params_map: &Map<PairId, PairParams>,
+    pair_states: &Map<PairId, PairState>,
+) -> bool {
+    // No positions means nothing to liquidate.
+    if user_state.positions.is_empty() {
+        return false;
+    }
+
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
+    let maintenance_margin = compute_maintenance_margin(user_state, oracle_prices, pair_params_map);
+
+    equity < maintenance_margin
+}
+```
+
+#### Cancel all orders
+
+During liquidation, all pending limit orders must be cancelled before assessing solvency. This removes future exposure and releases reserved margin.
+
+```rust
+/// Cancel all pending limit orders for a user across all pairs.
+///
+/// Implementation note: requires a secondary index on `user_id` in both
+/// BIDS and ASKS to efficiently find all orders belonging to a user.
+fn cancel_all_orders(user_state: &mut UserState, user_id: UserId) {
+    // Remove all bid orders for this user
+    for (key, _order) in BIDS.idx.user_id.prefix(user_id) {
+        BIDS.remove(key);
+    }
+
+    // Remove all ask orders for this user
+    for (key, _order) in ASKS.idx.user_id.prefix(user_id) {
+        ASKS.remove(key);
+    }
+
+    // All reserved margin is released; all orders are gone.
+    user_state.reserved_margin = 0;
+    user_state.open_order_count = 0;
+}
+```
+
+#### Force close (liquidation handler)
+
+```rust
+/// Liquidate a user by closing all positions and paying a fee to the liquidator.
+///
+/// Can be called by any third party when the user is below maintenance margin.
+/// Also callable by the admin for auto-deleveraging (see note below).
+fn handle_force_close(
+    params: &Params,
+    state: &mut State,
+    pair_states: &mut Map<PairId, PairState>,
+    pair_params_map: &Map<PairId, PairParams>,
+    oracle_prices: &Map<PairId, Udec>,
+    user_state: &mut UserState,
+    user_id: UserId,
+    liquidator_state: &mut UserState,
+    current_time: Timestamp,
+) {
+    // Step 1: Cancel all pending limit orders.
+    // This removes future exposure and releases reserved margin, giving the
+    // user the best chance of meeting maintenance margin without liquidation.
+    cancel_all_orders(user_state, user_id);
+
+    // Step 2: Accrue funding for all pairs the user has positions in.
+    // Must happen before equity/margin checks and before execute_fill.
+    for (pair_id, _position) in &user_state.positions {
+        let pair_state = pair_states.get_mut(&pair_id);
+        let pair_params = pair_params_map[&pair_id];
+        let oracle_price = oracle_prices[&pair_id];
+
+        accrue_funding(pair_state, &pair_params, oracle_price, current_time);
+    }
+
+    // Step 3: Check liquidation condition.
+    // After cancelling orders and accruing funding, the user may no longer
+    // be underwater. Revert if the user is solvent.
+    ensure!(
+        is_liquidatable(user_state, oracle_prices, pair_params_map, pair_states),
+        "user is not liquidatable",
+    );
+
+    // Step 4: Compute total notional for liquidation fee calculation.
+    let mut total_notional = Udec::ZERO;
+    for (pair_id, position) in &user_state.positions {
+        let oracle_price = oracle_prices[&pair_id];
+        total_notional += abs(position.size) * oracle_price;
+    }
+
+    // Step 5: Close all positions at skew-adjusted prices.
+    //
+    // Each position is closed by filling the opposite size. We use
+    // skew-adjusted execution prices (not oracle) so that liquidation
+    // pricing is identical to voluntary trading. This eliminates a moral
+    // hazard where users might prefer being liquidated over self-closing
+    // when the skew premium makes voluntary closure more expensive.
+    //
+    // The liquidation _trigger_ (Step 3) uses oracle-based equity, which
+    // is safe from skew manipulation. Only execution uses skew-adjusted
+    // prices, consistent with all other fills in the system.
+    //
+    // For liquidation, `decompose_fill` always yields 100% closing / 0%
+    // opening, so OI constraints (max_abs_oi) don't apply.
+    //
+    // We collect `pair_ids` first to avoid borrowing conflicts.
+    let pair_ids: Vec<PairId> = user_state.positions.keys().cloned().collect();
+
+    for pair_id in pair_ids {
+        let pair_state = pair_states.get_mut(&pair_id);
+        let pair_params = pair_params_map[&pair_id];
+        let oracle_price = oracle_prices[&pair_id];
+        let position_size = user_state.positions[&pair_id].size;
+
+        // Close by filling the exact opposite of the current position.
+        let fill_size = -position_size;
+        let skew = pair_state.long_oi + pair_state.short_oi;
+        let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
+
+        execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
+    }
+
+    // Step 6: Pay liquidation fee to the liquidator.
+    //
+    // The fee is proportional to total notional, capped at the user's
+    // remaining margin. Using notional (not remaining margin) ensures the
+    // reward stays proportional to position risk — a margin-based fee
+    // would shrink as the user deteriorates, creating a perverse incentive
+    // to delay liquidation.
+    //
+    // After all positions are closed, user_state.margin reflects the
+    // user's remaining balance (could be zero if they had bad debt).
+    let fee = floor(total_notional * params.liquidation_fee_rate);
+    let actual_fee = min(fee, user_state.margin);
+
+    user_state.margin -= actual_fee;
+    liquidator_state.margin += actual_fee;
+
+    /* Here, add logic for transferring the fee */
+}
+```
+
+**Bad debt handling.** If the user's losses exceed their margin, `settle_pnl`'s `saturating_sub` absorbs the shortfall — the vault simply doesn't receive the full payment. No additional bad-debt logic is needed in the liquidation path. Proper maintenance margin thresholds should make bad debt rare.
+
+#### Price usage summary
+
+The table below summarizes which price and margin ratio are used in each context:
+
+| Context                       | Margin ratio               | Price used                                                                   | Rationale                                                                                                   |
+| ----------------------------- | -------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| New order margin requirement  | `initial_margin_ratio`     | Target price (skew-adjusted for market orders, limit price for limit orders) | Must cover the worst-case execution price the user agreed to                                                |
+| Existing position used margin | `initial_margin_ratio`     | Oracle price                                                                 | Stable valuation for available margin; prevents over-leveraging on new orders/withdrawals                   |
+| Liquidation trigger           | `maintenance_margin_ratio` | Oracle price                                                                 | Must match equity basis (also oracle-based) for consistent comparison; immune to skew manipulation          |
+| Liquidation execution         | N/A                        | Skew-adjusted price                                                          | Consistent with voluntary trading; eliminates moral hazard where users prefer liquidation over self-closing |
+
+#### Auto-deleveraging
+
+Auto-deleveraging (ADL) is a mechanism for the exchange to forcibly close positions of profitable traders when the counterparty vault cannot cover its obligations. This is left as future work. The `handle_force_close` function already supports admin-only invocation for this purpose — the admin would call it on selected users without requiring the maintenance margin check.
 
 ### Counterparty vault
 

@@ -6,7 +6,8 @@ Issues identified during spec review that are not yet addressed. Ordered roughly
 
 - **No trading fees collected.** The intro states the pool profits from "taking a cut from trading fees," but no fee is ever collected in `execute_fill` or anywhere else. Industry standard: 0.01%-0.1% maker/taker or open/close fee on notional value. This is a critical revenue source for the vault.
 
-- **No maintenance margin ratio.** Only `initial_margin_ratio` exists. Every major exchange defines a separate, lower `maintenance_margin_ratio` (e.g. 2.5% vs 5% initial). Without it, there's no well-defined liquidation trigger. The Liquidation section cannot be properly specified without this parameter.
+- ~~**No maintenance margin ratio.** Only `initial_margin_ratio` exists. Every major exchange defines a separate, lower `maintenance_margin_ratio` (e.g. 2.5% vs 5% initial). Without it, there's no well-defined liquidation trigger. The Liquidation section cannot be properly specified without this parameter.~~
+  - Fixed. Added `maintenance_margin_ratio` to `PairParams` and `liquidation_fee_rate` to `Params`. Liquidation section fully specified with `handle_force_close`.
 
 - ~~**Unrealized PnL not factored into equity for margin checks.** `compute_available_margin` uses raw `user_state.margin` (deposit balance) without adding unrealized PnL. In cross-margin mode, the standard is: `equity = balance + unrealized_pnl`, and `available = equity - used - reserved`. A user with 1000 USDT balance and -800 USDT unrealized loss currently shows ~500 available margin (1000 - 500 used), when it should be ~200.~~
   - Fixed. `compute_available_margin` now uses `compute_user_equity` (margin + unrealized PnL - accrued funding) instead of raw margin.
