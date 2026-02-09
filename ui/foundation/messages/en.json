@@ -413,6 +413,7 @@
     "termsOfUse": "Terms of Use"
   },
   "auth": {
+    "email": "Email",
     "emailPlaceholder": "email",
     "passkey": "Passkey",
     "wallets": "Wallets",
@@ -842,13 +843,26 @@
       "management": {
         "add": {
           "title": "Add new credential",
-          "description": "Choose a credential. You can add or remove credentials later."
+          "description": "Choose a credential. You can add or remove credentials later.",
+          "success": {
+            "title": "Credential added",
+            "description": "Your new credential has been successfully linked to your account."
+          },
+          "error": {
+            "title": "Failed to add credential",
+            "alreadyExists": "This credential is already linked to your account."
+          }
         },
         "delete": {
           "title": "Delete credential",
           "description": "Are you sure you want to delete this credential?",
           "warning": "This action cannot be undone."
         }
+      },
+      "email": {
+        "title": "Link Email",
+        "description": "We'll send a verification code to your email",
+        "alreadyLinked": "This email is already linked to your account"
       }
     }
   },
@@ -979,7 +993,26 @@
     }
   },
   "points": {
-    "campaign": "Campaign"
+    "campaign": "Campaign",
+    "leagues": {
+      "title": "Leagues",
+      "subtitle": "Earn points to climb your way up!",
+      "levels": [
+        {
+          "declarations": ["input level"],
+          "selectors": ["level"],
+          "match": {
+            "level=wood": "Wood",
+            "level=iron": "Iron",
+            "level=gold": "Gold",
+            "level=platinum": "Platinum",
+            "level=diamond": "Diamond",
+            "level=master": "Master",
+            "level=grandmaster": "Grandmaster"
+          }
+        }
+      ]
+    }
   },
   "errors": {
     "validations": {
@@ -998,6 +1031,18 @@
       "execute": "Execute",
       "query": "Query",
       "simulate": "Simulate"
+    }
+  },
+  "accountCard": {
+    "addressWarning": {
+      "title": "This Is Not an Ethereum Address",
+      "doNot": "Do not",
+      "bullet1": "withdraw directly from a Centralized Exchange (CEX) to this address.",
+      "bullet2": "send funds from Ethereum or other EVM chains to this address.",
+      "descriptionPre": "To fund your Dango account, use the",
+      "descriptionLink": "Deposit app",
+      "descriptionPost": "instead.",
+      "button": "I understand"
     }
   }
 }

@@ -3,6 +3,15 @@
   collections:
     - community.docker
     - community.general
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
   tasks:
     - name: Log deletion start
       community.general.syslogger:

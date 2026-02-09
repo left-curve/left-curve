@@ -1,4 +1,4 @@
 ---
-loki_dir: "{{ ansible_facts['env']['HOME'] }}/loki"
+loki_dir: "{{ deploy_home }}/loki"
 loki_port: 3100
 promtail_port: 9080

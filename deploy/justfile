@@ -36,6 +36,10 @@ setup:
   uv pip install ansible
   ansible-galaxy install -r requirements.yml
 
+# Lint all YAML files (playbooks, roles, templates), excluding vaults
+lint:
+  find . -name '*.yml' -o -name '*.yaml' | grep -v vault | grep -v .venv | xargs uvx yamllint -d relaxed
+
 deploy-github-runners:
   ansible-playbook setup-github-runner-hosts.yml
   ansible-playbook install-github-runner-hosts.yml

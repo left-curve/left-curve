@@ -2,17 +2,11 @@ import { useMemo } from "react";
 
 import { SearchItem } from "./SearchItem";
 import { GlobalText } from "../foundation";
-import { MotiView, AnimatePresence } from "moti";
 import { View, Pressable, ScrollView } from "react-native";
 
 import type React from "react";
 import type { SearchBarResult } from "@left-curve/store";
 import type { AppletMetadata } from "@left-curve/store/types";
-
-const childAnim = {
-  from: { opacity: 0, translateY: -30 },
-  animate: { opacity: 1, translateY: 0 },
-};
 
 const Root: React.FC<React.PropsWithChildren> = ({ children }) => <>{children}</>;
 
@@ -144,49 +138,38 @@ const Body: React.FC<SearchMenuProps> = ({
   }, [applets, allApplets, block, txs, account, contracts, onSelect, isSearching]);
 
   return (
-    <AnimatePresence>
-      <MotiView className="w-full overflow-hidden rounded-xs">
-        <ScrollView
-          className="w-full"
-          contentContainerClassName="lg:p-1 w-full items-center gap-1"
-          showsVerticalScrollIndicator
-        >
-          {isLoading ? (
-            <View className="flex items-center justify-center w-full p-2">
-              {/* TODO: Add Spinner */}
-              <GlobalText>Searching...</GlobalText>
-            </View>
-          ) : groups.length === 0 ? (
-            <GlobalText className="text-ink-tertiary-500 diatype-m-regular p-2 text-center">
-              No results
-            </GlobalText>
-          ) : (
-            groups.map((group) => (
-              <View key={group.key} className="w-full gap-1">
-                <GlobalText className="px-1 diatype-sm-bold text-ink-tertiary-500">
-                  {group.title}
-                </GlobalText>
+    <View className="w-full overflow-hidden rounded-xs">
+      <ScrollView
+        className="w-full"
+        contentContainerClassName="lg:p-1 w-full items-center gap-1"
+        showsVerticalScrollIndicator
+      >
+        {isLoading ? (
+          <View className="flex items-center justify-center w-full p-2">
+            {/* TODO: Add Spinner */}
+            <GlobalText>Searching...</GlobalText>
+          </View>
+        ) : groups.length === 0 ? (
+          <GlobalText className="text-ink-tertiary-500 diatype-m-regular p-2 text-center">
+            No results
+          </GlobalText>
+        ) : (
+          groups.map((group) => (
+            <View key={group.key} className="w-full gap-1">
+              <GlobalText className="px-1 diatype-sm-bold text-ink-tertiary-500">
+                {group.title}
+              </GlobalText>
 
-                {group.items.map((node, idx) => (
-                  <MotiView
-                    key={`${group.key}-${idx}`}
-                    from={childAnim.from}
-                    animate={childAnim.animate}
-                    transition={{
-                      type: "timing",
-                      duration: 160,
-                      delay: idx * 40,
-                    }}
-                  >
-                    {node}
-                  </MotiView>
-                ))}
-              </View>
-            ))
-          )}
-        </ScrollView>
-      </MotiView>
-    </AnimatePresence>
+              {group.items.map((node, idx) => (
+                <View key={`${group.key}-${idx}`}>
+                  {node}
+                </View>
+              ))}
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </View>
   );
 };
 

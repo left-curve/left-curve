@@ -1,4 +1,5 @@
 import { useBalances, usePrices } from "@left-curve/store";
+import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { type Account, AccountType, type AccountTypes } from "@left-curve/dango/types";
@@ -10,6 +11,7 @@ import {
   IconButton,
   IconChevronDownFill,
   IconClose,
+  Modals,
   TextCopy,
   TruncateText,
   twMerge,
@@ -52,6 +54,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
 }) => {
   const { address, type } = account;
   const name = `${m["common.account"]()} #${account?.index}`;
+  const { showModal } = useApp();
 
   const { bgColor, badge, img, imgClassName, text } = AccountCardOptions[type];
 
@@ -109,7 +112,11 @@ const AccountCard: React.FC<AccountCardProps> = ({
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
+          <TextCopy
+            copyText={address}
+            className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+            onCopy={() => showModal(Modals.AddressWarning)}
+          />
         </div>
       </div>
       <div className="flex gap-2 items-center relative z-10">
@@ -135,7 +142,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
 
   const { data: balances = {} } = useBalances({ address });
   const { calculateBalance } = usePrices();
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const totalBalance = calculateBalance(balances, {
@@ -163,7 +170,11 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
               start={4}
               end={4}
             />
-            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
+            <TextCopy
+              copyText={address}
+              className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+              onCopy={() => showModal(Modals.AddressWarning)}
+            />
           </div>
         </div>
         <div className="flex flex-col gap-1 items-end">

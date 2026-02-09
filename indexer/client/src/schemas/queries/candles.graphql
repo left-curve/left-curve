@@ -1,0 +1,27 @@
+query Candles($after: String, $first: Int, $baseDenom: String!, $quoteDenom: String!, $interval: CandleInterval!, $earlierThan: DateTime, $laterThan: DateTime) {
+  candles(after: $after, first: $first, baseDenom: $baseDenom, quoteDenom: $quoteDenom, interval: $interval, earlierThan: $earlierThan, laterThan: $laterThan) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      quoteDenom
+      baseDenom
+      interval
+      minBlockHeight
+      maxBlockHeight
+      open
+      high
+      low
+      close
+      volumeBase
+      volumeQuote
+      timeStart
+      timeStartUnix
+      timeEnd
+      timeEndUnix
+    }
+  }
+}

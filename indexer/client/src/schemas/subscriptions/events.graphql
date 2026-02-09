@@ -1,0 +1,15 @@
+subscription SubscribeEvents($sinceBlockHeight: Int, $filter: [Filter!]) {
+  events(sinceBlockHeight: $sinceBlockHeight, filter: $filter) {
+    type
+    method
+    eventStatus
+    commitmentStatus
+    transactionType
+    transactionIdx
+    messageIdx
+    eventIdx
+    data
+    blockHeight
+    createdAt
+  }
+}
