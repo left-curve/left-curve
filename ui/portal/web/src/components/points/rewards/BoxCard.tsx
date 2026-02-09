@@ -9,7 +9,7 @@ import {
 } from "@left-curve/applets-kit";
 import type React from "react";
 
-type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
+export type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 
 const VariantConfig: Record<
   BoxVariant,
