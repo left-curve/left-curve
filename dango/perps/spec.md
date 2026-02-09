@@ -2030,3 +2030,4 @@ v1.5 (to be shipped in relatively near future):
 v2 (to be shipped in further future):
 
 - **Partial fill of orders**: see [v2.md](./v2.md).
+- **Partial liquidation**: rather than closing all positions at once, reduce positions incrementally (e.g. close the largest position, or reduce all positions by a fixed percentage) until the user is back above maintenance margin. Reduces market impact and preserves user capital. Used by most major exchanges (Binance, Bybit, Hyperliquid, OKX, Drift).
