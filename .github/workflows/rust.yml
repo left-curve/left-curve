@@ -1344,6 +1344,7 @@ jobs:
       - name: Install Ansible
         run: |
           pipx install ansible
+          pipx inject ansible jmespath
           echo "${HOME}/.local/bin" >> $GITHUB_PATH
           ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
           ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
