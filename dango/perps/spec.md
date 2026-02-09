@@ -1786,8 +1786,6 @@ fn handle_force_close(
 }
 ```
 
-**Bad debt handling.** If the user's losses exceed their margin, `settle_pnl`'s `saturating_sub` absorbs the shortfall — the vault simply doesn't receive the full payment. No additional bad-debt logic is needed in the liquidation path. Proper maintenance margin thresholds should make bad debt rare.
-
 #### Price usage summary
 
 The table below summarizes which price and margin ratio are used in each context:
