@@ -193,19 +193,69 @@ pub async fn process_request(&self, req: Request) -> Result<Response> {
 Telemetry (OTLP + Sentry, graceful shutdown): `docs/telemetry.md`
 ```
 
-### Commit Messages
+## Git Workflow
 
-- Follow conventional commit format: `type(scope): description`
-- Separate subject from body with a blank line
-- Limit subject line to 50 characters
-- Capitalize the subject line and do not end with a period
-- Use imperative mood (e.g., "Add feature" not "Added feature")
-- Wrap body at 72 characters
-- Explain what and why in the body, not how
+Follow conventional commit format:
+- **Type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+- **Scope**: Optional, indicates the area affected
+- **Description**: Clear, imperative mood description (e.g., "add feature" not "added feature")
+- **Body**: Optional, detailed explanation (separated by blank line)
+- **Footer**: Optional, references to issues
 - Reference issues with "Closes #123" or "Fixes #456" in footer if applicable
-- Include app and LLM user as co-authors only if you produced the code being committed
 - Use `users.noreply.github.com` as the domain for co-author emails
-- Run `just fmt` and `just lint` before committing to ensure code formatting and linting
+
+Example:
+```
+feat(websocket): add reconnection logic
+
+Implement exponential backoff retry mechanism for WebSocket connections
+to handle network interruptions gracefully.
+
+Fixes #123
+```
+
+**No Co-Authored-By trailers.** Never add `Co-Authored-By` lines (e.g.
+`Co-Authored-By: Claude ...`) to commit messages or documentation. Commits
+should only contain the message itself — no AI attribution trailers.
+
+**Never overwrite existing tags.** When a release build fails or needs fixes,
+always create a new version tag (e.g. `v0.1.7` instead of re-tagging `v0.1.6`).
+Moving or deleting published tags breaks downstream caches, package managers,
+and anyone who already pulled that version. Always move forward.
+
+**Cargo.lock must stay in sync.** After changing dependencies or merging
+`main`, run `cargo fetch` (without `--locked`) to sync the lockfile without
+upgrading existing dependency versions, then commit the result. Verify with
+`cargo fetch --locked`. CI uses `--locked` and will reject a stale lockfile.
+`local-validate.sh` handles this automatically — if the lockfile is stale it
+runs `cargo fetch` and auto-commits the update before proceeding.
+
+Only use `cargo update --workspace` when you intentionally want to upgrade
+dependency versions. For routine lockfile sync (e.g. after merging main or
+bumping the workspace version), `cargo fetch` is sufficient and won't change
+versions unnecessarily.
+
+**Merging main into your branch:** When merging `main` into your current branch
+and encountering conflicts, resolve them by keeping both sides of the changes.
+Don't discard either the incoming changes from main or your local changes —
+integrate them together so nothing is lost.
+
+**PR description quality:** Every pull request must include a clear, reviewer-friendly
+description with at least these sections:
+- `## Summary` (what changed and why)
+- `## Validation` using checkboxes (not plain bullets), split into:
+  - `### Completed` — checked items for commands that passed
+  - `### Remaining` — unchecked items for follow-up work (or a single checked
+    `- [x] None` if nothing remains)
+  Include exact commands (fmt/lint/tests) in the checkbox items.
+- `## Manual QA` (UI/manual checks performed, or explicitly say `None`)
+
+Do not leave PR bodies as a raw commit dump. Keep them concise and actionable.
+
+**PR descriptions must include test TODOs.** Every pull request description
+must include a dedicated checklist-style testing section (manual and/or
+automated) so reviewers can validate behavior without guessing. Keep the steps
+concrete (commands to run, UI paths to click, and expected results).
 
 ## Versions & Compatibility (Examples that matter)
 
