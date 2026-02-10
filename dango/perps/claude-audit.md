@@ -156,11 +156,13 @@ Net cost: zero (liquidation fee is self-paid). Savings: `trading_fee_rate * tota
 
 ### 1.12 [MEDIUM] Withdrawal Amount Locked at Unlock Time, Not Claim Time
 
-In `handle_unlock_liquidity` (line 2037), `amount_to_release` is computed immediately and stored in the `Unlock` struct. During the cooldown period, the vault may suffer losses. The withdrawing LP still receives their pre-loss amount, socializing the loss to remaining LPs.
+**Won't fix.** Intended design.
 
-Scenario: LP observes a large position approaching liquidation. LP unlocks at current (healthy) equity. During cooldown, the position is liquidated and the vault absorbs bad debt. LP claims the pre-loss amount, effectively externalizing the loss to remaining LPs.
+~~In `handle_unlock_liquidity` (line 2037), `amount_to_release` is computed immediately and stored in the `Unlock` struct. During the cooldown period, the vault may suffer losses. The withdrawing LP still receives their pre-loss amount, socializing the loss to remaining LPs.~~
 
-**Fix:** Recompute `amount_to_release` at claim time, or use the minimum of unlock-time and claim-time valuations. The shares should be the unit stored in `Unlock`, not a pre-computed USDT amount.
+~~Scenario: LP observes a large position approaching liquidation. LP unlocks at current (healthy) equity. During cooldown, the position is liquidated and the vault absorbs bad debt. LP claims the pre-loss amount, effectively externalizing the loss to remaining LPs.~~
+
+~~**Fix:** Recompute `amount_to_release` at claim time, or use the minimum of unlock-time and claim-time valuations. The shares should be the unit stored in `Unlock`, not a pre-computed USDT amount.~~
 
 ---
 
