@@ -164,29 +164,41 @@ Scenario: LP observes a large position approaching liquidation. LP unlocks at cu
 
 ### 2.1 [HIGH] Full Liquidation Only
 
-The spec liquidates ALL positions across ALL pairs. Every major exchange (Binance, Bybit, dYdX, Hyperliquid, Drift) uses partial liquidation: close positions incrementally until solvency is restored. Full liquidation is unnecessarily destructive -- it closes winning positions alongside losing ones, creates larger market impact, and triggers more cascading liquidations.
+**Won't fix.** Planned for V2.
 
-Acknowledged as v2, but launching without it is a significant deviation from industry norms.
+~~The spec liquidates ALL positions across ALL pairs. Every major exchange (Binance, Bybit, dYdX, Hyperliquid, Drift) uses partial liquidation: close positions incrementally until solvency is restored. Full liquidation is unnecessarily destructive -- it closes winning positions alongside losing ones, creates larger market impact, and triggers more cascading liquidations.~~
+
+~~Acknowledged as v2, but launching without it is a significant deviation from industry norms.~~
 
 ### 2.2 [MEDIUM] No Maker/Taker Fee Split
 
-Flat `trading_fee_rate` for all fills. Industry standard differentiates maker (resting limit orders) from taker (market/immediately-filled) fees. Binance, dYdX, Hyperliquid all differentiate. Maker rebates incentivize limit order placement and improve liquidity.
+**Won't fix.** Not applicable for peer-to-pool protocols, where the user is always the taker and the pool is always the maker, so one fee rate suffices.
+
+~~Flat `trading_fee_rate` for all fills. Industry standard differentiates maker (resting limit orders) from taker (market/immediately-filled) fees. Binance, dYdX, Hyperliquid all differentiate. Maker rebates incentivize limit order placement and improve liquidity.~~
 
 ### 2.3 [MEDIUM] No Per-User Position Limits
 
-The only constraint is the global `max_abs_oi` per pair. A single whale can consume the entire OI capacity, concentrating vault risk on one counterparty. Binance, dYdX, and Hyperliquid all have per-user position limits.
+**Won't fix.** Attackers can easily circumvent this by creating multiple accounts.
+
+~~The only constraint is the global `max_abs_oi` per pair. A single whale can consume the entire OI capacity, concentrating vault risk on one counterparty. Binance, dYdX, and Hyperliquid all have per-user position limits.~~
 
 ### 2.4 [MEDIUM] No Price Bands or Circuit Breakers
 
-No oracle staleness check, no max price change per update, no trading halt mechanism. An oracle malfunction could trigger mass liquidations at incorrect prices. Binance has price bands; CME has limit-up/limit-down halts; dYdX has oracle staleness checks; Synthetix V3 has dynamic volatility fees.
+**Won't fix.** Oracle is a separate smart contract, out of the scope of this spec.
+
+~~No oracle staleness check, no max price change per update, no trading halt mechanism. An oracle malfunction could trigger mass liquidations at incorrect prices. Binance has price bands; CME has limit-up/limit-down halts; dYdX has oracle staleness checks; Synthetix V3 has dynamic volatility fees.~~
 
 ### 2.5 [MEDIUM] No Keeper Incentive for Limit Order Processing
 
-Limit orders are fulfilled "at the beginning of each block" but there's no explicit incentive for whoever pays the gas to trigger this processing. Synthetix, dYdX, and Drift all have keeper networks with gas reimbursement and incentive fees.
+**Won't fix.** Limit order processing is automatically triggered. No offchain keeper involved.
+
+~~Limit orders are fulfilled "at the beginning of each block" but there's no explicit incentive for whoever pays the gas to trigger this processing. Synthetix, dYdX, and Drift all have keeper networks with gas reimbursement and incentive fees.~~
 
 ### 2.6 [LOW] No GTT (Good-Til-Time) or Post-Only Orders
 
-Only IOC (market) and GTC (limit). GTC orders with no expiry linger in storage indefinitely. Most exchanges support time-limited orders and post-only mode.
+**Won't fix.** We don't see the demand for this for now.
+
+~~Only IOC (market) and GTC (limit). GTC orders with no expiry linger in storage indefinitely. Most exchanges support time-limited orders and post-only mode.~~
 
 ### 2.7 [MEDIUM] `used_margin` for Existing Positions Uses `initial_margin_ratio`
 
