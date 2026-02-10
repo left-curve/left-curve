@@ -1369,7 +1369,7 @@ fn try_fill_limit_order(
     };
     let order_book = if is_buy { BIDS } else { ASKS };
 
-    // Load user state early (needed for both fill and cancel paths)
+    // Load user state (needed for OI check)
     let mut user_state = load_user_state(order.user_id);
     let user_pos = user_state.positions
         .get(&pair_id)
@@ -1383,22 +1383,16 @@ fn try_fill_limit_order(
         pair_state, pair_params.max_abs_oi,
     );
 
-    // If fill_size is zero (pure opening order with OI violated), cancel
+    // If fill_size is zero (pure opening order with OI violated), skip.
+    // OI is transient — order may become fillable in a future cycle.
     if fill_size == Dec::ZERO {
-        user_state.reserved_margin -= order.reserved_margin;
-        user_state.open_order_count -= 1;
-        order_book.remove(key);
-        save_user_state(user_state);
         return;
     }
 
-    // Compute exec price for the actual fill size and check price constraint
+    // Compute exec price for the actual fill size and check price constraint.
+    // If price fails, skip — skew is transient.
     let exec_price = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
     if !check_price_constraint(exec_price, limit_price, is_buy) {
-        user_state.reserved_margin -= order.reserved_margin;
-        user_state.open_order_count -= 1;
-        order_book.remove(key);
-        save_user_state(user_state);
         return;
     }
 
@@ -1407,7 +1401,7 @@ fn try_fill_limit_order(
     collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate);
     *skew += fill_size;
 
-    // Always cancel the order after fill (no partial orders remain in book)
+    // Remove order after fill (all-or-nothing: no partial orders remain)
     user_state.reserved_margin -= order.reserved_margin;
     user_state.open_order_count -= 1;
     order_book.remove(key);
