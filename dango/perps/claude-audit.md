@@ -289,7 +289,9 @@ Storing `short_oi` as a negative number (e.g., -100) requires `.abs()` calls, si
 
 ### 4.6 [MEDIUM] Missing Parameter Validation
 
-`maintenance_margin_ratio < initial_margin_ratio` is stated in comments but never enforced. Other important invariants also lack programmatic enforcement: `skew_scale > 0`, `max_abs_premium < 1`, `initial_margin_ratio > 0`, `trading_fee_rate < 1`. A misconfiguration could make trading impossible or cause immediate liquidation.
+**Won't fix.** We assume the admin won't make this problem.
+
+~~`maintenance_margin_ratio < initial_margin_ratio` is stated in comments but never enforced. Other important invariants also lack programmatic enforcement: `skew_scale > 0`, `max_abs_premium < 1`, `initial_margin_ratio > 0`, `trading_fee_rate < 1`. A misconfiguration could make trading impossible or cause immediate liquidation.~~
 
 ### 4.7 [LOW] `cancel_order` Recomputes Reserved Margin Instead of Storing It
 
