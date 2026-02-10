@@ -189,6 +189,14 @@ struct Params {
     /// across all pairs. Prevents storage bloat from order spam.
     pub max_open_orders: u32,
 
+    /// Trading fee as a fraction of notional value, charged on every fill.
+    ///
+    /// fee = |fill_size| * exec_price * trading_fee_rate
+    ///
+    /// Deducted from the user's margin and transferred to the vault.
+    /// E.g., 0.0005 = 0.05%. For a $100,000 notional fill, fee = $50.
+    pub trading_fee_rate: Udec,
+
     /// Fee paid to the liquidator as a fraction of the total notional value
     /// of positions being liquidated.
     ///
@@ -639,6 +647,7 @@ Users can cancel pending limit orders to release their reserved margin:
 
 ```rust
 fn handle_cancel_order(
+    params: &Params,
     user_state: &mut UserState,
     pair_id: PairId,
     order_id: OrderId,
@@ -656,7 +665,7 @@ fn handle_cancel_order(
     // Ensure the user owns this order
     ensure!(order.user_id == caller_user_id, "not your order");
 
-    // Compute and release the reserved margin for this order
+    // Compute and release the reserved margin + reserved fee for this order
     let user_pos = user_state.positions
         .get(&pair_id)
         .map(|p| p.size)
@@ -666,7 +675,8 @@ fn handle_cancel_order(
     // For cancellation, we need to recover the limit_price from the order key
     // (implementation detail: the order key contains the limit price)
     let reserved = compute_required_margin(opening_size, limit_price, pair_params);
-    user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved);
+    let reserved_fee = ceil(abs(opening_size) * limit_price * params.trading_fee_rate);
+    user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved + reserved_fee);
 
     user_state.open_order_count -= 1;
 }
@@ -989,9 +999,13 @@ fn handle_submit_order(
     let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
 
     // Step 5: Check margin for the full opening portion (including unfilled)
+    // The estimated fee uses target_price (worst-case price the user agreed to)
+    // and the full size (not just opening portion), since the closing portion
+    // also incurs a fee. Uses ceil (rounds up) to be conservative.
     let required_margin = compute_required_margin(opening_size, target_price, pair_params);
+    let estimated_fee = ceil(abs(size) * target_price * params.trading_fee_rate);
     let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states);
-    ensure!(available_margin >= required_margin, "insufficient margin");
+    ensure!(available_margin >= required_margin + estimated_fee, "insufficient margin");
 
     // Step 6: Check price constraint and execute fill
     if fill_size != Dec::ZERO {
@@ -999,6 +1013,7 @@ fn handle_submit_order(
 
         if check_price_constraint(exec_price, target_price, is_buy) {
             execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
+            collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate);
         }
     }
 
@@ -1050,9 +1065,11 @@ fn store_limit_order(
     // Reserve margin for the opening portion of the unfilled size.
     // The filled portion's margin is now "used margin" (backing the position);
     // the unfilled portion needs margin reserved for potential future execution.
+    // Also reserve the estimated trading fee for the opening portion.
     let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos_after_fill);
     let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params);
-    user_state.reserved_margin += margin_to_reserve;
+    let fee_to_reserve = ceil(abs(unfilled_opening) * limit_price * params.trading_fee_rate);
+    user_state.reserved_margin += margin_to_reserve + fee_to_reserve;
 
     // Increment open order count
     user_state.open_order_count += 1;
@@ -1248,6 +1265,32 @@ fn settle_pnl(
 }
 ```
 
+### Trading fees
+
+A trading fee is charged on every voluntary fill (market and limit orders) as a percentage of notional value. The fee is transferred from the user's margin to the vault (protocol revenue).
+
+- Fee formula: `fee = ceil(|fill_size| * exec_price * trading_fee_rate)` — rounds up to advantage the protocol, consistent with the spec's rounding principle.
+- If the user's margin is insufficient to cover the full fee, the actual fee is capped at `user_state.margin` (same pattern as `settle_pnl` and the liquidation fee).
+- **Liquidation fills are exempt**: the existing `liquidation_fee_rate` is the only fee on liquidation. Charging both would be double-dipping. This matches Binance/OKX/dYdX/Drift where a dedicated liquidation fee replaces the normal trading fee.
+
+```rust
+fn collect_trading_fee(
+    state: &mut State,
+    user_state: &mut UserState,
+    fill_size: Dec,
+    exec_price: Udec,
+    trading_fee_rate: Udec,
+) -> Uint {
+    let fee = ceil(abs(fill_size) * exec_price * trading_fee_rate);
+    let actual_fee = min(fee, user_state.margin);
+
+    user_state.margin -= actual_fee;
+    state.vault_margin += actual_fee;
+
+    actual_fee
+}
+```
+
 ### Fulfillment of limit orders
 
 At the beginning of each block, validators submit the latest oracle prices. The contract is then triggered to scan the unfilled limit orders in its storage and look for ones that can be filled.
@@ -1260,6 +1303,7 @@ Importantly, we execute both order types in an interleaving manner, which is nec
 
 ```rust
 fn fulfill_limit_orders_for_pair(
+    params: &Params,
     state: &mut State,
     pair_id: PairId,
     oracle_price: Udec,
@@ -1304,9 +1348,9 @@ fn fulfill_limit_orders_for_pair(
         };
 
         if process_buy {
-            try_fill_limit_order(&mut bids, pair_id, true, state, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_limit_order(params, &mut bids, pair_id, true, state, oracle_price, &mut skew, pair_state, pair_params);
         } else {
-            try_fill_limit_order(&mut asks, pair_id, false, state, oracle_price, &mut skew, pair_state, pair_params);
+            try_fill_limit_order(params, &mut asks, pair_id, false, state, oracle_price, &mut skew, pair_state, pair_params);
         }
     }
 }
@@ -1320,6 +1364,7 @@ fn fulfill_limit_orders_for_pair(
 /// order was placed. Upon fill, the reserved margin converts to "used margin"
 /// backing the new position.
 fn try_fill_limit_order(
+    params: &Params,
     iter: &mut Peekable<impl Iterator<Item = (OrderKey, Order)>>,
     pair_id: PairId,
     is_buy: bool,
@@ -1383,13 +1428,15 @@ fn try_fill_limit_order(
 
     // Execute the fill
     execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
+    collect_trading_fee(state, &mut user_state, fill_size, fill_exec_price, params.trading_fee_rate);
     *skew += fill_size;
 
-    // Update order book and reserved margin
+    // Update order book and reserved margin (including reserved fee)
     if fill_size == order.size {
-        // Full fill: release reserved margin and remove order
+        // Full fill: release reserved margin + reserved fee and remove order
         let reserved_for_order = compute_required_margin(opening_size, limit_price, pair_params);
-        user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order);
+        let reserved_fee = ceil(abs(opening_size) * limit_price * params.trading_fee_rate);
+        user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order + reserved_fee);
 
         user_state.open_order_count -= 1;
         order_book.remove(key);
