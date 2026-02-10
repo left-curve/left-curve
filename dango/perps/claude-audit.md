@@ -305,13 +305,15 @@ No event structures are defined for fills, liquidations, deposits, withdrawals, 
 
 ### 4.10 [MEDIUM] Type Error in `PAIR_PARAMS` Storage Layout
 
-Line 464:
+**Fixed.**
+
+~~Line 464:~~
 
 ```rust
 const PAIR_PARAMS: Map<PairId, Params> = Map::new("pair_params");
 ```
 
-Should be `Map<PairId, PairParams>`. `Params` is the global parameters struct; `PairParams` is the per-pair parameters struct.
+~~Should be `Map<PairId, PairParams>`. `Params` is the global parameters struct; `PairParams` is the per-pair parameters struct.~~
 
 ### 4.11 [MEDIUM] Function Call/Signature Mismatches
 

@@ -462,7 +462,7 @@ struct OrderIndexes {
 const PARAMS: Item<Params> = Item::new("params");
 
 /// Pair-specific parameters.
-const PAIR_PARAMS: Map<PairId, Params> = Map::new("pair_params");
+const PAIR_PARAMS: Map<PairId, PairParams> = Map::new("pair_params");
 
 /// Global state.
 const STATE: Item<State> = Item::new("state");
