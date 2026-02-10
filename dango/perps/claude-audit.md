@@ -319,6 +319,8 @@ Storing `short_oi` as a negative number (e.g., -100) requires `.abs()` calls, si
 
 ### 4.9 [LOW] No Events/Logging Specified
 
+**Dismissed.** Out of scope for this spec.
+
 No event structures are defined for fills, liquidations, deposits, withdrawals, or funding accruals. These are essential for off-chain indexing, frontends, and monitoring.
 
 ### 4.10 [MEDIUM] Type Error in `PAIR_PARAMS` Storage Layout
