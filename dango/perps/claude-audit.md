@@ -337,9 +337,11 @@ Storage layout (lines 479/486) defines `BIDS` and `ASKS`, but `try_fill_limit_or
 
 ### 4.15 [LOW] Redundant `Direction` in Order Book Keys
 
-Line 479: `BIDS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order>`
+**Fixed.**
 
-Since `BIDS` only contains buys and `ASKS` only contains sells, including `Direction` in the composite key is redundant and wastes storage/gas on every key operation.
+~~Line 479: `BIDS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order>`~~
+
+~~Since `BIDS` only contains buys and `ASKS` only contains sells, including `Direction` in the composite key is redundant and wastes storage/gas on every key operation.~~
 
 ### 4.16 [LOW] Undefined `MAX_PRICE` Constant
 

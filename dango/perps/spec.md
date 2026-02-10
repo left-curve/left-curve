@@ -437,14 +437,6 @@ struct Order {
     pub reduce_only: bool,
 }
 
-/// An order's direction: buying or selling.
-enum Direction {
-    /// Buying
-    Bid,
-    /// Selling
-    Ask,
-}
-
 struct OrderIndexes {
     /// Index the orders by order ID, so that an order can be retrieve by:
     ///
@@ -485,14 +477,14 @@ const USER_STATES: Map<UserId, UserState> = Map::new("user_state");
 /// Key: (pair_id, inverted_limit_price, created_at, order_id)
 /// where inverted_limit_price = MAX_PRICE - limit_price, so ascending iteration
 /// yields descending prices.
-const BIDS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order> = IndexedMap::new("bid", OrderIndexes {
+const BIDS: IndexedMap<(PairId, Udec, Timestamp, OrderId), Order> = IndexedMap::new("bid", OrderIndexes {
     order_id: UniqueIndex::new(/* ... */),
     user_id: MultiIndex::new(/* ... */),
 });
 
 /// Sell orders indexed for ascending price iteration (more competitive first).
 /// Key: (pair_id, limit_price, created_at, order_id)
-const ASKS: IndexedMap<(PairId, Direction, Udec, Timestamp, OrderId), Order> = IndexedMap::new("ask", OrderIndexes {
+const ASKS: IndexedMap<(PairId, Udec, Timestamp, OrderId), Order> = IndexedMap::new("ask", OrderIndexes {
     order_id: UniqueIndex::new(/* ... */),
     user_id: MultiIndex::new(/* ... */),
 });
