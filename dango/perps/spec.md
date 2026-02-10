@@ -879,19 +879,17 @@ fn compute_max_opening_from_oi(
 
 /// Determine the actual fill size after applying the open interest constraint.
 ///
-/// The closing portion is never subject to OI limits. The opening portion may
-/// be capped by `max_abs_oi`. Behavior when OI is violated:
-/// - `reduce_only = true`: fill only the closing portion (partial fill).
-/// - `reduce_only = false`: fill nothing (all-or-nothing semantics).
+/// The closing portion is never subject to OI limits. The opening portion is
+/// all-or-nothing: if it exceeds `max_abs_oi`, only the closing portion fills
+/// and the opening portion is rejected entirely.
 ///
-/// Returns the fill size, which may be the full order, the closing portion
-/// only, or zero.
+/// Returns the fill size, which may be the full order or the closing portion
+/// only.
 fn compute_fill_size_from_oi(
     size: Dec,
     closing_size: Dec,
     opening_size: Dec,
     is_buy: bool,
-    reduce_only: bool,
     pair_state: &PairState,
     max_abs_oi: Udec,
 ) -> Dec {
@@ -903,15 +901,7 @@ fn compute_fill_size_from_oi(
         max_opening > opening_size
     };
 
-    if oi_violated {
-        if reduce_only {
-            closing_size
-        } else {
-            Dec::ZERO
-        }
-    } else {
-        size
-    }
+    if oi_violated { closing_size } else { size }
 }
 ```
 
@@ -979,7 +969,7 @@ fn handle_submit_order(
 
     // Step 3: Check OI constraint and determine fill size
     let fill_size = compute_fill_size_from_oi(
-        size, closing_size, opening_size, is_buy, reduce_only,
+        size, closing_size, opening_size, is_buy,
         pair_state, pair_params.max_abs_oi,
     );
 
@@ -1348,6 +1338,10 @@ fn fulfill_limit_orders_for_pair(
 /// The caller has already verified that this order passes the marginal price
 /// cutoff. Always advances the iterator.
 ///
+/// OI semantics: the opening portion is all-or-nothing. If OI is violated,
+/// only the closing portion fills and the order is canceled (not kept in book
+/// with reduced size).
+///
 /// NOTE: No margin check is performed here. Margin was reserved when the
 /// order was placed. Upon fill, the reserved margin converts to "used margin"
 /// backing the new position.
@@ -1373,17 +1367,7 @@ fn try_fill_limit_order(
     };
     let order_book = if is_buy { BIDS } else { ASKS };
 
-    // Compute actual execution price for this order's full size
-    let exec_price = compute_exec_price(oracle_price, *skew, order.size, pair_params);
-
-    // Check price constraint on full order
-    if !check_price_constraint(exec_price, limit_price, is_buy) {
-        // Order is too large to fill at current skew; skip
-        // (smaller orders with different prices might still be fillable)
-        return;
-    }
-
-    // Load user state and decompose into closing/opening portions
+    // Load user state early (needed for both fill and cancel paths)
     let mut user_state = load_user_state(order.user_id);
     let user_pos = user_state.positions
         .get(&pair_id)
@@ -1391,62 +1375,41 @@ fn try_fill_limit_order(
         .unwrap_or(Dec::ZERO);
     let (closing_size, opening_size) = decompose_fill(order.size, user_pos);
 
-    // Determine fill size from OI constraint
+    // Determine fill size from OI constraint (closing portion always allowed)
     let fill_size = compute_fill_size_from_oi(
-        order.size, closing_size, opening_size, is_buy, order.reduce_only,
+        order.size, closing_size, opening_size, is_buy,
         pair_state, pair_params.max_abs_oi,
     );
 
+    // If fill_size is zero (pure opening order with OI violated), cancel
     if fill_size == Dec::ZERO {
-        // All-or-nothing: OI violated and not reduce_only; skip
-        return;
-    }
-
-    // If fill was reduced (closing-only), recompute exec price for smaller size
-    // and re-check price constraint
-    let fill_exec_price = if fill_size != order.size {
-        let recomputed = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
-        if !check_price_constraint(recomputed, limit_price, is_buy) {
-            return;
-        }
-        recomputed
-    } else {
-        exec_price
-    };
-
-    // Execute the fill
-    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, fill_exec_price);
-    collect_trading_fee(state, &mut user_state, fill_size, fill_exec_price, params.trading_fee_rate);
-    *skew += fill_size;
-
-    // Update order book and reserved margin (including reserved fee)
-    if fill_size == order.size {
-        // Full fill: release stored reserved margin and remove order
         user_state.reserved_margin -= order.reserved_margin;
         user_state.open_order_count -= 1;
         order_book.remove(key);
-    } else {
-        // Partial fill: update order with remaining size
-        let remaining = order.size - fill_size;
-        if remaining == Dec::ZERO {
-            user_state.reserved_margin -= order.reserved_margin;
-            user_state.open_order_count -= 1;
-            order_book.remove(key);
-        } else {
-            // Recompute reservation for remaining order based on post-fill position
-            let new_pos = user_pos + fill_size;
-            let (_, remaining_opening) = decompose_fill(remaining, new_pos);
-            let margin_to_reserve = compute_required_margin(remaining_opening, limit_price, pair_params);
-            let fee_to_reserve = compute_trading_fee(remaining_opening, limit_price, params.trading_fee_rate);
-            let new_reserved = margin_to_reserve + fee_to_reserve;
-
-            // Update global counter: swap old reservation for new
-            user_state.reserved_margin = user_state.reserved_margin - order.reserved_margin + new_reserved;
-            order_book.save(key, Order { size: remaining, reserved_margin: new_reserved, ..order });
-        }
+        save_user_state(user_state);
+        return;
     }
 
-    // Commit changes
+    // Compute exec price for the actual fill size and check price constraint
+    let exec_price = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
+    if !check_price_constraint(exec_price, limit_price, is_buy) {
+        user_state.reserved_margin -= order.reserved_margin;
+        user_state.open_order_count -= 1;
+        order_book.remove(key);
+        save_user_state(user_state);
+        return;
+    }
+
+    // Execute fill (may be full order or closing-only)
+    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price);
+    collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate);
+    *skew += fill_size;
+
+    // Always cancel the order after fill (no partial orders remain in book)
+    user_state.reserved_margin -= order.reserved_margin;
+    user_state.open_order_count -= 1;
+    order_book.remove(key);
+
     save_user_state(user_state);
 }
 ```
