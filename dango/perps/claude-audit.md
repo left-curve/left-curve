@@ -28,7 +28,7 @@
 
 ### 1.3 [HIGH] No Margin Revalidation on Limit Order Fill
 
-**Won't fix.** The audit's example is wrong: a buy limit at 100 cannot fill when oracle is at 200, because buy limits only fill when `marginal_price <= limit_price` (spec line 1332-1334). Reserved margin is computed at `limit_price` (the worst-case agreed price), so `used_margin` at fill time (oracle-based) is always ≤ reserved margin for buys. For sells, the order fills at a price better than the limit, so the favorable execution offsets the higher `used_margin`. The residual risk — equity erosion from losses on _other_ positions eating into reserved margin — is a fundamental property of cross-margin systems, not a limit-order bug. This design matches Binance, dYdX, Bybit, and Drift (4 of 5 major exchanges check margin at placement only). Only Hyperliquid rechecks at fill time.
+**Fixed.** Added a margin check (step 5) in `try_fill_limit_order` between the OI check and price check. If the user's equity can no longer support the order after accounting for projected used margin and trading fees, the order is cancelled and its reserved margin is released.
 
 ~~`try_fill_limit_order` explicitly skips margin checks: "No margin check is performed here." But between placement and fill:~~
 
