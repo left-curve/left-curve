@@ -220,7 +220,9 @@ Net cost: zero (liquidation fee is self-paid). Savings: `trading_fee_rate * tota
 
 ### 2.8 [LOW] Limit Order Fulfillment Uses Marginal Price Cutoff
 
-In `fulfill_limit_orders_for_pair` (lines 1323-1329), the fillability check compares `limit_price` against `marginal_price` (the execution price for an infinitesimal order). But the actual execution uses `compute_exec_price` which includes the order's own size impact. An order that passes the marginal price check may still fail the exec price check (handled in `try_fill_limit_order`). This means the loop may evaluate many orders that ultimately can't fill, wasting gas. Not incorrect, but suboptimal.
+**Dismissed.** We want to find all fillable orders, even if we visit from unfillable ones.
+
+~~In `fulfill_limit_orders_for_pair` (lines 1323-1329), the fillability check compares `limit_price` against `marginal_price` (the execution price for an infinitesimal order). But the actual execution uses `compute_exec_price` which includes the order's own size impact. An order that passes the marginal price check may still fail the exec price check (handled in `try_fill_limit_order`). This means the loop may evaluate many orders that ultimately can't fill, wasting gas. Not incorrect, but suboptimal.~~
 
 ---
 
