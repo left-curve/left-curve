@@ -478,7 +478,7 @@ const USER_STATES: Map<UserId, UserState> = Map::new("user_state");
 
 /// Buy orders indexed for descending price iteration (most competitive first).
 /// Key: (pair_id, inverted_limit_price, created_at, order_id)
-/// where inverted_limit_price = MAX_PRICE - limit_price, so ascending iteration
+/// where inverted_limit_price = Udec::MAX - limit_price, so ascending iteration
 /// yields descending prices.
 const BIDS: IndexedMap<(PairId, Udec, Timestamp, OrderId), Order> = IndexedMap::new("bid", OrderIndexes {
     order_id: UniqueIndex::new(/* ... */),
@@ -1022,7 +1022,7 @@ fn handle_submit_order(
 /// portion of the unfilled size, and persists the order in the appropriate
 /// side of the order book.
 ///
-/// Buy orders are stored with inverted price (MAX_PRICE - limit_price) so
+/// Buy orders are stored with inverted price (Udec::MAX - limit_price) so
 /// ascending iteration yields descending price order.
 fn store_limit_order(
     params: &Params,
@@ -1066,7 +1066,7 @@ fn store_limit_order(
 
     if unfilled_size > Dec::ZERO {
         // Buy order: store with inverted price for descending iteration
-        let key = (pair_id, MAX_PRICE - limit_price, current_time, order_id);
+        let key = (pair_id, Udec::MAX - limit_price, current_time, order_id);
         BIDS.save(key, order);
     } else {
         // Sell order: store with normal price for ascending iteration
@@ -1311,7 +1311,7 @@ fn fulfill_limit_orders_for_pair(
         // Buy: limit_price >= marginal_price (buyer willing to pay at least marginal).
         // Sell: limit_price <= marginal_price (seller willing to accept at most marginal).
         let bid_eligible = next_bid.as_ref().is_some_and(|(key, _)| {
-            (MAX_PRICE - key.inverted_limit_price) >= marginal_price
+            (Udec::MAX - key.inverted_limit_price) >= marginal_price
         });
         let ask_eligible = next_ask.as_ref().is_some_and(|(key, _)| {
             key.limit_price <= marginal_price
@@ -1383,7 +1383,7 @@ fn try_fill_limit_order(
 ) -> Dec {
     // Recover limit_price: buy orders use inverted storage
     let limit_price = if is_buy {
-        MAX_PRICE - key.inverted_limit_price
+        Udec::MAX - key.inverted_limit_price
     } else {
         key.limit_price
     };

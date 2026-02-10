@@ -357,7 +357,9 @@ Should be `ceil(margin)` to be conservative (less available margin = harder to o
 
 ### 4.16 [LOW] Undefined `MAX_PRICE` Constant
 
-`MAX_PRICE` is used (lines 1084, 1324, 1377) but never defined. Its value and the assumption that all valid prices are strictly less than it should be specified.
+**Fixed.** Replaced `MAX_PRICE` with `Udec::MAX`.
+
+~~`MAX_PRICE` is used (lines 1084, 1324, 1377) but never defined. Its value and the assumption that all valid prices are strictly less than it should be specified.~~
 
 ### ~~4.17 [LOW] Typo in Error Message~~
 
