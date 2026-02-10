@@ -139,5 +139,61 @@ impl Storage for Box<dyn Storage> {
     }
 }
 
+#[derive(Clone)]
+pub struct StorageWrapper<'a> {
+    storage: &'a dyn Storage,
+}
+
+impl<'a> StorageWrapper<'a> {
+    pub fn new(storage: &'a dyn Storage) -> Self {
+        Self { storage }
+    }
+}
+
+impl Storage for StorageWrapper<'_> {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.storage.read(key)
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        self.storage.scan(min, max, order)
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        self.storage.scan_keys(min, max, order)
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        self.storage.scan_values(min, max, order)
+    }
+
+    fn write(&mut self, _key: &[u8], _value: &[u8]) {
+        unimplemented!("StorageWrapper is read-only");
+    }
+
+    fn remove(&mut self, _key: &[u8]) {
+        unimplemented!("StorageWrapper is read-only");
+    }
+
+    fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
+        unimplemented!("StorageWrapper is read-only");
+    }
+}
+
 // derive std Clone trait for any type that implements Storage
 dyn_clone::clone_trait_object!(Storage);
