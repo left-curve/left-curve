@@ -1328,17 +1328,19 @@ fn fulfill_limit_orders_for_pair(
         };
 
         if process_buy {
-            try_fill_limit_order(params, &mut bids, pair_id, true, state, oracle_price, &mut skew, pair_state, pair_params);
+            let (key, order) = bids.next().unwrap();
+            try_fill_limit_order(params, key, order, pair_id, true, state, oracle_price, &mut skew, pair_state, pair_params);
         } else {
-            try_fill_limit_order(params, &mut asks, pair_id, false, state, oracle_price, &mut skew, pair_state, pair_params);
+            let (key, order) = asks.next().unwrap();
+            try_fill_limit_order(params, key, order, pair_id, false, state, oracle_price, &mut skew, pair_state, pair_params);
         }
     }
 }
 
-/// Attempt to fill the next limit order from the given side of the book.
+/// Attempt to fill a single limit order.
 ///
 /// The caller has already verified that this order passes the marginal price
-/// cutoff. Always advances the iterator.
+/// cutoff.
 ///
 /// OI semantics: the opening portion is all-or-nothing. If OI is violated,
 /// only the closing portion fills and the order is canceled (not kept in book
@@ -1349,7 +1351,8 @@ fn fulfill_limit_orders_for_pair(
 /// backing the new position.
 fn try_fill_limit_order(
     params: &Params,
-    iter: &mut Peekable<impl Iterator<Item = (OrderKey, Order)>>,
+    key: OrderKey,
+    order: Order,
     pair_id: PairId,
     is_buy: bool,
     state: &mut State,
@@ -1358,8 +1361,6 @@ fn try_fill_limit_order(
     pair_state: &mut PairState,
     pair_params: &PairParams,
 ) {
-    // Advance the iterator
-    let (key, order) = iter.next().unwrap();
 
     // Recover limit_price: buy orders use inverted storage
     let limit_price = if is_buy {
