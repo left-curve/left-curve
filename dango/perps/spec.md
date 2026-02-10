@@ -334,11 +334,8 @@ struct PairState {
     ///   vault_unrealized_funding = oi_weighted_entry_funding - cumulative_funding_per_unit * skew
     pub oi_weighted_entry_funding: Dec,
 
-    /// Sum of `sign(position.size) * position.cost_basis` across all open
-    /// positions for this pair, where sign is +1 for longs and -1 for shorts.
-    ///
-    /// Equivalently: Σ position.size * (position.cost_basis / |position.size|),
-    /// i.e. OI-weighted average entry price, paralleling `oi_weighted_entry_funding`.
+    /// Sum of `position.size * position.entry_price` across all open
+    /// positions for this pair.
     ///
     /// Used to compute the vault's unrealized price PnL without iterating over
     /// all positions:
@@ -390,10 +387,14 @@ struct Position {
     /// Negative = short position (profits when price decreases).
     pub size: Dec,
 
-    /// Total cost to open this position, in settlement currency.
+    /// The average price at which this position was entered, in settlement
+    /// currency per contract.
     ///
-    /// Used for PnL calculation: PnL = current_value - cost_basis
-    pub cost_basis: Uint,
+    /// Used for PnL calculation: PnL = size * (oracle_price - entry_price)
+    ///
+    /// Invariant across partial closes (only changes when adding to a
+    /// position via weighted average), so no rounding error accumulates.
+    pub entry_price: Udec,
 
     /// Value of `pair_state.cumulative_funding_per_unit` when this position
     /// was last opened, modified, or had funding settled.
@@ -592,21 +593,17 @@ fn compute_used_margin(
 
 /// Compute the unrealized PnL for a position at the current oracle price.
 ///
-/// For longs:  unrealized_pnl = |size| * oracle_price - cost_basis
-/// For shorts: unrealized_pnl = cost_basis - |size| * oracle_price
+/// unrealized_pnl = size * (oracle_price - entry_price)
+///
+/// Long  (size > 0): profits when oracle_price > entry_price. ✓
+/// Short (size < 0): profits when oracle_price < entry_price. ✓
 ///
 /// Positive = position is in profit. Negative = position is in loss.
 fn compute_position_unrealized_pnl(
     position: &Position,
     oracle_price: Udec,
 ) -> Dec {
-    let mark_value = abs(position.size) * oracle_price;
-
-    if position.size > Dec::ZERO {
-        mark_value - position.cost_basis
-    } else {
-        position.cost_basis - mark_value
-    }
+    position.size * (oracle_price - position.entry_price)
 }
 
 /// Compute the user's equity: margin balance adjusted for unrealized PnL
@@ -1116,9 +1113,8 @@ fn execute_fill(
     // Settle accrued funding and price PnL for existing position
     if let Some(pos) = position {
         // Remove old contribution to oi_weighted_entry_price BEFORE any
-        // cost_basis or size modifications. Must happen here (not in the
-        // second block) because cost_basis is modified below for closing.
-        pair_state.oi_weighted_entry_price -= sign(pos.size) * pos.cost_basis; // sign(x) = +1 if x > 0, -1 if x < 0, 0 if x = 0
+        // size modifications.
+        pair_state.oi_weighted_entry_price -= pos.size * pos.entry_price;
 
         // Settle funding BEFORE modifying the position.
         // This also updates oi_weighted_entry_funding.
@@ -1128,10 +1124,7 @@ fn execute_fill(
         if closing_size != Dec::ZERO {
             let pnl = compute_pnl_to_realize(pos, closing_size, exec_price);
             settle_pnl(state, user_state, pnl);
-
-            // Update cost_basis proportionally
-            let close_ratio = abs(closing_size) / abs(pos.size);
-            pos.cost_basis = floor(pos.cost_basis * (1 - close_ratio));
+            // No entry_price update needed — it is invariant across partial closes.
         }
     }
 
@@ -1144,9 +1137,17 @@ fn execute_fill(
 
         pos.size += fill_size;
 
-        // Add to cost_basis for opening portion
+        // Blend entry_price as weighted average for opening portion
         if opening_size != Dec::ZERO {
-            pos.cost_basis += floor(abs(opening_size) * exec_price);
+            let remaining_size = pos.size - opening_size;  // size after closing, before opening
+            if remaining_size == Dec::ZERO {
+                // Position was fully closed then reopened (opposite side)
+                pos.entry_price = exec_price;
+            } else {
+                // Weighted average of remaining position and new opening
+                pos.entry_price = (abs(remaining_size) * pos.entry_price + abs(opening_size) * exec_price)
+                    / abs(pos.size);
+            }
         }
 
         // Remove position if fully closed, or re-add contribution
@@ -1157,14 +1158,14 @@ fn execute_fill(
         } else {
             // entry_funding_per_unit stays at current cumulative (set by settle_funding)
             pair_state.oi_weighted_entry_funding += pos.size * pos.entry_funding_per_unit;
-            pair_state.oi_weighted_entry_price += sign(pos.size) * pos.cost_basis;
+            pair_state.oi_weighted_entry_price += pos.size * pos.entry_price;
         }
     } else if opening_size != Dec::ZERO {
         // Create new position
         let entry_funding = pair_state.cumulative_funding_per_unit;
         user_state.positions.insert(pair_id, Position {
             size: fill_size,
-            cost_basis: floor(abs(opening_size) * exec_price),
+            entry_price: exec_price,
             entry_funding_per_unit: entry_funding,
         });
 
@@ -1172,8 +1173,7 @@ fn execute_fill(
         pair_state.oi_weighted_entry_funding += fill_size * entry_funding;
 
         // Add new contribution to oi_weighted_entry_price
-        let cost_basis = floor(abs(opening_size) * exec_price);
-        pair_state.oi_weighted_entry_price += sign(fill_size) * cost_basis;
+        pair_state.oi_weighted_entry_price += fill_size * exec_price;
     }
 
     // Update OI based on opening/closing portions
@@ -1204,12 +1204,8 @@ fn execute_fill(
 /// PnL = (entry_value - exit_value) for shorts
 ///
 /// Where:
-/// - entry_value = proportional cost_basis for the closed portion
-/// - exit_value = |closing_size| * exec_price
-///
-/// TODO: This is a placeholder. Full implementation depends on:
-/// - Funding fee accumulation
-/// - Precise cost basis tracking
+/// - entry_value = |closing_size| * entry_price
+/// - exit_value  = |closing_size| * exec_price
 fn compute_pnl_to_realize(
     position: &Position,
     closing_size: Dec,  // Same sign as the order (positive for buys, negative for sells)
@@ -1219,13 +1215,7 @@ fn compute_pnl_to_realize(
         return Dec::ZERO;
     }
 
-    // Proportion of position being closed
-    let close_ratio = abs(closing_size) / abs(position.size);
-
-    // Entry value (proportional cost basis)
-    let entry_value = position.cost_basis * close_ratio;
-
-    // Exit value
+    let entry_value = abs(closing_size) * position.entry_price;
     let exit_value = abs(closing_size) * exec_price;
 
     // PnL direction depends on position direction
