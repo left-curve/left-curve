@@ -1296,54 +1296,74 @@ fn fulfill_limit_orders_for_pair(
 
     let mut skew = pair_state.long_oi + pair_state.short_oi;
 
-    // Get iterators for both queues (sorted by price-time within each)
-    let mut bids = BIDS.prefix(pair_id).range(..).peekable();
-    let mut asks = ASKS.prefix(pair_id).range(..).peekable();
+    // Create iterators for both sides. Pre-fetch the first (most competitive)
+    // order from each side instead of using peekable iterators.
+    let mut bids = BIDS.prefix(pair_id).range(..);
+    let mut asks = ASKS.prefix(pair_id).range(..);
+    let mut next_bid = bids.next();
+    let mut next_ask = asks.next();
 
     loop {
-        // Compute marginal price at current skew
+        // Recompute marginal price at current skew (changes after each fill)
         let marginal_price = compute_marginal_price(oracle_price, skew, pair_params);
 
-        // Check if each side's head order passes the cutoff
-        let buy_fillable = bids.peek().map_or(false, |(key, _)| {
-            let limit_price = MAX_PRICE - key.inverted_limit_price;
-            limit_price >= marginal_price
+        // Check if each side's best order passes the marginal price cutoff.
+        // Buy: limit_price >= marginal_price (buyer willing to pay at least marginal).
+        // Sell: limit_price <= marginal_price (seller willing to accept at most marginal).
+        let bid_eligible = next_bid.as_ref().is_some_and(|(key, _)| {
+            (MAX_PRICE - key.inverted_limit_price) >= marginal_price
         });
-
-        let sell_fillable = asks.peek().map_or(false, |(key, _)| {
+        let ask_eligible = next_ask.as_ref().is_some_and(|(key, _)| {
             key.limit_price <= marginal_price
         });
 
-        // Determine which side to process
-        let process_buy = match (buy_fillable, sell_fillable) {
-            (false, false) => break,  // Neither side can make progress
-            (true, false) => true,    // Only buys fillable
-            (false, true) => false,   // Only sells fillable
+        // Select which side to process based on price-time priority.
+        let is_buy = match (bid_eligible, ask_eligible) {
+            // Both sides eligible: pick the older order (buy wins ties)
             (true, true) => {
-                // Both fillable: pick older timestamp (buy wins ties)
-                let buy_ts = bids.peek().unwrap().0.created_at;
-                let sell_ts = asks.peek().unwrap().0.created_at;
-                buy_ts <= sell_ts
-            }
+                let bid_ts = next_bid.as_ref().unwrap().0.created_at;
+                let ask_ts = next_ask.as_ref().unwrap().0.created_at;
+                bid_ts <= ask_ts
+            },
+            // Only the bid is eligible. Fill the bid.
+            (true, false) => true,
+            // Only the ask is eligible. Fill the ask.
+            (false, true) => false,
+            // Neither is eligible. Terminate the loop.
+            (false, false) => break,
         };
 
-        if process_buy {
-            let (key, order) = bids.next().unwrap();
-            try_fill_limit_order(params, key, order, pair_id, true, state, oracle_price, &mut skew, pair_state, pair_params);
+        // Take the selected order and advance that side's iterator.
+        let (key, order) = if is_buy {
+            let entry = next_bid.take().unwrap();
+            next_bid = bids.next();
+            entry
         } else {
-            let (key, order) = asks.next().unwrap();
-            try_fill_limit_order(params, key, order, pair_id, false, state, oracle_price, &mut skew, pair_state, pair_params);
-        }
+            let entry = next_ask.take().unwrap();
+            next_ask = asks.next();
+            entry
+        };
+
+        let fill_size = try_fill_limit_order(
+            params, key, order, pair_id, is_buy,
+            state, oracle_price, skew, pair_state, pair_params,
+        );
+
+        skew += fill_size;
     }
 }
 
-/// Attempt to fill a single limit order.
+/// Attempt to fill a single limit order. Returns the fill size, or zero if
+/// the order was skipped.
+///
+/// This function only concerns the fill logic for a single order. Iteration,
+/// order selection, and skew tracking are the caller's responsibility.
 ///
 /// The caller has already verified that this order passes the marginal price
 /// cutoff.
 ///
 /// OI semantics: the opening portion is all-or-nothing. If OI is violated,
-/// only the closing portion fills and the order is canceled (not kept in book
+/// only the closing portion fills and the order is removed (not kept in book
 /// with reduced size).
 ///
 /// NOTE: No margin check is performed here. Margin was reserved when the
@@ -1357,11 +1377,10 @@ fn try_fill_limit_order(
     is_buy: bool,
     state: &mut State,
     oracle_price: Udec,
-    skew: &mut Dec,
+    skew: Dec,
     pair_state: &mut PairState,
     pair_params: &PairParams,
-) {
-
+) -> Dec {
     // Recover limit_price: buy orders use inverted storage
     let limit_price = if is_buy {
         MAX_PRICE - key.inverted_limit_price
@@ -1370,7 +1389,7 @@ fn try_fill_limit_order(
     };
     let order_book = if is_buy { BIDS } else { ASKS };
 
-    // Load user state (needed for OI check)
+    // Load user state (needed for position decomposition and OI check)
     let mut user_state = load_user_state(order.user_id);
     let user_pos = user_state.positions
         .get(&pair_id)
@@ -1387,20 +1406,19 @@ fn try_fill_limit_order(
     // If fill_size is zero (pure opening order with OI violated), skip.
     // OI is transient — order may become fillable in a future cycle.
     if fill_size == Dec::ZERO {
-        return;
+        return Dec::ZERO;
     }
 
     // Compute exec price for the actual fill size and check price constraint.
     // If price fails, skip — skew is transient.
-    let exec_price = compute_exec_price(oracle_price, *skew, fill_size, pair_params);
+    let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
     if !check_price_constraint(exec_price, limit_price, is_buy) {
-        return;
+        return Dec::ZERO;
     }
 
     // Execute fill (may be full order or closing-only)
     execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price);
     collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate);
-    *skew += fill_size;
 
     // Remove order after fill (all-or-nothing: no partial orders remain)
     user_state.reserved_margin -= order.reserved_margin;
@@ -1408,6 +1426,8 @@ fn try_fill_limit_order(
     order_book.remove(key);
 
     save_user_state(user_state);
+
+    fill_size
 }
 ```
 
