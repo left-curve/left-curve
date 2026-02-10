@@ -1350,6 +1350,9 @@ fn fulfill_limit_orders_for_pair(
     pair_state: &mut PairState,
     pair_params: &PairParams,
     current_time: Timestamp,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_params_map: &Map<PairId, PairParams>,
+    pair_states: &Map<PairId, PairState>,
 ) {
     // Accrue funding before any OI changes
     accrue_funding(pair_state, pair_params, oracle_price, current_time);
@@ -1407,6 +1410,7 @@ fn fulfill_limit_orders_for_pair(
         let fill_size = try_fill_limit_order(
             params, key, order, pair_id, is_buy,
             state, oracle_price, skew, pair_state, pair_params,
+            oracle_prices, pair_params_map, pair_states,
         );
 
         skew += fill_size;
@@ -1426,9 +1430,10 @@ fn fulfill_limit_orders_for_pair(
 /// only the closing portion fills and the order is removed (not kept in book
 /// with reduced size).
 ///
-/// NOTE: No margin check is performed here. Margin was reserved when the
-/// order was placed. Upon fill, the reserved margin converts to "used margin"
-/// backing the new position.
+/// NOTE: Margin is checked at fill time. Between placement and fill the
+/// user's equity can deteriorate (PnL on other positions, funding fees,
+/// other fills). If the account can no longer support the order, it is
+/// cancelled and its reserved margin is released.
 fn try_fill_limit_order(
     params: &Params,
     key: OrderKey,
@@ -1440,6 +1445,9 @@ fn try_fill_limit_order(
     skew: Dec,
     pair_state: &mut PairState,
     pair_params: &PairParams,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_params_map: &Map<PairId, PairParams>,
+    pair_states: &Map<PairId, PairState>,
 ) -> Dec {
     // Recover limit_price: buy orders use inverted storage
     let limit_price = if is_buy {
@@ -1455,10 +1463,13 @@ fn try_fill_limit_order(
         .get(&pair_id)
         .map(|p| p.size)
         .unwrap_or(Dec::ZERO);
+
+    // Step 2: Decompose closing/opening portions.
     let (closing_size, opening_size) = decompose_fill(order.size, user_pos);
     let opening_size = if order.reduce_only { Dec::ZERO } else { opening_size };
 
-    // Determine fill size from OI constraint (closing portion always allowed)
+    // Step 4: OI check — determine fill size from OI constraint
+    // (closing portion always allowed).
     let effective_size = closing_size + opening_size;
     let fill_size = compute_fill_size_from_oi(
         effective_size, closing_size, opening_size, is_buy,
@@ -1471,14 +1482,33 @@ fn try_fill_limit_order(
         return Dec::ZERO;
     }
 
-    // Compute exec price for the actual fill size and check price constraint.
-    // If price fails, skip — skew is transient.
+    // Step 5: Margin check — ensure the user can cover the projected position.
+    // If violated, cancel — the account can no longer support this order.
     let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
+    let projected_size = user_pos + fill_size;
+    let post_fill_used_margin = compute_projected_used_margin(
+        user_state, oracle_prices, pair_params_map,
+        pair_id, projected_size,
+    );
+    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate);
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
+
+    if equity - trading_fee < post_fill_used_margin + user_state.reserved_margin - order.reserved_margin {
+        // Cancel: remove order, release reserved margin, return zero.
+        user_state.reserved_margin -= order.reserved_margin;
+        user_state.open_order_count -= 1;
+        order_book.remove(key);
+        save_user_state(user_state);
+        return Dec::ZERO;
+    }
+
+    // Step 6: Price check — if exec_price doesn't satisfy limit_price, skip.
+    // Skew is transient — order may become fillable in a future cycle.
     if !check_price_constraint(exec_price, limit_price, is_buy) {
         return Dec::ZERO;
     }
 
-    // Execute fill (may be full order or closing-only)
+    // Step 7: Execute fill (may be full order or closing-only).
     execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price);
     collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate);
 
