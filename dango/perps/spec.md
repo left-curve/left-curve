@@ -99,9 +99,9 @@ enum ExecuteMsg {
         kind: OrderKind,
 
         /// If true, only the closing portion of the order is executed; any
-        /// opening portion is discarded. If false, if the opening portion
-        /// would violate OI constraints, the entire order (including the
-        /// closing portion) is reverted.
+        /// opening portion is discarded. If false, the full order is
+        /// attempted; if the opening portion violates OI constraints, only
+        /// the closing portion fills.
         reduce_only: bool,
     },
 
@@ -595,6 +595,50 @@ fn compute_used_margin(
     total
 }
 
+/// Compute total used margin with one position projected to a new size.
+///
+/// Identical to `compute_used_margin`, but overrides the size for
+/// `projected_pair_id` with `projected_size`. If the user has no existing
+/// position in that pair, adds it as a new entry.
+///
+/// Used by the post-fill margin check (step 6 of order submission) to
+/// validate that the user can cover the projected position before executing.
+fn compute_projected_used_margin(
+    user_state: &UserState,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_params_map: &Map<PairId, PairParams>,
+    projected_pair_id: PairId,
+    projected_size: Dec,
+) -> Uint {
+    let mut total = 0;
+
+    for (pair_id, position) in &user_state.positions {
+        let oracle_price = oracle_prices[&pair_id];
+        let pair_params = pair_params_map[&pair_id];
+
+        let size = if pair_id == projected_pair_id {
+            projected_size
+        } else {
+            position.size
+        };
+
+        let margin = abs(size) * oracle_price * pair_params.initial_margin_ratio;
+
+        total += floor(margin);
+    }
+
+    // If the projected pair is not among existing positions, add it.
+    if !user_state.positions.contains_key(&projected_pair_id) && projected_size != Dec::ZERO {
+        let oracle_price = oracle_prices[&projected_pair_id];
+        let pair_params = pair_params_map[&projected_pair_id];
+        let margin = abs(projected_size) * oracle_price * pair_params.initial_margin_ratio;
+
+        total += floor(margin);
+    }
+
+    total
+}
+
 /// Compute the unrealized PnL for a position at the current oracle price.
 ///
 /// unrealized_pnl = size * (oracle_price - entry_price)
@@ -707,7 +751,7 @@ An order may consists of two portions: one portion that reduces or closes an exi
 The closing portion is never subject to the OI constraint. The opening portion is subject to the OI constraint. The behavior when the opening portion would violate the OI constraint depends on the `reduce_only` flag:
 
 - **`reduce_only = true`**: Only the closing portion is executed; the opening portion is discarded. This allows users to close or reduce positions even when OI is at its limit.
-- **`reduce_only = false`**: If the opening portion would violate OI constraints, the entire order (including any closing portion) is reverted. This is all-or-nothing semantics.
+- **`reduce_only = false`**: The full order is attempted; if the opening portion would violate OI constraints, only the closing portion fills. The opening portion is all-or-nothing: it either fills fully or not at all.
 
 The target price constraint (2) also uses **all-or-nothing** semantics: if the execution price of the fill would exceed the target price, the entire fill is rejected.
 
@@ -915,8 +959,6 @@ fn compute_fill_size_from_oi(
 /// `min_opening_notional`. Closing portions are exempt so users can always exit.
 fn validate_notional_constraints(
     opening_size: Dec,
-    user_pos: Dec,
-    size: Dec,
     oracle_price: Udec,
     pair_params: &PairParams,
 ) {
@@ -953,7 +995,7 @@ fn handle_submit_order(
 ) {
     ensure!(size != 0, "nothing to do");
 
-    // Accrue funding before any OI changes
+    // Step 1: Accrue funding before any OI changes
     accrue_funding(pair_state, pair_params, oracle_price, current_time);
 
     let skew = pair_state.long_oi + pair_state.short_oi;
@@ -963,57 +1005,68 @@ fn handle_submit_order(
         .unwrap_or(Dec::ZERO);
     let is_buy = size > 0;
 
-    // Step 1: Decompose into closing and opening portions (called ONCE)
+    // Step 2: Decompose into closing and opening portions.
+    // If reduce_only, zero out the opening portion so the order can only
+    // reduce existing exposure.
     let (closing_size, opening_size) = decompose_fill(size, user_pos);
+    let opening_size = if reduce_only { Dec::ZERO } else { opening_size };
 
-    // Step 2: Validate notional constraints
-    validate_notional_constraints(opening_size, user_pos, size, oracle_price, pair_params);
+    // Step 3: Validate minimum opening notional
+    validate_notional_constraints(opening_size, oracle_price, pair_params);
 
-    // Step 3: Check OI constraint and determine fill size
+    // Step 4: Check OI constraint and determine fill size.
+    // Use the reduce_only-adjusted effective size (closing + adjusted opening).
+    let effective_size = closing_size + opening_size;
     let fill_size = compute_fill_size_from_oi(
-        size, closing_size, opening_size, is_buy,
+        effective_size, closing_size, opening_size, is_buy,
         pair_state, pair_params.max_abs_oi,
     );
+    ensure!(fill_size != Dec::ZERO, "order would have no effect");
 
-    // Step 4: Compute the target price (worst acceptable execution price)
+    // Step 5: Compute execution price and check price constraint.
+    // If the price fails: market orders error, limit orders go to the book.
     let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
+    let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
-    // Step 5: Check margin for the full opening portion (including unfilled)
-    // The estimated fee uses target_price (worst-case price the user agreed to)
-    // and the full size (not just opening portion), since the closing portion
-    // also incurs a fee. Uses ceil (rounds up) to be conservative.
-    let required_margin = compute_required_margin(opening_size, target_price, pair_params);
-    let estimated_fee = compute_trading_fee(size, target_price, params.trading_fee_rate);
-    let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states);
-    ensure!(available_margin >= required_margin + estimated_fee, "insufficient margin");
-
-    // Step 6: Check price constraint and execute fill
-    if fill_size != Dec::ZERO {
-        let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
-
-        if check_price_constraint(exec_price, target_price, is_buy) {
-            execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
-            collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate);
-        }
-    }
-
-    // Step 7: Handle unfilled portion
-    let unfilled_size = size - fill_size;
-    if unfilled_size != Dec::ZERO {
+    if !check_price_constraint(exec_price, target_price, is_buy) {
         match kind {
             OrderKind::Market { .. } => {
-                // Market orders are IOC: discard unfilled portion (no-op)
+                bail!("price exceeds slippage tolerance");
             },
             OrderKind::Limit { limit_price } => {
-                let user_pos_after_fill = user_pos + fill_size;
+                // GTC: store the full original order and return.
+                // No fill happened, so user_pos is unchanged.
                 store_limit_order(
                     params, user_state, pair_params, pair_id, user_id,
-                    unfilled_size, limit_price, reduce_only,
-                    user_pos_after_fill, current_time,
+                    size, limit_price, reduce_only,
+                    user_pos, current_time,
+                    oracle_prices, pair_params_map, pair_states,
                 );
+
+                return;
             },
         }
     }
+
+    // Step 6: Post-fill margin check.
+    // Project the new position size and compute total used margin (initial
+    // margin ratio, oracle price). Ensure the user can cover the projected
+    // position plus reserved margin after paying the trading fee.
+    let projected_size = user_pos + fill_size;
+    let post_fill_used_margin = compute_projected_used_margin(
+        user_state, oracle_prices, pair_params_map,
+        pair_id, projected_size,
+    );
+    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate);
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
+    ensure!(
+        equity - trading_fee >= post_fill_used_margin + user_state.reserved_margin,
+        "insufficient margin"
+    );
+
+    // Step 7: Execute fill and collect trading fee.
+    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
+    collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate);
 }
 
 /// Store the unfilled portion of a limit order for later fulfillment (GTC).
@@ -1035,6 +1088,9 @@ fn store_limit_order(
     reduce_only: bool,
     user_pos_after_fill: Dec,
     current_time: Timestamp,
+    oracle_prices: &Map<PairId, Udec>,
+    pair_params_map: &Map<PairId, PairParams>,
+    pair_states: &Map<PairId, PairState>,
 ) {
     // Enforce maximum open orders
     ensure!(
@@ -1043,13 +1099,17 @@ fn store_limit_order(
     );
 
     // Reserve margin for the opening portion of the unfilled size.
-    // The filled portion's margin is now "used margin" (backing the position);
-    // the unfilled portion needs margin reserved for potential future execution.
-    // Also reserve the estimated trading fee for the opening portion.
+    // With reduce_only, the opening portion is zero so no margin is reserved.
     let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos_after_fill);
+    let unfilled_opening = if reduce_only { Dec::ZERO } else { unfilled_opening };
     let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params);
     let fee_to_reserve = compute_trading_fee(unfilled_opening, limit_price, params.trading_fee_rate);
     let reserved = margin_to_reserve + fee_to_reserve;
+
+    // Check that the user has sufficient available margin to cover the reservation.
+    let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states);
+    ensure!(available_margin >= reserved, "insufficient margin for limit order");
+
     user_state.reserved_margin += reserved;
 
     // Increment open order count
@@ -1396,10 +1456,12 @@ fn try_fill_limit_order(
         .map(|p| p.size)
         .unwrap_or(Dec::ZERO);
     let (closing_size, opening_size) = decompose_fill(order.size, user_pos);
+    let opening_size = if order.reduce_only { Dec::ZERO } else { opening_size };
 
     // Determine fill size from OI constraint (closing portion always allowed)
+    let effective_size = closing_size + opening_size;
     let fill_size = compute_fill_size_from_oi(
-        order.size, closing_size, opening_size, is_buy,
+        effective_size, closing_size, opening_size, is_buy,
         pair_state, pair_params.max_abs_oi,
     );
 
@@ -1812,12 +1874,12 @@ fn handle_force_close(
 
 The table below summarizes which price and margin ratio are used in each context:
 
-| Context                       | Margin ratio               | Price used                                                                   | Rationale                                                                                                   |
-| ----------------------------- | -------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| New order margin requirement  | `initial_margin_ratio`     | Target price (skew-adjusted for market orders, limit price for limit orders) | Must cover the worst-case execution price the user agreed to                                                |
-| Existing position used margin | `initial_margin_ratio`     | Oracle price                                                                 | Stable valuation for available margin; prevents over-leveraging on new orders/withdrawals                   |
-| Liquidation trigger           | `maintenance_margin_ratio` | Oracle price                                                                 | Must match equity basis (also oracle-based) for consistent comparison; immune to skew manipulation          |
-| Liquidation execution         | N/A                        | Skew-adjusted price                                                          | Consistent with voluntary trading; eliminates moral hazard where users prefer liquidation over self-closing |
+| Context                       | Margin ratio               | Price used                                                            | Rationale                                                                                                   |
+| ----------------------------- | -------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| New order margin requirement  | `initial_margin_ratio`     | Oracle price (for used margin projection) / Execution price (for fee) | Post-fill check: projects the new position at oracle price, computes fee at execution price                 |
+| Existing position used margin | `initial_margin_ratio`     | Oracle price                                                          | Stable valuation for available margin; prevents over-leveraging on new orders/withdrawals                   |
+| Liquidation trigger           | `maintenance_margin_ratio` | Oracle price                                                          | Must match equity basis (also oracle-based) for consistent comparison; immune to skew manipulation          |
+| Liquidation execution         | N/A                        | Skew-adjusted price                                                   | Consistent with voluntary trading; eliminates moral hazard where users prefer liquidation over self-closing |
 
 #### Auto-deleveraging
 
