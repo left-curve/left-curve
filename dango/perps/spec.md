@@ -675,7 +675,7 @@ fn handle_cancel_order(
     // For cancellation, we need to recover the limit_price from the order key
     // (implementation detail: the order key contains the limit price)
     let reserved = compute_required_margin(opening_size, limit_price, pair_params);
-    let reserved_fee = ceil(abs(opening_size) * limit_price * params.trading_fee_rate);
+    let reserved_fee = compute_trading_fee(opening_size, limit_price, params.trading_fee_rate);
     user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved + reserved_fee);
 
     user_state.open_order_count -= 1;
@@ -1003,7 +1003,7 @@ fn handle_submit_order(
     // and the full size (not just opening portion), since the closing portion
     // also incurs a fee. Uses ceil (rounds up) to be conservative.
     let required_margin = compute_required_margin(opening_size, target_price, pair_params);
-    let estimated_fee = ceil(abs(size) * target_price * params.trading_fee_rate);
+    let estimated_fee = compute_trading_fee(size, target_price, params.trading_fee_rate);
     let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states);
     ensure!(available_margin >= required_margin + estimated_fee, "insufficient margin");
 
@@ -1068,7 +1068,7 @@ fn store_limit_order(
     // Also reserve the estimated trading fee for the opening portion.
     let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos_after_fill);
     let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params);
-    let fee_to_reserve = ceil(abs(unfilled_opening) * limit_price * params.trading_fee_rate);
+    let fee_to_reserve = compute_trading_fee(unfilled_opening, limit_price, params.trading_fee_rate);
     user_state.reserved_margin += margin_to_reserve + fee_to_reserve;
 
     // Increment open order count
@@ -1274,6 +1274,11 @@ A trading fee is charged on every voluntary fill (market and limit orders) as a 
 - **Liquidation fills are exempt**: the existing `liquidation_fee_rate` is the only fee on liquidation. Charging both would be double-dipping. This matches Binance/OKX/dYdX/Drift where a dedicated liquidation fee replaces the normal trading fee.
 
 ```rust
+/// Compute the trading fee for a given size and price.
+fn compute_trading_fee(size: Dec, price: Udec, trading_fee_rate: Udec) -> Uint {
+    ceil(abs(size) * price * trading_fee_rate)
+}
+
 fn collect_trading_fee(
     state: &mut State,
     user_state: &mut UserState,
@@ -1281,7 +1286,7 @@ fn collect_trading_fee(
     exec_price: Udec,
     trading_fee_rate: Udec,
 ) -> Uint {
-    let fee = ceil(abs(fill_size) * exec_price * trading_fee_rate);
+    let fee = compute_trading_fee(fill_size, exec_price, trading_fee_rate);
     let actual_fee = min(fee, user_state.margin);
 
     user_state.margin -= actual_fee;
@@ -1435,7 +1440,7 @@ fn try_fill_limit_order(
     if fill_size == order.size {
         // Full fill: release reserved margin + reserved fee and remove order
         let reserved_for_order = compute_required_margin(opening_size, limit_price, pair_params);
-        let reserved_fee = ceil(abs(opening_size) * limit_price * params.trading_fee_rate);
+        let reserved_fee = compute_trading_fee(opening_size, limit_price, params.trading_fee_rate);
         user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order + reserved_fee);
 
         user_state.open_order_count -= 1;

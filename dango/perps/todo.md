@@ -4,7 +4,8 @@ Issues identified during spec review that are not yet addressed. Ordered roughly
 
 ## Critical
 
-- **No trading fees collected.** The intro states the pool profits from "taking a cut from trading fees," but no fee is ever collected in `execute_fill` or anywhere else. Industry standard: 0.01%-0.1% maker/taker or open/close fee on notional value. This is a critical revenue source for the vault.
+- ~~**No trading fees collected.** The intro states the pool profits from "taking a cut from trading fees," but no fee is ever collected in `execute_fill` or anywhere else. Industry standard: 0.01%-0.1% maker/taker or open/close fee on notional value. This is a critical revenue source for the vault.~~
+  - Fixed. Added `trading_fee_rate` to `Params` and `collect_trading_fee` helper. Fee collected on every voluntary fill (market + limit), exempt during liquidation.
 
 - ~~**No maintenance margin ratio.** Only `initial_margin_ratio` exists. Every major exchange defines a separate, lower `maintenance_margin_ratio` (e.g. 2.5% vs 5% initial). Without it, there's no well-defined liquidation trigger. The Liquidation section cannot be properly specified without this parameter.~~
   - Fixed. Added `maintenance_margin_ratio` to `PairParams` and `liquidation_fee_rate` to `Params`. Liquidation section fully specified with `handle_force_close`.
