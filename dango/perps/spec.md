@@ -233,6 +233,15 @@ struct PairParams {
     /// This constraint does not apply to reducing positions.
     pub max_abs_oi: Udec,
 
+    /// Maximum absolute funding rate, as a fraction per day.
+    ///
+    /// The funding rate is clamped to [-max_abs_funding_rate, max_abs_funding_rate]
+    /// after applying the velocity. This prevents runaway rates from causing
+    /// cascading liquidations and bad debt spirals during prolonged skew.
+    ///
+    /// Typical range: 0.50 to 1.00 (50% to 100% per day).
+    pub max_abs_funding_rate: Udec,
+
     /// Maximum funding velocity, as a fraction per day.
     ///
     /// When skew == skew_scale, the funding rate changes by this much per day.
@@ -1489,11 +1498,11 @@ The funding rate evolves linearly between accruals:
 /// Compute the current funding rate, accounting for time elapsed since
 /// the last accrual.
 ///
-/// current_rate = last_rate + velocity * elapsed_days
+/// current_rate = clamp(last_rate + velocity * elapsed_days,
+///                      -max_abs_funding_rate, max_abs_funding_rate)
 ///
-/// Note: the rate is NOT clamped. It can grow unboundedly if the skew
-/// persists. This is intentional -- extreme skew should produce extreme
-/// rates to strongly incentivize rebalancing.
+/// The rate is clamped to prevent runaway funding that could cause
+/// cascading liquidations and bad debt spirals during prolonged skew.
 fn compute_current_funding_rate(
     pair_state: &PairState,
     pair_params: &PairParams,
@@ -1503,8 +1512,9 @@ fn compute_current_funding_rate(
     let elapsed_days = elapsed_secs / 86400;
 
     let velocity = compute_funding_velocity(pair_state, pair_params);
+    let unclamped = pair_state.funding_rate + velocity * elapsed_days;
 
-    pair_state.funding_rate + velocity * elapsed_days
+    clamp(unclamped, -pair_params.max_abs_funding_rate, pair_params.max_abs_funding_rate)
 }
 ```
 

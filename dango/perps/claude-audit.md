@@ -16,13 +16,15 @@
 
 ### 1.2 [HIGH] Unbounded Funding Rate Can Create Bad Debt Spirals
 
-The spec explicitly does not clamp the funding rate: "the rate is NOT clamped. It can grow unboundedly." This creates severe risks:
+**Fixed.** Added `max_abs_funding_rate` to `PairParams` and clamped the computed rate in `compute_current_funding_rate`.
 
-- The funding rate accelerates quadratically over time (rate = integral of velocity). A persistent skew can make the rate so extreme that the majority side's equity is wiped out in hours, causing cascading liquidations.
-- An attacker can build up skew, let the rate grow, then open a minority-side position to collect enormous funding from the vault.
-- Most production systems (Synthetix V3, dYdX, Hyperliquid) clamp the rate. Synthetix V2's unclamped rate was a source of issues.
+~~The spec explicitly does not clamp the funding rate: "the rate is NOT clamped. It can grow unboundedly." This creates severe risks:~~
 
-**Fix:** Add `max_abs_funding_rate` to `PairParams` and clamp the rate after the velocity update.
+~~- The funding rate accelerates quadratically over time (rate = integral of velocity). A persistent skew can make the rate so extreme that the majority side's equity is wiped out in hours, causing cascading liquidations.~~
+~~- An attacker can build up skew, let the rate grow, then open a minority-side position to collect enormous funding from the vault.~~
+~~- Most production systems (Synthetix V3, dYdX, Hyperliquid) clamp the rate. Synthetix V2's unclamped rate was a source of issues.~~
+
+~~**Fix:** Add `max_abs_funding_rate` to `PairParams` and clamp the rate after the velocity update.~~
 
 ### 1.3 [HIGH] No Margin Revalidation on Limit Order Fill
 
