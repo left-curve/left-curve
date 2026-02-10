@@ -61,9 +61,11 @@ When a limit order is placed, `decompose_fill` determines closing vs. opening ba
 
 ### 1.6 [MEDIUM] Vault Share Sandwich on Deposits
 
-An LP can observe a pending `DepositLiquidity` tx and manipulate vault equity (via trading, oracle timing) to extract value. The `min_shares_to_mint` parameter helps but requires the user to compute the correct value off-chain.
+**Won't fix.** The audit note does not specify how the attack can "extract value".
 
-**Fix:** Add a deposit cooldown, time-weighted share pricing, or a deposit cap per block.
+~~An LP can observe a pending `DepositLiquidity` tx and manipulate vault equity (via trading, oracle timing) to extract value. The `min_shares_to_mint` parameter helps but requires the user to compute the correct value off-chain.~~
+
+~~**Fix:** Add a deposit cooldown, time-weighted share pricing, or a deposit cap per block.~~
 
 ### 1.7 [MEDIUM] Bad Debt with No Auto-Deleveraging
 
