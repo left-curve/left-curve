@@ -1023,10 +1023,26 @@ fn handle_submit_order(
     );
     ensure!(fill_size != Dec::ZERO, "order would have no effect");
 
-    // Step 5: Compute execution price and check price constraint.
+    // Step 5: Post-fill margin check.
+    // Project the new position size and compute total used margin (initial
+    // margin ratio, oracle price). Ensure the user can cover the projected
+    // position plus reserved margin after paying the trading fee.
+    let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
+    let projected_size = user_pos + fill_size;
+    let post_fill_used_margin = compute_projected_used_margin(
+        user_state, oracle_prices, pair_params_map,
+        pair_id, projected_size,
+    );
+    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate);
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
+    ensure!(
+        equity - trading_fee >= post_fill_used_margin + user_state.reserved_margin,
+        "insufficient margin"
+    );
+
+    // Step 6: Compute execution price and check price constraint.
     // If the price fails: market orders error, limit orders go to the book.
     let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
-    let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
     if !check_price_constraint(exec_price, target_price, is_buy) {
         match kind {
@@ -1047,22 +1063,6 @@ fn handle_submit_order(
             },
         }
     }
-
-    // Step 6: Post-fill margin check.
-    // Project the new position size and compute total used margin (initial
-    // margin ratio, oracle price). Ensure the user can cover the projected
-    // position plus reserved margin after paying the trading fee.
-    let projected_size = user_pos + fill_size;
-    let post_fill_used_margin = compute_projected_used_margin(
-        user_state, oracle_prices, pair_params_map,
-        pair_id, projected_size,
-    );
-    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate);
-    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
-    ensure!(
-        equity - trading_fee >= post_fill_used_margin + user_state.reserved_margin,
-        "insufficient margin"
-    );
 
     // Step 7: Execute fill and collect trading fee.
     execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
