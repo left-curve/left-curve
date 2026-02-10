@@ -118,29 +118,31 @@ Bad debt is "absorbed by the vault" via `saturating_sub` in `settle_pnl`. Withou
 
 ### 1.10 [HIGH] `reduce_only` Does Not Restrict to Closing-Only
 
-The API documentation (line 99) says: "If true, only the closing portion of the order is executed; any opening portion is discarded." But `compute_fill_size_from_oi` (line 898) only applies this when OI is violated:
+**Fixed.** `handle_submit_order` now zeros out `opening_size` at step 2 when `reduce_only=true` (spec line 1012), before the OI check. This ensures reduce-only orders can only fill the closing portion regardless of OI state.
 
-```rust
-if oi_violated {
-    if reduce_only { closing_size } else { Dec::ZERO }
-} else {
-    size  // full size regardless of reduce_only!
-}
-```
+~~The API documentation (line 99) says: "If true, only the closing portion of the order is executed; any opening portion is discarded." But `compute_fill_size_from_oi` (line 898) only applies this when OI is violated:~~
 
-When OI is _not_ violated, a `reduce_only=true` order can open new exposure. This contradicts the spec's own documentation and every major exchange's definition of reduce-only (Binance, Bybit, dYdX, Drift all restrict reduce-only to closing regardless of OI state).
+~~```rust~~
+~~if oi_violated {~~
+~~    if reduce_only { closing_size } else { Dec::ZERO }~~
+~~} else {~~
+~~    size  // full size regardless of reduce_only!~~
+~~}~~
+~~```~~
 
-**Fix:** When `reduce_only=true`, always return only the closing portion:
+~~When OI is _not_ violated, a `reduce_only=true` order can open new exposure. This contradicts the spec's own documentation and every major exchange's definition of reduce-only (Binance, Bybit, dYdX, Drift all restrict reduce-only to closing regardless of OI state).~~
 
-```rust
-if reduce_only {
-    closing_size
-} else if oi_violated {
-    Dec::ZERO
-} else {
-    size
-}
-```
+~~**Fix:** When `reduce_only=true`, always return only the closing portion:~~
+
+~~```rust~~
+~~if reduce_only {~~
+~~    closing_size~~
+~~} else if oi_violated {~~
+~~    Dec::ZERO~~
+~~} else {~~
+~~    size~~
+~~}~~
+~~```~~
 
 ### 1.11 [HIGH] Self-Liquidation to Avoid Trading Fees
 
