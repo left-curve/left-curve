@@ -333,7 +333,9 @@ Should be `ceil(margin)` to be conservative (less available margin = harder to o
 
 ### 4.14 [LOW] Inconsistent Naming: `BIDS`/`ASKS` vs `BUY_ORDERS`/`SELL_ORDERS`
 
-Storage layout (lines 479/486) defines `BIDS` and `ASKS`, but `try_fill_limit_order` (line 1381) references `BUY_ORDERS`/`SELL_ORDERS`.
+**Fixed.**
+
+~~Storage layout (lines 479/486) defines `BIDS` and `ASKS`, but `try_fill_limit_order` (line 1381) references `BUY_ORDERS`/`SELL_ORDERS`.~~
 
 ### 4.15 [LOW] Redundant `Direction` in Order Book Keys
 

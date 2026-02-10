@@ -1379,7 +1379,7 @@ fn try_fill_limit_order(
     } else {
         key.limit_price
     };
-    let order_book = if is_buy { &BUY_ORDERS } else { &SELL_ORDERS };
+    let order_book = if is_buy { BIDS } else { ASKS };
 
     // Compute actual execution price for this order's full size
     let exec_price = compute_exec_price(oracle_price, *skew, order.size, pair_params);
