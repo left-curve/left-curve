@@ -4,13 +4,15 @@
 
 ### 1.1 [CRITICAL] Vault Share Inflation / First Depositor Attack
 
-When `vault_share_supply == 0`, the first depositor receives `floor(amount * DEFAULT_SHARES_PER_AMOUNT)` shares. An attacker can:
+**Fixed.** Replaced `DEFAULT_SHARES_PER_AMOUNT` with `VIRTUAL_SHARES` / `VIRTUAL_ASSETS` virtual offset pattern in both `handle_deposit_liquidity` and `handle_unlock_liquidity`.
 
-1. Deposit 1 wei of USDT, receiving `DEFAULT_SHARES_PER_AMOUNT` shares
-2. Open a position and intentionally lose (their loss goes to `vault_margin` via `settle_pnl`), inflating vault equity while share supply is tiny
-3. Next depositor who sends, say, 999 USDT gets `floor(999 * 1_000_000 / 1_000_001) = 0` shares (floor rounding), and the attacker redeems all shares for the entire vault
+~~When `vault_share_supply == 0`, the first depositor receives `floor(amount * DEFAULT_SHARES_PER_AMOUNT)` shares. An attacker can:~~
 
-This is the well-known ERC-4626 vault attack. **Fix:** Use a "virtual offset" or "dead shares" pattern. On first deposit, mint dead shares to the zero address, or use `shares = (amount * (totalSupply + OFFSET)) / (equity + OFFSET)`.
+1. ~~Deposit 1 wei of USDT, receiving `DEFAULT_SHARES_PER_AMOUNT` shares~~
+2. ~~Open a position and intentionally lose (their loss goes to `vault_margin` via `settle_pnl`), inflating vault equity while share supply is tiny~~
+3. ~~Next depositor who sends, say, 999 USDT gets `floor(999 * 1_000_000 / 1_000_001) = 0` shares (floor rounding), and the attacker redeems all shares for the entire vault~~
+
+~~This is the well-known ERC-4626 vault attack. **Fix:** Use a "virtual offset" or "dead shares" pattern. On first deposit, mint dead shares to the zero address, or use `shares = (amount * (totalSupply + OFFSET)) / (equity + OFFSET)`.~~
 
 ### 1.2 [HIGH] Unbounded Funding Rate Can Create Bad Debt Spirals
 
@@ -319,6 +321,6 @@ Since `BIDS` only contains buys and `ASKS` only contains sells, including `Direc
 
 `MAX_PRICE` is used (lines 1084, 1324, 1377) but never defined. Its value and the assumption that all valid prices are strictly less than it should be specified.
 
-### 4.17 [LOW] Typo in Error Message
+### ~~4.17 [LOW] Typo in Error Message~~
 
-Line 1997: `"to few shares would be minted"` should be `"too few shares would be minted"`.
+**Fixed.** ~~Line 1997: `"to few shares would be minted"` should be `"too few shares would be minted"`.~~

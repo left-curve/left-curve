@@ -1956,6 +1956,20 @@ fn compute_vault_unrealized_funding_for_pair(
 
 #### Handling deposit
 
+We use the following constant parameters to prevent the [ERC-4626 frontrunning donation attack](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/token/ERC20/extensions/ERC4626.sol#L22-L48). See the link for details.
+
+```rust
+/// Virtual shares added to total supply in share price calculations.
+/// Prevents the first-depositor attack (ERC-4626 inflation attack) by
+/// ensuring the share price cannot be trivially inflated.
+const VIRTUAL_SHARES: Uint = 1_000_000;
+
+/// Virtual assets added to vault equity in share price calculations.
+/// Works in tandem with VIRTUAL_SHARES to set the initial share price
+/// and prevent share inflation attacks.
+const VIRTUAL_ASSETS: Uint = 1;
+```
+
 Suppose the vault receives `amount_received` units of USDT from user:
 
 ```rust
@@ -1966,34 +1980,33 @@ fn handle_deposit_liquidity(
     min_shares_to_mint: Option<Uint>,
     usdt_price: Udec,
 ) {
-    const DEFAULT_SHARES_PER_AMOUNT: Uint = /* can be any reasonable value, e.g. 1_000_000 */;
-
     ensure!(amount_received > 0, "nothing to do");
 
-    // Compute the number of shares to mint.
-    let shares_to_mint = if state.vault_share_supply != 0 {
-        let vault_equity = compute_vault_equity(state, usdt_price);
+    // Use virtual offsets to prevent the first-depositor share inflation attack.
+    // By adding VIRTUAL_SHARES to supply and VIRTUAL_ASSETS to equity, the
+    // share price cannot be trivially manipulated by donating to the vault.
+    //
+    // When the vault is empty (supply=0, equity=0):
+    //   shares = amount * VIRTUAL_SHARES / VIRTUAL_ASSETS
+    //          = amount * 1_000_000    (same scaling as before)
+    //
+    // When the vault is non-empty, the virtual offsets are negligible relative
+    // to real supply/equity, so pricing is effectively unchanged.
+    let effective_supply = state.vault_share_supply + VIRTUAL_SHARES;
+    let effective_equity = compute_vault_equity(state, usdt_price) + VIRTUAL_ASSETS;
 
-        ensure!(
-            vault_equity > 0,
-            "vault is in catastrophic loss! deposit disabled"
-            // If the vault has positive shares (i.e. it isn't empty) but zero or
-            // negative equity, the protocol is insolvent, and require intervention
-            // e.g. a bailout. Disable deposits in this case.
-        );
+    ensure!(
+        effective_equity > 0,
+        "vault is in catastrophic loss! deposit disabled"
+    );
 
-        // Round the number down, to the advantage of the protocol and disadvantage
-        // of the user. This is a principle we must follow throughout the codebase.
-        floor(amount_received * state.vault_share_supply / vault_equity)
-    } else {
-        floor(amount_received * DEFAULT_SHARES_PER_AMOUNT)
-    };
+    let shares_to_mint = floor(amount_received * effective_supply / effective_equity);
 
     // Ensure the number of shares to mint is no less than the minimum.
     if let Some(min_shares_to_mint) = min_shares_to_mint {
         ensure!(
             shares_to_mint >= min_shares_to_mint,
-            "to few shares would be minted"
+            "too few shares would be minted"
         );
     }
 
@@ -2033,8 +2046,11 @@ fn handle_unlock_liquidity(
         // liquidated or prices revert). This mirrors the deposit-side check.
     );
 
+    // Use the same virtual offsets as in deposit for symmetry.
     // Again, note the direction of rounding.
-    let amount_to_release = floor(vault_equity * shares_to_burn / state.vault_share_supply);
+    let effective_supply = state.vault_share_supply + VIRTUAL_SHARES;
+    let effective_equity = vault_equity + VIRTUAL_ASSETS;
+    let amount_to_release = floor(effective_equity * shares_to_burn / effective_supply);
 
     ensure!(
         state.vault_margin >= amount_to_release,
