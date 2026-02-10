@@ -51,13 +51,15 @@
 
 ### 1.5 [HIGH] Reserved Margin Drift When Positions Change
 
-When a limit order is placed, `decompose_fill` determines closing vs. opening based on the user's current position, and margin is reserved for the opening portion. But if other trades change the position before the limit order fills, the decomposition is stale:
+**Fixed.** Stored exact `reserved_margin` per `Order` so fill and cancel release exactly what was reserved, eliminating accounting drift.
 
-1. User has +100. Places sell limit -150 (closing=-100, opening=-50). Reserves margin for opening=-50.
-2. A market order reduces position to +20.
-3. Now the limit's actual decomposition would be closing=-20, opening=-130. Reserved margin only covers -50.
+~~When a limit order is placed, `decompose_fill` determines closing vs. opening based on the user's current position, and margin is reserved for the opening portion. But if other trades change the position before the limit order fills, the decomposition is stale:~~
 
-**Fix:** Store the reserved amount directly in each `Order` struct, and revalidate margin at fill time. Alternatively, cancel limit orders when the user's position in that pair changes.
+~~1. User has +100. Places sell limit -150 (closing=-100, opening=-50). Reserves margin for opening=-50.~~
+~~2. A market order reduces position to +20.~~
+~~3. Now the limit's actual decomposition would be closing=-20, opening=-130. Reserved margin only covers -50.~~
+
+~~**Fix:** Store the reserved amount directly in each `Order` struct, and revalidate margin at fill time. Alternatively, cancel limit orders when the user's position in that pair changes.~~
 
 ### 1.6 [MEDIUM] Vault Share Sandwich on Deposits
 
@@ -295,7 +297,9 @@ Storing `short_oi` as a negative number (e.g., -100) requires `.abs()` calls, si
 
 ### 4.7 [LOW] `cancel_order` Recomputes Reserved Margin Instead of Storing It
 
-Cancellation recomputes reserved margin using the current position (which may have changed), then uses `saturating_sub`. This means `reserved_margin` can drift from the true sum of outstanding reservations. **Fix:** Store the reserved amount in each `Order` struct.
+**Fixed (as part of 1.5).** `Order` now stores `reserved_margin`; cancel releases the stored amount exactly.
+
+~~Cancellation recomputes reserved margin using the current position (which may have changed), then uses `saturating_sub`. This means `reserved_margin` can drift from the true sum of outstanding reservations. **Fix:** Store the reserved amount in each `Order` struct.~~
 
 ### 4.8 [LOW] Test Cases Use `cost_basis` but Spec Uses `entry_price`
 

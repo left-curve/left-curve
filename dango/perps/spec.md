@@ -430,11 +430,12 @@ struct Unlock {
 ```rust
 /// The Order struct stored as values in the indexed maps.
 /// The key already encodes pair_id, limit_price, and created_at,
-/// so the value only needs user_id, size, and reduce_only.
+/// so the value only needs user_id, size, reduce_only, and reserved_margin.
 struct Order {
     pub user_id: UserId,
     pub size: Dec,
     pub reduce_only: bool,
+    pub reserved_margin: Uint,  // exact margin+fee reserved at placement
 }
 
 struct OrderIndexes {
@@ -663,19 +664,8 @@ fn handle_cancel_order(
     // Ensure the user owns this order
     ensure!(order.user_id == caller_user_id, "not your order");
 
-    // Compute and release the reserved margin + reserved fee for this order
-    let user_pos = user_state.positions
-        .get(&pair_id)
-        .map(|p| p.size)
-        .unwrap_or(Dec::ZERO);
-    let (_, opening_size) = decompose_fill(order.size, user_pos);
-
-    // For cancellation, we need to recover the limit_price from the order key
-    // (implementation detail: the order key contains the limit price)
-    let reserved = compute_required_margin(opening_size, limit_price, pair_params);
-    let reserved_fee = compute_trading_fee(opening_size, limit_price, params.trading_fee_rate);
-    user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved + reserved_fee);
-
+    // Release the exact reserved margin stored in the order
+    user_state.reserved_margin -= order.reserved_margin;
     user_state.open_order_count -= 1;
 }
 
@@ -1067,7 +1057,8 @@ fn store_limit_order(
     let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos_after_fill);
     let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params);
     let fee_to_reserve = compute_trading_fee(unfilled_opening, limit_price, params.trading_fee_rate);
-    user_state.reserved_margin += margin_to_reserve + fee_to_reserve;
+    let reserved = margin_to_reserve + fee_to_reserve;
+    user_state.reserved_margin += reserved;
 
     // Increment open order count
     user_state.open_order_count += 1;
@@ -1077,6 +1068,7 @@ fn store_limit_order(
         user_id,
         size: unfilled_size,
         reduce_only,
+        reserved_margin: reserved,
     };
     let order_id = generate_order_id();
 
@@ -1429,22 +1421,28 @@ fn try_fill_limit_order(
 
     // Update order book and reserved margin (including reserved fee)
     if fill_size == order.size {
-        // Full fill: release reserved margin + reserved fee and remove order
-        let reserved_for_order = compute_required_margin(opening_size, limit_price, pair_params);
-        let reserved_fee = compute_trading_fee(opening_size, limit_price, params.trading_fee_rate);
-        user_state.reserved_margin = user_state.reserved_margin.saturating_sub(reserved_for_order + reserved_fee);
-
+        // Full fill: release stored reserved margin and remove order
+        user_state.reserved_margin -= order.reserved_margin;
         user_state.open_order_count -= 1;
         order_book.remove(key);
     } else {
-        // Partial fill (closing-only): update order with remaining size.
-        // No change to reserved_margin since only the closing portion was filled.
+        // Partial fill: update order with remaining size
         let remaining = order.size - fill_size;
         if remaining == Dec::ZERO {
+            user_state.reserved_margin -= order.reserved_margin;
             user_state.open_order_count -= 1;
             order_book.remove(key);
         } else {
-            order_book.save(key, Order { size: remaining, ..order });
+            // Recompute reservation for remaining order based on post-fill position
+            let new_pos = user_pos + fill_size;
+            let (_, remaining_opening) = decompose_fill(remaining, new_pos);
+            let margin_to_reserve = compute_required_margin(remaining_opening, limit_price, pair_params);
+            let fee_to_reserve = compute_trading_fee(remaining_opening, limit_price, params.trading_fee_rate);
+            let new_reserved = margin_to_reserve + fee_to_reserve;
+
+            // Update global counter: swap old reservation for new
+            user_state.reserved_margin = user_state.reserved_margin - order.reserved_margin + new_reserved;
+            order_book.save(key, Order { size: remaining, reserved_margin: new_reserved, ..order });
         }
     }
 
