@@ -28,12 +28,14 @@
 
 ### 1.3 [HIGH] No Margin Revalidation on Limit Order Fill
 
-`try_fill_limit_order` explicitly skips margin checks: "No margin check is performed here." But between placement and fill:
+**Won't fix.** The audit's example is wrong: a buy limit at 100 cannot fill when oracle is at 200, because buy limits only fill when `marginal_price <= limit_price` (spec line 1332-1334). Reserved margin is computed at `limit_price` (the worst-case agreed price), so `used_margin` at fill time (oracle-based) is always ≤ reserved margin for buys. For sells, the order fills at a price better than the limit, so the favorable execution offsets the higher `used_margin`. The residual risk — equity erosion from losses on _other_ positions eating into reserved margin — is a fundamental property of cross-margin systems, not a limit-order bug. This design matches Binance, dYdX, Bybit, and Drift (4 of 5 major exchanges check margin at placement only). Only Hyperliquid rechecks at fill time.
 
-- The user's equity may have collapsed (losses on other positions, funding accrual)
-- Oracle price may have diverged far from limit_price, making `used_margin` (oracle-based) much larger than the margin reserved at placement (limit_price-based)
+~~`try_fill_limit_order` explicitly skips margin checks: "No margin check is performed here." But between placement and fill:~~
 
-Example: User places buy limit at 100, reserving 5 USDT margin (5% of 100). By fill time, oracle is at 200. Used margin becomes 10 USDT. Position is immediately under-margined. **Fix:** Validate margin at fill time; cancel the order if the user can no longer afford it.
+~~- The user's equity may have collapsed (losses on other positions, funding accrual)~~
+~~- Oracle price may have diverged far from limit_price, making `used_margin` (oracle-based) much larger than the margin reserved at placement (limit_price-based)~~
+
+~~Example: User places buy limit at 100, reserving 5 USDT margin (5% of 100). By fill time, oracle is at 200. Used margin becomes 10 USDT. Position is immediately under-margined. **Fix:** Validate margin at fill time; cancel the order if the user can no longer afford it.~~
 
 ### 1.4 [HIGH] Skew Manipulation for Liquidation MEV
 
