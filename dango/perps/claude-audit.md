@@ -39,13 +39,15 @@
 
 ### 1.4 [HIGH] Skew Manipulation for Liquidation MEV
 
-Liquidation trigger uses oracle price (correct), but execution uses skew-adjusted price. An attacker can:
+**Won't fix.** `max_abs_premium` already hard-caps how much skew can affect execution price — the audit's "extreme skew" scenario is bounded by this parameter (the same parameter motivated by the Mars Protocol hack). The audit's claim that "Binance/OKX/dYdX use oracle price for liquidation execution" is factually wrong: all major exchanges use oracle/mark price only for _triggering_ liquidation, then execute at order book fill prices (Binance uses IOC orders against the book, dYdX v4 matches protocol orders against the book, Hyperliquid sends market orders to the book). The spec's skew-adjusted pricing is the AMM equivalent of order book execution, and liquidation triggers already use oracle-based equity (`is_liquidatable`). The spec comments at lines 1789-1799 explicitly justify this design: skew-adjusted liquidation pricing prevents moral hazard where users would prefer being liquidated over voluntarily closing when the skew premium makes voluntary closure more expensive.
 
-1. Build a large position to create extreme skew
-2. Liquidate a user whose positions close unfavorably due to the skew premium
-3. Unwind their position
+~~Liquidation trigger uses oracle price (correct), but execution uses skew-adjusted price. An attacker can:~~
 
-This extracts extra value from the liquidated user beyond what oracle price justifies. **Fix:** Use oracle price for liquidation execution (as Binance/OKX/dYdX do), or use a tighter premium cap for liquidation fills.
+1. ~~Build a large position to create extreme skew~~
+2. ~~Liquidate a user whose positions close unfavorably due to the skew premium~~
+3. ~~Unwind their position~~
+
+~~This extracts extra value from the liquidated user beyond what oracle price justifies. **Fix:** Use oracle price for liquidation execution (as Binance/OKX/dYdX do), or use a tighter premium cap for liquidation fills.~~
 
 ### 1.5 [HIGH] Reserved Margin Drift When Positions Change
 
