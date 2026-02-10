@@ -85,34 +85,36 @@ Bad debt is "absorbed by the vault" via `saturating_sub` in `settle_pnl`. Withou
 
 ### 1.9 [CRITICAL] `unfilled_size` Miscalculated When Price Constraint Fails
 
-In `handle_submit_order` (lines 1008-1018):
+**Fixed.** Restructured `handle_submit_order` so that when a limit order's price constraint fails, the full order is stored in the book via early return (step 6). `unfilled_size` is only computed in the success path, eliminating the silent order loss.
 
-```rust
-if fill_size != Dec::ZERO {
-    let exec_price = compute_exec_price(...);
-    if check_price_constraint(exec_price, target_price, is_buy) {
-        execute_fill(...);  // only runs if price check passes
-    }
-}
-let unfilled_size = size - fill_size;  // always subtracts fill_size
-```
+~~In `handle_submit_order` (lines 1008-1018):~~
 
-If `fill_size != 0` but the price constraint fails, `execute_fill` is _not_ called, yet `unfilled_size = size - fill_size` still deducts the unattempted fill. For **limit orders**, this means part of the order is silently lost: neither filled nor stored in the book.
+~~```rust~~
+~~if fill_size != Dec::ZERO {~~
+~~    let exec_price = compute_exec_price(...);~~
+~~    if check_price_constraint(exec_price, target_price, is_buy) {~~
+~~        execute_fill(...);  // only runs if price check passes~~
+~~    }~~
+~~}~~
+~~let unfilled_size = size - fill_size;  // always subtracts fill_size~~
+~~```~~
 
-Example: User submits a limit sell for -150, with existing position +100. `closing_size=-100`, `opening_size=-50`. OI is fine, so `fill_size=-150`. Exec price fails the constraint. Fill doesn't execute. `unfilled_size = -150 - (-150) = 0`. No limit order is stored. The entire order vanishes silently, with no error.
+~~If `fill_size != 0` but the price constraint fails, `execute_fill` is _not_ called, yet `unfilled_size = size - fill_size` still deducts the unattempted fill. For **limit orders**, this means part of the order is silently lost: neither filled nor stored in the book.~~
 
-**Fix:** Track whether the fill actually executed:
+~~Example: User submits a limit sell for -150, with existing position +100. `closing_size=-100`, `opening_size=-50`. OI is fine, so `fill_size=-150`. Exec price fails the constraint. Fill doesn't execute. `unfilled_size = -150 - (-150) = 0`. No limit order is stored. The entire order vanishes silently, with no error.~~
 
-```rust
-let actually_filled = if fill_size != Dec::ZERO {
-    let exec_price = compute_exec_price(...);
-    if check_price_constraint(exec_price, target_price, is_buy) {
-        execute_fill(...);
-        fill_size
-    } else { Dec::ZERO }
-} else { Dec::ZERO };
-let unfilled_size = size - actually_filled;
-```
+~~**Fix:** Track whether the fill actually executed:~~
+
+~~```rust~~
+~~let actually_filled = if fill_size != Dec::ZERO {~~
+~~    let exec_price = compute_exec_price(...);~~
+~~    if check_price_constraint(exec_price, target_price, is_buy) {~~
+~~        execute_fill(...);~~
+~~        fill_size~~
+~~    } else { Dec::ZERO }~~
+~~} else { Dec::ZERO };~~
+~~let unfilled_size = size - actually_filled;~~
+~~```~~
 
 ### 1.10 [HIGH] `reduce_only` Does Not Restrict to Closing-Only
 
