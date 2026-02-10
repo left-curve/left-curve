@@ -214,7 +214,9 @@ Net cost: zero (liquidation fee is self-paid). Savings: `trading_fee_rate * tota
 
 ### 2.7 [MEDIUM] `used_margin` for Existing Positions Uses `initial_margin_ratio`
 
-`compute_used_margin` (line 574) uses `initial_margin_ratio` for existing open positions. Most exchanges distinguish between the margin required to _open_ a position (initial margin) and the margin _held_ against an existing position (often a lower rate, closer to maintenance). Using the higher `initial_margin_ratio` for existing positions means available margin is more restricted than necessary, potentially preventing users from placing closing orders or withdrawing funds when they're in drawdown but still well above maintenance.
+**Dismissed.** The current design matches industry standard (dYdX, Binance): `initial_margin_ratio` is used for available-balance and withdrawal checks; `maintenance_margin_ratio` is used only for the liquidation trigger. Using initial margin for existing positions is correct.
+
+~~`compute_used_margin` (line 574) uses `initial_margin_ratio` for existing open positions. Most exchanges distinguish between the margin required to _open_ a position (initial margin) and the margin _held_ against an existing position (often a lower rate, closer to maintenance). Using the higher `initial_margin_ratio` for existing positions means available margin is more restricted than necessary, potentially preventing users from placing closing orders or withdrawing funds when they're in drawdown but still well above maintenance.~~
 
 ### 2.8 [LOW] Limit Order Fulfillment Uses Marginal Price Cutoff
 
