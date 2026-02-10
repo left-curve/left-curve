@@ -75,9 +75,11 @@ Bad debt is "absorbed by the vault" via `saturating_sub` in `settle_pnl`. Withou
 
 ### 1.8 [MEDIUM] Oracle Price Manipulation Affects Vault Equity
 
-`compute_vault_equity` depends on oracle prices for all pairs. Manipulating the oracle for a single thin-market pair changes vault equity, affecting deposits/withdrawals across the entire vault.
+**Won't fix.** Out of scope for this spec.
 
-**Fix:** TWAP oracles, multi-source aggregation, per-pair unrealized PnL caps for vault equity calculations, and circuit breakers on vault operations during sharp price moves.
+~~`compute_vault_equity` depends on oracle prices for all pairs. Manipulating the oracle for a single thin-market pair changes vault equity, affecting deposits/withdrawals across the entire vault.~~
+
+~~**Fix:** TWAP oracles, multi-source aggregation, per-pair unrealized PnL caps for vault equity calculations, and circuit breakers on vault operations during sharp price moves.~~
 
 ### 1.9 [CRITICAL] `unfilled_size` Miscalculated When Price Constraint Fails
 
