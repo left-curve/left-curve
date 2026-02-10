@@ -199,7 +199,7 @@ struct Params {
     /// E.g., 0.0005 = 0.05%. For a $100,000 notional fill, fee = $50.
     pub trading_fee_rate: Udec,
 
-    /// Fee paid to the liquidator as a fraction of the total notional value
+    /// Fee paid to the vault as a fraction of the total notional value
     /// of positions being liquidated.
     ///
     /// E.g., 0.0005 = 0.05%. For $100,000 total notional, fee = $50.
@@ -1306,7 +1306,7 @@ A trading fee is charged on every voluntary fill (market and limit orders) as a 
 
 - Fee formula: `fee = ceil(|fill_size| * exec_price * trading_fee_rate)` — rounds up to advantage the protocol, consistent with the spec's rounding principle.
 - If the user's margin is insufficient to cover the full fee, the actual fee is capped at `user_state.margin` (same pattern as `settle_pnl` and the liquidation fee).
-- **Liquidation fills are exempt**: the existing `liquidation_fee_rate` is the only fee on liquidation. Charging both would be double-dipping. This matches Binance/OKX/dYdX/Drift where a dedicated liquidation fee replaces the normal trading fee.
+- **Liquidation fills are exempt**: the existing `liquidation_fee_rate` (paid to the vault) is the only fee on liquidation. Charging both would be double-dipping. This matches Binance/OKX/dYdX/Drift where a dedicated liquidation fee replaces the normal trading fee.
 
 ```rust
 /// Compute the trading fee for a given size and price.
@@ -1714,7 +1714,7 @@ fn settle_funding(
 
 ### Liquidation and deleveraging
 
-When a user's equity drops below their total maintenance margin, any third party ("liquidator") may call `handle_force_close` to liquidate the user. All positions are closed at skew-adjusted prices, pending limit orders are cancelled, and the liquidator receives a fee proportional to the total notional value of the liquidated positions.
+When a user's equity drops below their total maintenance margin, any third party ("liquidator") may call `handle_force_close` to liquidate the user. All positions are closed at skew-adjusted prices, pending limit orders are cancelled, and a fee proportional to the total notional value of the liquidated positions is transferred to the vault.
 
 #### Maintenance margin
 
@@ -1803,7 +1803,7 @@ fn cancel_all_orders(user_state: &mut UserState, user_id: UserId) {
 #### Force close (liquidation handler)
 
 ```rust
-/// Liquidate a user by closing all positions and paying a fee to the liquidator.
+/// Liquidate a user by closing all positions and paying a fee to the vault.
 ///
 /// Can be called by any third party when the user is below maintenance margin.
 /// Also callable by the admin for auto-deleveraging (see note below).
@@ -1815,7 +1815,6 @@ fn handle_force_close(
     oracle_prices: &Map<PairId, Udec>,
     user_state: &mut UserState,
     user_id: UserId,
-    liquidator_state: &mut UserState,
     current_time: Timestamp,
 ) {
     // Step 1: Cancel all pending limit orders.
@@ -1880,13 +1879,16 @@ fn handle_force_close(
         execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
     }
 
-    // Step 6: Pay liquidation fee to the liquidator.
+    // Step 6: Pay liquidation fee to the vault.
     //
     // The fee is proportional to total notional, capped at the user's
     // remaining margin. Using notional (not remaining margin) ensures the
-    // reward stays proportional to position risk — a margin-based fee
-    // would shrink as the user deteriorates, creating a perverse incentive
-    // to delay liquidation.
+    // fee stays proportional to position risk — a margin-based fee
+    // would shrink as the user deteriorates.
+    //
+    // Paying the fee to the vault (not the liquidator) prevents
+    // self-liquidation exploits where a user force-closes themselves
+    // from a second account to avoid trading fees.
     //
     // After all positions are closed, user_state.margin reflects the
     // user's remaining balance (could be zero if they had bad debt).
@@ -1894,9 +1896,7 @@ fn handle_force_close(
     let actual_fee = min(fee, user_state.margin);
 
     user_state.margin -= actual_fee;
-    liquidator_state.margin += actual_fee;
-
-    /* Here, add logic for transferring the fee */
+    state.vault_margin += actual_fee;
 }
 ```
 

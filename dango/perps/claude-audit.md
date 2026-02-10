@@ -146,19 +146,21 @@ Bad debt is "absorbed by the vault" via `saturating_sub` in `settle_pnl`. Withou
 
 ### 1.11 [HIGH] Self-Liquidation to Avoid Trading Fees
 
-Liquidation fills are exempt from trading fees (line 1264: "the existing `liquidation_fee_rate` is the only fee on liquidation"). A user can exploit this:
+**Fixed.** Liquidation fee is now paid to the vault instead of the liquidator, eliminating the self-liquidation exploit.
 
-1. Withdraw margin to just below maintenance margin.
-2. Call `force_close` on themselves from a second account (the "liquidator").
-3. All positions are closed with no trading fee. The liquidation fee goes to their own second account.
+~~Liquidation fills are exempt from trading fees (line 1264: "the existing `liquidation_fee_rate` is the only fee on liquidation"). A user can exploit this:~~
 
-Net cost: zero (liquidation fee is self-paid). Savings: `trading_fee_rate * total_notional`.
+~~1. Withdraw margin to just below maintenance margin.~~
+~~2. Call `force_close` on themselves from a second account (the "liquidator").~~
+~~3. All positions are closed with no trading fee. The liquidation fee goes to their own second account.~~
 
-**Fix options:**
+~~Net cost: zero (liquidation fee is self-paid). Savings: `trading_fee_rate * total_notional`.~~
 
-- Charge trading fees on liquidation fills as well (in addition to the liquidation fee).
-- Add a minimum time between margin withdrawal and liquidation eligibility.
-- Pay the liquidation fee to the vault (not the liquidator) with a separate, smaller keeper incentive.
+~~**Fix options:**~~
+
+~~- Charge trading fees on liquidation fills as well (in addition to the liquidation fee).~~
+~~- Add a minimum time between margin withdrawal and liquidation eligibility.~~
+~~- Pay the liquidation fee to the vault (not the liquidator) with a separate, smaller keeper incentive.~~
 
 ### 1.12 [MEDIUM] Withdrawal Amount Locked at Unlock Time, Not Claim Time
 
