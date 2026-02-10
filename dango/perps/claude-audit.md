@@ -297,7 +297,9 @@ Cancellation recomputes reserved margin using the current position (which may ha
 
 ### 4.8 [LOW] Test Cases Use `cost_basis` but Spec Uses `entry_price`
 
-The vault unrealized PnL test cases reference `cost_basis` (from the old spec), while the current `Position` struct uses `entry_price` (per commit `b62691cb0`). Update test cases for consistency.
+**Fixed.** Simply removed test cases.
+
+~~The vault unrealized PnL test cases reference `cost_basis` (from the old spec), while the current `Position` struct uses `entry_price` (per commit `b62691cb0`). Update test cases for consistency.~~
 
 ### 4.9 [LOW] No Events/Logging Specified
 
