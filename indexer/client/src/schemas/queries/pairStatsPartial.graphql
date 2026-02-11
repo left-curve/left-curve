@@ -1,0 +1,7 @@
+query PairStatsPartial($base_denom: String!, $quote_denom: String!) {
+  pairStats(baseDenom: $base_denom, quoteDenom: $quote_denom) {
+    baseDenom
+    quoteDenom
+    currentPrice
+  }
+}
