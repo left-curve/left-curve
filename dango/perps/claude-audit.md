@@ -257,7 +257,9 @@ fn compute_vault_unrealized_totals(...) -> (Dec, Dec) {
 
 ### 3.4 [LOW] Lazy Funding Accrual Could Be Eagerly Batched
 
-Funding is accrued lazily per-pair when user operations touch that pair. Accruing all active pairs once at block start (when oracle prices arrive) would eliminate redundant accruals when multiple users interact with the same pair in one block.
+**Fixed.** We added an early-return condition in `accrual_funding` such that if no time has passed since the last funding accrual, then the operation is skipped. This ensures for each pair, funding is only accrued once per block. This achieves the same optimization as the active accrual suggested.
+
+~~Funding is accrued lazily per-pair when user operations touch that pair. Accruing all active pairs once at block start (when oracle prices arrive) would eliminate redundant accruals when multiple users interact with the same pair in one block.~~
 
 ### 3.5 [LOW] Margin Estimated at `target_price`, Charged at `exec_price`
 

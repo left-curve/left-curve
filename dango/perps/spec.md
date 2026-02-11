@@ -551,6 +551,7 @@ fn handle_withdraw_margin(
         let pair_state = pair_states.get_mut(&pair_id);
         let pair_params = &pair_params_map[&pair_id];
         let oracle_price = oracle_prices[&pair_id];
+
         accrue_funding(pair_state, pair_params, oracle_price, current_time);
     }
 
@@ -1691,6 +1692,11 @@ fn accrue_funding(
     oracle_price: Udec,
     current_time: Timestamp,
 ) {
+    // If not time has elapsed since the last update, then nothing to do.
+    if current_time == pair_state.last_funding_time {
+        return;
+    }
+
     let (unrecorded, current_rate) = compute_unrecorded_funding_per_unit(
         pair_state,
         pair_params,
@@ -2130,6 +2136,7 @@ fn compute_vault_unrealized_funding_for_pair(
         oracle_price,
         current_time,
     );
+
     let unrecorded = -skew * unrecorded_per_unit;
 
     recorded + unrecorded
