@@ -1218,7 +1218,7 @@ fn store_limit_order(
 /// called so `cumulative_funding_per_unit` is up-to-date.
 ///
 /// Post: `oi_weighted_entry_price` has old contribution removed;
-/// `oi_weighted_entry_funding` reflects settled funding at old size;
+/// `oi_weighted_entry_funding` has old contribution removed;
 /// user margin updated for funding and closing PnL;
 /// `pos.entry_funding_per_unit` updated;
 /// `pos.size` and `pos.entry_price` unchanged.
@@ -1230,12 +1230,11 @@ fn settle_existing_position(
     closing_size: Dec,
     exec_price: Udec,
 ) {
-    // Remove old contribution to oi_weighted_entry_price BEFORE any
-    // size modifications.
+    // Remove old contributions to accumulators BEFORE any size modifications.
     pair_state.oi_weighted_entry_price -= pos.size * pos.entry_price;
+    pair_state.oi_weighted_entry_funding -= pos.size * pos.entry_funding_per_unit;
 
     // Settle funding BEFORE modifying the position.
-    // This also updates oi_weighted_entry_funding.
     settle_funding(state, pair_state, user_state, pos);
 
     // Settle price PnL for the closing portion
@@ -1267,11 +1266,6 @@ fn apply_fill_to_position(
     let position = user_state.positions.get_mut(&pair_id);
 
     if let Some(pos) = position {
-        // Remove old contribution to oi_weighted_entry_funding
-        // (settle_funding already set entry to current cumulative, so this
-        // removes the post-settlement contribution before we change the size)
-        pair_state.oi_weighted_entry_funding -= pos.size * pos.entry_funding_per_unit;
-
         pos.size += fill_size;
 
         // Blend entry_price as weighted average for opening portion
@@ -1290,8 +1284,7 @@ fn apply_fill_to_position(
         // Remove position if fully closed, or re-add contribution
         if pos.size == Dec::ZERO {
             user_state.positions.remove(&pair_id);
-            // oi_weighted_entry_funding contribution already removed above
-            // oi_weighted_entry_price contribution already removed by settle_existing_position
+            // Both accumulator contributions already removed by settle_existing_position
         } else {
             // entry_funding_per_unit stays at current cumulative (set by settle_funding)
             pair_state.oi_weighted_entry_funding += pos.size * pos.entry_funding_per_unit;
@@ -1794,17 +1787,12 @@ When a position is touched (opened, modified, closed, or liquidated), its accrue
 
 ```rust
 /// Settle accrued funding for a position. Transfers funds between the
-/// trader's margin and the vault.
+/// trader's margin and the vault, and resets the funding entry point.
 ///
 /// This function:
 /// 1. Computes the accrued funding since the position was last touched.
 /// 2. Transfers the amount (positive = user pays vault, negative = vault pays user).
-/// 3. Updates oi_weighted_entry_funding to remove the old contribution.
-/// 4. Resets the position's entry_funding_per_unit to the current cumulative value.
-/// 5. Updates oi_weighted_entry_funding to add the new contribution.
-///
-/// Steps 3-5 maintain the invariant:
-///   oi_weighted_entry_funding = Σ (pos.size * pos.entry_funding_per_unit)
+/// 3. Resets the position's entry_funding_per_unit to the current cumulative value.
 fn settle_funding(
     state: &mut State,
     pair_state: &mut PairState,
@@ -1819,11 +1807,7 @@ fn settle_funding(
     // trader, so it's negative PnL from their perspective).
     settle_pnl(state, user_state, -accrued);
 
-    // Update the oi_weighted_entry_funding accumulator:
-    // Remove old contribution, update entry point, add new contribution.
-    pair_state.oi_weighted_entry_funding -= position.size * position.entry_funding_per_unit;
     position.entry_funding_per_unit = pair_state.cumulative_funding_per_unit;
-    pair_state.oi_weighted_entry_funding += position.size * position.entry_funding_per_unit;
 }
 ```
 
