@@ -48,7 +48,7 @@ impl<U, const S: u32> Dec<U, S> {
     ///
     /// let uint = Uint128::new(100);
     /// let decimal = Udec128::raw(uint);
-    /// assert_eq!(decimal, Udec128::from_str("0.000000000000000100").unwrap());
+    /// assert_eq!(decimal.to_string(), "0.000000000000000100");
     /// ```
     pub const fn raw(value: Int<U>) -> Self {
         Self(value)
@@ -77,8 +77,10 @@ where
                 // No overflow because decimal_places > S
                 let digits = decimal_places - S;
                 if let Ok(factor) = Int::<U>::TEN.checked_pow(digits) {
-                    // Safe because factor cannot be zero
-                    atomics.checked_div(factor).unwrap()
+                    match atomics.checked_div(factor) {
+                        Ok(value) => value,
+                        Err(_) => unreachable!("decimal reduction divisor is always non-zero"),
+                    }
                 } else {
                     // In this case `factor` exceeds the Int<U> range.
                     // Any  Int<U> `x` divided by `factor` with `factor > Int::<U>::MAX` is 0.
@@ -157,7 +159,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::PRECISION;
         let whole = (self.0) / decimals;
-        let fractional = (self.0).checked_rem(decimals).unwrap();
+        let fractional = (self.0) % decimals;
 
         if whole == Int::<U>::MIN && whole.is_negative() {
             f.write_str(whole.to_string().as_str())?
@@ -168,13 +170,13 @@ where
         } else {
             let fractional_string = format!(
                 "{:0>padding$}",
-                fractional.checked_abs().unwrap().0,
+                fractional.checked_abs().map_err(|_| fmt::Error)?.0,
                 padding = S as usize
             );
             if whole.is_negative() || fractional.is_negative() {
                 f.write_char('-')?;
             }
-            f.write_str(&whole.checked_abs().unwrap().to_string())?;
+            f.write_str(&whole.checked_abs().map_err(|_| fmt::Error)?.to_string())?;
             f.write_char('.')?;
             f.write_str(fractional_string.trim_end_matches('0'))?;
         }
@@ -199,9 +201,11 @@ where
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut parts_iter = input.split('.');
 
-        let mut atomics = parts_iter
-            .next()
-            .unwrap() // split always returns at least one element
+        let whole_part = parts_iter.next().ok_or_else(|| {
+            MathError::parse_number::<Self, _, _>(input, "missing whole number component")
+        })?;
+
+        let mut atomics = whole_part
             .parse::<Int<U>>()
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "error parsing whole"))?
             .checked_mul(Self::PRECISION)
@@ -231,11 +235,15 @@ where
 
             debug_assert!(exp <= S);
 
-            let fractional_factor = Int::TEN.checked_pow(exp).unwrap();
+            let fractional_factor = Int::TEN.checked_pow(exp).map_err(|_| {
+                MathError::parse_number::<Self, _, _>(input, "fractional precision overflow")
+            })?;
 
             // This multiplication can't overflow because
             // fractional < 10^DECIMAL_PLACES && fractional_factor <= 10^DECIMAL_PLACES
-            let fractional_part = fractional.checked_mul(fractional_factor).unwrap();
+            let fractional_part = fractional.checked_mul(fractional_factor).map_err(|_| {
+                MathError::parse_number::<Self, _, _>(input, "fractional value too big")
+            })?;
 
             // for negative numbers, we need to subtract the fractional part
             // We can't check if atomics is negative because -0 is positive
@@ -449,7 +457,7 @@ macro_rules! generate_dec_constructor {
                 // / };
                 // /
                 // / let decimal = Udec128::new(100);
-                // / assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
+                // / assert_eq!(decimal.to_string(), "100.0");
                 // / ```
                 pub const fn new(x: $base_constructor) -> Self {
                     Self($constructor(x * [<10_$base_constructor>].pow(S)))

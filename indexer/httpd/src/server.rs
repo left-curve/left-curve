@@ -38,7 +38,11 @@ where
     tracing::info!(%ip, port, "Starting indexer httpd server");
 
     #[cfg(feature = "metrics")]
-    let metrics = ActixWebMetricsBuilder::new().build().unwrap();
+    let metrics = ActixWebMetricsBuilder::new().build().map_err(|err| {
+        std::io::Error::other(format!(
+            "failed to initialize HTTP metrics middleware: {err}"
+        ))
+    })?;
 
     #[cfg(feature = "metrics")]
     init_httpd_metrics();
@@ -99,7 +103,11 @@ where
     #[cfg(feature = "tracing")]
     tracing::info!(%ip, port, "Starting metrics httpd server");
 
-    let metrics = ActixWebMetricsBuilder::new().build().unwrap();
+    let metrics = ActixWebMetricsBuilder::new().build().map_err(|err| {
+        std::io::Error::other(format!(
+            "failed to initialize metrics server middleware: {err}"
+        ))
+    })?;
 
     let recorder = PrometheusBuilder::new().build_recorder();
     let metrics_handler2 = recorder.handle();

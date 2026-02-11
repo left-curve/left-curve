@@ -80,15 +80,11 @@ where
         let iter = self
             .index_set
             .range_raw(storage, min, max, order)
-            .map(|ik_pk_raw| {
+            .filter_map(|ik_pk_raw| {
                 let (ik_raw, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
-                // Load the data corresponding to the primary key from the
-                // primary map.
-                //
-                // If the indexed map works correctly, the data should always exist,
-                // so we can safely unwrap the `Option` here.
-                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
-                (ik_raw, pk_raw.to_vec(), v_raw)
+                self.primary_map
+                    .may_load_raw(storage, pk_raw)
+                    .map(|v_raw| (ik_raw, pk_raw.to_vec(), v_raw))
             });
 
         Box::new(iter)
@@ -156,10 +152,10 @@ where
             .range_raw(storage, min, max, order)
             .map(|ik_pk_raw| {
                 let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
-                self.primary_map.may_load_raw(storage, pk_raw).unwrap()
+                self.primary_map.load_raw(storage, pk_raw)
             });
 
-        Box::new(iter)
+        Box::new(iter.filter_map(Result::ok))
     }
 
     pub fn values<'b>(
@@ -174,7 +170,7 @@ where
             .range_raw(storage, min, max, order)
             .map(|ik_pk_raw| {
                 let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
-                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
+                let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
                 C::decode(&v_raw)
             });
 
@@ -194,10 +190,11 @@ where
         let iter = self
             .index_set
             .prefix_range_raw(storage, min, max, order)
-            .map(|ik_pk_raw| {
+            .filter_map(|ik_pk_raw| {
                 let (ik_raw, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
-                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
-                (ik_raw, pk_raw.to_vec(), v_raw)
+                self.primary_map
+                    .may_load_raw(storage, pk_raw)
+                    .map(|v_raw| (ik_raw, pk_raw.to_vec(), v_raw))
             });
 
         Box::new(iter)
@@ -268,10 +265,10 @@ where
             .prefix_range_raw(storage, min, max, order)
             .map(|ik_pk_raw| {
                 let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
-                self.primary_map.may_load_raw(storage, pk_raw).unwrap()
+                self.primary_map.load_raw(storage, pk_raw)
             });
 
-        Box::new(iter)
+        Box::new(iter.filter_map(Result::ok))
     }
 
     pub fn prefix_values<'b>(
@@ -286,7 +283,7 @@ where
             .prefix_range_raw(storage, min, max, order)
             .map(|ik_pk_raw| {
                 let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
-                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
+                let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
                 C::decode(&v_raw)
             });
 
@@ -364,10 +361,11 @@ where
         let iter = self
             .prefix
             .keys_raw_no_trimmer(storage, min, max, order)
-            .map(|pk_raw| {
+            .filter_map(|pk_raw| {
                 let pk_raw = self.trim_key(&pk_raw);
-                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
-                (pk_raw.to_vec(), v_raw)
+                self.primary_map
+                    .may_load_raw(storage, pk_raw)
+                    .map(|v_raw| (pk_raw.to_vec(), v_raw))
             });
 
         Box::new(iter)

@@ -41,13 +41,24 @@ impl Message {
             buf.len()
         );
 
+        let mut nonce_raw = [0_u8; 4];
+        nonce_raw.copy_from_slice(&buf[1..5]);
+        let mut origin_domain_raw = [0_u8; 4];
+        origin_domain_raw.copy_from_slice(&buf[5..9]);
+        let mut sender_raw = [0_u8; 32];
+        sender_raw.copy_from_slice(&buf[9..41]);
+        let mut destination_domain_raw = [0_u8; 4];
+        destination_domain_raw.copy_from_slice(&buf[41..45]);
+        let mut recipient_raw = [0_u8; 32];
+        recipient_raw.copy_from_slice(&buf[45..77]);
+
         Ok(Self {
             version: buf[0],
-            nonce: u32::from_be_bytes(buf[1..5].try_into().unwrap()),
-            origin_domain: Domain::from_be_bytes(buf[5..9].try_into().unwrap()),
-            sender: Addr32::from_inner(buf[9..41].try_into().unwrap()),
-            destination_domain: Domain::from_be_bytes(buf[41..45].try_into().unwrap()),
-            recipient: Addr32::from_inner(buf[45..77].try_into().unwrap()),
+            nonce: u32::from_be_bytes(nonce_raw),
+            origin_domain: Domain::from_be_bytes(origin_domain_raw),
+            sender: Addr32::from_inner(sender_raw),
+            destination_domain: Domain::from_be_bytes(destination_domain_raw),
+            recipient: Addr32::from_inner(recipient_raw),
             body: buf[77..].to_vec().into(),
         })
     }

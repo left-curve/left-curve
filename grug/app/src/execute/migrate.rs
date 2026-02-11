@@ -85,7 +85,9 @@ where
                 Ok(info)
             })?;
 
-            let old_code_hash = old_code_hash.unwrap();
+            let old_code_hash = old_code_hash.ok_or_else(|| {
+                AppError::db("missing previous contract code hash during migration".to_string())
+            })?;
 
             // Reduce usage count of the old code.
             CODES.update(&mut storage, old_code_hash, |mut code| -> StdResult<_> {

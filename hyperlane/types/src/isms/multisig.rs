@@ -42,15 +42,26 @@ impl Metadata {
             buf.len()
         );
 
+        let mut origin_merkle_tree_raw = [0_u8; 32];
+        origin_merkle_tree_raw.copy_from_slice(&buf[0..32]);
+        let mut merkle_root_raw = [0_u8; 32];
+        merkle_root_raw.copy_from_slice(&buf[32..64]);
+        let mut merkle_index_raw = [0_u8; 4];
+        merkle_index_raw.copy_from_slice(&buf[64..68]);
+
         let signatures = buf[68..]
             .chunks_exact(65)
-            .map(|chunk| HexByteArray::from_inner(chunk.try_into().unwrap()))
+            .map(|chunk| {
+                let mut signature_raw = [0_u8; 65];
+                signature_raw.copy_from_slice(chunk);
+                HexByteArray::from_inner(signature_raw)
+            })
             .collect();
 
         Ok(Self {
-            origin_merkle_tree: Addr32::from_inner(buf[0..32].try_into().unwrap()),
-            merkle_root: Hash256::from_inner(buf[32..64].try_into().unwrap()),
-            merkle_index: u32::from_be_bytes(buf[64..68].try_into().unwrap()),
+            origin_merkle_tree: Addr32::from_inner(origin_merkle_tree_raw),
+            merkle_root: Hash256::from_inner(merkle_root_raw),
+            merkle_index: u32::from_be_bytes(merkle_index_raw),
             signatures,
         })
     }

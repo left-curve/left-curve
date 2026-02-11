@@ -24,6 +24,25 @@ macro_rules! unwrap_into_generic_result {
     };
 }
 
+fn serialize_generic_result<T>(res: GenericResult<T>) -> Vec<u8>
+where
+    GenericResult<T>: BorshSerExt,
+{
+    match res.to_borsh_vec() {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            let fallback: GenericResult<T> =
+                GenericResult::Err(error_backtrace::BacktracedError::new(format!(
+                    "failed to serialize response for host: {err}"
+                )));
+            match fallback.to_borsh_vec() {
+                Ok(bytes) => bytes,
+                Err(_) => vec![],
+            }
+        },
+    }
+}
+
 /// Reserve a region in Wasm memory of the given number of bytes. Return the
 /// memory address of a Region object that describes the memory region that was
 /// reserved.
@@ -64,7 +83,7 @@ where
         instantiate_fn(ctx, msg).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -91,7 +110,7 @@ where
         execute_fn(ctx, msg).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -118,7 +137,7 @@ where
 
         query_fn(immutable_ctx, msg).into_generic_result()
     })();
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -145,7 +164,7 @@ where
         migrate_fn(ctx, msg).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -176,7 +195,7 @@ where
         reply_fn(ctx, msg, events).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -197,7 +216,7 @@ where
         receive_fn(ctx).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -218,7 +237,7 @@ where
         cron_execute_fn(ctx).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -242,7 +261,7 @@ where
         authenticate_fn(ctx, tx).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -266,7 +285,7 @@ where
         backrun_fn(ctx, tx).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -290,7 +309,7 @@ where
         transfer_fn(ctx, msg).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -314,7 +333,7 @@ where
         query_fn(ctx, msg).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -338,7 +357,7 @@ where
         withhold_fee_fn(auth_ctx, tx).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -365,7 +384,7 @@ where
         finalize_fee_fn(auth_ctx, tx, outcome).into_generic_result()
     })();
 
-    let res_bytes = res.to_borsh_vec().unwrap();
+    let res_bytes = serialize_generic_result(res);
 
     Region::release_buffer(res_bytes) as usize
 }

@@ -268,8 +268,18 @@ macro_rules! impl_hash_method {
             };
 
             // We trust the host returns a hash of the correct length, therefore
-            // unwrapping it here safely.
-            hash_region.try_into().unwrap()
+            // handle mismatch defensively to avoid panicking the guest.
+            match hash_region.try_into() {
+                Ok(hash) => hash,
+                Err(_) => {
+                    debug_assert!(
+                        false,
+                        "host returned malformed hash length for {}",
+                        stringify!($name),
+                    );
+                    [0_u8; $len]
+                },
+            }
         }
     };
 }

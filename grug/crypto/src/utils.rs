@@ -18,5 +18,11 @@ pub fn truncate<const S: usize>(data: &[u8]) -> [u8; S] {
         S
     );
 
-    data[..S].try_into().unwrap()
+    let mut out = [0_u8; S];
+    if data.len() >= S {
+        out.copy_from_slice(&data[..S]);
+    } else {
+        out[..data.len()].copy_from_slice(data);
+    }
+    out
 }

@@ -4,7 +4,7 @@ use {
     grug_storage::{Map, PrefixBound, Set},
     grug_types::{
         Batch, Hash256, HashExt, MembershipProof, NonMembershipProof, Op, Order, Proof, ProofNode,
-        StdResult, Storage,
+        StdError, StdResult, Storage,
     },
 };
 
@@ -343,15 +343,13 @@ fn apply_at_internal(
             Ok(Outcome::Updated(left))
         },
         (Outcome::Unchanged(Some(left)), Outcome::Deleted) if left.is_leaf() => {
+            let Some(left_child) = internal_node.left_child else {
+                return Err(StdError::host(
+                    "missing left child while pruning internal node".to_string(),
+                ));
+            };
             // Mark left child as orphaned
-            ORPHANS.insert(
-                storage,
-                (
-                    new_version,
-                    internal_node.left_child.unwrap().version,
-                    &left_bits,
-                ),
-            )?;
+            ORPHANS.insert(storage, (new_version, left_child.version, &left_bits))?;
 
             Ok(Outcome::Updated(left))
         },
@@ -364,15 +362,13 @@ fn apply_at_internal(
             Ok(Outcome::Updated(right))
         },
         (Outcome::Deleted, Outcome::Unchanged(Some(right))) if right.is_leaf() => {
+            let Some(right_child) = internal_node.right_child else {
+                return Err(StdError::host(
+                    "missing right child while pruning internal node".to_string(),
+                ));
+            };
             // Mark right child as orphaned
-            ORPHANS.insert(
-                storage,
-                (
-                    new_version,
-                    internal_node.right_child.unwrap().version,
-                    &right_bits,
-                ),
-            )?;
+            ORPHANS.insert(storage, (new_version, right_child.version, &right_bits))?;
 
             Ok(Outcome::Updated(right))
         },
@@ -593,7 +589,11 @@ fn prepare_batch_for_subtree(
 #[inline]
 fn only_item<T>(mut vec: Vec<T>) -> T {
     debug_assert_eq!(vec.len(), 1);
-    vec.pop().unwrap()
+    if let Some(item) = vec.pop() {
+        item
+    } else {
+        unreachable!("only_item called with an empty vector")
+    }
 }
 
 /// Get the i-th bit without having to cast the byte slice to BitArray (which

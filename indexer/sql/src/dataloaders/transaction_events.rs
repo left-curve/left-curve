@@ -30,20 +30,15 @@ impl Loader<entity::transactions::Model> for TransactionEventsDataLoader {
                 // NOTE: this filtering could raise issue if `transaction_ids` is thousands of entries long
                 //       as it would generate a SQL query with thousands of `OR` conditions
                 .filter(entity::events::Column::TransactionId.is_in(transactions_ids))
-                // safeguard because we use `.transaction_id.expect("transaction_id is null")` below
                 .filter(entity::events::Column::TransactionId.is_not_null())
                 .order_by(entity::events::Column::EventIdx, Order::Asc)
                 .all(&self.db)
                 .await?
                 .into_iter()
-                .chunk_by(|t| t.transaction_id.expect("transaction_id is null"))
+                .filter_map(|event| event.transaction_id.map(|transaction_id| (transaction_id, event)))
+                .chunk_by(|(transaction_id, _)| *transaction_id)
                 .into_iter()
-                .map(|(key, group)| {
-                    (
-                        key,
-                        group.into_iter().collect::<Self::Value>(),
-                    )
-                })
+                .map(|(key, group)| (key, group.map(|(_, event)| event).collect::<Self::Value>()))
                 .collect();
 
         Ok(transactions_by_id

@@ -518,7 +518,7 @@ pub(crate) fn split_first_key(key_elems: u8, value: &[u8]) -> (Vec<u8>, &[u8]) {
             first_key.extend_from_slice(len_slice);
         }
 
-        let elem_len = u16::from_be_bytes(len_slice.try_into().unwrap()) as usize;
+        let elem_len = u16::from_be_bytes([len_slice[0], len_slice[1]]) as usize;
         first_key.extend_from_slice(&value[index..index + elem_len]);
         index += elem_len;
     }

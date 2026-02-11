@@ -149,7 +149,10 @@ impl Context {
 
     #[cfg(feature = "testing")]
     pub fn mock(&self) -> &test::Mock {
-        self.mock.as_ref().unwrap()
+        match self.mock.as_ref() {
+            Some(mock) => mock,
+            None => panic!("mock context requested but no mock database is configured"),
+        }
     }
 
     pub fn clickhouse_client(&self) -> &Client {
@@ -208,7 +211,7 @@ pub mod testing {
         let test_id = TEST_DB_COUNTER.fetch_add(1, Ordering::SeqCst);
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_millis();
 
         format!("dango_test_{test_id}_{timestamp}")

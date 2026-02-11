@@ -111,7 +111,9 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
             let pk_hash = ctx.api.keccak256(&pk[1..]);
             let address = &pk_hash[12..];
 
-            Ok(HexByteArray::from_inner(address.try_into().unwrap()))
+            let mut address_bytes = [0_u8; 20];
+            address_bytes.copy_from_slice(address);
+            Ok(HexByteArray::from_inner(address_bytes))
         })
         .collect::<StdResult<BTreeSet<_>>>()?;
 

@@ -115,8 +115,11 @@ pub async fn set_ism_validator_set(
         validators: validator_set
             .validators
             .into_iter()
-            .map(|validator| HexByteArray::from_str(&validator).unwrap())
-            .collect(),
+            .map(|validator| {
+                HexByteArray::from_str(&validator)
+                    .map_err(|err| anyhow!("invalid validator address `{validator}`: {err}"))
+            })
+            .collect::<anyhow::Result<_>>()?,
     };
 
     match validator_sets.get(&evm_config.hyperlane_domain) {
