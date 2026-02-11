@@ -305,9 +305,11 @@ let loss = floor(-pnl);  // pnl < 0, so -pnl > 0
 
 ### 4.4 [MEDIUM] Margin Check Blocks reduce_only Close Orders
 
-In `handle_submit_order`, the margin check (step 5) uses the original `opening_size` from step 1. But if `reduce_only=true` and OI is violated, the opening portion is discarded (step 3). A user trying to close via reduce_only may be rejected because the margin check runs on the full opening portion that will never execute.
+**Fixed.**
 
-Example: User has +100, submits sell -150 with reduce_only=true. Opening=-50 requires margin. If available margin is insufficient, the order is rejected -- even though only the closing=-100 portion would actually execute. **Fix:** Either move the margin check after fill size determination, or skip the margin check when the effective fill is close-only.
+~~In `handle_submit_order`, the margin check (step 5) uses the original `opening_size` from step 1. But if `reduce_only=true` and OI is violated, the opening portion is discarded (step 3). A user trying to close via reduce_only may be rejected because the margin check runs on the full opening portion that will never execute.~~
+
+~~Example: User has +100, submits sell -150 with reduce_only=true. Opening=-50 requires margin. If available margin is insufficient, the order is rejected -- even though only the closing=-100 portion would actually execute. **Fix:** Either move the margin check after fill size determination, or skip the margin check when the effective fill is close-only.~~
 
 ### 4.5 [MEDIUM] `short_oi` as Non-Positive Is Confusing
 
