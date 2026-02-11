@@ -949,16 +949,14 @@ fn compute_max_opening_from_oi(
 /// all-or-nothing: if it exceeds `max_abs_oi`, only the closing portion fills
 /// and the opening portion is rejected entirely.
 ///
-/// Returns the fill size, which may be the full order or the closing portion
-/// only.
+/// Returns the total fillable size and opening size under the OI constraint.
 fn compute_fill_size_from_oi(
-    size: Dec,
     closing_size: Dec,
     opening_size: Dec,
     is_buy: bool,
     pair_state: &PairState,
     max_abs_oi: Udec,
-) -> Dec {
+) -> (Dec, Dec) {
     let max_opening = compute_max_opening_from_oi(opening_size, pair_state, max_abs_oi);
 
     let oi_violated = if is_buy {
@@ -967,7 +965,13 @@ fn compute_fill_size_from_oi(
         max_opening > opening_size
     };
 
-    if oi_violated { closing_size } else { size }
+    if oi_violated {
+        // OI constraint violated -- only fill the closing portion.
+        (closing_size, 0)
+    } else {
+        // OI constraint not violated -- fill both the closing and opening portions.
+        (closing_size + opening_size, opening_size)
+    }
 }
 ```
 
@@ -1089,9 +1093,8 @@ fn handle_submit_order(
 
     // Step 4: Check OI constraint and determine fill size.
     // Use the reduce_only-adjusted effective size (closing + adjusted opening).
-    let effective_size = closing_size + opening_size;
-    let fill_size = compute_fill_size_from_oi(
-        effective_size, closing_size, opening_size, is_buy,
+    let (fill_size, fill_opening) = compute_fill_size_from_oi(
+        closing_size, opening_size, is_buy,
         pair_state, pair_params.max_abs_oi,
     );
     ensure!(fill_size != Dec::ZERO, "order would have no effect");
@@ -1138,9 +1141,6 @@ fn handle_submit_order(
     }
 
     // Step 7: Execute fill and collect trading fee.
-    // After OI trimming, closing_size is unchanged but opening may have been
-    // discarded. Recompute the fill's opening portion.
-    let fill_opening = fill_size - closing_size;
     execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, fill_opening);
     collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate);
 }
@@ -1528,9 +1528,8 @@ fn fill_limit_order(
 
     // Step 4: OI check — determine fill size from OI constraint
     // (closing portion always allowed).
-    let effective_size = closing_size + opening_size;
-    let fill_size = compute_fill_size_from_oi(
-        effective_size, closing_size, opening_size, is_buy,
+    let (fill_size, fill_opening) = compute_fill_size_from_oi(
+        closing_size, opening_size, is_buy,
         pair_state, pair_params.max_abs_oi,
     );
 
@@ -1567,9 +1566,6 @@ fn fill_limit_order(
     }
 
     // Step 7: Execute fill (may be full order or closing-only).
-    // After OI trimming, closing_size is unchanged but opening may have been
-    // discarded. Recompute the fill's opening portion.
-    let fill_opening = fill_size - closing_size;
     execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price, closing_size, fill_opening);
     collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate);
 
