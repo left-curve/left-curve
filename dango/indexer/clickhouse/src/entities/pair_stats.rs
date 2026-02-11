@@ -1,7 +1,4 @@
-use crate::{
-    entities::{CandleInterval, candle::Candle},
-    error::Result,
-};
+use crate::{entities::pair_price::PairPrice, error::Result};
 #[cfg(feature = "async-graphql")]
 use {
     crate::context::Context,
@@ -51,9 +48,7 @@ impl PairStats {
 
     /// Fetches all trading pairs.
     pub async fn fetch_all(clickhouse_client: &clickhouse::Client) -> Result<Vec<Self>> {
-        // Reuse existing_pairs from Candle to get all pairs with 1h candles
-        let pairs =
-            Candle::existing_pairs(CandleInterval::OneHour, clickhouse_client, None).await?;
+        let pairs = PairPrice::all_pairs(clickhouse_client).await?;
 
         let results = pairs
             .into_iter()
@@ -140,7 +135,7 @@ impl PairStats {
             SELECT clearing_price
             FROM pair_prices
             WHERE base_denom = ? AND quote_denom = ?
-              AND created_at <= toDateTime64(?, 6)
+              AND created_at <= ?
             ORDER BY created_at DESC
             LIMIT 1
         "#;
@@ -149,7 +144,7 @@ impl PairStats {
             .query(query)
             .bind(base_denom)
             .bind(quote_denom)
-            .bind(time_24h_ago.timestamp_micros())
+            .bind(time_24h_ago)
             .fetch_optional()
             .await?;
 
@@ -178,6 +173,7 @@ impl PairStats {
     }
 
     /// Fetches the 24h volume in quote asset for the pair.
+    /// Uses pair_prices to include all trades in the current hour.
     async fn fetch_volume_24h(
         clickhouse_client: &clickhouse::Client,
         base_denom: &str,
@@ -187,17 +183,16 @@ impl PairStats {
 
         let query = r#"
             SELECT sum(volume_quote) as total_volume
-            FROM candles FINAL
+            FROM pair_prices
             WHERE base_denom = ? AND quote_denom = ?
-              AND interval = '1h'
-              AND time_start >= toDateTime64(?, 6)
+              AND created_at >= ?
         "#;
 
         let result: Option<VolumeRow> = clickhouse_client
             .query(query)
             .bind(base_denom)
             .bind(quote_denom)
-            .bind(time_24h_ago.timestamp_micros())
+            .bind(time_24h_ago)
             .fetch_optional()
             .await?;
 
