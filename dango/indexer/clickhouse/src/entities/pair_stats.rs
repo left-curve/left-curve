@@ -135,7 +135,7 @@ impl PairStats {
             SELECT clearing_price
             FROM pair_prices
             WHERE base_denom = ? AND quote_denom = ?
-              AND created_at <= ?
+              AND created_at <= toDateTime64(?, 6)
             ORDER BY created_at DESC
             LIMIT 1
         "#;
@@ -144,7 +144,7 @@ impl PairStats {
             .query(query)
             .bind(base_denom)
             .bind(quote_denom)
-            .bind(time_24h_ago)
+            .bind(time_24h_ago.timestamp_micros())
             .fetch_optional()
             .await?;
 
@@ -185,14 +185,14 @@ impl PairStats {
             SELECT sum(volume_quote) as total_volume
             FROM pair_prices
             WHERE base_denom = ? AND quote_denom = ?
-              AND created_at >= ?
+              AND created_at >= toDateTime64(?, 6)
         "#;
 
         let result: Option<VolumeRow> = clickhouse_client
             .query(query)
             .bind(base_denom)
             .bind(quote_denom)
-            .bind(time_24h_ago)
+            .bind(time_24h_ago.timestamp_micros())
             .fetch_optional()
             .await?;
 
