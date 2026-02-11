@@ -2048,6 +2048,10 @@ fn compute_vault_equity(
     usdt_price: Udec,
     current_time: Timestamp,
 ) -> Dec {
+    // Note: `compute_vault_unrealized_pnl` and `compute_vault_unrealized_funding`
+    // each loops through all the pairs. In the actual implementation, this can
+    // be combined into a single loop.
+
     let unrealized_pnl = compute_vault_unrealized_pnl(pair_states, oracle_prices);
 
     let unrealized_funding = compute_vault_unrealized_funding(

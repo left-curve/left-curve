@@ -234,18 +234,20 @@
 
 ### 3.1 [MEDIUM] `compute_vault_equity` Iterates All Pairs Twice
 
-`compute_vault_unrealized_pnl` and `compute_vault_unrealized_funding` each iterate all `pair_states` separately. These could be a single pass:
+**Dismissed.** In this spec, we write too loops for better readability. We've added a comment suggesting they can be combined into a single loop in the actual implementation.
 
-```rust
-fn compute_vault_unrealized_totals(...) -> (Dec, Dec) {
-    let mut total_pnl = Dec::ZERO;
-    let mut total_funding = Dec::ZERO;
-    for (pair_id, pair_state) in pair_states {
-        // compute both in one iteration
-    }
-    (total_pnl, total_funding)
-}
-```
+~~`compute_vault_unrealized_pnl` and `compute_vault_unrealized_funding` each iterate all `pair_states` separately. These could be a single pass:~~
+
+~~```rust~~
+~~fn compute_vault_unrealized_totals(...) -> (Dec, Dec) {~~
+~~    let mut total_pnl = Dec::ZERO;~~
+~~    let mut total_funding = Dec::ZERO;~~
+~~    for (pair_id, pair_state) in pair_states {~~
+~~        // compute both in one iteration~~
+~~    }~~
+~~    (total_pnl, total_funding)~~
+~~}~~
+~~```~~
 
 ### 3.2 [MEDIUM] Redundant `decompose_fill` Calls
 
