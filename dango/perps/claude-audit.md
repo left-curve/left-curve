@@ -269,7 +269,9 @@ In `handle_submit_order` step 5, the margin check uses `target_price` (worst-cas
 
 ### 3.6 [LOW] Limit Order Book Scanned Every Block
 
-`fulfill_limit_orders_for_pair` scans both order books every block for every pair. If most blocks don't have meaningful oracle price changes, this is wasted computation. Consider triggering scans only when oracle prices change beyond a threshold, or maintaining a price-indexed trigger per pair.
+**Dismissed.** We only scan orders that can be potentially filled. If an order with an unfavorable price is reached, the scanning is terminated. If the oracle price doesn't meaningfully change, then the number of eligible orders should also be small.
+
+~~`fulfill_limit_orders_for_pair` scans both order books every block for every pair. If most blocks don't have meaningful oracle price changes, this is wasted computation. Consider triggering scans only when oracle prices change beyond a threshold, or maintaining a price-indexed trigger per pair.~~
 
 ---
 
