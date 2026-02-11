@@ -119,7 +119,7 @@ enum ExecuteMsg {
     /// Forcibly close all of a user's positions.
     ///
     /// Callable by anyone when the user is below maintenance margin.
-    ForceClose {
+    Liquidate {
         /// The user's identifier. In the smart contract implementation, this
         /// should be an account address.
         user: UserId,
@@ -129,7 +129,7 @@ enum ExecuteMsg {
     ///
     /// Only callable by the admin (offchain bot) when the vault is in
     /// distress (vault equity < adl_trigger_ratio * total open notional).
-    Adl {
+    Deleverage {
         /// The user whose position to close.
         user: UserId,
         /// The pair to close the position in.
@@ -1931,7 +1931,7 @@ The table below summarizes which price and margin ratio are used in each context
 
 #### Auto-deleveraging
 
-Auto-deleveraging (ADL) is a mechanism for the exchange to forcibly close positions of profitable traders when the counterparty vault cannot cover its obligations. An offchain bot identifies which positions to close (ranked by profitability) and calls `handle_adl` for each one. The onchain contract validates the trigger condition and executes the closure. The bot can iterate — close one position, recheck vault equity, repeat if still in distress — minimizing impact on users.
+Auto-deleveraging (ADL) is a mechanism for the exchange to forcibly close positions of profitable traders when the counterparty vault cannot cover its obligations. An offchain bot identifies which positions to close (ranked by profitability) and calls `handle_deleverage` for each one. The onchain contract validates the trigger condition and executes the closure. The bot can iterate — close one position, recheck vault equity, repeat if still in distress — minimizing impact on users.
 
 Unlike liquidation, ADL operates on a single position per call (not all positions of a user), charges no fee (the user is not at fault), and does not cancel the user's open orders. If closing a position puts the user below maintenance margin, normal liquidation handles that separately.
 
@@ -1940,7 +1940,7 @@ Unlike liquidation, ADL operates on a single position per call (not all position
 ///
 /// Only callable by the admin (offchain bot). The bot selects which
 /// user and pair to close based on profitability ranking.
-fn handle_adl(
+fn handle_deleverage(
     params: &Params,
     state: &mut State,
     pair_states: &mut Map<PairId, PairState>,
@@ -1956,6 +1956,7 @@ fn handle_adl(
     let pair_state = pair_states.get_mut(&pair_id);
     let pair_params = pair_params_map[&pair_id];
     let oracle_price = oracle_prices[&pair_id];
+
     accrue_funding(pair_state, &pair_params, oracle_price, current_time);
 
     // Step 2: Verify vault is in distress.
@@ -1971,6 +1972,7 @@ fn handle_adl(
     let vault_equity = compute_vault_equity(
         state, pair_states, pair_params_map, oracle_prices, usdt_price, current_time,
     );
+
     ensure!(
         vault_equity < total_open_notional * params.adl_trigger_ratio,
         "vault is not in distress, ADL not needed",
