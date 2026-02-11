@@ -144,7 +144,7 @@ impl PairStats {
             .query(query)
             .bind(base_denom)
             .bind(quote_denom)
-            .bind(time_24h_ago.timestamp_micros())
+            .bind(time_24h_ago.timestamp())
             .fetch_optional()
             .await?;
 
@@ -173,7 +173,7 @@ impl PairStats {
     }
 
     /// Fetches the 24h volume in quote asset for the pair.
-    /// Uses pair_prices to include all trades in the current hour.
+    /// Uses trades to capture all fills across the rolling 24h window.
     async fn fetch_volume_24h(
         clickhouse_client: &clickhouse::Client,
         base_denom: &str,
@@ -182,8 +182,8 @@ impl PairStats {
         let time_24h_ago = Utc::now() - Duration::hours(24);
 
         let query = r#"
-            SELECT sum(volume_quote) as total_volume
-            FROM pair_prices
+            SELECT sum(filled_quote) as total_volume
+            FROM trades
             WHERE base_denom = ? AND quote_denom = ?
               AND created_at >= toDateTime64(?, 6)
         "#;
@@ -192,7 +192,7 @@ impl PairStats {
             .query(query)
             .bind(base_denom)
             .bind(quote_denom)
-            .bind(time_24h_ago.timestamp_micros())
+            .bind(time_24h_ago.timestamp())
             .fetch_optional()
             .await?;
 
