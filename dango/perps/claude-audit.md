@@ -71,9 +71,11 @@
 
 ### 1.7 [MEDIUM] Bad Debt with No Auto-Deleveraging
 
-Bad debt is "absorbed by the vault" via `saturating_sub` in `settle_pnl`. Without ADL (acknowledged as future work), if vault equity goes to zero, deposits and withdrawals both freeze (`ensure!(vault_equity > 0)`), with no recovery path. Every major perps exchange has ADL.
+**Fixed.** Added `adl_trigger_ratio` parameter and dedicated `handle_adl` function that forcibly closes a single user position when vault equity falls below the trigger ratio. Admin-only (offchain bot) with per-position granularity and profitability-based priority ranking.
 
-**Fix:** Implement ADL before launch. The existing `handle_force_close` with admin-only bypass is a start but needs priority ordering (highest-profit positions first).
+~~Bad debt is "absorbed by the vault" via `saturating_sub` in `settle_pnl`. Without ADL (acknowledged as future work), if vault equity goes to zero, deposits and withdrawals both freeze (`ensure!(vault_equity > 0)`), with no recovery path. Every major perps exchange has ADL.~~
+
+~~**Fix:** Implement ADL before launch. The existing `handle_force_close` with admin-only bypass is a start but needs priority ordering (highest-profit positions first).~~
 
 ### 1.8 [MEDIUM] Oracle Price Manipulation Affects Vault Equity
 

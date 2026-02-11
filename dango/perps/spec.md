@@ -118,12 +118,22 @@ enum ExecuteMsg {
 
     /// Forcibly close all of a user's positions.
     ///
-    /// This can happen during a liquidation (callable by anyone), or during
-    /// auto-deleveraging (callable only by the administrator).
+    /// Callable by anyone when the user is below maintenance margin.
     ForceClose {
         /// The user's identifier. In the smart contract implementation, this
         /// should be an account address.
         user: UserId,
+    },
+
+    /// Auto-deleverage a user's position in a single pair.
+    ///
+    /// Only callable by the admin (offchain bot) when the vault is in
+    /// distress (vault equity < adl_trigger_ratio * total open notional).
+    Adl {
+        /// The user whose position to close.
+        user: UserId,
+        /// The pair to close the position in.
+        pair_id: PairId,
     },
 }
 
@@ -207,6 +217,15 @@ struct Params {
     /// Capped at the user's remaining margin after position closure.
     /// Typical range: 0.0002 to 0.001 (0.02% to 0.1%).
     pub liquidation_fee_rate: Udec,
+
+    /// Ratio of vault equity to total open notional below which ADL is enabled.
+    ///
+    /// When vault_equity < adl_trigger_ratio * total_open_notional, the admin
+    /// can call handle_adl to forcibly close user positions.
+    ///
+    /// E.g., 0.01 = 1%. If total open notional is $10M and vault equity
+    /// drops below $100K, ADL is triggered.
+    pub adl_trigger_ratio: Udec,
 }
 ```
 
@@ -1806,7 +1825,6 @@ fn cancel_all_orders(user_state: &mut UserState, user_id: UserId) {
 /// Liquidate a user by closing all positions and paying a fee to the vault.
 ///
 /// Can be called by any third party when the user is below maintenance margin.
-/// Also callable by the admin for auto-deleveraging (see note below).
 fn handle_force_close(
     params: &Params,
     state: &mut State,
@@ -1913,7 +1931,71 @@ The table below summarizes which price and margin ratio are used in each context
 
 #### Auto-deleveraging
 
-Auto-deleveraging (ADL) is a mechanism for the exchange to forcibly close positions of profitable traders when the counterparty vault cannot cover its obligations. This is left as future work. The `handle_force_close` function already supports admin-only invocation for this purpose — the admin would call it on selected users without requiring the maintenance margin check.
+Auto-deleveraging (ADL) is a mechanism for the exchange to forcibly close positions of profitable traders when the counterparty vault cannot cover its obligations. An offchain bot identifies which positions to close (ranked by profitability) and calls `handle_adl` for each one. The onchain contract validates the trigger condition and executes the closure. The bot can iterate — close one position, recheck vault equity, repeat if still in distress — minimizing impact on users.
+
+Unlike liquidation, ADL operates on a single position per call (not all positions of a user), charges no fee (the user is not at fault), and does not cancel the user's open orders. If closing a position puts the user below maintenance margin, normal liquidation handles that separately.
+
+```rust
+/// Auto-deleverage a user's position when the vault is in distress.
+///
+/// Only callable by the admin (offchain bot). The bot selects which
+/// user and pair to close based on profitability ranking.
+fn handle_adl(
+    params: &Params,
+    state: &mut State,
+    pair_states: &mut Map<PairId, PairState>,
+    pair_params_map: &Map<PairId, PairParams>,
+    oracle_prices: &Map<PairId, Udec>,
+    usdt_price: Udec,
+    user_state: &mut UserState,
+    pair_id: PairId,
+    current_time: Timestamp,
+) {
+    // Step 1: Accrue funding for this pair (must precede vault equity check
+    // and execute_fill, same as liquidation).
+    let pair_state = pair_states.get_mut(&pair_id);
+    let pair_params = pair_params_map[&pair_id];
+    let oracle_price = oracle_prices[&pair_id];
+    accrue_funding(pair_state, &pair_params, oracle_price, current_time);
+
+    // Step 2: Verify vault is in distress.
+    //
+    // Compute total open notional across all pairs as the denominator.
+    // long_oi is non-negative, short_oi is non-positive, so
+    // (long_oi - short_oi) gives total OI for each pair.
+    let mut total_open_notional = Udec::ZERO;
+    for (pid, ps) in pair_states {
+        total_open_notional += (ps.long_oi - ps.short_oi) * oracle_prices[&pid];
+    }
+
+    let vault_equity = compute_vault_equity(
+        state, pair_states, pair_params_map, oracle_prices, usdt_price, current_time,
+    );
+    ensure!(
+        vault_equity < total_open_notional * params.adl_trigger_ratio,
+        "vault is not in distress, ADL not needed",
+    );
+
+    // Step 3: Verify the user has a position in this pair.
+    ensure!(
+        user_state.positions.contains_key(&pair_id),
+        "user has no position in this pair",
+    );
+
+    // Step 4: Close the position at skew-adjusted price.
+    //
+    // Same pricing as voluntary trades and liquidation — consistent
+    // execution across all fill types.
+    let position_size = user_state.positions[&pair_id].size;
+    let fill_size = -position_size;
+    let skew = pair_state.long_oi + pair_state.short_oi;
+    let exec_price = compute_exec_price(oracle_price, skew, fill_size, &pair_params);
+
+    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
+
+    // No liquidation fee — the user is not at fault.
+}
+```
 
 ### Counterparty vault
 
