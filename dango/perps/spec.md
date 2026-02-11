@@ -993,7 +993,60 @@ fn validate_notional_constraints(
 }
 ```
 
+#### Trading fees
+
+A trading fee is charged on every voluntary fill (market and limit orders) as a percentage of notional value. The fee is transferred from the user's margin to the vault (protocol revenue).
+
+- Fee formula: `fee = ceil(|fill_size| * exec_price * trading_fee_rate)` — rounds up to advantage the protocol, consistent with the spec's rounding principle.
+- If the user's margin is insufficient to cover the full fee, the actual fee is capped at `user_state.margin` (same pattern as `settle_pnl` and the liquidation fee).
+- **Liquidation fills are exempt**: the existing `liquidation_fee_rate` (paid to the vault) is the only fee on liquidation. Charging both would be double-dipping. This matches Binance/OKX/dYdX/Drift where a dedicated liquidation fee replaces the normal trading fee.
+
+```rust
+/// Compute the trading fee for a given size and price.
+fn compute_trading_fee(size: Dec, price: Udec, trading_fee_rate: Udec) -> Uint {
+    ceil(abs(size) * price * trading_fee_rate)
+}
+
+fn collect_trading_fee(
+    state: &mut State,
+    user_state: &mut UserState,
+    fill_size: Dec,
+    exec_price: Udec,
+    trading_fee_rate: Udec,
+) -> Uint {
+    let fee = compute_trading_fee(fill_size, exec_price, trading_fee_rate);
+    let actual_fee = min(fee, user_state.margin);
+
+    user_state.margin -= actual_fee;
+    state.vault_margin += actual_fee;
+
+    actual_fee
+}
+```
+
 #### Putting things together
+
+In V1 of our exchange, orders are filled in an **all-or-nothing** manner. This means the order must be filled in full. If this is not possible due to one of the constraints not being satisfied, the exchange rejects the order, instead of attempting to partially fill it.
+
+1. Update funding accumulators.
+2. Decompose the order into **closing portion** and **opening portion**. If the user is `reduce_only`, set the opening portion to zero.
+3. Validate minimum opening constraint:
+   - The opening portion must be either zero, or its notional size must be no less than `pair_params.min_opening_notional`.
+   - If not satisfied, throw error and exit.
+4. Validate max OI constraint and compute the fillable size.
+   - The current OI plus the opening portion must be no greater than the max OI.
+   - If satisfied, set the fillable size to 100% of the order size.
+   - If not satisfied, set the fillable size to the closing portion.
+   - If fillable size is zero, throw error and exit.
+5. Validate initial margin.
+   - Compute initial margin assuming the order is filled at the fillable size. The user must have collateral of an amount no less than it.
+   - If violated, throw error and exit.
+6. Validate price constraint:
+   - The execution price must be equal to or better than the target price.
+   - If not satisfied:
+     - If the order is IOC, throw error and exit.
+     - If the order is GTC, save it in the book and exit.
+7. Execute the order at the fillable size.
 
 ```rust
 fn handle_submit_order(
@@ -1319,37 +1372,6 @@ fn settle_pnl(
 }
 ```
 
-### Trading fees
-
-A trading fee is charged on every voluntary fill (market and limit orders) as a percentage of notional value. The fee is transferred from the user's margin to the vault (protocol revenue).
-
-- Fee formula: `fee = ceil(|fill_size| * exec_price * trading_fee_rate)` — rounds up to advantage the protocol, consistent with the spec's rounding principle.
-- If the user's margin is insufficient to cover the full fee, the actual fee is capped at `user_state.margin` (same pattern as `settle_pnl` and the liquidation fee).
-- **Liquidation fills are exempt**: the existing `liquidation_fee_rate` (paid to the vault) is the only fee on liquidation. Charging both would be double-dipping. This matches Binance/OKX/dYdX/Drift where a dedicated liquidation fee replaces the normal trading fee.
-
-```rust
-/// Compute the trading fee for a given size and price.
-fn compute_trading_fee(size: Dec, price: Udec, trading_fee_rate: Udec) -> Uint {
-    ceil(abs(size) * price * trading_fee_rate)
-}
-
-fn collect_trading_fee(
-    state: &mut State,
-    user_state: &mut UserState,
-    fill_size: Dec,
-    exec_price: Udec,
-    trading_fee_rate: Udec,
-) -> Uint {
-    let fee = compute_trading_fee(fill_size, exec_price, trading_fee_rate);
-    let actual_fee = min(fee, user_state.margin);
-
-    user_state.margin -= actual_fee;
-    state.vault_margin += actual_fee;
-
-    actual_fee
-}
-```
-
 ### Fulfillment of limit orders
 
 At the beginning of each block, validators submit the latest oracle prices. The contract is then triggered to scan the unfilled limit orders in its storage and look for ones that can be filled.
@@ -1426,7 +1448,7 @@ fn fulfill_limit_orders_for_pair(
             entry
         };
 
-        let fill_size = try_fill_limit_order(
+        let fill_size = fill_limit_order(
             params, key, order, pair_id, is_buy,
             state, oracle_price, skew, pair_state, pair_params,
             oracle_prices, pair_params_map, pair_states,
@@ -1435,7 +1457,22 @@ fn fulfill_limit_orders_for_pair(
         skew += fill_size;
     }
 }
+```
 
+For each eligible limit order:
+
+1. (No need to udpate funding accumulators -- already done earlier in `fulfill_limit_orders_for_pair`.)
+2. Decompose the order into **closing portion** and **opening portion**. If the user is `reduce_only`, set the opening portion to zero.
+3. (No need to validate minimum opening constraint -- already validated at opening submission time.)
+4. Validate max OI constraint and compute the fillable size.
+   - If fillable size is zero, skip this order.
+5. Validate initial margin.
+   - If violated, cancel the order.
+6. Validate price constraint.
+   - If not satisfied, skip this order.
+7. Execute the order at the fillable size.
+
+```rust
 /// Attempt to fill a single limit order. Returns the fill size, or zero if
 /// the order was skipped.
 ///
@@ -1453,7 +1490,7 @@ fn fulfill_limit_orders_for_pair(
 /// user's equity can deteriorate (PnL on other positions, funding fees,
 /// other fills). If the account can no longer support the order, it is
 /// cancelled and its reserved margin is released.
-fn try_fill_limit_order(
+fn fill_limit_order(
     params: &Params,
     key: OrderKey,
     order: Order,
@@ -1731,7 +1768,7 @@ fn settle_funding(
 }
 ```
 
-### Liquidation and deleveraging
+### Liquidation
 
 When a user's equity drops below their total maintenance margin, any third party ("liquidator") may call `handle_force_close` to liquidate the user. All positions are closed at skew-adjusted prices, pending limit orders are cancelled, and a fee proportional to the total notional value of the liquidated positions is transferred to the vault.
 
@@ -1918,18 +1955,7 @@ fn handle_force_close(
 }
 ```
 
-#### Price usage summary
-
-The table below summarizes which price and margin ratio are used in each context:
-
-| Context                       | Margin ratio               | Price used                                                            | Rationale                                                                                                   |
-| ----------------------------- | -------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| New order margin requirement  | `initial_margin_ratio`     | Oracle price (for used margin projection) / Execution price (for fee) | Post-fill check: projects the new position at oracle price, computes fee at execution price                 |
-| Existing position used margin | `initial_margin_ratio`     | Oracle price                                                          | Stable valuation for available margin; prevents over-leveraging on new orders/withdrawals                   |
-| Liquidation trigger           | `maintenance_margin_ratio` | Oracle price                                                          | Must match equity basis (also oracle-based) for consistent comparison; immune to skew manipulation          |
-| Liquidation execution         | N/A                        | Skew-adjusted price                                                   | Consistent with voluntary trading; eliminates moral hazard where users prefer liquidation over self-closing |
-
-#### Auto-deleveraging
+### Auto-deleveraging
 
 Auto-deleveraging (ADL) is a mechanism for the exchange to forcibly close positions of profitable traders when the counterparty vault cannot cover its obligations. An offchain bot identifies which positions to close (ranked by profitability) and calls `handle_deleverage` for each one. The onchain contract validates the trigger condition and executes the closure. The bot can iterate — close one position, recheck vault equity, repeat if still in distress — minimizing impact on users.
 
