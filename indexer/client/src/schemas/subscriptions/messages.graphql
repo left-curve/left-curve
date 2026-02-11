@@ -1,0 +1,11 @@
+subscription SubscribeMessages($sinceBlockHeight: Int) {
+  messages(sinceBlockHeight: $sinceBlockHeight) {
+    orderIdx
+    data
+    methodName
+    blockHeight
+    contractAddr
+    senderAddr
+    createdAt
+  }
+}

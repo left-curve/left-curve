@@ -1,0 +1,10 @@
+query QueryStatus {
+  queryStatus {
+    chainId
+    block {
+      blockHeight
+      timestamp
+      hash
+    }
+  }
+}

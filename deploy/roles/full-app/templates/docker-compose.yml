@@ -23,6 +23,7 @@ services:
 {% if deploy_includes_postgres %}
   postgres:
     image: postgres:17
+    restart: unless-stopped
     shm_size: 1gb
     ulimits:
       nofile:
@@ -46,6 +47,7 @@ services:
 
   postgres-prometheus:
     image: prometheuscommunity/postgres-exporter:latest
+    restart: unless-stopped
     labels:
       <<: *common-labels
       service_name: "postgres-prometheus"
@@ -128,6 +130,7 @@ services:
 
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
+    restart: unless-stopped
     labels:
       <<: *common-labels
       service_name: "dango"
@@ -182,6 +185,7 @@ services:
 
   dango-frontend:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
+    restart: unless-stopped
     ulimits:
       nofile:
         soft: 200000
@@ -217,6 +221,7 @@ services:
 {% if faucet_bot_enabled %}
   faucet-bot:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
+    restart: unless-stopped
     ulimits:
       nofile:
         soft: 200000
@@ -283,6 +288,7 @@ services:
 
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-latest}
+    restart: unless-stopped
     ulimits:
       nofile:
         soft: 200000
@@ -321,6 +327,7 @@ services:
       "
   graphiql:
     image: ghcr.io/left-curve/graphiql:${GRAPHIQL_TAG:-latest}
+    restart: unless-stopped
 {% if expose_ports %}
     ports:
       - "${GRAPHIQL_PORT:-0}:80"

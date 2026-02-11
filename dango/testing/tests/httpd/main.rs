@@ -6,20 +6,30 @@ use {
         web,
     },
     dango_httpd::{graphql::build_schema, server::config_app},
-    indexer_testing::paginate_models_with_app_builder,
+    serde::{Serialize, de::DeserializeOwned},
 };
 
-pub mod accounts;
-pub mod candles;
-pub mod grug;
-pub mod metrics;
-pub mod pair_stats;
-pub mod shutdown;
-pub mod trades;
-pub mod transfers;
-pub mod users;
+// Re-export PaginationDirection from indexer_testing
+pub use indexer_testing::PaginationDirection;
 
-fn build_actix_app(
+// Re-export query modules from indexer_client for use in tests
+pub use indexer_client::{
+    Accounts, Blocks, Events, Messages, Transactions, Transfers, accounts as accounts_query,
+    blocks as blocks_query, events as events_query, messages as messages_query,
+    transactions as transactions_query, transfers as transfers_query,
+};
+
+mod accounts;
+mod candles;
+mod grug;
+mod metrics;
+mod pair_stats;
+mod shutdown;
+mod trades;
+mod transfers;
+mod users;
+
+pub fn build_actix_app(
     dango_httpd_context: dango_httpd::context::Context,
 ) -> App<
     impl ServiceFactory<
@@ -41,25 +51,83 @@ fn build_actix_app(
         .configure(config_app(dango_httpd_context, graphql_schema))
 }
 
-async fn paginate_models<R>(
-    dango_httpd_context: dango_httpd::context::Context,
-    graphql_query: &str,
-    name: &str,
-    sort_by: &str,
-    first: Option<i32>,
-    last: Option<i32>,
-) -> anyhow::Result<Vec<R>>
+/// Helper function to make GraphQL queries in tests.
+///
+/// This reduces boilerplate by handling:
+/// - Building the dango actix app from context
+/// - Delegating to indexer_testing::call_graphql_query
+///
+/// # Example
+/// ```ignore
+/// let response = call_graphql_query::<_, accounts::ResponseData>(
+///     dango_httpd_context,
+///     Accounts::build_query(accounts::Variables::default()),
+/// ).await?;
+/// ```
+pub async fn call_graphql_query<V, R>(
+    context: dango_httpd::context::Context,
+    query_body: graphql_client::QueryBody<V>,
+) -> anyhow::Result<graphql_client::Response<R>>
 where
-    R: serde::de::DeserializeOwned,
+    V: Serialize,
+    R: DeserializeOwned,
 {
-    paginate_models_with_app_builder(
-        dango_httpd_context,
-        graphql_query,
-        name,
-        sort_by,
-        first,
-        last,
-        build_actix_app,
-    )
-    .await
+    let app = build_actix_app(context);
+    indexer_testing::call_graphql_query(app, query_body).await
 }
+
+// Generate pagination test helpers using the shared macro from indexer_testing
+indexer_testing::impl_paginate!(
+    paginate_accounts,
+    dango_httpd::context::Context,
+    Accounts,
+    accounts_query,
+    accounts,
+    AccountsAccountsNodes,
+    build_actix_app
+);
+indexer_testing::impl_paginate!(
+    paginate_transfers,
+    dango_httpd::context::Context,
+    Transfers,
+    transfers_query,
+    transfers,
+    TransfersTransfersNodes,
+    build_actix_app
+);
+indexer_testing::impl_paginate!(
+    paginate_transactions,
+    dango_httpd::context::Context,
+    Transactions,
+    transactions_query,
+    transactions,
+    TransactionsTransactionsNodes,
+    build_actix_app
+);
+indexer_testing::impl_paginate!(
+    paginate_blocks,
+    dango_httpd::context::Context,
+    Blocks,
+    blocks_query,
+    blocks,
+    BlocksBlocksNodes,
+    build_actix_app
+);
+indexer_testing::impl_paginate!(
+    paginate_events,
+    dango_httpd::context::Context,
+    Events,
+    events_query,
+    events,
+    EventsEventsNodes,
+    build_actix_app
+);
+indexer_testing::impl_paginate!(
+    paginate_messages,
+    dango_httpd::context::Context,
+    Messages,
+    messages_query,
+    messages,
+    MessagesMessagesNodes,
+    build_actix_app
+);

@@ -9,7 +9,12 @@ use {
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
-    std::{net::TcpListener, sync::Arc, time::Duration},
+    std::{
+        collections::HashSet,
+        net::TcpListener,
+        sync::{Arc, LazyLock, Mutex as StdMutex, mpsc},
+        time::Duration,
+    },
     tokio::{net::TcpStream, sync::Mutex},
 };
 pub use {
@@ -34,6 +39,30 @@ pub async fn run(
         test_opt,
         genesis_opt,
         database_url,
+        None,
+        |_, _, _, _, _| {},
+    )
+    .await
+}
+
+/// Run the mock server with port 0 and send the actual bound port via a channel.
+/// This is useful for tests that need to run in parallel without port conflicts.
+pub async fn run_with_port_sender(
+    block_creation: BlockCreation,
+    cors_allowed_origin: Option<String>,
+    test_opt: TestOption,
+    genesis_opt: GenesisOption,
+    database_url: Option<String>,
+    port_sender: mpsc::Sender<u16>,
+) -> Result<(), Error> {
+    run_with_callback(
+        0, // Let the OS allocate an available port
+        block_creation,
+        cors_allowed_origin,
+        test_opt,
+        genesis_opt,
+        database_url,
+        Some(port_sender),
         |_, _, _, _, _| {},
     )
     .await
@@ -46,6 +75,7 @@ pub async fn run_with_callback<C>(
     test_opt: TestOption,
     genesis_opt: GenesisOption,
     database_url: Option<String>,
+    port_sender: Option<mpsc::Sender<u16>>,
     callback: C,
 ) -> Result<(), Error>
 where
@@ -149,18 +179,38 @@ where
         cors_allowed_origin,
         dango_httpd_context,
         shutdown_flag,
+        port_sender,
     )
     .await
 }
 
+/// Tracks ports already allocated to avoid collisions within this process.
+static USED_PORTS: LazyLock<StdMutex<HashSet<u16>>> =
+    LazyLock::new(|| StdMutex::new(HashSet::new()));
+
+/// Get an available port for the mock server.
+///
+/// Uses OS-assigned port allocation (binding to port 0) and tracks used ports
+/// to avoid collisions when multiple tests request ports in the same process.
 pub fn get_mock_socket_addr() -> u16 {
-    TcpListener::bind("127.0.0.1:0")
-        .expect("failed to bind to random port")
-        .local_addr()
-        .expect("failed to get local address")
-        .port()
+    let mut used = USED_PORTS.lock().unwrap();
+
+    loop {
+        let port = TcpListener::bind("127.0.0.1:0")
+            .expect("failed to bind to random port")
+            .local_addr()
+            .expect("failed to get local address")
+            .port();
+
+        if used.insert(port) {
+            return port;
+        }
+    }
 }
 
+/// Wait for the server to be ready to accept connections.
+/// CI measurements showed server starts in ~50ms (2 attempts).
+/// Using 30 attempts * 100ms = 3s max timeout for safety margin.
 pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
     for attempt in 1..=30 {
         match TcpStream::connect(format!("127.0.0.1:{port}")).await {
@@ -169,11 +219,10 @@ pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
                 return Ok(());
             },
             Err(_) => {
-                tracing::debug!("Attempt {attempt}: server not ready yet...");
-                tokio::time::sleep(Duration::from_millis(50)).await;
+                tokio::time::sleep(Duration::from_millis(100)).await;
             },
         }
     }
 
-    bail!("server failed to start on port {port} after 30 attempts")
+    bail!("server failed to start on port {port} after 30 attempts (3s)")
 }

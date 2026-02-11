@@ -1,14 +1,3 @@
-# Delete existing
-# - name: Stop and remove old Postgres container
-#   community.docker.docker_container:
-#     name: "{{ container_name }}"
-#     state: absent
-#
-# - name: ✂️ Delete host data directory so Postgres re-initializes
-#   ansible.builtin.file:
-#     path: "{{ data_dir }}"
-#     state: absent
-
 - name: Abort if DB password is empty
   assert:
     that:
@@ -53,10 +42,6 @@
   loop:
     - postgresql.conf
     - init.sql
-
-- name: Create postgres network
-  docker_network:
-    name: postgres
 
 - name: Pre-pull images (avoid downtime while pulling)
   community.docker.docker_image:

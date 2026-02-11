@@ -3,7 +3,6 @@ import {
   createContext,
   ensureErrorMessage,
   ExpandOptions,
-  IconDango,
   IconWallet,
   useApp,
 } from "@left-curve/applets-kit";
@@ -14,6 +13,7 @@ import { AuthOptions } from "./AuthOptions";
 import { EmailCredential } from "./EmailCredential";
 import { SocialCredential } from "./SocialCredential";
 import { PasskeyCredential } from "./PasskeyCredential";
+import { DangoLogo } from "../foundation/DangoLogo";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
@@ -46,7 +46,7 @@ export const Signup: React.FC<SignupProps> = ({ goTo, onFinish }) => {
         <div className="flex items-center justify-center gap-8 flex-col w-full">
           {state.screen !== "deposit" ? (
             <div className="flex flex-col gap-7 items-center justify-center w-full">
-              <IconDango className="w-[60px] h-[60px]" />
+              <DangoLogo className="h-[60px]" />
               <div className="flex flex-col gap-3 items-center justify-center text-center">
                 <h1 className="h2-heavy">{m["signup.title"]()}</h1>
                 <Header />

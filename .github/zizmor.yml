@@ -1,0 +1,17 @@
+rules:
+  cache-poisoning:
+    ignore:
+      # False positive: setup-node does not enable caching by default.
+      # The built-in cache was removed; explicit cache/restore + cache/save
+      # (push-only) is used instead.
+      - portal-deployment.yaml
+  self-hosted-runner:
+    ignore:
+      # Self-hosted runners are intentionally used for builds and
+      # deployments. The zizmor audit in rust.yml gates these jobs.
+      - rust.yml
+      - cometbft.yml
+      - hyperlane.yml
+      - faucet.yml
+      - portal-deployment.yaml
+      - cleanup-pr.yaml

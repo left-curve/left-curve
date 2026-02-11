@@ -11,12 +11,14 @@
     url: https://download.docker.com/linux/debian/gpg
     dest: /usr/share/keyrings/docker.gpg
     mode: '0644'
+    force: true
 
-- name: Add Docker APT repo
+- name: Add Docker APT repo with signed-by
   become: true
   apt_repository:
-    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian {{ ansible_facts['distribution_release'] }} stable"
     filename: docker
+    update_cache: true
 
 - name: Update and upgrade apt packages
   become: true
@@ -36,7 +38,7 @@
   become: true
   user:
     append: true
-    name: '{{ ansible_facts['env']['USER'] }}'
+    name: "{{ ansible_facts['env']['USER'] }}"
     groups:
       - docker
 
@@ -63,21 +65,31 @@
     path: /var/run/docker.sock
     mode: '0666'
 
-- name: Ensure systemd override dir for Docker
+- name: Ensure systemd override dir for Docker service
+  become: true
   ansible.builtin.file:
     path: /etc/systemd/system/docker.service.d
     state: directory
     mode: "0755"
 
-- name: Set Docker LimitNOFILE
+- name: Configure Docker service systemd override
+  become: true
   ansible.builtin.copy:
     dest: /etc/systemd/system/docker.service.d/override.conf
     mode: "0644"
     content: |
+      [Unit]
+      After=network-online.target wg-quick@wg0.service tailscaled.service
+      Wants=network-online.target wg-quick@wg0.service
+      Requires=wg-quick@wg0.service tailscaled.service
+
       [Service]
       LimitNOFILE=200000
+      ExecStartPre=/bin/sh -c 'until tailscale status --peers=false 2>/dev/null | grep -q "^100\\."; do sleep 1; done'
+      ExecStartPre=/bin/sh -c 'until ip addr show wg0 2>/dev/null | grep -q "inet 10\\.99\\."; do sleep 1; done'
 
 - name: Set Docker default ulimits
+  become: true
   ansible.builtin.copy:
     dest: /etc/docker/daemon.json
     mode: "0644"
@@ -89,10 +101,20 @@
       }
 
 - name: Reload systemd
-  command: systemctl daemon-reload
-  changed_when: false
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
 
-- name: Ensure Docker running
-  service:
+- name: Ensure Docker running and enabled on boot
+  become: true
+  ansible.builtin.service:
     name: docker
     state: started
+    enabled: true
+
+- name: Ensure containerd enabled on boot
+  become: true
+  ansible.builtin.service:
+    name: containerd
+    state: started
+    enabled: true

@@ -1,4 +1,5 @@
 import { useBalances, usePrices } from "@left-curve/store";
+import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { type Account, AccountType, type AccountTypes } from "@left-curve/dango/types";
@@ -10,6 +11,7 @@ import {
   IconButton,
   IconChevronDownFill,
   IconClose,
+  Modals,
   TextCopy,
   TruncateText,
   twMerge,
@@ -38,6 +40,7 @@ type AccountCardProps = {
   balance: string;
   balanceChange?: string;
   isSelectorActive?: boolean;
+  isUserActive: boolean;
   onTriggerAction?: () => void;
 };
 
@@ -47,9 +50,11 @@ const AccountCard: React.FC<AccountCardProps> = ({
   balanceChange,
   onTriggerAction,
   isSelectorActive,
+  isUserActive,
 }) => {
   const { address, type } = account;
   const name = `${m["common.account"]()} #${account?.index}`;
+  const { showModal } = useApp();
 
   const { bgColor, badge, img, imgClassName, text } = AccountCardOptions[type];
 
@@ -58,6 +63,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
       className={twMerge(
         "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 text-ink-secondary-700",
         bgColor,
+        !isUserActive && "opacity-50",
       )}
     >
       <img
@@ -90,9 +96,14 @@ const AccountCard: React.FC<AccountCardProps> = ({
         ) : null}
       </AnimatePresence>
       <div className="flex flex-col relative z-10">
-        <div className="flex gap-1 items-center">
+        <div className="flex gap-1 items-center justify-between">
           <p className="exposure-m-italic capitalize">{name}</p>
-          <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
+          <Badge
+            text={isUserActive ? text : "Inactive"}
+            color={isUserActive ? badge : "gray"}
+            className="h-fit capitalize"
+            size="s"
+          />
         </div>
         <div className="flex gap-1 items-center">
           <TruncateText
@@ -101,7 +112,11 @@ const AccountCard: React.FC<AccountCardProps> = ({
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
+          <TextCopy
+            copyText={address}
+            className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+            onCopy={() => showModal(Modals.AddressWarning)}
+          />
         </div>
       </div>
       <div className="flex gap-2 items-center relative z-10">
@@ -127,7 +142,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
 
   const { data: balances = {} } = useBalances({ address });
   const { calculateBalance } = usePrices();
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const totalBalance = calculateBalance(balances, {
@@ -155,7 +170,11 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
               start={4}
               end={4}
             />
-            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
+            <TextCopy
+              copyText={address}
+              className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
+              onCopy={() => showModal(Modals.AddressWarning)}
+            />
           </div>
         </div>
         <div className="flex flex-col gap-1 items-end">

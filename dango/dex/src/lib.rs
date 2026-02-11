@@ -11,9 +11,6 @@ pub use {cron::*, execute::*, query::*, state::*};
 /// If an oracle price is older than this, it is not used for the logics in this contract.
 pub const MAX_ORACLE_STALENESS: grug::Duration = grug::Duration::from_millis(500);
 
-/// Maximum age of volume data to store.
-pub const MAX_VOLUME_AGE: grug::Duration = grug::Duration::from_weeks(3);
-
 /// The minimum amount of LP tokens that can exist for a pool with liquidity.
 /// This are minted to and permanently locked in the DEX contract itself upon
 /// the first liquidity provision.

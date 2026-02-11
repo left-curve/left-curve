@@ -1,0 +1,26 @@
+query Trades($after: String, $first: Int, $addr: String) {
+  trades(after: $after, first: $first, addr: $addr) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      addr
+      quoteDenom
+      baseDenom
+      direction
+      timeInForce
+      blockHeight
+      createdAt
+      filledBase
+      filledQuote
+      refundBase
+      refundQuote
+      feeBase
+      feeQuote
+      clearingPrice
+    }
+  }
+}

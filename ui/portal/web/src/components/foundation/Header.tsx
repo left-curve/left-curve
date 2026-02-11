@@ -1,6 +1,12 @@
 import { useAccount } from "@left-curve/store";
 import { useRouterState } from "@tanstack/react-router";
-import { IconWalletWithCross, Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import {
+  IconGift,
+  IconWalletWithCross,
+  Modals,
+  useApp,
+  useMediaQuery,
+} from "@left-curve/applets-kit";
 
 import { Button, IconButton, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
@@ -16,7 +22,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
-  const { account, isConnected, userStatus } = useAccount();
+  const { account, isConnected, isUserActive } = useAccount();
 
   const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
@@ -63,24 +69,34 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             />
           ) : null}
           {!isSearchBarVisible ? (
-            <IconButton
-              onClick={() =>
-                isConnected ? setSidebarVisibility(true) : showModal(Modals.Authenticate)
-              }
-              variant="utility"
-              size="lg"
-              type="button"
-              className="shadow-account-card lg:hidden"
-            >
-              <TxIndicator
-                icon={
-                  <IconWalletWithCross isCrossVisible={isConnected && userStatus !== "active"} />
+            <div className="flex gap-2 lg:hidden">
+              <IconButton
+                as={Link}
+                to="/points"
+                size="lg"
+                type="button"
+                className="rounded-lg shadow-account-card"
+              >
+                <IconGift />
+              </IconButton>
+              <IconButton
+                onClick={() =>
+                  isConnected ? setSidebarVisibility(true) : showModal(Modals.Authenticate)
                 }
-              />
-            </IconButton>
+                variant="utility"
+                size="lg"
+                type="button"
+                className="shadow-account-card lg:hidden"
+              >
+                <TxIndicator icon={<IconWalletWithCross isCrossVisible={!isUserActive} />} />
+              </IconButton>
+            </div>
           ) : null}
         </div>
-        <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
+        <div className="hidden lg:flex gap-4 items-center justify-end order-2 lg:order-3">
+          <Button as={Link} to="/points" size="lg" className="rounded-lg">
+            {m["points.campaign"]()}
+          </Button>
           <Button
             dng-connect-button="true"
             variant="utility"
@@ -91,10 +107,12 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           >
             {isConnected ? (
               <div className="flex items-center justify-center gap-2">
-                <TxIndicator
-                  icon={<IconWalletWithCross isCrossVisible={isConnected && !userStatus} />}
-                />
-                <span className="italic font-exposure font-bold capitalize">
+                <TxIndicator icon={<IconWalletWithCross isCrossVisible={!isUserActive} />} />
+                <span
+                  className={twMerge("italic font-exposure font-bold capitalize", {
+                    "text-ink-placeholder-400": !isUserActive,
+                  })}
+                >
                   {m["common.account"]()} #{account?.index}
                 </span>
               </div>

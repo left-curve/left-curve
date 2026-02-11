@@ -1,15 +1,13 @@
 use {
-    super::build_actix_app,
-    assert_json_diff::*,
+    super::call_graphql_query,
     assertor::*,
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_user_public_key, create_user_and_account,
         setup_test_with_indexer,
     },
+    graphql_client::GraphQLQuery,
     grug_app::Indexer,
-    indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
-    serde_json::json,
-    std::collections::HashMap,
+    indexer_client::{User, Users, user, users},
 };
 
 #[tokio::test(flavor = "multi_thread")]
@@ -31,49 +29,29 @@ async fn query_user() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Users {
-      users {
-          nodes {
-            userIndex
-            publicKeys { publicKey keyHash }
-          }
-          edges { node { userIndex publicKeys { publicKey keyHash } }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "users",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
-
-                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
-                    app,
-                    request_body,
+                let response = call_graphql_query::<_, users::ResponseData>(
+                    dango_httpd_context,
+                    Users::build_query(users::Variables::default()),
                 )
                 .await?;
 
-                let expected_data = serde_json::json!({
-                    "userIndex": user.user_index(),
-                    "publicKeys": [
-                        {
-                            "publicKey": user.first_key().to_string(),
-                            "keyHash": user.first_key_hash().to_string(),
-                        },
-                    ],
-                });
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
 
-                assert_json_include!(actual: response.data.edges[0].node, expected: expected_data);
+                assert_that!(data.users.nodes).is_not_empty();
+                let first_user = &data.users.nodes[0];
+
+                assert_that!(first_user.user_index).is_equal_to(user.user_index() as i64);
+                assert_that!(first_user.public_keys).is_not_empty();
+                assert_that!(first_user.public_keys[0].public_key.as_str())
+                    .is_equal_to(user.first_key().to_string().as_str());
+                assert_that!(first_user.public_keys[0].key_hash.as_str())
+                    .is_equal_to(user.first_key_hash().to_string().as_str());
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -103,73 +81,39 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Users {
-      users {
-          nodes {
-            userIndex
-            publicKeys { publicKey keyHash }
-          }
-          edges { node { userIndex publicKeys { publicKey keyHash } }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "users",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
-
-                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
-                    app,
-                    request_body,
+                let response = call_graphql_query::<_, users::ResponseData>(
+                    dango_httpd_context,
+                    Users::build_query(users::Variables::default()),
                 )
                 .await?;
 
-                let expected_data = serde_json::json!({
-                    "userIndex": test_account.user_index(),
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+
+                assert_that!(data.users.nodes).is_not_empty();
+                let first_user = &data.users.nodes[0];
+
+                assert_that!(first_user.user_index).is_equal_to(test_account.user_index() as i64);
+
+                // Check the public keys (order is not guaranteed)
+                let public_keys = &first_user.public_keys;
+                assert_that!(public_keys.len()).is_equal_to(2);
+
+                let has_new_key = public_keys
+                    .iter()
+                    .any(|p| p.public_key == pk.to_string() && p.key_hash == key_hash.to_string());
+                assert_that!(has_new_key).is_true();
+
+                let has_original_key = public_keys.iter().any(|p| {
+                    p.public_key == test_account.first_key().to_string()
+                        && p.key_hash == test_account.first_key_hash().to_string()
                 });
-
-                assert_json_include!(actual: response.data.edges[0].node, expected: expected_data);
-
-                let received_public_keys: Vec<HashMap<String, String>> = serde_json::from_value(
-                    response.data.edges[0]
-                        .node
-                        .as_object()
-                        .and_then(|o| o.get("publicKeys"))
-                        .unwrap()
-                        .clone(),
-                )
-                .unwrap();
-
-                // Manually check the public keys because the order is not guaranteed
-
-                assert_that!(received_public_keys).contains(
-                    serde_json::from_value::<HashMap<String, String>>(
-                        serde_json::json!({"publicKey": pk.to_string(),
-                            "keyHash": key_hash.to_string(),}),
-                    )
-                    .unwrap()
-                    .clone(),
-                );
-
-                assert_that!(received_public_keys).contains(
-                    serde_json::from_value::<HashMap<String, String>>(
-                        serde_json::json!({"publicKey": test_account.first_key().to_string(),
-                            "keyHash": test_account.first_key_hash().to_string()}),
-                    )
-                    .unwrap()
-                    .clone(),
-                );
+                assert_that!(has_original_key).is_true();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -197,44 +141,31 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Keys($userIndex: Int!) {
-      user(userIndex: $userIndex) {
-        publicKeys { id keyHash publicKey keyType createdBlockHeight createdAt }
-        userIndex
-      }
-    }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "user",
-        query: graphql_query,
-        variables: json!({ "userIndex": test_account.user_index })
-            .as_object()
-            .unwrap()
-            .to_owned(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
+                let variables = user::Variables {
+                    user_index: test_account.user_index() as i64,
+                };
 
-                let response =
-                    call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
+                let response = call_graphql_query::<_, user::ResponseData>(
+                    dango_httpd_context,
+                    User::build_query(variables),
+                )
+                .await?;
 
-                let expected_data = serde_json::json!({
-                    "userIndex": test_account.user_index(),
-                    "publicKeys": [
-                        {
-                            "publicKey": test_account.first_key().to_string(),
-                        }
-                    ]
-                });
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
 
-                assert_json_include!(actual: response.data, expected: expected_data);
+                assert_that!(data.user).is_some();
+                let user_data = data.user.unwrap();
+
+                assert_that!(user_data.user_index).is_equal_to(test_account.user_index() as i64);
+                assert_that!(user_data.public_keys).is_not_empty();
+                assert_that!(user_data.public_keys[0].public_key.as_str())
+                    .is_equal_to(test_account.first_key().to_string().as_str());
 
                 Ok::<(), anyhow::Error>(())
             })

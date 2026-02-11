@@ -116,7 +116,7 @@ type AccountMenuProps = {
 
 const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
   const { isSidebarVisible } = useApp();
-  const { account } = useAccount();
+  const { account, isUserActive } = useAccount();
   const { history } = useRouter();
   const { totalBalance } = useAccountMenu();
   const [isAccountSelectorActive, setAccountSelectorActive] = useState(false);
@@ -151,6 +151,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
               account={account}
               balance={totalBalance}
               isSelectorActive={isAccountSelectorActive}
+              isUserActive={isUserActive}
             />
           </motion.div>
         </AnimatePresence>
