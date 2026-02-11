@@ -251,11 +251,15 @@
 
 ### 3.2 [MEDIUM] Redundant `decompose_fill` Calls
 
-`handle_submit_order` calls `decompose_fill` at step 1 (line 984), then `execute_fill` calls it again internally (line 1111). Same redundancy in `try_fill_limit_order`. Pass the decomposition as parameters instead.
+**Fixed.** `execute_fill` now takes `closing_size` and `opening_size` as parameters; callers pass the already-computed decomposition.
+
+~~`handle_submit_order` calls `decompose_fill` at step 1 (line 984), then `execute_fill` calls it again internally (line 1111). Same redundancy in `try_fill_limit_order`. Pass the decomposition as parameters instead.~~
 
 ### 3.3 [LOW] Liquidation Iterates Positions Twice
 
-`handle_force_close` iterates positions once for `total_notional` (lines 1774-1777) and once to close them (lines 1797-1808). Combine into a single loop.
+**Fixed.** Merged the two position loops in `handle_force_close` into a single loop that computes `total_notional` while closing positions.
+
+~~`handle_force_close` iterates positions once for `total_notional` (lines 1774-1777) and once to close them (lines 1797-1808). Combine into a single loop.~~
 
 ### 3.4 [LOW] Lazy Funding Accrual Could Be Eagerly Batched
 
@@ -265,7 +269,9 @@
 
 ### 3.5 [LOW] Margin Estimated at `target_price`, Charged at `exec_price`
 
-In `handle_submit_order` step 5, the margin check uses `target_price` (worst-case) for the estimated fee, but the actual fee uses the (typically better) `exec_price`. The overestimate is conservative and safe, but may reject valid orders that would have had sufficient margin at the actual execution price.
+**Dismissed.** No longer applicable; the current spec uses `exec_price` for both the margin check and the actual fee.
+
+~~In `handle_submit_order` step 5, the margin check uses `target_price` (worst-case) for the estimated fee, but the actual fee uses the (typically better) `exec_price`. The overestimate is conservative and safe, but may reject valid orders that would have had sufficient margin at the actual execution price.~~
 
 ### 3.6 [LOW] Limit Order Book Scanned Every Block
 

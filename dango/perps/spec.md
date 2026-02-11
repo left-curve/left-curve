@@ -1138,7 +1138,10 @@ fn handle_submit_order(
     }
 
     // Step 7: Execute fill and collect trading fee.
-    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
+    // After OI trimming, closing_size is unchanged but opening may have been
+    // discarded. Recompute the fill's opening portion.
+    let fill_opening = fill_size - closing_size;
+    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, fill_opening);
     collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate);
 }
 
@@ -1221,12 +1224,10 @@ fn execute_fill(
     pair_id: PairId,
     fill_size: Dec,
     exec_price: Udec,
+    closing_size: Dec,
+    opening_size: Dec,
 ) {
     let position = user_state.positions.get_mut(&pair_id);
-
-    // Decompose into closing and opening portions
-    let user_pos = position.map(|p| p.size).unwrap_or(Dec::ZERO);
-    let (closing_size, opening_size) = decompose_fill(fill_size, user_pos);
 
     // Settle accrued funding and price PnL for existing position
     if let Some(pos) = position {
@@ -1566,7 +1567,10 @@ fn fill_limit_order(
     }
 
     // Step 7: Execute fill (may be full order or closing-only).
-    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price);
+    // After OI trimming, closing_size is unchanged but opening may have been
+    // discarded. Recompute the fill's opening portion.
+    let fill_opening = fill_size - closing_size;
+    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price, closing_size, fill_opening);
     collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate);
 
     // Remove order after fill (all-or-nothing: no partial orders remain)
@@ -1901,14 +1905,7 @@ fn handle_force_close(
         "user is not liquidatable",
     );
 
-    // Step 4: Compute total notional for liquidation fee calculation.
-    let mut total_notional = Udec::ZERO;
-    for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_prices[&pair_id];
-        total_notional += abs(position.size) * oracle_price;
-    }
-
-    // Step 5: Close all positions at skew-adjusted prices.
+    // Steps 4–5: Close all positions and compute total notional in a single loop.
     //
     // Each position is closed by filling the opposite size. We use
     // skew-adjusted execution prices (not oracle) so that liquidation
@@ -1925,6 +1922,7 @@ fn handle_force_close(
     //
     // We collect `pair_ids` first to avoid borrowing conflicts.
     let pair_ids: Vec<PairId> = user_state.positions.keys().cloned().collect();
+    let mut total_notional = Udec::ZERO;
 
     for pair_id in pair_ids {
         let pair_state = pair_states.get_mut(&pair_id);
@@ -1932,12 +1930,14 @@ fn handle_force_close(
         let oracle_price = oracle_prices[&pair_id];
         let position_size = user_state.positions[&pair_id].size;
 
+        total_notional += abs(position_size) * oracle_price;
+
         // Close by filling the exact opposite of the current position.
         let fill_size = -position_size;
         let skew = pair_state.long_oi + pair_state.short_oi;
         let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
-        execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
+        execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO);
     }
 
     // Step 6: Pay liquidation fee to the vault.
@@ -2025,7 +2025,7 @@ fn handle_deleverage(
     let skew = pair_state.long_oi + pair_state.short_oi;
     let exec_price = compute_exec_price(oracle_price, skew, fill_size, &pair_params);
 
-    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price);
+    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO);
 
     // No liquidation fee — the user is not at fault.
 }
