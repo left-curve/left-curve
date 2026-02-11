@@ -35,10 +35,7 @@ where
                 GenericResult::Err(error_backtrace::BacktracedError::new(format!(
                     "failed to serialize response for host: {err}"
                 )));
-            match fallback.to_borsh_vec() {
-                Ok(bytes) => bytes,
-                Err(_) => vec![],
-            }
+            fallback.to_borsh_vec().unwrap_or_default()
         },
     }
 }
