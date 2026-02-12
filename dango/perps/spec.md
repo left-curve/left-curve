@@ -609,7 +609,7 @@ fn compute_used_margin(
         // Used margin = |size| * price * initial_margin_ratio
         let margin = abs(position.size) * oracle_price * pair_params.initial_margin_ratio;
 
-        total += floor(margin);
+        total += ceil(margin); // Round up (conservative, disadvantage to user)
     }
 
     total
@@ -644,7 +644,7 @@ fn compute_projected_used_margin(
 
         let margin = abs(size) * oracle_price * pair_params.initial_margin_ratio;
 
-        total += floor(margin);
+        total += ceil(margin);
     }
 
     // If the projected pair is not among existing positions, add it.
@@ -653,7 +653,7 @@ fn compute_projected_used_margin(
         let pair_params = pair_params_map[&projected_pair_id];
         let margin = abs(projected_size) * oracle_price * pair_params.initial_margin_ratio;
 
-        total += floor(margin);
+        total += ceil(margin);
     }
 
     total
@@ -1407,7 +1407,7 @@ fn settle_pnl(
         user_state.margin += amount;
     } else if pnl < Dec::ZERO {
         // User loses: transfer from user to vault
-        let loss = floor(-pnl);
+        let loss = ceil(-pnl);
         let user_pays = min(loss, user_state.margin);
         // Bad debt (loss - user_pays) is absorbed by the vault - they simply
         // don't receive payment for it. Proper liquidation should prevent this.
@@ -1984,7 +1984,7 @@ fn handle_force_close(
     //
     // After all positions are closed, user_state.margin reflects the
     // user's remaining balance (could be zero if they had bad debt).
-    let fee = floor(total_notional * params.liquidation_fee_rate);
+    let fee = ceil(total_notional * params.liquidation_fee_rate);
     let actual_fee = min(fee, user_state.margin);
 
     user_state.margin -= actual_fee;
