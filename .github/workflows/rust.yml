@@ -1480,6 +1480,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FRONTEND_URL: "http://localhost:5081"
+          PLAYWRIGHT_EXTERNAL_SERVER: "1"
         run: |
           pnpm i --frozen-lockfile
           pnpm exec playwright install --only-shell chromium

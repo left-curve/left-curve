@@ -97,7 +97,9 @@ test.describe("Convert Applet", () => {
     });
 
     test.afterAll(async () => {
-      await sharedPage.close();
+      if (sharedPage) {
+        await sharedPage.close();
+      }
     });
 
     test("Swap button is visible instead of Log In", async () => {

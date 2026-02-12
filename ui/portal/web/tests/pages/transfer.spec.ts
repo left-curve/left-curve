@@ -42,7 +42,9 @@ test.describe("Transfer Applet", () => {
     });
 
     test.afterAll(async () => {
-      await sharedPage.close();
+      if (sharedPage) {
+        await sharedPage.close();
+      }
     });
 
     test("both send and receive tabs are visible", async () => {

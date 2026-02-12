@@ -222,7 +222,9 @@ test.describe("Settings Page", () => {
     });
 
     test.afterAll(async () => {
-      await sharedPage.close();
+      if (sharedPage) {
+        await sharedPage.close();
+      }
     });
 
     test("username section shows User #number format", async () => {
