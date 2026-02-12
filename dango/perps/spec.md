@@ -2120,7 +2120,6 @@ fn compute_vault_unrealized_funding(
     pair_states: &Map<PairId, PairState>,
     pair_params_map: &Map<PairId, PairParams>,
     oracle_prices: &Map<PairId, Udec>,
-    usdt_price: Udec,
     current_time: Timestamp,
 ) -> Dec {
     let mut unrealized_funding = Dec::ZERO;
@@ -2201,10 +2200,14 @@ Suppose the vault receives `amount_received` units of USDT from user:
 ```rust
 fn handle_deposit_liquidity(
     state: &mut State,
+    pair_states: &Map<PairId, PairState>,
+    pair_params_map: &Map<PairId, PairParams>,
+    oracle_prices: &Map<PairId, Udec>,
     user_state: &mut UserState,
     amount_received: Uint,
     min_shares_to_mint: Option<Uint>,
     usdt_price: Udec,
+    current_time: Timestamp,
 ) {
     ensure!(amount_received > 0, "nothing to do");
 
@@ -2219,7 +2222,9 @@ fn handle_deposit_liquidity(
     // When the vault is non-empty, the virtual offsets are negligible relative
     // to real supply/equity, so pricing is effectively unchanged.
     let effective_supply = state.vault_share_supply + VIRTUAL_SHARES;
-    let effective_equity = compute_vault_equity(state, usdt_price) + VIRTUAL_ASSETS;
+    let effective_equity = compute_vault_equity(
+        state, pair_states, pair_params_map, oracle_prices, usdt_price, current_time,
+    ) + VIRTUAL_ASSETS;
 
     ensure!(
         effective_equity > 0,
@@ -2252,6 +2257,9 @@ Suppose user requests to burn `shares_to_burn` units of shares:
 ```rust
 fn handle_unlock_liquidity(
     state: &mut State,
+    pair_states: &Map<PairId, PairState>,
+    pair_params_map: &Map<PairId, PairParams>,
+    oracle_prices: &Map<PairId, Udec>,
     user_state: &mut UserState,
     shares_to_burn: Uint,
     usdt_price: Udec,
@@ -2261,7 +2269,9 @@ fn handle_unlock_liquidity(
     ensure!(user_state.vault_shares >= shares_to_burn, "can't burn more than what you have");
 
     // Similarly to deposit, first compute the vault's equity.
-    let vault_equity = compute_vault_equity(state, usdt_price);
+    let vault_equity = compute_vault_equity(
+        state, pair_states, pair_params_map, oracle_prices, usdt_price, current_time,
+    );
 
     ensure!(
         vault_equity > 0,
