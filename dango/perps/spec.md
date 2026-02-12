@@ -249,7 +249,7 @@ struct PairParams {
     /// I.e. the following must be satisfied:
     ///
     /// - |pair_state.long_oi| <= pair_params.max_abs_oi
-    /// - |pair_state.short_oi| <= pair_params.max_abs_oi
+    /// - pair_state.short_oi <= pair_params.max_abs_oi
     ///
     /// This constraint does not apply to reducing positions.
     pub max_abs_oi: Udec,
@@ -334,8 +334,8 @@ struct PairState {
 
     /// The sum of the sizes of all short positions.
     ///
-    /// Should always be non-positive.
-    pub short_oi: Dec,
+    /// Stored as a non-negative absolute value.
+    pub short_oi: Udec,
 
     /// Current instantaneous funding rate (fraction per day).
     ///
@@ -784,10 +784,8 @@ The pricing offered by the counterparty vault depends not only on the oracle pri
 **Skew** is defined as:
 
 ```rust
-let skew = pair_state.long_oi + pair_state.short_oi;
+let skew = pair_state.long_oi - pair_state.short_oi;
 ```
-
-Note that `short_oi` is non-positive.
 
 - If `skew` is positive, it means all traders combined have a net long exposure, and the counterparty vault has a net short exposure. To incentivize traders to go back to neutral, the vault will offer better prices for selling, and worse price for buying.
 - If `skew` is negative, it means all traders combined have a net short exposure, and the counterparty vault has a net long exposure. To incentivize traders to go back to neutral, the vault will offer better prices for buying, and worse price for selling.
@@ -935,8 +933,8 @@ fn compute_max_opening_from_oi(
         let room = max_abs_oi - pair_state.long_oi;
         min(opening_size, room)
     } else if opening_size < 0 {
-        // Opening a short: increases |short_oi|
-        let room = max_abs_oi - pair_state.short_oi.abs();
+        // Opening a short: increases short_oi
+        let room = max_abs_oi - pair_state.short_oi;
         max(opening_size, -room)
     } else {
         0
@@ -1075,7 +1073,7 @@ fn handle_submit_order(
     // Step 1: Accrue funding before any OI changes
     accrue_funding(pair_state, pair_params, oracle_price, current_time);
 
-    let skew = pair_state.long_oi + pair_state.short_oi;
+    let skew = pair_state.long_oi - pair_state.short_oi;
     let user_pos = user_state.positions
         .get(&pair_id)
         .map(|p| p.size)
@@ -1311,7 +1309,7 @@ fn apply_fill_to_position(
 ///
 /// Pre: none.
 ///
-/// Post: OI reflects the fill; `long_oi >= 0` and `short_oi <= 0` preserved.
+/// Post: OI reflects the fill; `long_oi >= 0` and `short_oi >= 0` preserved.
 fn update_oi(
     pair_state: &mut PairState,
     opening_size: Dec,
@@ -1321,13 +1319,13 @@ fn update_oi(
     if opening_size > Dec::ZERO {
         pair_state.long_oi += opening_size;
     } else if opening_size < Dec::ZERO {
-        pair_state.short_oi += opening_size;
+        pair_state.short_oi += opening_size.abs();
     }
 
     // Closing portion decreases OI on the opposite side
     if closing_size > Dec::ZERO {
-        // Buying to close a short: short_oi becomes less negative
-        pair_state.short_oi += closing_size;
+        // Buying to close a short: short_oi decreases
+        pair_state.short_oi -= closing_size;
     } else if closing_size < Dec::ZERO {
         // Selling to close a long: long_oi decreases
         pair_state.long_oi += closing_size;
@@ -1446,7 +1444,7 @@ fn fulfill_limit_orders_for_pair(
     // Accrue funding before any OI changes
     accrue_funding(pair_state, pair_params, oracle_price, current_time);
 
-    let mut skew = pair_state.long_oi + pair_state.short_oi;
+    let mut skew = pair_state.long_oi - pair_state.short_oi;
 
     // Create iterators for both sides. Pre-fetch the first (most competitive)
     // order from each side instead of using peekable iterators.
@@ -1650,7 +1648,7 @@ fn compute_funding_velocity(
     pair_state: &PairState,
     pair_params: &PairParams,
 ) -> Dec {
-    let skew = pair_state.long_oi + pair_state.short_oi;
+    let skew = pair_state.long_oi - pair_state.short_oi;
     (skew / pair_params.skew_scale) * pair_params.max_funding_velocity
 }
 ```
@@ -1967,7 +1965,7 @@ fn handle_force_close(
 
         // Close by filling the exact opposite of the current position.
         let fill_size = -position_size;
-        let skew = pair_state.long_oi + pair_state.short_oi;
+        let skew = pair_state.long_oi - pair_state.short_oi;
         let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
         execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO);
@@ -2027,11 +2025,11 @@ fn handle_deleverage(
     // Step 2: Verify vault is in distress.
     //
     // Compute total open notional across all pairs as the denominator.
-    // long_oi is non-negative, short_oi is non-positive, so
-    // (long_oi - short_oi) gives total OI for each pair.
+    // long_oi and short_oi are both non-negative, so
+    // (long_oi + short_oi) gives total OI for each pair.
     let mut total_open_notional = Udec::ZERO;
     for (pid, ps) in pair_states {
-        total_open_notional += (ps.long_oi - ps.short_oi) * oracle_prices[&pid];
+        total_open_notional += (ps.long_oi + ps.short_oi) * oracle_prices[&pid];
     }
 
     let vault_equity = compute_vault_equity(
@@ -2055,7 +2053,7 @@ fn handle_deleverage(
     // execution across all fill types.
     let position_size = user_state.positions[&pair_id].size;
     let fill_size = -position_size;
-    let skew = pair_state.long_oi + pair_state.short_oi;
+    let skew = pair_state.long_oi - pair_state.short_oi;
     let exec_price = compute_exec_price(oracle_price, skew, fill_size, &pair_params);
 
     execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO);
@@ -2105,7 +2103,7 @@ fn compute_vault_unrealized_pnl(
 
     for (pair_id, pair_state) in pair_states {
         let oracle_price = oracle_prices[&pair_id];
-        let skew = pair_state.long_oi + pair_state.short_oi;
+        let skew = pair_state.long_oi - pair_state.short_oi;
 
         // vault_pnl = -(total_trader_pnl)
         //           = -(oracle_price * skew - oi_weighted_entry_price)
@@ -2159,7 +2157,7 @@ fn compute_vault_unrealized_funding_for_pair(
     oracle_price: Udec,
     current_time: Timestamp,
 ) -> Dec {
-    let skew = pair_state.long_oi + pair_state.short_oi;
+    let skew = pair_state.long_oi - pair_state.short_oi;
 
     // Funding already recorded in the accumulator
     let recorded = pair_state.oi_weighted_entry_funding
