@@ -1472,7 +1472,7 @@ jobs:
           export CHAIN_ID="$(jq -r '.chain_id' configs/cometbft/config/genesis.json)"
           echo "Frontend CHAIN_ID set to $CHAIN_ID"
 
-          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml up -d --no-deps frontend
+          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml up -d --force-recreate --no-deps frontend
 
           docker compose ps
 

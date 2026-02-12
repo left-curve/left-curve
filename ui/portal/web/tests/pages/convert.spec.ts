@@ -164,26 +164,25 @@ test.describe("Convert Applet", () => {
       await sharedPage.goto("/convert");
       await waitForStorageHydration(sharedPage);
 
-      const directionToggle = sharedPage.locator(
-        'button[class*="border"]:has(svg)',
-      );
+      const directionToggle = sharedPage
+        .getByText("You swap")
+        .first()
+        .locator("xpath=ancestor::*[1]/following-sibling::button[1]");
 
-      if ((await directionToggle.count()) > 0) {
-        const labels = await sharedPage
-          .locator('[class*="diatype"]')
-          .allTextContents();
-        const initialLabels = labels.join("|");
+      await expect(directionToggle).toBeVisible();
 
-        await directionToggle.first().click();
-        await sharedPage.waitForTimeout(500);
+      const before = new URL(sharedPage.url());
+      const beforePair = `${before.searchParams.get("from")}:${before.searchParams.get("to")}`;
 
-        const newLabels = await sharedPage
-          .locator('[class*="diatype"]')
-          .allTextContents();
-        const newLabelsStr = newLabels.join("|");
+      await directionToggle.click();
 
-        expect(newLabelsStr !== initialLabels || true).toBeTruthy();
-      }
+      await expect
+        .poll(() => sharedPage.url(), { timeout: 10_000 })
+        .not.toBe(before.toString());
+
+      const after = new URL(sharedPage.url());
+      const afterPair = `${after.searchParams.get("from")}:${after.searchParams.get("to")}`;
+      expect(afterPair).not.toBe(beforePair);
     });
 
     test("entering amount triggers simulation", async () => {

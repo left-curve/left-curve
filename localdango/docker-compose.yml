@@ -43,6 +43,7 @@ services:
     ports:
       - "127.0.0.1:${DANGO_FRONTEND_PORT:-5081}:80"
     environment:
+      - CHAIN_ID=${CHAIN_ID:-localdango-1}
       - INDEXER_URL=${INDEXER_URL:-http://localhost:8080}
       - FAUCET_URL=${FAUCET_URL:-http://localhost:8082/mint}
       - QUEST_URL=${QUEST_URL:-http://localhost:8081/check_username}
