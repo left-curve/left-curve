@@ -542,6 +542,7 @@ fn handle_withdraw_margin(
     oracle_prices: &Map<PairId, Udec>,
     amount: Uint,
     current_time: Timestamp,
+    usdt_price: Udec,
 ) {
     ensure!(amount > 0, "nothing to do");
 
@@ -556,7 +557,7 @@ fn handle_withdraw_margin(
     }
 
     ensure!(
-      amount <= compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states),
+      amount <= compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states, usdt_price),
       "insufficient available margin"
     );
 
@@ -580,9 +581,10 @@ fn compute_available_margin(
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
+    usdt_price: Udec,
 ) -> Uint {
-    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
-    let used = compute_used_margin(user_state, oracle_prices, pair_params_map);
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states, usdt_price);
+    let used = compute_used_margin(user_state, oracle_prices, pair_params_map, usdt_price);
 
     // equity - used - reserved, floored at zero.
     // Equity is Dec (signed) since unrealized PnL can make it negative.
@@ -599,6 +601,7 @@ fn compute_used_margin(
     user_state: &UserState,
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
+    usdt_price: Udec,
 ) -> Uint {
     let mut total = 0;
 
@@ -609,7 +612,7 @@ fn compute_used_margin(
         // Used margin = |size| * price * initial_margin_ratio
         let margin = abs(position.size) * oracle_price * pair_params.initial_margin_ratio;
 
-        total += ceil(margin); // Round up (conservative, disadvantage to user)
+        total += ceil(margin / usdt_price); // Round up (conservative, disadvantage to user)
     }
 
     total
@@ -629,6 +632,7 @@ fn compute_projected_used_margin(
     pair_params_map: &Map<PairId, PairParams>,
     projected_pair_id: PairId,
     projected_size: Dec,
+    usdt_price: Udec,
 ) -> Uint {
     let mut total = 0;
 
@@ -644,7 +648,7 @@ fn compute_projected_used_margin(
 
         let margin = abs(size) * oracle_price * pair_params.initial_margin_ratio;
 
-        total += ceil(margin);
+        total += ceil(margin / usdt_price);
     }
 
     // If the projected pair is not among existing positions, add it.
@@ -653,7 +657,7 @@ fn compute_projected_used_margin(
         let pair_params = pair_params_map[&projected_pair_id];
         let margin = abs(projected_size) * oracle_price * pair_params.initial_margin_ratio;
 
-        total += ceil(margin);
+        total += ceil(margin / usdt_price);
     }
 
     total
@@ -689,6 +693,7 @@ fn compute_user_equity(
     user_state: &UserState,
     oracle_prices: &Map<PairId, Udec>,
     pair_states: &Map<PairId, PairState>,
+    usdt_price: Udec,
 ) -> Dec {
     let mut total_unrealized_pnl = Dec::ZERO;
     let mut total_accrued_funding = Dec::ZERO;
@@ -702,7 +707,7 @@ fn compute_user_equity(
     }
 
     // margin is Uint; convert to Dec for signed arithmetic
-    user_state.margin + total_unrealized_pnl - total_accrued_funding
+    user_state.margin + (total_unrealized_pnl - total_accrued_funding) / usdt_price
 }
 ```
 
@@ -743,6 +748,7 @@ fn compute_required_margin(
     opening_size: Dec,
     limit_price: Udec,
     pair_params: &PairParams,
+    usdt_price: Udec,
 ) -> Uint {
     if opening_size == Dec::ZERO {
         return Uint::ZERO;
@@ -750,7 +756,7 @@ fn compute_required_margin(
 
     let required_margin = abs(opening_size) * limit_price * pair_params.initial_margin_ratio;
 
-    ceil(required_margin)  // Round up to be conservative (disadvantage to user)
+    ceil(required_margin / usdt_price)  // Round up to be conservative (disadvantage to user)
 }
 ```
 
@@ -1000,14 +1006,14 @@ fn validate_notional_constraints(
 
 A trading fee is charged on every voluntary fill (market and limit orders) as a percentage of notional value. The fee is transferred from the user's margin to the vault (protocol revenue).
 
-- Fee formula: `fee = ceil(|fill_size| * exec_price * trading_fee_rate)` — rounds up to advantage the protocol, consistent with the spec's rounding principle.
+- Fee formula: `fee = ceil(|fill_size| * exec_price * trading_fee_rate / usdt_price)` — rounds up to advantage the protocol, consistent with the spec's rounding principle.
 - If the user's margin is insufficient to cover the full fee, the actual fee is capped at `user_state.margin` (same pattern as `settle_pnl` and the liquidation fee).
 - **Liquidation fills are exempt**: the existing `liquidation_fee_rate` (paid to the vault) is the only fee on liquidation. Charging both would be double-dipping. This matches Binance/OKX/dYdX/Drift where a dedicated liquidation fee replaces the normal trading fee.
 
 ```rust
 /// Compute the trading fee for a given size and price.
-fn compute_trading_fee(size: Dec, price: Udec, trading_fee_rate: Udec) -> Uint {
-    ceil(abs(size) * price * trading_fee_rate)
+fn compute_trading_fee(size: Dec, price: Udec, trading_fee_rate: Udec, usdt_price: Udec) -> Uint {
+    ceil(abs(size) * price * trading_fee_rate / usdt_price)
 }
 
 fn collect_trading_fee(
@@ -1016,8 +1022,9 @@ fn collect_trading_fee(
     fill_size: Dec,
     exec_price: Udec,
     trading_fee_rate: Udec,
+    usdt_price: Udec,
 ) -> Uint {
-    let fee = compute_trading_fee(fill_size, exec_price, trading_fee_rate);
+    let fee = compute_trading_fee(fill_size, exec_price, trading_fee_rate, usdt_price);
     let actual_fee = min(fee, user_state.margin);
 
     user_state.margin -= actual_fee;
@@ -1067,6 +1074,7 @@ fn handle_submit_order(
     kind: OrderKind,
     reduce_only: bool,
     current_time: Timestamp,
+    usdt_price: Udec,
 ) {
     ensure!(size != 0, "nothing to do");
 
@@ -1105,10 +1113,10 @@ fn handle_submit_order(
     let projected_size = user_pos + fill_size;
     let post_fill_used_margin = compute_projected_used_margin(
         user_state, oracle_prices, pair_params_map,
-        pair_id, projected_size,
+        pair_id, projected_size, usdt_price,
     );
-    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate);
-    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
+    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate, usdt_price);
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states, usdt_price);
     ensure!(
         equity - trading_fee >= post_fill_used_margin + user_state.reserved_margin,
         "insufficient margin"
@@ -1130,7 +1138,7 @@ fn handle_submit_order(
                     params, user_state, pair_params, pair_id, user_id,
                     size, limit_price, reduce_only,
                     user_pos, current_time,
-                    oracle_prices, pair_params_map, pair_states,
+                    oracle_prices, pair_params_map, pair_states, usdt_price,
                 );
 
                 return;
@@ -1139,8 +1147,8 @@ fn handle_submit_order(
     }
 
     // Step 7: Execute fill and collect trading fee.
-    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, fill_opening);
-    collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate);
+    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, fill_opening, usdt_price);
+    collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate, usdt_price);
 }
 
 /// Store the unfilled portion of a limit order for later fulfillment (GTC).
@@ -1165,6 +1173,7 @@ fn store_limit_order(
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
+    usdt_price: Udec,
 ) {
     // Enforce maximum open orders
     ensure!(
@@ -1176,12 +1185,12 @@ fn store_limit_order(
     // With reduce_only, the opening portion is zero so no margin is reserved.
     let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos_after_fill);
     let unfilled_opening = if reduce_only { Dec::ZERO } else { unfilled_opening };
-    let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params);
-    let fee_to_reserve = compute_trading_fee(unfilled_opening, limit_price, params.trading_fee_rate);
+    let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params, usdt_price);
+    let fee_to_reserve = compute_trading_fee(unfilled_opening, limit_price, params.trading_fee_rate, usdt_price);
     let reserved = margin_to_reserve + fee_to_reserve;
 
     // Check that the user has sufficient available margin to cover the reservation.
-    let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states);
+    let available_margin = compute_available_margin(user_state, oracle_prices, pair_params_map, pair_states, usdt_price);
     ensure!(available_margin >= reserved, "insufficient margin for limit order");
 
     user_state.reserved_margin += reserved;
@@ -1227,18 +1236,19 @@ fn settle_existing_position(
     pos: &mut Position,
     closing_size: Dec,
     exec_price: Udec,
+    usdt_price: Udec,
 ) {
     // Remove old contributions to accumulators BEFORE any size modifications.
     pair_state.oi_weighted_entry_price -= pos.size * pos.entry_price;
     pair_state.oi_weighted_entry_funding -= pos.size * pos.entry_funding_per_unit;
 
     // Settle funding BEFORE modifying the position.
-    settle_funding(state, pair_state, user_state, pos);
+    settle_funding(state, pair_state, user_state, pos, usdt_price);
 
     // Settle price PnL for the closing portion
     if closing_size != Dec::ZERO {
         let pnl = compute_pnl_to_realize(pos, closing_size, exec_price);
-        settle_pnl(state, user_state, pnl);
+        settle_pnl(state, user_state, pnl, usdt_price);
         // No entry_price update needed — it is invariant across partial closes.
     }
 }
@@ -1347,9 +1357,10 @@ fn execute_fill(
     exec_price: Udec,
     closing_size: Dec,
     opening_size: Dec,
+    usdt_price: Udec,
 ) {
     if let Some(pos) = user_state.positions.get_mut(&pair_id) {
-        settle_existing_position(state, pair_state, user_state, pos, closing_size, exec_price);
+        settle_existing_position(state, pair_state, user_state, pos, closing_size, exec_price, usdt_price);
     }
 
     apply_fill_to_position(pair_state, user_state, pair_id, fill_size, exec_price, opening_size);
@@ -1399,15 +1410,16 @@ fn settle_pnl(
     state: &mut State,
     user_state: &mut UserState,
     pnl: Dec,
+    usdt_price: Udec,
 ) {
     if pnl > Dec::ZERO {
         // User wins: transfer from vault to user
-        let amount = floor(pnl);
+        let amount = floor(pnl / usdt_price);
         state.vault_margin = state.vault_margin.saturating_sub(amount);
         user_state.margin += amount;
     } else if pnl < Dec::ZERO {
         // User loses: transfer from user to vault
-        let loss = ceil(-pnl);
+        let loss = ceil(-pnl / usdt_price);
         let user_pays = min(loss, user_state.margin);
         // Bad debt (loss - user_pays) is absorbed by the vault - they simply
         // don't receive payment for it. Proper liquidation should prevent this.
@@ -1440,6 +1452,7 @@ fn fulfill_limit_orders_for_pair(
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
+    usdt_price: Udec,
 ) {
     // Accrue funding before any OI changes
     accrue_funding(pair_state, pair_params, oracle_price, current_time);
@@ -1497,7 +1510,7 @@ fn fulfill_limit_orders_for_pair(
         let fill_size = fill_limit_order(
             params, key, order, pair_id, is_buy,
             state, oracle_price, skew, pair_state, pair_params,
-            oracle_prices, pair_params_map, pair_states,
+            oracle_prices, pair_params_map, pair_states, usdt_price,
         );
 
         skew += fill_size;
@@ -1550,6 +1563,7 @@ fn fill_limit_order(
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
+    usdt_price: Udec,
 ) -> Dec {
     // Recover limit_price: buy orders use inverted storage
     let limit_price = if is_buy {
@@ -1589,10 +1603,10 @@ fn fill_limit_order(
     let projected_size = user_pos + fill_size;
     let post_fill_used_margin = compute_projected_used_margin(
         user_state, oracle_prices, pair_params_map,
-        pair_id, projected_size,
+        pair_id, projected_size, usdt_price,
     );
-    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate);
-    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
+    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate, usdt_price);
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states, usdt_price);
 
     if equity - trading_fee < post_fill_used_margin + user_state.reserved_margin - order.reserved_margin {
         // Cancel: remove order, release reserved margin, return zero.
@@ -1610,8 +1624,8 @@ fn fill_limit_order(
     }
 
     // Step 7: Execute fill (may be full order or closing-only).
-    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price, closing_size, fill_opening);
-    collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate);
+    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price, closing_size, fill_opening, usdt_price);
+    collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate, usdt_price);
 
     // Remove order after fill (all-or-nothing: no partial orders remain)
     user_state.reserved_margin -= order.reserved_margin;
@@ -1796,6 +1810,7 @@ fn settle_funding(
     pair_state: &mut PairState,
     user_state: &mut UserState,
     position: &mut Position,
+    usdt_price: Udec,
 ) {
     let accrued = compute_accrued_funding(position, pair_state);
 
@@ -1803,7 +1818,7 @@ fn settle_funding(
     // Positive accrued = user pays vault. Negative = vault pays user.
     // We reuse settle_pnl with negated sign (accrued funding is a cost to the
     // trader, so it's negative PnL from their perspective).
-    settle_pnl(state, user_state, -accrued);
+    settle_pnl(state, user_state, -accrued, usdt_price);
 
     position.entry_funding_per_unit = pair_state.cumulative_funding_per_unit;
 }
@@ -1826,6 +1841,7 @@ fn compute_maintenance_margin(
     user_state: &UserState,
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
+    usdt_price: Udec,
 ) -> Uint {
     let mut total = 0;
 
@@ -1836,7 +1852,7 @@ fn compute_maintenance_margin(
         // Maintenance margin = |size| * oracle_price * maintenance_margin_ratio
         let margin = abs(position.size) * oracle_price * pair_params.maintenance_margin_ratio;
 
-        total += ceil(margin);  // Round up (conservative, disadvantage to user)
+        total += ceil(margin / usdt_price);  // Round up (conservative, disadvantage to user)
     }
 
     total
@@ -1858,14 +1874,15 @@ fn is_liquidatable(
     oracle_prices: &Map<PairId, Udec>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
+    usdt_price: Udec,
 ) -> bool {
     // No positions means nothing to liquidate.
     if user_state.positions.is_empty() {
         return false;
     }
 
-    let equity = compute_user_equity(user_state, oracle_prices, pair_states);
-    let maintenance_margin = compute_maintenance_margin(user_state, oracle_prices, pair_params_map);
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states, usdt_price);
+    let maintenance_margin = compute_maintenance_margin(user_state, oracle_prices, pair_params_map, usdt_price);
 
     equity < maintenance_margin
 }
@@ -1912,6 +1929,7 @@ fn handle_force_close(
     user_state: &mut UserState,
     user_id: UserId,
     current_time: Timestamp,
+    usdt_price: Udec,
 ) {
     // Step 1: Cancel all pending limit orders.
     // This removes future exposure and releases reserved margin, giving the
@@ -1932,7 +1950,7 @@ fn handle_force_close(
     // After cancelling orders and accruing funding, the user may no longer
     // be underwater. Revert if the user is solvent.
     ensure!(
-        is_liquidatable(user_state, oracle_prices, pair_params_map, pair_states),
+        is_liquidatable(user_state, oracle_prices, pair_params_map, pair_states, usdt_price),
         "user is not liquidatable",
     );
 
@@ -1968,7 +1986,7 @@ fn handle_force_close(
         let skew = pair_state.long_oi - pair_state.short_oi;
         let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
-        execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO);
+        execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO, usdt_price);
     }
 
     // Step 6: Pay liquidation fee to the vault.
@@ -1984,7 +2002,7 @@ fn handle_force_close(
     //
     // After all positions are closed, user_state.margin reflects the
     // user's remaining balance (could be zero if they had bad debt).
-    let fee = ceil(total_notional * params.liquidation_fee_rate);
+    let fee = ceil(total_notional * params.liquidation_fee_rate / usdt_price);
     let actual_fee = min(fee, user_state.margin);
 
     user_state.margin -= actual_fee;
@@ -2037,7 +2055,7 @@ fn handle_deleverage(
     );
 
     ensure!(
-        vault_equity < total_open_notional * params.adl_trigger_ratio,
+        vault_equity < (total_open_notional / usdt_price) * params.adl_trigger_ratio,
         "vault is not in distress, ADL not needed",
     );
 
@@ -2056,7 +2074,7 @@ fn handle_deleverage(
     let skew = pair_state.long_oi - pair_state.short_oi;
     let exec_price = compute_exec_price(oracle_price, skew, fill_size, &pair_params);
 
-    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO);
+    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO, usdt_price);
 
     // No liquidation fee — the user is not at fault.
 }
