@@ -1,8 +1,8 @@
 use {
-    crate::{CONFIG, VOLUMES_BY_USER},
+    crate::{CONFIG, REFEREE_TO_REFERRER, USER_REFERRAL_DATA, VOLUMES_BY_USER},
     dango_types::{
         account_factory::UserIndex,
-        taxman::{Config, QueryMsg},
+        taxman::{Config, QueryMsg, Referee, UserReferralData},
     },
     grug::{
         Bound, ImmutableCtx, Json, JsonSerExt, Number, NumberConst, Order, StdResult, Timestamp,
@@ -19,6 +19,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::VolumeByUser { user, since } => {
             let res = query_volume_by_user(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::Referrer { user } => {
+            let res = query_referrer(ctx, user)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralStats { user } => {
+            let res = query_referral_stats(ctx, user)?;
             res.to_json_value()
         },
     }
@@ -58,4 +66,17 @@ fn query_volume_by_user(
     };
 
     Ok(volume_now.checked_sub(volume_since)?)
+}
+
+fn query_referrer(ctx: ImmutableCtx, user: Referee) -> StdResult<Option<UserIndex>> {
+    REFEREE_TO_REFERRER.may_load(ctx.storage, user)
+}
+
+fn query_referral_stats(ctx: ImmutableCtx, user: UserIndex) -> anyhow::Result<UserReferralData> {
+    Ok(USER_REFERRAL_DATA
+        .prefix(user)
+        .values(ctx.storage, None, None, Order::Descending)
+        .next()
+        .transpose()?
+        .unwrap_or_default())
 }

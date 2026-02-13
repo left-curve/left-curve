@@ -18,6 +18,8 @@ metrics = ["dep:metrics"]
 [dependencies]
 anyhow                = { workspace = true }
 dango-account-factory = { workspace = true }
+dango-oracle          = { workspace = true }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
+grug-types            = { workspace = true }
 metrics               = { workspace = true, optional = true }

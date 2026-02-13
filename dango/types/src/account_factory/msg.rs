@@ -71,6 +71,8 @@ pub enum ExecuteMsg {
         seed: u32,
         /// A signature over the `RegisterUserData`.
         signature: Signature,
+        /// Optional username of the referrer.
+        referrer: Option<UserIndex>,
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
