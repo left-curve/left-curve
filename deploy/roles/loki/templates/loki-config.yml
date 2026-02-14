@@ -55,7 +55,14 @@ schema_config:
         period: 24h
 
 ruler:
-  alertmanager_url: http://localhost:9093
+  # Store rules locally; Loki reads from /tmp/loki/rules and writes temps to /tmp/loki/rules-temp
+  storage:
+    type: local
+    local:
+      directory: /tmp/loki/rules
+  rule_path: /tmp/loki/rules-temp
+  # Send alerts to Alertmanager on the shared 'monitoring' network
+  alertmanager_url: http://alertmanager:9093
 
 # By default, Loki will send anonymous, but uniquely-identifiable usage and configuration
 # analytics to Grafana Labs. These statistics are sent to https://stats.grafana.org/

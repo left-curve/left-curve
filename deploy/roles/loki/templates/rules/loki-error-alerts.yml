@@ -1,0 +1,19 @@
+groups:
+  - name: loki-error-alerts
+    rules:
+      - alert: LokiErrorLogs
+        # Count any ERROR-level log lines over the last minute, per host/service/container/target
+        expr: |
+          sum by (host, service, container_name, target) (
+            count_over_time({level=~"ERROR|error|Error"}[1m])
+          ) > 0
+        for: 0m
+        labels:
+          severity: critical
+          source: loki
+        annotations:
+          summary: "ERROR logs detected"
+          description: |
+            {{ $labels.host }} {{ $labels.service }} {{ $labels.container_name }} (target={{ $labels.target }}) emitted {{ $value }} ERROR lines in the last minute.
+            Investigate recent logs in Loki for details.
+
