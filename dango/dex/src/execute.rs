@@ -243,9 +243,17 @@ fn provide_liquidity(
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    // Compute the amount of LP tokens to mint.
-    let (reserve, mut lp_mint_amount) =
-        pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
+    // Get the taker fee rate from the app config.
+    let app_cfg = ctx.querier.query_dango_config()?;
+
+    // Compute the amount of LP tokens to mint and any protocol fees to collect.
+    let (reserve, mut lp_mint_amount, protocol_fee_amount) = pair.add_liquidity(
+        &mut oracle_querier,
+        reserve,
+        lp_token_supply,
+        deposit,
+        *app_cfg.taker_fee_rate,
+    )?;
 
     // Subtract minimum liquidity from the mint amount if this is the first
     // liquidity provision.
@@ -271,6 +279,34 @@ fn provide_liquidity(
 
     let bank = ctx.querier.query_bank()?;
 
+    // Convert protocol fee CoinPair to Coins for payment
+    let protocol_fee_coins = coins! { pair.lp_denom.clone() => protocol_fee_amount };
+
+    let protocol_fee_msgs = if protocol_fee_amount.is_non_zero() {
+        vec![
+            Message::execute(
+                bank,
+                &bank::ExecuteMsg::Mint {
+                    to: ctx.contract,
+                    coins: protocol_fee_coins.clone(),
+                },
+                Coins::new(), // No funds needed for minting
+            )?,
+            Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: btree_map! {
+                        ctx.sender => protocol_fee_coins.clone(),
+                    },
+                },
+                protocol_fee_coins,
+            )?,
+        ]
+    } else {
+        vec![]
+    };
+
     Ok(Response::new()
         .add_message(Message::execute(
             bank,
@@ -294,7 +330,8 @@ fn provide_liquidity(
             )?)
         } else {
             None
-        }))
+        })
+        .add_messages(protocol_fee_msgs))
 }
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.

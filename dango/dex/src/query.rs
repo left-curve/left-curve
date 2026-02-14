@@ -432,11 +432,20 @@ fn query_simulate_provide_liquidity(
     let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
     let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
 
-    pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)
-        .map(|(_, lp_mint_amount)| Coin {
-            denom: pair.lp_denom,
-            amount: lp_mint_amount,
-        })
+    // Get the taker fee rate from the app config.
+    let app_cfg = ctx.querier.query_dango_config()?;
+
+    pair.add_liquidity(
+        &mut oracle_querier,
+        reserve,
+        lp_token_supply,
+        deposit,
+        *app_cfg.taker_fee_rate,
+    )
+    .map(|(_, lp_mint_amount, _protocol_fee)| Coin {
+        denom: pair.lp_denom,
+        amount: lp_mint_amount,
+    })
 }
 
 fn query_simulate_withdraw_liquidity(
