@@ -28,8 +28,7 @@ where
 pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
     // Note: This panics if bytes.len() < 2
     let (len_bytes, bytes) = bytes.split_at(2);
-    // this unwrap can't fail since split at position 2
-    let len = u16::from_be_bytes(len_bytes.try_into().unwrap());
+    let len = u16::from_be_bytes([len_bytes[0], len_bytes[1]]);
     bytes.split_at(len as usize)
 }
 

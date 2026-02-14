@@ -70,51 +70,42 @@ where
     /// Given an index value, which may or may not exist, load the corresponding
     /// value.
     pub fn may_load_value(&self, storage: &dyn Storage, idx: IK) -> StdResult<Option<T>> {
-        self.index_map
-            .may_load_raw(storage, &idx.joined_key())
-            .map(|pk_raw| self.primary_map.may_load_raw(storage, &pk_raw).unwrap())
-            .map(|v_raw| C::decode(&v_raw))
-            .transpose()
+        let Some(pk_raw) = self.index_map.may_load_raw(storage, &idx.joined_key()) else {
+            return Ok(None);
+        };
+
+        let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
+        let value = C::decode(&v_raw)?;
+        Ok(Some(value))
     }
 
     /// Given an index value, load the corresponding value.
     pub fn load_value(&self, storage: &dyn Storage, idx: IK) -> StdResult<T> {
-        self.index_map
-            .load_raw(storage, &idx.joined_key())
-            .map(|pk_raw| self.primary_map.may_load_raw(storage, &pk_raw).unwrap())
-            .and_then(|v_raw| C::decode(&v_raw))
+        let pk_raw = self.index_map.load_raw(storage, &idx.joined_key())?;
+        let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
+        C::decode(&v_raw)
     }
 
     /// Given an index value, which may or may not exist, load the corresponding
     /// key and value.
     pub fn may_load(&self, storage: &dyn Storage, idx: IK) -> StdResult<Option<(PK::Output, T)>> {
-        self.index_map
-            .may_load_raw(storage, &idx.joined_key())
-            .map(|pk_raw| {
-                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
-                (pk_raw, v_raw)
-            })
-            .map(|(pk_raw, v_raw)| {
-                let pk = PK::from_slice(&pk_raw)?;
-                let v = C::decode(&v_raw)?;
-                Ok((pk, v))
-            })
-            .transpose()
+        let Some(pk_raw) = self.index_map.may_load_raw(storage, &idx.joined_key()) else {
+            return Ok(None);
+        };
+
+        let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
+        let pk = PK::from_slice(&pk_raw)?;
+        let value = C::decode(&v_raw)?;
+        Ok(Some((pk, value)))
     }
 
     /// Given an index value, load the corresponding primary key and value.
     pub fn load(&self, storage: &dyn Storage, idx: IK) -> StdResult<(PK::Output, T)> {
-        self.index_map
-            .load_raw(storage, &idx.joined_key())
-            .map(|pk_raw| {
-                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
-                (pk_raw, v_raw)
-            })
-            .and_then(|(pk_raw, v_raw)| {
-                let pk = PK::from_slice(&pk_raw)?;
-                let v = C::decode(&v_raw)?;
-                Ok((pk, v))
-            })
+        let pk_raw = self.index_map.load_raw(storage, &idx.joined_key())?;
+        let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
+        let pk = PK::from_slice(&pk_raw)?;
+        let value = C::decode(&v_raw)?;
+        Ok((pk, value))
     }
 
     /// Iterate all {index, primary key, value} tuples within a bound of indexes,
@@ -132,9 +123,10 @@ where
         let iter = self
             .index_map
             .range_raw(storage, min, max, order)
-            .map(|(ik_raw, pk_raw)| {
-                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
-                (ik_raw, pk_raw, v_raw)
+            .filter_map(|(ik_raw, pk_raw)| {
+                self.primary_map
+                    .may_load_raw(storage, &pk_raw)
+                    .map(|v_raw| (ik_raw, pk_raw, v_raw))
             });
 
         Box::new(iter)
@@ -157,7 +149,7 @@ where
             .map(|(ik_raw, pk_raw)| {
                 let ik = IK::from_slice(&ik_raw)?;
                 let pk = PK::from_slice(&pk_raw)?;
-                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
+                let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
                 let v = C::decode(&v_raw)?;
                 Ok((ik, pk, v))
             });
@@ -212,9 +204,10 @@ where
         let iter = self
             .index_map
             .range_raw(storage, min, max, order)
-            .map(|(ik_raw, pk_raw)| {
-                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
-                (ik_raw, v_raw)
+            .filter_map(|(ik_raw, pk_raw)| {
+                self.primary_map
+                    .may_load_raw(storage, &pk_raw)
+                    .map(|v_raw| (ik_raw, v_raw))
             });
 
         Box::new(iter)
@@ -236,7 +229,7 @@ where
             .range_raw(storage, min, max, order)
             .map(|(ik_raw, pk_raw)| {
                 let ik = IK::from_slice(&ik_raw)?;
-                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
+                let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
                 let v = C::decode(&v_raw)?;
                 Ok((ik, v))
             });

@@ -47,7 +47,14 @@ async fn main() -> anyhow::Result<()> {
                 if order.direction == Direction::Ask {
                     sum_base += order.remaining;
                 } else {
-                    sum_quote += order.remaining.checked_mul(order.price).unwrap();
+                    match order.remaining.checked_mul(order.price) {
+                        Ok(value) => {
+                            sum_quote += value;
+                        },
+                        Err(err) => {
+                            eprintln!("failed to compute quote amount for order: {err}");
+                        },
+                    }
                 }
 
                 (sum_base, sum_quote)

@@ -55,7 +55,8 @@ fn handler() {
 
     let querier = QuerierWrapper::new(&suite);
     let mut handler =
-        PythHandler::new_with_cache(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer_token");
+        PythHandler::new_with_cache(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer_token")
+            .unwrap();
 
     // Start the handler with oracle.
     handler.update_stream(querier, oracle).unwrap();

@@ -228,11 +228,12 @@ pub trait QueryClientExt: QueryClient {
 
                 let mut iter = res.into_iter();
 
-                std::array::from_fn(|_| {
-                    iter.next()
-                        .unwrap() // unwrap is safe because we've checked the length.
-                        .map_err(StdError::Host)
-                        .map_err(Into::into)
+                std::array::from_fn(|_| match iter.next() {
+                    Some(response) => response.map_err(StdError::Host).map_err(Into::into),
+                    None => Err(StdError::host(
+                        "number of multi-query responses is smaller than requested".to_string(),
+                    )
+                    .into()),
                 })
             })
     }

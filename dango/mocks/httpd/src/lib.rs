@@ -123,9 +123,18 @@ where
 
     let indexer_context_callback = indexer.context.clone();
 
-    hooked_indexer.add_indexer(indexer_cache).await.unwrap();
-    hooked_indexer.add_indexer(indexer).await.unwrap();
-    hooked_indexer.add_indexer(dango_indexer).await.unwrap();
+    hooked_indexer
+        .add_indexer(indexer_cache)
+        .await
+        .map_err(|err| std::io::Error::other(format!("failed to add cache indexer: {err}")))?;
+    hooked_indexer
+        .add_indexer(indexer)
+        .await
+        .map_err(|err| std::io::Error::other(format!("failed to add SQL indexer: {err}")))?;
+    hooked_indexer
+        .add_indexer(dango_indexer)
+        .await
+        .map_err(|err| std::io::Error::other(format!("failed to add dango indexer: {err}")))?;
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::<SimpleCommitment>::new(),
@@ -193,19 +202,27 @@ static USED_PORTS: LazyLock<StdMutex<HashSet<u16>>> =
 /// Uses OS-assigned port allocation (binding to port 0) and tracks used ports
 /// to avoid collisions when multiple tests request ports in the same process.
 pub fn get_mock_socket_addr() -> u16 {
-    let mut used = USED_PORTS.lock().unwrap();
+    let mut used = match USED_PORTS.lock() {
+        Ok(used) => used,
+        Err(poisoned) => poisoned.into_inner(),
+    };
 
-    loop {
-        let port = TcpListener::bind("127.0.0.1:0")
-            .expect("failed to bind to random port")
-            .local_addr()
-            .expect("failed to get local address")
-            .port();
+    for _ in 0..100 {
+        let listener = match TcpListener::bind("127.0.0.1:0") {
+            Ok(listener) => listener,
+            Err(_) => continue,
+        };
+        let port = match listener.local_addr() {
+            Ok(addr) => addr.port(),
+            Err(_) => continue,
+        };
 
         if used.insert(port) {
             return port;
         }
     }
+
+    panic!("failed to allocate a unique random port for mock server")
 }
 
 /// Wait for the server to be ready to accept connections.

@@ -34,13 +34,19 @@ where
 }
 
 impl PythHandler<PythClient> {
-    pub fn new<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> PythHandler<PythClient>
+    pub fn new<V, U, T>(
+        endpoints: NonEmpty<V>,
+        access_token: T,
+    ) -> anyhow::Result<PythHandler<PythClient>>
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
-        Self::new_with_client(PythClient::new(endpoints, access_token).unwrap())
+        Ok(Self::new_with_client(PythClient::new(
+            endpoints,
+            access_token,
+        )?))
     }
 }
 
@@ -48,13 +54,16 @@ impl PythHandler<PythClientCache> {
     pub fn new_with_cache<V, U, T>(
         endpoints: NonEmpty<V>,
         access_token: T,
-    ) -> PythHandler<PythClientCache>
+    ) -> anyhow::Result<PythHandler<PythClientCache>>
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
-        Self::new_with_client(PythClientCache::new(endpoints, access_token).unwrap())
+        Ok(Self::new_with_client(PythClientCache::new(
+            endpoints,
+            access_token,
+        )?))
     }
 }
 

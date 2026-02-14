@@ -31,35 +31,47 @@ where
 {
     /// Convert the decimal number to an integer, rounded towards zero.
     pub fn into_int(self) -> Int<U> {
-        // Safe to unwrap because we know `Self::PRECISION` is non-zero.
-        self.0.checked_div(Self::PRECISION).unwrap()
+        match self.0.checked_div(Self::PRECISION) {
+            Ok(int) => int,
+            Err(_) => unreachable!("decimal precision is always non-zero"),
+        }
     }
 
     /// Convert the decimal number to an integer, rounded towards negative infinity.
     pub fn into_int_floor(self) -> Int<U> {
-        // Safe to unwrap because we know `Self::PRECISION` is non-zero.
-        let rem = self.0.checked_rem(Self::PRECISION).unwrap();
+        let rem = match self.0.checked_rem(Self::PRECISION) {
+            Ok(rem) => rem,
+            Err(_) => unreachable!("decimal precision is always non-zero"),
+        };
         let int = self.into_int();
 
         match (rem.is_zero(), rem.is_negative()) {
             (true, _) | (false, false) => int,
             // Safe to unwrap, because the biggest value supported by `Int<U>`
             // is necessarily more than one unit bigger than that by `Dec<U, S>`.
-            (false, true) => int.checked_sub(Int::<U>::ONE).unwrap(),
+            (false, true) => match int.checked_sub(Int::<U>::ONE) {
+                Ok(floor) => floor,
+                Err(_) => unreachable!("floor conversion cannot underflow"),
+            },
         }
     }
 
     /// Convert the decimal number to an integer, rounded towards positive infinity.
     pub fn into_int_ceil(self) -> Int<U> {
-        // Safe to unwrap because we know `Self::PRECISION` is non-zero.
-        let rem = self.0.checked_rem(Self::PRECISION).unwrap();
+        let rem = match self.0.checked_rem(Self::PRECISION) {
+            Ok(rem) => rem,
+            Err(_) => unreachable!("decimal precision is always non-zero"),
+        };
         let int = self.into_int();
 
         match (rem.is_zero(), rem.is_negative()) {
             (true, _) | (false, true) => int,
             // Safe to unwrap, because the smallest value supported by `Int<U>`
             // is necessarily more than one unit smaller than that by `Dec<U, S>`.
-            (false, false) => int.checked_add(Int::<U>::ONE).unwrap(),
+            (false, false) => match int.checked_add(Int::<U>::ONE) {
+                Ok(ceil) => ceil,
+                Err(_) => unreachable!("ceil conversion cannot overflow"),
+            },
         }
     }
 }

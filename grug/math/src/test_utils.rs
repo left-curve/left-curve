@@ -360,7 +360,10 @@ where
     Int<U>: FromStr,
     <Int<U> as FromStr>::Err: Debug,
 {
-    Int::from_str(val).unwrap()
+    match Int::from_str(val) {
+        Ok(int) => int,
+        Err(err) => panic!("failed to parse integer `{val}` in test helper: {err:?}"),
+    }
 }
 
 /// Shortcut for create a `Dec` from a string.
@@ -369,5 +372,8 @@ where
     Dec<U, S>: FromStr,
     <Dec<U, S> as FromStr>::Err: Debug,
 {
-    Dec::from_str(val).unwrap()
+    match Dec::from_str(val) {
+        Ok(dec) => dec,
+        Err(err) => panic!("failed to parse decimal `{val}` in test helper: {err:?}"),
+    }
 }
