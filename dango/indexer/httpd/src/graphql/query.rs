@@ -1,7 +1,9 @@
 use {
     account::AccountQuery,
     async_graphql::MergedObject,
-    dango_indexer_clickhouse::httpd::graphql::query::{candle::CandleQuery, trade::TradeQuery},
+    dango_indexer_clickhouse::httpd::graphql::query::{
+        candle::CandleQuery, pair_stats::PairStatsQuery, trade::TradeQuery,
+    },
     grug_httpd::graphql::query::grug::GrugQuery,
     indexer_httpd::graphql::query::{
         block::BlockQuery, event::EventQuery, message::MessageQuery, transaction::TransactionQuery,
@@ -26,4 +28,5 @@ pub struct Query(
     UserQuery,
     CandleQuery,
     TradeQuery,
+    PairStatsQuery,
 );
