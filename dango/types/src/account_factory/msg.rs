@@ -83,6 +83,9 @@ pub enum ExecuteMsg {
     /// For now, we only support setting the username once when it's unset.
     /// We don't support changing the username when it's already set.
     UpdateUsername(Username),
+    /// Update the main account associated with a user.
+    /// The main account can't be a multi-signature account.
+    UpdateMainAccount { address: Addr },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -151,6 +154,12 @@ pub enum QueryMsg {
         start_after: Option<UserIndexOrName>,
         limit: Option<u32>,
     },
+    /// Query the main account associated with a user.
+    #[returns(Addr)]
+    MainAccountByUser { user: UserIndexOrName },
+    /// Query the main accounts related to the owner of a given account address.
+    #[returns(Addr)]
+    MainAccountByAddress { address: Addr },
 }
 
 #[grug::derive(Serde)]
