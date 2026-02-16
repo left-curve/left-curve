@@ -148,6 +148,14 @@ export {
 } from "./hooks/usePoolLiquidityState.js";
 
 export {
+  type UsePairStatsParameters,
+  type UseAllPairStatsParameters,
+  type NormalizedPairStats,
+  usePairStats,
+  useAllPairStats,
+} from "./hooks/usePairStats.js";
+
+export {
   type UseBridgeStateParameters,
   useBridgeState,
 } from "./hooks/useBridgeState.js";

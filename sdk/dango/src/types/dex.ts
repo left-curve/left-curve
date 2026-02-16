@@ -428,3 +428,12 @@ export type RestingOrderBookState = {
   bestAskPrice: Option<string>;
   midPrice: Option<string>;
 };
+
+export type PairStats = {
+  quoteDenom: Denom;
+  baseDenom: Denom;
+  currentPrice: Option<string>;
+  price24HAgo: Option<string>;
+  volume24H: string;
+  priceChange24H: Option<string>;
+};

@@ -80,11 +80,20 @@ import {
   type DexStatusParameters,
 } from "./queries/dexStatus.js";
 
+import {
+  getPairStats,
+  type GetPairStatsReturnType,
+  type GetPairStatsParameters,
+} from "./queries/getPairStats.js";
+import { getAllPairStats, type GetAllPairStatsReturnType } from "./queries/getAllPairStats.js";
+
 export type DexQueryActions = {
   dexStatus: (args?: DexStatusParameters) => DexStatusReturnType;
   getOrder: (args: GetOrderParameters) => GetOrderReturnType;
   getPairs: (args?: GetPairsParameters) => GetPairsReturnType;
   getPair: (args: GetPairParameters) => GetPairReturnType;
+  getPairStats: (args: GetPairStatsParameters) => GetPairStatsReturnType;
+  getAllPairStats: () => GetAllPairStatsReturnType;
   ordersByUser: (args: OrdersByUserParameters) => OrdersByUserReturnType;
   queryCandles: (args: QueryCandlesParameters) => QueryCandlesReturnType;
   queryTrades: (args: QueryTradesParameters) => QueryTradesReturnType;
@@ -107,6 +116,8 @@ export function dexQueryActions<transport extends Transport = Transport>(
     getOrder: (args) => getOrder(client, args),
     getPairs: (args) => getPairs(client, args),
     getPair: (args) => getPair(client, args),
+    getPairStats: (args) => getPairStats(client, args),
+    getAllPairStats: () => getAllPairStats(client),
     ordersByUser: (args) => ordersByUser(client, args),
     queryCandles: (args) => queryCandles(client, args),
     queryTrades: (args) => queryTrades(client, args),

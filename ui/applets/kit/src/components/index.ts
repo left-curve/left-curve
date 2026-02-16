@@ -47,6 +47,7 @@ export { PairAssets } from "./PairAssets";
 export { Marquee } from "./Marquee";
 export { SortHeader } from "./SortHeader";
 export { FormattedNumber } from "./FormattedNumber";
+export { PairStatValue, type PairStatKind, type PairStatTone } from "./PairStatValue";
 export { Dot } from "./Dot";
 export { CurrentBlock } from "./CurrentBlock";
 export { QRCodeReader } from "./QRCodeReader";
