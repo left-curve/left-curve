@@ -11,6 +11,7 @@ export default function AppLayout() {
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="convert" options={{ headerShown: false }} />
+          <Stack.Screen name="transfer" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
         </Stack>
       </View>
