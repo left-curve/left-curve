@@ -1,6 +1,10 @@
 import { AddressVisualizer, useApp } from "@left-curve/applets-kit";
-import { usePrices, usePublicClient, useQueryWithPagination } from "@left-curve/store";
-import { type UseQueryResult, useQuery } from "@tanstack/react-query";
+import {
+  useExplorerAccount,
+  useExplorerTransactionsBySender,
+  usePrices,
+} from "@left-curve/store";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext } from "react";
 
@@ -36,26 +40,7 @@ type AccountExplorerProps = {
 };
 
 const Root: React.FC<PropsWithChildren<AccountExplorerProps>> = ({ address, children }) => {
-  const client = usePublicClient();
-
-  const query = useQuery({
-    queryKey: ["account_explorer", address],
-    queryFn: async () => {
-      const [account, contractInfo, balances] = await Promise.all([
-        client.getAccountInfo({ address }),
-        client.getContractInfo({ address }),
-        client.getBalances({ address }),
-      ]);
-
-      if (!account) return null;
-
-      return {
-        ...account,
-        ...contractInfo,
-        balances,
-      };
-    },
-  });
+  const query = useExplorerAccount(address);
 
   return (
     <AccountExplorerContext.Provider value={{ address, ...query }}>
@@ -157,14 +142,11 @@ const Assets: React.FC = () => {
 
 const Transactions: React.FC = () => {
   const { isLoading, data: account } = useAccountExplorer();
-  const client = usePublicClient();
 
-  const { data, pagination, ...transactions } = useQueryWithPagination({
-    enabled: !!account,
-    queryKey: ["account_transactions", account?.address as string],
-    queryFn: async ({ pageParam }) =>
-      client.searchTxs({ senderAddress: account?.address, ...pageParam }),
-  });
+  const { data, pagination, ...transactions } = useExplorerTransactionsBySender(
+    account?.address as Address,
+    !!account,
+  );
 
   if (isLoading || !account) return null;
 
