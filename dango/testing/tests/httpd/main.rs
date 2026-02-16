@@ -23,6 +23,7 @@ mod accounts;
 mod candles;
 mod grug;
 mod metrics;
+mod pair_stats;
 mod shutdown;
 mod trades;
 mod transfers;

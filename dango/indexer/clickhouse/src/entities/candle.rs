@@ -1,3 +1,12 @@
+#[cfg(feature = "async-graphql")]
+use {
+    crate::entities::graphql_decimal::GraphqlBigDecimal,
+    async_graphql::{ComplexObject, SimpleObject},
+    bigdecimal::BigDecimal,
+    bigdecimal::num_bigint::BigInt,
+    grug::Inner,
+    grug::Timestamp,
+};
 use {
     crate::{
         entities::{CandleInterval, pair_price::PairPrice},
@@ -10,14 +19,6 @@ use {
     serde::{Deserialize, Serialize},
     std::str::FromStr,
 };
-#[cfg(feature = "async-graphql")]
-use {
-    async_graphql::{ComplexObject, SimpleObject},
-    bigdecimal::BigDecimal,
-    bigdecimal::num_bigint::BigInt,
-    grug::Inner,
-    grug::Timestamp,
-};
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
@@ -29,22 +30,22 @@ pub struct Candle {
     #[serde(with = "clickhouse::serde::chrono::datetime64::micros")]
     pub time_start: DateTime<Utc>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "super::pair_price::dec")]
+    #[serde(with = "crate::entities::pair_price::dec")]
     pub open: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "super::pair_price::dec")]
+    #[serde(with = "crate::entities::pair_price::dec")]
     pub high: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "super::pair_price::dec")]
+    #[serde(with = "crate::entities::pair_price::dec")]
     pub low: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "super::pair_price::dec")]
+    #[serde(with = "crate::entities::pair_price::dec")]
     pub close: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "super::pair_price::dec")]
+    #[serde(with = "crate::entities::pair_price::dec")]
     pub volume_base: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "super::pair_price::dec")]
+    #[serde(with = "crate::entities::pair_price::dec")]
     pub volume_quote: Udec128_6,
     pub interval: CandleInterval,
     pub min_block_height: u64,
@@ -112,40 +113,40 @@ impl Candle {
         self.max_block_height
     }
 
-    async fn open(&self) -> BigDecimal {
+    async fn open(&self) -> GraphqlBigDecimal {
         let inner_value = self.open.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 24).normalized()
+        BigDecimal::new(bigint, 24).normalized().into()
     }
 
-    async fn high(&self) -> BigDecimal {
+    async fn high(&self) -> GraphqlBigDecimal {
         let inner_value = self.high.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 24).normalized()
+        BigDecimal::new(bigint, 24).normalized().into()
     }
 
-    async fn low(&self) -> BigDecimal {
+    async fn low(&self) -> GraphqlBigDecimal {
         let inner_value = self.low.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 24).normalized()
+        BigDecimal::new(bigint, 24).normalized().into()
     }
 
-    async fn close(&self) -> BigDecimal {
+    async fn close(&self) -> GraphqlBigDecimal {
         let inner_value = self.close.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 24).normalized()
+        BigDecimal::new(bigint, 24).normalized().into()
     }
 
-    async fn volume_base(&self) -> BigDecimal {
+    async fn volume_base(&self) -> GraphqlBigDecimal {
         let inner_value = self.volume_base.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 6).normalized()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
-    async fn volume_quote(&self) -> BigDecimal {
+    async fn volume_quote(&self) -> GraphqlBigDecimal {
         let inner_value = self.volume_quote.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 6).normalized()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
     /// Return time_start in ISO 8601 format with time zone.
