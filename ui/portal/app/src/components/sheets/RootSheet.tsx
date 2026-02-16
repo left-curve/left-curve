@@ -8,6 +8,8 @@ import { GlobalText, IconClose } from "~/components/foundation";
 import { AuthenticateSheet } from "./AuthenticateSheet";
 import { ConfirmSendSheet } from "./ConfirmSendSheet";
 import { ConfirmSwapSheet, type SheetRef } from "./ConfirmSwapSheet";
+import { ProTradeCloseAllSheet } from "./ProTradeCloseAllSheet";
+import { ProTradeCloseOrderSheet } from "./ProTradeCloseOrderSheet";
 
 import type React from "react";
 
@@ -36,6 +38,18 @@ const sheets: Record<string, SheetDefinition> = {
     component: ConfirmSendSheet,
     options: {
       title: m["modals.confirmSend.title"](),
+    },
+  },
+  [Modals.ProTradeCloseOrder]: {
+    component: ProTradeCloseOrderSheet,
+    options: {
+      title: m["modals.proTradeCloseOrder.title"](),
+    },
+  },
+  [Modals.ProTradeCloseAll]: {
+    component: ProTradeCloseAllSheet,
+    options: {
+      title: m["modals.protradeCloseAllOrders.title"](),
     },
   },
 };

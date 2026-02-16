@@ -18,6 +18,8 @@ function ProTradeApplet() {
   const { coins } = useConfig();
   const { pairSymbols } = Route.useParams();
   const { action = "buy", order_type = "market" } = Route.useSearch();
+  const embed =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("embed") : null;
   const headerHeight = useHeaderHeight();
 
   const onChangePairId = ({ baseDenom, quoteDenom }: PairId) => {
@@ -55,6 +57,25 @@ function ProTradeApplet() {
     baseDenom: coins.bySymbol[baseSymbol]?.denom,
     quoteDenom: coins.bySymbol[quoteSymbol]?.denom,
   };
+
+  if (embed === "chart") {
+    return (
+      <div className="w-full h-full min-h-[16rem] bg-surface-primary-rice">
+        <ProTrade
+          pairId={pairId}
+          onChangePairId={onChangePairId}
+          action={action}
+          onChangeAction={onChangeAction}
+          orderType={order_type}
+          onChangeOrderType={onChangeOrderType}
+        >
+          <div className="w-full h-full min-h-[16rem]">
+            <ProTrade.Chart />
+          </div>
+        </ProTrade>
+      </div>
+    );
+  }
 
   return (
     <div
