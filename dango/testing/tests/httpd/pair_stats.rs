@@ -16,6 +16,7 @@ use {
     indexer_client::{
         AllPairStats, PairStats, PairStatsPartial, all_pair_stats, pair_stats, pair_stats_partial,
     },
+    std::str::FromStr,
 };
 
 #[tokio::test(flavor = "multi_thread")]
@@ -191,6 +192,103 @@ async fn query_pair_stats_partial_fields() -> anyhow::Result<()> {
                 assert!(
                     response.current_price.is_some(),
                     "Expected current_price to be present"
+                );
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn query_pair_stats_formats_small_prices_without_scientific_notation() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
+
+    // Required for DEX execution in tests.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Submit matching bid/ask orders at a very small price so GraphQL must
+    // serialize tiny decimals.
+    let tiny_price =
+        Udec128_24::from_str("0.000000003836916198").expect("tiny fixed-point price should parse");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![
+                    CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Ask,
+                        NonZero::new_unchecked(tiny_price),
+                        NonZero::new_unchecked(Uint128::new(20_000_000_000_000)),
+                    ),
+                    CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Bid,
+                        NonZero::new_unchecked(tiny_price),
+                        NonZero::new_unchecked(Uint128::new(200_000)),
+                    ),
+                ],
+                cancels: None,
+            },
+            Coins::try_from([
+                Coin::new(dango::DENOM.clone(), Uint128::new(20_000_000_000_000))?,
+                Coin::new(usdc::DENOM.clone(), Uint128::new(200_000))?,
+            ])?,
+        )
+        .should_succeed();
+
+    suite.app.indexer.wait_for_finish().await?;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let response = call_graphql_query::<_, pair_stats::ResponseData>(
+                    dango_httpd_context.clone(),
+                    PairStats::build_query(pair_stats::Variables {
+                        base_denom: "dango".to_string(),
+                        quote_denom: "bridge/usdc".to_string(),
+                    }),
+                )
+                .await?;
+
+                let data = response.data.expect("Expected pairStats response data");
+                let response = data.pair_stats.expect("Expected pair stats to be returned");
+
+                let current_price = response.current_price.expect("Expected current_price");
+                let price_24h_ago = response.price24_h_ago.expect("Expected price24_h_ago");
+
+                assert_eq!(current_price, "0.000000003836916198");
+                assert_eq!(price_24h_ago, "0.000000003836916198");
+
+                assert!(
+                    !current_price.contains('e') && !current_price.contains('E'),
+                    "current_price should use plain decimal notation, got: {current_price}"
+                );
+                assert!(
+                    !price_24h_ago.contains('e') && !price_24h_ago.contains('E'),
+                    "price_24h_ago should use plain decimal notation, got: {price_24h_ago}"
                 );
 
                 Ok::<(), anyhow::Error>(())

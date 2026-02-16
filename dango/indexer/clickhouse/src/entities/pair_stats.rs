@@ -2,6 +2,7 @@ use crate::{entities::pair_price::PairPrice, error::Result};
 #[cfg(feature = "async-graphql")]
 use {
     crate::context::Context,
+    crate::entities::graphql_decimal::GraphqlBigDecimal,
     async_graphql::{ComplexObject, SimpleObject},
     bigdecimal::BigDecimal,
     bigdecimal::num_bigint::BigInt,
@@ -207,7 +208,7 @@ impl PairStats {
     async fn current_price(
         &self,
         ctx: &async_graphql::Context<'_>,
-    ) -> async_graphql::Result<Option<BigDecimal>> {
+    ) -> async_graphql::Result<Option<GraphqlBigDecimal>> {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
@@ -217,7 +218,7 @@ impl PairStats {
 
         Ok(price.map(|p| {
             let bigint = BigInt::from(p);
-            BigDecimal::new(bigint, 24).normalized()
+            BigDecimal::new(bigint, 24).normalized().into()
         }))
     }
 
@@ -225,7 +226,7 @@ impl PairStats {
     async fn price_24h_ago(
         &self,
         ctx: &async_graphql::Context<'_>,
-    ) -> async_graphql::Result<Option<BigDecimal>> {
+    ) -> async_graphql::Result<Option<GraphqlBigDecimal>> {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
@@ -235,7 +236,7 @@ impl PairStats {
 
         Ok(price.map(|p| {
             let bigint = BigInt::from(p);
-            BigDecimal::new(bigint, 24).normalized()
+            BigDecimal::new(bigint, 24).normalized().into()
         }))
     }
 
@@ -243,7 +244,7 @@ impl PairStats {
     async fn volume_24h(
         &self,
         ctx: &async_graphql::Context<'_>,
-    ) -> async_graphql::Result<BigDecimal> {
+    ) -> async_graphql::Result<GraphqlBigDecimal> {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
@@ -251,7 +252,7 @@ impl PairStats {
             Self::fetch_volume_24h(clickhouse_client, &self.base_denom, &self.quote_denom).await?;
 
         let bigint = BigInt::from(volume);
-        Ok(BigDecimal::new(bigint, 6).normalized())
+        Ok(BigDecimal::new(bigint, 6).normalized().into())
     }
 
     /// 24h price change as a percentage (e.g., 5.25 means +5.25%)
@@ -260,7 +261,7 @@ impl PairStats {
     async fn price_change_24h(
         &self,
         ctx: &async_graphql::Context<'_>,
-    ) -> async_graphql::Result<Option<BigDecimal>> {
+    ) -> async_graphql::Result<Option<GraphqlBigDecimal>> {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
@@ -286,6 +287,6 @@ impl PairStats {
 
         // (current - old) / old * 100
         let change = (current_bd - &old_bd) / old_bd * BigDecimal::from(100);
-        Ok(Some(change.normalized()))
+        Ok(Some(change.normalized().into()))
     }
 }
