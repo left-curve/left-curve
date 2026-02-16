@@ -8,6 +8,7 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { config } from "~/store";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AppProvider, twMerge } from "@left-curve/foundation";
+import { RootSheet } from "~/components/sheets/RootSheet";
 
 import type { ToastController } from "@left-curve/foundation";
 
@@ -33,6 +34,7 @@ export const App: React.FC = () => {
                     )}
                   >
                     {children}
+                    <RootSheet />
                   </SafeAreaView>
                 </SafeAreaProvider>
               </AppProvider>
