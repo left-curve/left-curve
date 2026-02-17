@@ -3,6 +3,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { AppletMetadata } from "@left-curve/store/types";
 
 export const WS_URI = "wss://webrtc.dango.exchange";
+export const PORTAL_WEB_ORIGIN = process.env.EXPO_PUBLIC_PORTAL_WEB_URL || "https://dango.exchange";
 
 export const DEFAULT_SESSION_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
 
