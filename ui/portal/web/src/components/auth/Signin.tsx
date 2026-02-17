@@ -5,7 +5,9 @@ import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 
 import {
   Button,
+  Checkbox,
   createContext,
+  ExpandOptions,
   IconLeft,
   IconQR,
   IconWallet,
@@ -34,7 +36,8 @@ type SignInProps = {
 };
 
 export const Signin: React.FC<SignInProps> = ({ goTo, onFinish }) => {
-  const { settings, toast } = useApp();
+  const { settings, toast, changeSettings } = useApp();
+  const { useSessionKey } = settings;
 
   const state = useSigninState({
     expiration: DEFAULT_SESSION_EXPIRATION,
@@ -60,6 +63,16 @@ export const Signin: React.FC<SignInProps> = ({ goTo, onFinish }) => {
           <Wallets />
           <Credentials />
           <UsernamesSection />
+          <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
+            <div className="flex items-center gap-2 flex-col">
+              <Checkbox
+                size="md"
+                label={m["common.signinWithSession"]()}
+                checked={useSessionKey}
+                onChange={(v) => changeSettings({ useSessionKey: v })}
+              />
+            </div>
+          </ExpandOptions>
           <Footer goTo={goTo} />
         </div>
       </ResizerContainer>
@@ -226,7 +239,6 @@ type FooterProps = {
 
 const Footer: React.FC<FooterProps> = ({ goTo }) => {
   const { screen } = useSignin();
-
   if (screen !== "options") return null;
 
   return (
