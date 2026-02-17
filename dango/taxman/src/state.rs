@@ -1,7 +1,7 @@
 use {
     dango_types::{
         account_factory::UserIndex,
-        taxman::{Config, Referee, RefereeData, Referrer, ShareRatio, UserReferralData},
+        taxman::{Config, Referee, RefereeStats, Referrer, ShareRatio, UserReferralData},
     },
     grug::{IndexedMap, Item, Map, MultiIndex, Timestamp, Udec128, Udec128_6, Uint128},
 };
@@ -36,29 +36,29 @@ pub const USER_REFERRAL_DATA: Map<(UserIndex, Timestamp), UserReferralData> =
 /// Stores the statistics of referees for each referrer.
 pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
     (Referrer, Referee),
-    RefereeData,
+    RefereeStats,
     ReferrerStatisticsIndex,
-> = IndexedMap::new("referrer_statistics", ReferrerStatisticsIndex {
+> = IndexedMap::new("ref_stats", ReferrerStatisticsIndex {
     register_at: MultiIndex::new(
         |(referrer, _), data| (*referrer, data.registered_at),
-        "referrer_statistics",
-        "referrer_statistics__register_at",
+        "ref_stats",
+        "ref_stats__register_at",
     ),
     volume: MultiIndex::new(
         |(referrer, _), data| (*referrer, data.volume),
-        "referrer_statistics",
-        "referrer_statistics__volume",
+        "ref_stats",
+        "ref_stats__volume",
     ),
     commission: MultiIndex::new(
         |(referrer, _), data| (*referrer, data.commission_rebounded),
-        "referrer_statistics",
-        "referrer_statistics__commission",
+        "ref_stats",
+        "ref_stats__commission",
     ),
 });
 
-#[grug::index_list((Referrer, Referee), RefereeData)]
+#[grug::index_list((Referrer, Referee), RefereeStats)]
 pub struct ReferrerStatisticsIndex<'a> {
-    pub register_at: MultiIndex<'a, (Referrer, Referee), (Referrer, Timestamp), RefereeData>,
-    pub volume: MultiIndex<'a, (Referrer, Referee), (Referrer, Udec128), RefereeData>,
-    pub commission: MultiIndex<'a, (Referrer, Referee), (Referrer, Udec128), RefereeData>,
+    pub register_at: MultiIndex<'a, (Referrer, Referee), (Referrer, Timestamp), RefereeStats>,
+    pub volume: MultiIndex<'a, (Referrer, Referee), (Referrer, Udec128), RefereeStats>,
+    pub commission: MultiIndex<'a, (Referrer, Referee), (Referrer, Udec128), RefereeStats>,
 }

@@ -20,7 +20,7 @@ use {
         },
         dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
         gateway::{Origin, Remote, WithdrawalFee},
-        taxman::{self, CommissionRebund, ReferralConfig},
+        taxman::{self, CommissionRebund, ReferralConfig, ShareRatio},
     },
     grug::{
         Addressable, Binary, BlockInfo, Bounded, Coin, Coins, Denom, Duration, GENESIS_BLOCK_HASH,
@@ -191,15 +191,16 @@ impl Preset for GrugOption {
                 fee_denom: usdc::DENOM.clone(),
                 fee_rate: Udec128::ZERO, // Use zero gas price for testing.
                 referral: ReferralConfig {
+                    max_share_rate: ShareRatio::new_unchecked(Udec128::new_percent(50)),
                     volume_to_be_referrer: Uint128::new(0), // No volume requirement for testing.
                     commission_rebound_default: CommissionRebund::new(
                         Udec128::checked_from_ratio(10, 100).unwrap(),
                     )
                     .unwrap(),
                     commission_rebound_by_volume: btree_map!(
-                        Uint128::new(100_000) => CommissionRebund::new(Udec128::new_percent(20)).unwrap(),
-                        Uint128::new(1_000_000) => CommissionRebund::new(Udec128::new_percent(30)).unwrap(),
-                        Uint128::new(10_000_000) => CommissionRebund::new(Udec128::new_percent(40)).unwrap(),
+                        Udec128::new(10_000_000) => CommissionRebund::new(Udec128::new_percent(20)).unwrap(),
+                        Udec128::new(100_000_000) => CommissionRebund::new(Udec128::new_percent(30)).unwrap(),
+                        Udec128::new(1_000_000_000) => CommissionRebund::new(Udec128::new_percent(40)).unwrap(),
                     ),
                 },
             },
