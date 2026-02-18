@@ -1,6 +1,6 @@
 use {
     crate::{
-        ACCOUNT_COUNT_BY_USER, ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS,
+        ACCOUNT_COUNT_BY_USER, ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MAIN_ACCOUNT,
         MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USER_INDEXES_BY_NAME,
         USER_NAMES_BY_INDEX, USERS_BY_KEY,
     },
@@ -50,6 +50,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 
             KEYS.save(ctx.storage, (user_index, user.key_hash), &user.key)?;
             USERS_BY_KEY.insert(ctx.storage, (user.key_hash, user_index))?;
+            MAIN_ACCOUNT.save(ctx.storage, user_index, &account_registered.address)?;
 
             Ok((msg, (user_registered, account_registered)))
         })
@@ -134,6 +135,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateAccount(updates) => update_account(ctx, updates),
         ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
+        ExecuteMsg::UpdateMainAccount { address } => update_main_account(ctx, address),
     }
 }
 
@@ -161,6 +163,11 @@ fn register_user(
     // Save the key.
     KEYS.save(ctx.storage, (user_registered.user_index, key_hash), &key)?;
     USERS_BY_KEY.insert(ctx.storage, (key_hash, user_registered.user_index))?;
+    MAIN_ACCOUNT.save(
+        ctx.storage,
+        user_registered.user_index,
+        &account_registered.address,
+    )?;
 
     // If a referrer index is provided, register the referral relationship.
     let maybe_referral_msg = if let Some(referrer) = referrer {
@@ -473,6 +480,29 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
 
     USER_NAMES_BY_INDEX.save(ctx.storage, user_index, &username)?;
     USER_INDEXES_BY_NAME.save(ctx.storage, &username, &user_index)?;
+
+    Ok(Response::new())
+}
+
+fn update_main_account(ctx: MutableCtx, address: Addr) -> anyhow::Result<Response> {
+    let sender_user_index = get_user_index_of_account_owner(ctx.storage, ctx.sender)?;
+
+    let account = ACCOUNTS.load(ctx.storage, address)?;
+
+    // Ensure the account is a single account.
+    let AccountParams::Single(account_params) = account.params else {
+        bail!("only account type single can be set as main account")
+    };
+
+    // Ensure the account is owned by the sender.
+    ensure!(
+        account_params.owner == sender_user_index,
+        "the account is owned by user index {} but the sender has user index {}",
+        account_params.owner,
+        sender_user_index
+    );
+
+    MAIN_ACCOUNT.save(ctx.storage, sender_user_index, &address)?;
 
     Ok(Response::new())
 }
