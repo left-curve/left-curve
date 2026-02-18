@@ -1,0 +1,10 @@
+subscription SubscribeQueryStatus($blockInterval: Int! = 10) {
+  queryStatus(blockInterval: $blockInterval) {
+    chainId
+    block {
+      blockHeight
+      timestamp
+      hash
+    }
+  }
+}

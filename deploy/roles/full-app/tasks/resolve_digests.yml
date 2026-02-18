@@ -1,0 +1,92 @@
+---
+# Resolve or use CI-provided digests for images not already verified by cosign
+# This ensures all images are pinned to immutable digests
+
+- name: Define all deployable images
+  ansible.builtin.set_fact:
+    all_deployable_images:
+      - service: "dango"
+        image: "ghcr.io/left-curve/left-curve/dango"
+        tag: "{{ dango_image_tag }}"
+        ci_digest: "{{ dango_image_digest | default('') }}"
+      - service: "dango-frontend"
+        image: "ghcr.io/left-curve/left-curve/dango-frontend"
+        tag: "{{ frontend_image_tag }}"
+        ci_digest: "{{ frontend_image_digest | default('') }}"
+      - service: "cometbft"
+        image: "ghcr.io/left-curve/left-curve/cometbft"
+        tag: "{{ cometbft_tag }}"
+        ci_digest: ""
+
+- name: Filter to images not already verified by cosign
+  ansible.builtin.set_fact:
+    images_to_resolve: >-
+      {{ all_deployable_images | rejectattr('service', 'in', cosign_verified_images | default({}) | list) | list }}
+
+- name: Use CI-provided digests where available
+  ansible.builtin.set_fact:
+    cosign_verified_images: >-
+      {{
+        cosign_verified_images | default({}) | combine({
+          item.service: {
+            'image': item.image,
+            'tag': item.tag,
+            'digest': item.ci_digest
+          }
+        })
+      }}
+  loop: "{{ images_to_resolve }}"
+  loop_control:
+    label: "{{ item.service }}"
+  when: item.ci_digest | length > 0
+
+- name: Identify images needing digest resolution from registry
+  ansible.builtin.set_fact:
+    images_needing_resolution: >-
+      {{ images_to_resolve | selectattr('ci_digest', 'equalto', '') | list }}
+
+- name: Resolve digests from registry for remaining images
+  ansible.builtin.command: >
+    docker manifest inspect {{ item.image }}:{{ item.tag }} -v
+  register: manifest_results
+  changed_when: false
+  failed_when: false
+  loop: "{{ images_needing_resolution }}"
+  loop_control:
+    label: "{{ item.service }} -> {{ item.image }}:{{ item.tag }}"
+  environment:
+    PATH: "{{ ansible_facts['env']['PATH'] | default('') }}:/usr/local/bin"
+  when: images_needing_resolution | length > 0
+
+- name: Extract digests from manifest inspection
+  ansible.builtin.set_fact:
+    cosign_verified_images: >-
+      {{
+        cosign_verified_images | default({}) | combine({
+          item.item.service: {
+            'image': item.item.image,
+            'tag': item.item.tag,
+            'digest': (item.stdout | from_json | json_query('[0].Descriptor.digest') | default(
+                       item.stdout | from_json | json_query('Descriptor.digest') | default(
+                       item.stdout | from_json | json_query('digest') | default(''))))
+          }
+        })
+      }}
+  loop: "{{ manifest_results.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.service }}"
+  when:
+    - manifest_results.results is defined
+    - item.rc == 0
+    - item.stdout | length > 0
+
+- name: Render docker-compose override with pinned digests
+  ansible.builtin.template:
+    src: docker-compose.override.yml.j2
+    dest: "{{ deployment_dir }}/docker-compose.override.yml"
+    mode: "0644"
+  when: cosign_verified_images | default({}) | length > 0
+
+- name: Log resolved digests
+  ansible.builtin.debug:
+    msg: "Resolved digests: {{ cosign_verified_images | default({}) }}"

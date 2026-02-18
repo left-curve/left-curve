@@ -56,6 +56,7 @@ export { ConnectWalletWithModal } from "./ConnectWalletWithModal";
 export { TruncateResponsive } from "./TruncateResponsive";
 export { WarningContainer } from "./WarningContainer";
 export { AuthenticatedButton } from "./AuthenticatedButton";
+export { ProgressBar } from "./ProgressBar";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -130,3 +131,10 @@ export { IconEdit } from "./icons/IconEdit";
 export { IconWalletWithCross } from "./icons/IconWalletWithCross";
 export { IconNotiStatus } from "./icons/IconNotiStatus";
 export { IconStatus } from "./icons/IconStatus";
+export { IconGift } from "./icons/IconGift";
+export { IconSwapMoney } from "./icons/IconSwapMoney";
+export { IconSprout } from "./icons/IconSprout";
+export { IconFriendshipGroup } from "./icons/IconFriendshipGroup";
+export { IconLock } from "./icons/IconLock";
+export { IconWarningTriangle } from "./icons/IconWarningTriangle";
+export { IconFlash } from "./icons/IconFlash";

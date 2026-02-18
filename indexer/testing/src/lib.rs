@@ -27,20 +27,202 @@ use {
     tokio::time::{Duration, timeout},
 };
 
+// Re-export PageInfo from indexer_client for use in pagination helpers
+pub use indexer_client::PageInfo;
+
+// Re-export query modules for use in pagination helpers
+pub use indexer_client::{
+    Blocks, Events, Messages, Transactions, blocks as blocks_query, events as events_query,
+    messages as messages_query, transactions as transactions_query,
+};
+
 pub mod block;
-pub mod graphql;
+
+/// Direction for pagination.
+#[derive(Clone, Copy)]
+pub enum PaginationDirection {
+    /// Paginate forward using `first` and `after`
+    Forward,
+    /// Paginate backward using `last` and `before`
+    Backward,
+}
+
+/// Generic macro to generate pagination test helpers for GraphQL queries.
+///
+/// This is the base macro that can be used with any context type by providing
+/// an app builder expression. Use `impl_indexer_paginate!` for the common case
+/// with `indexer_httpd::context::Context`.
+///
+/// # Arguments
+///
+/// * `$fn_name` - The name of the generated function
+/// * `$context_type` - The context type (e.g., `indexer_httpd::context::Context`)
+/// * `$query_type` - The GraphQL query type (e.g., `Blocks`)
+/// * `$module` - The module containing the query types (e.g., `indexer_client::blocks`)
+/// * `$field` - The response field name (e.g., `blocks`)
+/// * `$node_type` - The node type returned by the query
+/// * `$app_builder` - Expression to build the app from context
+#[macro_export]
+macro_rules! impl_paginate {
+    ($fn_name:ident, $context_type:ty, $query_type:ty, $module:ident, $field:ident, $node_type:ident, $app_builder:expr) => {
+        /// Paginate through all results using the actix test context.
+        ///
+        /// # Arguments
+        ///
+        /// * `context` - The httpd context
+        /// * `page_size` - Number of items to fetch per page
+        /// * `variables` - Query variables (pagination fields will be overwritten)
+        /// * `direction` - Pagination direction: `Forward` or `Backward`
+        pub async fn $fn_name(
+            context: $context_type,
+            page_size: i64,
+            mut variables: $module::Variables,
+            direction: $crate::PaginationDirection,
+        ) -> anyhow::Result<Vec<$module::$node_type>> {
+            use graphql_client::GraphQLQuery;
+
+            let mut all_items = vec![];
+            let mut after: Option<String> = None;
+            let mut before: Option<String> = None;
+
+            loop {
+                variables.after = after.clone();
+                variables.before = before.clone();
+
+                match direction {
+                    $crate::PaginationDirection::Forward => {
+                        variables.first = Some(page_size);
+                        variables.last = None;
+                    },
+                    $crate::PaginationDirection::Backward => {
+                        variables.first = None;
+                        variables.last = Some(page_size);
+                    },
+                }
+
+                let ctx = context.clone();
+                let app = $app_builder(ctx);
+                let query_body = <$query_type>::build_query(variables.clone());
+                let response = $crate::call_graphql_query::<
+                    _,
+                    $module::ResponseData,
+                    _,
+                    _,
+                    _,
+                >(app, query_body)
+                .await?;
+
+                let data = response.data.expect("GraphQL response should have data");
+                let connection = data.$field;
+                let page_info = $crate::PageInfo {
+                    start_cursor: connection.page_info.start_cursor,
+                    end_cursor: connection.page_info.end_cursor,
+                    has_next_page: connection.page_info.has_next_page,
+                    has_previous_page: connection.page_info.has_previous_page,
+                };
+
+                match direction {
+                    $crate::PaginationDirection::Forward => {
+                        all_items.extend(connection.nodes);
+                        if !page_info.has_next_page {
+                            break;
+                        }
+                        after = page_info.end_cursor;
+                    },
+                    $crate::PaginationDirection::Backward => {
+                        all_items.extend(connection.nodes.into_iter().rev());
+                        if !page_info.has_previous_page {
+                            break;
+                        }
+                        before = page_info.start_cursor;
+                    },
+                }
+            }
+
+            Ok(all_items)
+        }
+    };
+}
+
+/// Convenience macro for indexer_httpd context pagination.
+///
+/// This wraps `impl_paginate!` with the standard indexer app builder.
+#[macro_export]
+macro_rules! impl_indexer_paginate {
+    ($fn_name:ident, $query_type:ty, $module:ident, $field:ident, $node_type:ident) => {
+        $crate::impl_paginate!(
+            $fn_name,
+            indexer_httpd::context::Context,
+            $query_type,
+            $module,
+            $field,
+            $node_type,
+            $crate::build_app_service
+        );
+    };
+}
+
+// Generate pagination helpers for common query types
+impl_indexer_paginate!(
+    paginate_blocks,
+    Blocks,
+    blocks_query,
+    blocks,
+    BlocksBlocksNodes
+);
+impl_indexer_paginate!(
+    paginate_events,
+    Events,
+    events_query,
+    events,
+    EventsEventsNodes
+);
+impl_indexer_paginate!(
+    paginate_messages,
+    Messages,
+    messages_query,
+    messages,
+    MessagesMessagesNodes
+);
+impl_indexer_paginate!(
+    paginate_transactions,
+    Transactions,
+    transactions_query,
+    transactions,
+    TransactionsTransactionsNodes
+);
 pub mod setup;
 
 const DEFAULT_TIMEOUT_SECONDS: u64 = 5;
-
-// Re-export the configurable pagination function for use by other crates
-pub use graphql::paginate_models_with_app_builder;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
     pub name: &'a str,
     pub query: &'a str,
     pub variables: serde_json::Map<String, serde_json::Value>,
+}
+
+impl<'a> GraphQLCustomRequest<'a> {
+    /// Creates a GraphQLCustomRequest from a typed QueryBody.
+    ///
+    /// The `field_name` should be the GraphQL field name in the subscription/query
+    /// response (e.g., "accounts" for SubscribeAccounts, "trades" for SubscribeTrades).
+    pub fn from_query_body<V: Serialize>(
+        body: graphql_client::QueryBody<V>,
+        field_name: &'a str,
+    ) -> Self {
+        let variables = serde_json::to_value(&body.variables)
+            .expect("Failed to serialize variables")
+            .as_object()
+            .cloned()
+            .unwrap_or_default();
+
+        Self {
+            name: field_name,
+            query: body.query,
+            variables,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -89,32 +271,6 @@ pub fn build_app_service(
     let graphql_schema = build_schema(app_ctx.clone());
 
     build_actix_app(app_ctx, graphql_schema)
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[allow(unused)]
-#[serde(rename_all = "camelCase")]
-pub struct PaginatedResponse<X> {
-    pub edges: Vec<Edge<X>>,
-    pub nodes: Vec<X>,
-    pub page_info: PageInfo,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[allow(unused)]
-pub struct Edge<X> {
-    pub node: X,
-    pub cursor: String,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[allow(unused)]
-#[serde(rename_all = "camelCase")]
-pub struct PageInfo {
-    pub start_cursor: Option<String>,
-    pub end_cursor: Option<String>,
-    pub has_next_page: bool,
-    pub has_previous_page: bool,
 }
 
 pub async fn call_batch_graphql<R, A, S, B>(
@@ -200,6 +356,74 @@ where
     call_batch_graphql(app, vec![request_body])
         .await
         .and_then(|mut responses| responses.pop().ok_or_else(|| anyhow!("no response found")))
+}
+
+/// Helper function to make typed GraphQL queries in tests.
+///
+/// This takes a typed `QueryBody<V>` from graphql_client and returns
+/// a typed `Response<R>`.
+pub async fn call_graphql_query<V, R, A, S, B>(
+    app: A,
+    query_body: graphql_client::QueryBody<V>,
+) -> anyhow::Result<graphql_client::Response<R>>
+where
+    V: Serialize,
+    R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
+{
+    let app = actix_web::test::init_service(app).await;
+
+    let request = actix_web::test::TestRequest::post()
+        .uri("/graphql")
+        .set_json(&query_body)
+        .to_request();
+
+    let response = actix_web::test::call_and_read_body(&app, request).await;
+    let response: graphql_client::Response<R> = serde_json::from_slice(&response)?;
+
+    Ok(response)
+}
+
+/// Helper function to make typed batched GraphQL queries in tests.
+///
+/// This takes a vector of typed `QueryBody<V>` from graphql_client and returns
+/// a vector of typed `Response<R>`.
+pub async fn call_batch_graphql_query<V, R, A, S, B>(
+    app: A,
+    query_bodies: Vec<graphql_client::QueryBody<V>>,
+) -> anyhow::Result<Vec<graphql_client::Response<R>>>
+where
+    V: Serialize,
+    R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
+{
+    let app = actix_web::test::init_service(app).await;
+
+    let request = actix_web::test::TestRequest::post()
+        .uri("/graphql")
+        .set_json(&query_bodies)
+        .to_request();
+
+    let response = actix_web::test::call_and_read_body(&app, request).await;
+    let responses: Vec<graphql_client::Response<R>> = serde_json::from_slice(&response)?;
+
+    Ok(responses)
 }
 
 pub async fn call_api<R>(
@@ -432,27 +656,4 @@ where
     let app = App::new().wrap(Logger::default()).wrap(Compress::default());
 
     app.configure(config_app(app_ctx, graphql_schema))
-}
-
-/// Convenience function for paginated GraphQL calls
-pub async fn call_paginated_graphql<R, A, S, B>(
-    app: A,
-    request_body: GraphQLCustomRequest<'_>,
-) -> anyhow::Result<PaginatedResponse<R>>
-where
-    R: DeserializeOwned,
-    A: IntoServiceFactory<S, Request>,
-    S: ServiceFactory<
-            Request,
-            Config = AppConfig,
-            Response = ServiceResponse<B>,
-            Error = actix_web::Error,
-        >,
-    S::InitError: std::fmt::Debug,
-    B: MessageBody,
-{
-    let response: GraphQLCustomResponse<PaginatedResponse<R>> =
-        call_graphql(app, request_body).await?;
-
-    Ok(response.data)
 }

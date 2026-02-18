@@ -2,6 +2,7 @@
 tailscale_ip: "100.90.163.19"
 hostname: "hetzner2"
 wireguard_ip: "10.99.0.9"
+reboot_time: "14:00"
 dango_networks:
   - testnet
 cloudflare_lb_enabled: true

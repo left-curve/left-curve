@@ -1,0 +1,6 @@
+subscription SubscribeQueryApp($request: GrugQueryInput!, $blockInterval: Int! = 10) {
+  queryApp(request: $request, blockInterval: $blockInterval) {
+    response
+    blockHeight
+  }
+}

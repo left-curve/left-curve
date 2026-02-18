@@ -98,6 +98,74 @@ scrape_configs:
       target_label: instance
       replacement: 'ovh3:9080'
 
+  - job_name: 'hyperlane-relayer'
+    static_configs:
+      - targets: ['hetzner3:9501']
+        labels:
+          service: 'hyperlane'
+          role: 'relayer'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['hetzner4:9511']
+        labels:
+          service: 'hyperlane'
+          role: 'relayer'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+
+  - job_name: 'hyperlane-validator'
+    static_configs:
+      - targets: ['inter1:9500']
+        labels:
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+          validator_index: '1'
+      - targets: ['inter2:9500']
+        labels:
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+          validator_index: '2'
+      - targets: ['hetzner1:9500']
+        labels:
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+          validator_index: '3'
+      - targets: ['hetzner3:9500']
+        labels:
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+          validator_index: '4'
+      - targets: ['hetzner2:9510']
+        labels:
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+          validator_index: '1'
+      - targets: ['hetzner4:9510']
+        labels:
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+          validator_index: '2'
+
   - job_name: 'preview-clickhouse'
     file_sd_configs:
       - files: ['/etc/prometheus/targets/*-clickhouse.yml']

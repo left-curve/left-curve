@@ -1,6 +1,5 @@
 use {
-    crate::build_actix_app,
-    assert_json_diff::assert_json_include,
+    crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_genesis::Contracts,
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
@@ -9,18 +8,40 @@ use {
         dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
+    graphql_client::GraphQLQuery,
     grug::{
-        Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
+        Addr, Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
+    indexer_client::{SubscribeTrades, Trades, subscribe_trades, trades},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     std::sync::Arc,
     tokio::sync::{Mutex, mpsc},
 };
+
+fn assert_trade(
+    node: &trades::TradesTradesNodes,
+    addr: Addr,
+    direction: trades::Direction,
+    filled_base: &str,
+    filled_quote: &str,
+    refund_base: &str,
+    refund_quote: &str,
+) {
+    assert_that!(node.addr.as_str()).is_equal_to(addr.to_string().as_str());
+    assert_that!(node.base_denom.as_str()).is_equal_to("dango");
+    assert_that!(node.quote_denom.as_str()).is_equal_to("bridge/usdc");
+    assert_that!(node.clearing_price.as_str()).is_equal_to("27.5");
+    assert_that!(node.direction).is_equal_to(direction);
+    assert_that!(node.time_in_force).is_equal_to(trades::TimeInForce::GTC);
+    assert_that!(node.filled_base.as_str()).is_equal_to(filled_base);
+    assert_that!(node.filled_quote.as_str()).is_equal_to(filled_quote);
+    assert_that!(node.refund_base.as_str()).is_equal_to(refund_base);
+    assert_that!(node.refund_quote.as_str()).is_equal_to(refund_quote);
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_all_trades() -> anyhow::Result<()> {
@@ -31,105 +52,59 @@ async fn query_all_trades() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Trades($addr: String) {
-      trades(addr: $addr) {
-          nodes {
-            addr
-            quoteDenom
-            baseDenom
-            direction
-            timeInForce
-            filledBase
-            filledQuote
-            refundBase
-            refundQuote
-            feeBase
-            feeQuote
-            clearingPrice
-            createdAt
-            blockHeight
-          }
-          edges { node { addr quoteDenom baseDenom direction timeInForce filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "trades",
-        query: graphql_query,
-        variables: serde_json::json!({}).as_object().unwrap().clone(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context.clone());
+                let response = call_graphql_query::<_, trades::ResponseData>(
+                    dango_httpd_context,
+                    Trades::build_query(trades::Variables::default()),
+                )
+                .await?;
 
-                let response: PaginatedResponse<serde_json::Value> =
-                    call_paginated_graphql(app, request_body.clone()).await?;
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+                let nodes = &data.trades.nodes;
 
-                let received_trades = response
-                    .edges
-                    .into_iter()
-                    .map(|e| e.node)
-                    .collect::<Vec<_>>();
+                assert_that!(nodes.len()).is_equal_to(4);
 
-                let expected_candle = serde_json::json!([
-                    {
-                        "addr": accounts.user6.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "5",
-                        "filledQuote": "137.5",
-                        "refundBase": "0",
-                        "refundQuote": "136.95",
-                    },
-                    {
-                        "addr": accounts.user5.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "10",
-                        "filledQuote": "275",
-                        "refundBase": "0",
-                        "refundQuote": "273.9",
-                    },
-                    {
-                        "addr": accounts.user4.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "10",
-                        "filledQuote": "275",
-                        "refundBase": "0",
-                        "refundQuote": "273.9",
-                    },
-                    {
-                        "addr": accounts.user1.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "bid",
-                        "timeInForce": "GTC",
-                        "filledBase": "25",
-                        "filledQuote": "687.5",
-                        "refundBase": "24.9",
-                        "refundQuote": "62.5",
-                    },
-                ]);
-
-                assert_json_include!(actual: received_trades, expected: expected_candle);
+                assert_trade(
+                    &nodes[0],
+                    accounts.user6.address(),
+                    trades::Direction::ask,
+                    "5",
+                    "137.5",
+                    "0",
+                    "136.95",
+                );
+                assert_trade(
+                    &nodes[1],
+                    accounts.user5.address(),
+                    trades::Direction::ask,
+                    "10",
+                    "275",
+                    "0",
+                    "273.9",
+                );
+                assert_trade(
+                    &nodes[2],
+                    accounts.user4.address(),
+                    trades::Direction::ask,
+                    "10",
+                    "275",
+                    "0",
+                    "273.9",
+                );
+                assert_trade(
+                    &nodes[3],
+                    accounts.user1.address(),
+                    trades::Direction::bid,
+                    "25",
+                    "687.5",
+                    "24.9",
+                    "62.5",
+                );
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -147,123 +122,78 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Trades($addr: String, $first: Int, $after: String) {
-      trades(addr: $addr, first: $first, after: $after) {
-          nodes {
-            addr
-            quoteDenom
-            baseDenom
-            direction
-            timeInForce
-            filledBase
-            filledQuote
-            refundBase
-            refundQuote
-            feeBase
-            feeQuote
-            clearingPrice
-            createdAt
-            blockHeight
-          }
-          edges { node { addr quoteDenom baseDenom direction timeInForce filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut received_trades = Vec::new();
+                let mut received_trades: Vec<trades::TradesTradesNodes> = Vec::new();
                 let mut after = None;
 
                 loop {
-                    let app = build_actix_app(dango_httpd_context.clone());
-
-                    let mut variables = serde_json::json!({"first": 1});
-                    if let Some(cursor) = after {
-                        variables["after"] = serde_json::json!(cursor);
-                    }
-
-                    let request_body = GraphQLCustomRequest {
-                        name: "trades",
-                        query: graphql_query,
-                        variables: variables.as_object().unwrap().clone(),
+                    let variables = trades::Variables {
+                        after: after.clone(),
+                        first: Some(1),
+                        ..Default::default()
                     };
 
-                    let response: PaginatedResponse<serde_json::Value> =
-                        call_paginated_graphql(app, request_body.clone()).await?;
+                    let response = call_graphql_query::<_, trades::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Trades::build_query(variables),
+                    )
+                    .await?;
 
-                    received_trades.append(
-                        &mut response
-                            .edges
-                            .into_iter()
-                            .map(|e| e.node)
-                            .collect::<Vec<_>>(),
-                    );
+                    let data = response.data.unwrap();
 
-                    after = response.page_info.end_cursor;
+                    for node in data.trades.nodes {
+                        received_trades.push(node);
+                    }
+
+                    after = data.trades.page_info.end_cursor;
 
                     if after.is_none() {
                         break;
                     }
                 }
 
-                let expected_candle = serde_json::json!([
-                    {
-                        "addr": accounts.user6.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "5",
-                        "filledQuote": "137.5",
-                        "refundBase": "0",
-                        "refundQuote": "136.95",
-                    },
-                    {
-                        "addr": accounts.user5.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "10",
-                        "filledQuote": "275",
-                        "refundBase": "0",
-                        "refundQuote": "273.9",
-                    },
-                    {
-                        "addr": accounts.user4.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                        "filledBase": "10",
-                        "filledQuote": "275",
-                        "refundBase": "0",
-                        "refundQuote": "273.9",
-                    },
-                    {
-                        "addr": accounts.user1.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "bid",
-                        "timeInForce": "GTC",
-                        "filledBase": "25",
-                        "filledQuote": "687.5",
-                        "refundBase": "24.9",
-                        "refundQuote": "62.5",
-                    },
-                ]);
+                assert_that!(received_trades.len()).is_equal_to(4);
 
-                assert_json_include!(actual: received_trades, expected: expected_candle);
+                assert_trade(
+                    &received_trades[0],
+                    accounts.user6.address(),
+                    trades::Direction::ask,
+                    "5",
+                    "137.5",
+                    "0",
+                    "136.95",
+                );
+                assert_trade(
+                    &received_trades[1],
+                    accounts.user5.address(),
+                    trades::Direction::ask,
+                    "10",
+                    "275",
+                    "0",
+                    "273.9",
+                );
+                assert_trade(
+                    &received_trades[2],
+                    accounts.user4.address(),
+                    trades::Direction::ask,
+                    "10",
+                    "275",
+                    "0",
+                    "273.9",
+                );
+                assert_trade(
+                    &received_trades[3],
+                    accounts.user1.address(),
+                    trades::Direction::bid,
+                    "25",
+                    "687.5",
+                    "24.9",
+                    "62.5",
+                );
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -281,71 +211,38 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      query Trades($addr: String) {
-      trades(addr: $addr) {
-          nodes {
-            addr
-            quoteDenom
-            baseDenom
-            direction
-            filledBase
-            filledQuote
-            refundBase
-            refundQuote
-            feeBase
-            feeQuote
-            clearingPrice
-            createdAt
-            blockHeight
-          }
-          edges { node { addr quoteDenom baseDenom direction filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "trades",
-        query: graphql_query,
-        variables: serde_json::json!({"addr": accounts.user6.address()})
-            .as_object()
-            .unwrap()
-            .clone(),
-    };
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut received_trades: Vec<serde_json::Value> = vec![];
+                let mut nodes: Vec<trades::TradesTradesNodes> = vec![];
 
                 for _ in 0..10 {
-                    let app = build_actix_app(dango_httpd_context.clone());
+                    let variables = trades::Variables {
+                        addr: Some(accounts.user6.address().to_string()),
+                        ..Default::default()
+                    };
 
-                    let response: PaginatedResponse<serde_json::Value> =
-                        call_paginated_graphql(app, request_body.clone()).await?;
+                    let response = call_graphql_query::<_, trades::ResponseData>(
+                        dango_httpd_context.clone(),
+                        Trades::build_query(variables),
+                    )
+                    .await?;
 
-                    received_trades = response
-                        .edges
-                        .into_iter()
-                        .map(|e| e.node)
-                        .collect::<Vec<_>>();
+                    let data = response.data.unwrap();
+                    nodes = data.trades.nodes;
                 }
 
-                let expected_candle = serde_json::json!([
-                    {
-                        "addr": accounts.user6.address(),
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "clearingPrice": "27.5",
-                        "direction": "ask",
-                    },
-                ]);
+                assert_that!(nodes.len()).is_equal_to(1);
 
-                assert_json_include!(actual: received_trades, expected: expected_candle);
-                assert_that!(received_trades).has_length(1);
+                let node = &nodes[0];
+                assert_that!(node.addr.as_str())
+                    .is_equal_to(accounts.user6.address().to_string().as_str());
+                assert_that!(node.base_denom.as_str()).is_equal_to("dango");
+                assert_that!(node.quote_denom.as_str()).is_equal_to("bridge/usdc");
+                assert_that!(node.clearing_price.as_str()).is_equal_to("27.5");
+                assert_that!(node.direction).is_equal_to(trades::Direction::ask);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -363,38 +260,14 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let graphql_query = r#"
-      subscription Trades($base_denom: String!, $quote_denom: String!) {
-          trades(baseDenom: $base_denom, quoteDenom: $quote_denom) {
-            addr
-            quoteDenom
-            baseDenom
-            direction
-            timeInForce
-            filledBase
-            filledQuote
-            refundBase
-            refundQuote
-            feeBase
-            feeQuote
-            clearingPrice
-            createdAt
-            blockHeight
-          }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "trades",
-        query: graphql_query,
-        variables: serde_json::json!({
-            "base_denom": "dango",
-            "quote_denom": "bridge/usdc",
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
-    };
+    // Use typed subscription from indexer-client
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeTrades::build_query(subscribe_trades::Variables {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+        }),
+        "trades",
+    );
 
     let local_set = tokio::task::LocalSet::new();
     let suite = Arc::new(Mutex::new(suite));
@@ -422,63 +295,42 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
-                let mut received_trades = Vec::new();
+                let mut received_trades: Vec<subscribe_trades::SubscribeTradesTrades> = Vec::new();
 
                 create_tx_clone.send(1).await.unwrap();
 
                 // We should receive a total of 8 trades
                 for _ in 1..=8 {
-                    let response =
-                        parse_graphql_subscription_response::<serde_json::Value>(&mut framed, name)
-                            .await?;
+                    let response = parse_graphql_subscription_response::<
+                        subscribe_trades::SubscribeTradesTrades,
+                    >(&mut framed, name)
+                    .await?;
 
                     received_trades.push(response.data);
                 }
 
-                let expected_json = serde_json::json!([
-                    {
-                        "blockHeight": 2,
-                        "direction": "bid",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 2,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 2,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 2,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 4,
-                        "direction": "bid",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 4,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 4,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                    {
-                        "blockHeight": 4,
-                        "direction": "ask",
-                        "timeInForce": "GTC",
-                    },
-                ]);
+                // Verify we got 8 trades
+                assert_that!(received_trades.len()).is_equal_to(8);
 
-                assert_json_include!(actual: received_trades, expected: expected_json);
+                // Expected: 4 trades at block 2 (1 bid, 3 ask), 4 trades at block 4 (1 bid, 3 ask)
+                let expected_trades: Vec<(i64, subscribe_trades::Direction)> = vec![
+                    (2, subscribe_trades::Direction::bid),
+                    (2, subscribe_trades::Direction::ask),
+                    (2, subscribe_trades::Direction::ask),
+                    (2, subscribe_trades::Direction::ask),
+                    (4, subscribe_trades::Direction::bid),
+                    (4, subscribe_trades::Direction::ask),
+                    (4, subscribe_trades::Direction::ask),
+                    (4, subscribe_trades::Direction::ask),
+                ];
+
+                for (trade, (expected_block, expected_direction)) in
+                    received_trades.iter().zip(expected_trades.iter())
+                {
+                    assert_eq!(trade.block_height, *expected_block);
+                    assert_eq!(trade.direction, *expected_direction);
+                    assert_eq!(trade.time_in_force, subscribe_trades::TimeInForce::GTC);
+                }
 
                 Ok::<(), anyhow::Error>(())
             })

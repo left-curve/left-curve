@@ -137,6 +137,9 @@ export {
   type ForgotUsernameParameters,
   type ForgotUsernameReturnType,
   forgotUsername,
+  type GetAccountStatusParameters,
+  type GetAccountStatusReturnType,
+  getAccountStatus,
   // mutations
   type RegisterAccountParameters,
   type RegisterAccountReturnType,

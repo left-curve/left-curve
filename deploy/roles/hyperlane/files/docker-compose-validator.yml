@@ -12,5 +12,7 @@ services:
     environment:
       CONFIG_FILES: >-
         /config/config.json,/config/validator-config.json,/config/validator-${HYPERLANE_AGENTS_NETWORK}-config.json
+    ports:
+      - "${HYPERLANE_METRICS_HOST_PORT}:9090"
     command: ["./validator"]
     restart: unless-stopped

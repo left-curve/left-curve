@@ -10,7 +10,7 @@ export async function verifyWebAuthnSignature(parameters: VerifyParameters): Pro
   const { webauthn, publicKey, signature } = parameters;
 
   const digestClientJSON = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", webauthn.clientDataJSON),
+    await crypto.subtle.digest("SHA-256", webauthn.clientDataJSON as Uint8Array<ArrayBuffer>),
   );
 
   const signedData = new Uint8Array(webauthn.authenticatorData.length + digestClientJSON.length);
@@ -19,7 +19,7 @@ export async function verifyWebAuthnSignature(parameters: VerifyParameters): Pro
 
   const key = await crypto.subtle.importKey(
     "raw",
-    publicKey,
+    publicKey as Uint8Array<ArrayBuffer>,
     { name: "ECDSA", namedCurve: "P-256" },
     true,
     ["verify"],
@@ -28,8 +28,8 @@ export async function verifyWebAuthnSignature(parameters: VerifyParameters): Pro
   const verified = await crypto.subtle.verify(
     { name: "ECDSA", hash: { name: "SHA-256" } },
     key,
-    parseAsn1Signature(signature),
-    signedData,
+    parseAsn1Signature(signature) as Uint8Array<ArrayBuffer>,
+    signedData as Uint8Array<ArrayBuffer>,
   );
 
   return verified;

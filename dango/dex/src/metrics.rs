@@ -36,8 +36,6 @@ pub const LABEL_DURATION_CANCEL_IOC: &str = "dango.contract.dex.cancel_ioc.durat
 
 pub const LABEL_DURATION_UPDATE_REST_STATE: &str = "dango.contract.dex.update_rest_state.duration";
 
-pub const LABEL_DURATION_STORE_VOLUME: &str = "dango.contract.dex.store_volume.duration";
-
 pub const LABEL_DURATION_ITER_NEXT: &str = "dango.contract.dex.iterator_next.duration";
 
 #[cfg(feature = "metrics")]
@@ -111,8 +109,6 @@ pub fn init_metrics() {
             LABEL_DURATION_UPDATE_REST_STATE,
             "Time spent on updating the resting order book state"
         );
-
-        describe_histogram!(LABEL_DURATION_STORE_VOLUME, "Time spent on storing volume");
 
         describe_histogram!(
             LABEL_DURATION_ITER_NEXT,

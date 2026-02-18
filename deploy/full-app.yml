@@ -6,10 +6,19 @@
   vars:
   vars_files:
     - roles/full-app/vars/main.yml
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
   tasks:
     - name: Generate shared timestamp
       set_fact:
-        timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+        timestamp: "{{ lookup('pipe', 'date -u +%Y%m%d%H%M%S') }}"
       run_once: true
 
     - name: Get current commit short SHA
@@ -157,6 +166,9 @@
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
                       inline: true
+                    - name: "Logs"
+                      value: "{{ '[View action logs](https://github.com/' ~ github_repo ~ '/actions/runs/' ~ lookup('env', 'GITHUB_RUN_ID') ~ ')' if (lookup('env', 'GITHUB_RUN_ID') | length > 0) else '-' }}"
+                      inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
           run_once: true
@@ -282,6 +294,9 @@
                     - name: "Author"
                       value: "{{ commit_author | default('-', true) }}"
                       inline: true
+                    - name: "Logs"
+                      value: "{{ '[View action logs](https://github.com/' ~ github_repo ~ '/actions/runs/' ~ lookup('env', 'GITHUB_RUN_ID') ~ ')' if (lookup('env', 'GITHUB_RUN_ID') | length > 0) else '-' }}"
+                      inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost
           run_once: true
@@ -310,6 +325,15 @@
     - community.clickhouse
     - amazon.aws
   pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+
     - name: Load postgres vars
       include_vars: "roles/full-app/vars/included_postgres.yml"
       when: deploy_includes_postgres
@@ -318,19 +342,20 @@
       when: deploy_includes_clickhouse
     - name: Build cosign verification image list
       set_fact:
-        deploy_cosign_images:
-          - service: "dango"
-            image: "ghcr.io/left-curve/left-curve/dango"
-            tag: "{{ dango_image_tag }}"
-            identity_regexp: "{{ cosign_identity_rust_regexp }}"
-          - service: "dango-frontend"
-            image: "ghcr.io/left-curve/left-curve/dango-frontend"
-            tag: "{{ frontend_image_tag }}"
-            identity_regexp: "{{ cosign_identity_rust_regexp }}"
-          - service: "cometbft"
-            image: "ghcr.io/left-curve/left-curve/cometbft"
-            tag: "{{ cometbft_tag }}"
-            identity_regexp: "{{ cosign_identity_cometbft_regexp }}"
+        deploy_cosign_images: >-
+          {{
+            (verify_backend_signature | default(true) | bool) | ternary(
+              [{'service': 'dango', 'image': 'ghcr.io/left-curve/left-curve/dango', 'tag': dango_image_tag, 'identity_regexp': cosign_identity_rust_regexp}],
+              []
+            )
+            +
+            (verify_frontend_signature | default(true) | bool) | ternary(
+              [{'service': 'dango-frontend', 'image': 'ghcr.io/left-curve/left-curve/dango-frontend', 'tag': frontend_image_tag, 'identity_regexp': cosign_identity_rust_regexp}],
+              []
+            )
+            +
+            [{'service': 'cometbft', 'image': 'ghcr.io/left-curve/left-curve/cometbft', 'tag': cometbft_tag, 'identity_regexp': cosign_identity_cometbft_regexp}]
+          }}
     - name: Set dango and cometbft hosts
       set_fact:
         dango_host: "{{ deployment_name }}-dango-1"
@@ -407,6 +432,9 @@
                       inline: true
                     - name: "Commit"
                       value: "[{{ commit_short_sha }}](https://github.com/{{ github_repo }}/commit/{{ commit_short_sha }})"
+                      inline: true
+                    - name: "Logs"
+                      value: "{{ '[View action logs](https://github.com/' ~ github_repo ~ '/actions/runs/' ~ lookup('env', 'GITHUB_RUN_ID') ~ ')' if (lookup('env', 'GITHUB_RUN_ID') | length > 0) else '-' }}"
                       inline: true
                   timestamp: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           delegate_to: localhost

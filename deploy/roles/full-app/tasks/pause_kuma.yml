@@ -31,3 +31,4 @@
     KUMA_USER: "{{ KUMA_LOGIN }}"
     KUMA_PASS: "{{ KUMA_PASSWORD }}"
     KUMA_MONITOR_IDS: "{{ (kuma[dango_network] | map('string') | list) | join(',') }}"
+  ignore_errors: true

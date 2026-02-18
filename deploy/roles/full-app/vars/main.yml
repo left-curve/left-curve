@@ -2,6 +2,9 @@
 github_sha: "{{ lookup('pipe','git rev-parse HEAD') }}"
 dango_image_tag: "{{ github_sha }}"
 frontend_image_tag: "{{ github_sha }}"
+# Image digests for immutable pinning (provided by CI, empty means resolve at deploy time)
+dango_image_digest: ""
+frontend_image_digest: ""
 dex_bot_tag: "latest"
 cometbft_node_key: ""
 cometbft_validator_address: ""
@@ -9,7 +12,7 @@ cometbft_validator_public_key: ""
 cometbft_validator_private_key: ""
 dango_host: "dango"
 cometbft_host: "cometbft"
-cometbft_tag: "v0.38.19"
+cometbft_tag: "v0.38.21"
 cometbft_generate_keys: false
 deploy_env: "staging"
 chain_id: "dev-10"

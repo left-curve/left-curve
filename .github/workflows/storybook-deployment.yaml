@@ -1,5 +1,7 @@
 name: Storybook Deployment
 
+permissions: {}
+
 on:
   workflow_dispatch:
   push:
@@ -19,14 +21,16 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@c5ba7f7862a0f64c1b1a05fbac13e0b8e86ba08c # v4
         with:
           version: 10.16.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: "pnpm"
@@ -44,7 +48,7 @@ jobs:
         run: pnpm sb:build
 
       - name: Uploading to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/pages-action@f0a1cd58cd66095dee69bfa18fa5efd1dde93bca # v1
         with:
           wranglerVersion: "3"
           apiToken: ${{ secrets.CF_TOKEN }}

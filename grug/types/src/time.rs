@@ -5,7 +5,7 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{Dec, Int, IsZero, MathResult, Number, NumberConst, Uint128},
     serde::{Deserialize, Serialize},
-    std::ops::{Add, Mul, Sub},
+    std::ops::{Add, Div, Mul, Rem, Sub},
 };
 
 /// The number of nanoseconds in a microsecond.
@@ -222,6 +222,25 @@ where
 
     fn mul(self, rhs: U) -> Self::Output {
         Self(self.0 * Dec::<u128, 9>::new(rhs.into().into_inner()))
+    }
+}
+
+impl Div for Duration {
+    // Dividing a timestamp by another timestamp should yield a dimensionless
+    // quantity. We show this by returning the inner type `Dec<u128, 9>`
+    // (instead of another `Timestamp`) as output.
+    type Output = <Self as Inner>::U;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        self.0 / rhs.0
+    }
+}
+
+impl Rem for Duration {
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        Self(self.0 % rhs.0)
     }
 }
 

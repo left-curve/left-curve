@@ -1,17 +1,19 @@
 name: CometBFT
 
+permissions: {}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  COMETBFT_GIT_TAG: v0.38.19
+  COMETBFT_GIT_TAG: v0.38.21
 
 on:
   workflow_dispatch:
     inputs:
       cometbft_tag:
-        description: "Existing cometbft tag to sign (e.g. v0.38.17)"
+        description: "Existing cometbft tag to sign (e.g. v0.38.21)"
         required: false
       cometbft_digest:
         description: "Optional digest override (sha256:...) if you already know it"
@@ -28,24 +30,39 @@ on:
       - "docker/cometbft/**"
 
 jobs:
+  zizmor:
+    uses: ./.github/workflows/zizmor.yml
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
   check-image:
+    needs: [zizmor]
     runs-on: self-hosted
+    permissions:
+      packages: read
+      contents: read
     outputs:
       skip_build: ${{ steps.decision.outputs.skip_build }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.10.0
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
       - name: Check for docker image
         id: image
+        env:
+          GH_REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          image="ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}"
+          image="ghcr.io/${GH_REPOSITORY}/cometbft:${COMETBFT_GIT_TAG}"
           if docker manifest inspect "$image" > /dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -56,11 +73,12 @@ jobs:
         if: steps.image.outputs.exists == 'true'
         env:
           IMAGE: ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
+          GH_REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
           if cosign verify \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@refs/heads/main" \
+            --certificate-identity-regexp "https://github.com/${GH_REPOSITORY}/.github/workflows/cometbft.yml@refs/heads/main" \
             "$IMAGE" > /dev/null 2>&1; then
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
@@ -68,29 +86,36 @@ jobs:
           fi
       - name: Decide whether to build
         id: decision
+        env:
+          IMAGE_EXISTS: ${{ steps.image.outputs.exists }}
+          IMAGE_SIGNED: ${{ steps.signature.outputs.signed || 'false' }}
         run: |
           set -euo pipefail
-          if [ "${{ steps.image.outputs.exists }}" = "true" ] && [ "${{ steps.signature.outputs.signed || 'false' }}" = "true" ]; then
+          if [ "$IMAGE_EXISTS" = "true" ] && [ "$IMAGE_SIGNED" = "true" ]; then
             echo "skip_build=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip_build=false" >> "$GITHUB_OUTPUT"
           fi
       - name: CometBFT image status summary
+        env:
+          IMAGE_EXISTS: ${{ steps.image.outputs.exists }}
+          IMAGE_SIGNED: ${{ steps.signature.outputs.signed || 'false' }}
+          SKIP_BUILD: ${{ steps.decision.outputs.skip_build }}
         run: |
           echo "## 🔍 CometBFT Image Status" >> $GITHUB_STEP_SUMMARY
           echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
           echo "| ----- | ------ |" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.image.outputs.exists }}" = "true" ]; then
+          if [ "$IMAGE_EXISTS" = "true" ]; then
             echo "| Image exists | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| Image exists | ❌ No |" >> $GITHUB_STEP_SUMMARY
           fi
-          if [ "${{ steps.signature.outputs.signed || 'false' }}" = "true" ]; then
+          if [ "$IMAGE_SIGNED" = "true" ]; then
             echo "| Already signed | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| Already signed | ❌ No |" >> $GITHUB_STEP_SUMMARY
           fi
-          if [ "${{ steps.decision.outputs.skip_build }}" = "true" ]; then
+          if [ "$SKIP_BUILD" = "true" ]; then
             echo "| Skip build | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| Skip build | ❌ No |" >> $GITHUB_STEP_SUMMARY
@@ -102,18 +127,21 @@ jobs:
     permissions:
       packages: write
       id-token: write
+      contents: read
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
           context: ./docker/cometbft
           build-args: |
@@ -124,7 +152,7 @@ jobs:
           push: true
           no-cache: true
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.10.0
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
       - name: Sign CometBFT image
         id: sign
         env:
@@ -146,30 +174,70 @@ jobs:
           COSIGN_EXPERIMENTAL: "true"
           IMAGE: "ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}"
           DIGEST: ${{ steps.sign.outputs.digest }}
+          COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@${{ github.ref }}"
         run: |
           set -euo pipefail
           cosign verify \
-            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@refs/heads/main" \
+            --certificate-identity "$COSIGN_IDENTITY" \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             "$IMAGE@$DIGEST" >/dev/null
       - name: CometBFT Docker Deploy Summary
         env:
           DIGEST: ${{ steps.sign.outputs.digest }}
+          GH_REPOSITORY: ${{ github.repository }}
+          REPO_NAME: ${{ github.event.repository.name }}
         run: |
           echo "# 🐳 CometBFT Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
           echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
           echo "| ---- | ------ |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Tag** | \`${{ env.COMETBFT_GIT_TAG }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tag** | \`${COMETBFT_GIT_TAG}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Status** | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Image URL** | [ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}](https://github.com/${{ github.repository }}/pkgs/container/${{ github.event.repository.name }}%2Fcometbft) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image URL** | [ghcr.io/${GH_REPOSITORY}/cometbft:${COMETBFT_GIT_TAG}](https://github.com/${GH_REPOSITORY}/pkgs/container/${REPO_NAME}%2Fcometbft) |" >> $GITHUB_STEP_SUMMARY
           echo "| **Architectures** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
           if [ -n "${DIGEST}" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "## 🔏 Signed Image Digests" >> $GITHUB_STEP_SUMMARY
             echo "| Image | Digest |" >> "$GITHUB_STEP_SUMMARY"
             echo "| ----- | ------ |" >> "$GITHUB_STEP_SUMMARY"
-            echo "| ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} | \`${DIGEST}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ghcr.io/${GH_REPOSITORY}/cometbft:${COMETBFT_GIT_TAG} | \`${DIGEST}\` |" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  scan:
+    name: Scan CometBFT image
+    needs: [check-image, build-cometbft]
+    if: needs.check-image.outputs.skip_build == 'false' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Grype
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
+      - name: Scan image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
+        run: |
+          set -euo pipefail
+          mkdir -p sarif
+          grype "$IMAGE" --add-cpes-if-none -o sarif > sarif/cometbft.sarif
+      - name: Upload Grype SARIF
+        uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          sarif_file: sarif
+          category: grype-cometbft
 
   cometbft-manual-sign:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.cometbft_tag != '' }}
@@ -181,14 +249,14 @@ jobs:
       contents: read
     steps:
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.10.0
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
 
       - name: Resolve digest
         id: cometbft-digest
@@ -229,11 +297,13 @@ jobs:
       - name: Summary
         env:
           DIGEST: ${{ steps.cometbft-digest.outputs.digest }}
+          GH_REPOSITORY: ${{ github.repository }}
+          COMETBFT_TAG: ${{ inputs.cometbft_tag }}
         run: |
           {
             echo "## 🔏 CometBFT image signed"
             echo ""
             echo "| Image | Digest |"
             echo "| ----- | ------ |"
-            echo "| ghcr.io/${{ github.repository }}/cometbft:${{ inputs.cometbft_tag }} | \`$DIGEST\` |"
+            echo "| ghcr.io/${GH_REPOSITORY}/cometbft:${COMETBFT_TAG} | \`$DIGEST\` |"
           } >> "$GITHUB_STEP_SUMMARY"

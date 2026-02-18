@@ -10,7 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-metrics = ["dango-dex/metrics", "dango-oracle/metrics"]
+metrics = ["dango-dex/metrics", "dango-oracle/metrics", "dango-taxman/metrics"]
 
 [dependencies]
 anyhow                = { workspace = true }
