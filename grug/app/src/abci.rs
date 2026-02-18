@@ -2,7 +2,7 @@ use {
     crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
     grug_types::{
         BlockInfo, CheckTxOutcome, Duration, GENESIS_BLOCK_HASH, GenericResult, Hash256, Inner,
-        JsonSerExt, StdResult, TxOutcome,
+        JsonSerExt, StdError, StdResult, TxOutcome,
     },
     prost::bytes::Bytes,
     std::{
@@ -134,29 +134,33 @@ where
         // in the `log` field.
         let outcome = self.do_check_tx_raw(&req.tx);
         match &outcome {
-            Ok(CheckTxOutcome {
-                result: GenericResult::Ok(_),
-                gas_limit,
-                gas_used,
-                ..
-            }) => Ok(response::CheckTx {
+            Ok(
+                check_tx_outcome @ CheckTxOutcome {
+                    result: GenericResult::Ok(_),
+                    gas_limit,
+                    gas_used,
+                    ..
+                },
+            ) => Ok(response::CheckTx {
                 code: Code::Ok,
                 gas_wanted: *gas_limit as i64,
                 gas_used: *gas_used as i64,
-                log: outcome.unwrap().to_json_string()?, /* unwrap is safe since we already checked it's ok */
+                log: check_tx_outcome.to_json_string()?,
                 ..Default::default()
             }),
-            Ok(CheckTxOutcome {
-                result: GenericResult::Err(_),
-                gas_limit,
-                gas_used,
-                ..
-            }) => Ok(response::CheckTx {
+            Ok(
+                check_tx_outcome @ CheckTxOutcome {
+                    result: GenericResult::Err(_),
+                    gas_limit,
+                    gas_used,
+                    ..
+                },
+            ) => Ok(response::CheckTx {
                 codespace: "check_tx".into(),
                 code: into_tm_code_error(1),
                 gas_wanted: *gas_limit as i64,
                 gas_used: *gas_used as i64,
-                log: outcome.unwrap().to_json_string()?, /* unwrap is safe since we already checked it's ok */
+                log: check_tx_outcome.to_json_string()?,
                 ..Default::default()
             }),
             Err(err) => Ok(response::CheckTx {
@@ -237,9 +241,11 @@ where
             data: env!("CARGO_PKG_NAME").into(),
             version: env!("CARGO_PKG_VERSION").into(),
             app_version: 1,
-            last_block_height: last_block_height
-                .try_into()
-                .expect("block height exceeds i64"),
+            last_block_height: last_block_height.try_into().map_err(|_| {
+                StdError::host(format!(
+                    "block height `{last_block_height}` exceeds i64::MAX for tendermint response"
+                ))
+            })?,
             last_block_app_hash: into_tm_app_hash(last_block_version),
         })
     }
@@ -395,7 +401,10 @@ fn into_tm_tx_result(outcome: TxOutcome) -> StdResult<ExecTxResult> {
 }
 
 fn into_tm_app_hash(hash: Hash256) -> AppHash {
-    hash.into_inner().to_vec().try_into().unwrap()
+    match hash.into_inner().to_vec().try_into() {
+        Ok(app_hash) => app_hash,
+        Err(_) => unreachable!("Hash256 must always convert into tendermint AppHash"),
+    }
 }
 
 /// Be sure to pass a non-zero error code.

@@ -242,7 +242,7 @@ impl<'a> BitIterator<'a> {
             self.current = Some(self.max);
         }
 
-        let (q, r) = self.current.as_mut().unwrap();
+        let (q, r) = self.current.as_mut()?;
 
         if *r == 0 {
             // Prevent subtraction underflow

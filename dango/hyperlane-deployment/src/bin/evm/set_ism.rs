@@ -26,10 +26,16 @@ async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
     let config = config::load_config()?;
-    let evm_config = config.evm.get(EVM_NETWORK).unwrap();
+    let evm_config = config
+        .evm
+        .get(EVM_NETWORK)
+        .ok_or_else(|| anyhow::anyhow!("missing EVM config for network `{EVM_NETWORK}`"))?;
 
     let deployments = config::load_deployments()?;
-    let evm_deployment = deployments.evm.get(EVM_NETWORK).unwrap();
+    let evm_deployment = deployments
+        .evm
+        .get(EVM_NETWORK)
+        .ok_or_else(|| anyhow::anyhow!("missing EVM deployment for network `{EVM_NETWORK}`"))?;
 
     let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 

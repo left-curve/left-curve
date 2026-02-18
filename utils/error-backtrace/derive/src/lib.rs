@@ -24,7 +24,10 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
             variant.attrs.retain(|a| {
                 if a.path().is_ident("backtrace") {
-                    let inner = a.parse_args::<Ident>().unwrap();
+                    let inner = match a.parse_args::<Ident>() {
+                        Ok(inner) => inner,
+                        Err(err) => panic!("failed to parse `backtrace` attribute: {err}"),
+                    };
 
                     if inner == "new" {
                         is_fresh = true;
@@ -59,7 +62,10 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
                     let mut values = vec![];
 
                     for f in &fields.named {
-                        let ident = f.ident.clone().unwrap();
+                        let ident = match f.ident.clone() {
+                            Some(ident) => ident,
+                            None => panic!("named field without identifier"),
+                        };
                         let ty = f.ty.clone();
                         inputs.push(quote! {
                             #ident: #ty,
@@ -85,7 +91,9 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
                 },
                 Fields::Unnamed(unamed) => {
                     let mut iter = unamed.unnamed.iter_mut();
-                    let field = iter.next().expect("no unnamed fields");
+                    let Some(field) = iter.next() else {
+                        panic!("no unnamed fields");
+                    };
                     let original_ty = &field.ty.clone();
 
                     field.ty = parse_quote! {

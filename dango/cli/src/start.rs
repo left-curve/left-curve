@@ -433,9 +433,7 @@ impl StartCmd {
             .mempool(mempool)
             .info(info)
             .finish()
-            // Safety: the consensus, snapshot, mempool, and info services have all been provided
-            // to the builder above.
-            .expect("all components of abci have been provided");
+            .ok_or_else(|| anyhow!("missing ABCI server components"))?;
 
         // Listen for SIGINT and SIGTERM signals.
         // SIGINT is received when user presses Ctrl-C.

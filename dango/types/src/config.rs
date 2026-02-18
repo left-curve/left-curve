@@ -21,8 +21,8 @@ impl Default for AppConfig {
         AppConfig {
             addresses: Default::default(),
             minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 }, // 10 USDC
-            maker_fee_rate: Bounded::new(Udec128::new_bps(25)).unwrap(),
-            taker_fee_rate: Bounded::new(Udec128::new_bps(40)).unwrap(),
+            maker_fee_rate: Bounded::new_unchecked(Udec128::new_bps(25)),
+            taker_fee_rate: Bounded::new_unchecked(Udec128::new_bps(40)),
         }
     }
 }

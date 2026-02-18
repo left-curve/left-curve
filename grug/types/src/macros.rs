@@ -28,6 +28,13 @@ macro_rules! make_mutable_ctx {
         {
             debug_assert!($ctx.mode.is_none());
 
+            let Some(sender) = $ctx.sender else {
+                panic!("mutable context requires sender");
+            };
+            let Some(funds) = $ctx.funds else {
+                panic!("mutable context requires funds");
+            };
+
             MutableCtx {
                 storage:  $storage,
                 api:      $api,
@@ -35,8 +42,8 @@ macro_rules! make_mutable_ctx {
                 chain_id: $ctx.chain_id,
                 block:    $ctx.block,
                 contract: $ctx.contract,
-                sender:   $ctx.sender.unwrap(),
-                funds:    $ctx.funds.unwrap(),
+                sender,
+                funds,
             }
         }
     };
@@ -73,6 +80,10 @@ macro_rules! make_auth_ctx {
             debug_assert!($ctx.sender.is_none());
             debug_assert!($ctx.funds.is_none());
 
+            let Some(mode) = $ctx.mode else {
+                panic!("auth context requires mode");
+            };
+
             AuthCtx {
                 storage:  $storage,
                 api:      $api,
@@ -80,7 +91,7 @@ macro_rules! make_auth_ctx {
                 chain_id: $ctx.chain_id,
                 block:    $ctx.block,
                 contract: $ctx.contract,
-                mode:     $ctx.mode.unwrap(),
+                mode,
             }
         }
     };

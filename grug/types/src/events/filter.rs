@@ -171,7 +171,11 @@ impl<T> FilterResult<T> {
             self.events.len()
         );
 
-        self.events.into_iter().next().unwrap()
+        if let Some(event) = self.events.into_iter().next() {
+            event
+        } else {
+            unreachable!("filter result was asserted to contain exactly one event")
+        }
     }
 
     /// Asserts the number of events and returns them as fixed-size array.
@@ -187,6 +191,9 @@ impl<T> FilterResult<T> {
             self.events.len()
         );
 
-        self.events.try_into().unwrap()
+        match self.events.try_into() {
+            Ok(events) => events,
+            Err(_) => unreachable!("filter result length mismatch after exact-size assertion"),
+        }
     }
 }

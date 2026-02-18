@@ -1,4 +1,5 @@
 use {
+    anyhow::anyhow,
     dango_types::{config::AppConfig, dex, oracle},
     grug::{Dec, QueryClientExt, Udec128_6},
     indexer_client::HttpClient,
@@ -42,19 +43,21 @@ async fn main() -> anyhow::Result<()> {
         let status = reserve
             .reserve
             .into_iter()
-            .map(|i| {
-                let pr = prices.get(&i.denom).unwrap();
-                let value: grug::Dec<u128, 6> = pr.value_of_unit_amount(i.amount).unwrap();
-                format!(
+            .map(|i| -> anyhow::Result<String> {
+                let pr = prices
+                    .get(&i.denom)
+                    .ok_or_else(|| anyhow!("missing price for denom `{}`", i.denom))?;
+                let value: grug::Dec<u128, 6> = pr.value_of_unit_amount(i.amount)?;
+                let amount =
+                    Udec128_6::checked_from_ratio(i.amount.0, 10_u128.pow(pr.precision() as u32))?;
+                Ok(format!(
                     "{}: {:_<3} (${:_<3})",
                     i.denom,
-                    Udec128_6::checked_from_ratio(i.amount.0, 10_u128.pow(pr.precision() as u32))
-                        .unwrap()
-                        .to_nice_string(),
+                    amount.to_nice_string(),
                     value.to_nice_string()
-                )
+                ))
             })
-            .collect::<Vec<_>>()
+            .collect::<Result<Vec<_>, _>>()?
             .join(" | ");
 
         println!("{status}",);
@@ -76,12 +79,11 @@ where
         let str_self = self.to_string();
         let mut iter = str_self.split(".");
 
-        let buff = iter
-            .next()
-            .unwrap()
-            .parse::<u128>()
-            .unwrap()
-            .to_formatted_string(&Locale::en);
+        let whole_number = iter.next().unwrap_or_default();
+        let buff = match whole_number.parse::<u128>() {
+            Ok(value) => value.to_formatted_string(&Locale::en),
+            Err(_) => whole_number.to_string(),
+        };
 
         if let Some(decimal_part) = iter.next() {
             format!("{buff}.{decimal_part}")

@@ -66,16 +66,33 @@ impl PythClientCache {
                 let mut cache_file = DiskPersistence::new(filename, true);
 
                 if cache_file.exists() {
-                    return cache_file.load().unwrap();
+                    match cache_file.load() {
+                        Ok(values) => return values,
+                        Err(err) => {
+                            warn!(error = %err, "failed to load cached Pyth samples, reloading from stream");
+                        },
+                    }
                 }
 
-                let rt = Runtime::new().unwrap();
+                let rt = match Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(err) => {
+                        warn!(error = %err, "failed to create Tokio runtime for Pyth cache prefill");
+                        return vec![];
+                    },
+                };
                 let values = rt.block_on(async {
-                    let mut stream = self
+                    let mut stream = match self
                         .client
                         .stream(NonEmpty::new_unchecked(vec![subscription_details]))
                         .await
-                        .unwrap();
+                    {
+                        Ok(stream) => stream,
+                        Err(err) => {
+                            warn!(error = %err, "failed to open Pyth stream for cache prefill");
+                            return vec![];
+                        },
+                    };
 
                     // Retrieve CACHE_SAMPLES values to be able to return newer values each time.
                     let mut values = vec![];
@@ -89,7 +106,9 @@ impl PythClientCache {
                 });
 
                 // Store the data in the cache.
-                cache_file.save(&values).unwrap();
+                if let Err(err) = cache_file.save(&values) {
+                    warn!(error = %err, "failed to save prefetched Pyth cache data");
+                }
                 values
             });
         }
@@ -98,14 +117,18 @@ impl PythClientCache {
     }
 
     pub fn cache_filename(id: &PythId) -> PathBuf {
-        let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let manifest_dir = env::var("CARGO_MANIFEST_DIR")
+            .ok()
+            .map(PathBuf::from)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| PathBuf::from("."));
 
         let start_path = Path::new(&manifest_dir);
 
         let workspace_root = start_path
             .ancestors()
             .find(|p| p.join("Cargo.lock").exists())
-            .expect("Workspace root not found");
+            .unwrap_or(start_path);
 
         workspace_root
             .join("pyth/client/testdata")

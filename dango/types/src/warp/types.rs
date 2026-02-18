@@ -36,13 +36,18 @@ impl TokenMessage {
             buf.len()
         );
 
+        let mut recipient_raw = [0_u8; 32];
+        recipient_raw.copy_from_slice(&buf[0..32]);
+        let mut amount_raw = [0_u8; 32];
+        amount_raw.copy_from_slice(&buf[32..64]);
+
         Ok(Self {
-            recipient: Addr32::from_inner(buf[0..32].try_into().unwrap()),
+            recipient: Addr32::from_inner(recipient_raw),
             // Important: deserialize the number into 256-bit and try casting
             // into 258-bit. This can fail if the number is too large! Failing
             // here causes collateral tokens being stuck on the origin chain.
             // We should implement frontend check to prevent this.
-            amount: Uint256::from_be_bytes(buf[32..64].try_into().unwrap()).checked_into_prev()?,
+            amount: Uint256::from_be_bytes(amount_raw).checked_into_prev()?,
             metadata: buf[64..].to_vec().into(),
         })
     }

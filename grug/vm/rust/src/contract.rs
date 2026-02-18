@@ -36,8 +36,19 @@ pub struct ContractWrapper {
 
 impl ContractWrapper {
     pub fn from_bytes(bytes: &[u8]) -> Self {
+        let mut index_bytes = [0_u8; usize::BITS as usize / 8];
+        if bytes.len() != index_bytes.len() {
+            debug_assert_eq!(
+                bytes.len(),
+                index_bytes.len(),
+                "invalid contract wrapper byte length",
+            );
+            return Self { index: 0 };
+        }
+        index_bytes.copy_from_slice(bytes);
+
         Self {
-            index: usize::from_le_bytes(bytes.try_into().unwrap()),
+            index: usize::from_le_bytes(index_bytes),
         }
     }
 

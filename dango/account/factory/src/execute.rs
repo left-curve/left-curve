@@ -107,9 +107,11 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // `CheckTx`. If it's invalid, check fails, and the tx is rejected from
     // entering mempool.
     let maybe_msg = if ctx.mode == AuthMode::Check {
-        // We already asserted that `tx.msgs` contains exactly one message,
-        // so safe to unwrap here.
-        Some(tx.msgs.into_inner().pop().unwrap())
+        let mut msgs = tx.msgs.into_inner();
+        let Some(msg) = msgs.pop() else {
+            bail!("transaction must contain exactly one message");
+        };
+        Some(msg)
     } else {
         None
     };

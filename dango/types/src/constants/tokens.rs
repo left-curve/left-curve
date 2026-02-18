@@ -19,7 +19,7 @@ macro_rules! define_denom {
             pub static SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked(stringify!($name)));
 
             pub static DENOM: LazyLock<Denom> = LazyLock::new(|| {
-                Denom::from_parts([crate::gateway::NAMESPACE.clone(), SUBDENOM.clone()]).unwrap()
+                Denom::new_unchecked([crate::gateway::NAMESPACE.to_string(), SUBDENOM.to_string()])
             });
 
             pub const DECIMAL: u32 = $decimal;

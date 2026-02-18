@@ -52,7 +52,7 @@ fn main() -> anyhow::Result<()> {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
-                            lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                            lp_denom: Denom::from_str("dex/pool/dango/usdc")?,
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 limit: 1,
                                 spacing: Udec128::new_bps(1),
@@ -68,7 +68,7 @@ fn main() -> anyhow::Result<()> {
                         base_denom: btc::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
-                            lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
+                            lp_denom: Denom::from_str("dex/pool/btc/usdc")?,
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 limit: 1,
                                 spacing: Udec128::new_bps(1),
@@ -91,7 +91,7 @@ fn main() -> anyhow::Result<()> {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
-                            lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
+                            lp_denom: Denom::from_str("dex/pool/eth/usdc")?,
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 limit: 1,
                                 spacing: Udec128::new_bps(1),
@@ -114,7 +114,7 @@ fn main() -> anyhow::Result<()> {
                         base_denom: sol::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
-                            lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
+                            lp_denom: Denom::from_str("dex/pool/sol/usdc")?,
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 limit: 1,
                                 spacing: Udec128::new_bps(1),
