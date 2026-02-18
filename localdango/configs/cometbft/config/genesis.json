@@ -775,11 +775,12 @@
               "fee_rate": "0",
               "referral": {
                 "commission_rebound_by_volume": {
-                  "100000": "0.2",
-                  "1000000": "0.3",
-                  "10000000": "0.4"
+                  "10000000": "0.2",
+                  "100000000": "0.3",
+                  "1000000000": "0.4"
                 },
                 "commission_rebound_default": "0.1",
+                "max_share_rate": "0.5",
                 "volume_to_be_referrer": "0"
               }
             }
