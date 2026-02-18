@@ -6,8 +6,9 @@ use {
     anyhow::bail,
     dango_types::{
         account_factory::{
-            Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
-            QueryMsg, User, UserIndex, UserIndexAndName, UserIndexOrName, Username,
+            Account, AccountIndex, AccountParams, AccountType, QueryKeyPaginateParam,
+            QueryKeyResponseItem, QueryMsg, User, UserIndex, UserIndexAndName, UserIndexOrName,
+            Username,
         },
         auth::Key,
     },
@@ -252,7 +253,7 @@ fn query_main_account_by_user(storage: &dyn Storage, user: UserIndexOrName) -> S
 fn query_main_account_by_address(storage: &dyn Storage, address: Addr) -> anyhow::Result<Addr> {
     let account = ACCOUNTS.load(storage, address)?;
 
-    let Ok(account_params) = account.params.try_into_single() else {
+    let AccountParams::Single(account_params) = account.params else {
         bail!("only accounts type single have a main account")
     };
 

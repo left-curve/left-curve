@@ -472,7 +472,7 @@ fn update_main_account(ctx: MutableCtx, address: Addr) -> anyhow::Result<Respons
     let account = ACCOUNTS.load(ctx.storage, address)?;
 
     // Ensure the account is a single account.
-    let Ok(account_params) = account.params.try_into_single() else {
+    let AccountParams::Single(account_params) = account.params else {
         bail!("only account type single can be set as main account")
     };
 
