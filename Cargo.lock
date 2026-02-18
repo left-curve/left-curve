@@ -4309,7 +4309,7 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
- "dango-taxman",
+ "dango-account-factory",
  "dango-types",
  "grug",
  "grug-app",
