@@ -1,0 +1,15 @@
+subscription SubscribeEventByAddresses($addresses: [String!]!, $sinceBlockHeight: Int) {
+  eventByAddresses(addresses: $addresses, sinceBlockHeight: $sinceBlockHeight) {
+    type
+    method
+    eventStatus
+    commitmentStatus
+    transactionType
+    transactionIdx
+    messageIdx
+    eventIdx
+    data
+    blockHeight
+    createdAt
+  }
+}

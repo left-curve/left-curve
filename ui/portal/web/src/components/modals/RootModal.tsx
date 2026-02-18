@@ -14,7 +14,7 @@ export type ModalRef = {
 
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   [Modals.AddKey]: {
-    component: lazy(() => import("./AddKey").then(({ AddKeyModal }) => ({ default: AddKeyModal }))),
+    component: lazy(() => import("./AddKeyModal").then(({ AddKeyModal }) => ({ default: AddKeyModal }))),
   },
   [Modals.RemoveKey]: {
     component: lazy(() => import("./RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey }))),
@@ -200,10 +200,24 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       disableClosing: true,
     },
   },
+  [Modals.AddressWarning]: {
+    component: lazy(() =>
+      import("./AddressWarning").then(({ AddressWarning }) => ({
+        default: AddressWarning,
+      })),
+    ),
+  },
+  [Modals.EditCommissionRate]: {
+    component: lazy(() =>
+      import("./EditCommissionRate").then(({ EditCommissionRate }) => ({
+        default: EditCommissionRate,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {
-  component: React.LazyExoticComponent<React.ForwardRefExoticComponent<any>>;
+  component: React.LazyExoticComponent<React.ComponentType<any>>;
   options?: {
     header?: string;
     disableClosing?: boolean;
@@ -214,7 +228,7 @@ export const RootModal: React.FC = () => {
   const { modal, hideModal } = useApp();
   const { isMd } = useMediaQuery();
 
-  const sheetRef = useRef<SheetRef>();
+  const sheetRef = useRef<SheetRef>(null);
   const outlineRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<{ triggerOnClose: () => void } | null>(null);
 

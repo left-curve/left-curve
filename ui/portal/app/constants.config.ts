@@ -4,6 +4,14 @@ import type { AppletMetadata } from "@left-curve/store/types";
 
 export const WS_URI = "wss://webrtc.dango.exchange";
 
+export const DEFAULT_SESSION_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
+
+export const PRIVY_ERRORS_MAPPING = {
+  "User already has one email account linked": m["auth.errors.userNotFound"](),
+  authFailed: m["auth.errors.authFailed"](),
+  "User does not exist": m["auth.errors.userNotFound"](),
+};
+
 const translations = m as unknown as Record<string, () => string>;
 export const APPLETS: Record<string, AppletMetadata> = Object.keys(translations)
   .filter((k) => /^applets\..*\.id$/.test(k))

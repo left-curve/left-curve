@@ -1,2 +1,2 @@
 ---
-dozzle_dir: "{{ ansible_facts['env']['HOME'] }}/dozzle"
+dozzle_dir: "{{ deploy_home }}/dozzle"

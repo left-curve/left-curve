@@ -11,12 +11,14 @@
     url: https://download.docker.com/linux/debian/gpg
     dest: /usr/share/keyrings/docker.gpg
     mode: '0644'
+    force: true
 
-- name: Add Docker APT repo
+- name: Add Docker APT repo with signed-by
   become: true
   apt_repository:
     repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian {{ ansible_facts['distribution_release'] }} stable"
     filename: docker
+    update_cache: true
 
 - name: Update and upgrade apt packages
   become: true
@@ -76,30 +78,15 @@
     dest: /etc/systemd/system/docker.service.d/override.conf
     mode: "0644"
     content: |
-      [Service]
-      LimitNOFILE=200000
-
       [Unit]
       After=network-online.target wg-quick@wg0.service tailscaled.service
       Wants=network-online.target wg-quick@wg0.service
       Requires=wg-quick@wg0.service tailscaled.service
 
-- name: Ensure systemd override dir for Docker socket
-  become: true
-  ansible.builtin.file:
-    path: /etc/systemd/system/docker.socket.d
-    state: directory
-    mode: "0755"
-
-- name: Configure Docker socket systemd override
-  become: true
-  ansible.builtin.copy:
-    dest: /etc/systemd/system/docker.socket.d/override.conf
-    mode: "0644"
-    content: |
-      [Unit]
-      After=wg-quick@wg0.service tailscaled.service
-      Requires=wg-quick@wg0.service tailscaled.service
+      [Service]
+      LimitNOFILE=200000
+      ExecStartPre=/bin/sh -c 'until tailscale status --peers=false 2>/dev/null | grep -q "^100\\."; do sleep 1; done'
+      ExecStartPre=/bin/sh -c 'until ip addr show wg0 2>/dev/null | grep -q "inet 10\\.99\\."; do sleep 1; done'
 
 - name: Set Docker default ulimits
   become: true
@@ -118,8 +105,16 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: Ensure Docker running
+- name: Ensure Docker running and enabled on boot
   become: true
   ansible.builtin.service:
     name: docker
     state: started
+    enabled: true
+
+- name: Ensure containerd enabled on boot
+  become: true
+  ansible.builtin.service:
+    name: containerd
+    state: started
+    enabled: true

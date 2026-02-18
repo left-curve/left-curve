@@ -1,0 +1,38 @@
+name: Zizmor Audit
+
+# Reusable workflow: audits all GitHub Actions workflow files with zizmor.
+# Call this from any workflow that has self-hosted runner jobs to gate them
+# behind the security audit.
+
+permissions: {}
+
+on:
+  workflow_call:
+
+jobs:
+  zizmor:
+    name: Audit GitHub Actions
+    # Intentionally on ubuntu-latest, not self-hosted: this job gates
+    # self-hosted runner jobs, so it must run on a trusted runner to
+    # prevent a malicious workflow change from bypassing the audit.
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+      - name: Run zizmor (SARIF)
+        if: always()
+        run: uvx zizmor --config .github/zizmor.yml --format=sarif .github/workflows/ > results.sarif
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          sarif_file: results.sarif
+          category: zizmor
+      - name: Run zizmor (audit)
+        run: uvx zizmor --config .github/zizmor.yml .github/workflows/

@@ -163,6 +163,7 @@ const inputVariants = tv(
         "data-[has-end-content=true]:pe-1.5",
         "file:cursor-pointer file:bg-transparent file:border-0",
         "autofill:bg-transparent bg-clip-text z-10",
+        "[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]",
       ],
     },
     variants: {

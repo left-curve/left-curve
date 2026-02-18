@@ -1,0 +1,2 @@
+---
+vaultwarden_dir: "{{ deploy_home }}/vaultwarden"

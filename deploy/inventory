@@ -93,6 +93,9 @@ deploy_user="deploy"
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
 
+[vaultwarden]
+100.122.37.57  # ovh3
+
 [hyperlane]
 100.89.7.33    # inter1
 100.66.234.16  # inter2
