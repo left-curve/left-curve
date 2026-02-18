@@ -14,10 +14,11 @@ use {
             NewUserSalt, RegisterUserData, Salt, UserIndex, UserRegistered, Username,
         },
         auth::{Key, Signature},
+        taxman,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, EventBuilder, Hash256, Inner, JsonDeExt,
-        Message, MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
+        Message, MsgExecute, MutableCtx, Op, Order, QuerierExt, Response, StdResult, Storage, Tx,
     },
 };
 
@@ -128,7 +129,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
             seed,
             signature,
-        } => register_user(ctx, key, key_hash, seed, signature),
+            referrer,
+        } => register_user(ctx, key, key_hash, seed, signature, referrer),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateAccount(updates) => update_account(ctx, updates),
@@ -143,6 +145,7 @@ fn register_user(
     key_hash: Hash256,
     seed: u32,
     signature: Signature,
+    referrer: Option<UserIndex>,
 ) -> anyhow::Result<Response> {
     // Verify the signature is valid.
     verify_signature(
@@ -166,8 +169,23 @@ fn register_user(
         &account_registered.address,
     )?;
 
+    // If a referrer index is provided, register the referral relationship.
+    let maybe_referral_msg = if let Some(referrer) = referrer {
+        Some(Message::execute(
+            ctx.querier.query_taxman()?,
+            &taxman::ExecuteMsg::SetReferral {
+                referrer,
+                referee: user_registered.user_index,
+            },
+            Coins::default(),
+        )?)
+    } else {
+        None
+    };
+
     Ok(Response::new()
         .add_message(msg)
+        .may_add_message(maybe_referral_msg)
         .add_event(user_registered)?
         .add_event(account_registered)?)
 }
