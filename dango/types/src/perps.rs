@@ -38,6 +38,7 @@ pub enum OrderKind {
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
 #[grug::derive(Serde, Borsh)]
+#[derive(Default)]
 pub struct Param {
     /// Once a request to withdraw liquidity from the counterparty vault has been
     /// submitted, the waiting time that must elapsed before the funds are released

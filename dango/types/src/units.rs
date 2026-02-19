@@ -5,7 +5,10 @@
 //! To avoid the confusion, we define a Rust type for each of these types of number.
 
 use {
-    grug::{Dec128_6, Int128, IsZero, MathResult, Number, NumberConst, Sign, Uint128},
+    grug::{
+        Dec128_6, Exponentiate, Int128, IsZero, MathResult, Number, NumberConst, Sign, Signed,
+        Uint128,
+    },
     std::{
         fmt,
         marker::PhantomData,
@@ -30,6 +33,12 @@ pub trait FromInner {
 #[grug::derive(Serde, Borsh)]
 #[derive(Copy)]
 pub struct BaseAmount(Uint128);
+
+impl BaseAmount {
+    pub const fn new(n: u128) -> Self {
+        Self(Uint128::new(n))
+    }
+}
 
 // ------------------------------- Human amount --------------------------------
 
@@ -65,29 +74,36 @@ impl HumanAmount {
     }
 
     pub fn checked_abs(self) -> MathResult<Self> {
-        let inner = self.0.checked_abs()?;
-        Ok(Self(inner))
+        self.0.checked_abs().map(Self)
     }
 
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
-        let inner = self.0.checked_add(rhs.0)?;
-        Ok(Self(inner))
+        self.0.checked_add(rhs.0).map(Self)
     }
 
     pub fn checked_mul<N>(self, ratio: Ratio<N, Self>) -> MathResult<N>
     where
         N: FromInner<Inner = Dec128_6>,
     {
-        let inner = self.0.checked_mul(ratio.inner)?;
-        Ok(N::from_inner(inner))
+        self.0.checked_mul(ratio.inner).map(N::from_inner)
     }
 
     pub fn checked_div<D>(self, ratio: Ratio<Self, D>) -> MathResult<D>
     where
         D: FromInner<Inner = Dec128_6>,
     {
-        let inner = self.0.checked_div(ratio.inner)?;
-        Ok(D::from_inner(inner))
+        self.0.checked_div(ratio.inner).map(D::from_inner)
+    }
+
+    /// Convert the human amount to base amount with the number of decimals.
+    /// Ceil the decimal amount when rounding to integer.
+    pub fn checked_into_base_ceil(self, decimals: u32) -> MathResult<BaseAmount> {
+        let inner = self
+            .0
+            .checked_mul(Dec128_6::TEN.checked_pow(decimals)?)?
+            .checked_into_unsigned()?
+            .into_int_ceil();
+        Ok(BaseAmount(inner))
     }
 }
 
@@ -135,6 +151,20 @@ pub struct UsdValue(Dec128_6);
 impl UsdValue {
     pub const fn new(n: i128) -> Self {
         Self(Dec128_6::new(n))
+    }
+
+    pub fn checked_mul<N>(self, ratio: Ratio<N, Self>) -> MathResult<N>
+    where
+        N: FromInner<Inner = Dec128_6>,
+    {
+        self.0.checked_mul(ratio.inner).map(N::from_inner)
+    }
+
+    pub fn checked_div<D>(self, ratio: Ratio<Self, D>) -> MathResult<D>
+    where
+        D: FromInner<Inner = Dec128_6>,
+    {
+        self.0.checked_div(ratio.inner).map(D::from_inner)
     }
 }
 
