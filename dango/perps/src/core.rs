@@ -1,4 +1,5 @@
+mod constraints;
 mod decompose;
 mod pricing;
 
-pub use {decompose::*, pricing::*};
+pub use {constraints::*, decompose::*, pricing::*};

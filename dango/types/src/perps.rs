@@ -27,9 +27,7 @@ pub enum OrderKind {
     /// Marginal price is the price quoted by the counterparty vault for an order
     /// of infinitesimal size. It's calculated based on the oracle price and
     /// the current skew (the differencce bewteen long and short OI).
-    Market {
-        max_slippage: Option<Ratio<UsdPrice>>,
-    },
+    Market { max_slippage: Ratio<UsdPrice> },
 
     /// Trade at the specified limit price.
     Limit { limit_price: UsdPrice },

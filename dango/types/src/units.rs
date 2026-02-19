@@ -38,7 +38,7 @@ pub struct BaseAmount(Uint128);
 ///
 /// This value can be negative, in which case it represents a short position.
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy)]
+#[derive(Copy, PartialOrd, Ord)]
 pub struct HumanAmount(Dec128_6);
 
 impl HumanAmount {
@@ -59,24 +59,6 @@ impl HumanAmount {
     /// Panics when the inner value is `i128::MIN`.
     pub fn neg(self) -> Self {
         Self(-self.0)
-    }
-
-    /// Return the bigger between `self` and `other`.
-    pub fn max(self, other: Self) -> Self {
-        if self.0 > other.0 {
-            self
-        } else {
-            other
-        }
-    }
-
-    /// Return the smaller between `self` and `other`.
-    pub fn min(self, other: Self) -> Self {
-        if self.0 < other.0 {
-            self
-        } else {
-            other
-        }
     }
 
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
@@ -125,7 +107,7 @@ impl Sub for HumanAmount {
 /// of the asset USD. However, to differentiate with the amount of crypto assets,
 /// we create the type specifically for USD.
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy)]
+#[derive(Copy, PartialOrd, Ord)]
 pub struct UsdValue(Dec128_6);
 
 impl FromInner for UsdValue {
@@ -140,7 +122,7 @@ impl FromInner for UsdValue {
 
 /// A ratio between two values.
 #[grug::derive(Borsh)]
-#[derive(Copy)]
+#[derive(Copy, PartialOrd, Ord)]
 pub struct Ratio<N, D = N> {
     inner: Dec128_6,
     _numerator: PhantomData<N>,
@@ -168,31 +150,12 @@ impl<N, D> Ratio<N, D> {
         Self::new(-self.inner)
     }
 
-    /// Return the bigger between `self` and `other`.
-    pub fn max(self, other: Self) -> Self {
-        if self.inner > other.inner {
-            self
-        } else {
-            other
-        }
-    }
-
-    /// Return the smaller between `self` and `other`.
-    pub fn min(self, other: Self) -> Self {
-        if self.inner < other.inner {
-            self
-        } else {
-            other
-        }
-    }
-
-    /// Bound the value between `[min, max]` (both inclusive).
-    pub fn clamp(self, min: Self, max: Self) -> Self {
-        self.max(min).min(max)
-    }
-
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
         self.inner.checked_add(rhs.inner).map(Self::new)
+    }
+
+    pub fn checked_sub(self, rhs: Self) -> MathResult<Self> {
+        self.inner.checked_sub(rhs.inner).map(Self::new)
     }
 
     pub fn checked_mul<T>(self, rhs: Ratio<T, Self>) -> MathResult<T>
@@ -200,6 +163,17 @@ impl<N, D> Ratio<N, D> {
         T: FromInner<Inner = Dec128_6>,
     {
         self.inner.checked_mul(rhs.inner).map(T::from_inner)
+    }
+}
+
+impl<N, D> Ratio<N, D>
+where
+    N: Ord,
+    D: Ord,
+{
+    /// Bound the value between `[min, max]` (both inclusive).
+    pub fn clamp(self, min: Self, max: Self) -> Self {
+        self.max(min).min(max)
     }
 }
 
