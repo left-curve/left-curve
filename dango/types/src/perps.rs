@@ -1,6 +1,6 @@
 use {
     crate::{BaseAmount, HumanAmount, Ratio, UsdPrice, UsdValue},
-    grug::{Addr, Denom, Duration, Part, Timestamp},
+    grug::{Addr, Duration, Part, Timestamp},
     std::{
         collections::{BTreeMap, BTreeSet},
         sync::LazyLock,
@@ -8,6 +8,9 @@ use {
 };
 
 // --------------------------------- Constants ---------------------------------
+
+/// Denomination of the asset used to settle perpetual futures contracts.
+pub use crate::constants::usdc as settlement_currency;
 
 /// Namespace for tokens minted by the perps contract.
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("perps"));
@@ -36,9 +39,6 @@ pub enum OrderKind {
 /// Global parameters that concerns the counterparty vault and all trading pairs.
 #[grug::derive(Serde, Borsh)]
 pub struct Param {
-    /// Denomination of the asset used to settle perpetual futures contracts.
-    pub settlement_currency: Denom,
-
     /// Once a request to withdraw liquidity from the counterparty vault has been
     /// submitted, the waiting time that must elapsed before the funds are released
     /// to the liquidity provider.
