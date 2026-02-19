@@ -5,7 +5,7 @@
 - To ensure the protocol's solvency and profitability, it's important the market is close to _neutral_, meaning there is roughly the same amount of long and short OI. We incentivize this through two mechanisms, **skew pricing** and **funding fee** (described in respective sections).
 - For this v1 release:
   - Only **cross margin** is supported. Support for isolated margin may be added in a future update.
-  - Order fulfillment is **all-or-nothing**: while the closing portion of an order can always be fully filled (bypassing max OI constraint), the opening portion is either filled fully (if it satisfies the max OI constraint), or not at all (if it doesn't satisfy). Partial fill of orders may be added in a future release.
+  - Order fulfillment is **all-or-nothing**: if the opening portion of an order would violate the max OI constraint, the entire order is rejected. Users who wish to close their position regardless should submit with `reduce_only: true`, which zeros the opening portion before the OI check runs. Partial fill of orders may be added in a future release.
 
 This spec is divided into three sections:
 
@@ -940,58 +940,24 @@ fn check_price_constraint(exec_price: UsdPrice, target_price: UsdPrice, is_buy: 
 }
 ```
 
-#### Max fillable from OI constraint
+#### OI constraint check
 
-We then compute the maximum fillable amount based on the max OI constraint. This applies only to the opening portion of the order.
+We check that the opening portion does not violate the max OI constraint. If it does, the entire order is rejected. Users who want to close their position regardless should use `reduce_only: true`.
 
 ```rust
-fn compute_max_opening_from_oi(
+/// Check that the opening portion of an order does not violate the max OI
+/// constraint. If violated, the order is rejected entirely.
+fn check_oi_constraint(
     opening_size: HumanAmount,
     pair_state: &PairState,
     max_abs_oi: HumanAmount,
-) -> HumanAmount {
+) -> Result<()> {
     if opening_size > 0 {
-        // Opening a long: increases long_oi
-        let room = max_abs_oi - pair_state.long_oi;
-        min(opening_size, room)
+        ensure!(pair_state.long_oi + opening_size <= max_abs_oi, "max long OI exceeded");
     } else if opening_size < 0 {
-        // Opening a short: increases short_oi
-        let room = max_abs_oi - pair_state.short_oi;
-        max(opening_size, -room)
-    } else {
-        0
+        ensure!(pair_state.short_oi + (-opening_size) <= max_abs_oi, "max short OI exceeded");
     }
-}
-
-/// Determine the actual fill size after applying the open interest constraint.
-///
-/// The closing portion is never subject to OI limits. The opening portion is
-/// all-or-nothing: if it exceeds `max_abs_oi`, only the closing portion fills
-/// and the opening portion is rejected entirely.
-///
-/// Returns the total fillable size and opening size under the OI constraint.
-fn compute_fill_size_from_oi(
-    closing_size: HumanAmount,
-    opening_size: HumanAmount,
-    is_buy: bool,
-    pair_state: &PairState,
-    max_abs_oi: HumanAmount,
-) -> (HumanAmount, HumanAmount) {
-    let max_opening = compute_max_opening_from_oi(opening_size, pair_state, max_abs_oi);
-
-    let oi_violated = if is_buy {
-        max_opening < opening_size
-    } else {
-        max_opening > opening_size
-    };
-
-    if oi_violated {
-        // OI constraint violated -- only fill the closing portion.
-        (closing_size, 0)
-    } else {
-        // OI constraint not violated -- fill both the closing and opening portions.
-        (closing_size + opening_size, opening_size)
-    }
+    Ok(())
 }
 ```
 
@@ -1116,17 +1082,14 @@ fn handle_submit_order(
     // reduce existing exposure.
     let (closing_size, opening_size) = decompose_fill(size, user_pos);
     let opening_size = if reduce_only { HumanAmount::ZERO } else { opening_size };
+    let fill_size = closing_size + opening_size;
+    ensure!(fill_size != HumanAmount::ZERO, "order would have no effect");
 
     // Step 3: Validate minimum opening notional
     validate_notional_constraints(opening_size, oracle_price, pair_params);
 
-    // Step 4: Check OI constraint and determine fill size.
-    // Use the reduce_only-adjusted effective size (closing + adjusted opening).
-    let (fill_size, fill_opening) = compute_fill_size_from_oi(
-        closing_size, opening_size, is_buy,
-        pair_state, pair_params.max_abs_oi,
-    );
-    ensure!(fill_size != HumanAmount::ZERO, "order would have no effect");
+    // Step 4: Check OI constraint — reject if opening portion violates max OI.
+    check_oi_constraint(opening_size, pair_state, pair_params.max_abs_oi)?;
 
     // Step 5: Post-fill margin check.
     // Project the new position size and compute total used margin (initial
@@ -1170,7 +1133,7 @@ fn handle_submit_order(
     }
 
     // Step 7: Execute fill and collect trading fee.
-    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, fill_opening, usdt_price);
+    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, opening_size, usdt_price);
     collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate, usdt_price);
 }
 
@@ -1607,17 +1570,16 @@ fn fill_limit_order(
     // Step 2: Decompose closing/opening portions.
     let (closing_size, opening_size) = decompose_fill(order.size, user_pos);
     let opening_size = if order.reduce_only { HumanAmount::ZERO } else { opening_size };
+    let fill_size = closing_size + opening_size;
 
-    // Step 4: OI check — determine fill size from OI constraint
-    // (closing portion always allowed).
-    let (fill_size, fill_opening) = compute_fill_size_from_oi(
-        closing_size, opening_size, is_buy,
-        pair_state, pair_params.max_abs_oi,
-    );
-
-    // If fill_size is zero (pure opening order with OI violated), skip.
-    // OI is transient — order may become fillable in a future cycle.
+    // If fill_size is zero, skip — nothing to do.
     if fill_size == HumanAmount::ZERO {
+        return HumanAmount::ZERO;
+    }
+
+    // Step 4: OI check — reject if opening portion violates max OI.
+    // OI is transient — order may become fillable in a future cycle.
+    if check_oi_constraint(opening_size, pair_state, pair_params.max_abs_oi).is_err() {
         return HumanAmount::ZERO;
     }
 
@@ -1647,8 +1609,8 @@ fn fill_limit_order(
         return HumanAmount::ZERO;
     }
 
-    // Step 7: Execute fill (may be full order or closing-only).
-    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price, closing_size, fill_opening, usdt_price);
+    // Step 7: Execute fill.
+    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price, closing_size, opening_size, usdt_price);
     collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate, usdt_price);
 
     // Remove order after fill (all-or-nothing: no partial orders remain)
