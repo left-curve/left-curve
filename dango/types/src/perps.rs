@@ -1,6 +1,6 @@
 use {
     crate::{BaseAmount, HumanAmount, Ratio, UsdPrice, UsdValue},
-    grug::{Addr, Dec128_6, Denom, Duration, Part, Timestamp, Udec128_6},
+    grug::{Addr, Denom, Duration, Part, Timestamp},
     std::{
         collections::{BTreeMap, BTreeSet},
         sync::LazyLock,
@@ -109,7 +109,7 @@ pub struct PairParam {
     /// pair_state.long_oi <= max_abs_oi && pair_state.short_oi <= max_abs_oi
     ///
     /// This constraint does not apply to reduce-only orders.
-    pub max_abs_oi: UsdValue,
+    pub max_abs_oi: HumanAmount,
 
     /// Maximum absolute funding rate, as a fraction per day.
     ///
@@ -118,13 +118,13 @@ pub struct PairParam {
     ///
     /// This prevents runaway rates from causing cascading liquidations and bad
     /// debt spirals during prolonged skew.
-    pub max_abs_funding_rate: Udec128_6, // TODO: determine the correct Ratio type
+    pub max_abs_funding_rate: Ratio<UsdValue, Duration>,
 
     /// Maximum rate the funding rate may change, as a fraction per day.
     ///
     /// When |skew| >= skew_scale, the funding rate changes by this much per day.
     /// When skew == 0, the rate drifts back toward zero at this speed.
-    pub max_funding_velocity: Udec128_6, // TODO: determine the correct Ratio type
+    pub max_funding_velocity: Ratio<UsdValue, Duration>,
 
     /// Minimum notional value for the opening portion of an order.
     /// This prevents the opening of dust positions.
@@ -176,31 +176,30 @@ pub struct PairState {
 
     /// Instantaneous funding rate (fraction per day) at the `last_funding_time`.
     ///
-    /// Position = longs pay shorts (and vault collects the net)
+    /// Positive = longs pay shorts (and vault collects the net)
     /// Negative = shorts pay longs (and vault collects the net)
     ///
     /// The rate changes linearly over time according to the velocity model:
     ///   rate' = rate + velocity * elapsed_days
-    pub funding_rate: Udec128_6,
+    pub funding_rate: Ratio<UsdValue, Duration>,
 
     /// Timestamp of the most recent funding accrual.
     pub last_funding_time: Timestamp,
 
-    /// Cumulative funding per unit of position size, denoted in the settlement
-    /// currency (not USD value).
+    /// Cumulative funding per unit of position size, denominated in USD.
     ///
     /// This is an ever-increasing accumulator. To compute a position's accrued
     /// funding, take the difference between the current value and the position's
     /// `entry_funding_per_unit`.
-    pub cumulative_funding_per_unit: BaseAmount, // TODO: determine the correct type
+    pub cumulative_funding_per_unit: Ratio<UsdValue, HumanAmount>,
 
     /// Sum of `position.size * position.entry_funding_per_unit` across all open
     /// positions for this pair.
     ///
     /// Used to compute the vault's unrealized funding without iterating over
     /// all positions:
-    ///   vault_unrealized_funding = oi_weighted_entry_funding - cumulative_funding_per_unit * skew
-    pub oi_weighted_entry_funding: Dec128_6, // TODO: determine the correct type
+    ///   vault_unrealized_funding = cumulative_funding_per_unit * skew - oi_weighted_entry_funding
+    pub oi_weighted_entry_funding: UsdValue,
 
     /// Sum of `position.size * position.entry_price` across all open
     /// positions for this pair.
@@ -208,7 +207,7 @@ pub struct PairState {
     /// Used to compute the vault's unrealized price PnL without iterating over
     /// all positions:
     ///   vault_unrealized_pnl = oi_weighted_entry_price - oracle_price * skew
-    pub oi_weighted_entry_price: Dec128_6, // TODO: determine the correct type
+    pub oi_weighted_entry_price: UsdValue,
 }
 
 /// State of a specific user.
@@ -221,7 +220,7 @@ pub struct UserState {
     pub positions: BTreeMap<PairId, Position>,
 
     /// Margin reserved for resting limit orders.
-    pub reserved_margin: UsdValue,
+    pub reserved_margin: BaseAmount,
 
     /// Number of resting limit orders the user currently has on the book.
     pub open_order_count: u32,
@@ -238,7 +237,7 @@ pub struct Position {
 
     /// The value of `pair_state.cumulative_funding_per_unit` at the time when
     /// this position was last opened, modified, or funding settled.
-    pub entry_funding_per_unit: BaseAmount, // TODO: determine the correct type
+    pub entry_funding_per_unit: Ratio<UsdValue, HumanAmount>,
 }
 
 /// A pending withdrawal of liquidity from the counterparty vault, awaiting the
