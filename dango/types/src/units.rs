@@ -5,7 +5,7 @@
 //! To avoid the confusion, we define a Rust type for each of these types of number.
 
 use {
-    grug::{Dec128_6, Int128, MathResult, Number, NumberConst, Sign, Uint128},
+    grug::{Dec128_6, Int128, IsZero, MathResult, Number, NumberConst, Sign, Uint128},
     std::{
         fmt,
         marker::PhantomData,
@@ -52,12 +52,21 @@ impl HumanAmount {
         Self(Dec128_6::new(n))
     }
 
+    pub fn is_non_zero(self) -> bool {
+        self.0.is_non_zero()
+    }
+
     pub fn is_positive(self) -> bool {
         self.0.is_positive()
     }
 
     pub fn is_negative(self) -> bool {
         self.0.is_negative()
+    }
+
+    pub fn checked_abs(self) -> MathResult<Self> {
+        let inner = self.0.checked_abs()?;
+        Ok(Self(inner))
     }
 
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
@@ -134,6 +143,12 @@ impl FromInner for UsdValue {
 
     fn from_inner(inner: Self::Inner) -> Self {
         Self(inner)
+    }
+}
+
+impl fmt::Display for UsdValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
