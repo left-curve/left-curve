@@ -7,10 +7,12 @@ pub mod constants;
 pub mod dex;
 pub mod gateway;
 pub mod oracle;
+pub mod perps;
 mod querier;
 pub mod signer;
 pub mod taxman;
+mod units;
 pub mod vesting;
 pub mod warp;
 
-pub use querier::DangoQuerier;
+pub use {querier::DangoQuerier, units::*};
