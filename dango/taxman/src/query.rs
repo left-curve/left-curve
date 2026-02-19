@@ -11,8 +11,9 @@ use {
         },
     },
     grug::{
-        BlockInfo, Bound, DEFAULT_PAGE_LIMIT, Duration, ImmutableCtx, Json, JsonSerExt, Number,
-        NumberConst, Order, PrefixBound, StdResult, Storage, Timestamp, Udec128_6,
+        BlockInfo, Borsh, Bound, DEFAULT_PAGE_LIMIT, Duration, ImmutableCtx, Json, JsonSerExt,
+        MultiIndex, Number, NumberConst, Order, PrefixBound, PrimaryKey, StdResult, Storage,
+        Timestamp, Udec128_6,
     },
 };
 
@@ -131,53 +132,72 @@ fn query_referrer_to_referee_stats(
 
     let data = match order_by.index {
         ReferrerStatsOrderIndex::Commission { start_after } => {
-            let start_after = start_after.map(PrefixBound::Exclusive);
+            let index = REFERRER_TO_REFEREE_STATISTICS.idx.commission;
 
-            REFERRER_TO_REFEREE_STATISTICS
-                .idx
-                .commission
-                .sub_prefix(referrer)
-                .prefix_range(ctx.storage, start_after, None, order_by.order)
-                .take(limit)
-                .map(|value| {
-                    let ((_, referee), referee_stats) = value?;
-                    Ok((referee, referee_stats))
-                })
-                .collect::<StdResult<Vec<_>>>()?
+            collect_referee_stats(
+                ctx.storage,
+                index,
+                referrer,
+                start_after,
+                limit,
+                order_by.order,
+            )
         },
         ReferrerStatsOrderIndex::RegisterAt { start_after } => {
-            let start_after = start_after.map(PrefixBound::Exclusive);
+            let index = REFERRER_TO_REFEREE_STATISTICS.idx.register_at;
 
-            REFERRER_TO_REFEREE_STATISTICS
-                .idx
-                .register_at
-                .sub_prefix(referrer)
-                .prefix_range(ctx.storage, start_after, None, order_by.order)
-                .take(limit)
-                .map(|value| {
-                    let ((_, referee), referee_stats) = value?;
-                    Ok((referee, referee_stats))
-                })
-                .collect::<StdResult<Vec<_>>>()?
+            collect_referee_stats(
+                ctx.storage,
+                index,
+                referrer,
+                start_after,
+                limit,
+                order_by.order,
+            )
         },
         ReferrerStatsOrderIndex::Volume { start_after } => {
-            let start_after = start_after.map(PrefixBound::Exclusive);
-
-            REFERRER_TO_REFEREE_STATISTICS
-                .idx
-                .volume
-                .sub_prefix(referrer)
-                .prefix_range(ctx.storage, start_after, None, order_by.order)
-                .take(limit)
-                .map(|value| {
-                    let ((_, referee), referee_stats) = value?;
-                    Ok((referee, referee_stats))
-                })
-                .collect::<StdResult<Vec<_>>>()?
+            let index = REFERRER_TO_REFEREE_STATISTICS.idx.volume;
+            collect_referee_stats(
+                ctx.storage,
+                index,
+                referrer,
+                start_after,
+                limit,
+                order_by.order,
+            )
         },
-    };
+    }?;
 
     Ok(data)
+}
+
+fn collect_referee_stats<S>(
+    storage: &dyn Storage,
+    index: MultiIndex<(u32, u32), (u32, S), RefereeStats, Borsh>,
+    referrer: Referrer,
+    start_after: Option<S>,
+    limit: usize,
+    order: Order,
+) -> StdResult<Vec<(u32, RefereeStats)>>
+where
+    S: PrimaryKey,
+{
+    let start_after = start_after.map(PrefixBound::Exclusive);
+
+    let (min, max) = match order {
+        Order::Ascending => (start_after, None),
+        Order::Descending => (None, start_after),
+    };
+
+    index
+        .sub_prefix(referrer)
+        .prefix_range(storage, min, max, order)
+        .take(limit)
+        .map(|value| {
+            let ((_, referee), referee_stats) = value?;
+            Ok((referee, referee_stats))
+        })
+        .collect::<StdResult<Vec<_>>>()
 }
 
 fn query_referral_settings(
