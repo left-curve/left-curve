@@ -8,13 +8,14 @@ use {
         oracle,
         taxman::{
             self, CommissionRebund, QueryConfigRequest, QueryReferralDataRequest,
-            QueryReferralSettingsRequest, QueryReferrerRequest, ShareRatio, UserReferralData,
+            QueryReferralSettingsRequest, QueryReferrerRequest, QueryReferrerToRefereeStatsRequest,
+            ReferrerStatsOrderBy, ReferrerStatsOrderIndex, ShareRatio, UserReferralData,
         },
     },
     grug::{
         Addr, Addressable, Bounded, Coin, Coins, Duration, HashExt, Inner, MakeBlockOutcome,
-        Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt,
-        Signer, Timestamp, TxOutcome, Udec128, Uint128, btree_map,
+        Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order, QuerierExt,
+        ResultExt, Signer, Timestamp, TxOutcome, Udec128, Uint128, btree_map,
     },
     std::vec,
 };
@@ -969,16 +970,185 @@ fn commission_rebound_coins() {
     }
 }
 
-// Query the user data for a the referral contract.
-fn query_latest_user_data(
-    suite: &mut TestSuite,
-    taxman: Addr,
-    user: u32,
-    since: Option<Timestamp>,
-) -> UserReferralData {
+#[test]
+fn referrer_stats() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test(TestOption::preset_test());
+
+    // Setup oracle and create a limit order with user1.
+    {
+        // Feed price to oracle.
+        suite
+     .execute(
+         &mut accounts.owner,
+         contracts.oracle,
+         &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+             eth::DENOM.clone() => oracle::PriceSource::Fixed { humanized_price: Udec128::new(1000), precision: 18, timestamp: Duration::from_weeks(1) },
+             usdc::DENOM.clone() => oracle::PriceSource::Fixed { humanized_price: Udec128::new(1), precision: 6, timestamp: Duration::from_weeks(1) },
+         }),
+         Coins::new(),
+     )
+     .should_succeed();
+
+        // Create a ask limit order with user1.
+        let amount = Uint128::new(10 * 10_u128.pow(eth::DECIMAL)); // 10 ETH
+        let order = CreateOrderRequest::new_limit(
+            eth::DENOM.clone(),
+            usdc::DENOM.clone(),
+            dex::Direction::Ask,
+            NonZero::new(
+                Price::checked_from_ratio(1000, 10_u128.pow(eth::DECIMAL - usdc::DECIMAL)).unwrap(),
+            )
+            .unwrap(),
+            NonZero::new(amount).unwrap(),
+        );
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates: vec![order],
+                    cancels: None,
+                },
+                Coin::new(eth::DENOM.clone(), amount).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    set_share_ratio(
+        &mut suite,
+        contracts.taxman,
+        &mut accounts.user1,
+        Udec128::new_percent(20),
+    )
+    .should_succeed();
+
+    suite.block_time = Duration::from_days(1);
+
     suite
-        .query_wasm_smart(taxman, QueryReferralDataRequest { user, since })
-        .should_succeed()
+        .execute(
+            &mut accounts.user2,
+            contracts.taxman,
+            &taxman::ExecuteMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let user2_amount = Uint128::new(1000 * 10_u128.pow(usdc::DECIMAL));
+    create_bid_order(&mut suite, contracts.dex, &mut accounts.user2, user2_amount);
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.taxman,
+            &taxman::ExecuteMsg::SetReferral {
+                referrer: 1,
+                referee: 3,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let user3_amount = Uint128::new(2000 * 10_u128.pow(usdc::DECIMAL));
+    create_bid_order(&mut suite, contracts.dex, &mut accounts.user3, user3_amount);
+
+    // Order by volume.
+    let referrer_stats = suite
+        .query_wasm_smart(contracts.taxman, QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                order: Order::Descending,
+                limit: None,
+                index: ReferrerStatsOrderIndex::Volume { start_after: None },
+            },
+        })
+        .unwrap();
+
+    assert_eq!(referrer_stats.len(), 2);
+
+    let (referee, stat) = referrer_stats.first().unwrap().clone();
+    assert_eq!(referee, 3);
+    assert_eq!(stat.volume, Udec128::new(user3_amount.0));
+
+    let (referee, stat) = referrer_stats.last().unwrap().clone();
+    assert_eq!(referee, 2);
+    assert_eq!(stat.volume, Udec128::new(user2_amount.0));
+
+    let referrer_stats = suite
+        .query_wasm_smart(contracts.taxman, QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                order: Order::Ascending,
+                limit: None,
+                index: ReferrerStatsOrderIndex::Volume { start_after: None },
+            },
+        })
+        .unwrap();
+
+    assert_eq!(referrer_stats[0].0, 2);
+    assert_eq!(referrer_stats[1].0, 3);
+
+    let referrer_stats = suite
+        .query_wasm_smart(contracts.taxman, QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                order: Order::Descending,
+                limit: None,
+                index: ReferrerStatsOrderIndex::Volume {
+                    start_after: Some(Udec128::new(user3_amount.0)),
+                },
+            },
+        })
+        .unwrap();
+
+    assert_eq!(referrer_stats.len(), 1);
+
+    let (referee, stat) = referrer_stats.last().unwrap().clone();
+    assert_eq!(referee, 2);
+    assert_eq!(stat.volume, Udec128::new(user2_amount.0));
+
+    // By date.
+    let referrer_stats = suite
+        .query_wasm_smart(contracts.taxman, QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                limit: None,
+                order: Order::Descending,
+                index: ReferrerStatsOrderIndex::RegisterAt { start_after: None },
+            },
+        })
+        .unwrap();
+
+    let (referee, _) = referrer_stats.first().unwrap().clone();
+    assert_eq!(referee, 3);
+
+    let (referee, _) = referrer_stats.last().unwrap().clone();
+    assert_eq!(referee, 2);
+
+    // By commissions.
+    let referrer_stats = suite
+        .query_wasm_smart(contracts.taxman, QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                order: Order::Descending,
+                limit: None,
+                index: ReferrerStatsOrderIndex::Volume { start_after: None },
+            },
+        })
+        .unwrap();
+
+    assert_eq!(referrer_stats.len(), 2);
+
+    let (referee, stat) = referrer_stats.first().unwrap().clone();
+    assert_eq!(referee, 3);
+    assert_eq!(stat.volume, Udec128::new(user3_amount.0));
+
+    let (referee, stat) = referrer_stats.last().unwrap().clone();
+    assert_eq!(referee, 2);
+    assert_eq!(stat.volume, Udec128::new(user2_amount.0));
 }
 
 fn set_share_ratio(
@@ -1093,5 +1263,17 @@ fn query_referral_settings(
 ) -> Option<taxman::ReferralSettings> {
     suite
         .query_wasm_smart(taxman, QueryReferralSettingsRequest { user })
+        .should_succeed()
+}
+
+// Query the user data for a the referral contract.
+fn query_latest_user_data(
+    suite: &mut TestSuite,
+    taxman: Addr,
+    user: u32,
+    since: Option<Timestamp>,
+) -> UserReferralData {
+    suite
+        .query_wasm_smart(taxman, QueryReferralDataRequest { user, since })
         .should_succeed()
 }
