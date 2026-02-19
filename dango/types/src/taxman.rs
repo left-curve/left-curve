@@ -1,14 +1,119 @@
 use {
     crate::account_factory::UserIndex,
-    grug::{Addr, Coins, Denom, Timestamp, Udec128, Udec128_6},
+    core::str,
+    grug::{
+        Addr, Bounded, Coins, Denom, Number, NumberConst, Order, StdResult, Timestamp, Udec128,
+        Udec128_6, Uint128, ZeroInclusiveOneExclusive, ZeroInclusiveOneInclusive,
+    },
     std::collections::BTreeMap,
 };
+
+pub type ShareRatio = Bounded<Udec128, ZeroInclusiveOneInclusive>;
+pub type CommissionRebund = Bounded<Udec128, ZeroInclusiveOneExclusive>;
+
+pub type Referrer = UserIndex;
+pub type Referee = UserIndex;
+
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+/// Store all the cumulative data for an user related to the referral program.
+pub struct UserReferralData {
+    /// Total trading volume made by the user (USD).
+    pub volume: Udec128,
+    /// Total commission rebounded to the user (USD).
+    pub commission_rebounded: Udec128,
+    /// Total number of referees referred by the user.
+    pub referee_count: u32,
+    /// Total trading volume made by the user's direct referees (USD).
+    pub referees_volume: Udec128,
+    /// Total commission rebounded to the user's direct referees (USD).
+    pub referees_commission_rebounded: Udec128,
+}
+
+impl UserReferralData {
+    pub fn checked_sub(&self, other: &UserReferralData) -> StdResult<UserReferralData> {
+        Ok(UserReferralData {
+            volume: self.volume.checked_sub(other.volume)?,
+            commission_rebounded: self
+                .commission_rebounded
+                .checked_sub(other.commission_rebounded)?,
+            referee_count: self.referee_count.saturating_sub(other.referee_count),
+            referees_volume: self.referees_volume.checked_sub(other.referees_volume)?,
+            referees_commission_rebounded: self
+                .referees_commission_rebounded
+                .checked_sub(other.referees_commission_rebounded)?,
+        })
+    }
+}
+
+#[grug::derive(Serde, Borsh)]
+pub struct RefereeStats {
+    /// Timestamp when the referee registered with the referral.
+    pub registered_at: Timestamp,
+    /// Total trading volume made by the referee (USD).
+    pub volume: Udec128,
+    /// Total commission rebounded to the referrer (USD).
+    pub commission_rebounded: Udec128,
+}
+
+#[grug::derive(Serde, Borsh)]
+pub struct ReferralSettings {
+    /// The commission rebund ratio is how much commission the referrer will receive from the fees.
+    /// This depends on the direct referees volume in the last 30 days and also on the commission rebund
+    /// of the previous referrers in the chain.
+    pub commission_rebund: CommissionRebund,
+    /// The share ratio is how much of the commission rebounded to the referrer
+    /// want to split with the referee.
+    pub share_ratio: ShareRatio,
+}
+
+#[grug::derive(Serde, Borsh)]
+
+pub struct ReferralConfig {
+    // Maximum share ratio that a referrer can set to share with his referees.
+    pub max_share_rate: ShareRatio,
+    /// Minimum volume required for a user to become a referrer in USDC.
+    /// E.g. if we want to set the threshold to $1000, this value should be 1000 * 1e6.
+    pub volume_to_be_referrer: Uint128,
+    /// Default commission rebund ratio, applied when no volume thresholds are met.
+    pub commission_rebound_default: CommissionRebund,
+    /// Mapping from volume thresholds to commission rebund ratios.
+    /// The thresholds are expressed in unit of USDC, so $1000 will be represented as 1000 * 1e6.
+    pub commission_rebound_by_volume: BTreeMap<Udec128, CommissionRebund>,
+}
+
+#[grug::derive(Serde, Borsh)]
+pub enum ReferrerStatsOrderIndex {
+    Commission { start_after: Option<Udec128> },
+    RegisterAt { start_after: Option<Timestamp> },
+    Volume { start_after: Option<Udec128> },
+}
+
+#[grug::derive(Serde, Borsh)]
+pub struct ReferrerStatsOrderBy {
+    pub order: Order,
+    pub limit: Option<u32>,
+    pub index: ReferrerStatsOrderIndex,
+}
+
+impl Default for ReferralConfig {
+    fn default() -> Self {
+        Self {
+            max_share_rate: ShareRatio::new_unchecked(Udec128::new_percent(50)),
+            volume_to_be_referrer: Default::default(),
+            commission_rebound_default: CommissionRebund::new_unchecked(Udec128::ZERO),
+            commission_rebound_by_volume: Default::default(),
+        }
+    }
+}
 
 #[grug::derive(Serde, Borsh)]
 pub struct Config {
     pub fee_denom: Denom,
     /// Units of the fee token for each unit of gas consumed.
     pub fee_rate: Udec128,
+    // Config for the referral program.
+    pub referral: ReferralConfig,
 }
 
 #[grug::derive(Serde)]
@@ -54,6 +159,17 @@ pub enum ExecuteMsg {
     /// Report trading volumes of users.
     /// Can only be called by the spot and perp DEX contracts.
     ReportVolumes(BTreeMap<Addr, Udec128_6>),
+    /// Callable by:
+    /// 1. the account factory, when a user registers with a referral code;
+    /// 2. a user, if he didn't provide a referral code when registering.
+    ///    However, if he did provide one when registering, it can't be changed.
+    SetReferral {
+        referrer: Referrer,
+        referee: Referee,
+    },
+    /// Callable by referrers.
+    /// NOTE: Can only increase, not decrease. Prevent referrers from rugging referees.
+    SetFeeShareRatio(ShareRatio),
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -70,6 +186,24 @@ pub enum QueryMsg {
         /// user's total trading volume since genesis will be returned.
         since: Option<Timestamp>,
     },
+    /// Query the referref of the user.
+    #[returns(Option<Referrer>)]
+    Referrer { user: Referee },
+    /// Query the data of an user for the referral program.
+    #[returns(UserReferralData)]
+    ReferralData {
+        user: UserIndex,
+        since: Option<Timestamp>,
+    },
+    /// Query the referrer stats.
+    #[returns(Vec<(Referee, RefereeStats)>)]
+    ReferrerToRefereeStats {
+        referrer: Referrer,
+        order_by: ReferrerStatsOrderBy,
+    },
+    // Return the referral settings if the user is a referrer. Otherwise, return None.
+    #[returns(Option<ReferralSettings>)]
+    ReferralSettings { user: UserIndex },
 }
 
 #[grug::derive(Serde)]
@@ -81,4 +215,11 @@ pub struct ReceiveFee {
     #[serde(rename = "type")]
     pub ty: FeeType,
     pub amount: Coins,
+}
+
+#[grug::derive(Serde)]
+#[grug::event("referral")]
+pub struct Referral {
+    pub referrer: Referrer,
+    pub referee: Referee,
 }
