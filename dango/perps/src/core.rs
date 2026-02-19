@@ -1,3 +1,4 @@
+mod decompose;
 mod pricing;
 
-pub use pricing::*;
+pub use {decompose::*, pricing::*};

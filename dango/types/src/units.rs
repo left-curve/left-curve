@@ -5,8 +5,8 @@
 //! To avoid the confusion, we define a Rust type for each of these types of number.
 
 use {
-    grug::{Dec128_6, Int128, MathResult, Number, NumberConst, Uint128},
-    std::marker::PhantomData,
+    grug::{Dec128_6, Int128, MathResult, Number, NumberConst, Sign, Uint128},
+    std::{marker::PhantomData, ops::Sub},
 };
 
 // TODO: merge this into the `grug::Inner` trait
@@ -44,6 +44,41 @@ pub struct HumanAmount(Dec128_6);
 impl HumanAmount {
     pub const ZERO: Self = Self(Dec128_6::ZERO);
 
+    pub fn is_positive(self) -> bool {
+        self.0.is_positive()
+    }
+
+    pub fn is_negative(self) -> bool {
+        self.0.is_negative()
+    }
+
+    /// Return the negative of `self`.
+    ///
+    /// ## Panics
+    ///
+    /// Panics when the inner value is `i128::MIN`.
+    pub fn neg(self) -> Self {
+        Self(-self.0)
+    }
+
+    /// Return the bigger between `self` and `other`.
+    pub fn max(self, other: Self) -> Self {
+        if self.0 > other.0 {
+            self
+        } else {
+            other
+        }
+    }
+
+    /// Return the smaller between `self` and `other`.
+    pub fn min(self, other: Self) -> Self {
+        if self.0 < other.0 {
+            self
+        } else {
+            other
+        }
+    }
+
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
         let inner = self.0.checked_add(rhs.0)?;
         Ok(Self(inner))
@@ -71,6 +106,14 @@ impl FromInner for HumanAmount {
 
     fn from_inner(inner: Self::Inner) -> Self {
         Self(inner)
+    }
+}
+
+impl Sub for HumanAmount {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0 - rhs.0)
     }
 }
 
