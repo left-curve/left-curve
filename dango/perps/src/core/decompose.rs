@@ -28,6 +28,8 @@ pub fn decompose_fill(
     (HumanAmount::ZERO, size)
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {super::*, test_case::test_case};
@@ -46,8 +48,7 @@ mod tests {
     #[test_case(  15,  -10,   10,    5 ; "buy closes short and opens long")]
     #[test_case( -15,   10,  -10,   -5 ; "sell closes long and opens short")]
     fn decompose_fill_works(size: i128, position: i128, exp_closing: i128, exp_opening: i128) {
-        let (closing, opening) =
-            decompose_fill(HumanAmount::new(size), HumanAmount::new(position));
+        let (closing, opening) = decompose_fill(HumanAmount::new(size), HumanAmount::new(position));
         assert_eq!(closing, HumanAmount::new(exp_closing));
         assert_eq!(opening, HumanAmount::new(exp_opening));
     }
