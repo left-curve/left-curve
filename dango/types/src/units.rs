@@ -5,9 +5,18 @@
 //! To avoid the confusion, we define a Rust type for each of these types of number.
 
 use {
-    grug::{Dec128_6, Uint128},
+    grug::{Dec128_6, Int128, MathResult, Number, NumberConst, Uint128},
     std::marker::PhantomData,
 };
+
+// TODO: merge this into the `grug::Inner` trait
+pub trait FromInner {
+    type Inner;
+
+    fn from_inner(inner: Self::Inner) -> Self;
+}
+
+// -------------------------------- Base amount --------------------------------
 
 /// A quantity of asset in _base unit_. E.g. a value of 1234, in the context of
 /// USDC, which has 6 decimal places, means 1234 uusdc or 0.001234 USDC.
@@ -15,7 +24,10 @@ use {
 /// In Dango, this is used to denote the quantity of the settlement currency for
 /// perpetual futures contracts, and tokenized shares in the counterparty vault.
 #[grug::derive(Serde, Borsh)]
+#[derive(Copy)]
 pub struct BaseAmount(Uint128);
+
+// ------------------------------- Human amount --------------------------------
 
 /// A quantity of asset in _human unit_. E.g. a value of 1.234, in the context of
 /// BTC, means 1.234 BTC (not BTC's base unit, which is satoshi or 1e-8 BTC).
@@ -26,18 +38,134 @@ pub struct BaseAmount(Uint128);
 ///
 /// This value can be negative, in which case it represents a short position.
 #[grug::derive(Serde, Borsh)]
+#[derive(Copy)]
 pub struct HumanAmount(Dec128_6);
 
+impl HumanAmount {
+    pub const ZERO: Self = Self(Dec128_6::ZERO);
+
+    pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
+        let inner = self.0.checked_add(rhs.0)?;
+        Ok(Self(inner))
+    }
+
+    pub fn checked_mul<N>(self, ratio: Ratio<N, Self>) -> MathResult<N>
+    where
+        N: FromInner<Inner = Dec128_6>,
+    {
+        let inner = self.0.checked_mul(ratio.inner)?;
+        Ok(N::from_inner(inner))
+    }
+
+    pub fn checked_div<D>(self, ratio: Ratio<Self, D>) -> MathResult<D>
+    where
+        D: FromInner<Inner = Dec128_6>,
+    {
+        let inner = self.0.checked_div(ratio.inner)?;
+        Ok(D::from_inner(inner))
+    }
+}
+
+impl FromInner for HumanAmount {
+    type Inner = Dec128_6;
+
+    fn from_inner(inner: Self::Inner) -> Self {
+        Self(inner)
+    }
+}
+
+// --------------------------------- USD value ---------------------------------
+
 /// A value in USD, in human unit. E.g. a value of 1.234 means US$1.234.
+///
+/// Technically, this is a special case of `HumanAmount`, as it's the human amount
+/// of the asset USD. However, to differentiate with the amount of crypto assets,
+/// we create the type specifically for USD.
 #[grug::derive(Serde, Borsh)]
+#[derive(Copy)]
 pub struct UsdValue(Dec128_6);
+
+impl FromInner for UsdValue {
+    type Inner = Dec128_6;
+
+    fn from_inner(inner: Self::Inner) -> Self {
+        Self(inner)
+    }
+}
+
+// ----------------------------------- Ratio -----------------------------------
 
 /// A ratio between two values.
 #[grug::derive(Borsh)]
+#[derive(Copy)]
 pub struct Ratio<N, D = N> {
-    fraction: Dec128_6,
+    inner: Dec128_6,
     _numerator: PhantomData<N>,
     _denominator: PhantomData<D>,
+}
+
+impl<N, D> Ratio<N, D> {
+    pub const HALF: Self = Self::new(Dec128_6::raw(Int128::new(500_000)));
+    pub const ONE: Self = Self::new(Dec128_6::ONE);
+
+    pub const fn new(inner: Dec128_6) -> Self {
+        Self {
+            inner,
+            _numerator: PhantomData,
+            _denominator: PhantomData,
+        }
+    }
+
+    /// Return the negative of `self`.
+    ///
+    /// ## Panics
+    ///
+    /// Panics when the inner value is `i128::MIN`.
+    pub fn neg(self) -> Self {
+        Self::new(-self.inner)
+    }
+
+    /// Return the bigger between `self` and `other`.
+    pub fn max(self, other: Self) -> Self {
+        if self.inner > other.inner {
+            self
+        } else {
+            other
+        }
+    }
+
+    /// Return the smaller between `self` and `other`.
+    pub fn min(self, other: Self) -> Self {
+        if self.inner < other.inner {
+            self
+        } else {
+            other
+        }
+    }
+
+    /// Bound the value between `[min, max]` (both inclusive).
+    pub fn clamp(self, min: Self, max: Self) -> Self {
+        self.max(min).min(max)
+    }
+
+    pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
+        self.inner.checked_add(rhs.inner).map(Self::new)
+    }
+
+    pub fn checked_mul<T>(self, rhs: Ratio<T, Self>) -> MathResult<T>
+    where
+        T: FromInner<Inner = Dec128_6>,
+    {
+        self.inner.checked_mul(rhs.inner).map(T::from_inner)
+    }
+}
+
+impl<N, D> FromInner for Ratio<N, D> {
+    type Inner = Dec128_6;
+
+    fn from_inner(inner: Self::Inner) -> Self {
+        Self::new(inner)
+    }
 }
 
 impl<N, D> serde::ser::Serialize for Ratio<N, D> {
@@ -45,7 +173,7 @@ impl<N, D> serde::ser::Serialize for Ratio<N, D> {
     where
         S: serde::Serializer,
     {
-        self.fraction.serialize(serializer)
+        self.inner.serialize(serializer)
     }
 }
 
@@ -54,11 +182,7 @@ impl<'de, N, D> serde::de::Deserialize<'de> for Ratio<N, D> {
     where
         DS: serde::Deserializer<'de>,
     {
-        Ok(Ratio {
-            fraction: serde::de::Deserialize::deserialize(deserializer)?,
-            _numerator: PhantomData,
-            _denominator: PhantomData,
-        })
+        serde::de::Deserialize::deserialize(deserializer).map(Self::new)
     }
 }
 

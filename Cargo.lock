@@ -4159,6 +4159,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-perps"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-oracle",
+ "dango-types",
+ "grug",
+ "metrics",
+ "test-case",
+ "tracing",
+]
+
+[[package]]
 name = "dango-proposal-preparer"
 version = "0.0.0"
 dependencies = [
