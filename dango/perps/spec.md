@@ -927,15 +927,15 @@ fn compute_target_price(
     }
 }
 
-/// Check whether the execution price satisfies the price constraint.
+/// Check whether the execution price violates the price constraint.
 ///
-/// - For buys:  exec_price <= target_price  (buyer won't pay more)
-/// - For sells: exec_price >= target_price  (seller won't accept less)
-fn check_price_constraint(exec_price: UsdPrice, target_price: UsdPrice, is_buy: bool) -> bool {
+/// - For buys:  exec_price > target_price  (buyer would pay more than allowed)
+/// - For sells: exec_price < target_price  (seller would accept less than allowed)
+fn is_price_constraint_violated(exec_price: UsdPrice, target_price: UsdPrice, is_buy: bool) -> bool {
     if is_buy {
-        exec_price <= target_price
+        exec_price > target_price
     } else {
-        exec_price >= target_price
+        exec_price < target_price
     }
 }
 ```
@@ -1112,7 +1112,7 @@ fn handle_submit_order(
     // If the price fails: market orders error, limit orders go to the book.
     let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
 
-    if !check_price_constraint(exec_price, target_price, is_buy) {
+    if is_price_constraint_violated(exec_price, target_price, is_buy) {
         match kind {
             OrderKind::Market { .. } => {
                 bail!("price exceeds slippage tolerance");
@@ -1605,7 +1605,7 @@ fn fill_limit_order(
 
     // Step 6: Price check — if exec_price doesn't satisfy limit_price, skip.
     // Skew is transient — order may become fillable in a future cycle.
-    if !check_price_constraint(exec_price, limit_price, is_buy) {
+    if is_price_constraint_violated(exec_price, limit_price, is_buy) {
         return HumanAmount::ZERO;
     }
 

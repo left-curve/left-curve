@@ -29,12 +29,12 @@ pub fn compute_target_price(
     }
 }
 
-/// Returns whether the execution price is better than or equal to the target price.
-pub fn check_price_constraint(exec_price: UsdPrice, target_price: UsdPrice, is_bid: bool) -> bool {
+/// Returns whether the execution price violates the price constraint.
+pub fn is_price_constraint_violated(exec_price: UsdPrice, target_price: UsdPrice, is_bid: bool) -> bool {
     if is_bid {
-        exec_price <= target_price
+        exec_price > target_price
     } else {
-        exec_price >= target_price
+        exec_price < target_price
     }
 }
 
@@ -95,15 +95,15 @@ mod tests {
         );
     }
 
-    #[test_case( 99, 101, true,  true  ; "bid exec below target")]
-    #[test_case(101, 101, true,  true  ; "bid exec equals target")]
-    #[test_case(102, 101, true,  false ; "bid exec above target")]
-    #[test_case(100,  99, false, true  ; "ask exec above target")]
-    #[test_case( 99,  99, false, true  ; "ask exec equals target")]
-    #[test_case( 98,  99, false, false ; "ask exec below target")]
-    fn check_price_constraint_works(exec: i128, target: i128, is_bid: bool, expected: bool) {
+    #[test_case( 99, 101, true,  false ; "bid exec below target")]
+    #[test_case(101, 101, true,  false ; "bid exec equals target")]
+    #[test_case(102, 101, true,  true  ; "bid exec above target")]
+    #[test_case(100,  99, false, false ; "ask exec above target")]
+    #[test_case( 99,  99, false, false ; "ask exec equals target")]
+    #[test_case( 98,  99, false, true  ; "ask exec below target")]
+    fn is_price_constraint_violated_works(exec: i128, target: i128, is_bid: bool, expected: bool) {
         assert_eq!(
-            check_price_constraint(UsdPrice::new_int(exec), UsdPrice::new_int(target), is_bid),
+            is_price_constraint_violated(UsdPrice::new_int(exec), UsdPrice::new_int(target), is_bid),
             expected
         );
     }
