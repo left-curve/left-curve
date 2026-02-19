@@ -42,12 +42,7 @@ pub fn check_price_constraint(exec_price: UsdPrice, target_price: UsdPrice, is_b
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        dango_types::{FromInner, UsdValue},
-        grug::{Dec128_6, Int128, NumberConst},
-        test_case::test_case,
-    };
+    use {super::*, dango_types::perps::PairParam, test_case::test_case};
 
     // oracle_price = 100, skew_scale = 100, max_abs_premium = 0.05
     #[test_case(  0,   0, true,  100_000_000 ; "zero slippage bid")]
@@ -66,32 +61,37 @@ mod tests {
         is_bid: bool,
         expected_raw: i128,
     ) {
-        let kind = OrderKind::Market {
-            max_slippage: slippage(slippage_permille),
-        };
         assert_eq!(
-            compute_target_price(kind, price(100), human(skew), &mock_pair_param(100, 50), is_bid)
-                .unwrap(),
-            price_raw(expected_raw)
+            compute_target_price(
+                OrderKind::Market {
+                    max_slippage: Ratio::new_permille(slippage_permille),
+                },
+                UsdPrice::new_int(100),
+                HumanAmount::new(skew),
+                &PairParam::new_mock(100, 50),
+                is_bid
+            )
+            .unwrap(),
+            UsdPrice::new_raw(expected_raw)
         );
     }
 
     #[test_case(105, 0, true,  105_000_000 ; "limit bid ignores skew")]
     #[test_case( 95, 0, false,  95_000_000 ; "limit ask ignores skew")]
     #[test_case(110, 5, true,  110_000_000 ; "limit bid nonzero skew")]
-    fn compute_target_price_limit_works(
-        limit: i128,
-        skew: i128,
-        is_bid: bool,
-        expected_raw: i128,
-    ) {
-        let kind = OrderKind::Limit {
-            limit_price: price(limit),
-        };
+    fn compute_target_price_limit_works(limit: i128, skew: i128, is_bid: bool, expected_raw: i128) {
         assert_eq!(
-            compute_target_price(kind, price(100), human(skew), &mock_pair_param(100, 50), is_bid)
-                .unwrap(),
-            price_raw(expected_raw)
+            compute_target_price(
+                OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(limit),
+                },
+                UsdPrice::new_int(100),
+                HumanAmount::new(skew),
+                &PairParam::new_mock(100, 50),
+                is_bid
+            )
+            .unwrap(),
+            UsdPrice::new_raw(expected_raw)
         );
     }
 
@@ -103,37 +103,8 @@ mod tests {
     #[test_case( 98,  99, false, false ; "ask exec below target")]
     fn check_price_constraint_works(exec: i128, target: i128, is_bid: bool, expected: bool) {
         assert_eq!(
-            check_price_constraint(price(exec), price(target), is_bid),
+            check_price_constraint(UsdPrice::new_int(exec), UsdPrice::new_int(target), is_bid),
             expected
         );
-    }
-
-    fn mock_pair_param(skew_scale: i128, max_abs_premium_permille: i128) -> PairParam {
-        PairParam {
-            skew_scale: Ratio::new(Dec128_6::new(skew_scale)),
-            max_abs_premium: Ratio::new(Dec128_6::new_permille(max_abs_premium_permille)),
-            max_abs_oi: HumanAmount::from_inner(Dec128_6::new(1_000_000)),
-            max_abs_funding_rate: Ratio::new(Dec128_6::ZERO),
-            max_funding_velocity: Ratio::new(Dec128_6::ZERO),
-            min_opening_size: UsdValue::from_inner(Dec128_6::ZERO),
-            initial_margin_ratio: Ratio::new(Dec128_6::ZERO),
-            maintenance_margin_ratio: Ratio::new(Dec128_6::ZERO),
-        }
-    }
-
-    fn human(n: i128) -> HumanAmount {
-        HumanAmount::from_inner(Dec128_6::new(n))
-    }
-
-    fn price(n: i128) -> UsdPrice {
-        Ratio::new(Dec128_6::new(n))
-    }
-
-    fn price_raw(raw: i128) -> UsdPrice {
-        Ratio::new(Dec128_6::raw(Int128::new(raw)))
-    }
-
-    fn slippage(permille: i128) -> Ratio<UsdPrice> {
-        Ratio::new(Dec128_6::new_permille(permille))
     }
 }

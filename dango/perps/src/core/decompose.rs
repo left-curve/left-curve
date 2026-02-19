@@ -30,11 +30,7 @@ pub fn decompose_fill(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_types::FromInner, grug::Dec128_6, test_case::test_case};
-
-    fn human(n: i128) -> HumanAmount {
-        HumanAmount::from_inner(Dec128_6::new(n))
-    }
+    use {super::*, test_case::test_case};
 
     #[test_case(   0,    0,    0,    0 ; "no order no position")]
     #[test_case(   0,   10,    0,    0 ; "no order has long")]
@@ -50,8 +46,9 @@ mod tests {
     #[test_case(  15,  -10,   10,    5 ; "buy closes short and opens long")]
     #[test_case( -15,   10,  -10,   -5 ; "sell closes long and opens short")]
     fn decompose_fill_works(size: i128, position: i128, exp_closing: i128, exp_opening: i128) {
-        let (closing, opening) = decompose_fill(human(size), human(position));
-        assert_eq!(closing, human(exp_closing));
-        assert_eq!(opening, human(exp_opening));
+        let (closing, opening) =
+            decompose_fill(HumanAmount::new(size), HumanAmount::new(position));
+        assert_eq!(closing, HumanAmount::new(exp_closing));
+        assert_eq!(opening, HumanAmount::new(exp_opening));
     }
 }

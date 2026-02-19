@@ -41,11 +41,15 @@ pub struct BaseAmount(Uint128);
 ///
 /// This value can be negative, in which case it represents a short position.
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy, PartialOrd, Ord)]
+#[derive(Copy, Default, PartialOrd, Ord)]
 pub struct HumanAmount(Dec128_6);
 
 impl HumanAmount {
     pub const ZERO: Self = Self(Dec128_6::ZERO);
+
+    pub const fn new(n: i128) -> Self {
+        Self(Dec128_6::new(n))
+    }
 
     pub fn is_positive(self) -> bool {
         self.0.is_positive()
@@ -109,8 +113,14 @@ impl Sub for HumanAmount {
 /// of the asset USD. However, to differentiate with the amount of crypto assets,
 /// we create the type specifically for USD.
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy, PartialOrd, Ord)]
+#[derive(Copy, Default, PartialOrd, Ord)]
 pub struct UsdValue(Dec128_6);
+
+impl UsdValue {
+    pub const fn new(n: i128) -> Self {
+        Self(Dec128_6::new(n))
+    }
+}
 
 impl FromInner for UsdValue {
     type Inner = Dec128_6;
@@ -124,7 +134,7 @@ impl FromInner for UsdValue {
 
 /// A ratio between two values.
 #[grug::derive(Borsh)]
-#[derive(Copy, PartialOrd, Ord)]
+#[derive(Copy, Default, PartialOrd, Ord)]
 pub struct Ratio<N, D = N> {
     inner: Dec128_6,
     _numerator: PhantomData<N>,
@@ -141,6 +151,18 @@ impl<N, D> Ratio<N, D> {
             _numerator: PhantomData,
             _denominator: PhantomData,
         }
+    }
+
+    pub const fn new_int(n: i128) -> Self {
+        Self::new(Dec128_6::new(n))
+    }
+
+    pub const fn new_raw(raw: i128) -> Self {
+        Self::new(Dec128_6::raw(Int128::new(raw)))
+    }
+
+    pub const fn new_permille(n: i128) -> Self {
+        Self::new(Dec128_6::new_permille(n))
     }
 
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {

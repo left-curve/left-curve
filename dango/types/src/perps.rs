@@ -86,6 +86,7 @@ pub struct Param {
 
 /// Parameters that apply to an individual trading pair.
 #[grug::derive(Serde, Borsh)]
+#[derive(Default)]
 pub struct PairParam {
     /// A scaling factor that determines how greatly an imbalance in long/short
     /// open interests (the "skew") should affect the price quoted by the vault.
@@ -143,6 +144,19 @@ pub struct PairParam {
     ///
     /// maintenance_margin = |position_size| * oracle_price * maintenance_margin_ratio
     pub maintenance_margin_ratio: Ratio<UsdValue>,
+}
+
+impl PairParam {
+    /// Build a `PairParam` with the two pricing-relevant fields varied;
+    /// all other fields use inert defaults. Intended for tests.
+    pub fn new_mock(skew_scale: i128, max_abs_premium_permille: i128) -> Self {
+        Self {
+            skew_scale: Ratio::new_int(skew_scale),
+            max_abs_premium: Ratio::new_permille(max_abs_premium_permille),
+            max_abs_oi: HumanAmount::new(1_000_000),
+            ..Default::default()
+        }
+    }
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.

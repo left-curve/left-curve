@@ -51,8 +51,7 @@ pub fn compute_marginal_price(
 mod tests {
     use {
         super::*,
-        dango_types::{FromInner, UsdValue},
-        grug::{Dec128_6, Int128, NumberConst},
+        dango_types::perps::PairParam,
         test_case::test_case,
     };
 
@@ -73,13 +72,13 @@ mod tests {
     fn compute_exec_price_works(skew: i128, size: i128, expected_raw: i128) {
         assert_eq!(
             compute_exec_price(
-                price(100),
-                human(skew),
-                human(size),
-                &mock_pair_param(100, 50)
+                UsdPrice::new_int(100),
+                HumanAmount::new(skew),
+                HumanAmount::new(size),
+                &PairParam::new_mock(100, 50)
             )
             .unwrap(),
-            price_raw(expected_raw)
+            UsdPrice::new_raw(expected_raw)
         );
     }
 
@@ -91,35 +90,13 @@ mod tests {
     #[test_case(-50,   95_000_000 ; "clamped at negative max")]
     fn compute_marginal_price_works(skew: i128, expected_raw: i128) {
         assert_eq!(
-            compute_marginal_price(price(100), human(skew), &mock_pair_param(100, 50)).unwrap(),
-            price_raw(expected_raw)
+            compute_marginal_price(
+                UsdPrice::new_int(100),
+                HumanAmount::new(skew),
+                &PairParam::new_mock(100, 50)
+            )
+            .unwrap(),
+            UsdPrice::new_raw(expected_raw)
         );
-    }
-
-    /// Build a `PairParam` with the two pricing-relevant fields varied;
-    /// all other fields use inert dummy values.
-    fn mock_pair_param(skew_scale: i128, max_abs_premium_permille: i128) -> PairParam {
-        PairParam {
-            skew_scale: Ratio::new(Dec128_6::new(skew_scale)),
-            max_abs_premium: Ratio::new(Dec128_6::new_permille(max_abs_premium_permille)),
-            max_abs_oi: HumanAmount::from_inner(Dec128_6::new(1_000_000)),
-            max_abs_funding_rate: Ratio::new(Dec128_6::ZERO),
-            max_funding_velocity: Ratio::new(Dec128_6::ZERO),
-            min_opening_size: UsdValue::from_inner(Dec128_6::ZERO),
-            initial_margin_ratio: Ratio::new(Dec128_6::ZERO),
-            maintenance_margin_ratio: Ratio::new(Dec128_6::ZERO),
-        }
-    }
-
-    fn human(n: i128) -> HumanAmount {
-        HumanAmount::from_inner(Dec128_6::new(n))
-    }
-
-    fn price(n: i128) -> UsdPrice {
-        Ratio::new(Dec128_6::new(n))
-    }
-
-    fn price_raw(raw: i128) -> UsdPrice {
-        Ratio::new(Dec128_6::raw(Int128::new(raw)))
     }
 }
