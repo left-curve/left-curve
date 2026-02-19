@@ -29,7 +29,7 @@ pub fn compute_exec_price(
     let premium = skew_average.checked_div(pair_param.skew_scale)?;
 
     // Bound the premium between [-max_abs_premium, max_abs_premium].
-    let premium = premium.clamp(pair_param.max_abs_premium.neg(), pair_param.max_abs_premium);
+    let premium = premium.clamp(-pair_param.max_abs_premium, pair_param.max_abs_premium);
 
     oracle_price.checked_mul(premium.checked_add(Ratio::ONE)?)
 }

@@ -12,14 +12,14 @@ pub fn decompose_fill(
 ) -> (HumanAmount, HumanAmount) {
     // Buy order, user has short position.
     if size.is_positive() && current_position.is_negative() {
-        let closing = size.min(current_position.neg());
+        let closing = size.min(-current_position);
         let opening = size - closing; // closing <= size, so this is guaranteed to not overflow.
         return (closing, opening);
     }
 
     // Sell order, user has long position.
     if size.is_negative() && current_position.is_positive() {
-        let closing = size.max(current_position.neg());
+        let closing = size.max(-current_position);
         let opening = size - closing;
         return (closing, opening);
     }
@@ -30,12 +30,7 @@ pub fn decompose_fill(
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        dango_types::FromInner,
-        grug::Dec128_6,
-        test_case::test_case,
-    };
+    use {super::*, dango_types::FromInner, grug::Dec128_6, test_case::test_case};
 
     fn human(n: i128) -> HumanAmount {
         HumanAmount::from_inner(Dec128_6::new(n))

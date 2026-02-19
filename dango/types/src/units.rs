@@ -6,7 +6,10 @@
 
 use {
     grug::{Dec128_6, Int128, MathResult, Number, NumberConst, Sign, Uint128},
-    std::{marker::PhantomData, ops::Sub},
+    std::{
+        marker::PhantomData,
+        ops::{Neg, Sub},
+    },
 };
 
 // TODO: merge this into the `grug::Inner` trait
@@ -52,15 +55,6 @@ impl HumanAmount {
         self.0.is_negative()
     }
 
-    /// Return the negative of `self`.
-    ///
-    /// ## Panics
-    ///
-    /// Panics when the inner value is `i128::MIN`.
-    pub fn neg(self) -> Self {
-        Self(-self.0)
-    }
-
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
         let inner = self.0.checked_add(rhs.0)?;
         Ok(Self(inner))
@@ -88,6 +82,14 @@ impl FromInner for HumanAmount {
 
     fn from_inner(inner: Self::Inner) -> Self {
         Self(inner)
+    }
+}
+
+impl Neg for HumanAmount {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self(-self.0) // Panics when the inner value is `i128::MIN`.
     }
 }
 
@@ -141,15 +143,6 @@ impl<N, D> Ratio<N, D> {
         }
     }
 
-    /// Return the negative of `self`.
-    ///
-    /// ## Panics
-    ///
-    /// Panics when the inner value is `i128::MIN`.
-    pub fn neg(self) -> Self {
-        Self::new(-self.inner)
-    }
-
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
         self.inner.checked_add(rhs.inner).map(Self::new)
     }
@@ -174,6 +167,14 @@ where
     /// Bound the value between `[min, max]` (both inclusive).
     pub fn clamp(self, min: Self, max: Self) -> Self {
         self.max(min).min(max)
+    }
+}
+
+impl<N, D> Neg for Ratio<N, D> {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self::new(-self.inner) // Panics when the inner value is `i128::MIN`.
     }
 }
 
