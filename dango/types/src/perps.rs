@@ -179,6 +179,7 @@ pub struct State {
 
 /// State of an individual trading pair.
 #[grug::derive(Serde, Borsh)]
+#[derive(Default)]
 pub struct PairState {
     /// The sum of the sizes of all long positions.
     pub long_oi: HumanAmount,

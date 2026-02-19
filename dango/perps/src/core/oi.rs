@@ -1,4 +1,10 @@
-use {anyhow::ensure, dango_types::HumanAmount};
+use {
+    anyhow::ensure,
+    dango_types::{
+        HumanAmount,
+        perps::{PairParam, PairState},
+    },
+};
 
 /// Check that the opening portion of an order does not violate the max OI
 /// constraint. If violated, the order is rejected entirely.
@@ -8,23 +14,31 @@ use {anyhow::ensure, dango_types::HumanAmount};
 /// - Zero `opening_size` always passes (nothing to open).
 pub fn check_oi_constraint(
     opening_size: HumanAmount,
-    long_oi: HumanAmount,
-    short_oi: HumanAmount,
-    max_abs_oi: HumanAmount,
+    pair_state: &PairState,
+    pair_param: &PairParam,
 ) -> anyhow::Result<()> {
     if opening_size.is_positive() {
         ensure!(
-            long_oi.checked_add(opening_size)? <= max_abs_oi,
-            "max long OI exceeded"
+            pair_state.long_oi.checked_add(opening_size)? <= pair_param.max_abs_oi,
+            "max long OI exceeded: {} (long_oi) + {} (opening_size) > {} (max_abs_oi)",
+            pair_state.long_oi,
+            opening_size,
+            pair_param.max_abs_oi
         );
     } else if opening_size.is_negative() {
         ensure!(
-            short_oi.checked_add(-opening_size)? <= max_abs_oi,
-            "max short OI exceeded"
+            pair_state.short_oi.checked_add(-opening_size)? <= pair_param.max_abs_oi,
+            "max short OI exceeded: {} (short_oi) + {} (-opening_size) > {} (max_abs_oi)",
+            pair_state.short_oi,
+            opening_size,
+            pair_param.max_abs_oi
         );
     }
+
     Ok(())
 }
+
+// ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
@@ -45,12 +59,21 @@ mod tests {
         max_abs_oi: i128,
         should_pass: bool,
     ) {
-        let result = check_oi_constraint(
-            HumanAmount::new(opening),
-            HumanAmount::new(long_oi),
-            HumanAmount::new(short_oi),
-            HumanAmount::new(max_abs_oi),
+        assert_eq!(
+            check_oi_constraint(
+                HumanAmount::new(opening),
+                &PairState {
+                    long_oi: HumanAmount::new(long_oi),
+                    short_oi: HumanAmount::new(short_oi),
+                    ..Default::default()
+                },
+                &PairParam {
+                    max_abs_oi: HumanAmount::new(max_abs_oi),
+                    ..Default::default()
+                }
+            )
+            .is_ok(),
+            should_pass
         );
-        assert_eq!(result.is_ok(), should_pass);
     }
 }

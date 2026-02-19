@@ -7,6 +7,7 @@
 use {
     grug::{Dec128_6, Int128, MathResult, Number, NumberConst, Sign, Uint128},
     std::{
+        fmt,
         marker::PhantomData,
         ops::{Neg, Sub},
     },
@@ -102,6 +103,12 @@ impl Sub for HumanAmount {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0 - rhs.0)
+    }
+}
+
+impl fmt::Display for HumanAmount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
