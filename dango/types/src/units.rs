@@ -149,8 +149,14 @@ impl fmt::Display for HumanAmount {
 pub struct UsdValue(Dec128_6);
 
 impl UsdValue {
+    pub const ZERO: Self = Self::new(0);
+
     pub const fn new(n: i128) -> Self {
         Self(Dec128_6::new(n))
+    }
+
+    pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
+        self.0.checked_add(rhs.0).map(Self)
     }
 
     pub fn checked_mul<N>(self, ratio: Ratio<N, Self>) -> MathResult<N>
