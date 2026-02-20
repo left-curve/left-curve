@@ -1,6 +1,6 @@
 use {
     crate::{BaseAmount, HumanAmount, Ratio, UsdPrice, UsdValue},
-    grug::{Addr, Duration, Part, Timestamp},
+    grug::{Addr, Denom, Duration, Part, Timestamp},
     std::{
         collections::{BTreeMap, BTreeSet},
         sync::LazyLock,
@@ -17,8 +17,8 @@ pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("per
 
 // ----------------------------------- Types -----------------------------------
 
-/// Identifier of a trading pair. It should be a string that looks like e.g. "BTCUSD-PERP".
-pub type PairId = String;
+/// Identifier of a trading pair. It should be a string that looks like e.g. "perp/btcusd".
+pub type PairId = Denom;
 
 /// Identifies a resting limit order.
 pub type OrderId = u64;
