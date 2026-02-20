@@ -640,7 +640,7 @@ fn compute_used_margin(
 ///
 /// Used by the post-fill margin check (step 6 of order submission) to
 /// validate that the user can cover the projected position before executing.
-fn compute_projected_used_margin(
+fn compute_initial_margin(
     user_state: &UserState,
     oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
@@ -1097,7 +1097,7 @@ fn handle_submit_order(
     // position plus reserved margin after paying the trading fee.
     let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
     let projected_size = user_pos + fill_size;
-    let post_fill_used_margin = compute_projected_used_margin(
+    let post_fill_used_margin = compute_initial_margin(
         user_state, oracle_prices, pair_params_map,
         pair_id, projected_size, usdt_price,
     );
@@ -1587,7 +1587,7 @@ fn fill_limit_order(
     // If violated, cancel — the account can no longer support this order.
     let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
     let projected_size = user_pos + fill_size;
-    let post_fill_used_margin = compute_projected_used_margin(
+    let post_fill_used_margin = compute_initial_margin(
         user_state, oracle_prices, pair_params_map,
         pair_id, projected_size, usdt_price,
     );
