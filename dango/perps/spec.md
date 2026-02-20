@@ -277,9 +277,8 @@ struct PairParams {
     /// Typical range: 0.01 to 0.10 (1% to 10% per day).
     ///
     /// Note: Dimensionally this is a rate-of-change of the funding rate, so
-    /// it is a fraction per day² — but since elapsed time is always measured
-    /// in days in the velocity model, we express it as `Ratio<UsdValue, Duration>`.
-    pub max_funding_velocity: Ratio<UsdValue, Duration>,
+    /// it is a fraction per day².
+    pub max_funding_velocity: Ratio<Ratio<UsdValue, Duration>, Duration>,
 
     /// Initial margin ratio for this pair.
     ///
@@ -1647,7 +1646,7 @@ The funding velocity determines how quickly the funding rate changes. It is prop
 fn compute_funding_velocity(
     pair_state: &PairState,
     pair_params: &PairParams,
-) -> Ratio<UsdValue, Duration> {
+) -> Ratio<Ratio<UsdValue, Duration>, Duration> {
     let skew: HumanAmount = pair_state.long_oi - pair_state.short_oi;
     (skew / pair_params.skew_scale) * pair_params.max_funding_velocity
 }

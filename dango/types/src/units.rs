@@ -239,6 +239,18 @@ impl<N, D> Ratio<N, D> {
     }
 }
 
+impl<T> Ratio<T> {
+    /// Multiply a dimensionless ratio (a pure scalar) by another ratio,
+    /// preserving the target's units.
+    ///
+    /// This is only available when the left-hand side is dimensionless
+    /// (`Ratio<T, T>`), ensuring type safety — arbitrary ratios cannot
+    /// be reinterpreted.
+    pub fn checked_mul2<N, D>(self, rhs: Ratio<N, D>) -> MathResult<Ratio<N, D>> {
+        self.inner.checked_mul(rhs.inner).map(Ratio::new)
+    }
+}
+
 impl<N, D> Ratio<N, D>
 where
     N: Ord,

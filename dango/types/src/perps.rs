@@ -122,9 +122,9 @@ pub struct PairParam {
 
     /// Maximum rate the funding rate may change, as a fraction per day.
     ///
-    /// When |skew| >= skew_scale, the funding rate changes by this much per day.
+    /// When |skew| = skew_scale, the funding rate changes by this much per day.
     /// When skew == 0, the rate drifts back toward zero at this speed.
-    pub max_funding_velocity: Ratio<UsdValue, Duration>,
+    pub max_funding_velocity: Ratio<Ratio<UsdValue, Duration>, Duration>,
 
     /// Minimum notional value for the opening portion of an order.
     /// This prevents the opening of dust positions.
@@ -187,6 +187,9 @@ pub struct PairState {
 
     /// The sum of the absolute value of the sizes of all short positions.
     pub short_oi: HumanAmount,
+
+    /// The difference between long and short OI. Equals `self.long_oi - self.short_oi`.
+    pub skew: HumanAmount,
 
     /// Instantaneous funding rate (fraction per day) at the `last_funding_time`.
     ///
