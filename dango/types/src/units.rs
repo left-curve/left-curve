@@ -31,7 +31,7 @@ pub trait FromInner {
 /// In Dango, this is used to denote the quantity of the settlement currency for
 /// perpetual futures contracts, and tokenized shares in the counterparty vault.
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy)]
+#[derive(Copy, Default)]
 pub struct BaseAmount(Uint128);
 
 impl BaseAmount {

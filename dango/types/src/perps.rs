@@ -226,6 +226,7 @@ pub struct PairState {
 
 /// State of a specific user.
 #[grug::derive(Serde, Borsh)]
+#[derive(Default)]
 pub struct UserState {
     /// The user's vault withdrawals that are pending cooldown.
     pub unlocks: Vec<Unlock>, // TODO: use VecDeque?
