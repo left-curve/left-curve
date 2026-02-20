@@ -1,5 +1,5 @@
 use {
-    crate::{BaseAmount, HumanAmount, Ratio, UsdPrice, UsdValue},
+    crate::{BaseAmount, Days, HumanAmount, Ratio, UsdPrice, UsdValue},
     grug::{Addr, Denom, Duration, Part, Timestamp},
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -118,13 +118,13 @@ pub struct PairParam {
     ///
     /// This prevents runaway rates from causing cascading liquidations and bad
     /// debt spirals during prolonged skew.
-    pub max_abs_funding_rate: Ratio<UsdValue, Duration>,
+    pub max_abs_funding_rate: Ratio<UsdValue, Days>,
 
     /// Maximum rate the funding rate may change, as a fraction per day.
     ///
     /// When |skew| = skew_scale, the funding rate changes by this much per day.
     /// When skew == 0, the rate drifts back toward zero at this speed.
-    pub max_funding_velocity: Ratio<Ratio<UsdValue, Duration>, Duration>,
+    pub max_funding_velocity: Ratio<Ratio<UsdValue, Days>, Days>,
 
     /// Minimum notional value for the opening portion of an order.
     /// This prevents the opening of dust positions.
@@ -198,7 +198,7 @@ pub struct PairState {
     ///
     /// The rate changes linearly over time according to the velocity model:
     ///   rate' = rate + velocity * elapsed_days
-    pub funding_rate: Ratio<UsdValue, Duration>,
+    pub funding_rate: Ratio<UsdValue, Days>,
 
     /// Timestamp of the most recent funding accrual.
     pub last_funding_time: Timestamp,

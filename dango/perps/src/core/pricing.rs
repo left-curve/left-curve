@@ -49,11 +49,7 @@ pub fn compute_marginal_price(
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        dango_types::perps::PairParam,
-        test_case::test_case,
-    };
+    use {super::*, dango_types::perps::PairParam, test_case::test_case};
 
     // oracle_price = 100, skew_scale = 100, max_abs_premium = 0.05
     #[test_case(  0,     0,  100_000_000 ; "neutral market no order")]

@@ -30,7 +30,11 @@ pub fn compute_target_price(
 }
 
 /// Returns whether the execution price violates the price constraint.
-pub fn is_price_constraint_violated(exec_price: UsdPrice, target_price: UsdPrice, is_bid: bool) -> bool {
+pub fn is_price_constraint_violated(
+    exec_price: UsdPrice,
+    target_price: UsdPrice,
+    is_bid: bool,
+) -> bool {
     if is_bid {
         exec_price > target_price
     } else {
@@ -103,7 +107,11 @@ mod tests {
     #[test_case( 98,  99, false, true  ; "ask exec below target")]
     fn is_price_constraint_violated_works(exec: i128, target: i128, is_bid: bool, expected: bool) {
         assert_eq!(
-            is_price_constraint_violated(UsdPrice::new_int(exec), UsdPrice::new_int(target), is_bid),
+            is_price_constraint_violated(
+                UsdPrice::new_int(exec),
+                UsdPrice::new_int(target),
+                is_bid
+            ),
             expected
         );
     }

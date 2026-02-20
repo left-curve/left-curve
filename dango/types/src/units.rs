@@ -6,8 +6,8 @@
 
 use {
     grug::{
-        Dec128_6, Exponentiate, Int128, IsZero, MathResult, Number, NumberConst, Sign, Signed,
-        Uint128,
+        Dec128_6, Duration, Exponentiate, Inner, Int128, IsZero, MathError, MathResult, Number,
+        NumberConst, Sign, Signed, Uint128,
     },
     std::{
         fmt,
@@ -21,6 +21,50 @@ pub trait FromInner {
     type Inner;
 
     fn from_inner(inner: Self::Inner) -> Self;
+}
+
+// ----------------------------------- Days ------------------------------------
+
+/// Represents a number of days.
+///
+/// Unlike `grug::Duration`, which wraps a `u128` representing the number of
+/// nanoseconds since UNIX epoch, this type wraps an `Dec128_6` that represents
+/// the number of days.
+#[grug::derive(Serde, Borsh)]
+#[derive(Copy, Default, PartialOrd, Ord)]
+pub struct Days(Dec128_6);
+
+impl Inner for Days {
+    type U = Dec128_6;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
+    }
+}
+
+impl FromInner for Days {
+    type Inner = Dec128_6;
+
+    fn from_inner(inner: Self::Inner) -> Self {
+        Self(inner)
+    }
+}
+
+impl TryFrom<Duration> for Days {
+    type Error = MathError;
+
+    fn try_from(duration: Duration) -> Result<Self, Self::Error> {
+        const NANOS_PER_DAY: i128 = 24 * 60 * 60 * 1_000_000_000;
+
+        let nanos = duration.into_nanos();
+        let days = Dec128_6::checked_from_ratio(nanos as i128, NANOS_PER_DAY)?;
+
+        Ok(Self(days))
+    }
 }
 
 // -------------------------------- Base amount --------------------------------
@@ -248,6 +292,16 @@ impl<T> Ratio<T> {
     /// be reinterpreted.
     pub fn checked_mul2<N, D>(self, rhs: Ratio<N, D>) -> MathResult<Ratio<N, D>> {
         self.inner.checked_mul(rhs.inner).map(Ratio::new)
+    }
+}
+
+impl<N, D> Ratio<N, D>
+where
+    N: FromInner<Inner = Dec128_6>,
+    D: Inner<U = Dec128_6>,
+{
+    pub fn checked_mul3(self, rhs: D) -> MathResult<N> {
+        self.inner.checked_mul(rhs.into_inner()).map(N::from_inner)
     }
 }
 
