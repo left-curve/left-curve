@@ -1,9 +1,9 @@
 use {
     dango_types::{
-        Days, Ratio, UsdValue,
-        perps::{PairParam, PairState},
+        Days,
+        perps::{FundingRate, FundingVelocity, PairParam, PairState},
     },
-    grug::{MathResult, Timestamp},
+    grug::MathResult,
 };
 
 /// Compute the current funding velocity (rate of change of the funding rate).
@@ -18,10 +18,10 @@ use {
 /// - Negative skew (net short) → negative velocity → rate decreases → shorts pay more
 /// - Zero skew → zero velocity → rate stays constant (drifts toward 0 naturally
 ///   only when the rate overshoots past zero)
-pub fn compute_funding_velocity(
+fn compute_funding_velocity(
     pair_state: &PairState,
     pair_params: &PairParam,
-) -> MathResult<Ratio<Ratio<UsdValue, Days>, Days>> {
+) -> MathResult<FundingVelocity> {
     pair_state
         .skew
         .checked_div(pair_params.skew_scale)?
@@ -44,13 +44,10 @@ pub fn compute_funding_velocity(
 pub fn compute_current_funding_rate(
     pair_state: &PairState,
     pair_params: &PairParam,
-    current_time: Timestamp,
-) -> MathResult<Ratio<UsdValue, Days>> {
+    elapsed_time: Days,
+) -> MathResult<FundingRate> {
     // Compute the funding rate velocity based on the current skew.
     let velocity = compute_funding_velocity(pair_state, pair_params)?;
-
-    // Compute the number of days elapsed since the last funding accrual.
-    let elapsed_time = Days::try_from(current_time - pair_state.last_funding_time)?;
 
     // Compute the funding rate based on the above two values, and clamp it to
     // between [-max_abs_funding_rate, max_abs_funding_rate].
@@ -63,9 +60,16 @@ pub fn compute_current_funding_rate(
         ))
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_types::HumanAmount, test_case::test_case};
+    use {
+        super::*,
+        dango_types::{HumanAmount, Ratio},
+        grug::Duration,
+        test_case::test_case,
+    };
 
     // ---- compute_funding_velocity tests ----
 
@@ -123,11 +127,9 @@ mod tests {
         elapsed_seconds: u128,
         expected_raw: i128,
     ) {
-        let base_time = 8_640_000_u128; // 100 days in seconds
         let pair_state = PairState {
             skew: HumanAmount::new(skew),
             funding_rate: Ratio::new_raw(last_rate_raw),
-            last_funding_time: Timestamp::from_seconds(base_time),
             ..Default::default()
         };
         let pair_params = PairParam {
@@ -137,13 +139,10 @@ mod tests {
             ..Default::default()
         };
 
+        let elapsed_days = Days::try_from(Duration::from_seconds(elapsed_seconds)).unwrap();
+
         assert_eq!(
-            compute_current_funding_rate(
-                &pair_state,
-                &pair_params,
-                Timestamp::from_seconds(base_time + elapsed_seconds),
-            )
-            .unwrap(),
+            compute_current_funding_rate(&pair_state, &pair_params, elapsed_days,).unwrap(),
             Ratio::new_raw(expected_raw),
         );
     }

@@ -67,6 +67,40 @@ impl TryFrom<Duration> for Days {
     }
 }
 
+// ------------------------------- Dimensionless -------------------------------
+
+/// A dimensionless scalar (pure number, no physical units).
+#[grug::derive(Serde, Borsh)]
+#[derive(Copy, Default, PartialOrd, Ord)]
+pub struct Dimensionless(Dec128_6);
+
+impl Inner for Dimensionless {
+    type U = Dec128_6;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
+    }
+}
+
+impl FromInner for Dimensionless {
+    type Inner = Dec128_6;
+
+    fn from_inner(inner: Self::Inner) -> Self {
+        Self(inner)
+    }
+}
+
+impl Dimensionless {
+    /// Multiply this dimensionless scalar by a ratio, preserving the ratio's units.
+    pub fn checked_mul<N, D>(self, rhs: Ratio<N, D>) -> MathResult<Ratio<N, D>> {
+        self.0.checked_mul(rhs.inner).map(Ratio::new)
+    }
+}
+
 // -------------------------------- Base amount --------------------------------
 
 /// A quantity of asset in _base unit_. E.g. a value of 1234, in the context of
