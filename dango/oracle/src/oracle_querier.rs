@@ -1,8 +1,15 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES},
     anyhow::{anyhow, ensure},
-    dango_types::oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
-    grug::{Addr, Cache, Denom, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp},
+    dango_types::{
+        UsdPrice,
+        oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
+        perps,
+    },
+    grug::{
+        Addr, Cache, Dec128_6, Denom, Inner, QuerierWrapper, StdResult, Storage, StorageQuerier,
+        Timestamp, Unsigned,
+    },
     pyth_types::PythId,
     std::collections::HashMap,
 };
@@ -69,6 +76,18 @@ impl<'a> OracleQuerier<'a> {
                 Ok(price)
             })
             .cloned()
+    }
+
+    /// Similar to `self.query_price` but converts the price to the format
+    /// expected by the perps contract.
+    // Oracle contract stores prices in Udec128_18. We need to convert it to Dec128_6.
+    // TODO: we should store prices in oracle contract as Dec128_6 as well.
+    pub fn query_price_for_perps(&mut self, pair_id: &perps::PairId) -> anyhow::Result<UsdPrice> {
+        self.query_price(pair_id, None).and_then(|price| {
+            let price = price.humanized_price.checked_into_signed()?;
+            let inner = Dec128_6::checked_from_atomics(price.into_inner(), 18)?;
+            Ok(UsdPrice::new(inner))
+        })
     }
 
     /// Query the price for a given denom, optionally specifying the price source.

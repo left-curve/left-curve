@@ -5,7 +5,7 @@
 - To ensure the protocol's solvency and profitability, it's important the market is close to _neutral_, meaning there is roughly the same amount of long and short OI. We incentivize this through two mechanisms, **skew pricing** and **funding fee** (described in respective sections).
 - For this v1 release:
   - Only **cross margin** is supported. Support for isolated margin may be added in a future update.
-  - Order fulfillment is **all-or-nothing**: while the closing portion of an order can always be fully filled (bypassing max OI constraint), the opening portion is either filled fully (if it satisfies the max OI constraint), or not at all (if it doesn't satisfy). Partial fill of orders may be added in a future release.
+  - Order fulfillment is **all-or-nothing**: if the opening portion of an order would violate the max OI constraint, the entire order is rejected. Users who wish to close their position regardless should submit with `reduce_only: true`, which zeros the opening portion before the OI check runs. Partial fill of orders may be added in a future release.
 
 This spec is divided into three sections:
 
@@ -16,11 +16,14 @@ This spec is divided into three sections:
 Regarding code snippets:
 
 - Written in Rust-like pseudocode.
-- `Dec` is a signed fixed-point decimal number type. The size of perpetual futures contracts, the size of orders, etc. are represented by `Dec`.
-- `Udec` is an unsigned fixed-point decimal number type. The oracle price is represented by `Udec`.
-- `Uint` is an unsigned integer number type. The amount of the settlement currency and vault shares are represented by `Uint`.
-- In the pseudocode we ignore the conversion between these number types, except for when converting from decimal to integer, where it's necessary to specify whether it should be floored or ceiled.
-- We also assume all the math traits are implemented. E.g. we may directly multiply a `Dec` with a `Uint`.
+- We use the following typed number wrappers (defined in `dango/types/src/units.rs`) to make the dimensional meaning of each value explicit:
+  - `BaseAmount` — an unsigned integer quantity of an asset in its _base unit_ (e.g. 1234 = 1234 uusdc). Used for settlement currency amounts and vault shares.
+  - `HumanAmount` — a signed fixed-point decimal quantity in _human units_ (e.g. +1.234 BTC). Used for position sizes, order sizes, and open interest. Positive = long, negative = short.
+  - `UsdValue` — a signed fixed-point decimal value in USD (e.g. $1.234). Used for notional values, PnL, and USD-denominated amounts.
+  - `UsdPrice` — alias for `Ratio<UsdValue, HumanAmount>`, the price of an asset in USD per human unit.
+  - `Ratio<N, D>` — a dimensionless or typed ratio between numerator type `N` and denominator type `D`. When `N == D` (written `Ratio<T>`), it is a dimensionless fraction in `T`-space. Examples: `Ratio<UsdValue>` for fee rates, `Ratio<UsdPrice>` for price-space fractions like slippage.
+- In the pseudocode we ignore low-level conversion mechanics between these number types, except for when converting from decimal to integer, where it's necessary to specify whether it should be floored or ceiled.
+- We also assume all the math traits are implemented. E.g. we may directly multiply a `HumanAmount` with a `UsdPrice` to obtain a `UsdValue`.
 
 ## API
 
@@ -38,7 +41,7 @@ enum ExecuteMsg {
     /// `Params` below) as attachment to this function call.
     DepositLiquidity {
         /// Revert if less than this number of share is minted.
-        min_shares_to_mint: Option<Uint>,
+        min_shares_to_mint: Option<BaseAmount>,
     },
 
     /// Request to withdraw funds from the counterparty vault.
@@ -48,7 +51,7 @@ enum ExecuteMsg {
     UnlockLiquidity {
         /// The amount of vault shares the user wishes to burn.
         /// Must be no more than the amount of vault shares the user owns.
-        shares_to_burn: Uint,
+        shares_to_burn: BaseAmount,
     },
 
     // -------------------------------------------------------------------------
@@ -76,7 +79,7 @@ enum ExecuteMsg {
     /// from one's account. The margin check can happen in the bank contract.
     WithdrawMargin {
         /// The amount of settlement currency to withdraw.
-        amount: Uint,
+        amount: BaseAmount,
     },
 
     /// Submit an order.
@@ -93,7 +96,7 @@ enum ExecuteMsg {
         ///
         /// Positive for buy (increase long exposure, decrease short exposure);
         /// negative for sell (decrease long exposure, increase short exposure).
-        size: Dec,
+        size: HumanAmount,
 
         /// The order type: market, limit, etc.
         kind: OrderKind,
@@ -161,7 +164,7 @@ enum OrderKind {
         /// ```plain
         /// exec_price >= marginal_price * (1 - max_slippage)
         /// ```
-        max_slippage: Udec,
+        max_slippage: Ratio<UsdPrice>,
     },
 
     /// Trade at the specified limit price.
@@ -172,7 +175,7 @@ enum OrderKind {
     /// are met or canceled by the user.
     Limit {
         /// The execution price must be equal to or better than this price.
-        limit_price: Udec,
+        limit_price: UsdPrice,
     },
 }
 ```
@@ -207,7 +210,7 @@ struct Params {
     ///
     /// Deducted from the user's margin and transferred to the vault.
     /// E.g., 0.0005 = 0.05%. For a $100,000 notional fill, fee = $50.
-    pub trading_fee_rate: Udec,
+    pub trading_fee_rate: Ratio<UsdValue>,
 
     /// Fee paid to the vault as a fraction of the total notional value
     /// of positions being liquidated.
@@ -216,7 +219,7 @@ struct Params {
     ///
     /// Capped at the user's remaining margin after position closure.
     /// Typical range: 0.0002 to 0.001 (0.02% to 0.1%).
-    pub liquidation_fee_rate: Udec,
+    pub liquidation_fee_rate: Ratio<UsdValue>,
 
     /// Ratio of vault equity to total open notional below which ADL is enabled.
     ///
@@ -225,7 +228,7 @@ struct Params {
     ///
     /// E.g., 0.01 = 1%. If total open notional is $10M and vault equity
     /// drops below $100K, ADL is triggered.
-    pub adl_trigger_ratio: Udec,
+    pub adl_trigger_ratio: Ratio<UsdValue>,
 }
 ```
 
@@ -236,23 +239,23 @@ struct PairParams {
     /// A scaling factor that determines how greatly an imbalance in open
     /// interest ("skew") should affect an order's execution price.
     /// The greater the value of the scaling factor, the less the effect.
-    pub skew_scale: Udec,
+    pub skew_scale: Ratio<HumanAmount, Ratio<UsdPrice>>,
 
     /// The maximum extent to which skew can affect execution price.
     /// The execution price is capped in the range `[1 - max_abs_premium, 1 + max_abs_premium]`.
     /// This prevents an exploit where a trader fabricates a big skew to obtain
     /// an unusually favorable pricing.
     /// See the Mars Protocol hack: <https://x.com/neutron_org/status/2014048218598838459>.
-    pub max_abs_premium: Udec,
+    pub max_abs_premium: Ratio<UsdPrice>,
 
     /// The maximum allowed open interest for both long and short.
     /// I.e. the following must be satisfied:
     ///
-    /// - |pair_state.long_oi| <= pair_params.max_abs_oi
+    /// - pair_state.long_oi <= pair_params.max_abs_oi
     /// - pair_state.short_oi <= pair_params.max_abs_oi
     ///
     /// This constraint does not apply to reducing positions.
-    pub max_abs_oi: Udec,
+    pub max_abs_oi: HumanAmount,
 
     /// Maximum absolute funding rate, as a fraction per day.
     ///
@@ -261,7 +264,10 @@ struct PairParams {
     /// cascading liquidations and bad debt spirals during prolonged skew.
     ///
     /// Typical range: 0.50 to 1.00 (50% to 100% per day).
-    pub max_abs_funding_rate: Udec,
+    ///
+    /// Note: Dimensionally this is `Ratio<UsdValue, Duration>` (fraction per day),
+    /// but since it clamps the funding rate (also per day) it is the same type.
+    pub max_abs_funding_rate: Ratio<UsdValue, Duration>,
 
     /// Maximum funding velocity, as a fraction per day.
     ///
@@ -269,7 +275,10 @@ struct PairParams {
     /// When skew == 0, the rate drifts back toward zero at this speed.
     ///
     /// Typical range: 0.01 to 0.10 (1% to 10% per day).
-    pub max_funding_velocity: Udec,
+    ///
+    /// Note: Dimensionally this is a rate-of-change of the funding rate, so
+    /// it is a fraction per day².
+    pub max_funding_velocity: Ratio<Ratio<UsdValue, Duration>, Duration>,
 
     /// Initial margin ratio for this pair.
     ///
@@ -277,7 +286,7 @@ struct PairParams {
     /// E.g., 0.05 = 5% = 20x maximum leverage.
     ///
     /// Required margin = position_size * price * initial_margin_ratio
-    pub initial_margin_ratio: Udec,
+    pub initial_margin_ratio: Ratio<UsdValue>,
 
     /// Maintenance margin ratio for this pair.
     ///
@@ -289,13 +298,13 @@ struct PairParams {
     /// E.g., 0.025 = 2.5% → positions liquidated when effective leverage exceeds 40x.
     ///
     /// maintenance_margin = |position_size| * oracle_price * maintenance_margin_ratio
-    pub maintenance_margin_ratio: Udec,
+    pub maintenance_margin_ratio: Ratio<UsdValue>,
 
     /// Minimum notional value (in USD) for the opening portion of an order.
     /// Notional = |opening_size| * oracle_price.
     ///
     /// Only enforced on the opening portion — closing is always allowed.
-    pub min_opening_notional: Udec,
+    pub min_opening_notional: UsdValue,
 }
 ```
 
@@ -312,10 +321,10 @@ struct State {
     /// Note that this doesn't equal the amount of funds withdrawable by burning
     /// shares (i.e. its "equity"), which also needs to factor in the vault's
     /// _unrealized_ PnL.
-    pub vault_margin: Uint,
+    pub vault_margin: BaseAmount,
 
     /// Total supply of the vault's share token.
-    pub vault_share_supply: Uint,
+    pub vault_share_supply: BaseAmount,
 }
 ```
 
@@ -325,17 +334,16 @@ Pair-specific state:
 struct PairState {
     /// The sum of the sizes of all long positions.
     ///
-    /// E.g. suppose one futures contract represents 1 satoshi (1e-8 BTC).
-    /// If `long_oi` has a value of 1,000,000, it means all long positions combined
-    /// are 1,000,000 satoshis.
+    /// E.g. if `long_oi` has a value of 1.5, it means all long positions combined
+    /// represent 1.5 human units of the asset (e.g. 1.5 BTC).
     ///
     /// Should always be non-negative.
-    pub long_oi: Dec,
+    pub long_oi: HumanAmount,
 
     /// The sum of the sizes of all short positions.
     ///
     /// Stored as a non-negative absolute value.
-    pub short_oi: Udec,
+    pub short_oi: HumanAmount,
 
     /// Current instantaneous funding rate (fraction per day).
     ///
@@ -344,25 +352,29 @@ struct PairState {
     ///
     /// The rate changes over time according to the velocity model:
     ///   rate' = rate + velocity * elapsed_days
-    pub funding_rate: Dec,
+    pub funding_rate: Ratio<UsdValue, Duration>,
 
     /// Timestamp of last funding accrual.
     pub last_funding_time: Timestamp,
 
-    /// Cumulative funding per unit of position size, in settlement currency.
+    /// Cumulative funding per unit of position size, denominated in USD.
+    ///
+    /// The formula `avg_rate * elapsed_days * oracle_price` produces a
+    /// USD-denominated value. Conversion to settlement currency happens
+    /// later at settlement time via `usdt_price`.
     ///
     /// This is an ever-increasing accumulator. To compute a position's accrued
     /// funding, take the difference between the current value and the position's
     /// `entry_funding_per_unit`.
-    pub cumulative_funding_per_unit: Dec,
+    pub cumulative_funding_per_unit: Ratio<UsdValue, HumanAmount>,
 
     /// Sum of `position.size * position.entry_funding_per_unit` across all open
     /// positions for this pair.
     ///
     /// Used to compute the vault's unrealized funding without iterating over
     /// all positions:
-    ///   vault_unrealized_funding = oi_weighted_entry_funding - cumulative_funding_per_unit * skew
-    pub oi_weighted_entry_funding: Dec,
+    ///   vault_unrealized_funding = cumulative_funding_per_unit * skew - oi_weighted_entry_funding
+    pub oi_weighted_entry_funding: UsdValue,
 
     /// Sum of `position.size * position.entry_price` across all open
     /// positions for this pair.
@@ -370,7 +382,7 @@ struct PairState {
     /// Used to compute the vault's unrealized price PnL without iterating over
     /// all positions:
     ///   vault_unrealized_pnl = oi_weighted_entry_price - oracle_price * skew
-    pub oi_weighted_entry_price: Dec,
+    pub oi_weighted_entry_price: UsdValue,
 }
 ```
 
@@ -383,7 +395,7 @@ struct UserState {
     // -------------------------------------------------------------------------
 
     /// The amount of vault shares this user owns.
-    pub vault_shares: Uint,
+    pub vault_shares: BaseAmount,
 
     /// The user's vault withdrawals that are pending cooldown.
     pub unlocks: Vec<Unlock>,
@@ -393,14 +405,14 @@ struct UserState {
     // -------------------------------------------------------------------------
 
     /// Trading collateral balance in settlement currency (e.g., USDT).
-    pub margin: Uint,
+    pub margin: BaseAmount,
 
     /// Margin reserved for pending limit orders.
     ///
     /// When a limit order is placed but not immediately filled, the required
     /// margin is reserved (locked) to ensure the user can cover the position
     /// if/when the order executes.
-    pub reserved_margin: Uint,
+    pub reserved_margin: BaseAmount,
 
     /// Number of resting limit orders this user currently has on the book.
     /// Incremented when a limit order is stored, decremented on fill or cancel.
@@ -411,20 +423,20 @@ struct UserState {
 }
 
 struct Position {
-    /// Position size in contracts.
+    /// Position size in human units.
     ///
     /// Positive = long position (profits when price increases).
     /// Negative = short position (profits when price decreases).
-    pub size: Dec,
+    pub size: HumanAmount,
 
-    /// The average price at which this position was entered, in settlement
-    /// currency per contract.
+    /// The average price at which this position was entered, in USD per
+    /// human unit.
     ///
     /// Used for PnL calculation: PnL = size * (oracle_price - entry_price)
     ///
     /// Invariant across partial closes (only changes when adding to a
     /// position via weighted average), so no rounding error accumulates.
-    pub entry_price: Udec,
+    pub entry_price: UsdPrice,
 
     /// Value of `pair_state.cumulative_funding_per_unit` when this position
     /// was last opened, modified, or had funding settled.
@@ -433,13 +445,13 @@ struct Position {
     ///   accrued = position.size * (current_cumulative - entry_funding_per_unit)
     ///
     /// Positive accrued funding means the trader owes the vault.
-    pub entry_funding_per_unit: Dec,
+    pub entry_funding_per_unit: Ratio<UsdValue, HumanAmount>,
 }
 
 struct Unlock {
     /// The amount of settlement currency to be released to the user once
     /// cooldown completes.
-    pub amount_to_release: Uint,
+    pub amount_to_release: BaseAmount,
 
     /// The time when cooldown completes.
     pub end_time: Timestamp,
@@ -454,9 +466,9 @@ struct Unlock {
 /// so the value only needs user_id, size, reduce_only, and reserved_margin.
 struct Order {
     pub user_id: UserId,
-    pub size: Dec,
+    pub size: HumanAmount,
     pub reduce_only: bool,
-    pub reserved_margin: Uint,  // exact margin+fee reserved at placement
+    pub reserved_margin: BaseAmount,  // exact margin+fee reserved at placement
 }
 
 struct OrderIndexes {
@@ -497,16 +509,16 @@ const USER_STATES: Map<UserId, UserState> = Map::new("user_state");
 
 /// Buy orders indexed for descending price iteration (most competitive first).
 /// Key: (pair_id, inverted_limit_price, created_at, order_id)
-/// where inverted_limit_price = Udec::MAX - limit_price, so ascending iteration
+/// where inverted_limit_price = UsdPrice::MAX - limit_price, so ascending iteration
 /// yields descending prices.
-const BIDS: IndexedMap<(PairId, Udec, Timestamp, OrderId), Order> = IndexedMap::new("bid", OrderIndexes {
+const BIDS: IndexedMap<(PairId, UsdPrice, Timestamp, OrderId), Order> = IndexedMap::new("bid", OrderIndexes {
     order_id: UniqueIndex::new(/* ... */),
     user_id: MultiIndex::new(/* ... */),
 });
 
 /// Sell orders indexed for ascending price iteration (more competitive first).
 /// Key: (pair_id, limit_price, created_at, order_id)
-const ASKS: IndexedMap<(PairId, Udec, Timestamp, OrderId), Order> = IndexedMap::new("ask", OrderIndexes {
+const ASKS: IndexedMap<(PairId, UsdPrice, Timestamp, OrderId), Order> = IndexedMap::new("ask", OrderIndexes {
     order_id: UniqueIndex::new(/* ... */),
     user_id: MultiIndex::new(/* ... */),
 });
@@ -523,7 +535,7 @@ Traders deposit settlement currency to their trading balance before opening posi
 ```rust
 fn handle_deposit_margin(
     user_state: &mut UserState,
-    amount_received: Uint,
+    amount_received: BaseAmount,
 ) {
     user_state.margin += amount_received;
 }
@@ -539,10 +551,10 @@ fn handle_withdraw_margin(
     user_state: &mut UserState,
     pair_states: &mut Map<PairId, PairState>,
     pair_params_map: &Map<PairId, PairParams>,
-    oracle_prices: &Map<PairId, Udec>,
-    amount: Uint,
+    oracle_prices: &Map<PairId, UsdPrice>,
+    amount: BaseAmount,
     current_time: Timestamp,
-    usdt_price: Udec,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
     ensure!(amount > 0, "nothing to do");
 
@@ -578,16 +590,16 @@ Margin is the collateral required to open and maintain positions. We distinguish
 /// Compute the margin available for withdrawal.
 fn compute_available_margin(
     user_state: &UserState,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
-    usdt_price: Udec,
-) -> Uint {
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) -> BaseAmount {
     let equity = compute_user_equity(user_state, oracle_prices, pair_states, usdt_price);
     let used = compute_used_margin(user_state, oracle_prices, pair_params_map, usdt_price);
 
     // equity - used - reserved, floored at zero.
-    // Equity is Dec (signed) since unrealized PnL can make it negative.
+    // Equity can be negative since unrealized PnL can make it so.
     let available = equity - used - user_state.reserved_margin;
 
     max(floor(available), 0)
@@ -599,18 +611,19 @@ fn compute_available_margin(
 ///   |position_size| * current_price * initial_margin_ratio
 fn compute_used_margin(
     user_state: &UserState,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
-    usdt_price: Udec,
-) -> Uint {
-    let mut total = 0;
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) -> BaseAmount {
+    let mut total: BaseAmount = 0;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_prices[&pair_id];
+        let oracle_price: UsdPrice = oracle_prices[&pair_id];
         let pair_params = pair_params_map[&pair_id];
 
         // Used margin = |size| * price * initial_margin_ratio
-        let margin = abs(position.size) * oracle_price * pair_params.initial_margin_ratio;
+        // HumanAmount * UsdPrice = UsdValue; UsdValue * Ratio<UsdValue> = UsdValue
+        let margin: UsdValue = abs(position.size) * oracle_price * pair_params.initial_margin_ratio;
 
         total += ceil(margin / usdt_price); // Round up (conservative, disadvantage to user)
     }
@@ -626,36 +639,36 @@ fn compute_used_margin(
 ///
 /// Used by the post-fill margin check (step 6 of order submission) to
 /// validate that the user can cover the projected position before executing.
-fn compute_projected_used_margin(
+fn compute_initial_margin(
     user_state: &UserState,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
     projected_pair_id: PairId,
-    projected_size: Dec,
-    usdt_price: Udec,
-) -> Uint {
-    let mut total = 0;
+    projected_size: HumanAmount,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) -> BaseAmount {
+    let mut total: BaseAmount = 0;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_prices[&pair_id];
+        let oracle_price: UsdPrice = oracle_prices[&pair_id];
         let pair_params = pair_params_map[&pair_id];
 
-        let size = if pair_id == projected_pair_id {
+        let size: HumanAmount = if pair_id == projected_pair_id {
             projected_size
         } else {
             position.size
         };
 
-        let margin = abs(size) * oracle_price * pair_params.initial_margin_ratio;
+        let margin: UsdValue = abs(size) * oracle_price * pair_params.initial_margin_ratio;
 
         total += ceil(margin / usdt_price);
     }
 
     // If the projected pair is not among existing positions, add it.
-    if !user_state.positions.contains_key(&projected_pair_id) && projected_size != Dec::ZERO {
-        let oracle_price = oracle_prices[&projected_pair_id];
+    if !user_state.positions.contains_key(&projected_pair_id) && projected_size != HumanAmount::ZERO {
+        let oracle_price: UsdPrice = oracle_prices[&projected_pair_id];
         let pair_params = pair_params_map[&projected_pair_id];
-        let margin = abs(projected_size) * oracle_price * pair_params.initial_margin_ratio;
+        let margin: UsdValue = abs(projected_size) * oracle_price * pair_params.initial_margin_ratio;
 
         total += ceil(margin / usdt_price);
     }
@@ -673,8 +686,9 @@ fn compute_projected_used_margin(
 /// Positive = position is in profit. Negative = position is in loss.
 fn compute_position_unrealized_pnl(
     position: &Position,
-    oracle_price: Udec,
-) -> Dec {
+    oracle_price: UsdPrice,
+) -> UsdValue {
+    // HumanAmount * UsdPrice = UsdValue
     position.size * (oracle_price - position.entry_price)
 }
 
@@ -691,22 +705,22 @@ fn compute_position_unrealized_pnl(
 /// is up-to-date.
 fn compute_user_equity(
     user_state: &UserState,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_states: &Map<PairId, PairState>,
-    usdt_price: Udec,
-) -> Dec {
-    let mut total_unrealized_pnl = Dec::ZERO;
-    let mut total_accrued_funding = Dec::ZERO;
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) -> BaseAmount {
+    let mut total_unrealized_pnl: UsdValue = UsdValue::ZERO;
+    let mut total_accrued_funding: UsdValue = UsdValue::ZERO;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_prices[&pair_id];
+        let oracle_price: UsdPrice = oracle_prices[&pair_id];
         let pair_state = &pair_states[&pair_id];
 
         total_unrealized_pnl += compute_position_unrealized_pnl(position, oracle_price);
         total_accrued_funding += compute_accrued_funding(position, pair_state);
     }
 
-    // margin is Uint; convert to Dec for signed arithmetic
+    // margin is BaseAmount; convert USD amounts via usdt_price for signed arithmetic
     user_state.margin + (total_unrealized_pnl - total_accrued_funding) / usdt_price
 }
 ```
@@ -745,16 +759,17 @@ fn handle_cancel_order(
 /// Only the opening portion (new exposure) requires margin.
 /// The closing portion releases margin.
 fn compute_required_margin(
-    opening_size: Dec,
-    limit_price: Udec,
+    opening_size: HumanAmount,
+    limit_price: UsdPrice,
     pair_params: &PairParams,
-    usdt_price: Udec,
-) -> Uint {
-    if opening_size == Dec::ZERO {
-        return Uint::ZERO;
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) -> BaseAmount {
+    if opening_size == HumanAmount::ZERO {
+        return BaseAmount::ZERO;
     }
 
-    let required_margin = abs(opening_size) * limit_price * pair_params.initial_margin_ratio;
+    // HumanAmount * UsdPrice = UsdValue; UsdValue * Ratio<UsdValue> = UsdValue
+    let required_margin: UsdValue = abs(opening_size) * limit_price * pair_params.initial_margin_ratio;
 
     ceil(required_margin / usdt_price)  // Round up to be conservative (disadvantage to user)
 }
@@ -801,11 +816,11 @@ Given a skew and a size, the execution price is calculated as:
 
 ```rust
 fn compute_exec_price(
-    oracle_price: Udec,
-    skew: Dec,
-    size: Dec,
+    oracle_price: UsdPrice,
+    skew: HumanAmount,
+    size: HumanAmount,
     pair_params: PairParams,
-) -> Udec {
+) -> UsdPrice {
     // The skew after the size is fulfilled.
     let skew_after = skew + size;
 
@@ -830,7 +845,7 @@ fn compute_exec_price(
 /// ```
 ///
 /// but slightly optimized, since we know the size is zero.
-fn compute_marginal_price(oracle_price: Udec, skew: Dec, pair_params: &PairParams) -> Udec {
+fn compute_marginal_price(oracle_price: UsdPrice, skew: HumanAmount, pair_params: &PairParams) -> UsdPrice {
     let premium = skew / pair_params.skew_scale;
     let premium = clamp(premium, -pair_params.max_abs_premium, pair_params.max_abs_premium);
 
@@ -838,7 +853,7 @@ fn compute_marginal_price(oracle_price: Udec, skew: Dec, pair_params: &PairParam
 }
 
 /// Bound the value `x` within the range `[min, max]`.
-fn clamp(x: Dec, min: Dec, max: Dec) -> Dec {
+fn clamp<T: Ord>(x: T, min: T, max: T) -> T {
     min(max(x, min), max)
 }
 ```
@@ -851,7 +866,7 @@ On receiving an order, we first decompose it into closing and opening portions.
 /// Returns (closing_size, opening_size) where closing_size reduces existing
 /// exposure and opening_size creates new exposure.
 /// Both have the same sign as the original size (or are zero).
-fn decompose_fill(size: Dec, user_pos: Dec) -> (Dec, Dec) {
+fn decompose_fill(size: HumanAmount, user_pos: HumanAmount) -> (HumanAmount, HumanAmount) {
     if size == 0 {
         return (0, 0);
     }
@@ -886,11 +901,11 @@ We then compute the order's target price. The user can specify this in two ways:
 ```rust
 fn compute_target_price(
     kind: OrderKind,
-    oracle_price: Udec,
-    skew: Dec,
+    oracle_price: UsdPrice,
+    skew: HumanAmount,
     pair_params: &PairParams,
     is_buy: bool,
-) -> Udec {
+) -> UsdPrice {
     match kind {
         OrderKind::Market { max_slippage } => {
             // Marginal price is the execution price for an infinitesimal order
@@ -911,71 +926,37 @@ fn compute_target_price(
     }
 }
 
-/// Check whether the execution price satisfies the price constraint.
+/// Check whether the execution price violates the price constraint.
 ///
-/// - For buys:  exec_price <= target_price  (buyer won't pay more)
-/// - For sells: exec_price >= target_price  (seller won't accept less)
-fn check_price_constraint(exec_price: Udec, target_price: Udec, is_buy: bool) -> bool {
+/// - For buys:  exec_price > target_price  (buyer would pay more than allowed)
+/// - For sells: exec_price < target_price  (seller would accept less than allowed)
+fn is_price_constraint_violated(exec_price: UsdPrice, target_price: UsdPrice, is_buy: bool) -> bool {
     if is_buy {
-        exec_price <= target_price
+        exec_price > target_price
     } else {
-        exec_price >= target_price
+        exec_price < target_price
     }
 }
 ```
 
-#### Max fillable from OI constraint
+#### OI constraint check
 
-We then compute the maximum fillable amount based on the max OI constraint. This applies only to the opening portion of the order.
+We check that the opening portion does not violate the max OI constraint. If it does, the entire order is rejected. Users who want to close their position regardless should use `reduce_only: true`.
 
 ```rust
-fn compute_max_opening_from_oi(
-    opening_size: Dec,
+/// Check that the opening portion of an order does not violate the max OI
+/// constraint. If violated, the order is rejected entirely.
+fn check_oi_constraint(
+    opening_size: HumanAmount,
     pair_state: &PairState,
-    max_abs_oi: Udec,
-) -> Dec {
+    max_abs_oi: HumanAmount,
+) -> Result<()> {
     if opening_size > 0 {
-        // Opening a long: increases long_oi
-        let room = max_abs_oi - pair_state.long_oi;
-        min(opening_size, room)
+        ensure!(pair_state.long_oi + opening_size <= max_abs_oi, "max long OI exceeded");
     } else if opening_size < 0 {
-        // Opening a short: increases short_oi
-        let room = max_abs_oi - pair_state.short_oi;
-        max(opening_size, -room)
-    } else {
-        0
+        ensure!(pair_state.short_oi + (-opening_size) <= max_abs_oi, "max short OI exceeded");
     }
-}
-
-/// Determine the actual fill size after applying the open interest constraint.
-///
-/// The closing portion is never subject to OI limits. The opening portion is
-/// all-or-nothing: if it exceeds `max_abs_oi`, only the closing portion fills
-/// and the opening portion is rejected entirely.
-///
-/// Returns the total fillable size and opening size under the OI constraint.
-fn compute_fill_size_from_oi(
-    closing_size: Dec,
-    opening_size: Dec,
-    is_buy: bool,
-    pair_state: &PairState,
-    max_abs_oi: Udec,
-) -> (Dec, Dec) {
-    let max_opening = compute_max_opening_from_oi(opening_size, pair_state, max_abs_oi);
-
-    let oi_violated = if is_buy {
-        max_opening < opening_size
-    } else {
-        max_opening > opening_size
-    };
-
-    if oi_violated {
-        // OI constraint violated -- only fill the closing portion.
-        (closing_size, 0)
-    } else {
-        // OI constraint not violated -- fill both the closing and opening portions.
-        (closing_size + opening_size, opening_size)
-    }
+    Ok(())
 }
 ```
 
@@ -986,14 +967,15 @@ fn compute_fill_size_from_oi(
 /// If the order opens or increases exposure, the opening notional must meet
 /// `min_opening_notional`. Closing portions are exempt so users can always exit.
 fn validate_notional_constraints(
-    opening_size: Dec,
-    oracle_price: Udec,
+    opening_size: HumanAmount,
+    oracle_price: UsdPrice,
     pair_params: &PairParams,
 ) {
-    if opening_size != Dec::ZERO {
+    if opening_size != HumanAmount::ZERO {
         // Opening or increasing a position: enforce minimum order notional.
         // Closing is exempt so users can always exit positions.
-        let opening_notional = abs(opening_size) * oracle_price;
+        // HumanAmount * UsdPrice = UsdValue
+        let opening_notional: UsdValue = abs(opening_size) * oracle_price;
         ensure!(
             opening_notional >= pair_params.min_opening_notional,
             "opening notional below minimum"
@@ -1012,18 +994,24 @@ A trading fee is charged on every voluntary fill (market and limit orders) as a 
 
 ```rust
 /// Compute the trading fee for a given size and price.
-fn compute_trading_fee(size: Dec, price: Udec, trading_fee_rate: Udec, usdt_price: Udec) -> Uint {
+fn compute_trading_fee(
+    size: HumanAmount,
+    price: UsdPrice,
+    trading_fee_rate: Ratio<UsdValue>,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) -> BaseAmount {
+    // |HumanAmount| * UsdPrice = UsdValue; UsdValue * Ratio<UsdValue> = UsdValue; UsdValue / Ratio<UsdValue, BaseAmount> = BaseAmount
     ceil(abs(size) * price * trading_fee_rate / usdt_price)
 }
 
 fn collect_trading_fee(
     state: &mut State,
     user_state: &mut UserState,
-    fill_size: Dec,
-    exec_price: Udec,
-    trading_fee_rate: Udec,
-    usdt_price: Udec,
-) -> Uint {
+    fill_size: HumanAmount,
+    exec_price: UsdPrice,
+    trading_fee_rate: Ratio<UsdValue>,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) -> BaseAmount {
     let fee = compute_trading_fee(fill_size, exec_price, trading_fee_rate, usdt_price);
     let actual_fee = min(fee, user_state.margin);
 
@@ -1065,45 +1053,42 @@ fn handle_submit_order(
     pair_state: &mut PairState,
     pair_params: &PairParams,
     user_state: &mut UserState,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
     pair_id: PairId,
-    oracle_price: Udec,
-    size: Dec,
+    oracle_price: UsdPrice,
+    size: HumanAmount,
     kind: OrderKind,
     reduce_only: bool,
     current_time: Timestamp,
-    usdt_price: Udec,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
     ensure!(size != 0, "nothing to do");
 
     // Step 1: Accrue funding before any OI changes
     accrue_funding(pair_state, pair_params, oracle_price, current_time);
 
-    let skew = pair_state.long_oi - pair_state.short_oi;
-    let user_pos = user_state.positions
+    let skew: HumanAmount = pair_state.long_oi - pair_state.short_oi;
+    let user_pos: HumanAmount = user_state.positions
         .get(&pair_id)
         .map(|p| p.size)
-        .unwrap_or(Dec::ZERO);
+        .unwrap_or(HumanAmount::ZERO);
     let is_buy = size > 0;
 
     // Step 2: Decompose into closing and opening portions.
     // If reduce_only, zero out the opening portion so the order can only
     // reduce existing exposure.
     let (closing_size, opening_size) = decompose_fill(size, user_pos);
-    let opening_size = if reduce_only { Dec::ZERO } else { opening_size };
+    let opening_size = if reduce_only { HumanAmount::ZERO } else { opening_size };
+    let fill_size = closing_size + opening_size;
+    ensure!(fill_size != HumanAmount::ZERO, "order would have no effect");
 
     // Step 3: Validate minimum opening notional
     validate_notional_constraints(opening_size, oracle_price, pair_params);
 
-    // Step 4: Check OI constraint and determine fill size.
-    // Use the reduce_only-adjusted effective size (closing + adjusted opening).
-    let (fill_size, fill_opening) = compute_fill_size_from_oi(
-        closing_size, opening_size, is_buy,
-        pair_state, pair_params.max_abs_oi,
-    );
-    ensure!(fill_size != Dec::ZERO, "order would have no effect");
+    // Step 4: Check OI constraint — reject if opening portion violates max OI.
+    check_oi_constraint(opening_size, pair_state, pair_params.max_abs_oi)?;
 
     // Step 5: Post-fill margin check.
     // Project the new position size and compute total used margin (initial
@@ -1111,7 +1096,7 @@ fn handle_submit_order(
     // position plus reserved margin after paying the trading fee.
     let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
     let projected_size = user_pos + fill_size;
-    let post_fill_used_margin = compute_projected_used_margin(
+    let post_fill_used_margin = compute_initial_margin(
         user_state, oracle_prices, pair_params_map,
         pair_id, projected_size, usdt_price,
     );
@@ -1126,7 +1111,7 @@ fn handle_submit_order(
     // If the price fails: market orders error, limit orders go to the book.
     let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
 
-    if !check_price_constraint(exec_price, target_price, is_buy) {
+    if is_price_constraint_violated(exec_price, target_price, is_buy) {
         match kind {
             OrderKind::Market { .. } => {
                 bail!("price exceeds slippage tolerance");
@@ -1147,7 +1132,7 @@ fn handle_submit_order(
     }
 
     // Step 7: Execute fill and collect trading fee.
-    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, fill_opening, usdt_price);
+    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, opening_size, usdt_price);
     collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate, usdt_price);
 }
 
@@ -1157,7 +1142,7 @@ fn handle_submit_order(
 /// portion of the unfilled size, and persists the order in the appropriate
 /// side of the order book.
 ///
-/// Buy orders are stored with inverted price (Udec::MAX - limit_price) so
+/// Buy orders are stored with inverted price (UsdPrice::MAX - limit_price) so
 /// ascending iteration yields descending price order.
 fn store_limit_order(
     params: &Params,
@@ -1165,15 +1150,15 @@ fn store_limit_order(
     pair_params: &PairParams,
     pair_id: PairId,
     user_id: UserId,
-    unfilled_size: Dec,
-    limit_price: Udec,
+    unfilled_size: HumanAmount,
+    limit_price: UsdPrice,
     reduce_only: bool,
-    user_pos_after_fill: Dec,
+    user_pos_after_fill: HumanAmount,
     current_time: Timestamp,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
-    usdt_price: Udec,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
     // Enforce maximum open orders
     ensure!(
@@ -1184,7 +1169,7 @@ fn store_limit_order(
     // Reserve margin for the opening portion of the unfilled size.
     // With reduce_only, the opening portion is zero so no margin is reserved.
     let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos_after_fill);
-    let unfilled_opening = if reduce_only { Dec::ZERO } else { unfilled_opening };
+    let unfilled_opening = if reduce_only { HumanAmount::ZERO } else { unfilled_opening };
     let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params, usdt_price);
     let fee_to_reserve = compute_trading_fee(unfilled_opening, limit_price, params.trading_fee_rate, usdt_price);
     let reserved = margin_to_reserve + fee_to_reserve;
@@ -1207,9 +1192,9 @@ fn store_limit_order(
     };
     let order_id = generate_order_id();
 
-    if unfilled_size > Dec::ZERO {
+    if unfilled_size > HumanAmount::ZERO {
         // Buy order: store with inverted price for descending iteration
-        let key = (pair_id, Udec::MAX - limit_price, current_time, order_id);
+        let key = (pair_id, UsdPrice::MAX - limit_price, current_time, order_id);
         BIDS.save(key, order);
     } else {
         // Sell order: store with normal price for ascending iteration
@@ -1234,9 +1219,9 @@ fn settle_existing_position(
     pair_state: &mut PairState,
     user_state: &mut UserState,
     pos: &mut Position,
-    closing_size: Dec,
-    exec_price: Udec,
-    usdt_price: Udec,
+    closing_size: HumanAmount,
+    exec_price: UsdPrice,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
     // Remove old contributions to accumulators BEFORE any size modifications.
     pair_state.oi_weighted_entry_price -= pos.size * pos.entry_price;
@@ -1246,7 +1231,7 @@ fn settle_existing_position(
     settle_funding(state, pair_state, user_state, pos, usdt_price);
 
     // Settle price PnL for the closing portion
-    if closing_size != Dec::ZERO {
+    if closing_size != HumanAmount::ZERO {
         let pnl = compute_pnl_to_realize(pos, closing_size, exec_price);
         settle_pnl(state, user_state, pnl, usdt_price);
         // No entry_price update needed — it is invariant across partial closes.
@@ -1267,9 +1252,9 @@ fn apply_fill_to_position(
     pair_state: &mut PairState,
     user_state: &mut UserState,
     pair_id: PairId,
-    fill_size: Dec,
-    exec_price: Udec,
-    opening_size: Dec,
+    fill_size: HumanAmount,
+    exec_price: UsdPrice,
+    opening_size: HumanAmount,
 ) {
     let position = user_state.positions.get_mut(&pair_id);
 
@@ -1277,9 +1262,9 @@ fn apply_fill_to_position(
         pos.size += fill_size;
 
         // Blend entry_price as weighted average for opening portion
-        if opening_size != Dec::ZERO {
+        if opening_size != HumanAmount::ZERO {
             let remaining_size = pos.size - opening_size;  // size after closing, before opening
-            if remaining_size == Dec::ZERO {
+            if remaining_size == HumanAmount::ZERO {
                 // Position was fully closed then reopened (opposite side)
                 pos.entry_price = exec_price;
             } else {
@@ -1290,7 +1275,7 @@ fn apply_fill_to_position(
         }
 
         // Remove position if fully closed, or re-add contribution
-        if pos.size == Dec::ZERO {
+        if pos.size == HumanAmount::ZERO {
             user_state.positions.remove(&pair_id);
             // Both accumulator contributions already removed by settle_existing_position
         } else {
@@ -1298,9 +1283,9 @@ fn apply_fill_to_position(
             pair_state.oi_weighted_entry_funding += pos.size * pos.entry_funding_per_unit;
             pair_state.oi_weighted_entry_price += pos.size * pos.entry_price;
         }
-    } else if opening_size != Dec::ZERO {
+    } else if opening_size != HumanAmount::ZERO {
         // Create new position
-        let entry_funding = pair_state.cumulative_funding_per_unit;
+        let entry_funding: Ratio<UsdValue, HumanAmount> = pair_state.cumulative_funding_per_unit;
         user_state.positions.insert(pair_id, Position {
             size: fill_size,
             entry_price: exec_price,
@@ -1322,21 +1307,21 @@ fn apply_fill_to_position(
 /// Post: OI reflects the fill; `long_oi >= 0` and `short_oi >= 0` preserved.
 fn update_oi(
     pair_state: &mut PairState,
-    opening_size: Dec,
-    closing_size: Dec,
+    opening_size: HumanAmount,
+    closing_size: HumanAmount,
 ) {
     // Opening portion increases OI on the respective side
-    if opening_size > Dec::ZERO {
+    if opening_size > HumanAmount::ZERO {
         pair_state.long_oi += opening_size;
-    } else if opening_size < Dec::ZERO {
+    } else if opening_size < HumanAmount::ZERO {
         pair_state.short_oi += opening_size.abs();
     }
 
     // Closing portion decreases OI on the opposite side
-    if closing_size > Dec::ZERO {
+    if closing_size > HumanAmount::ZERO {
         // Buying to close a short: short_oi decreases
         pair_state.short_oi -= closing_size;
-    } else if closing_size < Dec::ZERO {
+    } else if closing_size < HumanAmount::ZERO {
         // Selling to close a long: long_oi decreases
         pair_state.long_oi += closing_size;
     }
@@ -1353,11 +1338,11 @@ fn execute_fill(
     pair_state: &mut PairState,
     user_state: &mut UserState,
     pair_id: PairId,
-    fill_size: Dec,
-    exec_price: Udec,
-    closing_size: Dec,
-    opening_size: Dec,
-    usdt_price: Udec,
+    fill_size: HumanAmount,
+    exec_price: UsdPrice,
+    closing_size: HumanAmount,
+    opening_size: HumanAmount,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
     if let Some(pos) = user_state.positions.get_mut(&pair_id) {
         settle_existing_position(state, pair_state, user_state, pos, closing_size, exec_price, usdt_price);
@@ -1382,18 +1367,19 @@ fn execute_fill(
 /// - exit_value  = |closing_size| * exec_price
 fn compute_pnl_to_realize(
     position: &Position,
-    closing_size: Dec,  // Same sign as the order (positive for buys, negative for sells)
-    exec_price: Udec,
-) -> Dec {
-    if closing_size == Dec::ZERO || position.size == Dec::ZERO {
-        return Dec::ZERO;
+    closing_size: HumanAmount,  // Same sign as the order (positive for buys, negative for sells)
+    exec_price: UsdPrice,
+) -> UsdValue {
+    if closing_size == HumanAmount::ZERO || position.size == HumanAmount::ZERO {
+        return UsdValue::ZERO;
     }
 
-    let entry_value = abs(closing_size) * position.entry_price;
-    let exit_value = abs(closing_size) * exec_price;
+    // |HumanAmount| * UsdPrice = UsdValue
+    let entry_value: UsdValue = abs(closing_size) * position.entry_price;
+    let exit_value: UsdValue = abs(closing_size) * exec_price;
 
     // PnL direction depends on position direction
-    if position.size > Dec::ZERO {
+    if position.size > HumanAmount::ZERO {
         // Long position: profit when exit > entry
         exit_value - entry_value
     } else {
@@ -1409,17 +1395,17 @@ fn compute_pnl_to_realize(
 fn settle_pnl(
     state: &mut State,
     user_state: &mut UserState,
-    pnl: Dec,
-    usdt_price: Udec,
+    pnl: UsdValue,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
-    if pnl > Dec::ZERO {
+    if pnl > UsdValue::ZERO {
         // User wins: transfer from vault to user
-        let amount = floor(pnl / usdt_price);
+        let amount: BaseAmount = floor(pnl / usdt_price);
         state.vault_margin = state.vault_margin.saturating_sub(amount);
         user_state.margin += amount;
-    } else if pnl < Dec::ZERO {
+    } else if pnl < UsdValue::ZERO {
         // User loses: transfer from user to vault
-        let loss = ceil(-pnl / usdt_price);
+        let loss: BaseAmount = ceil(-pnl / usdt_price);
         let user_pays = min(loss, user_state.margin);
         // Bad debt (loss - user_pays) is absorbed by the vault - they simply
         // don't receive payment for it. Proper liquidation should prevent this.
@@ -1445,14 +1431,14 @@ fn fulfill_limit_orders_for_pair(
     params: &Params,
     state: &mut State,
     pair_id: PairId,
-    oracle_price: Udec,
+    oracle_price: UsdPrice,
     pair_state: &mut PairState,
     pair_params: &PairParams,
     current_time: Timestamp,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
-    usdt_price: Udec,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
     // Accrue funding before any OI changes
     accrue_funding(pair_state, pair_params, oracle_price, current_time);
@@ -1474,7 +1460,7 @@ fn fulfill_limit_orders_for_pair(
         // Buy: limit_price >= marginal_price (buyer willing to pay at least marginal).
         // Sell: limit_price <= marginal_price (seller willing to accept at most marginal).
         let bid_eligible = next_bid.as_ref().is_some_and(|(key, _)| {
-            (Udec::MAX - key.inverted_limit_price) >= marginal_price
+            (UsdPrice::MAX - key.inverted_limit_price) >= marginal_price
         });
         let ask_eligible = next_ask.as_ref().is_some_and(|(key, _)| {
             key.limit_price <= marginal_price
@@ -1556,18 +1542,18 @@ fn fill_limit_order(
     pair_id: PairId,
     is_buy: bool,
     state: &mut State,
-    oracle_price: Udec,
-    skew: Dec,
+    oracle_price: UsdPrice,
+    skew: HumanAmount,
     pair_state: &mut PairState,
     pair_params: &PairParams,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
-    usdt_price: Udec,
-) -> Dec {
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) -> HumanAmount {
     // Recover limit_price: buy orders use inverted storage
-    let limit_price = if is_buy {
-        Udec::MAX - key.inverted_limit_price
+    let limit_price: UsdPrice = if is_buy {
+        UsdPrice::MAX - key.inverted_limit_price
     } else {
         key.limit_price
     };
@@ -1575,33 +1561,32 @@ fn fill_limit_order(
 
     // Load user state (needed for position decomposition and OI check)
     let mut user_state = load_user_state(order.user_id);
-    let user_pos = user_state.positions
+    let user_pos: HumanAmount = user_state.positions
         .get(&pair_id)
         .map(|p| p.size)
-        .unwrap_or(Dec::ZERO);
+        .unwrap_or(HumanAmount::ZERO);
 
     // Step 2: Decompose closing/opening portions.
     let (closing_size, opening_size) = decompose_fill(order.size, user_pos);
-    let opening_size = if order.reduce_only { Dec::ZERO } else { opening_size };
+    let opening_size = if order.reduce_only { HumanAmount::ZERO } else { opening_size };
+    let fill_size = closing_size + opening_size;
 
-    // Step 4: OI check — determine fill size from OI constraint
-    // (closing portion always allowed).
-    let (fill_size, fill_opening) = compute_fill_size_from_oi(
-        closing_size, opening_size, is_buy,
-        pair_state, pair_params.max_abs_oi,
-    );
+    // If fill_size is zero, skip — nothing to do.
+    if fill_size == HumanAmount::ZERO {
+        return HumanAmount::ZERO;
+    }
 
-    // If fill_size is zero (pure opening order with OI violated), skip.
+    // Step 4: OI check — reject if opening portion violates max OI.
     // OI is transient — order may become fillable in a future cycle.
-    if fill_size == Dec::ZERO {
-        return Dec::ZERO;
+    if check_oi_constraint(opening_size, pair_state, pair_params.max_abs_oi).is_err() {
+        return HumanAmount::ZERO;
     }
 
     // Step 5: Margin check — ensure the user can cover the projected position.
     // If violated, cancel — the account can no longer support this order.
     let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
     let projected_size = user_pos + fill_size;
-    let post_fill_used_margin = compute_projected_used_margin(
+    let post_fill_used_margin = compute_initial_margin(
         user_state, oracle_prices, pair_params_map,
         pair_id, projected_size, usdt_price,
     );
@@ -1614,17 +1599,17 @@ fn fill_limit_order(
         user_state.open_order_count -= 1;
         order_book.remove(key);
         save_user_state(user_state);
-        return Dec::ZERO;
+        return HumanAmount::ZERO;
     }
 
     // Step 6: Price check — if exec_price doesn't satisfy limit_price, skip.
     // Skew is transient — order may become fillable in a future cycle.
-    if !check_price_constraint(exec_price, limit_price, is_buy) {
-        return Dec::ZERO;
+    if is_price_constraint_violated(exec_price, limit_price, is_buy) {
+        return HumanAmount::ZERO;
     }
 
-    // Step 7: Execute fill (may be full order or closing-only).
-    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price, closing_size, fill_opening, usdt_price);
+    // Step 7: Execute fill.
+    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price, closing_size, opening_size, usdt_price);
     collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate, usdt_price);
 
     // Remove order after fill (all-or-nothing: no partial orders remain)
@@ -1661,8 +1646,8 @@ The funding velocity determines how quickly the funding rate changes. It is prop
 fn compute_funding_velocity(
     pair_state: &PairState,
     pair_params: &PairParams,
-) -> Dec {
-    let skew = pair_state.long_oi - pair_state.short_oi;
+) -> Ratio<Ratio<UsdValue, Duration>, Duration> {
+    let skew: HumanAmount = pair_state.long_oi - pair_state.short_oi;
     (skew / pair_params.skew_scale) * pair_params.max_funding_velocity
 }
 ```
@@ -1684,7 +1669,7 @@ fn compute_current_funding_rate(
     pair_state: &PairState,
     pair_params: &PairParams,
     current_time: Timestamp,
-) -> Dec {
+) -> Ratio<UsdValue, Duration> {
     let elapsed_secs = current_time - pair_state.last_funding_time;
     let elapsed_days = elapsed_secs / 86400;
 
@@ -1713,7 +1698,7 @@ Between accruals, funding accumulates but hasn't yet been recorded in `cumulativ
 /// unrecorded = avg_rate * elapsed_days * oracle_price
 ///
 /// The oracle_price converts from "fraction of position size per day"
-/// to settlement currency per contract.
+/// to USD per unit of position size.
 ///
 /// The current rate is returned alongside the unrecorded funding to
 /// avoid redundant computation (the rate is already needed for the
@@ -1721,9 +1706,9 @@ Between accruals, funding accumulates but hasn't yet been recorded in `cumulativ
 fn compute_unrecorded_funding_per_unit(
     pair_state: &PairState,
     pair_params: &PairParams,
-    oracle_price: Udec,
+    oracle_price: UsdPrice,
     current_time: Timestamp,
-) -> (Dec, Dec) {
+) -> (Ratio<UsdValue, HumanAmount>, FundingRate) {
     let elapsed_secs = current_time - pair_state.last_funding_time;
     let elapsed_days = elapsed_secs / 86400;
 
@@ -1747,7 +1732,7 @@ This function updates the global pair state to reflect accumulated funding. It *
 fn accrue_funding(
     pair_state: &mut PairState,
     pair_params: &PairParams,
-    oracle_price: Udec,
+    oracle_price: UsdPrice,
     current_time: Timestamp,
 ) {
     // If not time has elapsed since the last update, then nothing to do.
@@ -1787,8 +1772,9 @@ fn accrue_funding(
 fn compute_accrued_funding(
     position: &Position,
     pair_state: &PairState,
-) -> Dec {
-    let delta = pair_state.cumulative_funding_per_unit - position.entry_funding_per_unit;
+) -> UsdValue {
+    let delta: Ratio<UsdValue, HumanAmount> = pair_state.cumulative_funding_per_unit - position.entry_funding_per_unit;
+    // HumanAmount * Ratio<UsdValue, HumanAmount> = UsdValue
     position.size * delta
 }
 ```
@@ -1810,7 +1796,7 @@ fn settle_funding(
     pair_state: &mut PairState,
     user_state: &mut UserState,
     position: &mut Position,
-    usdt_price: Udec,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
     let accrued = compute_accrued_funding(position, pair_state);
 
@@ -1839,18 +1825,18 @@ The maintenance margin mirrors `compute_used_margin` but uses the lower `mainten
 /// and `compute_user_equity` for consistent comparison.
 fn compute_maintenance_margin(
     user_state: &UserState,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
-    usdt_price: Udec,
-) -> Uint {
-    let mut total = 0;
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) -> BaseAmount {
+    let mut total: BaseAmount = 0;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_prices[&pair_id];
+        let oracle_price: UsdPrice = oracle_prices[&pair_id];
         let pair_params = pair_params_map[&pair_id];
 
         // Maintenance margin = |size| * oracle_price * maintenance_margin_ratio
-        let margin = abs(position.size) * oracle_price * pair_params.maintenance_margin_ratio;
+        let margin: UsdValue = abs(position.size) * oracle_price * pair_params.maintenance_margin_ratio;
 
         total += ceil(margin / usdt_price);  // Round up (conservative, disadvantage to user)
     }
@@ -1871,10 +1857,10 @@ fn compute_maintenance_margin(
 /// function, so that `cumulative_funding_per_unit` is up-to-date.
 fn is_liquidatable(
     user_state: &UserState,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
     pair_states: &Map<PairId, PairState>,
-    usdt_price: Udec,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) -> bool {
     // No positions means nothing to liquidate.
     if user_state.positions.is_empty() {
@@ -1925,11 +1911,11 @@ fn handle_force_close(
     state: &mut State,
     pair_states: &mut Map<PairId, PairState>,
     pair_params_map: &Map<PairId, PairParams>,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     user_state: &mut UserState,
     user_id: UserId,
     current_time: Timestamp,
-    usdt_price: Udec,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
     // Step 1: Cancel all pending limit orders.
     // This removes future exposure and releases reserved margin, giving the
@@ -1971,22 +1957,23 @@ fn handle_force_close(
     //
     // We collect `pair_ids` first to avoid borrowing conflicts.
     let pair_ids: Vec<PairId> = user_state.positions.keys().cloned().collect();
-    let mut total_notional = Udec::ZERO;
+    let mut total_notional: UsdValue = UsdValue::ZERO;
 
     for pair_id in pair_ids {
         let pair_state = pair_states.get_mut(&pair_id);
         let pair_params = pair_params_map[&pair_id];
-        let oracle_price = oracle_prices[&pair_id];
-        let position_size = user_state.positions[&pair_id].size;
+        let oracle_price: UsdPrice = oracle_prices[&pair_id];
+        let position_size: HumanAmount = user_state.positions[&pair_id].size;
 
+        // |HumanAmount| * UsdPrice = UsdValue
         total_notional += abs(position_size) * oracle_price;
 
         // Close by filling the exact opposite of the current position.
-        let fill_size = -position_size;
-        let skew = pair_state.long_oi - pair_state.short_oi;
-        let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
+        let fill_size: HumanAmount = -position_size;
+        let skew: HumanAmount = pair_state.long_oi - pair_state.short_oi;
+        let exec_price: UsdPrice = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
-        execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO, usdt_price);
+        execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, HumanAmount::ZERO, usdt_price);
     }
 
     // Step 6: Pay liquidation fee to the vault.
@@ -2026,8 +2013,8 @@ fn handle_deleverage(
     state: &mut State,
     pair_states: &mut Map<PairId, PairState>,
     pair_params_map: &Map<PairId, PairParams>,
-    oracle_prices: &Map<PairId, Udec>,
-    usdt_price: Udec,
+    oracle_prices: &Map<PairId, UsdPrice>,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
     user_state: &mut UserState,
     pair_id: PairId,
     current_time: Timestamp,
@@ -2045,8 +2032,9 @@ fn handle_deleverage(
     // Compute total open notional across all pairs as the denominator.
     // long_oi and short_oi are both non-negative, so
     // (long_oi + short_oi) gives total OI for each pair.
-    let mut total_open_notional = Udec::ZERO;
+    let mut total_open_notional: UsdValue = UsdValue::ZERO;
     for (pid, ps) in pair_states {
+        // HumanAmount * UsdPrice = UsdValue
         total_open_notional += (ps.long_oi + ps.short_oi) * oracle_prices[&pid];
     }
 
@@ -2069,12 +2057,12 @@ fn handle_deleverage(
     //
     // Same pricing as voluntary trades and liquidation — consistent
     // execution across all fill types.
-    let position_size = user_state.positions[&pair_id].size;
-    let fill_size = -position_size;
-    let skew = pair_state.long_oi - pair_state.short_oi;
-    let exec_price = compute_exec_price(oracle_price, skew, fill_size, &pair_params);
+    let position_size: HumanAmount = user_state.positions[&pair_id].size;
+    let fill_size: HumanAmount = -position_size;
+    let skew: HumanAmount = pair_state.long_oi - pair_state.short_oi;
+    let exec_price: UsdPrice = compute_exec_price(oracle_price, skew, fill_size, &pair_params);
 
-    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, Dec::ZERO, usdt_price);
+    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, HumanAmount::ZERO, usdt_price);
 
     // No liquidation fee — the user is not at fault.
 }
@@ -2093,10 +2081,10 @@ fn compute_vault_equity(
     state: &State,
     pair_states: &Map<PairId, PairState>,
     pair_params_map: &Map<PairId, PairParams>,
-    oracle_prices: &Map<PairId, Udec>,
-    usdt_price: Udec,
+    oracle_prices: &Map<PairId, UsdPrice>,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
     current_time: Timestamp,
-) -> Dec {
+) -> BaseAmount {
     // Note: `compute_vault_unrealized_pnl` and `compute_vault_unrealized_funding`
     // each loops through all the pairs. In the actual implementation, this can
     // be combined into a single loop.
@@ -2115,13 +2103,13 @@ fn compute_vault_equity(
 
 fn compute_vault_unrealized_pnl(
     pair_states: &Map<PairId, PairState>,
-    oracle_prices: &Map<PairId, Udec>,
-) -> Dec {
-    let mut total = Dec::ZERO;
+    oracle_prices: &Map<PairId, UsdPrice>,
+) -> UsdValue {
+    let mut total: UsdValue = UsdValue::ZERO;
 
     for (pair_id, pair_state) in pair_states {
-        let oracle_price = oracle_prices[&pair_id];
-        let skew = pair_state.long_oi - pair_state.short_oi;
+        let oracle_price: UsdPrice = oracle_prices[&pair_id];
+        let skew: HumanAmount = pair_state.long_oi - pair_state.short_oi;
 
         // vault_pnl = -(total_trader_pnl)
         //           = -(oracle_price * skew - oi_weighted_entry_price)
@@ -2135,10 +2123,10 @@ fn compute_vault_unrealized_pnl(
 fn compute_vault_unrealized_funding(
     pair_states: &Map<PairId, PairState>,
     pair_params_map: &Map<PairId, PairParams>,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     current_time: Timestamp,
-) -> Dec {
-    let mut unrealized_funding = Dec::ZERO;
+) -> UsdValue {
+    let mut unrealized_funding: UsdValue = UsdValue::ZERO;
 
     for (pair_id, pair_state) in pair_states {
         let oracle_price = oracle_prices[&pair_id];
@@ -2162,8 +2150,8 @@ fn compute_vault_unrealized_funding(
 ///   = cumulative * Σ pos.size - Σ (pos.size * pos.entry_funding_per_unit)
 ///   = cumulative * skew - oi_weighted_entry_funding
 ///
-/// The vault receives the opposite of what traders owe, so:
-///   vault_unrealized_funding = oi_weighted_entry_funding - cumulative * skew
+/// In the peer-to-pool model, the vault receives what traders owe:
+///   vault_unrealized_funding = cumulative * skew - oi_weighted_entry_funding
 ///
 /// Additionally, we must include funding that has accrued since the last
 /// `accrue_funding` call (the "unrecorded" portion).
@@ -2172,14 +2160,14 @@ fn compute_vault_unrealized_funding(
 fn compute_vault_unrealized_funding_for_pair(
     pair_state: &PairState,
     pair_params: &PairParams,
-    oracle_price: Udec,
+    oracle_price: UsdPrice,
     current_time: Timestamp,
-) -> Dec {
-    let skew = pair_state.long_oi - pair_state.short_oi;
+) -> UsdValue {
+    let skew: HumanAmount = pair_state.long_oi - pair_state.short_oi;
 
     // Funding already recorded in the accumulator
-    let recorded = pair_state.oi_weighted_entry_funding
-        - pair_state.cumulative_funding_per_unit * skew;
+    let recorded: UsdValue = pair_state.cumulative_funding_per_unit * skew
+        - pair_state.oi_weighted_entry_funding;
 
     // Funding accrued since last accrue_funding call
     let (unrecorded_per_unit, _) = compute_unrecorded_funding_per_unit(
@@ -2189,7 +2177,8 @@ fn compute_vault_unrealized_funding_for_pair(
         current_time,
     );
 
-    let unrecorded = -skew * unrecorded_per_unit;
+    // HumanAmount * Ratio<UsdValue, HumanAmount> = UsdValue
+    let unrecorded: UsdValue = skew * unrecorded_per_unit;
 
     recorded + unrecorded
 }
@@ -2203,12 +2192,12 @@ We use the following constant parameters to prevent the [ERC-4626 frontrunning d
 /// Virtual shares added to total supply in share price calculations.
 /// Prevents the first-depositor attack (ERC-4626 inflation attack) by
 /// ensuring the share price cannot be trivially inflated.
-const VIRTUAL_SHARES: Uint = 1_000_000;
+const VIRTUAL_SHARES: BaseAmount = 1_000_000;
 
 /// Virtual assets added to vault equity in share price calculations.
 /// Works in tandem with VIRTUAL_SHARES to set the initial share price
 /// and prevent share inflation attacks.
-const VIRTUAL_ASSETS: Uint = 1;
+const VIRTUAL_ASSETS: BaseAmount = 1;
 ```
 
 Suppose the vault receives `amount_received` units of USDT from user:
@@ -2218,11 +2207,11 @@ fn handle_deposit_liquidity(
     state: &mut State,
     pair_states: &Map<PairId, PairState>,
     pair_params_map: &Map<PairId, PairParams>,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     user_state: &mut UserState,
-    amount_received: Uint,
-    min_shares_to_mint: Option<Uint>,
-    usdt_price: Udec,
+    amount_received: BaseAmount,
+    min_shares_to_mint: Option<BaseAmount>,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
     current_time: Timestamp,
 ) {
     ensure!(amount_received > 0, "nothing to do");
@@ -2275,10 +2264,10 @@ fn handle_unlock_liquidity(
     state: &mut State,
     pair_states: &Map<PairId, PairState>,
     pair_params_map: &Map<PairId, PairParams>,
-    oracle_prices: &Map<PairId, Udec>,
+    oracle_prices: &Map<PairId, UsdPrice>,
     user_state: &mut UserState,
-    shares_to_burn: Uint,
-    usdt_price: Udec,
+    shares_to_burn: BaseAmount,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
     current_time: Timestamp,
 ) {
     ensure!(shares_to_burn > 0, "nothing to do");
