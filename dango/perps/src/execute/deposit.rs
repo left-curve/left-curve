@@ -4,11 +4,11 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         BaseAmount, FromInner, UsdValue, bank,
-        perps::{self, State, settlement_currency},
+        perps::{self, PairId, State, settlement_currency},
     },
     grug::{
-        Addr, Coins, Message, MutableCtx, Order as IterationOrder, Response, StdResult, Storage,
-        Timestamp, addr,
+        Addr, Coins, Message, MutableCtx, Order as IterationOrder, Response, StdResult, Timestamp,
+        addr,
     },
 };
 
@@ -37,12 +37,18 @@ pub fn deposit(
     let pair_querier = NoCachePairQuerier::new_local(ctx.storage);
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
+    // Find all the existing trading pairs.
+    // TODO: optimize this. Ideally we don't do database iteration which is slow.
+    let pair_ids = PAIR_STATES
+        .keys(ctx.storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+
     // Run the deposit logic.
     let (deposit_amount, shares_to_mint) = _deposit(
-        ctx.storage,
         ctx.block.timestamp,
         ctx.funds,
         &state,
+        &pair_ids,
         &pair_querier,
         &mut oracle_querier,
         min_shares_to_mint,
@@ -71,10 +77,10 @@ pub fn deposit(
 /// Returns: 1) the amount of settlement currency that was deposited,
 /// 2) the amount of share token to be minted, both in base unit.
 fn _deposit(
-    storage: &dyn Storage,
     current_time: Timestamp,
     mut funds: Coins,
     state: &State,
+    pair_ids: &[PairId],
     pair_querier: &NoCachePairQuerier,
     oracle_querier: &mut OracleQuerier,
     min_shares_to_mint: Option<BaseAmount>,
@@ -104,12 +110,6 @@ fn _deposit(
         .vault_margin
         .checked_into_human(settlement_currency::DECIMAL)?
         .checked_mul(settlement_currency_price)?;
-
-    // Find all the existing trading pairs.
-    // TODO: optimize this. Ideally we don't do database iteration which is slow.
-    let pair_ids = PAIR_STATES
-        .keys(storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?;
 
     // Compute the vault's equity. This equals the vault's margin plus its
     // unrealized PnL and funding.
