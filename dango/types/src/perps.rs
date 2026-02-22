@@ -167,7 +167,8 @@ impl PairParam {
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
-#[grug::derive(Serde)]
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
 pub struct State {
     /// The vault's collateral balance. Should be the sum of all user deposits,
     /// the vault's _realized_ PnL, and the share of trading fees earned by the vault.
@@ -233,6 +234,15 @@ pub struct PairState {
     pub oi_weighted_entry_price: UsdValue,
 }
 
+impl PairState {
+    pub fn new(current_time: Timestamp) -> Self {
+        Self {
+            last_funding_time: current_time,
+            ..Default::default()
+        }
+    }
+}
+
 /// State of a specific user.
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
@@ -292,7 +302,8 @@ pub struct Order {
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    // TODO
+    pub param: Param,
+    pub pair_params: BTreeMap<PairId, PairParam>,
 }
 
 #[grug::derive(Serde)]
