@@ -209,6 +209,28 @@ pub fn compute_available_margin(
         .max(UsdValue::ZERO))
 }
 
+/// Returns true if the user is eligible for liquidation.
+///
+/// A user is liquidatable when their equity (collateral + unrealized PnL
+/// - accrued funding) falls below their total maintenance margin.
+///
+/// A user with no open positions is never liquidatable.
+pub fn is_liquidatable(
+    collateral_value: UsdValue,
+    user_state: &UserState,
+    pair_querier: &NoCachePairQuerier,
+    oracle_querier: &mut OracleQuerier,
+) -> anyhow::Result<bool> {
+    if user_state.positions.is_empty() {
+        return Ok(false);
+    }
+
+    let equity = compute_user_equity(collateral_value, user_state, pair_querier, oracle_querier)?;
+    let maintenance_margin = compute_maintenance_margin(user_state, pair_querier, oracle_querier)?;
+
+    Ok(equity < maintenance_margin)
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -1048,5 +1070,233 @@ mod tests {
             .unwrap(),
             UsdValue::new(12_480),
         );
+    }
+
+    // ---- is_liquidatable tests ----
+
+    #[test]
+    fn is_liquidatable_no_positions() {
+        let user_state = UserState::default();
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
+
+        assert!(
+            !is_liquidatable(
+                UsdValue::new(10_000),
+                &user_state,
+                &pair_querier,
+                &mut oracle_querier,
+            )
+            .unwrap()
+        );
+    }
+
+    // collateral=10000, ETH long 10 @ entry=2000, oracle=2500, mmr=5%
+    // equity = 10000 + 10*(2500-2000) = 15000
+    // maint  = |10| * 2500 * 0.05 = 1250
+    // 15000 >= 1250 → not liquidatable
+    #[test]
+    fn is_liquidatable_healthy() {
+        let user_state = UserState {
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: HumanAmount::new(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: Ratio::new_int(0),
+                },
+            },
+            ..Default::default()
+        };
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: Ratio::new_int(0),
+                    ..Default::default()
+                },
+            },
+        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(250_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        assert!(
+            !is_liquidatable(
+                UsdValue::new(10_000),
+                &user_state,
+                &pair_querier,
+                &mut oracle_querier,
+            )
+            .unwrap()
+        );
+    }
+
+    // equity exactly equals maintenance margin → not liquidatable (strict <)
+    // Need: equity = maint. maint = |10| * 2000 * 0.05 = 1000
+    // equity = collateral + pnl - funding = collateral + 0 - 0 = collateral
+    // So collateral = 1000
+    #[test]
+    fn is_liquidatable_at_boundary() {
+        let user_state = UserState {
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: HumanAmount::new(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: Ratio::new_int(0),
+                },
+            },
+            ..Default::default()
+        };
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: Ratio::new_int(0),
+                    ..Default::default()
+                },
+            },
+        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(200_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        assert!(
+            !is_liquidatable(
+                UsdValue::new(1_000),
+                &user_state,
+                &pair_querier,
+                &mut oracle_querier,
+            )
+            .unwrap()
+        );
+    }
+
+    // collateral=100, ETH long 10 @ entry=2000, oracle=1500, mmr=5%
+    // equity = 100 + 10*(1500-2000) = 100 - 5000 = -4900
+    // maint  = |10| * 1500 * 0.05 = 750
+    // -4900 < 750 → liquidatable
+    #[test]
+    fn is_liquidatable_underwater() {
+        let user_state = UserState {
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: HumanAmount::new(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: Ratio::new_int(0),
+                },
+            },
+            ..Default::default()
+        };
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: Ratio::new_int(0),
+                    ..Default::default()
+                },
+            },
+        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(150_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        assert!(
+            is_liquidatable(
+                UsdValue::new(100),
+                &user_state,
+                &pair_querier,
+                &mut oracle_querier,
+            )
+            .unwrap()
+        );
+    }
+
+    // Funding can push a user into liquidation territory.
+    //
+    // Setup: ETH long 10 @ entry=2000, oracle=2000 (no pnl), mmr=5%
+    //   funding_per_unit=100, entry=0 → accrued = 10 * 100 = 1000
+    //   maint = |10| * 2000 * 0.05 = 1000
+    //
+    // Case 1: collateral=10000
+    //   equity = 10000 + 0 - 1000 = 9000, maint=1000 → not liquidatable
+    //
+    // Case 2: collateral=900
+    //   equity = 900 + 0 - 1000 = -100, maint=1000 → liquidatable
+    #[test]
+    fn is_liquidatable_funding_pushes_under() {
+        let make_fixtures = |collateral: i128| {
+            let user_state = UserState {
+                positions: btree_map! {
+                    eth::DENOM.clone() => Position {
+                        size: HumanAmount::new(10),
+                        entry_price: UsdPrice::new_int(2000),
+                        entry_funding_per_unit: Ratio::new_int(0),
+                    },
+                },
+                ..Default::default()
+            };
+            let pair_querier = NoCachePairQuerier::new_mock(
+                hash_map! {
+                    eth::DENOM.clone() => PairParam {
+                        maintenance_margin_ratio: Ratio::new_permille(50),
+                        ..Default::default()
+                    },
+                },
+                hash_map! {
+                    eth::DENOM.clone() => PairState {
+                        funding_per_unit: Ratio::new_int(100),
+                        ..Default::default()
+                    },
+                },
+            );
+            let oracle_querier = OracleQuerier::new_mock(hash_map! {
+                eth::DENOM.clone() => PrecisionedPrice::new(
+                    Udec128::new_percent(200_000),
+                    Timestamp::from_seconds(0),
+                    18,
+                ),
+            });
+            (
+                UsdValue::new(collateral),
+                user_state,
+                pair_querier,
+                oracle_querier,
+            )
+        };
+
+        // Case 1: healthy despite funding
+        let (col, us, pq, mut oq) = make_fixtures(10_000);
+        assert!(!is_liquidatable(col, &us, &pq, &mut oq).unwrap());
+
+        // Case 2: funding pushes equity below maintenance margin
+        let (col, us, pq, mut oq) = make_fixtures(900);
+        assert!(is_liquidatable(col, &us, &pq, &mut oq).unwrap());
     }
 }
