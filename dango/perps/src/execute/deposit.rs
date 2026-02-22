@@ -4,9 +4,12 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         BaseAmount, FromInner, UsdValue, bank,
-        perps::{self, settlement_currency},
+        perps::{self, State, settlement_currency},
     },
-    grug::{Addr, Coins, Message, MutableCtx, Order as IterationOrder, Response, StdResult, addr},
+    grug::{
+        Addr, Coins, Message, MutableCtx, Order as IterationOrder, Response, StdResult, Storage,
+        Timestamp, addr,
+    },
 };
 
 /// Virtual shares added to total supply in share price calculations.
@@ -26,13 +29,56 @@ const BANK: Addr = addr!("e0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7");
 const ORACLE: Addr = addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d");
 
 pub fn deposit(
-    mut ctx: MutableCtx,
+    ctx: MutableCtx,
     min_shares_to_mint: Option<BaseAmount>,
 ) -> anyhow::Result<Response> {
+    // Load state, create querier objects.
     let mut state = STATE.load(ctx.storage)?;
     let pair_querier = NoCachePairQuerier::new_local(ctx.storage);
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
+    // Run the deposit logic.
+    let (deposit_amount, shares_to_mint) = _deposit(
+        ctx.storage,
+        ctx.block.timestamp,
+        ctx.funds,
+        &state,
+        &pair_querier,
+        &mut oracle_querier,
+        min_shares_to_mint,
+    )?;
+
+    // Update global state.
+    state.vault_margin.checked_add_assign(deposit_amount)?;
+
+    // Save the updated global state.
+    STATE.save(ctx.storage, &state)?;
+
+    // Send a message to instruct the bank contract to mint the share token.
+    // Note: if `shares_to_mint` is zero, the `Coins::one` constructor call errors,
+    // as intended.
+    Ok(Response::new().add_message(Message::execute(
+        BANK,
+        &bank::ExecuteMsg::Mint {
+            to: ctx.sender,
+            coins: Coins::one(perps::DENOM.clone(), shares_to_mint)?,
+        },
+        Coins::new(),
+    )?))
+}
+
+/// The actual logic for handling the deposit.
+/// Returns: 1) the amount of settlement currency that was deposited,
+/// 2) the amount of share token to be minted, both in base unit.
+fn _deposit(
+    storage: &dyn Storage,
+    current_time: Timestamp,
+    mut funds: Coins,
+    state: &State,
+    pair_querier: &NoCachePairQuerier,
+    oracle_querier: &mut OracleQuerier,
+    min_shares_to_mint: Option<BaseAmount>,
+) -> anyhow::Result<(BaseAmount, BaseAmount)> {
     // Query the price of the settlement currency.
     let settlement_currency_price =
         oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
@@ -41,10 +87,10 @@ pub fn deposit(
 
     // Find how much settlement currency the user has deposited.
     let deposit_amount =
-        BaseAmount::from_inner(ctx.funds.take(settlement_currency::DENOM.clone()).amount);
+        BaseAmount::from_inner(funds.take(settlement_currency::DENOM.clone()).amount);
 
     // The user should not have deposited anything else.
-    ensure!(ctx.funds.is_empty(), "unexpected deposit: {:?}", ctx.funds);
+    ensure!(funds.is_empty(), "unexpected deposit: {:?}", funds);
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
@@ -62,7 +108,7 @@ pub fn deposit(
     // Find all the existing trading pairs.
     // TODO: optimize this. Ideally we don't do database iteration which is slow.
     let pair_ids = PAIR_STATES
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
+        .keys(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
 
     // Compute the vault's equity. This equals the vault's margin plus its
@@ -70,9 +116,9 @@ pub fn deposit(
     let vault_equity = compute_vault_equity(
         vault_margin_value,
         &pair_ids,
-        &pair_querier,
-        &mut oracle_querier,
-        ctx.block.timestamp,
+        pair_querier,
+        oracle_querier,
+        current_time,
     )?;
 
     // Add virtual asset to vault equity to arrive at the effective equity.
@@ -101,23 +147,7 @@ pub fn deposit(
         );
     }
 
-    // Update global state.
-    state.vault_margin.checked_add_assign(deposit_amount)?;
-
-    // Save the updated global state.
-    STATE.save(ctx.storage, &state)?;
-
-    // Send a message to instruct the bank contract to mint the share token.
-    // Note: if `shares_to_mint` is zero, the `Coins::one` constructor call errors,
-    // as intended.
-    Ok(Response::new().add_message(Message::execute(
-        BANK,
-        &bank::ExecuteMsg::Mint {
-            to: ctx.sender,
-            coins: Coins::one(perps::DENOM.clone(), shares_to_mint)?,
-        },
-        Coins::new(),
-    )?))
+    Ok((deposit_amount, shares_to_mint))
 }
 
 // ----------------------------------- tests -----------------------------------
