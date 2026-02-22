@@ -1,7 +1,7 @@
 use {
     dango_types::{
         Days, Dimensionless, HumanAmount, Ratio, UsdPrice, UsdValue,
-        perps::{FundingRate, FundingVelocity, PairParam, PairState, Position},
+        perps::{FundingRate, FundingVelocity, PairParam, PairState},
     },
     grug::{MathResult, Timestamp},
 };
@@ -146,37 +146,13 @@ pub fn accrue_funding(
     Ok(())
 }
 
-/// Compute the funding accrued by a specific position since it was
-/// last touched (opened, modified, or had funding settled).
-///
-/// accrued = position.size * (current_cumulative - entry_cumulative)
-///
-/// Sign convention:
-///
-/// - Positive result = trader owes vault (cost to the trader)
-/// - Negative result = vault owes trader (credit to the trader)
-///
-/// This follows from:
-///
-/// - When rate > 0: longs pay (size > 0 produces positive accrued)
-/// - When rate < 0: shorts pay (size < 0, delta < 0, product is positive)
-pub fn compute_accrued_funding(
-    position: &Position,
-    pair_state: &PairState,
-) -> MathResult<UsdValue> {
-    let delta = pair_state
-        .funding_per_unit
-        .checked_sub(position.entry_funding_per_unit)?;
-    position.size.checked_mul(delta)
-}
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
     use {
         super::*,
-        dango_types::{HumanAmount, Ratio, UsdValue},
+        dango_types::{HumanAmount, Ratio},
         grug::{Duration, Timestamp},
         test_case::test_case,
     };
@@ -366,39 +342,4 @@ mod tests {
         assert_eq!(pair_state.funding_per_unit, Ratio::new_raw(7_500_000),);
     }
 
-    // ---- compute_accrued_funding tests ----
-
-    // accrued = size * (cumulative - entry_funding_per_unit)
-    //
-    // Raw math example ("long pays"):
-    //   cumulative = 7_500_000 raw (7.5), entry = 5_000_000 raw (5.0)
-    //   delta = 2_500_000 raw (2.5)
-    //   size = 10_000_000 raw (10)
-    //   accrued = (10_000_000 * 2_500_000) / 1_000_000 = 25_000_000 raw (25 USD)
-    #[test_case( 10_000_000, 5_000_000, 5_000_000,          0 ; "no delta")]
-    #[test_case( 10_000_000, 7_500_000, 5_000_000,  25_000_000 ; "long pays")]
-    #[test_case(-10_000_000, 7_500_000, 5_000_000, -25_000_000 ; "short receives")]
-    #[test_case( 10_000_000, 3_000_000, 5_000_000, -20_000_000 ; "long receives")]
-    #[test_case(-10_000_000, 3_000_000, 5_000_000,  20_000_000 ; "short pays")]
-    fn compute_accrued_funding_works(
-        size_raw: i128,
-        cumulative_raw: i128,
-        entry_raw: i128,
-        expected_raw: i128,
-    ) {
-        let position = Position {
-            size: HumanAmount::new(size_raw),
-            entry_price: Ratio::new_raw(0),
-            entry_funding_per_unit: Ratio::new_raw(entry_raw),
-        };
-        let pair_state = PairState {
-            funding_per_unit: Ratio::new_raw(cumulative_raw),
-            ..Default::default()
-        };
-
-        assert_eq!(
-            compute_accrued_funding(&position, &pair_state).unwrap(),
-            UsdValue::new(expected_raw),
-        );
-    }
 }
