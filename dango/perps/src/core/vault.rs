@@ -144,6 +144,7 @@ pub fn is_adl_triggerable(
 
         let pair_oi = pair_state.long_oi.checked_add(pair_state.short_oi)?;
         let pair_notional = pair_oi.checked_mul(oracle_price)?;
+
         total_open_notional = total_open_notional.checked_add(pair_notional)?;
     }
 

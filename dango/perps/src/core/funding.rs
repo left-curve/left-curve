@@ -41,7 +41,7 @@ fn compute_funding_velocity(
 ///
 /// The rate is clamped to prevent runaway funding that could cause cascading
 /// liquidations and bad debt spirals during prolonged skew.
-pub fn compute_current_funding_rate(
+fn compute_current_funding_rate(
     pair_state: &PairState,
     pair_params: &PairParam,
     elapsed_time: Days,
@@ -93,7 +93,7 @@ pub fn compute_current_funding_rate(
 /// avg_rate = (previous_rate + current_rate) / 2
 /// unrecorded = avg_rate * elapsed_days * oracle_price
 /// ```
-pub(crate) fn compute_unrecorded_funding_per_unit(
+pub(super) fn compute_unrecorded_funding_per_unit(
     pair_state: &PairState,
     pair_param: &PairParam,
     current_time: Timestamp,
@@ -341,5 +341,4 @@ mod tests {
         assert_eq!(pair_state.last_funding_time, t2);
         assert_eq!(pair_state.funding_per_unit, Ratio::new_raw(7_500_000),);
     }
-
 }
