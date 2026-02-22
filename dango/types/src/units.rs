@@ -317,19 +317,14 @@ impl<N, D> Ratio<N, D> {
     }
 
     /// Multiply self by a dimensionless ratio, preserving self's units.
-    pub fn checked_mul4<T>(self, rhs: Ratio<T, T>) -> MathResult<Self> {
+    pub fn checked_mul2<T>(self, rhs: Ratio<T, T>) -> MathResult<Self> {
         self.inner.checked_mul(rhs.inner).map(Self::new)
     }
 }
 
 impl<T> Ratio<T> {
-    /// Multiply a dimensionless ratio (a pure scalar) by another ratio,
-    /// preserving the target's units.
-    ///
-    /// This is only available when the left-hand side is dimensionless
-    /// (`Ratio<T, T>`), ensuring type safety — arbitrary ratios cannot
-    /// be reinterpreted.
-    pub fn checked_mul2<N, D>(self, rhs: Ratio<N, D>) -> MathResult<Ratio<N, D>> {
+    // Same as `checked_mul2`, but the dimensionless ratio is the lhs.
+    pub fn checked_mul3<N, D>(self, rhs: Ratio<N, D>) -> MathResult<Ratio<N, D>> {
         self.inner.checked_mul(rhs.inner).map(Ratio::new)
     }
 }
@@ -339,7 +334,7 @@ where
     N: FromInner<Inner = Dec128_6>,
     D: Inner<U = Dec128_6>,
 {
-    pub fn checked_mul3(self, rhs: D) -> MathResult<N> {
+    pub fn checked_mul4(self, rhs: D) -> MathResult<N> {
         self.inner.checked_mul(rhs.into_inner()).map(N::from_inner)
     }
 }

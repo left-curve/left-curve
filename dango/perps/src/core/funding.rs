@@ -25,7 +25,7 @@ fn compute_funding_velocity(
     pair_state
         .skew
         .checked_div(pair_params.skew_scale)?
-        .checked_mul2(pair_params.max_funding_velocity)
+        .checked_mul3(pair_params.max_funding_velocity)
 }
 
 /// Compute the current funding rate, accounting for time elapsed since
@@ -52,7 +52,7 @@ pub fn compute_current_funding_rate(
     // Compute the funding rate based on the above two values, and clamp it to
     // between [-max_abs_funding_rate, max_abs_funding_rate].
     Ok(velocity
-        .checked_mul3(elapsed_time)?
+        .checked_mul4(elapsed_time)?
         .checked_add(pair_state.funding_rate)?
         .clamp(
             -pair_params.max_abs_funding_rate,
@@ -109,11 +109,11 @@ fn compute_unrecorded_funding_per_unit(
     let avg_rate = pair_state
         .funding_rate
         .checked_add(current_rate)?
-        .checked_mul4(Ratio::<Dimensionless>::HALF)?;
+        .checked_mul2(Ratio::<Dimensionless>::HALF)?;
 
     // Compute the unrecorded funding by "integrating" funding rate over the elapsed time.
     let unrecorded = avg_rate
-        .checked_mul3(elapsed_time)?
+        .checked_mul4(elapsed_time)?
         .checked_mul(oracle_price)?;
 
     Ok((unrecorded, current_rate))
