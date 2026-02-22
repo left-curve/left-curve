@@ -1,4 +1,5 @@
 mod decompose;
+mod equity;
 mod fees;
 mod funding;
 mod margin;
@@ -8,5 +9,6 @@ mod pricing;
 mod target_price;
 
 pub use {
-    decompose::*, fees::*, funding::*, margin::*, min_open::*, oi::*, pricing::*, target_price::*,
+    decompose::*, equity::*, fees::*, funding::*, margin::*, min_open::*, oi::*, pricing::*,
+    target_price::*,
 };

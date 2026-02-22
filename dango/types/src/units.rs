@@ -237,6 +237,10 @@ impl UsdValue {
         self.0.checked_add(rhs.0).map(Self)
     }
 
+    pub fn checked_sub(self, rhs: Self) -> MathResult<Self> {
+        self.0.checked_sub(rhs.0).map(Self)
+    }
+
     pub fn checked_mul<N>(self, ratio: Ratio<N, Self>) -> MathResult<N>
     where
         N: FromInner<Inner = Dec128_6>,
