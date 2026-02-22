@@ -1,7 +1,7 @@
 use {
     dango_types::{
         Days, Dimensionless, HumanAmount, Ratio, UsdPrice, UsdValue,
-        perps::{FundingRate, FundingVelocity, PairParam, PairState},
+        perps::{FundingRate, FundingVelocity, PairParam, PairState, Position},
     },
     grug::{MathResult, Timestamp},
 };
@@ -93,9 +93,9 @@ pub fn compute_current_funding_rate(
 /// avg_rate = (previous_rate + current_rate) / 2
 /// unrecorded = avg_rate * elapsed_days * oracle_price
 /// ```
-pub fn compute_unrecorded_funding_per_unit(
+fn compute_unrecorded_funding_per_unit(
     pair_state: &PairState,
-    pair_params: &PairParam,
+    pair_param: &PairParam,
     current_time: Timestamp,
     oracle_price: UsdPrice,
 ) -> MathResult<(Ratio<UsdValue, HumanAmount>, FundingRate)> {
@@ -103,7 +103,7 @@ pub fn compute_unrecorded_funding_per_unit(
     let elapsed_time = Days::try_from(current_time - pair_state.last_funding_time)?;
 
     // Compute the current funding rate based on last funding rate.
-    let current_rate = compute_current_funding_rate(pair_state, pair_params, elapsed_time)?;
+    let current_rate = compute_current_funding_rate(pair_state, pair_param, elapsed_time)?;
 
     // Compute the average funding rate bewtween the last accrual and now.
     let avg_rate = pair_state
@@ -119,13 +119,66 @@ pub fn compute_unrecorded_funding_per_unit(
     Ok((unrecorded, current_rate))
 }
 
+/// Accrue funding for a pair. Update the accumulator, current rate, and timestamp.
+///
+/// ## Important
+///
+/// MUST be called before any OI-changing operation (`execute_fill`, liquidation)
+/// to ensure correct accounting.
+pub fn accrue_funding(
+    pair_state: &mut PairState,
+    pair_param: &PairParam,
+    current_time: Timestamp,
+    oracle_price: UsdPrice,
+) -> MathResult<()> {
+    // If no time has elapsed since the last update, nothing to do.
+    if current_time == pair_state.last_funding_time {
+        return Ok(());
+    }
+
+    let (unrecorded, current_rate) =
+        compute_unrecorded_funding_per_unit(pair_state, pair_param, current_time, oracle_price)?;
+
+    pair_state.funding_rate = current_rate;
+    pair_state.last_funding_time = current_time;
+    pair_state.cumulative_funding_per_unit = pair_state
+        .cumulative_funding_per_unit
+        .checked_add(unrecorded)?;
+
+    Ok(())
+}
+
+/// Compute the funding accrued by a specific position since it was
+/// last touched (opened, modified, or had funding settled).
+///
+/// accrued = position.size * (current_cumulative - entry_cumulative)
+///
+/// Sign convention:
+///
+/// - Positive result = trader owes vault (cost to the trader)
+/// - Negative result = vault owes trader (credit to the trader)
+///
+/// This follows from:
+///
+/// - When rate > 0: longs pay (size > 0 produces positive accrued)
+/// - When rate < 0: shorts pay (size < 0, delta < 0, product is positive)
+pub fn compute_accrued_funding(
+    position: &Position,
+    pair_state: &PairState,
+) -> MathResult<UsdValue> {
+    let delta = pair_state
+        .cumulative_funding_per_unit
+        .checked_sub(position.entry_funding_per_unit)?;
+    position.size.checked_mul(delta)
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
     use {
         super::*,
-        dango_types::{HumanAmount, Ratio},
+        dango_types::{HumanAmount, Ratio, UsdValue},
         grug::{Duration, Timestamp},
         test_case::test_case,
     };
@@ -249,11 +302,114 @@ mod tests {
         };
         let oracle_price = Ratio::new_raw(oracle_price_raw);
 
-        let (unrecorded, rate) =
-            compute_unrecorded_funding_per_unit(&pair_state, &pair_params, current_time, oracle_price)
-                .unwrap();
+        let (unrecorded, rate) = compute_unrecorded_funding_per_unit(
+            &pair_state,
+            &pair_params,
+            current_time,
+            oracle_price,
+        )
+        .unwrap();
 
         assert_eq!(unrecorded, Ratio::new_raw(expected_unrecorded_raw));
         assert_eq!(rate, Ratio::new_raw(expected_rate_raw));
+    }
+
+    // ---- accrue_funding tests ----
+
+    #[test]
+    fn accrue_funding_works() {
+        let baseline = Timestamp::from_seconds(1_000_000);
+        let one_day = Duration::from_seconds(86400);
+        let oracle_price: UsdPrice = Ratio::new_raw(100_000_000); // 100 USD
+
+        let pair_params = PairParam {
+            skew_scale: Ratio::new_int(1000),
+            max_funding_velocity: Ratio::new_raw(100_000),
+            max_abs_funding_rate: Ratio::new_raw(50_000),
+            ..Default::default()
+        };
+
+        let mut pair_state = PairState {
+            skew: HumanAmount::new(1000),
+            funding_rate: Ratio::new_raw(0),
+            last_funding_time: baseline,
+            cumulative_funding_per_unit: Ratio::new_raw(0),
+            ..Default::default()
+        };
+
+        // 1) No-op when current_time == last_funding_time.
+        let snapshot = pair_state.clone();
+        accrue_funding(&mut pair_state, &pair_params, baseline, oracle_price).unwrap();
+        assert_eq!(pair_state.funding_rate, snapshot.funding_rate);
+        assert_eq!(pair_state.last_funding_time, snapshot.last_funding_time);
+        assert_eq!(
+            pair_state.cumulative_funding_per_unit,
+            snapshot.cumulative_funding_per_unit,
+        );
+
+        // 2) Single accrual: 1 day, skew=1000, rate starts at 0, oracle=100.
+        //    velocity = (1000/1000)*0.1 = 0.1 → current_rate = clamp(0 + 0.1*1, -0.05, 0.05) = 0.05
+        //    avg_rate = (0 + 0.05)/2 = 0.025
+        //    unrecorded = 0.025 * 1 * 100 = 2.5
+        let t1 = baseline + one_day;
+        accrue_funding(&mut pair_state, &pair_params, t1, oracle_price).unwrap();
+
+        assert_eq!(pair_state.funding_rate, Ratio::new_raw(50_000));
+        assert_eq!(pair_state.last_funding_time, t1);
+        assert_eq!(
+            pair_state.cumulative_funding_per_unit,
+            Ratio::new_raw(2_500_000),
+        );
+
+        // 3) Second accrual: another day, same skew. Rate already at max (0.05).
+        //    velocity = 0.1 → current_rate = clamp(0.05 + 0.1*1, ...) = 0.05
+        //    avg_rate = (0.05 + 0.05)/2 = 0.05
+        //    unrecorded = 0.05 * 1 * 100 = 5.0
+        //    cumulative = 2.5 + 5.0 = 7.5
+        let t2 = t1 + one_day;
+        accrue_funding(&mut pair_state, &pair_params, t2, oracle_price).unwrap();
+
+        assert_eq!(pair_state.funding_rate, Ratio::new_raw(50_000));
+        assert_eq!(pair_state.last_funding_time, t2);
+        assert_eq!(
+            pair_state.cumulative_funding_per_unit,
+            Ratio::new_raw(7_500_000),
+        );
+    }
+
+    // ---- compute_accrued_funding tests ----
+
+    // accrued = size * (cumulative - entry_funding_per_unit)
+    //
+    // Raw math example ("long pays"):
+    //   cumulative = 7_500_000 raw (7.5), entry = 5_000_000 raw (5.0)
+    //   delta = 2_500_000 raw (2.5)
+    //   size = 10_000_000 raw (10)
+    //   accrued = (10_000_000 * 2_500_000) / 1_000_000 = 25_000_000 raw (25 USD)
+    #[test_case( 10_000_000, 5_000_000, 5_000_000,          0 ; "no delta")]
+    #[test_case( 10_000_000, 7_500_000, 5_000_000,  25_000_000 ; "long pays")]
+    #[test_case(-10_000_000, 7_500_000, 5_000_000, -25_000_000 ; "short receives")]
+    #[test_case( 10_000_000, 3_000_000, 5_000_000, -20_000_000 ; "long receives")]
+    #[test_case(-10_000_000, 3_000_000, 5_000_000,  20_000_000 ; "short pays")]
+    fn compute_accrued_funding_works(
+        size_raw: i128,
+        cumulative_raw: i128,
+        entry_raw: i128,
+        expected_raw: i128,
+    ) {
+        let position = Position {
+            size: HumanAmount::new(size_raw),
+            entry_price: Ratio::new_raw(0),
+            entry_funding_per_unit: Ratio::new_raw(entry_raw),
+        };
+        let pair_state = PairState {
+            cumulative_funding_per_unit: Ratio::new_raw(cumulative_raw),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            compute_accrued_funding(&position, &pair_state).unwrap(),
+            UsdValue::new(expected_raw),
+        );
     }
 }
