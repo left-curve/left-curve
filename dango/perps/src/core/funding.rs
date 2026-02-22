@@ -93,7 +93,7 @@ pub fn compute_current_funding_rate(
 /// avg_rate = (previous_rate + current_rate) / 2
 /// unrecorded = avg_rate * elapsed_days * oracle_price
 /// ```
-fn compute_unrecorded_funding_per_unit(
+pub(crate) fn compute_unrecorded_funding_per_unit(
     pair_state: &PairState,
     pair_param: &PairParam,
     current_time: Timestamp,
