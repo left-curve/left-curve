@@ -1708,7 +1708,7 @@ fn compute_unrecorded_funding_per_unit(
     pair_params: &PairParams,
     oracle_price: UsdPrice,
     current_time: Timestamp,
-) -> (Ratio<UsdValue, HumanAmount>, Ratio<UsdValue, Duration>) {
+) -> (Ratio<UsdValue, HumanAmount>, FundingRate) {
     let elapsed_secs = current_time - pair_state.last_funding_time;
     let elapsed_days = elapsed_secs / 86400;
 

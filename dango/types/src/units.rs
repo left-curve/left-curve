@@ -315,6 +315,11 @@ impl<N, D> Ratio<N, D> {
     {
         self.inner.checked_mul(rhs.inner).map(T::from_inner)
     }
+
+    /// Multiply self by a dimensionless ratio, preserving self's units.
+    pub fn checked_mul4<T>(self, rhs: Ratio<T, T>) -> MathResult<Self> {
+        self.inner.checked_mul(rhs.inner).map(Self::new)
+    }
 }
 
 impl<T> Ratio<T> {
