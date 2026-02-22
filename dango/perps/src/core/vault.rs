@@ -329,7 +329,7 @@ mod tests {
         assert_eq!(
             compute_vault_equity(
                 UsdValue::new(10_000),
-                &[eth::DENOM.clone()],
+                std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -372,7 +372,7 @@ mod tests {
         assert_eq!(
             compute_vault_equity(
                 UsdValue::new(10_000),
-                &[eth::DENOM.clone()],
+                std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(100),
@@ -465,7 +465,7 @@ mod tests {
         assert_eq!(
             compute_vault_equity(
                 UsdValue::new(100),
-                &[eth::DENOM.clone()],
+                std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -529,7 +529,7 @@ mod tests {
         assert!(
             !is_adl_triggerable(
                 UsdValue::new(100_000),
-                &[eth::DENOM.clone()],
+                std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -573,7 +573,7 @@ mod tests {
         assert!(
             !is_adl_triggerable(
                 UsdValue::new(20_000),
-                &[eth::DENOM.clone()],
+                std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -617,7 +617,7 @@ mod tests {
         assert!(
             is_adl_triggerable(
                 UsdValue::new(100),
-                &[eth::DENOM.clone()],
+                std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
