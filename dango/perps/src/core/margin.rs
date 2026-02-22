@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn maintenance_margin_no_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
@@ -146,12 +146,15 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PairParam {
-                maintenance_margin_ratio: Ratio::new_permille(50),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    ..Default::default()
+                },
             },
-        });
+            HashMap::new(),
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200_000),
@@ -186,16 +189,19 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PairParam {
-                maintenance_margin_ratio: Ratio::new_permille(50),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    ..Default::default()
+                },
+                btc::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Ratio::new_permille(30),
+                    ..Default::default()
+                },
             },
-            btc::DENOM.clone() => PairParam {
-                maintenance_margin_ratio: Ratio::new_permille(30),
-                ..Default::default()
-            },
-        });
+            HashMap::new(),
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200_000),
@@ -222,12 +228,15 @@ mod tests {
     #[test]
     fn initial_margin_no_existing_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PairParam {
-                initial_margin_ratio: Ratio::new_permille(100),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Ratio::new_permille(100),
+                    ..Default::default()
+                },
             },
-        });
+            HashMap::new(),
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200_000),
@@ -263,12 +272,15 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PairParam {
-                initial_margin_ratio: Ratio::new_permille(100),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Ratio::new_permille(100),
+                    ..Default::default()
+                },
             },
-        });
+            HashMap::new(),
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200_000),
@@ -306,16 +318,19 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PairParam {
-                initial_margin_ratio: Ratio::new_permille(100),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Ratio::new_permille(100),
+                    ..Default::default()
+                },
+                btc::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Ratio::new_permille(100),
+                    ..Default::default()
+                },
             },
-            btc::DENOM.clone() => PairParam {
-                initial_margin_ratio: Ratio::new_permille(100),
-                ..Default::default()
-            },
-        });
+            HashMap::new(),
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200_000),
@@ -346,12 +361,15 @@ mod tests {
     #[test]
     fn initial_margin_zero_projected_size_skipped() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PairParam {
-                initial_margin_ratio: Ratio::new_permille(100),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Ratio::new_permille(100),
+                    ..Default::default()
+                },
             },
-        });
+            HashMap::new(),
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200_000),
@@ -394,16 +412,19 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PairParam {
-                initial_margin_ratio: Ratio::new_permille(100),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Ratio::new_permille(100),
+                    ..Default::default()
+                },
+                btc::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Ratio::new_permille(50),
+                    ..Default::default()
+                },
             },
-            btc::DENOM.clone() => PairParam {
-                initial_margin_ratio: Ratio::new_permille(50),
-                ..Default::default()
-            },
-        });
+            HashMap::new(),
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200_000),

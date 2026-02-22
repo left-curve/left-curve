@@ -1,11 +1,11 @@
 use {
     super::compute_accrued_funding,
+    crate::NoCachePairQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         UsdPrice, UsdValue,
-        perps::{PairId, PairState, Position, UserState},
+        perps::{Position, UserState},
     },
-    std::collections::BTreeMap,
 };
 
 /// Compute the unrealized PnL of a single position at the given oracle price.
@@ -32,7 +32,7 @@ fn compute_position_unrealized_pnl(
 pub fn compute_user_equity(
     collateral_value: UsdValue,
     user_state: &UserState,
-    pair_states: &BTreeMap<PairId, PairState>,
+    pair_querier: &NoCachePairQuerier,
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<UsdValue> {
     let mut total_pnl = UsdValue::ZERO;
@@ -40,15 +40,12 @@ pub fn compute_user_equity(
 
     for (pair_id, position) in &user_state.positions {
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
-
-        let pair_state = pair_states
-            .get(pair_id)
-            .ok_or_else(|| anyhow::anyhow!("pair state not found for `{pair_id}`"))?;
+        let pair_state = pair_querier.query_pair_state(pair_id)?;
 
         total_pnl =
             total_pnl.checked_add(compute_position_unrealized_pnl(position, oracle_price)?)?;
         total_funding =
-            total_funding.checked_add(compute_accrued_funding(position, pair_state)?)?;
+            total_funding.checked_add(compute_accrued_funding(position, &pair_state)?)?;
     }
 
     Ok(collateral_value
@@ -66,7 +63,7 @@ mod tests {
             HumanAmount, Ratio, UsdPrice, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
-            perps::Position,
+            perps::{PairState, Position},
         },
         grug::{Timestamp, Udec128, btree_map, hash_map},
         std::collections::HashMap,
@@ -104,14 +101,14 @@ mod tests {
     #[test]
     fn equity_no_positions() {
         let user_state = UserState::default();
-        let pair_states = BTreeMap::new();
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
             compute_user_equity(
                 UsdValue::new(10_000),
                 &user_state,
-                &pair_states,
+                &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
@@ -134,12 +131,12 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_states = btree_map! {
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
             eth::DENOM.clone() => PairState {
                 funding_per_unit: Ratio::new_int(0),
                 ..Default::default()
             },
-        };
+        });
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(250_000),
@@ -152,7 +149,7 @@ mod tests {
             compute_user_equity(
                 UsdValue::new(10_000),
                 &user_state,
-                &pair_states,
+                &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
@@ -176,12 +173,12 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_states = btree_map! {
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
             eth::DENOM.clone() => PairState {
                 funding_per_unit: Ratio::new_int(3),
                 ..Default::default()
             },
-        };
+        });
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(250_000),
@@ -194,7 +191,7 @@ mod tests {
             compute_user_equity(
                 UsdValue::new(10_000),
                 &user_state,
-                &pair_states,
+                &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
@@ -225,7 +222,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_states = btree_map! {
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
             eth::DENOM.clone() => PairState {
                 funding_per_unit: Ratio::new_int(3),
                 ..Default::default()
@@ -234,7 +231,7 @@ mod tests {
                 funding_per_unit: Ratio::new_int(0),
                 ..Default::default()
             },
-        };
+        });
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(250_000),
@@ -252,7 +249,7 @@ mod tests {
             compute_user_equity(
                 UsdValue::new(10_000),
                 &user_state,
-                &pair_states,
+                &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
@@ -275,12 +272,12 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_states = btree_map! {
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
             eth::DENOM.clone() => PairState {
                 funding_per_unit: Ratio::new_int(0),
                 ..Default::default()
             },
-        };
+        });
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(150_000),
@@ -293,7 +290,7 @@ mod tests {
             compute_user_equity(
                 UsdValue::new(100),
                 &user_state,
-                &pair_states,
+                &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
