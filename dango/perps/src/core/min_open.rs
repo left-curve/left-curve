@@ -8,15 +8,15 @@ use {
 pub fn check_minimum_opening(
     opening_size: HumanAmount,
     oracle_price: UsdPrice,
-    pair_params: &PairParam,
+    pair_param: &PairParam,
 ) -> anyhow::Result<()> {
     if opening_size.is_non_zero() {
         let opening_notional = opening_size.checked_abs()?.checked_mul(oracle_price)?;
         ensure!(
-            opening_notional >= pair_params.min_opening_size,
+            opening_notional >= pair_param.min_opening_size,
             "opening size is below minimum: {} < {}",
             opening_notional,
-            pair_params.min_opening_size
+            pair_param.min_opening_size
         );
     }
 

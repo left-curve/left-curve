@@ -20,12 +20,12 @@ use {
 ///   only when the rate overshoots past zero)
 fn compute_funding_velocity(
     pair_state: &PairState,
-    pair_params: &PairParam,
+    pair_param: &PairParam,
 ) -> MathResult<FundingVelocity> {
     pair_state
         .skew
-        .checked_div(pair_params.skew_scale)?
-        .checked_mul3(pair_params.max_funding_velocity)
+        .checked_div(pair_param.skew_scale)?
+        .checked_mul3(pair_param.max_funding_velocity)
 }
 
 /// Compute the current funding rate, accounting for time elapsed since
@@ -43,11 +43,11 @@ fn compute_funding_velocity(
 /// liquidations and bad debt spirals during prolonged skew.
 fn compute_current_funding_rate(
     pair_state: &PairState,
-    pair_params: &PairParam,
+    pair_param: &PairParam,
     elapsed_time: Days,
 ) -> MathResult<FundingRate> {
     // Compute the funding rate velocity based on the current skew.
-    let velocity = compute_funding_velocity(pair_state, pair_params)?;
+    let velocity = compute_funding_velocity(pair_state, pair_param)?;
 
     // Compute the funding rate based on the above two values, and clamp it to
     // between [-max_abs_funding_rate, max_abs_funding_rate].
@@ -55,8 +55,8 @@ fn compute_current_funding_rate(
         .checked_mul4(elapsed_time)?
         .checked_add(pair_state.funding_rate)?
         .clamp(
-            -pair_params.max_abs_funding_rate,
-            pair_params.max_abs_funding_rate,
+            -pair_param.max_abs_funding_rate,
+            pair_param.max_abs_funding_rate,
         ))
 }
 
@@ -179,14 +179,14 @@ mod tests {
             skew: HumanAmount::new(skew),
             ..Default::default()
         };
-        let pair_params = PairParam {
+        let pair_param = PairParam {
             skew_scale: Ratio::new_int(skew_scale),
             max_funding_velocity: Ratio::new_raw(max_funding_velocity_raw),
             ..Default::default()
         };
 
         assert_eq!(
-            compute_funding_velocity(&pair_state, &pair_params).unwrap(),
+            compute_funding_velocity(&pair_state, &pair_param).unwrap(),
             Ratio::new_raw(expected_raw),
         );
     }
@@ -218,7 +218,7 @@ mod tests {
             funding_rate: Ratio::new_raw(last_rate_raw),
             ..Default::default()
         };
-        let pair_params = PairParam {
+        let pair_param = PairParam {
             skew_scale: Ratio::new_int(1000),
             max_funding_velocity: Ratio::new_raw(100_000),
             max_abs_funding_rate: Ratio::new_raw(50_000),
@@ -228,7 +228,7 @@ mod tests {
         let elapsed_days = Days::try_from(Duration::from_seconds(elapsed_seconds)).unwrap();
 
         assert_eq!(
-            compute_current_funding_rate(&pair_state, &pair_params, elapsed_days,).unwrap(),
+            compute_current_funding_rate(&pair_state, &pair_param, elapsed_days,).unwrap(),
             Ratio::new_raw(expected_raw),
         );
     }
@@ -268,7 +268,7 @@ mod tests {
             last_funding_time: baseline,
             ..Default::default()
         };
-        let pair_params = PairParam {
+        let pair_param = PairParam {
             skew_scale: Ratio::new_int(1000),
             max_funding_velocity: Ratio::new_raw(100_000),
             max_abs_funding_rate: Ratio::new_raw(50_000),
@@ -278,7 +278,7 @@ mod tests {
 
         let (unrecorded, rate) = compute_unrecorded_funding_per_unit(
             &pair_state,
-            &pair_params,
+            &pair_param,
             current_time,
             oracle_price,
         )
@@ -296,7 +296,7 @@ mod tests {
         let one_day = Duration::from_seconds(86400);
         let oracle_price: UsdPrice = Ratio::new_raw(100_000_000); // 100 USD
 
-        let pair_params = PairParam {
+        let pair_param = PairParam {
             skew_scale: Ratio::new_int(1000),
             max_funding_velocity: Ratio::new_raw(100_000),
             max_abs_funding_rate: Ratio::new_raw(50_000),
@@ -313,7 +313,7 @@ mod tests {
 
         // 1) No-op when current_time == last_funding_time.
         let snapshot = pair_state.clone();
-        accrue_funding(&mut pair_state, &pair_params, baseline, oracle_price).unwrap();
+        accrue_funding(&mut pair_state, &pair_param, baseline, oracle_price).unwrap();
         assert_eq!(pair_state.funding_rate, snapshot.funding_rate);
         assert_eq!(pair_state.last_funding_time, snapshot.last_funding_time);
         assert_eq!(pair_state.funding_per_unit, snapshot.funding_per_unit,);
@@ -323,7 +323,7 @@ mod tests {
         //    avg_rate = (0 + 0.05)/2 = 0.025
         //    unrecorded = 0.025 * 1 * 100 = 2.5
         let t1 = baseline + one_day;
-        accrue_funding(&mut pair_state, &pair_params, t1, oracle_price).unwrap();
+        accrue_funding(&mut pair_state, &pair_param, t1, oracle_price).unwrap();
 
         assert_eq!(pair_state.funding_rate, Ratio::new_raw(50_000));
         assert_eq!(pair_state.last_funding_time, t1);
@@ -335,7 +335,7 @@ mod tests {
         //    unrecorded = 0.05 * 1 * 100 = 5.0
         //    cumulative = 2.5 + 5.0 = 7.5
         let t2 = t1 + one_day;
-        accrue_funding(&mut pair_state, &pair_params, t2, oracle_price).unwrap();
+        accrue_funding(&mut pair_state, &pair_param, t2, oracle_price).unwrap();
 
         assert_eq!(pair_state.funding_rate, Ratio::new_raw(50_000));
         assert_eq!(pair_state.last_funding_time, t2);
