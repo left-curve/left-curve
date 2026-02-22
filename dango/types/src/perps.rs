@@ -206,15 +206,15 @@ pub struct PairState {
     ///   rate' = rate + velocity * elapsed_days
     pub funding_rate: FundingRate,
 
-    /// Timestamp of the most recent funding accrual.
-    pub last_funding_time: Timestamp,
-
     /// Cumulative funding per unit of position size, denominated in USD.
     ///
     /// This is an ever-increasing accumulator. To compute a position's accrued
     /// funding, take the difference between the current value and the position's
     /// `entry_funding_per_unit`.
-    pub cumulative_funding_per_unit: Ratio<UsdValue, HumanAmount>,
+    pub funding_per_unit: Ratio<UsdValue, HumanAmount>,
+
+    /// Timestamp of the most recent funding accrual.
+    pub last_funding_time: Timestamp,
 
     /// Sum of `position.size * position.entry_funding_per_unit` across all open
     /// positions for this pair.

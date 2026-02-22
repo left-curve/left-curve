@@ -141,9 +141,7 @@ pub fn accrue_funding(
 
     pair_state.funding_rate = current_rate;
     pair_state.last_funding_time = current_time;
-    pair_state.cumulative_funding_per_unit = pair_state
-        .cumulative_funding_per_unit
-        .checked_add(unrecorded)?;
+    pair_state.funding_per_unit = pair_state.funding_per_unit.checked_add(unrecorded)?;
 
     Ok(())
 }
@@ -167,7 +165,7 @@ pub fn compute_accrued_funding(
     pair_state: &PairState,
 ) -> MathResult<UsdValue> {
     let delta = pair_state
-        .cumulative_funding_per_unit
+        .funding_per_unit
         .checked_sub(position.entry_funding_per_unit)?;
     position.size.checked_mul(delta)
 }
@@ -333,7 +331,7 @@ mod tests {
             skew: HumanAmount::new(1000),
             funding_rate: Ratio::new_raw(0),
             last_funding_time: baseline,
-            cumulative_funding_per_unit: Ratio::new_raw(0),
+            funding_per_unit: Ratio::new_raw(0),
             ..Default::default()
         };
 
@@ -342,10 +340,7 @@ mod tests {
         accrue_funding(&mut pair_state, &pair_params, baseline, oracle_price).unwrap();
         assert_eq!(pair_state.funding_rate, snapshot.funding_rate);
         assert_eq!(pair_state.last_funding_time, snapshot.last_funding_time);
-        assert_eq!(
-            pair_state.cumulative_funding_per_unit,
-            snapshot.cumulative_funding_per_unit,
-        );
+        assert_eq!(pair_state.funding_per_unit, snapshot.funding_per_unit,);
 
         // 2) Single accrual: 1 day, skew=1000, rate starts at 0, oracle=100.
         //    velocity = (1000/1000)*0.1 = 0.1 → current_rate = clamp(0 + 0.1*1, -0.05, 0.05) = 0.05
@@ -356,10 +351,7 @@ mod tests {
 
         assert_eq!(pair_state.funding_rate, Ratio::new_raw(50_000));
         assert_eq!(pair_state.last_funding_time, t1);
-        assert_eq!(
-            pair_state.cumulative_funding_per_unit,
-            Ratio::new_raw(2_500_000),
-        );
+        assert_eq!(pair_state.funding_per_unit, Ratio::new_raw(2_500_000),);
 
         // 3) Second accrual: another day, same skew. Rate already at max (0.05).
         //    velocity = 0.1 → current_rate = clamp(0.05 + 0.1*1, ...) = 0.05
@@ -371,10 +363,7 @@ mod tests {
 
         assert_eq!(pair_state.funding_rate, Ratio::new_raw(50_000));
         assert_eq!(pair_state.last_funding_time, t2);
-        assert_eq!(
-            pair_state.cumulative_funding_per_unit,
-            Ratio::new_raw(7_500_000),
-        );
+        assert_eq!(pair_state.funding_per_unit, Ratio::new_raw(7_500_000),);
     }
 
     // ---- compute_accrued_funding tests ----
@@ -403,7 +392,7 @@ mod tests {
             entry_funding_per_unit: Ratio::new_raw(entry_raw),
         };
         let pair_state = PairState {
-            cumulative_funding_per_unit: Ratio::new_raw(cumulative_raw),
+            funding_per_unit: Ratio::new_raw(cumulative_raw),
             ..Default::default()
         };
 
