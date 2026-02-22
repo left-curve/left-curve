@@ -1,32 +1,14 @@
 use {
+    super::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
     crate::{NoCachePairQuerier, PAIR_STATES, STATE, core::compute_vault_equity},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        BaseAmount, FromInner, UsdValue, bank,
+        BaseAmount, FromInner, bank,
         perps::{self, PairId, State, settlement_currency},
     },
-    grug::{
-        Addr, Coins, Message, MutableCtx, Order as IterationOrder, Response, StdResult, Timestamp,
-        addr,
-    },
+    grug::{Coins, Message, MutableCtx, Order as IterationOrder, Response, StdResult, Timestamp},
 };
-
-/// Virtual shares added to total supply in share price calculations.
-/// Prevents the first-depositor attack (ERC-4626 inflation attack) by
-/// ensuring the share price cannot be trivially inflated.
-const VIRTUAL_SHARES: BaseAmount = BaseAmount::new(1_000_000);
-
-/// Virtual assets added to vault equity in share price calculations.
-/// Works in tandem with `VIRTUAL_SHARES` to set the initial share price
-/// and prevent share inflation attacks.
-const VIRTUAL_ASSETS: UsdValue = UsdValue::new(1);
-
-/// Address of the bank contract.
-const BANK: Addr = addr!("e0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7");
-
-/// Address of the oracle contract.
-const ORACLE: Addr = addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d");
 
 pub fn deposit(
     ctx: MutableCtx,
@@ -34,6 +16,7 @@ pub fn deposit(
 ) -> anyhow::Result<Response> {
     // Load state, create querier objects.
     let mut state = STATE.load(ctx.storage)?;
+
     let pair_querier = NoCachePairQuerier::new_local(ctx.storage);
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
@@ -56,7 +39,7 @@ pub fn deposit(
 
     // Update global state.
     state.vault_margin.checked_add_assign(deposit_amount)?;
-    state.vault_share_supply.checked_add_assign(shares_to_mint)?;
+    (state.vault_share_supply).checked_add_assign(shares_to_mint)?;
 
     // Save the updated global state.
     STATE.save(ctx.storage, &state)?;
@@ -158,7 +141,7 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            HumanAmount, Ratio,
+            HumanAmount, Ratio, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, settlement_currency},

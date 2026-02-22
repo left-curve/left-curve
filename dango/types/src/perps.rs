@@ -58,11 +58,11 @@ pub struct Param {
     pub vault_cooldown_period: Duration,
 
     /// Maximum number of unlock requests a single user may have.
-    pub max_unlocks: u32,
+    pub max_unlocks: usize,
 
     /// Maximum number of resting limit order a single user may have across all
     /// trading pairs.
-    pub max_open_orders: u32,
+    pub max_open_orders: usize,
 
     /// Trading fee as a fraction of an order's notional value, deducted from
     /// the user's margin and transferred to the vault on every fill.

@@ -117,12 +117,25 @@ impl BaseAmount {
         Self(Uint128::new(n))
     }
 
+    pub fn is_non_zero(self) -> bool {
+        self.0.is_non_zero()
+    }
+
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
         self.0.checked_add(rhs.0).map(Self)
     }
 
     pub fn checked_add_assign(&mut self, rhs: Self) -> MathResult<()> {
         *self = self.checked_add(rhs)?;
+        Ok(())
+    }
+
+    pub fn checked_sub(self, rhs: Self) -> MathResult<Self> {
+        self.0.checked_sub(rhs.0).map(Self)
+    }
+
+    pub fn checked_sub_assign(&mut self, rhs: Self) -> MathResult<()> {
+        *self = self.checked_sub(rhs)?;
         Ok(())
     }
 
