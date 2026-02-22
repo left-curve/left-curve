@@ -4,7 +4,6 @@ use {
     dango_types::{
         UsdPrice,
         oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
-        perps,
     },
     grug::{
         Addr, Cache, Dec128_6, Denom, Inner, QuerierWrapper, StdResult, Storage, StorageQuerier,
@@ -82,8 +81,8 @@ impl<'a> OracleQuerier<'a> {
     /// expected by the perps contract.
     // Oracle contract stores prices in Udec128_18. We need to convert it to Dec128_6.
     // TODO: we should store prices in oracle contract as Dec128_6 as well.
-    pub fn query_price_for_perps(&mut self, pair_id: &perps::PairId) -> anyhow::Result<UsdPrice> {
-        self.query_price(pair_id, None).and_then(|price| {
+    pub fn query_price_for_perps(&mut self, denom: &Denom) -> anyhow::Result<UsdPrice> {
+        self.query_price(denom, None).and_then(|price| {
             let price = price.humanized_price.checked_into_signed()?;
             let inner = Dec128_6::checked_from_atomics(price.into_inner(), 18)?;
             Ok(UsdPrice::new(inner))

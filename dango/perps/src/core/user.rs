@@ -100,7 +100,7 @@ pub fn compute_maintenance_margin(
             .size
             .checked_abs()?
             .checked_mul(oracle_price)?
-            .checked_mul(pair_param.maintenance_margin_ratio)?;
+            .checked_mul_ratio(pair_param.maintenance_margin_ratio)?;
 
         total.checked_add_assign(margin)?;
     }
@@ -146,7 +146,7 @@ pub fn compute_initial_margin(
         let margin = size
             .checked_abs()?
             .checked_mul(oracle_price)?
-            .checked_mul(pair_param.initial_margin_ratio)?;
+            .checked_mul_ratio(pair_param.initial_margin_ratio)?;
 
         total.checked_add_assign(margin)?;
     }
@@ -160,7 +160,7 @@ pub fn compute_initial_margin(
         let margin = projected_size
             .checked_abs()?
             .checked_mul(oracle_price)?
-            .checked_mul(pair_param.initial_margin_ratio)?;
+            .checked_mul_ratio(pair_param.initial_margin_ratio)?;
 
         total.checked_add_assign(margin)?;
     }
@@ -197,7 +197,7 @@ pub fn compute_available_margin(
             .size
             .checked_abs()?
             .checked_mul(oracle_price)?
-            .checked_mul(pair_param.initial_margin_ratio)?;
+            .checked_mul_ratio(pair_param.initial_margin_ratio)?;
 
         used_margin.checked_add_assign(margin)?;
     }

@@ -147,7 +147,7 @@ pub fn is_adl_triggerable(
         total_open_notional.checked_add_assign(pair_notional)?;
     }
 
-    let threshold = total_open_notional.checked_mul(adl_trigger_ratio)?;
+    let threshold = total_open_notional.checked_mul_ratio(adl_trigger_ratio)?;
 
     Ok(vault_equity < threshold)
 }

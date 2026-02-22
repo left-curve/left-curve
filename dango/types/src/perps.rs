@@ -15,6 +15,12 @@ pub use crate::constants::usdc as settlement_currency;
 /// Namespace for tokens minted by the perps contract.
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("perps"));
 
+/// Sub-denomination of the vault share token.
+pub static SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("vault"));
+
+/// Full denom of the vault share token.
+pub static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["perps", "vault"]));
+
 // ----------------------------------- Types -----------------------------------
 
 /// Identifier of a trading pair. It should be a string that looks like e.g. "perp/btcusd".

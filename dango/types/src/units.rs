@@ -6,8 +6,8 @@
 
 use {
     grug::{
-        Dec128_6, Duration, Exponentiate, Inner, Int128, IsZero, MathError, MathResult, Number,
-        NumberConst, Sign, Signed, Uint128,
+        Dec128_6, Duration, Exponentiate, Inner, Int128, IsZero, MathError, MathResult,
+        MultiplyFraction, Number, NumberConst, Sign, Signed, Uint128, Unsigned,
     },
     std::{
         fmt,
@@ -109,12 +109,58 @@ impl Dimensionless {
 /// In Dango, this is used to denote the quantity of the settlement currency for
 /// perpetual futures contracts, and tokenized shares in the counterparty vault.
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy, Default)]
+#[derive(Copy, Default, PartialOrd, Ord)]
 pub struct BaseAmount(Uint128);
 
 impl BaseAmount {
     pub const fn new(n: u128) -> Self {
         Self(Uint128::new(n))
+    }
+
+    pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
+        self.0.checked_add(rhs.0).map(Self)
+    }
+
+    pub fn checked_add_assign(&mut self, rhs: Self) -> MathResult<()> {
+        *self = self.checked_add(rhs)?;
+        Ok(())
+    }
+
+    /// Multiply the amount by a dimensionless, unsigned ratio.
+    /// Floor the result when rounding.
+    pub fn checked_mul_ratio_floor<T>(self, rhs: Ratio<T, T>) -> MathResult<Self> {
+        self.0
+            .checked_mul_dec_floor(rhs.inner.checked_into_unsigned()?)
+            .map(Self)
+    }
+
+    /// Convert the base amount to human amount based on the given number of decimals.
+    pub fn checked_into_human(self, decimals: u32) -> MathResult<HumanAmount> {
+        self.0
+            .checked_into_dec()?
+            .checked_into_signed()?
+            .checked_div(Dec128_6::TEN.checked_pow(decimals)?)
+            .map(HumanAmount)
+    }
+}
+
+impl FromInner for BaseAmount {
+    type Inner = Uint128;
+
+    fn from_inner(inner: Self::Inner) -> Self {
+        Self(inner)
+    }
+}
+
+impl From<BaseAmount> for Uint128 {
+    fn from(amount: BaseAmount) -> Self {
+        amount.0
+    }
+}
+
+impl fmt::Display for BaseAmount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -171,6 +217,17 @@ impl HumanAmount {
         D: FromInner<Inner = Dec128_6>,
     {
         self.0.checked_div(ratio.inner).map(D::from_inner)
+    }
+
+    /// Convert the human amount to base amount with the number of decimals.
+    /// Floor the decimal amount when rounding to integer.
+    pub fn checked_into_base_floor(self, decimals: u32) -> MathResult<BaseAmount> {
+        let inner = self
+            .0
+            .checked_mul(Dec128_6::TEN.checked_pow(decimals)?)?
+            .checked_into_unsigned()?
+            .into_int_floor();
+        Ok(BaseAmount(inner))
     }
 
     /// Convert the human amount to base amount with the number of decimals.
@@ -233,6 +290,10 @@ impl UsdValue {
         Self(Dec128_6::new(n))
     }
 
+    pub fn is_positive(self) -> bool {
+        self.0.is_positive()
+    }
+
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
         self.0.checked_add(rhs.0).map(Self)
     }
@@ -246,14 +307,18 @@ impl UsdValue {
         self.0.checked_sub(rhs.0).map(Self)
     }
 
-    pub fn checked_mul<N>(self, ratio: Ratio<N, Self>) -> MathResult<N>
+    pub fn checked_div(self, rhs: Self) -> MathResult<Ratio<Self, Self>> {
+        self.0.checked_div(rhs.0).map(Ratio::new)
+    }
+
+    pub fn checked_mul_ratio<N>(self, ratio: Ratio<N, Self>) -> MathResult<N>
     where
         N: FromInner<Inner = Dec128_6>,
     {
         self.0.checked_mul(ratio.inner).map(N::from_inner)
     }
 
-    pub fn checked_div<D>(self, ratio: Ratio<Self, D>) -> MathResult<D>
+    pub fn checked_div_ratio<D>(self, ratio: Ratio<Self, D>) -> MathResult<D>
     where
         D: FromInner<Inner = Dec128_6>,
     {

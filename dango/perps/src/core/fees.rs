@@ -17,8 +17,8 @@ pub fn compute_trading_fee(
     fill_size
         .checked_abs()?
         .checked_mul(oracle_price)?
-        .checked_mul(param.trading_fee_rate)?
-        .checked_div(settlement_currency_price)?
+        .checked_mul_ratio(param.trading_fee_rate)?
+        .checked_div_ratio(settlement_currency_price)?
         .checked_into_base_ceil(settlement_currency::DECIMAL)
 }
 
