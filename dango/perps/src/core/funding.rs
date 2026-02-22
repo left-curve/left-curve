@@ -141,7 +141,7 @@ pub fn accrue_funding(
 
     pair_state.funding_rate = current_rate;
     pair_state.last_funding_time = current_time;
-    pair_state.funding_per_unit = pair_state.funding_per_unit.checked_add(unrecorded)?;
+    pair_state.funding_per_unit.checked_add_assign(unrecorded)?;
 
     Ok(())
 }

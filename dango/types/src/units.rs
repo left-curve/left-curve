@@ -237,6 +237,11 @@ impl UsdValue {
         self.0.checked_add(rhs.0).map(Self)
     }
 
+    pub fn checked_add_assign(&mut self, rhs: Self) -> MathResult<()> {
+        *self = self.checked_add(rhs)?;
+        Ok(())
+    }
+
     pub fn checked_sub(self, rhs: Self) -> MathResult<Self> {
         self.0.checked_sub(rhs.0).map(Self)
     }
@@ -340,6 +345,17 @@ where
 {
     pub fn checked_mul4(self, rhs: D) -> MathResult<N> {
         self.inner.checked_mul(rhs.into_inner()).map(N::from_inner)
+    }
+}
+
+impl<N, D> Ratio<N, D>
+where
+    N: Copy,
+    D: Copy,
+{
+    pub fn checked_add_assign(&mut self, rhs: Self) -> MathResult<()> {
+        *self = self.checked_add(rhs)?;
+        Ok(())
     }
 }
 

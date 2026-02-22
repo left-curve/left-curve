@@ -90,9 +90,8 @@ pub fn compute_vault_equity(
         let pair_state = pair_querier.query_pair_state(pair_id)?;
         let pair_param = pair_querier.query_pair_param(pair_id)?;
 
-        total_pnl =
-            total_pnl.checked_add(compute_pair_unrealized_pnl(&pair_state, oracle_price)?)?;
-        total_funding = total_funding.checked_add(compute_pair_unrealized_funding(
+        total_pnl.checked_add_assign(compute_pair_unrealized_pnl(&pair_state, oracle_price)?)?;
+        total_funding.checked_add_assign(compute_pair_unrealized_funding(
             &pair_state,
             &pair_param,
             oracle_price,
@@ -145,7 +144,7 @@ pub fn is_adl_triggerable(
         let pair_oi = pair_state.long_oi.checked_add(pair_state.short_oi)?;
         let pair_notional = pair_oi.checked_mul(oracle_price)?;
 
-        total_open_notional = total_open_notional.checked_add(pair_notional)?;
+        total_open_notional.checked_add_assign(pair_notional)?;
     }
 
     let threshold = total_open_notional.checked_mul(adl_trigger_ratio)?;

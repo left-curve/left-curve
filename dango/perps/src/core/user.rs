@@ -63,10 +63,9 @@ pub fn compute_user_equity(
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
         let pair_state = pair_querier.query_pair_state(pair_id)?;
 
-        total_pnl =
-            total_pnl.checked_add(compute_position_unrealized_pnl(position, oracle_price)?)?;
-        total_funding = total_funding
-            .checked_add(compute_position_unrealized_funding(position, &pair_state)?)?;
+        total_pnl.checked_add_assign(compute_position_unrealized_pnl(position, oracle_price)?)?;
+        total_funding
+            .checked_add_assign(compute_position_unrealized_funding(position, &pair_state)?)?;
     }
 
     Ok(collateral_value
@@ -103,7 +102,7 @@ pub fn compute_maintenance_margin(
             .checked_mul(oracle_price)?
             .checked_mul(pair_param.maintenance_margin_ratio)?;
 
-        total = total.checked_add(margin)?;
+        total.checked_add_assign(margin)?;
     }
 
     Ok(total)
@@ -149,7 +148,7 @@ pub fn compute_initial_margin(
             .checked_mul(oracle_price)?
             .checked_mul(pair_param.initial_margin_ratio)?;
 
-        total = total.checked_add(margin)?;
+        total.checked_add_assign(margin)?;
     }
 
     // If the projected pair is not in existing positions and the projected size
@@ -163,7 +162,7 @@ pub fn compute_initial_margin(
             .checked_mul(oracle_price)?
             .checked_mul(pair_param.initial_margin_ratio)?;
 
-        total = total.checked_add(margin)?;
+        total.checked_add_assign(margin)?;
     }
 
     Ok(total)
@@ -200,7 +199,7 @@ pub fn compute_available_margin(
             .checked_mul(oracle_price)?
             .checked_mul(pair_param.initial_margin_ratio)?;
 
-        used_margin = used_margin.checked_add(margin)?;
+        used_margin.checked_add_assign(margin)?;
     }
 
     Ok(equity
