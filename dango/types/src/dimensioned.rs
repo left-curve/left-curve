@@ -70,6 +70,65 @@ where
     type Output = Pred<Pred<<(T, U) as TypeAdd>::Output>>;
 }
 
+/// Describes when two values are divided, how their types should be subtracted.
+pub trait TypeSub {
+    type Output;
+}
+
+impl TypeSub for (Zero, Zero) {
+    type Output = Zero;
+}
+
+impl<T> TypeSub for (Succ<T>, Zero) {
+    type Output = Succ<T>;
+}
+
+impl<T> TypeSub for (Pred<T>, Zero) {
+    type Output = Pred<T>;
+}
+
+impl<T> TypeSub for (Zero, Succ<T>)
+where
+    (Zero, T): TypeSub,
+{
+    type Output = Pred<<(Zero, T) as TypeSub>::Output>;
+}
+
+impl<T> TypeSub for (Zero, Pred<T>)
+where
+    (Zero, T): TypeSub,
+{
+    type Output = Succ<<(Zero, T) as TypeSub>::Output>;
+}
+
+impl<T, U> TypeSub for (Succ<T>, Succ<U>)
+where
+    (T, U): TypeSub,
+{
+    type Output = <(T, U) as TypeSub>::Output;
+}
+
+impl<T, U> TypeSub for (Pred<T>, Pred<U>)
+where
+    (T, U): TypeSub,
+{
+    type Output = <(T, U) as TypeSub>::Output;
+}
+
+impl<T, U> TypeSub for (Succ<T>, Pred<U>)
+where
+    (T, U): TypeSub,
+{
+    type Output = Succ<Succ<<(T, U) as TypeSub>::Output>>;
+}
+
+impl<T, U> TypeSub for (Pred<T>, Succ<U>)
+where
+    (T, U): TypeSub,
+{
+    type Output = Pred<Pred<<(T, U) as TypeSub>::Output>>;
+}
+
 /// A value with three dimensions: quantity, USD, and time duration.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Value<Q, U, D> {
@@ -117,5 +176,23 @@ impl<Q, U, D> Value<Q, U, D> {
         (D, D1): TypeAdd,
     {
         self.inner.checked_mul(rhs.inner).map(Value::new)
+    }
+
+    pub fn checked_div<Q1, U1, D1>(
+        self,
+        rhs: Value<Q1, U1, D1>,
+    ) -> MathResult<
+        Value<
+            <(Q, Q1) as TypeSub>::Output,
+            <(U, U1) as TypeSub>::Output,
+            <(D, D1) as TypeSub>::Output,
+        >,
+    >
+    where
+        (Q, Q1): TypeSub,
+        (U, U1): TypeSub,
+        (D, D1): TypeSub,
+    {
+        self.inner.checked_div(rhs.inner).map(Value::new)
     }
 }
