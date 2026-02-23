@@ -327,7 +327,10 @@ mod tests {
 
         assert_eq!(pair_state.funding_rate, FundingRate::new_raw(50_000));
         assert_eq!(pair_state.last_funding_time, t1);
-        assert_eq!(pair_state.funding_per_unit, FundingPerUnit::new_raw(2_500_000),);
+        assert_eq!(
+            pair_state.funding_per_unit,
+            FundingPerUnit::new_raw(2_500_000),
+        );
 
         // 3) Second accrual: another day, same skew. Rate already at max (0.05).
         //    velocity = 0.1 → current_rate = clamp(0.05 + 0.1*1, ...) = 0.05
@@ -339,6 +342,9 @@ mod tests {
 
         assert_eq!(pair_state.funding_rate, FundingRate::new_raw(50_000));
         assert_eq!(pair_state.last_funding_time, t2);
-        assert_eq!(pair_state.funding_per_unit, FundingPerUnit::new_raw(7_500_000),);
+        assert_eq!(
+            pair_state.funding_per_unit,
+            FundingPerUnit::new_raw(7_500_000),
+        );
     }
 }

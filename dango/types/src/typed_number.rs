@@ -8,8 +8,9 @@ use {
     std::{
         fmt,
         marker::PhantomData,
-        ops::{Neg, Sub},
+        ops::{Add, Neg, Sub},
     },
+    typenum::{N1, N2, P1, Z0},
 };
 
 // -------------------------------- Number type --------------------------------
@@ -81,17 +82,11 @@ impl<Q, U, D> Number<Q, U, D> {
     pub fn checked_mul<Q1, U1, D1>(
         self,
         rhs: Number<Q1, U1, D1>,
-    ) -> MathResult<
-        Number<
-            <(Q, Q1) as TypeAdd>::Output,
-            <(U, U1) as TypeAdd>::Output,
-            <(D, D1) as TypeAdd>::Output,
-        >,
-    >
+    ) -> MathResult<Number<<Q as Add<Q1>>::Output, <U as Add<U1>>::Output, <D as Add<D1>>::Output>>
     where
-        (Q, Q1): TypeAdd,
-        (U, U1): TypeAdd,
-        (D, D1): TypeAdd,
+        Q: Add<Q1>,
+        U: Add<U1>,
+        D: Add<D1>,
     {
         self.inner.checked_mul(rhs.inner).map(Number::new)
     }
@@ -99,17 +94,11 @@ impl<Q, U, D> Number<Q, U, D> {
     pub fn checked_div<Q1, U1, D1>(
         self,
         rhs: Number<Q1, U1, D1>,
-    ) -> MathResult<
-        Number<
-            <(Q, Q1) as TypeSub>::Output,
-            <(U, U1) as TypeSub>::Output,
-            <(D, D1) as TypeSub>::Output,
-        >,
-    >
+    ) -> MathResult<Number<<Q as Sub<Q1>>::Output, <U as Sub<U1>>::Output, <D as Sub<D1>>::Output>>
     where
-        (Q, Q1): TypeSub,
-        (U, U1): TypeSub,
-        (D, D1): TypeSub,
+        Q: Sub<Q1>,
+        U: Sub<U1>,
+        D: Sub<D1>,
     {
         self.inner.checked_div(rhs.inner).map(Number::new)
     }
@@ -198,10 +187,10 @@ impl<Q, U, D> borsh::BorshDeserialize for Number<Q, U, D> {
 // ---------------------------------- Aliases ----------------------------------
 
 /// A dimensionless scalar (pure number, no physical units).
-pub type Dimensionless = Number<Zero, Zero, Zero>;
+pub type Dimensionless = Number<Z0, Z0, Z0>;
 
 /// A duration of time, as number of days.
-pub type Days = Number<Zero, Zero, Succ>;
+pub type Days = Number<Z0, Z0, P1>;
 
 impl Days {
     pub fn from_duration(duration: Duration) -> MathResult<Self> {
@@ -215,7 +204,7 @@ impl Days {
 }
 
 /// Quantity of an asset, in _human unit_: quantity¹
-pub type Quantity = Number<Succ, Zero, Zero>;
+pub type Quantity = Number<P1, Z0, Z0>;
 
 impl Quantity {
     /// Convert an asset amount from base unit (represented by the `Uint128` type)
@@ -250,111 +239,19 @@ impl Quantity {
 }
 
 /// Amount of US dollars: usd¹
-pub type UsdValue = Number<Zero, Succ, Zero>;
+pub type UsdValue = Number<Z0, P1, Z0>;
 
 /// Price of an asset: usd¹⋅quantity⁻¹
-pub type UsdPrice = Number<Pred, Succ, Zero>;
+pub type UsdPrice = Number<N1, P1, Z0>;
 
 /// Cumulative funding accrued per unit of position size: usd¹⋅quantity⁻¹
 ///
 /// Dimensionally identical to `UsdPrice` but represents a distinct concept:
 /// the running accumulator used to compute a position's funding payment.
-pub type FundingPerUnit = Number<Pred, Succ, Zero>;
+pub type FundingPerUnit = Number<N1, P1, Z0>;
 
 /// Funding rate: duration⁻¹
-pub type FundingRate = Number<Zero, Zero, Pred>;
+pub type FundingRate = Number<Z0, Z0, N1>;
 
 /// Funding velocity, i.e. the rate at which funding rate changes: duration⁻²
-pub type FundingVelocity = Number<Zero, Zero, Pred<Pred>>;
-
-// ------------------------ Arithmetic types and traits ------------------------
-
-/// Represents zero at the type level.
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Zero;
-
-/// Represents the sucessor of a type.
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Succ<T = Zero>(PhantomData<T>);
-
-/// Represents the predecessor of a type.
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Pred<T = Zero>(PhantomData<T>);
-
-/// Describes when two values are multiplied, how their types should be added.
-pub trait TypeAdd {
-    type Output;
-}
-
-impl TypeAdd for (Zero, Zero) {
-    type Output = Zero;
-}
-
-impl<T> TypeAdd for (Zero, Succ<T>) {
-    type Output = Succ<T>;
-}
-
-impl<T> TypeAdd for (Zero, Pred<T>) {
-    type Output = Pred<T>;
-}
-
-impl<T> TypeAdd for (Succ<T>, Zero) {
-    type Output = Succ<T>;
-}
-
-impl<T> TypeAdd for (Pred<T>, Zero) {
-    type Output = Pred<T>;
-}
-
-// Concrete TypeAdd impls for the Peano numbers used in the system.
-// These replace recursive blanket impls to avoid trait-resolver overflow.
-
-// Succ<Zero> + Pred<Zero> = Zero  (1 + -1 = 0)
-impl TypeAdd for (Succ<Zero>, Pred<Zero>) {
-    type Output = Zero;
-}
-
-// Pred<Zero> + Succ<Zero> = Zero  (-1 + 1 = 0)
-impl TypeAdd for (Pred<Zero>, Succ<Zero>) {
-    type Output = Zero;
-}
-
-// Pred<Pred<Zero>> + Succ<Zero> = Pred<Zero>  (-2 + 1 = -1)
-impl TypeAdd for (Pred<Pred<Zero>>, Succ<Zero>) {
-    type Output = Pred<Zero>;
-}
-
-// Pred<Zero> + Pred<Zero> = Pred<Pred<Zero>>  (-1 + -1 = -2)
-impl TypeAdd for (Pred<Zero>, Pred<Zero>) {
-    type Output = Pred<Pred<Zero>>;
-}
-
-/// Describes when two values are divided, how their types should be subtracted.
-pub trait TypeSub {
-    type Output;
-}
-
-impl TypeSub for (Zero, Zero) {
-    type Output = Zero;
-}
-
-impl<T> TypeSub for (Succ<T>, Zero) {
-    type Output = Succ<T>;
-}
-
-impl<T> TypeSub for (Pred<T>, Zero) {
-    type Output = Pred<T>;
-}
-
-// Concrete TypeSub impls for the Peano numbers used in the system.
-// These replace recursive blanket impls to avoid trait-resolver overflow.
-
-// Zero - Pred<Zero> = Succ<Zero>  (0 - (-1) = 1)
-impl TypeSub for (Zero, Pred<Zero>) {
-    type Output = Succ<Zero>;
-}
-
-// Succ<Zero> - Succ<Zero> = Zero  (1 - 1 = 0)
-impl TypeSub for (Succ<Zero>, Succ<Zero>) {
-    type Output = Zero;
-}
+pub type FundingVelocity = Number<Z0, Z0, N2>;

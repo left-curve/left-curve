@@ -6,10 +6,7 @@ use dango_types::Quantity;
 ///
 /// Returns (closing_size, opening_size). Both have the same sign as `size`
 /// (or are zero).
-pub fn decompose_fill(
-    size: Quantity,
-    current_position: Quantity,
-) -> (Quantity, Quantity) {
+pub fn decompose_fill(size: Quantity, current_position: Quantity) -> (Quantity, Quantity) {
     // Buy order, user has short position.
     if size.is_positive() && current_position.is_negative() {
         let closing = size.min(-current_position);
@@ -50,7 +47,8 @@ mod tests {
     #[test_case(  15,  -10,   10,    5 ; "buy closes short and opens long")]
     #[test_case( -15,   10,  -10,   -5 ; "sell closes long and opens short")]
     fn decompose_fill_works(size: i128, position: i128, exp_closing: i128, exp_opening: i128) {
-        let (closing, opening) = decompose_fill(Quantity::new_int(size), Quantity::new_int(position));
+        let (closing, opening) =
+            decompose_fill(Quantity::new_int(size), Quantity::new_int(position));
         assert_eq!(closing, Quantity::new_int(exp_closing));
         assert_eq!(opening, Quantity::new_int(exp_opening));
     }

@@ -1,5 +1,7 @@
 use {
-    crate::{Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue},
+    crate::{
+        Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue,
+    },
     grug::{Addr, Denom, Duration, Part, Timestamp, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet},

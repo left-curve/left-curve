@@ -188,6 +188,7 @@ tokio-stream                = { version = "0.1", features = ["sync"] }
 tokio-tungstenite           = { version = "0.28", features = ["native-tls"] }
 toml                        = "0.8"
 tower                       = "0.5"
+typenum                     = "1"
 tower-abci                  = "0.19"
 tracing                     = { version = "=0.1.41" }
 tracing-attributes          = { version = "=0.1.28" }

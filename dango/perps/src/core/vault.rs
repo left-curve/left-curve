@@ -159,7 +159,8 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue,
+            Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice,
+            UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState},

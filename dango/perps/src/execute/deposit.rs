@@ -13,10 +13,7 @@ use {
     },
 };
 
-pub fn deposit(
-    ctx: MutableCtx,
-    min_shares_to_mint: Option<Uint128>,
-) -> anyhow::Result<Response> {
+pub fn deposit(ctx: MutableCtx, min_shares_to_mint: Option<Uint128>) -> anyhow::Result<Response> {
     // Load state, create querier objects.
     let mut state = STATE.load(ctx.storage)?;
 

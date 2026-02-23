@@ -117,16 +117,13 @@ fn _withdraw(
 
     // Convert effective equity from USD to settlement currency human units,
     // then to base units.
-    let vault_equity_in_settlement =
-        effective_equity.checked_div(settlement_currency_price)?;
+    let vault_equity_in_settlement = effective_equity.checked_div(settlement_currency_price)?;
     let vault_equity_base =
         vault_equity_in_settlement.into_base_floor(settlement_currency::DECIMAL)?;
 
     // amount_to_release = floor(vault_equity_base * shares_to_burn / effective_supply)
-    let amount_to_release = vault_equity_base.checked_multiply_ratio_floor(
-        shares_to_burn,
-        effective_supply,
-    )?;
+    let amount_to_release =
+        vault_equity_base.checked_multiply_ratio_floor(shares_to_burn, effective_supply)?;
 
     ensure!(
         state.vault_margin >= amount_to_release,
