@@ -3,7 +3,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         Quantity, UsdPrice, UsdValue,
-        perps::{PairId, PairState, Position, UserState},
+        perps::{PairId, PairParam, PairState, Position, UserState},
     },
 };
 
@@ -166,6 +166,25 @@ pub fn compute_initial_margin(
     }
 
     Ok(total)
+}
+
+/// Compute the margin required for the opening portion of a limit order.
+///
+/// ```plain
+/// required = |opening_size| * limit_price * initial_margin_ratio
+/// ```
+///
+/// Only the opening portion (new exposure) requires margin reservation.
+/// Returns zero when `opening_size` is zero (pure closing order).
+pub fn compute_required_margin(
+    opening_size: Quantity,
+    limit_price: UsdPrice,
+    pair_param: &PairParam,
+) -> grug::MathResult<UsdValue> {
+    opening_size
+        .checked_abs()?
+        .checked_mul(limit_price)?
+        .checked_mul(pair_param.initial_margin_ratio)
 }
 
 /// Compute the margin available for new orders or withdrawals.
@@ -842,6 +861,35 @@ mod tests {
             )
             .unwrap(),
             UsdValue::new_int(6500),
+        );
+    }
+
+    // ---- compute_required_margin tests ----
+
+    // required = |opening_size| * limit_price * initial_margin_ratio
+    #[test_case( 0,  2000, 100,    0 ; "zero opening size")]
+    #[test_case( 10, 2000, 100, 2000 ; "long opening")]
+    #[test_case(-10, 2000, 100, 2000 ; "short opening")]
+    #[test_case( 1, 50000,  50, 2500 ; "high price low imr")]
+    fn compute_required_margin_works(
+        opening_size: i128,
+        limit_price: i128,
+        imr_permille: i128,
+        expected: i128,
+    ) {
+        let pair_param = PairParam {
+            initial_margin_ratio: Dimensionless::new_permille(imr_permille),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            compute_required_margin(
+                Quantity::new_int(opening_size),
+                UsdPrice::new_int(limit_price),
+                &pair_param,
+            )
+            .unwrap(),
+            UsdValue::new_int(expected),
         );
     }
 
