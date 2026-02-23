@@ -2,7 +2,7 @@
 
 use {
     grug::{Dec128_6, MathResult, Number as _},
-    std::marker::PhantomData,
+    std::{fmt, marker::PhantomData},
 };
 
 /// A signed, fixed-point decimal number with three dimensions typically used in
@@ -71,6 +71,12 @@ impl<Q, U, D> Number<Q, U, D> {
         (D, D1): TypeSub,
     {
         self.inner.checked_div(rhs.inner).map(Number::new)
+    }
+}
+
+impl<Q, U, D> fmt::Display for Number<Q, U, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
     }
 }
 
