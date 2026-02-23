@@ -4,15 +4,18 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        BaseAmount, FromInner, bank,
+        Quantity, bank,
         perps::{self, PairId, State, settlement_currency},
     },
-    grug::{Coins, Message, MutableCtx, Order as IterationOrder, Response, StdResult, Timestamp},
+    grug::{
+        Coins, Message, MultiplyFraction, MutableCtx, Number as _, Order as IterationOrder,
+        Response, Signed, StdResult, Timestamp, Uint128,
+    },
 };
 
 pub fn deposit(
     ctx: MutableCtx,
-    min_shares_to_mint: Option<BaseAmount>,
+    min_shares_to_mint: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     // Load state, create querier objects.
     let mut state = STATE.load(ctx.storage)?;
@@ -67,8 +70,8 @@ fn _deposit(
     pair_ids: &[PairId],
     pair_querier: &NoCachePairQuerier,
     oracle_querier: &mut OracleQuerier,
-    min_shares_to_mint: Option<BaseAmount>,
-) -> anyhow::Result<(BaseAmount, BaseAmount)> {
+    min_shares_to_mint: Option<Uint128>,
+) -> anyhow::Result<(Uint128, Uint128)> {
     // Query the price of the settlement currency.
     let settlement_currency_price =
         oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
@@ -76,8 +79,7 @@ fn _deposit(
     // ------------------------- Step 1. Check deposit -------------------------
 
     // Find how much settlement currency the user has deposited.
-    let deposit_amount =
-        BaseAmount::from_inner(funds.take(settlement_currency::DENOM.clone()).amount);
+    let deposit_amount = funds.take(settlement_currency::DENOM.clone()).amount;
 
     // The user should not have deposited anything else.
     ensure!(funds.is_empty(), "unexpected deposit: {:?}", funds);
@@ -90,9 +92,7 @@ fn _deposit(
 
     // Compute the value of the vault's margin by multiplying its balance with
     // the settlement currency price.
-    let vault_margin_value = state
-        .vault_margin
-        .checked_into_human(settlement_currency::DECIMAL)?
+    let vault_margin_value = Quantity::from_base(state.vault_margin, settlement_currency::DECIMAL)?
         .checked_mul(settlement_currency_price)?;
 
     // Compute the vault's equity. This equals the vault's margin plus its
@@ -116,13 +116,13 @@ fn _deposit(
     // -------------------------- Step 3. Mint shares --------------------------
 
     // Compute the value of the settlement currency the user is depositing.
-    let deposit_value = deposit_amount
-        .checked_into_human(settlement_currency::DECIMAL)?
+    let deposit_value = Quantity::from_base(deposit_amount, settlement_currency::DECIMAL)?
         .checked_mul(settlement_currency_price)?;
 
     // Compute the amount of shares to mint.
+    let ratio = deposit_value.checked_div(effective_equity)?;
     let shares_to_mint =
-        effective_supply.checked_mul_ratio_floor(deposit_value.checked_div(effective_equity)?)?;
+        effective_supply.checked_mul_dec_floor(ratio.into_inner().checked_into_unsigned()?)?;
 
     if let Some(min_shares_to_mint) = min_shares_to_mint {
         ensure!(
@@ -141,7 +141,7 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            HumanAmount, Ratio, UsdValue,
+            FundingPerUnit, Quantity, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, settlement_currency},
@@ -186,8 +186,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(deposit_amount, BaseAmount::new(1_000_000));
-        assert_eq!(shares, BaseAmount::new(1_000_000));
+        assert_eq!(deposit_amount, Uint128::new(1_000_000));
+        assert_eq!(shares, Uint128::new(1_000_000));
     }
 
     // ---- Test 2: second deposit of same size into a non-empty vault ----
@@ -203,8 +203,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(1_000_000),
-            vault_share_supply: BaseAmount::new(1_000_000),
+            vault_margin: Uint128::new(1_000_000),
+            vault_share_supply: Uint128::new(1_000_000),
         };
 
         let (_, shares) = _deposit(
@@ -218,7 +218,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(shares, BaseAmount::new(1_000_000));
+        assert_eq!(shares, Uint128::new(1_000_000));
     }
 
     // ---- Test 3: zero deposit ----
@@ -244,8 +244,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(deposit_amount, BaseAmount::new(0));
-        assert_eq!(shares, BaseAmount::new(0));
+        assert_eq!(deposit_amount, Uint128::new(0));
+        assert_eq!(shares, Uint128::new(0));
     }
 
     // ---- Test 4: unexpected coins rejected ----
@@ -291,8 +291,8 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -309,8 +309,8 @@ mod tests {
 
         // 100 USDC = 100_000_000 base units
         let state = State {
-            vault_margin: BaseAmount::new(100_000_000),
-            vault_share_supply: BaseAmount::new(100_000_000),
+            vault_margin: Uint128::new(100_000_000),
+            vault_share_supply: Uint128::new(100_000_000),
         };
 
         let err = _deposit(
@@ -345,11 +345,11 @@ mod tests {
             &[],
             &pair_querier,
             &mut oracle_querier,
-            Some(BaseAmount::new(1_000_000)),
+            Some(Uint128::new(1_000_000)),
         )
         .unwrap();
 
-        assert_eq!(shares, BaseAmount::new(1_000_000));
+        assert_eq!(shares, Uint128::new(1_000_000));
     }
 
     // ---- Test 7: min_shares fails ----
@@ -370,7 +370,7 @@ mod tests {
             &[],
             &pair_querier,
             &mut oracle_querier,
-            Some(BaseAmount::new(1_000_001)),
+            Some(Uint128::new(1_000_001)),
         )
         .unwrap_err();
 
@@ -394,8 +394,8 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -411,8 +411,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(10_000_000_000),
-            vault_share_supply: BaseAmount::new(10_000_000_000),
+            vault_margin: Uint128::new(10_000_000_000),
+            vault_share_supply: Uint128::new(10_000_000_000),
         };
 
         let (_, shares) = _deposit(
@@ -428,7 +428,7 @@ mod tests {
 
         // Shares > deposit amount because vault equity is lower than margin
         // (depositor gets more shares per dollar when PnL is negative).
-        assert_eq!(shares, BaseAmount::new(9_998_999_800));
+        assert_eq!(shares, Uint128::new(9_998_999_800));
     }
 
     // ---- Test 9: deposit with funding ----
@@ -446,10 +446,10 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
-                    funding_per_unit: Ratio::new_int(3),
-                    oi_weighted_entry_funding: UsdValue::new(10),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
+                    funding_per_unit: FundingPerUnit::new_int(3),
+                    oi_weighted_entry_funding: UsdValue::new_int(10),
                     last_funding_time: Timestamp::from_seconds(100),
                     ..Default::default()
                 },
@@ -465,8 +465,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(10_000_000_000),
-            vault_share_supply: BaseAmount::new(10_000_000_000),
+            vault_margin: Uint128::new(10_000_000_000),
+            vault_share_supply: Uint128::new(10_000_000_000),
         };
 
         let (_, shares) = _deposit(
@@ -480,7 +480,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(shares, BaseAmount::new(9_959_165_817));
+        assert_eq!(shares, Uint128::new(9_959_165_817));
     }
 
     // ---- Test 10: multiple pairs ----
@@ -500,14 +500,14 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
                 btc::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(-1),
-                    oi_weighted_entry_price: UsdValue::new(-50_000),
+                    skew: Quantity::new_int(-1),
+                    oi_weighted_entry_price: UsdValue::new_int(-50_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -528,8 +528,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(10_000_000_000),
-            vault_share_supply: BaseAmount::new(10_000_000_000),
+            vault_margin: Uint128::new(10_000_000_000),
+            vault_share_supply: Uint128::new(10_000_000_000),
         };
 
         let (_, shares) = _deposit(
@@ -543,7 +543,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(shares, BaseAmount::new(3_332_553_222));
+        assert_eq!(shares, Uint128::new(3_332_553_222));
     }
 
     // ---- Test 11: large deposit no overflow ----
@@ -558,8 +558,8 @@ mod tests {
         let one_billion_usdc: u128 = 1_000_000_000 * 1_000_000;
 
         let state = State {
-            vault_margin: BaseAmount::new(one_billion_usdc),
-            vault_share_supply: BaseAmount::new(one_billion_usdc),
+            vault_margin: Uint128::new(one_billion_usdc),
+            vault_share_supply: Uint128::new(one_billion_usdc),
         };
 
         let (deposit_amount, shares) = _deposit(
@@ -573,10 +573,10 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(deposit_amount, BaseAmount::new(one_billion_usdc));
+        assert_eq!(deposit_amount, Uint128::new(one_billion_usdc));
         // With existing margin equal to deposit, shares should be close to supply
         // (slightly less due to virtual shares/assets dilution).
-        assert!(shares > BaseAmount::new(0));
+        assert!(shares > Uint128::new(0));
     }
 
     // ---- Test 12: non-dollar settlement price (parametric) ----
@@ -610,7 +610,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(shares, BaseAmount::new(expected_shares));
+        assert_eq!(shares, Uint128::new(expected_shares));
     }
 
     // ---- Test 13: shares rounded floor ----
@@ -627,8 +627,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(2_000_000),
-            vault_share_supply: BaseAmount::new(2_000_000),
+            vault_margin: Uint128::new(2_000_000),
+            vault_share_supply: Uint128::new(2_000_000),
         };
 
         let (_, shares) = _deposit(
@@ -643,6 +643,6 @@ mod tests {
         .unwrap();
 
         // Should be 999_999, not 1_000_000 (ceil) or 1_000_002 (if division ceiled).
-        assert_eq!(shares, BaseAmount::new(999_999));
+        assert_eq!(shares, Uint128::new(999_999));
     }
 }

@@ -1,7 +1,7 @@
 use {
     anyhow::ensure,
     dango_types::{
-        HumanAmount,
+        Quantity,
         perps::{PairParam, PairState},
     },
 };
@@ -13,7 +13,7 @@ use {
 /// - Negative `opening_size` increases short OI.
 /// - Zero `opening_size` always passes (nothing to open).
 pub fn check_oi_constraint(
-    opening_size: HumanAmount,
+    opening_size: Quantity,
     pair_state: &PairState,
     pair_param: &PairParam,
 ) -> anyhow::Result<()> {
@@ -61,14 +61,14 @@ mod tests {
     ) {
         assert_eq!(
             check_oi_constraint(
-                HumanAmount::new(opening),
+                Quantity::new_int(opening),
                 &PairState {
-                    long_oi: HumanAmount::new(long_oi),
-                    short_oi: HumanAmount::new(short_oi),
+                    long_oi: Quantity::new_int(long_oi),
+                    short_oi: Quantity::new_int(short_oi),
                     ..Default::default()
                 },
                 &PairParam {
-                    max_abs_oi: HumanAmount::new(max_abs_oi),
+                    max_abs_oi: Quantity::new_int(max_abs_oi),
                     ..Default::default()
                 }
             )

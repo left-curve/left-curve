@@ -12,8 +12,7 @@ mod querier;
 pub mod signer;
 pub mod taxman;
 mod typed_number;
-mod units;
 pub mod vesting;
 pub mod warp;
 
-pub use {querier::DangoQuerier, typed_number::*, units::*};
+pub use {querier::DangoQuerier, typed_number::*};

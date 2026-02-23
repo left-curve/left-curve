@@ -6,12 +6,12 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        BaseAmount, FromInner, bank,
+        Quantity, bank,
         perps::{self, PairId, Param, State, Unlock, UserState, settlement_currency},
     },
     grug::{
-        Coins, Message, MultiplyRatio, MutableCtx, Order as IterationOrder, Response, StdResult,
-        Timestamp, Uint128,
+        Coins, IsZero, Message, MultiplyRatio, MutableCtx, Number as _, Order as IterationOrder,
+        Response, StdResult, Timestamp, Uint128,
     },
 };
 
@@ -73,14 +73,14 @@ fn _withdraw(
     pair_ids: &[PairId],
     pair_querier: &NoCachePairQuerier,
     oracle_querier: &mut OracleQuerier,
-) -> anyhow::Result<(BaseAmount, Unlock)> {
+) -> anyhow::Result<(Uint128, Unlock)> {
     // Query the price of the settlement currency.
     let settlement_currency_price =
         oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
 
     // -------------------- Step 1. Extract shares to burn ---------------------
 
-    let shares_to_burn = BaseAmount::from_inner(funds.take(perps::DENOM.clone()).amount);
+    let shares_to_burn = funds.take(perps::DENOM.clone()).amount;
 
     ensure!(funds.is_empty(), "unexpected funds: {funds:?}");
 
@@ -95,9 +95,7 @@ fn _withdraw(
 
     let effective_supply = state.vault_share_supply.checked_add(VIRTUAL_SHARES)?;
 
-    let vault_margin_value = state
-        .vault_margin
-        .checked_into_human(settlement_currency::DECIMAL)?
+    let vault_margin_value = Quantity::from_base(state.vault_margin, settlement_currency::DECIMAL)?
         .checked_mul(settlement_currency_price)?;
 
     let vault_equity = compute_vault_equity(
@@ -120,17 +118,15 @@ fn _withdraw(
     // Convert effective equity from USD to settlement currency human units,
     // then to base units.
     let vault_equity_in_settlement =
-        effective_equity.checked_div_ratio(settlement_currency_price)?;
-    let vault_equity_base: BaseAmount =
-        vault_equity_in_settlement.checked_into_base_floor(settlement_currency::DECIMAL)?;
+        effective_equity.checked_div(settlement_currency_price)?;
+    let vault_equity_base =
+        vault_equity_in_settlement.into_base_floor(settlement_currency::DECIMAL)?;
 
     // amount_to_release = floor(vault_equity_base * shares_to_burn / effective_supply)
-    let amount_to_release = BaseAmount::from_inner(
-        Uint128::from(vault_equity_base).checked_multiply_ratio_floor(
-            Uint128::from(shares_to_burn),
-            Uint128::from(effective_supply),
-        )?,
-    );
+    let amount_to_release = vault_equity_base.checked_multiply_ratio_floor(
+        shares_to_burn,
+        effective_supply,
+    )?;
 
     ensure!(
         state.vault_margin >= amount_to_release,
@@ -154,7 +150,7 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            HumanAmount, Ratio, UsdValue,
+            FundingPerUnit, Quantity, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, settlement_currency},
@@ -198,8 +194,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(1_000_000),
-            vault_share_supply: BaseAmount::new(1_000_000),
+            vault_margin: Uint128::new(1_000_000),
+            vault_share_supply: Uint128::new(1_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -216,8 +212,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(shares, BaseAmount::new(1_000_000));
-        assert_eq!(unlock.amount_to_release, BaseAmount::new(1_000_000));
+        assert_eq!(shares, Uint128::new(1_000_000));
+        assert_eq!(unlock.amount_to_release, Uint128::new(1_000_000));
     }
 
     // ---- Test 2: partial withdrawal ----
@@ -231,8 +227,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(1_000_000),
-            vault_share_supply: BaseAmount::new(1_000_000),
+            vault_margin: Uint128::new(1_000_000),
+            vault_share_supply: Uint128::new(1_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -249,7 +245,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(unlock.amount_to_release, BaseAmount::new(500_000));
+        assert_eq!(unlock.amount_to_release, Uint128::new(500_000));
     }
 
     // ---- Test 3: zero shares rejected ----
@@ -261,8 +257,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(1_000_000),
-            vault_share_supply: BaseAmount::new(1_000_000),
+            vault_margin: Uint128::new(1_000_000),
+            vault_share_supply: Uint128::new(1_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -291,8 +287,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(1_000_000),
-            vault_share_supply: BaseAmount::new(1_000_000),
+            vault_margin: Uint128::new(1_000_000),
+            vault_share_supply: Uint128::new(1_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -330,8 +326,8 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -347,8 +343,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(100_000_000),
-            vault_share_supply: BaseAmount::new(100_000_000),
+            vault_margin: Uint128::new(100_000_000),
+            vault_share_supply: Uint128::new(100_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -385,8 +381,8 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(-10),
-                    oi_weighted_entry_price: UsdValue::new(-20_000),
+                    skew: Quantity::new_int(-10),
+                    oi_weighted_entry_price: UsdValue::new_int(-20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -402,8 +398,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(100_000_000),
-            vault_share_supply: BaseAmount::new(100_000_000),
+            vault_margin: Uint128::new(100_000_000),
+            vault_share_supply: Uint128::new(100_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -432,8 +428,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(1_000_000),
-            vault_share_supply: BaseAmount::new(1_000_000),
+            vault_margin: Uint128::new(1_000_000),
+            vault_share_supply: Uint128::new(1_000_000),
         };
         let param = Param {
             max_unlocks: 2,
@@ -445,11 +441,11 @@ mod tests {
         let user_state = UserState {
             unlocks: vec![
                 Unlock {
-                    amount_to_release: BaseAmount::new(100),
+                    amount_to_release: Uint128::new(100),
                     end_time: Timestamp::from_seconds(100),
                 },
                 Unlock {
-                    amount_to_release: BaseAmount::new(200),
+                    amount_to_release: Uint128::new(200),
                     end_time: Timestamp::from_seconds(200),
                 },
             ],
@@ -488,8 +484,8 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -505,8 +501,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(10_000_000_000),
-            vault_share_supply: BaseAmount::new(10_000_000_000),
+            vault_margin: Uint128::new(10_000_000_000),
+            vault_share_supply: Uint128::new(10_000_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -523,7 +519,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(unlock.amount_to_release, BaseAmount::new(2_500_249_975));
+        assert_eq!(unlock.amount_to_release, Uint128::new(2_500_249_975));
     }
 
     // ---- Test 9: withdrawal with funding ----
@@ -545,10 +541,10 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
-                    funding_per_unit: Ratio::new_int(3),
-                    oi_weighted_entry_funding: UsdValue::new(10),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
+                    funding_per_unit: FundingPerUnit::new_int(3),
+                    oi_weighted_entry_funding: UsdValue::new_int(10),
                     last_funding_time: Timestamp::from_seconds(100),
                     ..Default::default()
                 },
@@ -564,8 +560,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(10_000_000_000),
-            vault_share_supply: BaseAmount::new(10_000_000_000),
+            vault_margin: Uint128::new(10_000_000_000),
+            vault_share_supply: Uint128::new(10_000_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -582,7 +578,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(unlock.amount_to_release, BaseAmount::new(2_510_248_975));
+        assert_eq!(unlock.amount_to_release, Uint128::new(2_510_248_975));
     }
 
     // ---- Test 10: multiple pairs ----
@@ -602,14 +598,14 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
                 btc::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(-1),
-                    oi_weighted_entry_price: UsdValue::new(-50_000),
+                    skew: Quantity::new_int(-1),
+                    oi_weighted_entry_price: UsdValue::new_int(-50_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -630,8 +626,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(10_000_000_000),
-            vault_share_supply: BaseAmount::new(10_000_000_000),
+            vault_margin: Uint128::new(10_000_000_000),
+            vault_share_supply: Uint128::new(10_000_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -648,7 +644,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(unlock.amount_to_release, BaseAmount::new(300_069_993));
+        assert_eq!(unlock.amount_to_release, Uint128::new(300_069_993));
     }
 
     // ---- Test 11: non-dollar settlement price ----
@@ -677,8 +673,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(10_000_000),
-            vault_share_supply: BaseAmount::new(10_000_000),
+            vault_margin: Uint128::new(10_000_000),
+            vault_share_supply: Uint128::new(10_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -695,7 +691,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(unlock.amount_to_release, BaseAmount::new(expected_release));
+        assert_eq!(unlock.amount_to_release, Uint128::new(expected_release));
     }
 
     // ---- Test 12: unlock end_time is correct ----
@@ -707,8 +703,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(1_000_000),
-            vault_share_supply: BaseAmount::new(1_000_000),
+            vault_margin: Uint128::new(1_000_000),
+            vault_share_supply: Uint128::new(1_000_000),
         };
         let param = Param {
             vault_cooldown_period: Duration::from_seconds(172_800), // 2 days
@@ -745,8 +741,8 @@ mod tests {
         });
 
         let state = State {
-            vault_margin: BaseAmount::new(10_000_001),
-            vault_share_supply: BaseAmount::new(7_000_000),
+            vault_margin: Uint128::new(10_000_001),
+            vault_share_supply: Uint128::new(7_000_000),
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -763,6 +759,6 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(unlock.amount_to_release, BaseAmount::new(4_125_000));
+        assert_eq!(unlock.amount_to_release, Uint128::new(4_125_000));
     }
 }

@@ -2,10 +2,14 @@
 
 use {
     grug::{
-        Dec128_6, Duration, Exponentiate, IsZero, MathResult, Number as _, NumberConst, Sign,
-        Signed, Uint128, Unsigned,
+        Dec128_6, Duration, Exponentiate, Int128, IsZero, MathResult, Number as _, NumberConst,
+        Sign, Signed, Uint128, Unsigned,
     },
-    std::{fmt, marker::PhantomData},
+    std::{
+        fmt,
+        marker::PhantomData,
+        ops::{Neg, Sub},
+    },
 };
 
 // -------------------------------- Number type --------------------------------
@@ -21,6 +25,10 @@ pub struct Number<Q, U, D> {
 }
 
 impl<Q, U, D> Number<Q, U, D> {
+    pub const HALF: Self = Self::new(Dec128_6::raw(Int128::new(500_000)));
+    pub const ONE: Self = Self::new(Dec128_6::ONE);
+    pub const ZERO: Self = Self::new(Dec128_6::ZERO);
+
     pub const fn new(inner: Dec128_6) -> Self {
         Self {
             inner,
@@ -34,16 +42,32 @@ impl<Q, U, D> Number<Q, U, D> {
         Self::new(Dec128_6::new(int))
     }
 
-    pub fn is_non_zero(self) -> bool {
+    pub const fn new_raw(raw: i128) -> Self {
+        Self::new(Dec128_6::raw(Int128::new(raw)))
+    }
+
+    pub const fn new_permille(n: i128) -> Self {
+        Self::new(Dec128_6::new_permille(n))
+    }
+
+    pub fn is_non_zero(&self) -> bool {
         self.inner.is_non_zero()
     }
 
-    pub fn is_positive(self) -> bool {
+    pub fn is_positive(&self) -> bool {
         self.inner.is_positive()
     }
 
-    pub fn is_negative(self) -> bool {
+    pub fn is_negative(&self) -> bool {
         self.inner.is_negative()
+    }
+
+    pub fn into_inner(self) -> Dec128_6 {
+        self.inner
+    }
+
+    pub fn checked_abs(self) -> MathResult<Self> {
+        self.inner.checked_abs().map(Self::new)
     }
 
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
@@ -119,13 +143,62 @@ where
     }
 }
 
+impl<Q, U, D> Neg for Number<Q, U, D> {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self::new(-self.inner) // Panics when the inner value is `i128::MIN`.
+    }
+}
+
+impl<Q, U, D> Sub for Number<Q, U, D> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self::new(self.inner - rhs.inner)
+    }
+}
+
 impl<Q, U, D> fmt::Display for Number<Q, U, D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
 }
 
+impl<Q, U, D> serde::ser::Serialize for Number<Q, U, D> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.inner.serialize(serializer)
+    }
+}
+
+impl<'de, Q, U, D> serde::de::Deserialize<'de> for Number<Q, U, D> {
+    fn deserialize<DS>(deserializer: DS) -> Result<Self, DS::Error>
+    where
+        DS: serde::Deserializer<'de>,
+    {
+        serde::de::Deserialize::deserialize(deserializer).map(Self::new)
+    }
+}
+
+impl<Q, U, D> borsh::BorshSerialize for Number<Q, U, D> {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        borsh::BorshSerialize::serialize(&self.inner, writer)
+    }
+}
+
+impl<Q, U, D> borsh::BorshDeserialize for Number<Q, U, D> {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        borsh::BorshDeserialize::deserialize_reader(reader).map(Self::new)
+    }
+}
+
 // ---------------------------------- Aliases ----------------------------------
+
+/// A dimensionless scalar (pure number, no physical units).
+pub type Dimensionless = Number<Zero, Zero, Zero>;
 
 /// A duration of time, as number of days.
 pub type Days = Number<Zero, Zero, Succ>;
@@ -182,6 +255,12 @@ pub type UsdValue = Number<Zero, Succ, Zero>;
 /// Price of an asset: usd¹⋅quantity⁻¹
 pub type UsdPrice = Number<Pred, Succ, Zero>;
 
+/// Cumulative funding accrued per unit of position size: usd¹⋅quantity⁻¹
+///
+/// Dimensionally identical to `UsdPrice` but represents a distinct concept:
+/// the running accumulator used to compute a position's funding payment.
+pub type FundingPerUnit = Number<Pred, Succ, Zero>;
+
 /// Funding rate: duration⁻¹
 pub type FundingRate = Number<Zero, Zero, Pred>;
 
@@ -227,32 +306,27 @@ impl<T> TypeAdd for (Pred<T>, Zero) {
     type Output = Pred<T>;
 }
 
-impl<T, U> TypeAdd for (Succ<T>, Succ<U>)
-where
-    (T, U): TypeAdd,
-{
-    type Output = Succ<Succ<<(T, U) as TypeAdd>::Output>>;
+// Concrete TypeAdd impls for the Peano numbers used in the system.
+// These replace recursive blanket impls to avoid trait-resolver overflow.
+
+// Succ<Zero> + Pred<Zero> = Zero  (1 + -1 = 0)
+impl TypeAdd for (Succ<Zero>, Pred<Zero>) {
+    type Output = Zero;
 }
 
-impl<T, U> TypeAdd for (Succ<T>, Pred<U>)
-where
-    (T, U): TypeAdd,
-{
-    type Output = <(T, U) as TypeAdd>::Output;
+// Pred<Zero> + Succ<Zero> = Zero  (-1 + 1 = 0)
+impl TypeAdd for (Pred<Zero>, Succ<Zero>) {
+    type Output = Zero;
 }
 
-impl<T, U> TypeAdd for (Pred<T>, Succ<U>)
-where
-    (T, U): TypeAdd,
-{
-    type Output = <(T, U) as TypeAdd>::Output;
+// Pred<Pred<Zero>> + Succ<Zero> = Pred<Zero>  (-2 + 1 = -1)
+impl TypeAdd for (Pred<Pred<Zero>>, Succ<Zero>) {
+    type Output = Pred<Zero>;
 }
 
-impl<T, U> TypeAdd for (Pred<T>, Pred<U>)
-where
-    (T, U): TypeAdd,
-{
-    type Output = Pred<Pred<<(T, U) as TypeAdd>::Output>>;
+// Pred<Zero> + Pred<Zero> = Pred<Pred<Zero>>  (-1 + -1 = -2)
+impl TypeAdd for (Pred<Zero>, Pred<Zero>) {
+    type Output = Pred<Pred<Zero>>;
 }
 
 /// Describes when two values are divided, how their types should be subtracted.
@@ -272,44 +346,15 @@ impl<T> TypeSub for (Pred<T>, Zero) {
     type Output = Pred<T>;
 }
 
-impl<T> TypeSub for (Zero, Succ<T>)
-where
-    (Zero, T): TypeSub,
-{
-    type Output = Pred<<(Zero, T) as TypeSub>::Output>;
+// Concrete TypeSub impls for the Peano numbers used in the system.
+// These replace recursive blanket impls to avoid trait-resolver overflow.
+
+// Zero - Pred<Zero> = Succ<Zero>  (0 - (-1) = 1)
+impl TypeSub for (Zero, Pred<Zero>) {
+    type Output = Succ<Zero>;
 }
 
-impl<T> TypeSub for (Zero, Pred<T>)
-where
-    (Zero, T): TypeSub,
-{
-    type Output = Succ<<(Zero, T) as TypeSub>::Output>;
-}
-
-impl<T, U> TypeSub for (Succ<T>, Succ<U>)
-where
-    (T, U): TypeSub,
-{
-    type Output = <(T, U) as TypeSub>::Output;
-}
-
-impl<T, U> TypeSub for (Pred<T>, Pred<U>)
-where
-    (T, U): TypeSub,
-{
-    type Output = <(T, U) as TypeSub>::Output;
-}
-
-impl<T, U> TypeSub for (Succ<T>, Pred<U>)
-where
-    (T, U): TypeSub,
-{
-    type Output = Succ<Succ<<(T, U) as TypeSub>::Output>>;
-}
-
-impl<T, U> TypeSub for (Pred<T>, Succ<U>)
-where
-    (T, U): TypeSub,
-{
-    type Output = Pred<Pred<<(T, U) as TypeSub>::Output>>;
+// Succ<Zero> - Succ<Zero> = Zero  (1 - 1 = 0)
+impl TypeSub for (Succ<Zero>, Succ<Zero>) {
+    type Output = Zero;
 }

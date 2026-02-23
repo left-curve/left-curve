@@ -3,7 +3,7 @@ use {
     crate::NoCachePairQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Ratio, UsdPrice, UsdValue,
+        Dimensionless, UsdPrice, UsdValue,
         perps::{PairId, PairParam, PairState},
     },
     grug::Timestamp,
@@ -121,7 +121,7 @@ pub fn is_adl_triggerable(
     pair_querier: &NoCachePairQuerier,
     oracle_querier: &mut OracleQuerier,
     current_time: Timestamp,
-    adl_trigger_ratio: Ratio<UsdValue>,
+    adl_trigger_ratio: Dimensionless,
 ) -> anyhow::Result<bool> {
     if pair_ids.is_empty() {
         return Ok(false);
@@ -147,7 +147,7 @@ pub fn is_adl_triggerable(
         total_open_notional.checked_add_assign(pair_notional)?;
     }
 
-    let threshold = total_open_notional.checked_mul_ratio(adl_trigger_ratio)?;
+    let threshold = total_open_notional.checked_mul(adl_trigger_ratio)?;
 
     Ok(vault_equity < threshold)
 }
@@ -159,7 +159,7 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            HumanAmount, Ratio, UsdPrice, UsdValue,
+            Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState},
@@ -183,14 +183,14 @@ mod tests {
         expected: i128,
     ) {
         let pair_state = PairState {
-            skew: HumanAmount::new(skew),
-            oi_weighted_entry_price: UsdValue::new(oi_weighted_entry_price),
+            skew: Quantity::new_int(skew),
+            oi_weighted_entry_price: UsdValue::new_int(oi_weighted_entry_price),
             ..Default::default()
         };
 
         assert_eq!(
             compute_pair_unrealized_pnl(&pair_state, UsdPrice::new_int(oracle_price)).unwrap(),
-            UsdValue::new(expected),
+            UsdValue::new_int(expected),
         );
     }
 
@@ -199,9 +199,9 @@ mod tests {
     #[test]
     fn funding_no_delta() {
         let pair_state = PairState {
-            skew: HumanAmount::new(10),
-            funding_per_unit: Ratio::new_int(0),
-            oi_weighted_entry_funding: UsdValue::new(0),
+            skew: Quantity::new_int(10),
+            funding_per_unit: FundingPerUnit::new_int(0),
+            oi_weighted_entry_funding: UsdValue::new_int(0),
             last_funding_time: Timestamp::from_seconds(1_000_000),
             ..Default::default()
         };
@@ -224,9 +224,9 @@ mod tests {
     #[test]
     fn funding_recorded_only() {
         let pair_state = PairState {
-            skew: HumanAmount::new(10),
-            funding_per_unit: Ratio::new_int(100),
-            oi_weighted_entry_funding: UsdValue::new(500),
+            skew: Quantity::new_int(10),
+            funding_per_unit: FundingPerUnit::new_int(100),
+            oi_weighted_entry_funding: UsdValue::new_int(500),
             last_funding_time: Timestamp::from_seconds(1_000_000),
             ..Default::default()
         };
@@ -242,7 +242,7 @@ mod tests {
                 Timestamp::from_seconds(1_000_000),
             )
             .unwrap(),
-            UsdValue::new(500),
+            UsdValue::new_int(500),
         );
     }
 
@@ -257,17 +257,17 @@ mod tests {
         // recorded = 0 * 1000 - 0 = 0
         // total = 2500
         let pair_state = PairState {
-            skew: HumanAmount::new(1000),
-            funding_per_unit: Ratio::new_raw(0),
-            oi_weighted_entry_funding: UsdValue::new(0),
-            funding_rate: Ratio::new_raw(0),
+            skew: Quantity::new_int(1000),
+            funding_per_unit: FundingPerUnit::new_raw(0),
+            oi_weighted_entry_funding: UsdValue::new_int(0),
+            funding_rate: FundingRate::new_raw(0),
             last_funding_time: Timestamp::from_seconds(1_000_000),
             ..Default::default()
         };
         let pair_param = PairParam {
-            skew_scale: Ratio::new_int(1000),
-            max_funding_velocity: Ratio::new_raw(100_000),
-            max_abs_funding_rate: Ratio::new_raw(50_000),
+            skew_scale: Quantity::new_int(1000),
+            max_funding_velocity: FundingVelocity::new_raw(100_000),
+            max_abs_funding_rate: FundingRate::new_raw(50_000),
             ..Default::default()
         };
         let oracle_price = UsdPrice::new_int(100);
@@ -276,7 +276,7 @@ mod tests {
         assert_eq!(
             compute_pair_unrealized_funding(&pair_state, &pair_param, oracle_price, current_time)
                 .unwrap(),
-            UsdValue::new(2500),
+            UsdValue::new_int(2500),
         );
     }
 
@@ -289,14 +289,14 @@ mod tests {
 
         assert_eq!(
             compute_vault_equity(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &[],
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
             )
             .unwrap(),
-            UsdValue::new(10_000),
+            UsdValue::new_int(10_000),
         );
     }
 
@@ -311,8 +311,8 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -328,14 +328,14 @@ mod tests {
 
         assert_eq!(
             compute_vault_equity(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
             )
             .unwrap(),
-            UsdValue::new(5000),
+            UsdValue::new_int(5000),
         );
     }
 
@@ -352,10 +352,10 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
-                    funding_per_unit: Ratio::new_int(3),
-                    oi_weighted_entry_funding: UsdValue::new(10),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
+                    funding_per_unit: FundingPerUnit::new_int(3),
+                    oi_weighted_entry_funding: UsdValue::new_int(10),
                     last_funding_time: Timestamp::from_seconds(100),
                     ..Default::default()
                 },
@@ -371,14 +371,14 @@ mod tests {
 
         assert_eq!(
             compute_vault_equity(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(100),
             )
             .unwrap(),
-            UsdValue::new(5020),
+            UsdValue::new_int(5020),
         );
     }
 
@@ -397,14 +397,14 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
                 btc::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(-1),
-                    oi_weighted_entry_price: UsdValue::new(-50_000),
+                    skew: Quantity::new_int(-1),
+                    oi_weighted_entry_price: UsdValue::new_int(-50_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -425,14 +425,14 @@ mod tests {
 
         assert_eq!(
             compute_vault_equity(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &[eth::DENOM.clone(), btc::DENOM.clone()],
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
             )
             .unwrap(),
-            UsdValue::new(3000),
+            UsdValue::new_int(3000),
         );
     }
 
@@ -447,8 +447,8 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -464,14 +464,14 @@ mod tests {
 
         assert_eq!(
             compute_vault_equity(
-                UsdValue::new(100),
+                UsdValue::new_int(100),
                 std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
             )
             .unwrap(),
-            UsdValue::new(-4900),
+            UsdValue::new_int(-4900),
         );
     }
 
@@ -484,12 +484,12 @@ mod tests {
 
         assert!(
             !is_adl_triggerable(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &[],
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
-                Ratio::new_permille(500),
+                Dimensionless::new_permille(500),
             )
             .unwrap()
         );
@@ -509,10 +509,10 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    long_oi: HumanAmount::new(15),
-                    short_oi: HumanAmount::new(5),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    long_oi: Quantity::new_int(15),
+                    short_oi: Quantity::new_int(5),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -528,12 +528,12 @@ mod tests {
 
         assert!(
             !is_adl_triggerable(
-                UsdValue::new(100_000),
+                UsdValue::new_int(100_000),
                 std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
-                Ratio::new_permille(500),
+                Dimensionless::new_permille(500),
             )
             .unwrap()
         );
@@ -553,10 +553,10 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    long_oi: HumanAmount::new(15),
-                    short_oi: HumanAmount::new(5),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    long_oi: Quantity::new_int(15),
+                    short_oi: Quantity::new_int(5),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -572,12 +572,12 @@ mod tests {
 
         assert!(
             !is_adl_triggerable(
-                UsdValue::new(20_000),
+                UsdValue::new_int(20_000),
                 std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
-                Ratio::new_permille(500),
+                Dimensionless::new_permille(500),
             )
             .unwrap()
         );
@@ -597,10 +597,10 @@ mod tests {
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    skew: HumanAmount::new(10),
-                    long_oi: HumanAmount::new(15),
-                    short_oi: HumanAmount::new(5),
-                    oi_weighted_entry_price: UsdValue::new(20_000),
+                    skew: Quantity::new_int(10),
+                    long_oi: Quantity::new_int(15),
+                    short_oi: Quantity::new_int(5),
+                    oi_weighted_entry_price: UsdValue::new_int(20_000),
                     last_funding_time: Timestamp::from_seconds(0),
                     ..Default::default()
                 },
@@ -616,12 +616,12 @@ mod tests {
 
         assert!(
             is_adl_triggerable(
-                UsdValue::new(100),
+                UsdValue::new_int(100),
                 std::slice::from_ref(&eth::DENOM),
                 &pair_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
-                Ratio::new_permille(500),
+                Dimensionless::new_permille(500),
             )
             .unwrap()
         );

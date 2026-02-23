@@ -2,7 +2,7 @@ use {
     crate::NoCachePairQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
-        HumanAmount, UsdPrice, UsdValue,
+        Quantity, UsdPrice, UsdValue,
         perps::{PairId, PairState, Position, UserState},
     },
 };
@@ -100,7 +100,7 @@ pub fn compute_maintenance_margin(
             .size
             .checked_abs()?
             .checked_mul(oracle_price)?
-            .checked_mul_ratio(pair_param.maintenance_margin_ratio)?;
+            .checked_mul(pair_param.maintenance_margin_ratio)?;
 
         total.checked_add_assign(margin)?;
     }
@@ -127,7 +127,7 @@ pub fn compute_initial_margin(
     pair_querier: &NoCachePairQuerier,
     oracle_querier: &mut OracleQuerier,
     projected_pair_id: PairId,
-    projected_size: HumanAmount,
+    projected_size: Quantity,
 ) -> anyhow::Result<UsdValue> {
     let mut total = UsdValue::ZERO;
     let mut projected_pair_seen = false;
@@ -146,7 +146,7 @@ pub fn compute_initial_margin(
         let margin = size
             .checked_abs()?
             .checked_mul(oracle_price)?
-            .checked_mul_ratio(pair_param.initial_margin_ratio)?;
+            .checked_mul(pair_param.initial_margin_ratio)?;
 
         total.checked_add_assign(margin)?;
     }
@@ -160,7 +160,7 @@ pub fn compute_initial_margin(
         let margin = projected_size
             .checked_abs()?
             .checked_mul(oracle_price)?
-            .checked_mul_ratio(pair_param.initial_margin_ratio)?;
+            .checked_mul(pair_param.initial_margin_ratio)?;
 
         total.checked_add_assign(margin)?;
     }
@@ -197,7 +197,7 @@ pub fn compute_available_margin(
             .size
             .checked_abs()?
             .checked_mul(oracle_price)?
-            .checked_mul_ratio(pair_param.initial_margin_ratio)?;
+            .checked_mul(pair_param.initial_margin_ratio)?;
 
         used_margin.checked_add_assign(margin)?;
     }
@@ -237,7 +237,7 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            HumanAmount, Ratio, UsdPrice, UsdValue,
+            Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, Position},
@@ -262,14 +262,14 @@ mod tests {
         expected: i128,
     ) {
         let position = Position {
-            size: HumanAmount::new(size),
+            size: Quantity::new_int(size),
             entry_price: UsdPrice::new_int(entry_price),
-            entry_funding_per_unit: Ratio::new_int(0),
+            entry_funding_per_unit: FundingPerUnit::new_int(0),
         };
 
         assert_eq!(
             compute_position_unrealized_pnl(&position, UsdPrice::new_int(oracle_price)).unwrap(),
-            UsdValue::new(expected),
+            UsdValue::new_int(expected),
         );
     }
 
@@ -294,18 +294,18 @@ mod tests {
         expected_raw: i128,
     ) {
         let position = Position {
-            size: HumanAmount::new(size_raw),
-            entry_price: Ratio::new_raw(0),
-            entry_funding_per_unit: Ratio::new_raw(entry_raw),
+            size: Quantity::new_raw(size_raw),
+            entry_price: UsdPrice::new_raw(0),
+            entry_funding_per_unit: FundingPerUnit::new_raw(entry_raw),
         };
         let pair_state = PairState {
-            funding_per_unit: Ratio::new_raw(cumulative_raw),
+            funding_per_unit: FundingPerUnit::new_raw(cumulative_raw),
             ..Default::default()
         };
 
         assert_eq!(
             compute_position_unrealized_funding(&position, &pair_state).unwrap(),
-            UsdValue::new(expected_raw),
+            UsdValue::new_raw(expected_raw),
         );
     }
 
@@ -319,13 +319,13 @@ mod tests {
 
         assert_eq!(
             compute_user_equity(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
-            UsdValue::new(10_000),
+            UsdValue::new_int(10_000),
         );
     }
 
@@ -337,16 +337,16 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
         };
         let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
             eth::DENOM.clone() => PairState {
-                funding_per_unit: Ratio::new_int(0),
+                funding_per_unit: FundingPerUnit::new_int(0),
                 ..Default::default()
             },
         });
@@ -360,13 +360,13 @@ mod tests {
 
         assert_eq!(
             compute_user_equity(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
-            UsdValue::new(15_000),
+            UsdValue::new_int(15_000),
         );
     }
 
@@ -379,16 +379,16 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::new_int(1),
                 },
             },
             ..Default::default()
         };
         let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
             eth::DENOM.clone() => PairState {
-                funding_per_unit: Ratio::new_int(3),
+                funding_per_unit: FundingPerUnit::new_int(3),
                 ..Default::default()
             },
         });
@@ -402,13 +402,13 @@ mod tests {
 
         assert_eq!(
             compute_user_equity(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
-            UsdValue::new(14_980),
+            UsdValue::new_int(14_980),
         );
     }
 
@@ -423,25 +423,25 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::new_int(1),
                 },
                 btc::DENOM.clone() => Position {
-                    size: HumanAmount::new(-1),
+                    size: Quantity::new_int(-1),
                     entry_price: UsdPrice::new_int(50_000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
         };
         let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
             eth::DENOM.clone() => PairState {
-                funding_per_unit: Ratio::new_int(3),
+                funding_per_unit: FundingPerUnit::new_int(3),
                 ..Default::default()
             },
             btc::DENOM.clone() => PairState {
-                funding_per_unit: Ratio::new_int(0),
+                funding_per_unit: FundingPerUnit::new_int(0),
                 ..Default::default()
             },
         });
@@ -460,13 +460,13 @@ mod tests {
 
         assert_eq!(
             compute_user_equity(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
-            UsdValue::new(16_980),
+            UsdValue::new_int(16_980),
         );
     }
 
@@ -478,16 +478,16 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
         };
         let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
             eth::DENOM.clone() => PairState {
-                funding_per_unit: Ratio::new_int(0),
+                funding_per_unit: FundingPerUnit::new_int(0),
                 ..Default::default()
             },
         });
@@ -501,13 +501,13 @@ mod tests {
 
         assert_eq!(
             compute_user_equity(
-                UsdValue::new(100),
+                UsdValue::new_int(100),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier
             )
             .unwrap(),
-            UsdValue::new(-4900),
+            UsdValue::new_int(-4900),
         );
     }
 
@@ -533,9 +533,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(size),
+                    size: Quantity::new_int(size),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -543,7 +543,7 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
                     ..Default::default()
                 },
             },
@@ -559,7 +559,7 @@ mod tests {
 
         assert_eq!(
             compute_maintenance_margin(&user_state, &pair_querier, &mut oracle_querier).unwrap(),
-            UsdValue::new(1000),
+            UsdValue::new_int(1000),
         );
     }
 
@@ -571,14 +571,14 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
                 btc::DENOM.clone() => Position {
-                    size: HumanAmount::new(-1),
+                    size: Quantity::new_int(-1),
                     entry_price: UsdPrice::new_int(50000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -586,11 +586,11 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
                     ..Default::default()
                 },
                 btc::DENOM.clone() => PairParam {
-                    maintenance_margin_ratio: Ratio::new_permille(30),
+                    maintenance_margin_ratio: Dimensionless::new_permille(30),
                     ..Default::default()
                 },
             },
@@ -611,7 +611,7 @@ mod tests {
 
         assert_eq!(
             compute_maintenance_margin(&user_state, &pair_querier, &mut oracle_querier).unwrap(),
-            UsdValue::new(2500),
+            UsdValue::new_int(2500),
         );
     }
 
@@ -625,7 +625,7 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
             },
@@ -645,10 +645,10 @@ mod tests {
                 &pair_querier,
                 &mut oracle_querier,
                 eth::DENOM.clone(),
-                HumanAmount::new(10),
+                Quantity::new_int(10),
             )
             .unwrap(),
-            UsdValue::new(2000),
+            UsdValue::new_int(2000),
         );
     }
 
@@ -659,9 +659,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(5),
+                    size: Quantity::new_int(5),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -669,7 +669,7 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
             },
@@ -689,10 +689,10 @@ mod tests {
                 &pair_querier,
                 &mut oracle_querier,
                 eth::DENOM.clone(),
-                HumanAmount::new(10),
+                Quantity::new_int(10),
             )
             .unwrap(),
-            UsdValue::new(2000),
+            UsdValue::new_int(2000),
         );
     }
 
@@ -705,9 +705,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -715,11 +715,11 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
                 btc::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
             },
@@ -744,10 +744,10 @@ mod tests {
                 &pair_querier,
                 &mut oracle_querier,
                 btc::DENOM.clone(),
-                HumanAmount::new(1),
+                Quantity::new_int(1),
             )
             .unwrap(),
-            UsdValue::new(7000),
+            UsdValue::new_int(7000),
         );
     }
 
@@ -758,7 +758,7 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
             },
@@ -778,7 +778,7 @@ mod tests {
                 &pair_querier,
                 &mut oracle_querier,
                 eth::DENOM.clone(),
-                HumanAmount::ZERO,
+                Quantity::ZERO,
             )
             .unwrap(),
             UsdValue::ZERO,
@@ -794,14 +794,14 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
                 btc::DENOM.clone() => Position {
-                    size: HumanAmount::new(-1),
+                    size: Quantity::new_int(-1),
                     entry_price: UsdPrice::new_int(50000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -809,11 +809,11 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
                 btc::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(50),
+                    initial_margin_ratio: Dimensionless::new_permille(50),
                     ..Default::default()
                 },
             },
@@ -838,10 +838,10 @@ mod tests {
                 &pair_querier,
                 &mut oracle_querier,
                 eth::DENOM.clone(),
-                HumanAmount::new(20),
+                Quantity::new_int(20),
             )
             .unwrap(),
-            UsdValue::new(6500),
+            UsdValue::new_int(6500),
         );
     }
 
@@ -856,14 +856,14 @@ mod tests {
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
                 UsdValue::ZERO,
             )
             .unwrap(),
-            UsdValue::new(10_000),
+            UsdValue::new_int(10_000),
         );
     }
 
@@ -876,9 +876,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -886,13 +886,13 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    funding_per_unit: Ratio::new_int(0),
+                    funding_per_unit: FundingPerUnit::new_int(0),
                     ..Default::default()
                 },
             },
@@ -907,14 +907,14 @@ mod tests {
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
                 UsdValue::ZERO,
             )
             .unwrap(),
-            UsdValue::new(12_500),
+            UsdValue::new_int(12_500),
         );
     }
 
@@ -925,9 +925,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -935,13 +935,13 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    funding_per_unit: Ratio::new_int(0),
+                    funding_per_unit: FundingPerUnit::new_int(0),
                     ..Default::default()
                 },
             },
@@ -956,14 +956,14 @@ mod tests {
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
-                UsdValue::new(2_000),
+                UsdValue::new_int(2_000),
             )
             .unwrap(),
-            UsdValue::new(10_500),
+            UsdValue::new_int(10_500),
         );
     }
 
@@ -977,9 +977,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -987,13 +987,13 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    funding_per_unit: Ratio::new_int(0),
+                    funding_per_unit: FundingPerUnit::new_int(0),
                     ..Default::default()
                 },
             },
@@ -1008,7 +1008,7 @@ mod tests {
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new(100),
+                UsdValue::new_int(100),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
@@ -1029,9 +1029,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::new_int(1),
                 },
             },
             ..Default::default()
@@ -1039,13 +1039,13 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Ratio::new_permille(100),
+                    initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    funding_per_unit: Ratio::new_int(3),
+                    funding_per_unit: FundingPerUnit::new_int(3),
                     ..Default::default()
                 },
             },
@@ -1060,14 +1060,14 @@ mod tests {
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
                 UsdValue::ZERO,
             )
             .unwrap(),
-            UsdValue::new(12_480),
+            UsdValue::new_int(12_480),
         );
     }
 
@@ -1081,7 +1081,7 @@ mod tests {
 
         assert!(
             !is_liquidatable(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
@@ -1099,9 +1099,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -1109,13 +1109,13 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
                     ..Default::default()
                 },
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    funding_per_unit: Ratio::new_int(0),
+                    funding_per_unit: FundingPerUnit::new_int(0),
                     ..Default::default()
                 },
             },
@@ -1130,7 +1130,7 @@ mod tests {
 
         assert!(
             !is_liquidatable(
-                UsdValue::new(10_000),
+                UsdValue::new_int(10_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
@@ -1148,9 +1148,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -1158,13 +1158,13 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
                     ..Default::default()
                 },
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    funding_per_unit: Ratio::new_int(0),
+                    funding_per_unit: FundingPerUnit::new_int(0),
                     ..Default::default()
                 },
             },
@@ -1179,7 +1179,7 @@ mod tests {
 
         assert!(
             !is_liquidatable(
-                UsdValue::new(1_000),
+                UsdValue::new_int(1_000),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
@@ -1197,9 +1197,9 @@ mod tests {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
-                    size: HumanAmount::new(10),
+                    size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: Ratio::new_int(0),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
                 },
             },
             ..Default::default()
@@ -1207,13 +1207,13 @@ mod tests {
         let pair_querier = NoCachePairQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    maintenance_margin_ratio: Ratio::new_permille(50),
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
                     ..Default::default()
                 },
             },
             hash_map! {
                 eth::DENOM.clone() => PairState {
-                    funding_per_unit: Ratio::new_int(0),
+                    funding_per_unit: FundingPerUnit::new_int(0),
                     ..Default::default()
                 },
             },
@@ -1228,7 +1228,7 @@ mod tests {
 
         assert!(
             is_liquidatable(
-                UsdValue::new(100),
+                UsdValue::new_int(100),
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
@@ -1254,9 +1254,9 @@ mod tests {
             let user_state = UserState {
                 positions: btree_map! {
                     eth::DENOM.clone() => Position {
-                        size: HumanAmount::new(10),
+                        size: Quantity::new_int(10),
                         entry_price: UsdPrice::new_int(2000),
-                        entry_funding_per_unit: Ratio::new_int(0),
+                        entry_funding_per_unit: FundingPerUnit::new_int(0),
                     },
                 },
                 ..Default::default()
@@ -1264,13 +1264,13 @@ mod tests {
             let pair_querier = NoCachePairQuerier::new_mock(
                 hash_map! {
                     eth::DENOM.clone() => PairParam {
-                        maintenance_margin_ratio: Ratio::new_permille(50),
+                        maintenance_margin_ratio: Dimensionless::new_permille(50),
                         ..Default::default()
                     },
                 },
                 hash_map! {
                     eth::DENOM.clone() => PairState {
-                        funding_per_unit: Ratio::new_int(100),
+                        funding_per_unit: FundingPerUnit::new_int(100),
                         ..Default::default()
                     },
                 },
@@ -1283,7 +1283,7 @@ mod tests {
                 ),
             });
             (
-                UsdValue::new(collateral),
+                UsdValue::new_int(collateral),
                 user_state,
                 pair_querier,
                 oracle_querier,

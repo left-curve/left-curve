@@ -1,5 +1,5 @@
 use {
-    dango_types::{HumanAmount, Ratio, UsdPrice, perps::PairParam},
+    dango_types::{Dimensionless, Quantity, UsdPrice, perps::PairParam},
     grug::MathResult,
 };
 
@@ -17,13 +17,13 @@ use {
 /// ```
 pub fn compute_exec_price(
     oracle_price: UsdPrice,
-    skew: HumanAmount,
-    size: HumanAmount,
+    skew: Quantity,
+    size: Quantity,
     pair_param: &PairParam,
 ) -> MathResult<UsdPrice> {
     // The average between the current skew and the skew after this order has
     // been executed in full.
-    let skew_average = skew.checked_add(size.checked_mul(Ratio::HALF)?)?;
+    let skew_average = skew.checked_add(size.checked_mul(Dimensionless::HALF)?)?;
 
     // Compute a premium based on the average skew and skew scaling factor.
     let premium = skew_average.checked_div(pair_param.skew_scale)?;
@@ -31,7 +31,7 @@ pub fn compute_exec_price(
     // Bound the premium between [-max_abs_premium, max_abs_premium].
     let premium = premium.clamp(-pair_param.max_abs_premium, pair_param.max_abs_premium);
 
-    oracle_price.checked_mul(premium.checked_add(Ratio::ONE)?)
+    oracle_price.checked_mul(premium.checked_add(Dimensionless::ONE)?)
 }
 
 /// Compute the marginal price, given the current oracle price and skew.
@@ -39,10 +39,10 @@ pub fn compute_exec_price(
 /// Marginal price is the price for executing an order of infinitesimal size.
 pub fn compute_marginal_price(
     oracle_price: UsdPrice,
-    skew: HumanAmount,
+    skew: Quantity,
     pair_param: &PairParam,
 ) -> MathResult<UsdPrice> {
-    compute_exec_price(oracle_price, skew, HumanAmount::ZERO, pair_param)
+    compute_exec_price(oracle_price, skew, Quantity::ZERO, pair_param)
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -69,8 +69,8 @@ mod tests {
         assert_eq!(
             compute_exec_price(
                 UsdPrice::new_int(100),
-                HumanAmount::new(skew),
-                HumanAmount::new(size),
+                Quantity::new_int(skew),
+                Quantity::new_int(size),
                 &PairParam::new_mock(100, 50)
             )
             .unwrap(),
@@ -88,7 +88,7 @@ mod tests {
         assert_eq!(
             compute_marginal_price(
                 UsdPrice::new_int(100),
-                HumanAmount::new(skew),
+                Quantity::new_int(skew),
                 &PairParam::new_mock(100, 50)
             )
             .unwrap(),

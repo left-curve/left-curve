@@ -1,12 +1,12 @@
 use {
     anyhow::ensure,
-    dango_types::{HumanAmount, UsdPrice, perps::PairParam},
+    dango_types::{Quantity, UsdPrice, perps::PairParam},
 };
 
 /// If the order's opening portion is non-zero, ensure it's no smaller than the
 /// minimum order size, such that we don't open dust positions.
 pub fn check_minimum_opening(
-    opening_size: HumanAmount,
+    opening_size: Quantity,
     oracle_price: UsdPrice,
     pair_param: &PairParam,
 ) -> anyhow::Result<()> {
@@ -45,10 +45,10 @@ mod tests {
     ) {
         assert_eq!(
             check_minimum_opening(
-                HumanAmount::new(opening_size),
+                Quantity::new_int(opening_size),
                 UsdPrice::new_int(oracle_price),
                 &PairParam {
-                    min_opening_size: UsdValue::new(min_opening_size),
+                    min_opening_size: UsdValue::new_int(min_opening_size),
                     ..Default::default()
                 }
             )

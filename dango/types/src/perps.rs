@@ -1,6 +1,6 @@
 use {
-    crate::{BaseAmount, Days, Dimensionless, HumanAmount, Ratio, UsdPrice, UsdValue},
-    grug::{Addr, Denom, Duration, Part, Timestamp},
+    crate::{Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue},
+    grug::{Addr, Denom, Duration, Part, Timestamp, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet},
         sync::LazyLock,
@@ -29,12 +29,6 @@ pub type PairId = Denom;
 /// Identifies a resting limit order.
 pub type OrderId = u64;
 
-/// Funding rate: dimensionless proportion of notional per day.
-pub type FundingRate = Ratio<Dimensionless, Days>;
-
-/// Funding velocity: rate of change of the funding rate, per day².
-pub type FundingVelocity = Ratio<FundingRate, Days>;
-
 #[grug::derive(Serde)]
 pub enum OrderKind {
     /// Trade at the current marginal price, plus/minus a maximum slippage.
@@ -42,7 +36,7 @@ pub enum OrderKind {
     /// Marginal price is the price quoted by the counterparty vault for an order
     /// of infinitesimal size. It's calculated based on the oracle price and
     /// the current skew (the differencce bewteen long and short OI).
-    Market { max_slippage: Ratio<UsdPrice> },
+    Market { max_slippage: Dimensionless },
 
     /// Trade at the specified limit price.
     Limit { limit_price: UsdPrice },
@@ -74,7 +68,7 @@ pub struct Param {
     ///
     /// fee = ceil($100,000 * 0.05% / $0.95 per USDT)
     ///     = 52.631579 USDT
-    pub trading_fee_rate: Ratio<UsdValue>,
+    pub trading_fee_rate: Dimensionless,
 
     /// Fee paid to the vault as a fraction of the total notional value of
     /// positions being liquidated, capped at the user's remaining margin after
@@ -84,13 +78,13 @@ pub struct Param {
     ///   ceil(|position_size| * oracle_price * liquidation_fee_rate / settlement_currency_price),
     ///   user_remaining_margin
     /// )
-    pub liquidation_fee_rate: Ratio<UsdValue>,
+    pub liquidation_fee_rate: Dimensionless,
 
     /// Ratio of vault equity to total open notional below which ADL is enabled.
     ///
     /// When vault_equity < adl_trigger_ratio * total_open_notional, the `deleverage`
     /// execute method becomes callable by whitelisted addresses.
-    pub adl_trigger_ratio: Ratio<UsdValue>,
+    pub adl_trigger_ratio: Dimensionless,
 
     /// Accounts who are authorized to deleverage users when ADL trigger condition
     /// is met.
@@ -104,7 +98,7 @@ pub struct PairParam {
     /// A scaling factor that determines how greatly an imbalance in long/short
     /// open interests (the "skew") should affect the price quoted by the vault.
     /// The greater the value of the scaling factor, the less the effect.
-    pub skew_scale: Ratio<HumanAmount, Ratio<UsdPrice>>,
+    pub skew_scale: Quantity,
 
     /// The maximum extent to which skew can affect the quote price.
     ///
@@ -113,7 +107,7 @@ pub struct PairParam {
     ///
     /// This prevents an exploit where a trader fabricates a big skew to obtain
     /// an unusually favorable pricing. See the [Mars Protocol hack](https://x.com/neutron_org/status/2014048218598838459).
-    pub max_abs_premium: Ratio<UsdPrice>,
+    pub max_abs_premium: Dimensionless,
 
     /// The maximum allowed open interest for both long and short.
     /// I.e. the following must be satisfied:
@@ -121,7 +115,7 @@ pub struct PairParam {
     /// pair_state.long_oi <= max_abs_oi && pair_state.short_oi <= max_abs_oi
     ///
     /// This constraint does not apply to reduce-only orders.
-    pub max_abs_oi: HumanAmount,
+    pub max_abs_oi: Quantity,
 
     /// Maximum absolute funding rate, as a fraction per day.
     ///
@@ -146,7 +140,7 @@ pub struct PairParam {
     /// pair. E.g. 5% indicates a 1 / 5% = 20x maximum leverage.
     ///
     /// initial_margin = |position_size| * oracle_price * initial_margin_ratio
-    pub initial_margin_ratio: Ratio<UsdValue>,
+    pub initial_margin_ratio: Dimensionless,
 
     /// Margin requirement for maintaining a position in this trading pair.
     ///
@@ -156,7 +150,7 @@ pub struct PairParam {
     /// all his positions, the user becomes eligible for liquidations.
     ///
     /// maintenance_margin = |position_size| * oracle_price * maintenance_margin_ratio
-    pub maintenance_margin_ratio: Ratio<UsdValue>,
+    pub maintenance_margin_ratio: Dimensionless,
 }
 
 impl PairParam {
@@ -164,9 +158,9 @@ impl PairParam {
     /// all other fields use inert defaults. Intended for tests.
     pub fn new_mock(skew_scale: i128, max_abs_premium_permille: i128) -> Self {
         Self {
-            skew_scale: Ratio::new_int(skew_scale),
-            max_abs_premium: Ratio::new_permille(max_abs_premium_permille),
-            max_abs_oi: HumanAmount::new(1_000_000),
+            skew_scale: Quantity::new_int(skew_scale),
+            max_abs_premium: Dimensionless::new_permille(max_abs_premium_permille),
+            max_abs_oi: Quantity::new_int(1_000_000),
             ..Default::default()
         }
     }
@@ -185,10 +179,10 @@ pub struct State {
     ///   includes the vault's _unrealized_ PnL.
     /// - This also doesn't equal the vault's token balance tracked by the bank
     ///   contract, which also includes unlocks that are pending cooldown.
-    pub vault_margin: BaseAmount,
+    pub vault_margin: Uint128,
 
     /// Total supply of the vault's share token.
-    pub vault_share_supply: BaseAmount,
+    pub vault_share_supply: Uint128,
 }
 
 /// State of an individual trading pair.
@@ -196,13 +190,13 @@ pub struct State {
 #[derive(Default)]
 pub struct PairState {
     /// The sum of the sizes of all long positions.
-    pub long_oi: HumanAmount,
+    pub long_oi: Quantity,
 
     /// The sum of the absolute value of the sizes of all short positions.
-    pub short_oi: HumanAmount,
+    pub short_oi: Quantity,
 
     /// The difference between long and short OI. Equals `self.long_oi - self.short_oi`.
-    pub skew: HumanAmount,
+    pub skew: Quantity,
 
     /// Instantaneous funding rate (fraction per day) at the `last_funding_time`.
     ///
@@ -218,7 +212,7 @@ pub struct PairState {
     /// This is an ever-increasing accumulator. To compute a position's accrued
     /// funding, take the difference between the current value and the position's
     /// `entry_funding_per_unit`.
-    pub funding_per_unit: Ratio<UsdValue, HumanAmount>,
+    pub funding_per_unit: FundingPerUnit,
 
     /// Timestamp of the most recent funding accrual.
     pub last_funding_time: Timestamp,
@@ -260,7 +254,7 @@ pub struct UserState {
     pub positions: BTreeMap<PairId, Position>,
 
     /// Margin reserved for resting limit orders.
-    pub reserved_margin: BaseAmount,
+    pub reserved_margin: Uint128,
 
     /// Number of resting limit orders the user currently has on the book.
     pub open_order_count: u32,
@@ -270,14 +264,14 @@ pub struct UserState {
 #[grug::derive(Serde, Borsh)]
 pub struct Position {
     /// The position's size. Position = long, negative = short.
-    pub size: HumanAmount,
+    pub size: Quantity,
 
     /// The average price at which this position was entered.
     pub entry_price: UsdPrice,
 
     /// The value of `pair_state.cumulative_funding_per_unit` at the time when
     /// this position was last opened, modified, or funding settled.
-    pub entry_funding_per_unit: Ratio<UsdValue, HumanAmount>,
+    pub entry_funding_per_unit: FundingPerUnit,
 }
 
 /// A pending withdrawal of liquidity from the counterparty vault, awaiting the
@@ -285,7 +279,7 @@ pub struct Position {
 #[grug::derive(Serde, Borsh)]
 pub struct Unlock {
     /// The amount of settlement currency to be released once cooldown completes.
-    pub amount_to_release: BaseAmount,
+    pub amount_to_release: Uint128,
 
     /// The time when cooldown completes.
     pub end_time: Timestamp,
@@ -299,9 +293,9 @@ pub struct Unlock {
 #[grug::derive(Serde, Borsh)]
 pub struct Order {
     pub user: Addr,
-    pub size: HumanAmount,
+    pub size: Quantity,
     pub reduce_only: bool,
-    pub reserved_margin: BaseAmount,
+    pub reserved_margin: Uint128,
 }
 
 // --------------------------------- Messages ----------------------------------
@@ -317,7 +311,7 @@ pub enum ExecuteMsg {
     /// Add liquidity to the counterparty vault.
     Deposit {
         /// Revert if less than this amount of shares is minted.
-        min_shares_to_mint: Option<BaseAmount>,
+        min_shares_to_mint: Option<Uint128>,
     },
 
     /// Request to withdraw funds from the counterparty vault.
@@ -331,7 +325,7 @@ pub enum ExecuteMsg {
 
         /// The amount of futures contract to buy or sell.
         /// Positive indicates buy, negative indicates sell.
-        size: HumanAmount,
+        size: Quantity,
 
         /// Order type: market, limit, etc.
         kind: OrderKind,

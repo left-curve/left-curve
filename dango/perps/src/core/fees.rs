@@ -1,32 +1,32 @@
 use {
     dango_types::{
-        BaseAmount, HumanAmount, UsdPrice,
+        Quantity, UsdPrice,
         perps::{Param, settlement_currency},
     },
-    grug::MathResult,
+    grug::{MathResult, Uint128},
 };
 
 /// Given the fillable size of an order and other relevant information, compute
 /// the amount of trading fee (denoted in the base units of the settlement currency).
 pub fn compute_trading_fee(
-    fill_size: HumanAmount,
+    fill_size: Quantity,
     oracle_price: UsdPrice,
     settlement_currency_price: UsdPrice,
     param: &Param,
-) -> MathResult<BaseAmount> {
+) -> MathResult<Uint128> {
     fill_size
         .checked_abs()?
         .checked_mul(oracle_price)?
-        .checked_mul_ratio(param.trading_fee_rate)?
-        .checked_div_ratio(settlement_currency_price)?
-        .checked_into_base_ceil(settlement_currency::DECIMAL)
+        .checked_mul(param.trading_fee_rate)?
+        .checked_div(settlement_currency_price)?
+        .into_base_ceil(settlement_currency::DECIMAL)
 }
 
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_types::Ratio, test_case::test_case};
+    use {super::*, dango_types::Dimensionless, test_case::test_case};
 
     // (fill_size, oracle_price, settlement_price, fee_rate_raw, expected_base)
     #[test_case(   0,      1,     1,   1_000,          0 ; "zero fill")]
@@ -42,16 +42,16 @@ mod tests {
     ) {
         assert_eq!(
             compute_trading_fee(
-                HumanAmount::new(fill_size),
+                Quantity::new_int(fill_size),
                 UsdPrice::new_int(oracle_price),
                 UsdPrice::new_int(settlement_price),
                 &Param {
-                    trading_fee_rate: Ratio::new_raw(fee_rate_raw),
+                    trading_fee_rate: Dimensionless::new_raw(fee_rate_raw),
                     ..Default::default()
                 },
             )
             .unwrap(),
-            BaseAmount::new(expected_base),
+            Uint128::new(expected_base),
         );
     }
 }

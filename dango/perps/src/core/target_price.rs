@@ -1,7 +1,7 @@
 use {
     crate::core::compute_marginal_price,
     dango_types::{
-        HumanAmount, Ratio, UsdPrice,
+        Dimensionless, Quantity, UsdPrice,
         perps::{OrderKind, PairParam},
     },
     grug::MathResult,
@@ -12,7 +12,7 @@ use {
 pub fn compute_target_price(
     kind: OrderKind,
     oracle_price: UsdPrice,
-    skew: HumanAmount,
+    skew: Quantity,
     pair_param: &PairParam,
     is_bid: bool,
 ) -> MathResult<UsdPrice> {
@@ -20,9 +20,9 @@ pub fn compute_target_price(
         OrderKind::Market { max_slippage } => {
             let marginal_price = compute_marginal_price(oracle_price, skew, pair_param)?;
             if is_bid {
-                marginal_price.checked_mul(Ratio::ONE.checked_add(max_slippage)?)
+                marginal_price.checked_mul(Dimensionless::ONE.checked_add(max_slippage)?)
             } else {
-                marginal_price.checked_mul(Ratio::ONE.checked_sub(max_slippage)?)
+                marginal_price.checked_mul(Dimensionless::ONE.checked_sub(max_slippage)?)
             }
         },
         OrderKind::Limit { limit_price } => Ok(limit_price),
@@ -68,10 +68,10 @@ mod tests {
         assert_eq!(
             compute_target_price(
                 OrderKind::Market {
-                    max_slippage: Ratio::new_permille(slippage_permille),
+                    max_slippage: Dimensionless::new_permille(slippage_permille),
                 },
                 UsdPrice::new_int(100),
-                HumanAmount::new(skew),
+                Quantity::new_int(skew),
                 &PairParam::new_mock(100, 50),
                 is_bid
             )
@@ -90,7 +90,7 @@ mod tests {
                     limit_price: UsdPrice::new_int(limit),
                 },
                 UsdPrice::new_int(100),
-                HumanAmount::new(skew),
+                Quantity::new_int(skew),
                 &PairParam::new_mock(100, 50),
                 is_bid
             )
