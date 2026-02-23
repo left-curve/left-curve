@@ -5,15 +5,15 @@ pub mod bank;
 pub mod config;
 pub mod constants;
 pub mod dex;
-mod dimensioned;
 pub mod gateway;
 pub mod oracle;
 pub mod perps;
 mod querier;
 pub mod signer;
 pub mod taxman;
+mod typed_number;
 mod units;
 pub mod vesting;
 pub mod warp;
 
-pub use {dimensioned::*, querier::DangoQuerier, units::*};
+pub use {querier::DangoQuerier, typed_number::*, units::*};
