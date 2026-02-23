@@ -7,7 +7,7 @@ use {
         dex::{self, CreateOrderRequest, Price},
         oracle,
         taxman::{
-            self, CommissionRebund, QueryConfigRequest, QueryReferralDataRequest,
+            self, CommissionRebound, QueryConfigRequest, QueryReferralDataRequest,
             QueryReferralSettingsRequest, QueryReferrerRequest, QueryReferrerToRefereeStatsRequest,
             ReferrerStatsOrderBy, ReferrerStatsOrderIndex, ShareRatio, UserReferralData,
         },
@@ -289,7 +289,7 @@ fn test_set_share_ratio() {
             .should_succeed();
     }
 
-    // Create a bid oreder with user2 of $9999. This is not enought to reach the required volume
+    // Create a bid order with user2 of $9999. This is not enough to reach the required volume
     // to become a referrer.
     let usdc_amount = Uint128::new(9999 * 10_u128.pow(usdc::DECIMAL));
     create_bid_order_block_outcome(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
@@ -304,7 +304,7 @@ fn test_set_share_ratio() {
          "you must have at least a volume of 10000000000 USDC to become a referrer, traded volume: 9999000000 USDC",
      );
 
-    // Trade another $1. Now the total traded volume is $10000, which should be enought for User2
+    // Trade another $1. Now the total traded volume is $10000, which should be enough for User2
     // to become a referrer.
     let usdc_amount = Uint128::new(10_u128.pow(usdc::DECIMAL));
     create_bid_order_block_outcome(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
@@ -370,12 +370,12 @@ fn commission_rebound_tier() {
 
     // Set the commission rebound config.
     taxman_config.referral.commission_rebound_default =
-        CommissionRebund::new_unchecked(Udec128::new_percent(10));
+        CommissionRebound::new_unchecked(Udec128::new_percent(10));
 
     taxman_config.referral.commission_rebound_by_volume = btree_map! {
-        Udec128::new(100  * 10_u128.pow(usdc::DECIMAL)) => CommissionRebund::new_unchecked(Udec128::new_percent(20)),
-        Udec128::new(1000 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebund::new_unchecked(Udec128::new_percent(30)),
-        Udec128::new(2000 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebund::new_unchecked(Udec128::new_percent(40)),
+        Udec128::new(100  * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(20)),
+        Udec128::new(1000 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(30)),
+        Udec128::new(2000 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(40)),
     };
 
     suite
@@ -390,7 +390,7 @@ fn commission_rebound_tier() {
         .should_succeed();
 
     // Setup :
-    // - oralcle feed price
+    // - oracle feed price
     // - set share ratio for user1
     // - user1 create ask limit order
     // - user1 refer user2
@@ -462,13 +462,13 @@ fn commission_rebound_tier() {
     // Since user1 is now a referrer, the commission rebound rate should be 10%.
     let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
     assert_eq!(
-        referral_settings.commission_rebund.into_inner(),
+        referral_settings.commission_rebound.into_inner(),
         Udec128::new_percent(10)
     );
 
     suite.block_time = Duration::from_days(1);
 
-    // Make a bid order of 99$; this is not enought to reach the first tier, so the
+    // Make a bid order of 99$; this is not enough to reach the first tier, so the
     // commission rebound should still be 10%.
     {
         let usdc_amount = Uint128::new(99 * 10_u128.pow(usdc::DECIMAL));
@@ -477,7 +477,7 @@ fn commission_rebound_tier() {
 
         let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
         assert_eq!(
-            referral_settings.commission_rebund.into_inner(),
+            referral_settings.commission_rebound.into_inner(),
             Udec128::new_percent(10)
         );
     }
@@ -491,7 +491,7 @@ fn commission_rebound_tier() {
 
         let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
         assert_eq!(
-            referral_settings.commission_rebund.into_inner(),
+            referral_settings.commission_rebound.into_inner(),
             Udec128::new_percent(20)
         );
     }
@@ -504,7 +504,7 @@ fn commission_rebound_tier() {
 
         let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
         assert_eq!(
-            referral_settings.commission_rebund.into_inner(),
+            referral_settings.commission_rebound.into_inner(),
             Udec128::new_percent(30)
         );
     }
@@ -517,7 +517,7 @@ fn commission_rebound_tier() {
 
         let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
         assert_eq!(
-            referral_settings.commission_rebund.into_inner(),
+            referral_settings.commission_rebound.into_inner(),
             Udec128::new_percent(40)
         );
     }
@@ -529,7 +529,7 @@ fn commission_rebound_tier() {
 
     let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
     assert_eq!(
-        referral_settings.commission_rebund.into_inner(),
+        referral_settings.commission_rebound.into_inner(),
         Udec128::new_percent(30)
     );
 
@@ -539,7 +539,7 @@ fn commission_rebound_tier() {
 
     let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
     assert_eq!(
-        referral_settings.commission_rebund.into_inner(),
+        referral_settings.commission_rebound.into_inner(),
         Udec128::new_percent(10)
     );
 }
@@ -556,15 +556,15 @@ fn commission_rebound_coins() {
 
     // Set the commission rebound config.
     taxman_config.referral.commission_rebound_default =
-        CommissionRebund::new_unchecked(Udec128::new_percent(10));
+        CommissionRebound::new_unchecked(Udec128::new_percent(10));
 
     taxman_config.referral.commission_rebound_by_volume = btree_map! {
-        Udec128::new(200  * 10_u128.pow(usdc::DECIMAL)) => CommissionRebund::new_unchecked(Udec128::new_percent(20)),
-        Udec128::new(300 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebund::new_unchecked(Udec128::new_percent(30)),
-        Udec128::new(400 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebund::new_unchecked(Udec128::new_percent(40)),
-        Udec128::new(500 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebund::new_unchecked(Udec128::new_percent(50)),
-        Udec128::new(600 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebund::new_unchecked(Udec128::new_percent(60)),
-        Udec128::new(700 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebund::new_unchecked(Udec128::new_percent(70)),
+        Udec128::new(200  * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(20)),
+        Udec128::new(300 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(30)),
+        Udec128::new(400 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(40)),
+        Udec128::new(500 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(50)),
+        Udec128::new(600 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(60)),
+        Udec128::new(700 * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(70)),
     };
 
     suite
@@ -579,7 +579,7 @@ fn commission_rebound_coins() {
         .should_succeed();
 
     // Setup :
-    // - oralcle feed price
+    // - oracle feed price
     // - set share ratio for user1
     // - user1 create ask limit order
     // - user1 refer user2
@@ -692,7 +692,7 @@ fn commission_rebound_coins() {
 
     let referrer_info = query_referral_settings(&suite, contracts.taxman, 5).unwrap();
     assert_eq!(
-        referrer_info.commission_rebund.into_inner(),
+        referrer_info.commission_rebound.into_inner(),
         Udec128::new_percent(20)
     );
 
@@ -704,7 +704,7 @@ fn commission_rebound_coins() {
     );
     let referral_settings = query_referral_settings(&suite, contracts.taxman, 4).unwrap();
     assert_eq!(
-        referral_settings.commission_rebund.into_inner(),
+        referral_settings.commission_rebound.into_inner(),
         Udec128::new_percent(20)
     );
 
@@ -718,7 +718,7 @@ fn commission_rebound_coins() {
 
     let referral_settings = query_referral_settings(&suite, contracts.taxman, 2).unwrap();
     assert_eq!(
-        referral_settings.commission_rebund.into_inner(),
+        referral_settings.commission_rebound.into_inner(),
         Udec128::new_percent(60)
     );
 
@@ -732,24 +732,24 @@ fn commission_rebound_coins() {
 
     let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
     assert_eq!(
-        referral_settings.commission_rebund.into_inner(),
+        referral_settings.commission_rebound.into_inner(),
         Udec128::new_percent(70)
     );
 
     // Save the balances for all the referrer and the referee volumes and commission rebounds.
-    let mut inital_balances = vec![];
-    let mut inital_referral_data = vec![];
+    let mut initial_balances = vec![];
+    let mut initial_referral_data = vec![];
 
     for (i, account) in accounts_vec.iter().enumerate() {
         let user_index = i + 1;
 
-        inital_balances.push(
+        initial_balances.push(
             suite
                 .query_balance(&account.address(), eth::DENOM.clone())
                 .should_succeed(),
         );
 
-        inital_referral_data.push(query_latest_user_data(
+        initial_referral_data.push(query_latest_user_data(
             &mut suite,
             contracts.taxman,
             user_index as u32,
@@ -785,7 +785,7 @@ fn commission_rebound_coins() {
 
         assert_eq!(
             user7_balance,
-            inital_balances[index] + order_data.eth_bought - order_data.trade_fee
+            initial_balances[index] + order_data.eth_bought - order_data.trade_fee
                 + order_data.commission_rebound_payer
         );
 
@@ -793,12 +793,12 @@ fn commission_rebound_coins() {
 
         assert_eq!(
             user7_referral_data.volume,
-            inital_referral_data[index].volume + Udec128::new(usdc_amount.0)
+            initial_referral_data[index].volume + Udec128::new(usdc_amount.0)
         );
 
         assert_eq!(
             user7_referral_data.commission_rebounded,
-            inital_referral_data[index].commission_rebounded
+            initial_referral_data[index].commission_rebounded
                 + eth_unit_price
                     .checked_mul(Udec128::new(order_data.commission_rebound_payer.0))
                     .unwrap()
@@ -814,19 +814,19 @@ fn commission_rebound_coins() {
 
         assert_eq!(
             user6_balance,
-            inital_balances[index] + order_data.commission_rebound_referrer
+            initial_balances[index] + order_data.commission_rebound_referrer
         );
 
         let user6_referral_data = query_latest_user_data(&mut suite, contracts.taxman, 6, None);
 
         assert_eq!(
             user6_referral_data.referees_volume,
-            inital_referral_data[index].referees_volume + Udec128::new(usdc_amount.0)
+            initial_referral_data[index].referees_volume + Udec128::new(usdc_amount.0)
         );
 
         assert_eq!(
             user6_referral_data.referees_commission_rebounded,
-            inital_referral_data[index].referees_commission_rebounded
+            initial_referral_data[index].referees_commission_rebounded
                 + eth_unit_price
                     .checked_mul(Udec128::new(order_data.commission_rebound_referrer.0))
                     .unwrap()
@@ -847,7 +847,7 @@ fn commission_rebound_coins() {
 
         assert_eq!(
             user5_balance,
-            inital_balances[index] + user5_commission_rebound
+            initial_balances[index] + user5_commission_rebound
         );
 
         let user5_referral_data = query_latest_user_data(&mut suite, contracts.taxman, 5, None);
@@ -855,12 +855,12 @@ fn commission_rebound_coins() {
         // Referees volume is not updated for non direct referrer.
         assert_eq!(
             user5_referral_data.referees_volume,
-            inital_referral_data[index].referees_volume,
+            initial_referral_data[index].referees_volume,
         );
 
         assert_eq!(
             user5_referral_data.referees_commission_rebounded,
-            inital_referral_data[index].referees_commission_rebounded
+            initial_referral_data[index].referees_commission_rebounded
                 + eth_unit_price
                     .checked_mul(Udec128::new(user5_commission_rebound.0))
                     .unwrap()
@@ -874,19 +874,19 @@ fn commission_rebound_coins() {
             .query_balance(&accounts_vec[index].address(), eth::DENOM.clone())
             .should_succeed();
 
-        assert_eq!(user4_balance, inital_balances[index]);
+        assert_eq!(user4_balance, initial_balances[index]);
 
         let user4_referral_data = query_latest_user_data(&mut suite, contracts.taxman, 4, None);
 
         // Referees volume is not updated for non direct referrer.
         assert_eq!(
             user4_referral_data.referees_volume,
-            inital_referral_data[index].referees_volume,
+            initial_referral_data[index].referees_volume,
         );
 
         assert_eq!(
             user4_referral_data.referees_commission_rebounded,
-            inital_referral_data[index].referees_commission_rebounded
+            initial_referral_data[index].referees_commission_rebounded
         );
     }
 
@@ -897,19 +897,19 @@ fn commission_rebound_coins() {
             .query_balance(&accounts_vec[index].address(), eth::DENOM.clone())
             .should_succeed();
 
-        assert_eq!(user3_balance, inital_balances[index]);
+        assert_eq!(user3_balance, initial_balances[index]);
 
         let user3_referral_data = query_latest_user_data(&mut suite, contracts.taxman, 3, None);
 
         // Referees volume is not updated for non direct referrer.
         assert_eq!(
             user3_referral_data.referees_volume,
-            inital_referral_data[index].referees_volume,
+            initial_referral_data[index].referees_volume,
         );
 
         assert_eq!(
             user3_referral_data.referees_commission_rebounded,
-            inital_referral_data[index].referees_commission_rebounded
+            initial_referral_data[index].referees_commission_rebounded
         );
     }
 
@@ -927,19 +927,19 @@ fn commission_rebound_coins() {
 
         assert_eq!(
             user2_balance,
-            inital_balances[index] + user2_commission_rebound
+            initial_balances[index] + user2_commission_rebound
         );
 
         let user2_referral_data = query_latest_user_data(&mut suite, contracts.taxman, 2, None);
 
         assert_eq!(
             user2_referral_data.referees_volume,
-            inital_referral_data[index].referees_volume
+            initial_referral_data[index].referees_volume
         );
 
         assert_eq!(
             user2_referral_data.referees_commission_rebounded,
-            inital_referral_data[index].referees_commission_rebounded
+            initial_referral_data[index].referees_commission_rebounded
                 + eth_unit_price
                     .checked_mul(Udec128::new(user2_commission_rebound.0))
                     .unwrap()
@@ -953,19 +953,19 @@ fn commission_rebound_coins() {
             .query_balance(&accounts_vec[index].address(), eth::DENOM.clone())
             .should_succeed();
 
-        assert_eq!(user1_balance, inital_balances[index]);
+        assert_eq!(user1_balance, initial_balances[index]);
 
         let user1_referral_data = query_latest_user_data(&mut suite, contracts.taxman, 1, None);
 
         // Referees volume is not updated for non direct referrer.
         assert_eq!(
             user1_referral_data.referees_volume,
-            inital_referral_data[index].referees_volume,
+            initial_referral_data[index].referees_volume,
         );
 
         assert_eq!(
             user1_referral_data.referees_commission_rebounded,
-            inital_referral_data[index].referees_commission_rebounded
+            initial_referral_data[index].referees_commission_rebounded
         );
     }
 }

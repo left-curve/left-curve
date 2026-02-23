@@ -15,7 +15,7 @@ use {
         },
         bank,
         taxman::{
-            CommissionRebund, Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee, Referee,
+            CommissionRebound, Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee, Referee,
             RefereeStats, Referral, ReferralSettings, Referrer, ShareRatio,
         },
     },
@@ -438,6 +438,8 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
     let mut account_querier = AccountQuerier::new(account_factory, ctx.querier);
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
 
+    let mut referral_settings_cache = BTreeMap::new();
+
     for (address, coins) in payments {
         let Some(account) = account_querier.query_account(address)? else {
             continue;
@@ -449,12 +451,12 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
         };
 
         // Create the referrer chain, in order to calculate the rebounded fee.
-        // The payer fee reboud is calculated as first_referrer_commission_rebund * first_referrer_share_ratio.
-        // All the subsequent referrers the rebound fee percentage is calculated as referrer_fee_commission_rebund - max_referrer_commission_rebund.
+        // The payer fee rebound is calculated as first_referrer_commission_rebound * first_referrer_share_ratio.
+        // All the subsequent referrers the rebound fee percentage is calculated as referrer_fee_commission_rebound - max_referrer_commission_rebound.
         // E.g.:
-        // - first referrer:  10% commission rebund, 50% share ratio
-        // - second referrer: 10% commission rebund
-        // - third referrer:  25% commission rebund
+        // - first referrer:  10% commission rebound, 50% share ratio
+        // - second referrer: 10% commission rebound
+        // - third referrer:  25% commission rebound
         //
         // The payer gets 5% rebounded fee (10% * 50%).
         // The first referrer gets 5% rebounded fee (10% - 5%).
@@ -464,8 +466,12 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
         // Retrieve the first referrer info. We keep the first referrer outside from the other referrers
         // since we need to store extra data for him.
         // If the payer doesn't have a referrer, skip rebounding.
-        let Some((first_referrer, first_referrer_settings)) =
-            referrer_settings(ctx.storage, payer_account_params.owner, ctx.block)?
+        let Some((first_referrer, first_referrer_settings)) = referrer_settings(
+            ctx.storage,
+            payer_account_params.owner,
+            ctx.block,
+            &mut referral_settings_cache,
+        )?
         else {
             continue;
         };
@@ -475,7 +481,12 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
 
         // Retrieve MAX_REFERRER_CHAIN_DEPTH - 1 since we have already retrieved the first referrer.
         for _ in 0..MAX_REFERRER_CHAIN_DEPTH - 1 {
-            let Some(referrer_info) = referrer_settings(ctx.storage, last_referee, ctx.block)?
+            let Some(referrer_info) = referrer_settings(
+                ctx.storage,
+                last_referee,
+                ctx.block,
+                &mut referral_settings_cache,
+            )?
             else {
                 break;
             };
@@ -485,15 +496,15 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
         }
 
         // Calculate the commission rebound for the payer.
-        let payer_commission_rebund = first_referrer_settings
-            .commission_rebund
+        let payer_commission_rebound = first_referrer_settings
+            .commission_rebound
             .into_inner()
             .mul(first_referrer_settings.share_ratio.into_inner());
 
         // Create the Transfer Msg for the payer's commission rebounded value and calculate the rebounded value in USD.
         let commission_rebound_value = calculate_and_send_commission_rebound(
             &coins,
-            CommissionRebund::new(payer_commission_rebund)?,
+            CommissionRebound::new(payer_commission_rebound)?,
             &mut oracle_querier,
             get_main_account(&ctx, account_factory, payer_account_params.owner)?,
             &mut msgs,
@@ -517,12 +528,12 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
 
         // Calculate the commission rebound for the first referrer.
         let commission_rebound =
-            *first_referrer_settings.commission_rebund - payer_commission_rebund;
+            *first_referrer_settings.commission_rebound - payer_commission_rebound;
 
         // Calculate the rebounded coins for the first referrer.
         let commission_rebound_value = calculate_and_send_commission_rebound(
             &coins,
-            CommissionRebund::new(commission_rebound)?,
+            CommissionRebound::new(commission_rebound)?,
             &mut oracle_querier,
             get_main_account(&ctx, account_factory, first_referrer)?,
             &mut msgs,
@@ -550,27 +561,27 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
         }
 
         // Max commission rate seen so far in the referrer chain.
-        let mut max_commission_rate = *first_referrer_settings.commission_rebund;
+        let mut max_commission_rate = *first_referrer_settings.commission_rebound;
 
         // Iterate through the referrer chain to distribute the fee.
         for (referrer, referrer_settings) in referrer_chain {
             // Check if this referrer is eligible for rebounding.
-            if *referrer_settings.commission_rebund <= max_commission_rate {
+            if *referrer_settings.commission_rebound <= max_commission_rate {
                 continue;
             }
 
             // Calculate the effective commission rate for this referrer.
             let commission_rate = referrer_settings
-                .commission_rebund
+                .commission_rebound
                 .into_inner()
                 .saturating_sub(max_commission_rate);
 
-            max_commission_rate = *referrer_settings.commission_rebund;
+            max_commission_rate = *referrer_settings.commission_rebound;
 
             // Calculate the rebounded coins for this referrer.
             let commission_rebound_value = calculate_and_send_commission_rebound(
                 &coins,
-                CommissionRebund::new(commission_rate)?,
+                CommissionRebound::new(commission_rate)?,
                 &mut oracle_querier,
                 get_main_account(&ctx, account_factory, referrer)?,
                 &mut msgs,
@@ -631,7 +642,7 @@ fn store_referee_commission_rebound(
 /// Return the rebounded value in USD.
 fn calculate_and_send_commission_rebound(
     coins: &Coins,
-    commission_rebound: CommissionRebund,
+    commission_rebound: CommissionRebound,
     oracle_querier: &mut OracleQuerier,
     receiver: Addr,
     msgs: &mut Vec<Message>,
@@ -668,12 +679,22 @@ fn referrer_settings(
     storage: &dyn Storage,
     referee: Referee,
     block_info: BlockInfo,
+    referral_settings_cache: &mut BTreeMap<Referrer, ReferralSettings>,
 ) -> anyhow::Result<Option<(Referrer, ReferralSettings)>> {
     // If the referee has a referrer, return the referrer settings.
-    if let Some(referrer) = REFEREE_TO_REFERRER.may_load(storage, referee)?
-        && let Some(referrer_settings) = referral_settings(storage, referrer, block_info)?
-    {
-        return Ok(Some((referrer, referrer_settings)));
+    if let Some(referrer) = REFEREE_TO_REFERRER.may_load(storage, referee)? {
+        // Check if this referrer's settings are already in the cache.
+        if let Some(settings) = referral_settings_cache.get(&referrer) {
+            return Ok(Some((referrer, settings.clone())));
+        }
+
+        // Retrieve the referrer settings from storage.
+        if let Some(referrer_settings) = referral_settings(storage, referrer, block_info)? {
+            // Store the referrer settings in the cache.
+            referral_settings_cache.insert(referrer, referrer_settings.clone());
+
+            return Ok(Some((referrer, referrer_settings)));
+        }
     }
 
     Ok(None)

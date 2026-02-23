@@ -9,7 +9,7 @@ use {
 };
 
 pub type ShareRatio = Bounded<Udec128, ZeroInclusiveOneInclusive>;
-pub type CommissionRebund = Bounded<Udec128, ZeroInclusiveOneExclusive>;
+pub type CommissionRebound = Bounded<Udec128, ZeroInclusiveOneExclusive>;
 
 pub type Referrer = UserIndex;
 pub type Referee = UserIndex;
@@ -58,10 +58,10 @@ pub struct RefereeStats {
 
 #[grug::derive(Serde, Borsh)]
 pub struct ReferralSettings {
-    /// The commission rebund ratio is how much commission the referrer will receive from the fees.
-    /// This depends on the direct referees volume in the last 30 days and also on the commission rebund
+    /// The commission rebound ratio is how much commission the referrer will receive from the fees.
+    /// This depends on the direct referees volume in the last 30 days and also on the commission rebound
     /// of the previous referrers in the chain.
-    pub commission_rebund: CommissionRebund,
+    pub commission_rebound: CommissionRebound,
     /// The share ratio is how much of the commission rebounded to the referrer
     /// want to split with the referee.
     pub share_ratio: ShareRatio,
@@ -75,11 +75,11 @@ pub struct ReferralConfig {
     /// Minimum volume required for a user to become a referrer in USDC.
     /// E.g. if we want to set the threshold to $1000, this value should be 1000 * 1e6.
     pub volume_to_be_referrer: Uint128,
-    /// Default commission rebund ratio, applied when no volume thresholds are met.
-    pub commission_rebound_default: CommissionRebund,
-    /// Mapping from volume thresholds to commission rebund ratios.
+    /// Default commission rebound ratio, applied when no volume thresholds are met.
+    pub commission_rebound_default: CommissionRebound,
+    /// Mapping from volume thresholds to commission rebound ratios.
     /// The thresholds are expressed in unit of USDC, so $1000 will be represented as 1000 * 1e6.
-    pub commission_rebound_by_volume: BTreeMap<Udec128, CommissionRebund>,
+    pub commission_rebound_by_volume: BTreeMap<Udec128, CommissionRebound>,
 }
 
 #[grug::derive(Serde, Borsh)]
@@ -101,7 +101,7 @@ impl Default for ReferralConfig {
         Self {
             max_share_rate: ShareRatio::new_unchecked(Udec128::new_percent(50)),
             volume_to_be_referrer: Default::default(),
-            commission_rebound_default: CommissionRebund::new_unchecked(Udec128::ZERO),
+            commission_rebound_default: CommissionRebound::new_unchecked(Udec128::ZERO),
             commission_rebound_by_volume: Default::default(),
         }
     }
@@ -186,7 +186,7 @@ pub enum QueryMsg {
         /// user's total trading volume since genesis will be returned.
         since: Option<Timestamp>,
     },
-    /// Query the referref of the user.
+    /// Query the referrer of the user.
     #[returns(Option<Referrer>)]
     Referrer { user: Referee },
     /// Query the data of an user for the referral program.

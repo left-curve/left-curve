@@ -6,7 +6,7 @@ use {
     dango_types::{
         account_factory::UserIndex,
         taxman::{
-            CommissionRebund, Config, QueryMsg, Referee, RefereeStats, ReferralSettings, Referrer,
+            CommissionRebound, Config, QueryMsg, Referee, RefereeStats, ReferralSettings, Referrer,
             ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData,
         },
     },
@@ -230,9 +230,9 @@ pub(crate) fn referral_settings(
     block_info: BlockInfo,
 ) -> anyhow::Result<Option<ReferralSettings>> {
     if let Some(share_ratio) = FEE_SHARE_RATIO.may_load(storage, user)? {
-        let commission_rebund = calculate_commission_rebund(storage, user, block_info)?;
+        let commission_rebound = calculate_commission_rebound(storage, user, block_info)?;
         return Ok(Some(ReferralSettings {
-            commission_rebund,
+            commission_rebound,
             share_ratio,
         }));
     }
@@ -241,11 +241,11 @@ pub(crate) fn referral_settings(
 }
 
 /// Calculate the commission rebound ratio for a referrer.
-fn calculate_commission_rebund(
+fn calculate_commission_rebound(
     storage: &dyn Storage,
     referrer: Referrer,
     block_info: BlockInfo,
-) -> anyhow::Result<CommissionRebund> {
+) -> anyhow::Result<CommissionRebound> {
     // Retrieve the last user data for the referrer.
     let data_last = last_user_referral_data(storage, referrer)?;
 
@@ -272,7 +272,7 @@ fn calculate_commission_rebund(
         .referees_volume
         .checked_sub(data_since.referees_volume)?;
 
-    // Determine the commission rebund ratio based on the referees volume.
+    // Determine the commission rebound ratio based on the referees volume.
     let referral_config = CONFIG.load(storage)?.referral;
 
     let mut referrer_commission_rebound = referral_config.commission_rebound_default;
