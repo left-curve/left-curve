@@ -5,6 +5,7 @@ pub mod bank;
 pub mod config;
 pub mod constants;
 pub mod dex;
+mod dimensioned;
 pub mod gateway;
 pub mod oracle;
 pub mod perps;
@@ -15,4 +16,4 @@ mod units;
 pub mod vesting;
 pub mod warp;
 
-pub use {querier::DangoQuerier, units::*};
+pub use {dimensioned::*, querier::DangoQuerier, units::*};
