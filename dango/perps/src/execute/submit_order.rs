@@ -606,3 +606,1444 @@ fn settle_pnl_and_fee(
         Ordering::Equal => Ok((Uint128::ZERO, Uint128::ZERO)),
     }
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_types::{Dimensionless, FundingPerUnit, constants::eth, oracle::PrecisionedPrice},
+        grug::{MockQuerier, Udec128, hash_map},
+    };
+
+    // -------------------------------- helpers --------------------------------
+
+    fn usdc_price() -> PrecisionedPrice {
+        PrecisionedPrice::new(Udec128::new_percent(100), Timestamp::from_seconds(0), 6)
+    }
+
+    fn eth_price(dollars: u128) -> PrecisionedPrice {
+        PrecisionedPrice::new(
+            Udec128::new_percent(dollars * 100),
+            Timestamp::from_seconds(0),
+            18,
+        )
+    }
+
+    /// Large `skew_scale` so `exec_price == oracle_price`; 5 % initial margin.
+    fn test_pair_param() -> PairParam {
+        PairParam {
+            skew_scale: Quantity::new_int(1_000_000_000),
+            max_abs_premium: Dimensionless::new_permille(50),
+            max_abs_oi: Quantity::new_int(1_000_000),
+            initial_margin_ratio: Dimensionless::new_permille(50), // 5 %
+            maintenance_margin_ratio: Dimensionless::new_permille(30), // 3 %
+            ..Default::default()
+        }
+    }
+
+    /// Zero trading fee, 10 max open orders.
+    fn test_param() -> Param {
+        Param {
+            trading_fee_rate: Dimensionless::ZERO,
+            max_open_orders: 10,
+            ..Default::default()
+        }
+    }
+
+    /// Market order with a generous 10 % slippage tolerance.
+    fn market_order() -> OrderKind {
+        OrderKind::Market {
+            max_slippage: Dimensionless::new_permille(100),
+        }
+    }
+
+    fn setup_queriers(
+        eth_dollars: u128,
+        pair_param: PairParam,
+        pair_state: PairState,
+        collateral: u128,
+    ) -> (
+        MockQuerier,
+        NoCachePairQuerier<'static>,
+        OracleQuerier<'static>,
+    ) {
+        setup_queriers_ext(eth_dollars, pair_param, pair_state, collateral, None)
+    }
+
+    fn setup_queriers_ext(
+        eth_dollars: u128,
+        pair_param: PairParam,
+        pair_state: PairState,
+        collateral: u128,
+        next_order_id: Option<OrderId>,
+    ) -> (
+        MockQuerier,
+        NoCachePairQuerier<'static>,
+        OracleQuerier<'static>,
+    ) {
+        let mock_q = MockQuerier::new()
+            .with_balance(
+                Addr::mock(1),
+                settlement_currency::DENOM.clone(),
+                collateral,
+            )
+            .unwrap();
+        let pair_q = NoCachePairQuerier::new_mock(
+            hash_map! { eth::DENOM.clone() => pair_param },
+            hash_map! { eth::DENOM.clone() => pair_state },
+            next_order_id,
+        );
+        let oracle_q = OracleQuerier::new_mock(hash_map! {
+            settlement_currency::DENOM.clone() => usdc_price(),
+            eth::DENOM.clone() => eth_price(eth_dollars),
+        });
+        (mock_q, pair_q, oracle_q)
+    }
+
+    /// 100 k USDC in base units (precision 6).
+    const COLLATERAL: u128 = 100_000_000_000;
+    /// 1 M USDC in base units.
+    const VAULT_MARGIN: u128 = 1_000_000_000_000;
+
+    fn default_state() -> State {
+        State {
+            vault_margin: Uint128::new(VAULT_MARGIN),
+            ..Default::default()
+        }
+    }
+
+    fn make_position(size: i128, entry_price: i128) -> Position {
+        Position {
+            size: Quantity::new_int(size),
+            entry_price: UsdPrice::new_int(entry_price),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+        }
+    }
+
+    fn position_with_funding(size: i128, entry_price: i128, entry_funding: i128) -> Position {
+        Position {
+            size: Quantity::new_int(size),
+            entry_price: UsdPrice::new_int(entry_price),
+            entry_funding_per_unit: FundingPerUnit::new_int(entry_funding),
+        }
+    }
+
+    // ======================= Group 1: Early rejections =======================
+
+    #[test]
+    fn reduce_only_no_position_errors() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let err = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(10),
+            market_order(),
+            true,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("fillable size is zero"));
+    }
+
+    #[test]
+    fn reduce_only_same_direction_errors() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(5),
+                oi_weighted_entry_price: UsdValue::new_int(5_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(5, 1000));
+
+        let err = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(10), // same direction as long
+            market_order(),
+            true,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("fillable size is zero"));
+    }
+
+    #[test]
+    fn reduce_only_partial_close_succeeds() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(5),
+                oi_weighted_entry_price: UsdValue::new_int(5_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(5, 1000));
+
+        let (_state, _pair_state, user_state, vault_pays_user, user_pays_vault, order) =
+            _submit_order(
+                Addr::mock(1),
+                Timestamp::from_seconds(0),
+                querier,
+                &pair_q,
+                &mut oracle_q,
+                &test_param(),
+                default_state(),
+                user_state,
+                &eth::DENOM,
+                Quantity::new_int(-10), // sell 10, only 5 fillable
+                market_order(),
+                true,
+            )
+            .unwrap();
+
+        assert!(user_state.positions.is_empty());
+        assert!(order.is_none());
+        // Profit: 5 * ($2000 - $1000) = $5000
+        assert!(vault_pays_user > Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+    }
+
+    #[test]
+    fn minimum_opening_violation() {
+        let pair_param = PairParam {
+            min_opening_size: UsdValue::new_int(10_000),
+            ..test_pair_param()
+        };
+
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            pair_param,
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let err = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(1), // notional = 1 * $2000 = $2000 < $10000
+            market_order(),
+            false,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("opening size is below minimum"));
+    }
+
+    #[test]
+    fn oi_constraint_violation() {
+        let pair_param = PairParam {
+            max_abs_oi: Quantity::new_int(100),
+            ..test_pair_param()
+        };
+
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            pair_param,
+            PairState {
+                long_oi: Quantity::new_int(95),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let err = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(10), // long_oi = 95 + 10 = 105 > 100
+            market_order(),
+            false,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("max long OI exceeded"));
+    }
+
+    // ======================= Group 2: Price constraint =======================
+
+    #[test]
+    fn market_order_slippage_exceeded() {
+        // Small skew_scale amplifies price impact.
+        let pair_param = PairParam {
+            skew_scale: Quantity::new_int(100),
+            max_abs_premium: Dimensionless::new_permille(500), // 50 %
+            ..test_pair_param()
+        };
+
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            pair_param,
+            PairState {
+                skew: Quantity::new_int(10),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let err = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::ZERO,
+            },
+            false,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("slippage exceeds tolerance"));
+    }
+
+    #[test]
+    fn limit_buy_stored_on_price_violation() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers_ext(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+            Some(OrderId::ZERO),
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let (_state, _pair_state, user_state, vault_pays_user, user_pays_vault, order) =
+            _submit_order(
+                Addr::mock(1),
+                Timestamp::from_seconds(0),
+                querier,
+                &pair_q,
+                &mut oracle_q,
+                &test_param(),
+                default_state(),
+                UserState::default(),
+                &eth::DENOM,
+                Quantity::new_int(5),
+                OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1000), // below oracle $2000
+                },
+                false,
+            )
+            .unwrap();
+
+        let (stored_price, order_id, stored_order) = order.unwrap();
+
+        // Buy: limit price is inverted for storage ordering.
+        assert_eq!(
+            stored_price,
+            UsdPrice::MAX.checked_sub(UsdPrice::new_int(1000)).unwrap()
+        );
+        assert_eq!(order_id, OrderId::ZERO);
+        assert_eq!(stored_order.size, Quantity::new_int(5));
+        assert!(!stored_order.reduce_only);
+        assert_eq!(user_state.open_order_count, 1);
+        // reserved_margin = |5| * $1000 * 5 % = $250
+        assert_eq!(user_state.reserved_margin, UsdValue::new_int(250));
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+    }
+
+    #[test]
+    fn limit_sell_stored_without_inversion() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers_ext(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+            Some(OrderId::ZERO),
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let (_state, _pair_state, user_state, vault_pays_user, user_pays_vault, order) =
+            _submit_order(
+                Addr::mock(1),
+                Timestamp::from_seconds(0),
+                querier,
+                &pair_q,
+                &mut oracle_q,
+                &test_param(),
+                default_state(),
+                UserState::default(),
+                &eth::DENOM,
+                Quantity::new_int(-5),
+                OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(3000), // above oracle $2000
+                },
+                false,
+            )
+            .unwrap();
+
+        let (stored_price, _order_id, stored_order) = order.unwrap();
+
+        // Sell: limit price is NOT inverted.
+        assert_eq!(stored_price, UsdPrice::new_int(3000));
+        assert_eq!(stored_order.size, Quantity::new_int(-5));
+        assert_eq!(user_state.open_order_count, 1);
+        // reserved_margin = |-5| * $3000 * 5 % = $750
+        assert_eq!(user_state.reserved_margin, UsdValue::new_int(750));
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+    }
+
+    #[test]
+    fn limit_order_too_many_open_orders() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers_ext(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+            Some(OrderId::ZERO),
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let user_state = UserState {
+            open_order_count: 10, // at max
+            ..Default::default()
+        };
+
+        let err = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(5),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(1000),
+            },
+            false,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("too many open orders"));
+    }
+
+    #[test]
+    fn limit_order_insufficient_margin() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers_ext(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            1_000_000, // only 1 USDC
+            Some(OrderId::ZERO),
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let err = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(100),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(1000),
+            },
+            false,
+        )
+        .unwrap_err();
+
+        assert!(
+            err.to_string()
+                .contains("insufficient margin for opening GTC order")
+        );
+    }
+
+    // ========================= Group 3: Margin check =========================
+
+    #[test]
+    fn insufficient_collateral_errors() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            1_000_000, // 1 USDC
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let err = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(100), // margin = 100 * $2000 * 5 % = $10000
+            market_order(),
+            false,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("insufficient collateral"));
+    }
+
+    #[test]
+    fn margin_check_passes_with_sufficient_collateral() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let (_state, _pair_state, user_state, _vpay, _upay, order) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(1), // margin = 1 * $2000 * 5 % = $100
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert!(user_state.positions.contains_key(&eth::DENOM));
+        assert!(order.is_none());
+    }
+
+    // ====================== Group 4: Closing positions =======================
+
+    #[test]
+    fn close_long_at_profit() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(10_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(10, 1000));
+
+        let (state, _pair_state, user_state, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert!(user_state.positions.is_empty());
+        // PnL = 10 * ($2000 - $1000) = $10,000
+        assert_eq!(vault_pays_user, Uint128::new(10_000_000_000));
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+        assert_eq!(
+            state.vault_margin,
+            Uint128::new(VAULT_MARGIN - 10_000_000_000)
+        );
+    }
+
+    #[test]
+    fn close_long_at_loss() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            1000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(20_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(10, 2000));
+
+        let (state, _pair_state, user_state, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert!(user_state.positions.is_empty());
+        // PnL = 10 * ($1000 - $2000) = -$10,000
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::new(10_000_000_000));
+        assert_eq!(
+            state.vault_margin,
+            Uint128::new(VAULT_MARGIN + 10_000_000_000)
+        );
+    }
+
+    #[test]
+    fn close_short_at_profit() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            1000,
+            test_pair_param(),
+            PairState {
+                short_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(-20_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(-10, 2000));
+
+        let (_state, _pair_state, user_state, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(10), // buy to close short
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert!(user_state.positions.is_empty());
+        // Short PnL: entry - exit = $2000 - $1000 = $10,000
+        assert_eq!(vault_pays_user, Uint128::new(10_000_000_000));
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+    }
+
+    #[test]
+    fn close_short_at_loss() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                short_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(-10_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(-10, 1000));
+
+        let (_state, _pair_state, user_state, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert!(user_state.positions.is_empty());
+        // Short PnL: entry - exit = $1000 - $2000 = -$10,000
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::new(10_000_000_000));
+    }
+
+    #[test]
+    fn partial_close_keeps_position() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(10_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(10, 1000));
+
+        let (_state, _pair_state, user_state, vault_pays_user, _upay, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-3), // close 3 of 10
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        let position = user_state.positions.get(&eth::DENOM).unwrap();
+        assert_eq!(position.size, Quantity::new_int(7));
+        assert_eq!(position.entry_price, UsdPrice::new_int(1000)); // unchanged
+        assert!(vault_pays_user > Uint128::ZERO);
+    }
+
+    // ====================== Group 5: Opening positions ========================
+
+    #[test]
+    fn open_new_long() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let (_state, pair_state, user_state, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        let position = user_state.positions.get(&eth::DENOM).unwrap();
+        assert_eq!(position.size, Quantity::new_int(10));
+        assert_eq!(position.entry_price, UsdPrice::new_int(2000));
+        assert_eq!(pair_state.long_oi, Quantity::new_int(10));
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+    }
+
+    #[test]
+    fn open_new_short() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let (_state, pair_state, user_state, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(-10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        let position = user_state.positions.get(&eth::DENOM).unwrap();
+        assert_eq!(position.size, Quantity::new_int(-10));
+        assert_eq!(position.entry_price, UsdPrice::new_int(2000));
+        assert_eq!(pair_state.short_oi, Quantity::new_int(10));
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+    }
+
+    #[test]
+    fn increase_long_blends_entry_price() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(10_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(10, 1000));
+
+        let (_state, pair_state, user_state, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(10), // same direction → all opening
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        let position = user_state.positions.get(&eth::DENOM).unwrap();
+        assert_eq!(position.size, Quantity::new_int(20));
+        // Blended: (10 * $1000 + 10 * $2000) / 20 = $1500
+        assert_eq!(position.entry_price, UsdPrice::new_int(1500));
+        assert_eq!(pair_state.long_oi, Quantity::new_int(20));
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+    }
+
+    #[test]
+    fn flip_long_to_short() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(5),
+                oi_weighted_entry_price: UsdValue::new_int(5_000),
+                funding_per_unit: FundingPerUnit::new_int(3),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(5, 1000));
+
+        let (_state, pair_state, user_state, vault_pays_user, _upay, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-15), // close 5 long, open 10 short
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        let position = user_state.positions.get(&eth::DENOM).unwrap();
+        assert_eq!(position.size, Quantity::new_int(-10));
+        // New position: entry_price = exec ≈ $2000, not blended
+        assert_eq!(position.entry_price, UsdPrice::new_int(2000));
+        // entry_funding set to current pair_state.funding_per_unit
+        assert_eq!(position.entry_funding_per_unit, FundingPerUnit::new_int(3));
+        // OI flipped
+        assert_eq!(pair_state.long_oi, Quantity::ZERO);
+        assert_eq!(pair_state.short_oi, Quantity::new_int(10));
+        // Realized profit from closing long
+        assert!(vault_pays_user > Uint128::ZERO);
+    }
+
+    // ====================== Group 6: Funding settlement ======================
+
+    #[test]
+    fn funding_settled_positive_accrued() {
+        // Long 10 @ $2000, entry_funding=1, pair funding=3.
+        // Accrued = 10 * (3 - 1) = 20 → user owes $20 → PnL = -$20.
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(20_000),
+                funding_per_unit: FundingPerUnit::new_int(3),
+                oi_weighted_entry_funding: UsdValue::new_int(10), // 10 * 1
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), position_with_funding(10, 2000, 1));
+
+        let (_state, _pair_state, _user_state, vault_pays_user, user_pays_vault, _) =
+            _submit_order(
+                Addr::mock(1),
+                Timestamp::from_seconds(0),
+                querier,
+                &pair_q,
+                &mut oracle_q,
+                &test_param(),
+                default_state(),
+                user_state,
+                &eth::DENOM,
+                Quantity::new_int(-10), // close fully
+                market_order(),
+                false,
+            )
+            .unwrap();
+
+        // Closing PnL = 0 (entry == oracle). Funding PnL = -$20.
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::new(20_000_000));
+    }
+
+    #[test]
+    fn funding_settled_negative_accrued() {
+        // Long 10 @ $2000, entry_funding=5, pair funding=3.
+        // Accrued = 10 * (3 - 5) = -20 → vault owes user $20 → PnL = +$20.
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(20_000),
+                funding_per_unit: FundingPerUnit::new_int(3),
+                oi_weighted_entry_funding: UsdValue::new_int(50), // 10 * 5
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), position_with_funding(10, 2000, 5));
+
+        let (_state, _pair_state, _user_state, vault_pays_user, user_pays_vault, _) =
+            _submit_order(
+                Addr::mock(1),
+                Timestamp::from_seconds(0),
+                querier,
+                &pair_q,
+                &mut oracle_q,
+                &test_param(),
+                default_state(),
+                user_state,
+                &eth::DENOM,
+                Quantity::new_int(-10),
+                market_order(),
+                false,
+            )
+            .unwrap();
+
+        // Closing PnL = 0. Funding PnL = +$20.
+        assert_eq!(vault_pays_user, Uint128::new(20_000_000));
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+    }
+
+    #[test]
+    fn no_funding_on_new_position() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let (_state, _pair_state, _user_state, vault_pays_user, user_pays_vault, _) =
+            _submit_order(
+                Addr::mock(1),
+                Timestamp::from_seconds(0),
+                querier,
+                &pair_q,
+                &mut oracle_q,
+                &test_param(),
+                default_state(),
+                UserState::default(),
+                &eth::DENOM,
+                Quantity::new_int(10),
+                market_order(),
+                false,
+            )
+            .unwrap();
+
+        // Pure open: no closing PnL, no funding.
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+    }
+
+    // ================== Group 7: OI and accumulator updates ==================
+
+    #[test]
+    fn oi_updated_close_long() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(10_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(10, 1000));
+
+        let (_state, pair_state, _user_state, ..) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-3), // close 3
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(pair_state.long_oi, Quantity::new_int(7));
+    }
+
+    #[test]
+    fn oi_updated_open_short() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let (_state, pair_state, _user_state, ..) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(-5),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(pair_state.short_oi, Quantity::new_int(5));
+    }
+
+    #[test]
+    fn accumulators_removed_on_close() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(10_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(10, 1000));
+
+        let (_state, pair_state, _user_state, ..) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-10), // full close
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(pair_state.oi_weighted_entry_price, UsdValue::ZERO);
+        assert_eq!(pair_state.oi_weighted_entry_funding, UsdValue::ZERO);
+    }
+
+    #[test]
+    fn accumulators_added_on_open() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let (_state, pair_state, _user_state, ..) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        // oi_weighted_entry_price = 10 * $2000 = $20,000
+        assert_eq!(
+            pair_state.oi_weighted_entry_price,
+            UsdValue::new_int(20_000)
+        );
+        assert_eq!(pair_state.oi_weighted_entry_funding, UsdValue::ZERO);
+    }
+
+    // ====================== Group 8: settle_pnl_and_fee ======================
+
+    #[test]
+    fn positive_net_pnl_vault_pays_user() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(10_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(10, 1000));
+
+        let (state, _, _, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert!(vault_pays_user > Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+        assert!(state.vault_margin < Uint128::new(VAULT_MARGIN));
+    }
+
+    #[test]
+    fn negative_net_pnl_user_pays_vault() {
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            1000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(20_000),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(10, 2000));
+
+        let (state, _, _, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert!(user_pays_vault > Uint128::ZERO);
+        assert!(state.vault_margin > Uint128::new(VAULT_MARGIN));
+    }
+
+    #[test]
+    fn pnl_exactly_equals_fee() {
+        // fee_rate = 5 %, long 10 @ $950, close at exec ≈ $1000.
+        // PnL = 10 * ($1000 - $950) = $500.
+        // Fee = 10 * $1000 * 0.05 = $500.  Net = $0.
+        let param = Param {
+            trading_fee_rate: Dimensionless::new_permille(50),
+            max_open_orders: 10,
+            ..Default::default()
+        };
+
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            1000,
+            test_pair_param(),
+            PairState {
+                long_oi: Quantity::new_int(10),
+                oi_weighted_entry_price: UsdValue::new_int(9_500),
+                last_funding_time: Timestamp::from_seconds(0),
+                ..Default::default()
+            },
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let mut user_state = UserState::default();
+        user_state
+            .positions
+            .insert(eth::DENOM.clone(), make_position(10, 950));
+
+        let (state, _, _, vault_pays_user, user_pays_vault, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &param,
+            default_state(),
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(vault_pays_user, Uint128::ZERO);
+        assert_eq!(user_pays_vault, Uint128::ZERO);
+        assert_eq!(state.vault_margin, Uint128::new(VAULT_MARGIN));
+    }
+
+    // ========================== Group 9: End-to-end ==========================
+
+    #[test]
+    fn full_open_close_round_trip() {
+        // Step 1: open long 10 at $2000.
+        let (mock_q, pair_q, mut oracle_q) = setup_queriers(
+            2000,
+            test_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+            COLLATERAL,
+        );
+        let querier = QuerierWrapper::new(&mock_q);
+
+        let (state, pair_state, user_state, vpay1, upay1, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier,
+            &pair_q,
+            &mut oracle_q,
+            &test_param(),
+            default_state(),
+            UserState::default(),
+            &eth::DENOM,
+            Quantity::new_int(10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(vpay1, Uint128::ZERO);
+        assert_eq!(upay1, Uint128::ZERO);
+        assert!(user_state.positions.contains_key(&eth::DENOM));
+
+        // Step 2: close the position with fresh queriers using updated pair_state.
+        let pair_q2 = NoCachePairQuerier::new_mock(
+            hash_map! { eth::DENOM.clone() => test_pair_param() },
+            hash_map! { eth::DENOM.clone() => pair_state },
+            None,
+        );
+        let mut oracle_q2 = OracleQuerier::new_mock(hash_map! {
+            settlement_currency::DENOM.clone() => usdc_price(),
+            eth::DENOM.clone() => eth_price(2000),
+        });
+        let querier2 = QuerierWrapper::new(&mock_q);
+
+        let (state2, pair_state2, user_state2, vpay2, upay2, _) = _submit_order(
+            Addr::mock(1),
+            Timestamp::from_seconds(0),
+            querier2,
+            &pair_q2,
+            &mut oracle_q2,
+            &test_param(),
+            state,
+            user_state,
+            &eth::DENOM,
+            Quantity::new_int(-10),
+            market_order(),
+            false,
+        )
+        .unwrap();
+
+        // Positions empty after full round trip.
+        assert!(user_state2.positions.is_empty());
+        // OI back to zero.
+        assert_eq!(pair_state2.long_oi, Quantity::ZERO);
+        assert_eq!(pair_state2.short_oi, Quantity::ZERO);
+        // Accumulators back to zero.
+        assert_eq!(pair_state2.oi_weighted_entry_price, UsdValue::ZERO);
+        assert_eq!(pair_state2.oi_weighted_entry_funding, UsdValue::ZERO);
+        // No PnL (entry == exec == oracle).
+        assert_eq!(vpay2, Uint128::ZERO);
+        assert_eq!(upay2, Uint128::ZERO);
+        // Vault margin unchanged.
+        assert_eq!(state2.vault_margin, Uint128::new(VAULT_MARGIN));
+    }
+}
