@@ -133,6 +133,7 @@ impl<'a> NoCachePairQuerier<'a> {
             Self::Mock { next_order_id, .. } => *next_order_id,
         };
 
+        // The first ever order, let's give it the ID of 1.
         Ok(maybe_order_id.unwrap_or(OrderId::ONE))
     }
 }

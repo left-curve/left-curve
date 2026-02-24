@@ -7,18 +7,21 @@ use {
             compute_target_price, compute_trading_fee, compute_user_equity, decompose_fill,
             is_price_constraint_violated,
         },
-        execute::ORACLE,
+        execute::{BANK, ORACLE},
     },
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
-        Quantity, UsdPrice,
+        Quantity, UsdPrice, bank,
         perps::{
             Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, UserState,
             settlement_currency,
         },
     },
-    grug::{Addr, MutableCtx, NumberConst, QuerierExt, QuerierWrapper, Response, Timestamp},
+    grug::{
+        Addr, Coins, Message, MutableCtx, NumberConst, QuerierExt, QuerierWrapper, Response,
+        Timestamp, Uint128, coins,
+    },
 };
 
 pub fn submit_order(
@@ -38,7 +41,7 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (pair_state, user_state, order_to_store) = _submit_order(
+    let (pair_state, user_state, order_to_store, fee) = _submit_order(
         ctx.sender,
         ctx.block.timestamp,
         ctx.querier,
@@ -59,6 +62,7 @@ pub fn submit_order(
     USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
 
     if let Some((limit_price, order_id, order)) = order_to_store {
+        // Increment the order ID.
         let next_order_id = order_id + OrderId::ONE;
         let order_key = (pair_id, limit_price, ctx.block.timestamp, order_id);
 
@@ -71,7 +75,20 @@ pub fn submit_order(
         };
     }
 
-    Ok(Response::new())
+    // Send a message to the bank contract to collect trading fee from the user.
+    Ok(Response::new().may_add_message(if let Some(fee) = fee {
+        Some(Message::execute(
+            BANK,
+            &bank::ExecuteMsg::ForceTransfer {
+                from: ctx.sender,
+                to: ctx.contract,
+                coins: coins! { settlement_currency::DENOM.clone() => fee },
+            },
+            Coins::new(),
+        )?)
+    } else {
+        None
+    }))
 }
 
 /// Returns:
@@ -79,6 +96,7 @@ pub fn submit_order(
 /// - The updated `PairState`
 /// - The updated `UserState`
 /// - GTC order that needs to be stored (if applicable)
+/// - Trading fee to collect (if applicable)
 fn _submit_order(
     user: Addr,
     current_time: Timestamp,
@@ -91,7 +109,12 @@ fn _submit_order(
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
-) -> anyhow::Result<(PairState, UserState, Option<(UsdPrice, OrderId, Order)>)> {
+) -> anyhow::Result<(
+    PairState,
+    UserState,
+    Option<(UsdPrice, OrderId, Order)>,
+    Option<Uint128>,
+)> {
     // ------------- Step 1. Accrue funding before any OI changes --------------
 
     let pair_param = pair_querier.query_pair_param(&pair_id)?;
@@ -150,7 +173,7 @@ fn _submit_order(
         match kind {
             OrderKind::Market { .. } => {
                 bail!(
-                    "price exceeds slippage tolerance! execution price: {}, target_price: {}",
+                    "slippage exceeds tolerance! execution price: {}, target_price: {}",
                     exec_price,
                     target_price
                 );
@@ -169,7 +192,7 @@ fn _submit_order(
                     reduce_only,
                 )?;
 
-                return Ok((pair_state, user_state, Some(order_to_store)));
+                return Ok((pair_state, user_state, Some(order_to_store), None));
             },
         }
     }
@@ -219,11 +242,11 @@ fn _submit_order(
         user_state.reserved_margin
     );
 
-    // ------------- Step 7. Execute fill and collect trading fee --------------
+    // ----------------------- Step 7. Execute the fill ------------------------
 
-    execute_fill()?;
+    let fee = execute_fill(&mut user_state)?;
 
-    Ok((pair_state, user_state, None))
+    Ok((pair_state, user_state, None, Some(fee)))
 }
 
 #[inline]
@@ -320,6 +343,29 @@ fn store_limit_order(
 }
 
 #[inline]
-fn execute_fill() -> anyhow::Result<()> {
+fn execute_fill(user_state: &mut UserState, pair_id: &PairId) -> anyhow::Result<Uint128> {
+    if let Some(position) = user_state.positions.get_mut(pair_id) {
+        apply_closing()?;
+    }
+
+    apply_opening()?;
+
+    update_oi()?;
+
+    todo!();
+}
+
+#[inline]
+fn apply_closing() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[inline]
+fn apply_opening() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[inline]
+fn update_oi() -> anyhow::Result<()> {
     Ok(())
 }
