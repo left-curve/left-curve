@@ -3,9 +3,9 @@ use {
         ASKS, BIDS, NEXT_ORDER_ID, NoCachePairQuerier, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{
             accrue_funding, check_minimum_opening, check_oi_constraint, compute_available_margin,
-            compute_exec_price, compute_initial_margin, compute_required_margin,
-            compute_target_price, compute_trading_fee, compute_user_equity, decompose_fill,
-            is_price_constraint_violated,
+            compute_exec_price, compute_initial_margin, compute_position_unrealized_funding,
+            compute_required_margin, compute_target_price, compute_trading_fee,
+            compute_user_equity, decompose_fill, is_price_constraint_violated,
         },
         execute::{BANK, ORACLE},
     },
@@ -14,8 +14,8 @@ use {
     dango_types::{
         Quantity, UsdPrice, UsdValue, bank,
         perps::{
-            Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, State, UserState,
-            settlement_currency,
+            Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, Position, State,
+            UserState, settlement_currency,
         },
     },
     grug::{
@@ -243,7 +243,7 @@ fn _submit_order(
         oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
 
     // Compute the trading fee for this order.
-    let trading_fee = compute_trading_fee(fillable_size, oracle_price, &param)?;
+    let trading_fee = compute_trading_fee(fillable_size, exec_price, &param)?;
 
     // Query the user's collateral balance.
     let collateral_balance = querier.query_balance(user, settlement_currency::DENOM.clone())?;
@@ -276,6 +276,7 @@ fn _submit_order(
         &mut pair_state,
         &mut user_state,
         pair_id,
+        exec_price,
         closing_size,
         opening_size,
     )?;
@@ -394,30 +395,33 @@ fn execute_fill(
     pair_state: &mut PairState,
     user_state: &mut UserState,
     pair_id: &PairId,
+    exec_price: UsdPrice,
     closing_size: Quantity,
     opening_size: Quantity,
 ) -> anyhow::Result<UsdValue> {
-    // If a position already exists, remove its contributions to the accumulators,
-    // Settle funding.
+    let mut pnl = UsdValue::ZERO;
+
+    // If a position already exists, remove its contributions to the accumulators
+    // and settle funding.
     if let Some(position) = user_state.positions.get_mut(pair_id) {
         (pair_state.oi_weighted_entry_price)
             .checked_sub_assign(position.size.checked_mul(position.entry_price)?)?;
         (pair_state.oi_weighted_entry_funding)
             .checked_sub_assign(position.size.checked_mul(position.entry_funding_per_unit)?)?;
 
-        settle_funding()?;
+        let funding_pnl = settle_funding(position, pair_state)?;
+        pnl = pnl.checked_add(funding_pnl)?;
     }
 
     // Execute the closing portion of the order. Compute realized PnL.
-    let pnl = if closing_size.is_non_zero() {
-        apply_closing()?
-    } else {
-        UsdValue::ZERO
-    };
+    if closing_size.is_non_zero() {
+        let closing_pnl = apply_closing(user_state, pair_id, closing_size, exec_price)?;
+        pnl = pnl.checked_add(closing_pnl)?;
+    }
 
     // Execute the opening portion of the order.
     if opening_size.is_non_zero() {
-        apply_opening()?;
+        apply_opening(user_state, pair_state, pair_id, opening_size, exec_price)?;
     }
 
     // Re-add accumulator contributions of the updated position.
@@ -434,19 +438,103 @@ fn execute_fill(
     Ok(pnl)
 }
 
+/// Settle funding accrued on a position since it was last touched.
+///
+/// Resets the position's funding entry point to the current cumulative value.
+/// Returns the PnL from the user's perspective (negated accrued funding,
+/// since positive accrued = user cost).
 #[inline]
-fn settle_funding() -> anyhow::Result<()> {
+fn settle_funding(position: &mut Position, pair_state: &PairState) -> anyhow::Result<UsdValue> {
+    let accrued = compute_position_unrealized_funding(position, pair_state)?;
+
+    position.entry_funding_per_unit = pair_state.funding_per_unit;
+
+    Ok(accrued.checked_neg()?)
+}
+
+/// Close a portion of an existing position: realize PnL and reduce size.
+///
+/// Removes the position entirely if fully closed.
+#[inline]
+fn apply_closing(
+    user_state: &mut UserState,
+    pair_id: &PairId,
+    closing_size: Quantity,
+    exec_price: UsdPrice,
+) -> anyhow::Result<UsdValue> {
+    let position = user_state.positions.get_mut(pair_id).unwrap();
+
+    let pnl = compute_pnl_to_realize(position, closing_size, exec_price)?;
+
+    position.size.checked_add_assign(closing_size)?;
+
+    if position.size.is_zero() {
+        user_state.positions.remove(pair_id);
+    }
+
+    Ok(pnl)
+}
+
+/// Grow an existing position or create a new one.
+///
+/// For existing positions, blends the entry price as a weighted average.
+/// For new positions (or positions fully closed then reopened), sets
+/// the entry price and funding entry point directly.
+#[inline]
+fn apply_opening(
+    user_state: &mut UserState,
+    pair_state: &PairState,
+    pair_id: &PairId,
+    opening_size: Quantity,
+    exec_price: UsdPrice,
+) -> anyhow::Result<()> {
+    if let Some(position) = user_state.positions.get_mut(pair_id) {
+        let old_size = position.size;
+        position.size.checked_add_assign(opening_size)?;
+
+        if old_size.is_zero() {
+            // Fully closed by apply_closing, now reopening opposite side.
+            position.entry_price = exec_price;
+            position.entry_funding_per_unit = pair_state.funding_per_unit;
+        } else {
+            // Weighted average entry price.
+            let old_notional = old_size.checked_abs()?.checked_mul(position.entry_price)?;
+            let new_notional = opening_size.checked_abs()?.checked_mul(exec_price)?;
+            position.entry_price = old_notional
+                .checked_add(new_notional)?
+                .checked_div(position.size.checked_abs()?)?;
+        }
+    } else {
+        user_state.positions.insert(pair_id.clone(), Position {
+            size: opening_size,
+            entry_price: exec_price,
+            entry_funding_per_unit: pair_state.funding_per_unit,
+        });
+    }
+
     Ok(())
 }
 
+/// Compute the PnL to be realized when closing a portion of a position.
+///
+/// - Long positions: profit when exit > entry
+/// - Short positions: profit when entry > exit
 #[inline]
-fn apply_closing() -> anyhow::Result<UsdValue> {
-    Ok(())
-}
+fn compute_pnl_to_realize(
+    position: &Position,
+    closing_size: Quantity,
+    exec_price: UsdPrice,
+) -> anyhow::Result<UsdValue> {
+    let entry_value = closing_size
+        .checked_abs()?
+        .checked_mul(position.entry_price)?;
+    let exit_value = closing_size.checked_abs()?.checked_mul(exec_price)?;
 
-#[inline]
-fn apply_opening() -> anyhow::Result<()> {
-    Ok(())
+    if position.size.is_positive() {
+        Ok(exit_value.checked_sub(entry_value)?)
+    } else {
+        Ok(entry_value.checked_sub(exit_value)?)
+    }
 }
 
 #[inline]
@@ -457,7 +545,7 @@ fn update_oi(
 ) -> anyhow::Result<()> {
     if closing_size.is_negative() {
         // Cloing a long position with a sell order.
-        pair_state.long_oi.checked_add_assign(closing_size);
+        pair_state.long_oi.checked_add_assign(closing_size)?;
     } else if closing_size.is_positive() {
         // Closing a short position with a buy order.
         pair_state.short_oi.checked_sub_assign(closing_size)?;

@@ -2,8 +2,8 @@
 
 use {
     grug::{
-        Dec128_6, Duration, Exponentiate, Int128, IsZero, MathResult, Number as _, NumberConst,
-        PrimaryKey, RawKey, Sign, Signed, StdResult, Uint128, Unsigned,
+        Dec128_6, Duration, Exponentiate, Int128, IsZero, MathError, MathResult, Number as _,
+        NumberConst, PrimaryKey, RawKey, Sign, Signed, StdResult, Uint128, Unsigned,
     },
     std::{
         fmt,
@@ -28,6 +28,7 @@ pub struct Number<Q, U, D> {
 impl<Q, U, D> Number<Q, U, D> {
     pub const HALF: Self = Self::new(Dec128_6::raw(Int128::new(500_000)));
     pub const MAX: Self = Self::new(Dec128_6::MAX);
+    pub const MIN: Self = Self::new(Dec128_6::MIN);
     pub const ONE: Self = Self::new(Dec128_6::ONE);
     pub const ZERO: Self = Self::new(Dec128_6::ZERO);
 
@@ -52,6 +53,10 @@ impl<Q, U, D> Number<Q, U, D> {
         Self::new(Dec128_6::new_permille(n))
     }
 
+    pub fn is_zero(&self) -> bool {
+        self.inner.is_zero()
+    }
+
     pub fn is_non_zero(&self) -> bool {
         self.inner.is_non_zero()
     }
@@ -70,6 +75,14 @@ impl<Q, U, D> Number<Q, U, D> {
 
     pub fn checked_abs(self) -> MathResult<Self> {
         self.inner.checked_abs().map(Self::new)
+    }
+
+    pub fn checked_neg(self) -> MathResult<Self> {
+        if self.inner == Dec128_6::MIN {
+            return Err(MathError::overflow_neg(self));
+        }
+
+        Ok(Self::new(-self.inner))
     }
 
     pub fn checked_add(self, rhs: Self) -> MathResult<Self> {
