@@ -1121,8 +1121,8 @@ fn handle_submit_order(
                 // No fill happened, so user_pos is unchanged.
                 store_limit_order(
                     params, user_state, pair_params, pair_id, user_id,
-                    size, limit_price, reduce_only,
-                    user_pos, current_time,
+                    size, limit_price, opening_size,
+                    current_time,
                     oracle_prices, pair_params_map, pair_states, usdt_price,
                 );
 
@@ -1152,8 +1152,7 @@ fn store_limit_order(
     user_id: UserId,
     unfilled_size: HumanAmount,
     limit_price: UsdPrice,
-    reduce_only: bool,
-    user_pos_after_fill: HumanAmount,
+    opening_size: HumanAmount,
     current_time: Timestamp,
     oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
@@ -1167,11 +1166,10 @@ fn store_limit_order(
     );
 
     // Reserve margin for the opening portion of the unfilled size.
-    // With reduce_only, the opening portion is zero so no margin is reserved.
-    let (_, unfilled_opening) = decompose_fill(unfilled_size, user_pos_after_fill);
-    let unfilled_opening = if reduce_only { HumanAmount::ZERO } else { unfilled_opening };
-    let margin_to_reserve = compute_required_margin(unfilled_opening, limit_price, pair_params, usdt_price);
-    let fee_to_reserve = compute_trading_fee(unfilled_opening, limit_price, params.trading_fee_rate, usdt_price);
+    // The caller already decomposed the order and applied reduce_only,
+    // so opening_size is zero for pure closing / reduce-only orders.
+    let margin_to_reserve = compute_required_margin(opening_size, limit_price, pair_params, usdt_price);
+    let fee_to_reserve = compute_trading_fee(opening_size, limit_price, params.trading_fee_rate, usdt_price);
     let reserved = margin_to_reserve + fee_to_reserve;
 
     // Check that the user has sufficient available margin to cover the reservation.
