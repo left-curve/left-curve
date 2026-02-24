@@ -1,6 +1,6 @@
 use {
     crate::{Borsh, Codec, Map, Path, Prefix, PrefixBound, PrimaryKey},
-    grug_types::{Bound, Order, Record, StdError, StdResult, Storage},
+    grug_types::{Bound, Buffer, Order, Record, StdError, StdResult, Storage, StorageWrapper},
 };
 
 pub trait IndexList<K, T> {
@@ -276,22 +276,31 @@ where
         data: Option<&T>,
         old_data: Option<&T>,
     ) -> StdResult<()> {
+        // Wrap the storage in a buffer.
+        // This is needed to ensure that if a index raise an error, the others indexes are reverted to the previous state.
+        let mut buffer = Buffer::new_unnamed(StorageWrapper::new(storage), None);
+
         // If old data exists, its index is to be deleted.
+
         if let Some(old) = old_data {
             for index in self.idx.get_indexes() {
-                index.remove(storage, key.clone(), old);
+                index.remove(&mut buffer, key.clone(), old);
             }
         }
 
         // Write new data to the primary storage, and write its indexes.
         if let Some(updated) = data {
             for index in self.idx.get_indexes() {
-                index.save(storage, key.clone(), updated)?;
+                index.save(&mut buffer, key.clone(), updated)?;
             }
-            self.primary.save(storage, key, updated)?;
+            self.primary.save(&mut buffer, key, updated)?;
         } else {
-            self.primary.remove(storage, key);
+            self.primary.remove(&mut buffer, key);
         }
+
+        let (_, batch) = buffer.disassemble();
+
+        storage.flush(batch);
 
         Ok(())
     }
@@ -449,6 +458,14 @@ mod tests {
         {
             FOOS.save(&mut storage, (5, 5), &Foo::new("bar", "s_fooes", 104))
                 .unwrap_err();
+
+            // Try to iterate and load all data using another index that is returned by .get_indexes() method earlier compared to index `id`.
+            // The purpose is to ensure that if the unique index raise an error, the others indexes are reverted to the previous state.
+            FOOS.idx
+                .name
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
         }
 
         // Iterate index values and data.
