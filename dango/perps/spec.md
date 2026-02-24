@@ -1121,7 +1121,7 @@ fn handle_submit_order(
                 // No fill happened, so user_pos is unchanged.
                 store_limit_order(
                     params, user_state, pair_params, pair_id, user_id,
-                    size, limit_price, opening_size,
+                    size, limit_price,
                     current_time,
                     oracle_prices, pair_params_map, pair_states, usdt_price,
                 );
@@ -1138,8 +1138,8 @@ fn handle_submit_order(
 
 /// Store the unfilled portion of a limit order for later fulfillment (GTC).
 ///
-/// Validates the user's open order count, reserves margin for the opening
-/// portion of the unfilled size, and persists the order in the appropriate
+/// Validates the user's open order count, reserves margin and fee for the
+/// full order size (worst-case), and persists the order in the appropriate
 /// side of the order book.
 ///
 /// Buy orders are stored with inverted price (UsdPrice::MAX - limit_price) so
@@ -1152,7 +1152,6 @@ fn store_limit_order(
     user_id: UserId,
     unfilled_size: HumanAmount,
     limit_price: UsdPrice,
-    opening_size: HumanAmount,
     current_time: Timestamp,
     oracle_prices: &Map<PairId, UsdPrice>,
     pair_params_map: &Map<PairId, PairParams>,
@@ -1165,11 +1164,11 @@ fn store_limit_order(
         "too many open orders"
     );
 
-    // Reserve margin for the opening portion of the unfilled size.
-    // The caller already decomposed the order and applied reduce_only,
-    // so opening_size is zero for pure closing / reduce-only orders.
-    let margin_to_reserve = compute_required_margin(opening_size, limit_price, pair_params, usdt_price);
-    let fee_to_reserve = compute_trading_fee(opening_size, limit_price, params.trading_fee_rate, usdt_price);
+    // Reserve margin and fee for the full order size as a worst-case estimate.
+    // The user's position may change before the order fills, so the actual
+    // opening portion at fill time could be as large as the full order.
+    let margin_to_reserve = compute_required_margin(unfilled_size, limit_price, pair_params, usdt_price);
+    let fee_to_reserve = compute_trading_fee(unfilled_size, limit_price, params.trading_fee_rate, usdt_price);
     let reserved = margin_to_reserve + fee_to_reserve;
 
     // Check that the user has sufficient available margin to cover the reservation.
