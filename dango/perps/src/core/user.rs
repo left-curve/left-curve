@@ -126,7 +126,7 @@ pub fn compute_initial_margin(
     user_state: &UserState,
     pair_querier: &NoCachePairQuerier,
     oracle_querier: &mut OracleQuerier,
-    projected_pair_id: PairId,
+    projected_pair_id: &PairId,
     projected_size: Quantity,
 ) -> anyhow::Result<UsdValue> {
     let mut total = UsdValue::ZERO;
@@ -136,7 +136,7 @@ pub fn compute_initial_margin(
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
         let pair_param = pair_querier.query_pair_param(pair_id)?;
 
-        let size = if *pair_id == projected_pair_id {
+        let size = if pair_id == projected_pair_id {
             projected_pair_seen = true;
             projected_size
         } else {
@@ -154,8 +154,8 @@ pub fn compute_initial_margin(
     // If the projected pair is not in existing positions and the projected size
     // is non-zero, add its margin contribution.
     if !projected_pair_seen && projected_size.is_non_zero() {
-        let oracle_price = oracle_querier.query_price_for_perps(&projected_pair_id)?;
-        let pair_param = pair_querier.query_pair_param(&projected_pair_id)?;
+        let oracle_price = oracle_querier.query_price_for_perps(projected_pair_id)?;
+        let pair_param = pair_querier.query_pair_param(projected_pair_id)?;
 
         let margin = projected_size
             .checked_abs()?
@@ -663,7 +663,7 @@ mod tests {
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
-                eth::DENOM.clone(),
+                &eth::DENOM,
                 Quantity::new_int(10),
             )
             .unwrap(),
@@ -707,7 +707,7 @@ mod tests {
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
-                eth::DENOM.clone(),
+                &eth::DENOM,
                 Quantity::new_int(10),
             )
             .unwrap(),
@@ -762,7 +762,7 @@ mod tests {
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
-                btc::DENOM.clone(),
+                &btc::DENOM,
                 Quantity::new_int(1),
             )
             .unwrap(),
@@ -796,7 +796,7 @@ mod tests {
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
-                eth::DENOM.clone(),
+                &eth::DENOM,
                 Quantity::ZERO,
             )
             .unwrap(),
@@ -856,7 +856,7 @@ mod tests {
                 &user_state,
                 &pair_querier,
                 &mut oracle_querier,
-                eth::DENOM.clone(),
+                &eth::DENOM,
                 Quantity::new_int(20),
             )
             .unwrap(),
