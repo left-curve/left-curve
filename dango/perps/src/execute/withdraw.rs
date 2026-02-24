@@ -16,6 +16,8 @@ use {
 };
 
 pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
+    // ---------------------------- 1. Preparation -----------------------------
+
     let param = PARAM.load(ctx.storage)?;
     let mut state = STATE.load(ctx.storage)?;
     let mut user_state = USER_STATES
@@ -28,6 +30,8 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     let pair_ids = PAIR_STATES
         .keys(ctx.storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
+
+    // --------------------------- 2. Business logic ---------------------------
 
     let (shares_to_burn, unlock) = _withdraw(
         ctx.block.timestamp,
@@ -46,6 +50,8 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // Update user state.
     user_state.unlocks.push(unlock);
+
+    // ------------------------ 3. Apply state changes -------------------------
 
     // Save the updated global and user states.
     STATE.save(ctx.storage, &state)?;

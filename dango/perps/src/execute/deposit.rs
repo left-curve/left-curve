@@ -14,6 +14,8 @@ use {
 };
 
 pub fn deposit(ctx: MutableCtx, min_shares_to_mint: Option<Uint128>) -> anyhow::Result<Response> {
+    // ---------------------------- 1. Preparation -----------------------------
+
     // Load state, create querier objects.
     let mut state = STATE.load(ctx.storage)?;
 
@@ -26,7 +28,8 @@ pub fn deposit(ctx: MutableCtx, min_shares_to_mint: Option<Uint128>) -> anyhow::
         .keys(ctx.storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
 
-    // Run the deposit logic.
+    // --------------------------- 2. Business logic ---------------------------
+
     let (deposit_amount, shares_to_mint) = _deposit(
         ctx.block.timestamp,
         ctx.funds,
@@ -40,6 +43,8 @@ pub fn deposit(ctx: MutableCtx, min_shares_to_mint: Option<Uint128>) -> anyhow::
     // Update global state.
     state.vault_margin.checked_add_assign(deposit_amount)?;
     (state.vault_share_supply).checked_add_assign(shares_to_mint)?;
+
+    // ------------------------ 3. Apply state changes -------------------------
 
     // Save the updated global state.
     STATE.save(ctx.storage, &state)?;
