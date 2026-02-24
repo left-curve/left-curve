@@ -1090,25 +1090,9 @@ fn handle_submit_order(
     // Step 4: Check OI constraint — reject if opening portion violates max OI.
     check_oi_constraint(opening_size, pair_state, pair_params.max_abs_oi)?;
 
-    // Step 5: Post-fill margin check.
-    // Project the new position size and compute total used margin (initial
-    // margin ratio, oracle price). Ensure the user can cover the projected
-    // position plus reserved margin after paying the trading fee.
-    let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
-    let projected_size = user_pos + fill_size;
-    let post_fill_used_margin = compute_initial_margin(
-        user_state, oracle_prices, pair_params_map,
-        pair_id, projected_size, usdt_price,
-    );
-    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate, usdt_price);
-    let equity = compute_user_equity(user_state, oracle_prices, pair_states, usdt_price);
-    ensure!(
-        equity - trading_fee >= post_fill_used_margin + user_state.reserved_margin,
-        "insufficient margin"
-    );
-
-    // Step 6: Compute execution price and check price constraint.
+    // Step 5: Compute execution price and check price constraint.
     // If the price fails: market orders error, limit orders go to the book.
+    let exec_price = compute_exec_price(oracle_price, skew, fill_size, pair_params);
     let target_price = compute_target_price(&kind, oracle_price, skew, pair_params, is_buy);
 
     if is_price_constraint_violated(exec_price, target_price, is_buy) {
@@ -1118,7 +1102,7 @@ fn handle_submit_order(
             },
             OrderKind::Limit { limit_price } => {
                 // GTC: store the full original order and return.
-                // No fill happened, so user_pos is unchanged.
+                // No fill happened; store_limit_order does its own margin check.
                 store_limit_order(
                     params, user_state, pair_params, pair_id, user_id,
                     size, limit_price,
@@ -1130,6 +1114,22 @@ fn handle_submit_order(
             },
         }
     }
+
+    // Step 6: Post-fill margin check (only reached when actually filling).
+    // Project the new position size and compute total used margin (initial
+    // margin ratio, oracle price). Ensure the user can cover the projected
+    // position plus reserved margin after paying the trading fee.
+    let projected_size = user_pos + fill_size;
+    let post_fill_used_margin = compute_initial_margin(
+        user_state, oracle_prices, pair_params_map,
+        pair_id, projected_size, usdt_price,
+    );
+    let trading_fee = compute_trading_fee(fill_size, exec_price, params.trading_fee_rate, usdt_price);
+    let equity = compute_user_equity(user_state, oracle_prices, pair_states, usdt_price);
+    ensure!(
+        equity - trading_fee >= post_fill_used_margin + user_state.reserved_margin,
+        "insufficient margin"
+    );
 
     // Step 7: Execute fill and collect trading fee.
     execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, opening_size, usdt_price);
