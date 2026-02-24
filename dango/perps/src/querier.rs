@@ -128,7 +128,7 @@ impl<'a> NoCachePairQuerier<'a> {
                 NEXT_ORDER_ID.may_load(*storage)?
             },
             Self::Remote { address, querier } => {
-                querier.may_query_wasm_path(*address, &NEXT_ORDER_ID.path())?
+                querier.may_query_wasm_path(*address, NEXT_ORDER_ID.path())?
             },
             Self::Mock { next_order_id, .. } => *next_order_id,
         };

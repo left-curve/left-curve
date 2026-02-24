@@ -138,10 +138,10 @@ fn _submit_order(
 )> {
     // ------------- Step 1. Accrue funding before any OI changes --------------
 
-    let pair_param = pair_querier.query_pair_param(&pair_id)?;
-    let mut pair_state = pair_querier.query_pair_state(&pair_id)?;
+    let pair_param = pair_querier.query_pair_param(pair_id)?;
+    let mut pair_state = pair_querier.query_pair_state(pair_id)?;
 
-    let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
+    let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
 
     accrue_funding(&mut pair_state, &pair_param, current_time, oracle_price)?;
 
@@ -150,7 +150,7 @@ fn _submit_order(
     // Find the user's current position in this trading pair.
     let current_position = user_state
         .positions
-        .get(&pair_id)
+        .get(pair_id)
         .map(|position| position.size)
         .unwrap_or_default();
 
@@ -243,7 +243,7 @@ fn _submit_order(
         oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
 
     // Compute the trading fee for this order.
-    let trading_fee = compute_trading_fee(fillable_size, exec_price, &param)?;
+    let trading_fee = compute_trading_fee(fillable_size, exec_price, param)?;
 
     // Query the user's collateral balance.
     let collateral_balance = querier.query_balance(user, settlement_currency::DENOM.clone())?;
