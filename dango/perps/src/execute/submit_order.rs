@@ -36,7 +36,10 @@ pub fn submit_order(
 
     let state = STATE.load(ctx.storage)?;
     let param = PARAM.load(ctx.storage)?;
-    let user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
+
+    let user_state = USER_STATES
+        .may_load(ctx.storage, ctx.sender)?
+        .unwrap_or_default();
 
     let pair_querier = NoCachePairQuerier::new_local(ctx.storage);
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
