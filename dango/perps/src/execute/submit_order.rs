@@ -19,8 +19,8 @@ use {
         },
     },
     grug::{
-        Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst, QuerierExt, QuerierWrapper,
-        Response, Timestamp, Uint128, coins,
+        Addr, Coins, IsZero, MathResult, Message, MutableCtx, Number, NumberConst, QuerierExt,
+        QuerierWrapper, Response, Timestamp, Uint128, coins,
     },
     std::cmp::Ordering,
 };
@@ -398,7 +398,7 @@ fn execute_fill(
     exec_price: UsdPrice,
     closing_size: Quantity,
     opening_size: Quantity,
-) -> anyhow::Result<UsdValue> {
+) -> MathResult<UsdValue> {
     let mut pnl = UsdValue::ZERO;
 
     // If a position already exists, remove its contributions to the accumulators
@@ -444,12 +444,12 @@ fn execute_fill(
 /// Returns the PnL from the user's perspective (negated accrued funding,
 /// since positive accrued = user cost).
 #[inline]
-fn settle_funding(position: &mut Position, pair_state: &PairState) -> anyhow::Result<UsdValue> {
+fn settle_funding(position: &mut Position, pair_state: &PairState) -> MathResult<UsdValue> {
     let accrued = compute_position_unrealized_funding(position, pair_state)?;
 
     position.entry_funding_per_unit = pair_state.funding_per_unit;
 
-    Ok(accrued.checked_neg()?)
+    accrued.checked_neg()
 }
 
 /// Close a portion of an existing position: realize PnL and reduce size.
@@ -461,7 +461,7 @@ fn apply_closing(
     pair_id: &PairId,
     closing_size: Quantity,
     exec_price: UsdPrice,
-) -> anyhow::Result<UsdValue> {
+) -> MathResult<UsdValue> {
     let position = user_state.positions.get_mut(pair_id).unwrap();
 
     let pnl = compute_pnl_to_realize(position, closing_size, exec_price)?;
@@ -487,19 +487,20 @@ fn apply_opening(
     pair_id: &PairId,
     opening_size: Quantity,
     exec_price: UsdPrice,
-) -> anyhow::Result<()> {
+) -> MathResult<()> {
     if let Some(position) = user_state.positions.get_mut(pair_id) {
         let old_size = position.size;
         position.size.checked_add_assign(opening_size)?;
 
         if old_size.is_zero() {
-            // Fully closed by apply_closing, now reopening opposite side.
+            // Fully closed by `apply_closing`, now reopening opposite side.
             position.entry_price = exec_price;
             position.entry_funding_per_unit = pair_state.funding_per_unit;
         } else {
             // Weighted average entry price.
             let old_notional = old_size.checked_abs()?.checked_mul(position.entry_price)?;
             let new_notional = opening_size.checked_abs()?.checked_mul(exec_price)?;
+
             position.entry_price = old_notional
                 .checked_add(new_notional)?
                 .checked_div(position.size.checked_abs()?)?;
@@ -524,7 +525,7 @@ fn compute_pnl_to_realize(
     position: &Position,
     closing_size: Quantity,
     exec_price: UsdPrice,
-) -> anyhow::Result<UsdValue> {
+) -> MathResult<UsdValue> {
     let entry_value = closing_size
         .checked_abs()?
         .checked_mul(position.entry_price)?;
@@ -542,7 +543,7 @@ fn update_oi(
     pair_state: &mut PairState,
     closing_size: Quantity,
     opening_size: Quantity,
-) -> anyhow::Result<()> {
+) -> MathResult<()> {
     if closing_size.is_negative() {
         // Cloing a long position with a sell order.
         pair_state.long_oi.checked_add_assign(closing_size)?;
@@ -574,7 +575,7 @@ fn settle_pnl_and_fee(
     pnl: UsdValue,
     trading_fee: UsdValue,
     settlement_currency_price: UsdPrice,
-) -> anyhow::Result<(Uint128, Uint128)> {
+) -> MathResult<(Uint128, Uint128)> {
     // 1. Subtract trading fee from PnL.
     // 2. Convert PnL from USD value from USD value to quantity of settlement currency.
     let pnl = pnl
