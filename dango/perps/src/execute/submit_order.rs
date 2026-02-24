@@ -1,6 +1,6 @@
 use {
     crate::{
-        ASKS, BIDS, NEXT_ORDER_ID, NoCachePairQuerier, PAIR_STATES, PARAM, USER_STATES,
+        ASKS, BIDS, NEXT_ORDER_ID, NoCachePairQuerier, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{
             accrue_funding, check_minimum_opening, check_oi_constraint, compute_available_margin,
             compute_exec_price, compute_initial_margin, compute_required_margin,
@@ -12,16 +12,17 @@ use {
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
-        Quantity, UsdPrice, bank,
+        Quantity, UsdPrice, UsdValue, bank,
         perps::{
-            Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, UserState,
+            Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, State, UserState,
             settlement_currency,
         },
     },
     grug::{
-        Addr, Coins, Message, MutableCtx, NumberConst, QuerierExt, QuerierWrapper, Response,
-        Timestamp, Uint128, coins,
+        Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst, QuerierExt, QuerierWrapper,
+        Response, Timestamp, Uint128, coins,
     },
+    std::cmp::Ordering,
 };
 
 pub fn submit_order(
@@ -33,6 +34,7 @@ pub fn submit_order(
 ) -> anyhow::Result<Response> {
     // ---------------------------- 1. Preparation -----------------------------
 
+    let state = STATE.load(ctx.storage)?;
     let param = PARAM.load(ctx.storage)?;
     let user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
@@ -41,21 +43,25 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (pair_state, user_state, order_to_store, fee) = _submit_order(
-        ctx.sender,
-        ctx.block.timestamp,
-        ctx.querier,
-        &pair_querier,
-        &mut oracle_querier,
-        &param,
-        user_state,
-        &pair_id,
-        size,
-        kind,
-        reduce_only,
-    )?;
+    let (state, pair_state, user_state, vault_pays_user, user_pays_vault, order_to_store) =
+        _submit_order(
+            ctx.sender,
+            ctx.block.timestamp,
+            ctx.querier,
+            &pair_querier,
+            &mut oracle_querier,
+            &param,
+            state,
+            user_state,
+            &pair_id,
+            size,
+            kind,
+            reduce_only,
+        )?;
 
     // ------------------------ 3. Apply state changes -------------------------
+
+    STATE.save(ctx.storage, &state)?;
 
     PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
 
@@ -75,28 +81,40 @@ pub fn submit_order(
         };
     }
 
-    // Send a message to the bank contract to collect trading fee from the user.
-    Ok(Response::new().may_add_message(if let Some(fee) = fee {
-        Some(Message::execute(
-            BANK,
-            &bank::ExecuteMsg::ForceTransfer {
-                from: ctx.sender,
-                to: ctx.contract,
-                coins: coins! { settlement_currency::DENOM.clone() => fee },
-            },
-            Coins::new(),
-        )?)
-    } else {
-        None
-    }))
+    Ok(Response::new()
+        .may_add_message(if vault_pays_user.is_non_zero() {
+            Some(Message::transfer(
+                ctx.sender,
+                coins! { settlement_currency::DENOM.clone() => vault_pays_user },
+            )?)
+        } else {
+            None
+        })
+        .may_add_message(if user_pays_vault.is_non_zero() {
+            Some(Message::execute(
+                BANK,
+                &bank::ExecuteMsg::ForceTransfer {
+                    from: ctx.sender,
+                    to: ctx.contract,
+                    coins: coins! { settlement_currency::DENOM.clone() => user_pays_vault },
+                },
+                Coins::new(),
+            )?)
+        } else {
+            None
+        }))
 }
 
 /// Returns:
 ///
+/// - The updated `State`
 /// - The updated `PairState`
 /// - The updated `UserState`
+/// - The amount of settlement currency that the vault needs to pay the user
+///   (in case there is a positive after-fee realized PnL)
+/// - The amount of settlement currency that the user needs to pay the vault
+///   (in case there is a negative after-fee realized PnL)
 /// - GTC order that needs to be stored (if applicable)
-/// - Trading fee to collect (if applicable)
 fn _submit_order(
     user: Addr,
     current_time: Timestamp,
@@ -104,16 +122,19 @@ fn _submit_order(
     pair_querier: &NoCachePairQuerier,
     oracle_querier: &mut OracleQuerier,
     param: &Param,
+    mut state: State,
     mut user_state: UserState,
     pair_id: &PairId,
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
 ) -> anyhow::Result<(
+    State,
     PairState,
     UserState,
+    Uint128,
+    Uint128,
     Option<(UsdPrice, OrderId, Order)>,
-    Option<Uint128>,
 )> {
     // ------------- Step 1. Accrue funding before any OI changes --------------
 
@@ -192,7 +213,14 @@ fn _submit_order(
                     reduce_only,
                 )?;
 
-                return Ok((pair_state, user_state, Some(order_to_store), None));
+                return Ok((
+                    state,
+                    pair_state,
+                    user_state,
+                    Uint128::ZERO,
+                    Uint128::ZERO,
+                    Some(order_to_store),
+                ));
             },
         }
     }
@@ -244,9 +272,25 @@ fn _submit_order(
 
     // ----------------------- Step 7. Execute the fill ------------------------
 
-    let fee = execute_fill(&mut user_state)?;
+    let pnl = execute_fill(
+        &mut pair_state,
+        &mut user_state,
+        pair_id,
+        closing_size,
+        opening_size,
+    )?;
 
-    Ok((pair_state, user_state, None, Some(fee)))
+    let (vault_pays_user, user_pays_vault) =
+        settle_pnl_and_fee(&mut state, pnl, trading_fee, settlement_currency_price)?;
+
+    Ok((
+        state,
+        pair_state,
+        user_state,
+        vault_pays_user,
+        user_pays_vault,
+        None,
+    ))
 }
 
 #[inline]
@@ -342,21 +386,61 @@ fn store_limit_order(
     }))
 }
 
+/// Fill an order. Update pair and user states, return the PnL and needs to be
+/// realized (without considering trading fee, which is to be handled by the
+/// caller function).
 #[inline]
-fn execute_fill(user_state: &mut UserState, pair_id: &PairId) -> anyhow::Result<Uint128> {
+fn execute_fill(
+    pair_state: &mut PairState,
+    user_state: &mut UserState,
+    pair_id: &PairId,
+    closing_size: Quantity,
+    opening_size: Quantity,
+) -> anyhow::Result<UsdValue> {
+    // If a position already exists, remove its contributions to the accumulators,
+    // Settle funding.
     if let Some(position) = user_state.positions.get_mut(pair_id) {
-        apply_closing()?;
+        (pair_state.oi_weighted_entry_price)
+            .checked_sub_assign(position.size.checked_mul(position.entry_price)?)?;
+        (pair_state.oi_weighted_entry_funding)
+            .checked_sub_assign(position.size.checked_mul(position.entry_funding_per_unit)?)?;
+
+        settle_funding()?;
     }
 
-    apply_opening()?;
+    // Execute the closing portion of the order. Compute realized PnL.
+    let pnl = if closing_size.is_non_zero() {
+        apply_closing()?
+    } else {
+        UsdValue::ZERO
+    };
 
-    update_oi()?;
+    // Execute the opening portion of the order.
+    if opening_size.is_non_zero() {
+        apply_opening()?;
+    }
 
-    todo!();
+    // Re-add accumulator contributions of the updated position.
+    if let Some(position) = user_state.positions.get_mut(pair_id) {
+        (pair_state.oi_weighted_entry_price)
+            .checked_add_assign(position.size.checked_mul(position.entry_price)?)?;
+        (pair_state.oi_weighted_entry_funding)
+            .checked_add_assign(position.size.checked_mul(position.entry_funding_per_unit)?)?;
+    }
+
+    // Update open interest.
+    update_oi(pair_state, closing_size, opening_size)?;
+
+    Ok(pnl)
 }
 
 #[inline]
-fn apply_closing() -> anyhow::Result<()> {
+fn settle_funding() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[inline]
+fn apply_closing() -> anyhow::Result<UsdValue> {
     Ok(())
 }
 
@@ -366,6 +450,70 @@ fn apply_opening() -> anyhow::Result<()> {
 }
 
 #[inline]
-fn update_oi() -> anyhow::Result<()> {
+fn update_oi(
+    pair_state: &mut PairState,
+    closing_size: Quantity,
+    opening_size: Quantity,
+) -> anyhow::Result<()> {
+    if closing_size.is_negative() {
+        // Cloing a long position with a sell order.
+        pair_state.long_oi.checked_add_assign(closing_size);
+    } else if closing_size.is_positive() {
+        // Closing a short position with a buy order.
+        pair_state.short_oi.checked_sub_assign(closing_size)?;
+    }
+
+    if opening_size.is_positive() {
+        // Open a long position with a buy order.
+        pair_state.long_oi.checked_add_assign(opening_size)?;
+    } else if opening_size.is_negative() {
+        // Open a short position with a sell order.
+        (pair_state.short_oi).checked_add_assign(opening_size.checked_abs()?)?;
+    }
+
     Ok(())
+}
+
+/// Settle PnL and trading fee between the vault and the user.
+///
+/// Returns a tuple of two values:
+///
+/// - The amount of settlement currency that the vault pays the user.
+/// - The amount of settlement currency that the user pays the vault.
+#[inline]
+fn settle_pnl_and_fee(
+    state: &mut State,
+    pnl: UsdValue,
+    trading_fee: UsdValue,
+    settlement_currency_price: UsdPrice,
+) -> anyhow::Result<(Uint128, Uint128)> {
+    // 1. Subtract trading fee from PnL.
+    // 2. Convert PnL from USD value from USD value to quantity of settlement currency.
+    let pnl = pnl
+        .checked_sub(trading_fee)?
+        .checked_div(settlement_currency_price)?;
+
+    match pnl.cmp(&Quantity::ZERO) {
+        // PnL minus fee is positive: vault pays the user.
+        // Round the number down, to the advantage of the protocol and disadvantage of the user.
+        Ordering::Greater => {
+            let pnl = pnl.into_base_floor(settlement_currency::DECIMAL)?;
+
+            state.vault_margin.checked_sub_assign(pnl)?;
+
+            Ok((pnl, Uint128::ZERO))
+        },
+        // PnL minus fee is negative: user pays the vault.
+        // Round the up, following the same rounding principle.
+        Ordering::Less => {
+            let pnl = (pnl.checked_abs()?).into_base_ceil(settlement_currency::DECIMAL)?;
+
+            state.vault_margin.checked_add_assign(pnl)?;
+
+            Ok((Uint128::ZERO, pnl))
+        },
+        // PnL minus is zero. This is an edge case: there must be a positive PnL
+        // that perfectly cancels out trading fee.
+        Ordering::Equal => Ok((Uint128::ZERO, Uint128::ZERO)),
+    }
 }
