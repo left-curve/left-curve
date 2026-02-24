@@ -2,7 +2,7 @@ use {
     crate::{
         Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue,
     },
-    grug::{Addr, Denom, Duration, Part, Timestamp, Uint128},
+    grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet},
         sync::LazyLock,
@@ -29,9 +29,10 @@ pub static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["perp
 pub type PairId = Denom;
 
 /// Identifies a resting limit order.
-pub type OrderId = u64;
+pub type OrderId = Uint64;
 
 #[grug::derive(Serde)]
+#[derive(Copy)]
 pub enum OrderKind {
     /// Trade at the current marginal price, plus/minus a maximum slippage.
     ///
@@ -256,10 +257,10 @@ pub struct UserState {
     pub positions: BTreeMap<PairId, Position>,
 
     /// Margin reserved for resting limit orders.
-    pub reserved_margin: Uint128,
+    pub reserved_margin: UsdValue,
 
     /// Number of resting limit orders the user currently has on the book.
-    pub open_order_count: u32,
+    pub open_order_count: usize,
 }
 
 /// A user's position in a specific trading pair.
@@ -297,7 +298,7 @@ pub struct Order {
     pub user: Addr,
     pub size: Quantity,
     pub reduce_only: bool,
-    pub reserved_margin: Uint128,
+    pub reserved_margin: UsdValue,
 }
 
 // --------------------------------- Messages ----------------------------------

@@ -1,8 +1,9 @@
 mod deposit;
+mod submit_order;
 mod withdraw;
 
 use {
-    crate::{PAIR_PARAMS, PAIR_STATES, PARAM, STATE, execute::deposit::deposit},
+    crate::{PAIR_PARAMS, PAIR_STATES, PARAM, STATE},
     dango_types::{
         UsdValue,
         perps::{ExecuteMsg, InstantiateMsg, PairState, State},
@@ -42,8 +43,14 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::Deposit { min_shares_to_mint } => deposit(ctx, min_shares_to_mint),
+        ExecuteMsg::Deposit { min_shares_to_mint } => deposit::deposit(ctx, min_shares_to_mint),
         ExecuteMsg::Unlock {} => withdraw::withdraw(ctx),
+        ExecuteMsg::SubmitOrder {
+            pair_id,
+            size,
+            kind,
+            reduce_only,
+        } => submit_order::submit_order(ctx, pair_id, size, kind, reduce_only),
         _ => todo!(),
     }
 }

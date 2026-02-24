@@ -3,7 +3,7 @@
 use {
     grug::{
         Dec128_6, Duration, Exponentiate, Int128, IsZero, MathResult, Number as _, NumberConst,
-        Sign, Signed, Uint128, Unsigned,
+        PrimaryKey, RawKey, Sign, Signed, StdResult, Uint128, Unsigned,
     },
     std::{
         fmt,
@@ -27,6 +27,7 @@ pub struct Number<Q, U, D> {
 
 impl<Q, U, D> Number<Q, U, D> {
     pub const HALF: Self = Self::new(Dec128_6::raw(Int128::new(500_000)));
+    pub const MAX: Self = Self::new(Dec128_6::MAX);
     pub const ONE: Self = Self::new(Dec128_6::ONE);
     pub const ZERO: Self = Self::new(Dec128_6::ZERO);
 
@@ -181,6 +182,22 @@ impl<Q, U, D> borsh::BorshSerialize for Number<Q, U, D> {
 impl<Q, U, D> borsh::BorshDeserialize for Number<Q, U, D> {
     fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
         borsh::BorshDeserialize::deserialize_reader(reader).map(Self::new)
+    }
+}
+
+impl<Q, U, D> PrimaryKey for Number<Q, U, D> {
+    type Output = Self;
+    type Prefix = ();
+    type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
+
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
+        self.inner.raw_keys()
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        Dec128_6::from_slice(bytes).map(Self::new)
     }
 }
 
