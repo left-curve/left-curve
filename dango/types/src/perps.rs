@@ -364,7 +364,7 @@ pub enum QueryMsg {
     Param {},
 
     /// Query the pair-specific parameters of a single trading pair.
-    #[returns(PairParam)]
+    #[returns(Option<PairParam>)]
     PairParam { pair_id: PairId },
 
     /// Enumerate the pair-specific parameters of all trading pairs.
@@ -379,7 +379,7 @@ pub enum QueryMsg {
     State {},
 
     /// Query the pair-specific state of a single trading pair.
-    #[returns(PairState)]
+    #[returns(Option<PairState>)]
     PairState { pair_id: PairId },
 
     /// Enumerate the pair-specific states of all trading pairs.
@@ -390,7 +390,7 @@ pub enum QueryMsg {
     },
 
     /// Query the state of a single user.
-    #[returns(UserState)]
+    #[returns(Option<UserState>)]
     UserState { user: Addr },
 
     /// Enumerate the states of all users.
@@ -399,6 +399,31 @@ pub enum QueryMsg {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
+
+    /// Query a single order by ID.
+    #[returns(Option<QueryOrderResponse>)]
+    Order { order_id: OrderId },
+
+    /// Query all orders of a single user.
+    #[returns(Vec<QueryOrderResponse>)]
+    OrdersByUser { user: Addr },
+}
+
+#[grug::derive(Serde)]
+pub struct QueryOrderResponse {
+    pub order_id: OrderId,
+    pub pair_id: PairId,
+    pub limit_price: UsdPrice,
+    pub timestamp: Timestamp,
+    pub size: Quantity,
+    pub reduce_only: bool,
+    pub reserved_margin: UsdValue,
+}
+
+#[grug::derive(Serde)]
+pub struct QueryOrdersByUserResponse {
+    pub bids: Vec<QueryOrderResponse>,
+    pub asks: Vec<QueryOrderResponse>,
 }
 
 // ---------------------------------- Events -----------------------------------
