@@ -263,6 +263,13 @@ pub struct UserState {
     pub open_order_count: usize,
 }
 
+impl UserState {
+    /// Return whether the `UserState` is completely empty.
+    pub fn is_empty(&self) -> bool {
+        self == &Self::default()
+    }
+}
+
 /// A user's position in a specific trading pair.
 #[grug::derive(Serde, Borsh)]
 pub struct Position {

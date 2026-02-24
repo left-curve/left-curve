@@ -1,3 +1,4 @@
+mod cancel_order;
 mod deposit;
 mod on_oracle_update;
 mod submit_order;
@@ -7,7 +8,7 @@ use {
     crate::{PAIR_PARAMS, PAIR_STATES, PARAM, STATE},
     dango_types::{
         UsdValue,
-        perps::{ExecuteMsg, InstantiateMsg, PairState, State},
+        perps::{CancelOrderRequest, ExecuteMsg, InstantiateMsg, PairState, State},
     },
     grug::{Addr, MutableCtx, Response, Uint128, addr},
 };
@@ -52,6 +53,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             kind,
             reduce_only,
         } => submit_order::submit_order(ctx, pair_id, size, kind, reduce_only),
+        ExecuteMsg::CancelOrder(CancelOrderRequest::One(order_id)) => {
+            cancel_order::cancel_one_order(ctx, order_id)
+        },
+        ExecuteMsg::CancelOrder(CancelOrderRequest::All) => cancel_order::cancel_all_orders(ctx),
         ExecuteMsg::OnOracleUpdate {} => on_oracle_update::on_oracle_update(ctx),
         _ => todo!(),
     }
