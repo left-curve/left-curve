@@ -301,6 +301,14 @@ pub struct Order {
     pub reserved_margin: UsdValue,
 }
 
+#[grug::derive(Serde)]
+pub enum CancelOrderRequest {
+    /// Cancel a single order by ID.
+    One(OrderId),
+    /// Cancel all orders associated with the sender.
+    All,
+}
+
 // --------------------------------- Messages ----------------------------------
 
 #[grug::derive(Serde)]
@@ -343,7 +351,7 @@ pub enum ExecuteMsg {
     },
 
     /// Cancel a resting limit order.
-    CancelOrder { order_id: OrderId },
+    CancelOrder(CancelOrderRequest),
 
     /// Forcibly close all of a user's positions, if the user has less collateral
     /// than the maintenance margin required by his positions.
