@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn vault_equity_no_pairs() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
@@ -318,6 +318,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -361,6 +362,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -410,6 +412,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -454,6 +457,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -480,7 +484,7 @@ mod tests {
 
     #[test]
     fn adl_no_pairs() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert!(
@@ -518,6 +522,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -562,6 +567,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -606,6 +612,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(

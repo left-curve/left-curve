@@ -170,7 +170,7 @@ mod tests {
     // shares = floor(1_000_000 × 1.0) = 1_000_000
     #[test]
     fn first_deposit_empty_vault() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -199,7 +199,7 @@ mod tests {
     // shares = floor(2_000_000 × 0.5) = 1_000_000
     #[test]
     fn second_deposit_same_size() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -228,7 +228,7 @@ mod tests {
     // The deposit() wrapper would reject via Coins::one(..., 0).
     #[test]
     fn zero_deposit() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -254,7 +254,7 @@ mod tests {
     // USDC + an extra denom should error.
     #[test]
     fn unexpected_coins_rejected() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -299,6 +299,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
@@ -333,7 +334,7 @@ mod tests {
     // Empty vault, deposit 1 USDC → 1M shares. min=1M → passes.
     #[test]
     fn min_shares_passes() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -358,7 +359,7 @@ mod tests {
     // Empty vault, deposit 1 USDC → 1M shares. min=1_000_001 → error.
     #[test]
     fn min_shares_fails() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -402,6 +403,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
@@ -456,6 +458,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
@@ -514,6 +517,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
@@ -552,7 +556,7 @@ mod tests {
     // 1B USDC vault + 1B USDC deposit. Both are 1_000_000_000 * 1_000_000 base.
     #[test]
     fn large_deposit_no_overflow() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -590,7 +594,7 @@ mod tests {
     #[test_case(99, 990_000 ; "usdc below peg")]
     #[test_case(101, 1_010_000 ; "usdc above peg")]
     fn non_dollar_settlement_price(price_percent: u128, expected_shares: u128) {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(price_percent),
@@ -623,7 +627,7 @@ mod tests {
     // shares = floor(3_000_000 * 333_333 / 1_000_000) = floor(999_999.0) = 999_999
     #[test]
     fn shares_rounded_floor() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });

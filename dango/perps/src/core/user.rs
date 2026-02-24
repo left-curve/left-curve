@@ -333,7 +333,7 @@ mod tests {
     #[test]
     fn equity_no_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
@@ -363,12 +363,16 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
-            eth::DENOM.clone() => PairState {
-                funding_per_unit: FundingPerUnit::new_int(0),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            HashMap::new(),
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(0),
+                    ..Default::default()
+                }
             },
-        });
+            None,
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(250_000),
@@ -405,12 +409,16 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
-            eth::DENOM.clone() => PairState {
-                funding_per_unit: FundingPerUnit::new_int(3),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            HashMap::new(),
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(3),
+                    ..Default::default()
+                },
             },
-        });
+            None,
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(250_000),
@@ -454,16 +462,20 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
-            eth::DENOM.clone() => PairState {
-                funding_per_unit: FundingPerUnit::new_int(3),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            HashMap::new(),
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(3),
+                    ..Default::default()
+                },
+                btc::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(0),
+                    ..Default::default()
+                },
             },
-            btc::DENOM.clone() => PairState {
-                funding_per_unit: FundingPerUnit::new_int(0),
-                ..Default::default()
-            },
-        });
+            None,
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(250_000),
@@ -504,12 +516,16 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), hash_map! {
-            eth::DENOM.clone() => PairState {
-                funding_per_unit: FundingPerUnit::new_int(0),
-                ..Default::default()
+        let pair_querier = NoCachePairQuerier::new_mock(
+            HashMap::new(),
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(0),
+                    ..Default::default()
+                },
             },
-        });
+            None,
+        );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(150_000),
@@ -535,7 +551,7 @@ mod tests {
     #[test]
     fn maintenance_margin_no_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
@@ -567,6 +583,7 @@ mod tests {
                 },
             },
             HashMap::new(),
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -614,6 +631,7 @@ mod tests {
                 },
             },
             HashMap::new(),
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -649,6 +667,7 @@ mod tests {
                 },
             },
             HashMap::new(),
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -693,6 +712,7 @@ mod tests {
                 },
             },
             HashMap::new(),
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -743,6 +763,7 @@ mod tests {
                 },
             },
             HashMap::new(),
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -782,6 +803,7 @@ mod tests {
                 },
             },
             HashMap::new(),
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -837,6 +859,7 @@ mod tests {
                 },
             },
             HashMap::new(),
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -899,7 +922,7 @@ mod tests {
     #[test]
     fn available_margin_no_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
@@ -944,6 +967,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -993,6 +1017,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -1045,6 +1070,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -1097,6 +1123,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -1124,7 +1151,7 @@ mod tests {
     #[test]
     fn is_liquidatable_no_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new());
+        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert!(
@@ -1167,6 +1194,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -1216,6 +1244,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -1265,6 +1294,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -1322,6 +1352,7 @@ mod tests {
                         ..Default::default()
                     },
                 },
+                None,
             );
             let oracle_querier = OracleQuerier::new_mock(hash_map! {
                 eth::DENOM.clone() => PrecisionedPrice::new(

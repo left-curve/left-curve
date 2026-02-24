@@ -1,8 +1,8 @@
 use {
-    crate::{PAIR_PARAMS, PAIR_STATES},
+    crate::{NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES},
     anyhow::anyhow,
-    dango_types::perps::{PairId, PairParam, PairState},
-    grug::{Addr, Cache, QuerierWrapper, Storage, StorageQuerier},
+    dango_types::perps::{OrderId, PairId, PairParam, PairState},
+    grug::{Addr, Cache, NumberConst, QuerierWrapper, Storage, StorageQuerier},
     std::{collections::HashMap, rc::Rc},
 };
 
@@ -35,8 +35,13 @@ impl<'a> PairQuerier<'a> {
     pub fn new_mock(
         pair_params: HashMap<PairId, PairParam>,
         pair_states: HashMap<PairId, PairState>,
+        next_order_id: Option<OrderId>,
     ) -> Self {
-        Self::new(NoCachePairQuerier::new_mock(pair_params, pair_states))
+        Self::new(NoCachePairQuerier::new_mock(
+            pair_params,
+            pair_states,
+            next_order_id,
+        ))
     }
 
     pub fn query_pair_param(&mut self, pair_id: &PairId) -> anyhow::Result<&PairParam> {
@@ -61,6 +66,7 @@ pub enum NoCachePairQuerier<'a> {
     Mock {
         pair_params: HashMap<PairId, PairParam>,
         pair_states: HashMap<PairId, PairState>,
+        next_order_id: Option<OrderId>,
     },
 }
 
@@ -77,8 +83,9 @@ impl<'a> NoCachePairQuerier<'a> {
     pub fn new_mock(
         pair_params: HashMap<PairId, PairParam>,
         pair_states: HashMap<PairId, PairState>,
+        next_order_id: Option<OrderId>,
     ) -> Self {
-        Self::Mock { pair_params, pair_states }
+        Self::Mock { pair_params, pair_states, next_order_id }
     }
 
     pub fn query_pair_param(&self, pair_id: &PairId) -> anyhow::Result<PairParam> {
@@ -113,5 +120,19 @@ impl<'a> NoCachePairQuerier<'a> {
                     .ok_or_else(|| anyhow!("[mock]: pair state not found for pair ID `{pair_id}`"))
             }
         }
+    }
+
+    pub fn query_next_order_id(&self) -> anyhow::Result<OrderId> {
+        let maybe_order_id = match self {
+            Self::Local { storage } => {
+                NEXT_ORDER_ID.may_load(*storage)?
+            },
+            Self::Remote { address, querier } => {
+                querier.may_query_wasm_path(*address, &NEXT_ORDER_ID.path())?
+            },
+            Self::Mock { next_order_id, .. } => *next_order_id,
+        };
+
+        Ok(maybe_order_id.unwrap_or(OrderId::ONE))
     }
 }
