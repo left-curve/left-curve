@@ -363,6 +363,12 @@ pub enum ExecuteMsg {
     /// This can only be called by whitelisted callers when the counterparty vault
     /// is in distress.
     Deleverage { user: Addr },
+
+    /// Actions to be triggered at the beginning of a block, right after the
+    /// oracle update.
+    ///
+    /// Can only be called by the oracle contract.
+    OnOracleUpdate {},
 }
 
 #[grug::derive(Serde, QueryRequest)]

@@ -1,4 +1,5 @@
 mod deposit;
+mod on_oracle_update;
 mod submit_order;
 mod withdraw;
 
@@ -51,6 +52,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             kind,
             reduce_only,
         } => submit_order::submit_order(ctx, pair_id, size, kind, reduce_only),
+        ExecuteMsg::OnOracleUpdate {} => on_oracle_update::on_oracle_update(ctx),
         _ => todo!(),
     }
 }
