@@ -1132,7 +1132,7 @@ fn handle_submit_order(
     );
 
     // Step 7: Execute fill and collect trading fee.
-    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, closing_size, opening_size, usdt_price);
+    execute_fill(state, pair_state, user_state, pair_id, exec_price, closing_size, opening_size, usdt_price);
     collect_trading_fee(state, user_state, fill_size, exec_price, params.trading_fee_rate, usdt_price);
 }
 
@@ -1200,100 +1200,135 @@ fn store_limit_order(
     }
 }
 
-/// Settle funding and closing PnL for an existing position before applying
-/// a fill.
+/// Execute a fill, updating positions and settling PnL and funding.
 ///
-/// Pre: position exists in `user_state.positions`; `accrue_funding` already
-/// called so `cumulative_funding_per_unit` is up-to-date.
+/// IMPORTANT: The caller must call `accrue_funding` before calling this
+/// function. This ensures `cumulative_funding_per_unit` is up-to-date
+/// before we settle per-position funding and update `oi_weighted_entry_funding`.
 ///
-/// Post: `oi_weighted_entry_price` has old contribution removed;
-/// `oi_weighted_entry_funding` has old contribution removed;
-/// user margin updated for funding and closing PnL;
-/// `pos.entry_funding_per_unit` updated;
-/// `pos.size` and `pos.entry_price` unchanged.
-fn settle_existing_position(
+/// The function is structured around two orthogonal helpers:
+/// - `apply_closing`: PnL settlement and size reduction
+/// - `apply_opening`: position growth/creation and entry_price blending
+///
+/// Accumulator bookkeeping (remove-all / re-add-all) and funding settlement
+/// always happen when a position exists, regardless of closing or opening,
+/// and are therefore handled directly in this function.
+fn execute_fill(
     state: &mut State,
     pair_state: &mut PairState,
     user_state: &mut UserState,
-    pos: &mut Position,
+    pair_id: PairId,
+    exec_price: UsdPrice,
+    closing_size: HumanAmount,
+    opening_size: HumanAmount,
+    usdt_price: Ratio<UsdValue, BaseAmount>,
+) {
+    // ---- Always: remove old accumulator contributions if position exists ----
+    if let Some(pos) = user_state.positions.get_mut(&pair_id) {
+        pair_state.oi_weighted_entry_price -= pos.size * pos.entry_price;
+        pair_state.oi_weighted_entry_funding -= pos.size * pos.entry_funding_per_unit;
+
+        // ---- Always: settle funding (resets entry_funding_per_unit) ----
+        settle_funding(state, pair_state, user_state, pos, usdt_price);
+    }
+
+    // ---- Closing-specific ----
+    if closing_size != HumanAmount::ZERO {
+        apply_closing(state, user_state, &pair_id, closing_size, exec_price, usdt_price);
+    }
+
+    // ---- Opening-specific ----
+    if opening_size != HumanAmount::ZERO {
+        apply_opening(user_state, pair_state, &pair_id, opening_size, exec_price);
+    }
+
+    // ---- Always: re-add accumulator contributions if position still exists ----
+    if let Some(pos) = user_state.positions.get(&pair_id) {
+        pair_state.oi_weighted_entry_price += pos.size * pos.entry_price;
+        pair_state.oi_weighted_entry_funding += pos.size * pos.entry_funding_per_unit;
+    }
+
+    // ---- Always: update OI ----
+    update_oi(pair_state, opening_size, closing_size);
+}
+
+/// Close a portion of an existing position: realize PnL and reduce size.
+///
+/// Orthogonal to `apply_opening` — this function only handles closing concerns:
+/// - PnL settlement for the closing portion
+/// - Size reduction
+/// - Position removal if fully closed
+///
+/// Pre: position exists; accumulator contributions already removed by caller;
+/// funding already settled by caller.
+///
+/// Post: position size reduced by |closing_size|; PnL settled; position
+/// removed if size reaches zero.
+fn apply_closing(
+    state: &mut State,
+    user_state: &mut UserState,
+    pair_id: &PairId,
     closing_size: HumanAmount,
     exec_price: UsdPrice,
     usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
-    // Remove old contributions to accumulators BEFORE any size modifications.
-    pair_state.oi_weighted_entry_price -= pos.size * pos.entry_price;
-    pair_state.oi_weighted_entry_funding -= pos.size * pos.entry_funding_per_unit;
+    let pos = user_state.positions.get_mut(pair_id).unwrap(); // must exist
 
-    // Settle funding BEFORE modifying the position.
-    settle_funding(state, pair_state, user_state, pos, usdt_price);
+    // Realize PnL for the closing portion.
+    let pnl = compute_pnl_to_realize(pos, closing_size, exec_price);
+    settle_pnl(state, user_state, pnl, usdt_price);
 
-    // Settle price PnL for the closing portion
-    if closing_size != HumanAmount::ZERO {
-        let pnl = compute_pnl_to_realize(pos, closing_size, exec_price);
-        settle_pnl(state, user_state, pnl, usdt_price);
-        // No entry_price update needed — it is invariant across partial closes.
+    // Reduce position size (closing_size opposes pos.size).
+    pos.size += closing_size;
+
+    // Remove position if fully closed.
+    if pos.size == HumanAmount::ZERO {
+        user_state.positions.remove(pair_id);
     }
 }
 
-/// Modify position size/entry price (or create/remove position) and maintain
-/// accumulators.
+/// Grow an existing position or create a new one: blend entry_price and
+/// increase size.
 ///
-/// Note: Does NOT take `state` (vault state) — no PnL/funding settlement
-/// happens here.
+/// Orthogonal to `apply_closing` — this function only handles opening concerns:
+/// - Size growth
+/// - Entry price blending (weighted average)
+/// - Position creation (for new positions)
 ///
-/// Pre: If position exists, `settle_existing_position` was called first.
+/// Pre: if position exists, accumulator contributions already removed and
+/// funding already settled by caller.
 ///
-/// Post: Position reflects new size/entry; both accumulators include new
-/// contributions (or position removed if size == 0).
-fn apply_fill_to_position(
-    pair_state: &mut PairState,
+/// Post: position reflects new size and blended entry_price; or new position
+/// created with exec_price as entry.
+fn apply_opening(
     user_state: &mut UserState,
-    pair_id: PairId,
-    fill_size: HumanAmount,
-    exec_price: UsdPrice,
+    pair_state: &PairState, // read-only: only needs cumulative_funding_per_unit for new positions
+    pair_id: &PairId,
     opening_size: HumanAmount,
+    exec_price: UsdPrice,
 ) {
-    let position = user_state.positions.get_mut(&pair_id);
+    if let Some(pos) = user_state.positions.get_mut(pair_id) {
+        // Existing position: grow and blend entry_price.
+        let old_size = pos.size;
+        pos.size += opening_size;
 
-    if let Some(pos) = position {
-        pos.size += fill_size;
-
-        // Blend entry_price as weighted average for opening portion
-        if opening_size != HumanAmount::ZERO {
-            let remaining_size = pos.size - opening_size;  // size after closing, before opening
-            if remaining_size == HumanAmount::ZERO {
-                // Position was fully closed then reopened (opposite side)
-                pos.entry_price = exec_price;
-            } else {
-                // Weighted average of remaining position and new opening
-                pos.entry_price = (abs(remaining_size) * pos.entry_price + abs(opening_size) * exec_price)
-                    / abs(pos.size);
-            }
-        }
-
-        // Remove position if fully closed, or re-add contribution
-        if pos.size == HumanAmount::ZERO {
-            user_state.positions.remove(&pair_id);
-            // Both accumulator contributions already removed by settle_existing_position
+        if old_size == HumanAmount::ZERO {
+            // Fully closed by apply_closing, now reopening opposite side.
+            pos.entry_price = exec_price;
+            pos.entry_funding_per_unit = pair_state.cumulative_funding_per_unit;
         } else {
-            // entry_funding_per_unit stays at current cumulative (set by settle_funding)
-            pair_state.oi_weighted_entry_funding += pos.size * pos.entry_funding_per_unit;
-            pair_state.oi_weighted_entry_price += pos.size * pos.entry_price;
+            // Weighted average entry price.
+            pos.entry_price = (abs(old_size) * pos.entry_price
+                + abs(opening_size) * exec_price)
+                / abs(pos.size);
         }
-    } else if opening_size != HumanAmount::ZERO {
-        // Create new position
-        let entry_funding: Ratio<UsdValue, HumanAmount> = pair_state.cumulative_funding_per_unit;
+    } else {
+        // No existing position: create new.
         user_state.positions.insert(pair_id, Position {
-            size: fill_size,
+            size: opening_size,
             entry_price: exec_price,
-            entry_funding_per_unit: entry_funding,
+            entry_funding_per_unit: pair_state.cumulative_funding_per_unit,
         });
-
-        // Add new contribution to oi_weighted_entry_funding
-        pair_state.oi_weighted_entry_funding += fill_size * entry_funding;
-
-        // Add new contribution to oi_weighted_entry_price
-        pair_state.oi_weighted_entry_price += fill_size * exec_price;
     }
 }
 
@@ -1322,32 +1357,6 @@ fn update_oi(
         // Selling to close a long: long_oi decreases
         pair_state.long_oi += closing_size;
     }
-}
-
-/// Execute a fill, updating positions and settling PnL and funding for any
-/// closing portion.
-///
-/// IMPORTANT: The caller must call `accrue_funding` before calling this
-/// function. This ensures `cumulative_funding_per_unit` is up-to-date
-/// before we settle per-position funding and update `oi_weighted_entry_funding`.
-fn execute_fill(
-    state: &mut State,
-    pair_state: &mut PairState,
-    user_state: &mut UserState,
-    pair_id: PairId,
-    fill_size: HumanAmount,
-    exec_price: UsdPrice,
-    closing_size: HumanAmount,
-    opening_size: HumanAmount,
-    usdt_price: Ratio<UsdValue, BaseAmount>,
-) {
-    if let Some(pos) = user_state.positions.get_mut(&pair_id) {
-        settle_existing_position(state, pair_state, user_state, pos, closing_size, exec_price, usdt_price);
-    }
-
-    apply_fill_to_position(pair_state, user_state, pair_id, fill_size, exec_price, opening_size);
-
-    update_oi(pair_state, opening_size, closing_size);
 }
 
 /// Compute the PnL to be realized when closing a portion of a position.
@@ -1606,7 +1615,7 @@ fn fill_limit_order(
     }
 
     // Step 7: Execute fill.
-    execute_fill(state, pair_state, &mut user_state, pair_id, fill_size, exec_price, closing_size, opening_size, usdt_price);
+    execute_fill(state, pair_state, &mut user_state, pair_id, exec_price, closing_size, opening_size, usdt_price);
     collect_trading_fee(state, &mut user_state, fill_size, exec_price, params.trading_fee_rate, usdt_price);
 
     // Remove order after fill (all-or-nothing: no partial orders remain)
@@ -1970,7 +1979,7 @@ fn handle_force_close(
         let skew: HumanAmount = pair_state.long_oi - pair_state.short_oi;
         let exec_price: UsdPrice = compute_exec_price(oracle_price, skew, fill_size, pair_params);
 
-        execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, HumanAmount::ZERO, usdt_price);
+        execute_fill(state, pair_state, user_state, pair_id, exec_price, fill_size, HumanAmount::ZERO, usdt_price);
     }
 
     // Step 6: Pay liquidation fee to the vault.
@@ -2059,7 +2068,7 @@ fn handle_deleverage(
     let skew: HumanAmount = pair_state.long_oi - pair_state.short_oi;
     let exec_price: UsdPrice = compute_exec_price(oracle_price, skew, fill_size, &pair_params);
 
-    execute_fill(state, pair_state, user_state, pair_id, fill_size, exec_price, fill_size, HumanAmount::ZERO, usdt_price);
+    execute_fill(state, pair_state, user_state, pair_id, exec_price, fill_size, HumanAmount::ZERO, usdt_price);
 
     // No liquidation fee — the user is not at fault.
 }
