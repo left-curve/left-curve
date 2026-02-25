@@ -106,12 +106,12 @@ fn query_user_states(
 /// First we look for it in the `BIDS` map. If non-exists, we look for it in the
 /// `ASKS` map. If still non-exists, return `None.`
 fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<Option<QueryOrderResponse>> {
-    if let Some(item) = BIDS.idx.order_id.may_load(ctx.storage, order_id)? {
-        return Ok(Some(into_query_order_response_with_inverted_price(item)));
+    if let Some(record) = BIDS.idx.order_id.may_load(ctx.storage, order_id)? {
+        return Ok(Some(into_query_order_response_with_inverted_price(record)));
     }
 
-    if let Some(item) = ASKS.idx.order_id.may_load(ctx.storage, order_id)? {
-        return Ok(Some(into_query_order_response(item)));
+    if let Some(record) = ASKS.idx.order_id.may_load(ctx.storage, order_id)? {
+        return Ok(Some(into_query_order_response(record)));
     }
 
     Ok(None)
@@ -164,15 +164,11 @@ fn into_query_order_response_with_inverted_price(
 fn try_into_query_order_response(
     res: StdResult<(OrderKey, Order)>,
 ) -> StdResult<QueryOrderResponse> {
-    let (order_key, order) = res?;
-    Ok(into_query_order_response((order_key, order)))
+    res.map(into_query_order_response)
 }
 
 fn try_into_query_order_response_with_inverted_price(
     res: StdResult<(OrderKey, Order)>,
 ) -> StdResult<QueryOrderResponse> {
-    let (order_key, order) = res?;
-    Ok(into_query_order_response_with_inverted_price((
-        order_key, order,
-    )))
+    res.map(into_query_order_response_with_inverted_price)
 }
