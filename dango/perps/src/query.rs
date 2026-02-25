@@ -1,8 +1,11 @@
 use {
     crate::{ASKS, BIDS, OrderKey, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
-    dango_types::perps::{
-        Order, OrderId, PairId, PairParam, PairState, QueryMsg, QueryOrderResponse,
-        QueryOrdersByUserResponse, UserState,
+    dango_types::{
+        UsdPrice,
+        perps::{
+            Order, OrderId, PairId, PairParam, PairState, QueryMsg, QueryOrderResponse,
+            QueryOrdersByUserResponse, UserState,
+        },
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder,
@@ -103,12 +106,12 @@ fn query_user_states(
 /// First we look for it in the `BIDS` map. If non-exists, we look for it in the
 /// `ASKS` map. If still non-exists, return `None.`
 fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<Option<QueryOrderResponse>> {
-    if let Some((order_key, order)) = BIDS.idx.order_id.may_load(ctx.storage, order_id)? {
-        return Ok(Some(into_query_order_response((order_key, order))));
+    if let Some(item) = BIDS.idx.order_id.may_load(ctx.storage, order_id)? {
+        return Ok(Some(into_query_order_response_with_inverted_price(item)));
     }
 
-    if let Some((order_key, order)) = ASKS.idx.order_id.may_load(ctx.storage, order_id)? {
-        return Ok(Some(into_query_order_response((order_key, order))));
+    if let Some(item) = ASKS.idx.order_id.may_load(ctx.storage, order_id)? {
+        return Ok(Some(into_query_order_response(item)));
     }
 
     Ok(None)
@@ -120,7 +123,7 @@ fn query_orders_by_user(ctx: ImmutableCtx, user: Addr) -> StdResult<QueryOrdersB
         .user
         .prefix(user)
         .range(ctx.storage, None, None, IterationOrder::Ascending)
-        .map(try_into_query_order_response)
+        .map(try_into_query_order_response_with_inverted_price)
         .collect::<StdResult<Vec<_>>>()?;
 
     let asks = ASKS
@@ -132,13 +135,6 @@ fn query_orders_by_user(ctx: ImmutableCtx, user: Addr) -> StdResult<QueryOrdersB
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(QueryOrdersByUserResponse { bids, asks })
-}
-
-fn try_into_query_order_response(
-    res: StdResult<(OrderKey, Order)>,
-) -> StdResult<QueryOrderResponse> {
-    let (order_key, order) = res?;
-    Ok(into_query_order_response((order_key, order)))
 }
 
 fn into_query_order_response(
@@ -153,4 +149,30 @@ fn into_query_order_response(
         reduce_only: order.reduce_only,
         reserved_margin: order.reserved_margin,
     }
+}
+
+/// When storing orders into the `BIDS` map, we "inverted" the price so that
+/// orders are sorted respecting the price-time priority.
+/// Now, reverse the inversion, so the response contains the original limit price.
+fn into_query_order_response_with_inverted_price(
+    ((pair_id, limit_price, timestamp, order_id), order): (OrderKey, Order),
+) -> QueryOrderResponse {
+    let limit_price = UsdPrice::MAX - limit_price;
+    into_query_order_response(((pair_id, limit_price, timestamp, order_id), order))
+}
+
+fn try_into_query_order_response(
+    res: StdResult<(OrderKey, Order)>,
+) -> StdResult<QueryOrderResponse> {
+    let (order_key, order) = res?;
+    Ok(into_query_order_response((order_key, order)))
+}
+
+fn try_into_query_order_response_with_inverted_price(
+    res: StdResult<(OrderKey, Order)>,
+) -> StdResult<QueryOrderResponse> {
+    let (order_key, order) = res?;
+    Ok(into_query_order_response_with_inverted_price((
+        order_key, order,
+    )))
 }
