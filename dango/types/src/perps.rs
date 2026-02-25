@@ -3,10 +3,7 @@ use {
         Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue,
     },
     grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
-    std::{
-        collections::{BTreeMap, BTreeSet},
-        sync::LazyLock,
-    },
+    std::{collections::BTreeMap, sync::LazyLock},
 };
 
 // --------------------------------- Constants ---------------------------------
@@ -34,11 +31,11 @@ pub type OrderId = Uint64;
 #[grug::derive(Serde)]
 #[derive(Copy)]
 pub enum OrderKind {
-    /// Trade at the current marginal price, plus/minus a maximum slippage.
+    /// Trade at the best available prices in the order book, optionally
+    /// with a slippage tolerance relative to the oracle price.
     ///
-    /// Marginal price is the price quoted by the counterparty vault for an order
-    /// of infinitesimal size. It's calculated based on the oracle price and
-    /// the current skew (the differencce bewteen long and short OI).
+    /// If the order cannot be fully filled, the unfilled portion is
+    /// canceled (immediate-or-cancel behavior).
     Market { max_slippage: Dimensionless },
 
     /// Trade at the specified limit price.
@@ -61,37 +58,25 @@ pub struct Param {
     /// trading pairs.
     pub max_open_orders: usize,
 
-    /// Trading fee as a fraction of an order's notional value, deducted from
-    /// the user's margin and transferred to the vault on every fill.
-    ///
-    /// fee = ceil(|fill_size| * exec_price * trading_fee_rate / settlement_currency_price)
-    ///
-    /// E.g. with trading_fee_rate = 0.05%, for a fill of notional value $100,000,
-    /// and price of the settlement currency is $0.95 per USDT:
-    ///
-    /// fee = ceil($100,000 * 0.05% / $0.95 per USDT)
-    ///     = 52.631579 USDT
-    pub trading_fee_rate: Dimensionless,
+    /// Fee charged to makers (limit orders that rest on the book) as a fraction
+    /// of the fill's notional value, deducted from the user's margin and
+    /// transferred to the insurance fund on every fill.
+    pub maker_fee_rate: Dimensionless,
 
-    /// Fee paid to the vault as a fraction of the total notional value of
-    /// positions being liquidated, capped at the user's remaining margin after
-    /// position closure.
+    /// Fee charged to takers (market orders and crossing limit orders) as a
+    /// fraction of the fill's notional value, deducted from the user's margin
+    /// and transferred to the insurance fund on every fill.
+    pub taker_fee_rate: Dimensionless,
+
+    /// Fee paid to the insurance fund as a fraction of the total notional value
+    /// of positions being liquidated, capped at the user's remaining margin
+    /// after position closure.
     ///
     /// fee = min(
     ///   ceil(|position_size| * oracle_price * liquidation_fee_rate / settlement_currency_price),
     ///   user_remaining_margin
     /// )
     pub liquidation_fee_rate: Dimensionless,
-
-    /// Ratio of vault equity to total open notional below which ADL is enabled.
-    ///
-    /// When vault_equity < adl_trigger_ratio * total_open_notional, the `deleverage`
-    /// execute method becomes callable by whitelisted addresses.
-    pub adl_trigger_ratio: Dimensionless,
-
-    /// Accounts who are authorized to deleverage users when ADL trigger condition
-    /// is met.
-    pub adl_operators: BTreeSet<Addr>,
 }
 
 /// Parameters that apply to an individual trading pair.
@@ -99,18 +84,11 @@ pub struct Param {
 #[derive(Default)]
 pub struct PairParam {
     /// A scaling factor that determines how greatly an imbalance in long/short
-    /// open interests (the "skew") should affect the price quoted by the vault.
-    /// The greater the value of the scaling factor, the less the effect.
+    /// open interests (the "skew") should affect the funding rate. The greater
+    /// the value of the scaling factor, the less the effect. Used only for the
+    /// funding fee mechanism (not for pricing, which is determined by the order
+    /// book).
     pub skew_scale: Quantity,
-
-    /// The maximum extent to which skew can affect the quote price.
-    ///
-    /// That is, the execution price of an order is clamped to the range:
-    /// oracle_price * (1 + [-max_abs_premium, max_abs_premium]).
-    ///
-    /// This prevents an exploit where a trader fabricates a big skew to obtain
-    /// an unusually favorable pricing. See the [Mars Protocol hack](https://x.com/neutron_org/status/2014048218598838459).
-    pub max_abs_premium: Dimensionless,
 
     /// The maximum allowed open interest for both long and short.
     /// I.e. the following must be satisfied:
@@ -119,6 +97,19 @@ pub struct PairParam {
     ///
     /// This constraint does not apply to reduce-only orders.
     pub max_abs_oi: Quantity,
+
+    /// Minimum price increment for limit orders in this pair. All limit order
+    /// prices must be an integer multiple of `tick_size`.
+    pub tick_size: UsdPrice,
+
+    /// Half the bid-ask spread the vault quotes around the oracle price. The
+    /// vault places bids at `oracle_price * (1 - vault_half_spread)` and asks
+    /// at `oracle_price * (1 + vault_half_spread)`.
+    pub vault_half_spread: Dimensionless,
+
+    /// Maximum notional size (in quote currency) of the vault's resting orders
+    /// on each side of the book. Limits the vault's exposure per pair.
+    pub vault_max_quote_size: Quantity,
 
     /// Maximum absolute funding rate, as a fraction per day.
     ///
@@ -157,12 +148,11 @@ pub struct PairParam {
 }
 
 impl PairParam {
-    /// Build a `PairParam` with the two pricing-relevant fields varied;
+    /// Build a `PairParam` with the funding-relevant fields varied;
     /// all other fields use inert defaults. Intended for tests.
-    pub fn new_mock(skew_scale: i128, max_abs_premium_permille: i128) -> Self {
+    pub fn new_mock(skew_scale: i128) -> Self {
         Self {
             skew_scale: Quantity::new_int(skew_scale),
-            max_abs_premium: Dimensionless::new_permille(max_abs_premium_permille),
             max_abs_oi: Quantity::new_int(1_000_000),
             ..Default::default()
         }
@@ -173,15 +163,17 @@ impl PairParam {
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct State {
-    /// The vault's collateral balance. Should be the sum of all user deposits,
-    /// the vault's _realized_ PnL, and the share of trading fees earned by the vault.
+    /// The insurance fund balance. All PnL settlement, trading fees, and
+    /// liquidation fees flow through this fund. Bad debt (negative user equity
+    /// at liquidation) is absorbed here.
+    pub insurance_fund: Uint128,
+
+    /// The vault's trading margin (LP capital deposited into the exchange).
+    /// The vault is a regular trader; its equity is computed identically to any
+    /// user via `compute_user_equity`.
     ///
-    /// Note:
-    ///
-    /// - This doesn't equal the vault's _equity_, which on top of this also
-    ///   includes the vault's _unrealized_ PnL.
-    /// - This also doesn't equal the vault's token balance tracked by the bank
-    ///   contract, which also includes unlocks that are pending cooldown.
+    /// This does not equal the vault's token balance tracked by the bank
+    /// contract, which also includes unlocks that are pending cooldown.
     pub vault_margin: Uint128,
 
     /// Total supply of the vault's share token.
@@ -220,21 +212,6 @@ pub struct PairState {
     /// Timestamp of the most recent funding accrual.
     pub last_funding_time: Timestamp,
 
-    /// Sum of `position.size * position.entry_funding_per_unit` across all open
-    /// positions for this pair.
-    ///
-    /// Used to compute the vault's unrealized funding without iterating over
-    /// all positions:
-    ///   vault_unrealized_funding = cumulative_funding_per_unit * skew - oi_weighted_entry_funding
-    pub oi_weighted_entry_funding: UsdValue,
-
-    /// Sum of `position.size * position.entry_price` across all open
-    /// positions for this pair.
-    ///
-    /// Used to compute the vault's unrealized price PnL without iterating over
-    /// all positions:
-    ///   vault_unrealized_pnl = oi_weighted_entry_price - oracle_price * skew
-    pub oi_weighted_entry_price: UsdValue,
 }
 
 impl PairState {
@@ -367,8 +344,8 @@ pub enum ExecuteMsg {
     /// Forcibly close all of a user's positions, even if the user has sufficient
     /// amount of collateral.
     ///
-    /// This can only be called by whitelisted callers when the counterparty vault
-    /// is in distress.
+    /// This is enabled when the insurance fund is depleted after absorbing bad
+    /// debt from liquidations.
     Deleverage { user: Addr },
 
     /// Actions to be triggered at the beginning of a block, right after the
