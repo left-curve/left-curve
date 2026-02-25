@@ -22,7 +22,7 @@ pub const BIDS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("bid", OrderIndexes::new("bid", "bid__id", "bid__user"));
 
 pub const ASKS: IndexedMap<OrderKey, Order, OrderIndexes> =
-    IndexedMap::new("ask", OrderIndexes::new("bid", "bid__id", "bid__user"));
+    IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
 
 pub type OrderKey = (PairId, UsdPrice, Timestamp, OrderId);
 
