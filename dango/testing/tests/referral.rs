@@ -13,9 +13,9 @@ use {
         },
     },
     grug::{
-        Addr, Addressable, Bounded, Coin, Coins, Duration, HashExt, Inner, MakeBlockOutcome,
-        Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order, QuerierExt,
-        ResultExt, Signer, Timestamp, TxOutcome, Udec128, Uint128, btree_map,
+        Addr, Addressable, Bounded, Coin, Coins, Duration, HashExt, Inner, MultiplyFraction,
+        NonZero, Number, NumberConst, Order, QuerierExt, ResultExt, Timestamp, TxOutcome, Udec128,
+        Uint128, btree_map,
     },
     std::vec,
 };
@@ -292,7 +292,7 @@ fn test_set_share_ratio() {
     // Create a bid order with user2 of $9999. This is not enough to reach the required volume
     // to become a referrer.
     let usdc_amount = Uint128::new(9999 * 10_u128.pow(usdc::DECIMAL));
-    create_bid_order_block_outcome(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
+    create_bid_order(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
 
     set_share_ratio(
          &mut suite,
@@ -307,7 +307,7 @@ fn test_set_share_ratio() {
     // Trade another $1. Now the total traded volume is $10000, which should be enough for User2
     // to become a referrer.
     let usdc_amount = Uint128::new(10_u128.pow(usdc::DECIMAL));
-    create_bid_order_block_outcome(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
+    create_bid_order(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
 
     set_share_ratio(
         &mut suite,
@@ -473,7 +473,7 @@ fn commission_rebound_tier() {
     {
         let usdc_amount = Uint128::new(99 * 10_u128.pow(usdc::DECIMAL));
 
-        create_bid_order_block_outcome(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
+        create_bid_order(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
 
         let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
         assert_eq!(
@@ -487,7 +487,7 @@ fn commission_rebound_tier() {
     {
         let usdc_amount = Uint128::new(10_u128.pow(usdc::DECIMAL));
 
-        create_bid_order_block_outcome(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
+        create_bid_order(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
 
         let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
         assert_eq!(
@@ -500,7 +500,7 @@ fn commission_rebound_tier() {
     {
         let usdc_amount = Uint128::new(1000 * 10_u128.pow(usdc::DECIMAL));
 
-        create_bid_order_block_outcome(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
+        create_bid_order(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
 
         let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
         assert_eq!(
@@ -513,7 +513,7 @@ fn commission_rebound_tier() {
     {
         let usdc_amount = Uint128::new(1000 * 10_u128.pow(usdc::DECIMAL));
 
-        create_bid_order_block_outcome(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
+        create_bid_order(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
 
         let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
         assert_eq!(
@@ -723,7 +723,7 @@ fn commission_rebound_coins() {
     );
 
     // Trade with user2 to have user1 commission rebound at 70%.
-    create_bid_order_block_outcome(
+    create_bid_order(
         &mut suite,
         contracts.dex,
         accounts_vec.get_mut(1).unwrap(), // user2
@@ -759,7 +759,7 @@ fn commission_rebound_coins() {
 
     // Trade 50$ with user7.
     let usdc_amount = Uint128::new(50 * 10_u128.pow(usdc::DECIMAL));
-    create_bid_order_block_outcome(
+    create_bid_order(
         &mut suite,
         contracts.dex,
         accounts_vec.get_mut(6).unwrap(), // user7
@@ -1151,6 +1151,134 @@ fn referrer_stats() {
     assert_eq!(stat.volume, Udec128::new(user2_amount.0));
 }
 
+#[test]
+fn active_referral() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test(TestOption::preset_test());
+
+    // Setup oracle and create a limit order with user1.
+    {
+        // Feed price to oracle.
+        suite
+     .execute(
+         &mut accounts.owner,
+         contracts.oracle,
+         &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+             eth::DENOM.clone() => oracle::PriceSource::Fixed { humanized_price: Udec128::new(1000), precision: 18, timestamp: Duration::from_weeks(1) },
+             usdc::DENOM.clone() => oracle::PriceSource::Fixed { humanized_price: Udec128::new(1), precision: 6, timestamp: Duration::from_weeks(1) },
+         }),
+         Coins::new(),
+     )
+     .should_succeed();
+
+        // Create a ask limit order with user1.
+        let amount = Uint128::new(10 * 10_u128.pow(eth::DECIMAL)); // 10 ETH
+        let order = CreateOrderRequest::new_limit(
+            eth::DENOM.clone(),
+            usdc::DENOM.clone(),
+            dex::Direction::Ask,
+            NonZero::new(
+                Price::checked_from_ratio(1000, 10_u128.pow(eth::DECIMAL - usdc::DECIMAL)).unwrap(),
+            )
+            .unwrap(),
+            NonZero::new(amount).unwrap(),
+        );
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates: vec![order],
+                    cancels: None,
+                },
+                Coin::new(eth::DENOM.clone(), amount).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    set_share_ratio(
+        &mut suite,
+        contracts.taxman,
+        &mut accounts.user1,
+        Udec128::new_percent(20),
+    )
+    .should_succeed();
+
+    suite.block_time = Duration::from_seconds(1);
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.taxman,
+            &taxman::ExecuteMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.taxman,
+            &taxman::ExecuteMsg::SetReferral {
+                referrer: 1,
+                referee: 3,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trade with user2.
+    create_bid_order(
+        &mut suite,
+        contracts.dex,
+        &mut accounts.user2,
+        Uint128::new(10 * 10_u128.pow(usdc::DECIMAL)),
+    );
+
+    let referrer_data = query_latest_user_data(&mut suite, contracts.taxman, 1, None);
+    assert_eq!(referrer_data.active_users, Uint128::new(1));
+
+    // Trade again with user2; since we are in the same day, the active users should still be 1.
+    // Trade with user2.
+    create_bid_order(
+        &mut suite,
+        contracts.dex,
+        &mut accounts.user2,
+        Uint128::new(10 * 10_u128.pow(usdc::DECIMAL)),
+    );
+
+    let referrer_data = query_latest_user_data(&mut suite, contracts.taxman, 1, None);
+    assert_eq!(referrer_data.active_users, Uint128::new(1));
+
+    // Trade with user3.
+    create_bid_order(
+        &mut suite,
+        contracts.dex,
+        &mut accounts.user3,
+        Uint128::new(10 * 10_u128.pow(usdc::DECIMAL)),
+    );
+
+    let referrer_data = query_latest_user_data(&mut suite, contracts.taxman, 1, None);
+    assert_eq!(referrer_data.active_users, Uint128::new(2));
+
+    // Set the block time to be 1 day.
+    suite.block_time = Duration::from_days(1);
+
+    // Trade with user2.
+    create_bid_order(
+        &mut suite,
+        contracts.dex,
+        &mut accounts.user2,
+        Uint128::new(10 * 10_u128.pow(usdc::DECIMAL)),
+    );
+
+    let referrer_data = query_latest_user_data(&mut suite, contracts.taxman, 1, None);
+    assert_eq!(referrer_data.active_users, Uint128::new(3));
+}
+
 fn set_share_ratio(
     suite: &mut TestSuite,
     taxman: Addr,
@@ -1163,41 +1291,6 @@ fn set_share_ratio(
         &taxman::ExecuteMsg::SetFeeShareRatio(ShareRatio::new(ratio).unwrap()),
         Coins::new(),
     )
-}
-
-// Create a bid order with the given amount and return the transaction outcome.
-fn create_bid_order_block_outcome(
-    suite: &mut TestSuite,
-    dex: Addr,
-    user: &mut TestAccount,
-    amount: Uint128,
-) -> MakeBlockOutcome {
-    let order = CreateOrderRequest::new_market(
-        eth::DENOM.clone(),
-        usdc::DENOM.clone(),
-        dex::Direction::Bid,
-        Bounded::new(Udec128::ZERO).unwrap(),
-        NonZero::new(amount).unwrap(),
-    );
-    let msg = Message::execute(
-        dex,
-        &dex::ExecuteMsg::BatchUpdateOrders {
-            creates: vec![order],
-            cancels: None,
-        },
-        Coin::new(usdc::DENOM.clone(), amount).unwrap(),
-    )
-    .unwrap();
-
-    let tx = user
-        .sign_transaction(
-            NonEmpty::new_unchecked(vec![msg]),
-            &suite.chain_id,
-            10000000000,
-        )
-        .unwrap();
-
-    suite.make_block(vec![tx])
 }
 
 fn create_bid_order(suite: &mut TestSuite, dex: Addr, user: &mut TestAccount, amount: Uint128) {
