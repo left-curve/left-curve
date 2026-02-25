@@ -4,6 +4,11 @@ use {
     grug::{MutableCtx, Response},
 };
 
+/// Called once every block by the oracle contract after it receives updated prices.
+///
+/// Since validators feed price updates themselves and always pin the oracle
+/// update transaction to the top of the block, this is guaranteed to happen as
+/// the first thing each block.
 pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ORACLE,
