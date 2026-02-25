@@ -1,39 +1,27 @@
 use {
     super::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
-    crate::{NoCachePerpQuerier, PAIR_IDS, STATE, core::compute_vault_equity},
+    crate::{PAIR_IDS, STATE},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         Quantity, bank,
-        perps::{self, PairId, State, settlement_currency},
+        perps::{self, State, settlement_currency},
     },
-    grug::{
-        Coins, Message, MultiplyFraction, MutableCtx, Number as _, Response, Signed, Timestamp,
-        Uint128,
-    },
-    std::collections::BTreeSet,
+    grug::{Coins, Message, MultiplyFraction, MutableCtx, Number as _, Response, Signed, Uint128},
 };
 
 pub fn deposit(ctx: MutableCtx, min_shares_to_mint: Option<Uint128>) -> anyhow::Result<Response> {
     // ---------------------------- 1. Preparation -----------------------------
 
     let mut state = STATE.load(ctx.storage)?;
-    let pair_ids = PAIR_IDS.load(ctx.storage)?;
+    let _pair_ids = PAIR_IDS.load(ctx.storage)?;
 
-    let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (deposit_amount, shares_to_mint) = _deposit(
-        ctx.block.timestamp,
-        ctx.funds,
-        &state,
-        &pair_ids,
-        &perp_querier,
-        &mut oracle_querier,
-        min_shares_to_mint,
-    )?;
+    let (deposit_amount, shares_to_mint) =
+        _deposit(ctx.funds, &state, &mut oracle_querier, min_shares_to_mint)?;
 
     // Update global state.
     state.vault_margin.checked_add_assign(deposit_amount)?;
@@ -61,11 +49,8 @@ pub fn deposit(ctx: MutableCtx, min_shares_to_mint: Option<Uint128>) -> anyhow::
 /// Returns: 1) the amount of settlement currency that was deposited,
 /// 2) the amount of share token to be minted, both in base unit.
 fn _deposit(
-    current_time: Timestamp,
     mut funds: Coins,
     state: &State,
-    pair_ids: &BTreeSet<PairId>,
-    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     min_shares_to_mint: Option<Uint128>,
 ) -> anyhow::Result<(Uint128, Uint128)> {
@@ -92,15 +77,10 @@ fn _deposit(
     let vault_margin_value = Quantity::from_base(state.vault_margin, settlement_currency::DECIMAL)?
         .checked_mul(settlement_currency_price)?;
 
-    // Compute the vault's equity. This equals the vault's margin plus its
-    // unrealized PnL and funding.
-    let vault_equity = compute_vault_equity(
-        vault_margin_value,
-        pair_ids,
-        perp_querier,
-        oracle_querier,
-        current_time,
-    )?;
+    // TODO(order-book): Replace with new `compute_vault_equity` that treats
+    // the vault as a regular trader (via `compute_user_equity` with the vault's
+    // address/state). For now, vault equity = vault margin value (no PnL/funding).
+    let vault_equity = vault_margin_value;
 
     // Add virtual asset to vault equity to arrive at the effective equity.
     let effective_equity = vault_equity.checked_add(VIRTUAL_ASSETS)?;
@@ -137,14 +117,8 @@ fn _deposit(
 mod tests {
     use {
         super::*,
-        dango_types::{
-            FundingPerUnit, Quantity, UsdValue,
-            constants::{btc, eth},
-            oracle::PrecisionedPrice,
-            perps::{PairParam, PairState, settlement_currency},
-        },
-        grug::{Coin, Udec128, Uint128, hash_map},
-        std::collections::HashMap,
+        dango_types::{oracle::PrecisionedPrice, perps::settlement_currency},
+        grug::{Coin, Timestamp, Udec128, Uint128, hash_map},
         test_case::test_case,
     };
 
@@ -165,23 +139,14 @@ mod tests {
     // shares = floor(1_000_000 × 1.0) = 1_000_000
     #[test]
     fn first_deposit_empty_vault() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
 
         let state = State::default();
 
-        let (deposit_amount, shares) = _deposit(
-            Timestamp::from_seconds(0),
-            usdc_coins(1_000_000),
-            &state,
-            &BTreeSet::new(),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap();
+        let (deposit_amount, shares) =
+            _deposit(usdc_coins(1_000_000), &state, &mut oracle_querier, None).unwrap();
 
         assert_eq!(deposit_amount, Uint128::new(1_000_000));
         assert_eq!(shares, Uint128::new(1_000_000));
@@ -194,7 +159,6 @@ mod tests {
     // shares = floor(2_000_000 × 0.5) = 1_000_000
     #[test]
     fn second_deposit_same_size() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -202,18 +166,11 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(1_000_000),
             vault_share_supply: Uint128::new(1_000_000),
+            ..Default::default()
         };
 
-        let (_, shares) = _deposit(
-            Timestamp::from_seconds(0),
-            usdc_coins(1_000_000),
-            &state,
-            &BTreeSet::new(),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap();
+        let (_, shares) =
+            _deposit(usdc_coins(1_000_000), &state, &mut oracle_querier, None).unwrap();
 
         assert_eq!(shares, Uint128::new(1_000_000));
     }
@@ -223,23 +180,14 @@ mod tests {
     // The deposit() wrapper would reject via Coins::one(..., 0).
     #[test]
     fn zero_deposit() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
 
         let state = State::default();
 
-        let (deposit_amount, shares) = _deposit(
-            Timestamp::from_seconds(0),
-            Coins::new(),
-            &state,
-            &BTreeSet::new(),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap();
+        let (deposit_amount, shares) =
+            _deposit(Coins::new(), &state, &mut oracle_querier, None).unwrap();
 
         assert_eq!(deposit_amount, Uint128::new(0));
         assert_eq!(shares, Uint128::new(0));
@@ -249,7 +197,8 @@ mod tests {
     // USDC + an extra denom should error.
     #[test]
     fn unexpected_coins_rejected() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        use dango_types::constants::eth;
+
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -264,72 +213,20 @@ mod tests {
             })
             .unwrap();
 
-        let err = _deposit(
-            Timestamp::from_seconds(0),
-            funds,
-            &state,
-            &BTreeSet::new(),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap_err();
+        let err = _deposit(funds, &state, &mut oracle_querier, None).unwrap_err();
 
         assert!(err.to_string().contains("unexpected deposit"));
     }
 
-    // ---- Test 5: catastrophic loss rejects deposit ----
-    // margin=100 USDC, ETH PnL=-5000 → equity=-4900, effective_equity=-4899 → error
-    #[test]
-    fn catastrophic_loss_rejects_deposit() {
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam::default(),
-            },
-            hash_map! {
-                eth::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(10),
-                    oi_weighted_entry_price: UsdValue::new_int(20_000),
-                    last_funding_time: Timestamp::from_seconds(0),
-                    ..Default::default()
-                },
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
-
-        // 100 USDC = 100_000_000 base units
-        let state = State {
-            vault_margin: Uint128::new(100_000_000),
-            vault_share_supply: Uint128::new(100_000_000),
-        };
-
-        let err = _deposit(
-            Timestamp::from_seconds(0),
-            usdc_coins(1_000_000),
-            &state,
-            &BTreeSet::from([eth::DENOM.clone()]),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap_err();
-
-        assert!(err.to_string().contains("catastrophic loss"));
-    }
+    // TODO(order-book): Tests 5, 8, 9, 10 depend on vault equity accounting
+    // with unrealized PnL and funding across trading pairs. These will be
+    // re-enabled once the new `compute_vault_equity` (treating the vault as
+    // a regular trader) is implemented.
 
     // ---- Test 6: min_shares passes ----
     // Empty vault, deposit 1 USDC → 1M shares. min=1M → passes.
     #[test]
     fn min_shares_passes() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -337,11 +234,8 @@ mod tests {
         let state = State::default();
 
         let (_, shares) = _deposit(
-            Timestamp::from_seconds(0),
             usdc_coins(1_000_000),
             &state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
             Some(Uint128::new(1_000_000)),
         )
@@ -354,7 +248,6 @@ mod tests {
     // Empty vault, deposit 1 USDC → 1M shares. min=1_000_001 → error.
     #[test]
     fn min_shares_fails() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -362,11 +255,8 @@ mod tests {
         let state = State::default();
 
         let err = _deposit(
-            Timestamp::from_seconds(0),
             usdc_coins(1_000_000),
             &state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
             Some(Uint128::new(1_000_001)),
         )
@@ -375,183 +265,10 @@ mod tests {
         assert!(err.to_string().contains("too few shares minted"));
     }
 
-    // ---- Test 8: deposit with unrealized PnL ----
-    // margin=10k USDC, supply=10B, ETH PnL=-5k → equity=$5000
-    // Deposit 5k USDC → depositor gets "cheap" shares (equity < margin)
-    //
-    // effective_supply = 10_000_000_000 + 1_000_000 = 10_001_000_000
-    // effective_equity = $5000 + $1 = $5001 (raw 5_001_000_000)
-    // deposit_value = $5000 (raw 5_000_000_000)
-    // ratio = 5_000_000_000_000_000 / 5_001_000_000 = 999_800 (truncated)
-    // shares = floor(10_001_000_000 * 999_800 / 1_000_000) = 9_998_999_800
-    #[test]
-    fn deposit_with_unrealized_pnl() {
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam::default(),
-            },
-            hash_map! {
-                eth::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(10),
-                    oi_weighted_entry_price: UsdValue::new_int(20_000),
-                    last_funding_time: Timestamp::from_seconds(0),
-                    ..Default::default()
-                },
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
-
-        let state = State {
-            vault_margin: Uint128::new(10_000_000_000),
-            vault_share_supply: Uint128::new(10_000_000_000),
-        };
-
-        let (_, shares) = _deposit(
-            Timestamp::from_seconds(0),
-            usdc_coins(5_000_000_000),
-            &state,
-            &BTreeSet::from([eth::DENOM.clone()]),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap();
-
-        // Shares > deposit amount because vault equity is lower than margin
-        // (depositor gets more shares per dollar when PnL is negative).
-        assert_eq!(shares, Uint128::new(9_998_999_800));
-    }
-
-    // ---- Test 9: deposit with funding ----
-    // margin=10k USDC, supply=10B, ETH: PnL=-5k, recorded funding=+20
-    // vault_equity = 10000 + (-5000) + 20 = 5020
-    // effective_equity = $5021 (raw 5_021_000_000)
-    // deposit 5k USDC → deposit_value = $5000 (raw 5_000_000_000)
-    // ratio = 5_000_000_000_000_000 / 5_021_000_000 = 995_817 (truncated)
-    // shares = floor(10_001_000_000 * 995_817 / 1_000_000) = 9_959_165_817
-    #[test]
-    fn deposit_with_funding() {
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam::default(),
-            },
-            hash_map! {
-                eth::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(10),
-                    oi_weighted_entry_price: UsdValue::new_int(20_000),
-                    funding_per_unit: FundingPerUnit::new_int(3),
-                    oi_weighted_entry_funding: UsdValue::new_int(10),
-                    last_funding_time: Timestamp::from_seconds(100),
-                    ..Default::default()
-                },
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
-
-        let state = State {
-            vault_margin: Uint128::new(10_000_000_000),
-            vault_share_supply: Uint128::new(10_000_000_000),
-        };
-
-        let (_, shares) = _deposit(
-            Timestamp::from_seconds(100),
-            usdc_coins(5_000_000_000),
-            &state,
-            &BTreeSet::from([eth::DENOM.clone()]),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap();
-
-        assert_eq!(shares, Uint128::new(9_959_165_817));
-    }
-
-    // ---- Test 10: multiple pairs ----
-    // ETH: skew=10, oi_weighted_entry=20000, oracle=2500 → pnl=-5000
-    // BTC: skew=-1, oi_weighted_entry=-50000, oracle=48000 → pnl=-2000
-    // margin=10k, equity = 10000+(-5000)+(-2000) = 3000
-    // effective_equity = $3001, deposit 1k USDC → deposit_value=$1000
-    // effective_supply = 10_000_000_000 + 1_000_000 = 10_001_000_000
-    // ratio = 1_000_000_000_000_000 / 3_001_000_000 = 333_222 (truncated)
-    // shares = floor(10_001_000_000 * 333_222 / 1_000_000) = 3_332_553_222
-    #[test]
-    fn multiple_pairs() {
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam::default(),
-                btc::DENOM.clone() => PairParam::default(),
-            },
-            hash_map! {
-                eth::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(10),
-                    oi_weighted_entry_price: UsdValue::new_int(20_000),
-                    last_funding_time: Timestamp::from_seconds(0),
-                    ..Default::default()
-                },
-                btc::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(-1),
-                    oi_weighted_entry_price: UsdValue::new_int(-50_000),
-                    last_funding_time: Timestamp::from_seconds(0),
-                    ..Default::default()
-                },
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-            btc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(4_800_000),
-                Timestamp::from_seconds(0),
-                8,
-            ),
-        });
-
-        let state = State {
-            vault_margin: Uint128::new(10_000_000_000),
-            vault_share_supply: Uint128::new(10_000_000_000),
-        };
-
-        let (_, shares) = _deposit(
-            Timestamp::from_seconds(0),
-            usdc_coins(1_000_000_000),
-            &state,
-            &BTreeSet::from([eth::DENOM.clone(), btc::DENOM.clone()]),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap();
-
-        assert_eq!(shares, Uint128::new(3_332_553_222));
-    }
-
     // ---- Test 11: large deposit no overflow ----
     // 1B USDC vault + 1B USDC deposit. Both are 1_000_000_000 * 1_000_000 base.
     #[test]
     fn large_deposit_no_overflow() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -561,14 +278,12 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(one_billion_usdc),
             vault_share_supply: Uint128::new(one_billion_usdc),
+            ..Default::default()
         };
 
         let (deposit_amount, shares) = _deposit(
-            Timestamp::from_seconds(0),
             usdc_coins(one_billion_usdc),
             &state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
             None,
         )
@@ -589,7 +304,6 @@ mod tests {
     #[test_case(99, 990_000 ; "usdc below peg")]
     #[test_case(101, 1_010_000 ; "usdc above peg")]
     fn non_dollar_settlement_price(price_percent: u128, expected_shares: u128) {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(price_percent),
@@ -600,16 +314,8 @@ mod tests {
 
         let state = State::default();
 
-        let (_, shares) = _deposit(
-            Timestamp::from_seconds(0),
-            usdc_coins(1_000_000),
-            &state,
-            &BTreeSet::new(),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap();
+        let (_, shares) =
+            _deposit(usdc_coins(1_000_000), &state, &mut oracle_querier, None).unwrap();
 
         assert_eq!(shares, Uint128::new(expected_shares));
     }
@@ -622,7 +328,6 @@ mod tests {
     // shares = floor(3_000_000 * 333_333 / 1_000_000) = floor(999_999.0) = 999_999
     #[test]
     fn shares_rounded_floor() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -630,18 +335,11 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(2_000_000),
             vault_share_supply: Uint128::new(2_000_000),
+            ..Default::default()
         };
 
-        let (_, shares) = _deposit(
-            Timestamp::from_seconds(0),
-            usdc_coins(1_000_000),
-            &state,
-            &BTreeSet::new(),
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap();
+        let (_, shares) =
+            _deposit(usdc_coins(1_000_000), &state, &mut oracle_querier, None).unwrap();
 
         // Should be 999_999, not 1_000_000 (ceil) or 1_000_002 (if division ceiled).
         assert_eq!(shares, Uint128::new(999_999));

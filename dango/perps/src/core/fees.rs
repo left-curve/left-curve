@@ -1,26 +1,26 @@
 use {
-    dango_types::{Quantity, UsdPrice, UsdValue, perps::Param},
+    dango_types::{Dimensionless, Quantity, UsdPrice, UsdValue},
     grug::MathResult,
 };
 
-/// Given the fillable size of an order and other relevant information, compute
-/// the trading fee as a USD value.
+/// Given the fillable size of an order, the execution price, and the applicable
+/// fee rate (maker or taker), compute the trading fee as a USD value.
 pub fn compute_trading_fee(
     fill_size: Quantity,
     exec_price: UsdPrice,
-    param: &Param,
+    fee_rate: Dimensionless,
 ) -> MathResult<UsdValue> {
     fill_size
         .checked_abs()?
         .checked_mul(exec_price)?
-        .checked_mul(param.trading_fee_rate)
+        .checked_mul(fee_rate)
 }
 
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_types::Dimensionless, test_case::test_case};
+    use {super::*, test_case::test_case};
 
     // (fill_size, exec_price, fee_rate_raw, expected_raw)
     #[test_case(   0,      1,   1_000,          0 ; "zero fill")]
@@ -37,10 +37,7 @@ mod tests {
             compute_trading_fee(
                 Quantity::new_int(fill_size),
                 UsdPrice::new_int(exec_price),
-                &Param {
-                    trading_fee_rate: Dimensionless::new_raw(fee_rate_raw),
-                    ..Default::default()
-                },
+                Dimensionless::new_raw(fee_rate_raw),
             )
             .unwrap(),
             UsdValue::new_raw(expected_raw),

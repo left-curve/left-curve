@@ -1,31 +1,29 @@
 use {
     super::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
-    crate::{NoCachePerpQuerier, PAIR_IDS, PARAM, STATE, USER_STATES, core::compute_vault_equity},
+    crate::{PAIR_IDS, PARAM, STATE, USER_STATES},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         Quantity, bank,
-        perps::{self, PairId, Param, State, Unlock, UserState, settlement_currency},
+        perps::{self, Param, State, Unlock, UserState, settlement_currency},
     },
     grug::{
         Coins, IsZero, Message, MultiplyRatio, MutableCtx, Number as _, Response, Timestamp,
         Uint128,
     },
-    std::collections::BTreeSet,
 };
 
 pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // ---------------------------- 1. Preparation -----------------------------
 
     let param = PARAM.load(ctx.storage)?;
-    let pair_ids = PAIR_IDS.load(ctx.storage)?;
+    let _pair_ids = PAIR_IDS.load(ctx.storage)?;
 
     let mut state = STATE.load(ctx.storage)?;
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
-    let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
     // --------------------------- 2. Business logic ---------------------------
@@ -36,8 +34,6 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
         &state,
         &param,
         &user_state,
-        &pair_ids,
-        &perp_querier,
         &mut oracle_querier,
     )?;
 
@@ -73,8 +69,6 @@ fn _withdraw(
     state: &State,
     param: &Param,
     user_state: &UserState,
-    pair_ids: &BTreeSet<PairId>,
-    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<(Uint128, Unlock)> {
     // Query the price of the settlement currency.
@@ -101,13 +95,10 @@ fn _withdraw(
     let vault_margin_value = Quantity::from_base(state.vault_margin, settlement_currency::DECIMAL)?
         .checked_mul(settlement_currency_price)?;
 
-    let vault_equity = compute_vault_equity(
-        vault_margin_value,
-        pair_ids,
-        perp_querier,
-        oracle_querier,
-        current_time,
-    )?;
+    // TODO(order-book): Replace with new `compute_vault_equity` that treats
+    // the vault as a regular trader (via `compute_user_equity` with the vault's
+    // address/state). For now, vault equity = vault margin value (no PnL/funding).
+    let vault_equity = vault_margin_value;
 
     let effective_equity = vault_equity.checked_add(VIRTUAL_ASSETS)?;
 
@@ -149,14 +140,8 @@ fn _withdraw(
 mod tests {
     use {
         super::*,
-        dango_types::{
-            FundingPerUnit, Quantity, UsdValue,
-            constants::{btc, eth},
-            oracle::PrecisionedPrice,
-            perps::{PairParam, PairState, settlement_currency},
-        },
+        dango_types::{oracle::PrecisionedPrice, perps::settlement_currency},
         grug::{Coin, Duration, Udec128, Uint128, hash_map},
-        std::collections::HashMap,
         test_case::test_case,
     };
 
@@ -188,7 +173,6 @@ mod tests {
     // amount = floor(2_000_000 * 1_000_000 / 2_000_000) = 1_000_000
     #[test]
     fn first_withdrawal_symmetric() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -196,6 +180,7 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(1_000_000),
             vault_share_supply: Uint128::new(1_000_000),
+            ..Default::default()
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -206,8 +191,6 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();
@@ -221,7 +204,6 @@ mod tests {
     // amount = floor(2_000_000 * 500_000 / 2_000_000) = 500_000
     #[test]
     fn partial_withdrawal() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -229,6 +211,7 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(1_000_000),
             vault_share_supply: Uint128::new(1_000_000),
+            ..Default::default()
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -239,8 +222,6 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();
@@ -251,7 +232,6 @@ mod tests {
     // ---- Test 3: zero shares rejected ----
     #[test]
     fn zero_shares_rejected() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -259,6 +239,7 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(1_000_000),
             vault_share_supply: Uint128::new(1_000_000),
+            ..Default::default()
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -269,8 +250,6 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap_err();
@@ -281,7 +260,8 @@ mod tests {
     // ---- Test 4: unexpected coins rejected ----
     #[test]
     fn unexpected_coins_rejected() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        use dango_types::constants::eth;
+
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -289,6 +269,7 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(1_000_000),
             vault_share_supply: Uint128::new(1_000_000),
+            ..Default::default()
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -307,8 +288,6 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap_err();
@@ -316,115 +295,14 @@ mod tests {
         assert!(err.to_string().contains("unexpected"));
     }
 
-    // ---- Test 5: catastrophic loss rejects withdrawal ----
-    // margin=100 USDC, ETH PnL=-5000 → equity=-4900, effective_equity=-4899
-    #[test]
-    fn catastrophic_loss_rejects_withdrawal() {
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam::default(),
-            },
-            hash_map! {
-                eth::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(10),
-                    oi_weighted_entry_price: UsdValue::new_int(20_000),
-                    last_funding_time: Timestamp::from_seconds(0),
-                    ..Default::default()
-                },
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
-
-        let state = State {
-            vault_margin: Uint128::new(100_000_000),
-            vault_share_supply: Uint128::new(100_000_000),
-        };
-        let param = default_param();
-        let user_state = UserState::default();
-
-        let err = _withdraw(
-            Timestamp::from_seconds(0),
-            share_coins(1_000_000),
-            &state,
-            &param,
-            &user_state,
-            &BTreeSet::from([eth::DENOM.clone()]),
-            &perp_querier,
-            &mut oracle_querier,
-        )
-        .unwrap_err();
-
-        assert!(err.to_string().contains("catastrophic loss"));
-    }
-
-    // ---- Test 6: insufficient vault margin ----
-    // margin=100 USDC (100_000_000), supply=100_000_000
-    // ETH: skew=-10, oi_weighted_entry=-20000, oracle=2500
-    //   vault_pnl = -20000 - 2500*(-10) = +5000
-    // vault_equity = $100 + $5000 = $5100
-    // effective_supply = 101_000_000, effective_equity = $5101
-    // vault_equity_base = 5_101_000_000
-    // Withdraw all 100M shares: amount = floor(5_101_000_000 * 100_000_000 / 101_000_000) = 5_050_495_049
-    // vault_margin = 100_000_000 < 5_050_495_049 → error
-    #[test]
-    fn insufficient_vault_margin() {
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam::default(),
-            },
-            hash_map! {
-                eth::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(-10),
-                    oi_weighted_entry_price: UsdValue::new_int(-20_000),
-                    last_funding_time: Timestamp::from_seconds(0),
-                    ..Default::default()
-                },
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
-
-        let state = State {
-            vault_margin: Uint128::new(100_000_000),
-            vault_share_supply: Uint128::new(100_000_000),
-        };
-        let param = default_param();
-        let user_state = UserState::default();
-
-        let err = _withdraw(
-            Timestamp::from_seconds(0),
-            share_coins(100_000_000),
-            &state,
-            &param,
-            &user_state,
-            &BTreeSet::from([eth::DENOM.clone()]),
-            &perp_querier,
-            &mut oracle_querier,
-        )
-        .unwrap_err();
-
-        assert!(err.to_string().contains("insufficient"));
-    }
+    // TODO(order-book): Tests 5, 6, 8, 9, 10 depend on vault equity accounting
+    // with unrealized PnL and funding across trading pairs. These will be
+    // re-enabled once the new `compute_vault_equity` (treating the vault as
+    // a regular trader) is implemented.
 
     // ---- Test 7: max unlocks exceeded ----
     #[test]
     fn max_unlocks_exceeded() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -432,6 +310,7 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(1_000_000),
             vault_share_supply: Uint128::new(1_000_000),
+            ..Default::default()
         };
         let param = Param {
             max_unlocks: 2,
@@ -460,196 +339,11 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap_err();
 
         assert!(err.to_string().contains("too many"));
-    }
-
-    // ---- Test 8: withdrawal with unrealized PnL ----
-    // margin=10k USDC (10_000_000_000), supply=10_000_000_000
-    // ETH: skew=10, oi_weighted_entry=20000, oracle=2500
-    //   vault_pnl = 20000 - 2500*10 = -5000
-    // vault_equity = $10000 + (-$5000) = $5000
-    // effective_supply = 10_001_000_000, effective_equity = $5001
-    // vault_equity_base = 5_001_000_000
-    // Withdraw 5_000_000_000 shares:
-    //   amount = floor(5_001_000_000 * 5_000_000_000 / 10_001_000_000) = 2_500_249_975
-    #[test]
-    fn withdrawal_with_unrealized_pnl() {
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam::default(),
-            },
-            hash_map! {
-                eth::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(10),
-                    oi_weighted_entry_price: UsdValue::new_int(20_000),
-                    last_funding_time: Timestamp::from_seconds(0),
-                    ..Default::default()
-                },
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
-
-        let state = State {
-            vault_margin: Uint128::new(10_000_000_000),
-            vault_share_supply: Uint128::new(10_000_000_000),
-        };
-        let param = default_param();
-        let user_state = UserState::default();
-
-        let (_, unlock) = _withdraw(
-            Timestamp::from_seconds(0),
-            share_coins(5_000_000_000),
-            &state,
-            &param,
-            &user_state,
-            &BTreeSet::from([eth::DENOM.clone()]),
-            &perp_querier,
-            &mut oracle_querier,
-        )
-        .unwrap();
-
-        assert_eq!(unlock.amount_to_release, Uint128::new(2_500_249_975));
-    }
-
-    // ---- Test 9: withdrawal with funding ----
-    // margin=10k USDC (10_000_000_000), supply=10_000_000_000
-    // ETH: skew=10, oi_weighted_entry=20000, oracle=2500
-    //   vault_pnl = -5000
-    //   funding: funding_per_unit=3, oi_weighted_entry_funding=10, no time elapsed
-    //     recorded = 3*10 - 10 = 20
-    // vault_equity = 10000 + (-5000) + 20 = $5020
-    // effective_equity = $5021, effective_supply = 10_001_000_000
-    // vault_equity_base = 5_021_000_000
-    // Withdraw 5_000_000_000 shares:
-    //   amount = floor(5_021_000_000 * 5_000_000_000 / 10_001_000_000) = 2_510_248_975
-    #[test]
-    fn withdrawal_with_funding() {
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam::default(),
-            },
-            hash_map! {
-                eth::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(10),
-                    oi_weighted_entry_price: UsdValue::new_int(20_000),
-                    funding_per_unit: FundingPerUnit::new_int(3),
-                    oi_weighted_entry_funding: UsdValue::new_int(10),
-                    last_funding_time: Timestamp::from_seconds(100),
-                    ..Default::default()
-                },
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
-
-        let state = State {
-            vault_margin: Uint128::new(10_000_000_000),
-            vault_share_supply: Uint128::new(10_000_000_000),
-        };
-        let param = default_param();
-        let user_state = UserState::default();
-
-        let (_, unlock) = _withdraw(
-            Timestamp::from_seconds(100),
-            share_coins(5_000_000_000),
-            &state,
-            &param,
-            &user_state,
-            &BTreeSet::from([eth::DENOM.clone()]),
-            &perp_querier,
-            &mut oracle_querier,
-        )
-        .unwrap();
-
-        assert_eq!(unlock.amount_to_release, Uint128::new(2_510_248_975));
-    }
-
-    // ---- Test 10: multiple pairs ----
-    // ETH: skew=10, oi_weighted_entry=20000, oracle=2500 → pnl=-5000
-    // BTC: skew=-1, oi_weighted_entry=-50000, oracle=48000 → pnl=-2000
-    // margin=10k, equity = 10000 + (-5000) + (-2000) = 3000
-    // effective_equity = $3001, effective_supply = 10_001_000_000
-    // vault_equity_base = 3_001_000_000
-    // Withdraw 1_000_000_000 shares:
-    //   amount = floor(3_001_000_000 * 1_000_000_000 / 10_001_000_000) = 300_069_993
-    #[test]
-    fn multiple_pairs() {
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam::default(),
-                btc::DENOM.clone() => PairParam::default(),
-            },
-            hash_map! {
-                eth::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(10),
-                    oi_weighted_entry_price: UsdValue::new_int(20_000),
-                    last_funding_time: Timestamp::from_seconds(0),
-                    ..Default::default()
-                },
-                btc::DENOM.clone() => PairState {
-                    skew: Quantity::new_int(-1),
-                    oi_weighted_entry_price: UsdValue::new_int(-50_000),
-                    last_funding_time: Timestamp::from_seconds(0),
-                    ..Default::default()
-                },
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-            btc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(4_800_000),
-                Timestamp::from_seconds(0),
-                8,
-            ),
-        });
-
-        let state = State {
-            vault_margin: Uint128::new(10_000_000_000),
-            vault_share_supply: Uint128::new(10_000_000_000),
-        };
-        let param = default_param();
-        let user_state = UserState::default();
-
-        let (_, unlock) = _withdraw(
-            Timestamp::from_seconds(0),
-            share_coins(1_000_000_000),
-            &state,
-            &param,
-            &user_state,
-            &BTreeSet::from([eth::DENOM.clone(), btc::DENOM.clone()]),
-            &perp_querier,
-            &mut oracle_querier,
-        )
-        .unwrap();
-
-        assert_eq!(unlock.amount_to_release, Uint128::new(300_069_993));
     }
 
     // ---- Test 11: non-dollar settlement price ----
@@ -668,7 +362,6 @@ mod tests {
     #[test_case(99, 1_000_918 ; "usdc below peg")]
     #[test_case(101, 999_099 ; "usdc above peg")]
     fn non_dollar_settlement_price(price_percent: u128, expected_release: u128) {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(price_percent),
@@ -680,6 +373,7 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(10_000_000),
             vault_share_supply: Uint128::new(10_000_000),
+            ..Default::default()
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -690,8 +384,6 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();
@@ -702,7 +394,6 @@ mod tests {
     // ---- Test 12: unlock end_time is correct ----
     #[test]
     fn unlock_end_time_correct() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -710,6 +401,7 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(1_000_000),
             vault_share_supply: Uint128::new(1_000_000),
+            ..Default::default()
         };
         let param = Param {
             vault_cooldown_period: Duration::from_seconds(172_800), // 2 days
@@ -724,8 +416,6 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();
@@ -740,7 +430,6 @@ mod tests {
     // amount = floor(11_000_001 * 3_000_000 / 8_000_000) = floor(4_125_000.375) = 4_125_000
     #[test]
     fn amount_rounded_floor() {
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -748,6 +437,7 @@ mod tests {
         let state = State {
             vault_margin: Uint128::new(10_000_001),
             vault_share_supply: Uint128::new(7_000_000),
+            ..Default::default()
         };
         let param = default_param();
         let user_state = UserState::default();
@@ -758,8 +448,6 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &BTreeSet::new(),
-            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();

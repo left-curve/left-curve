@@ -211,7 +211,6 @@ pub struct PairState {
 
     /// Timestamp of the most recent funding accrual.
     pub last_funding_time: Timestamp,
-
 }
 
 impl PairState {

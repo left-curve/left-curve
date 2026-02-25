@@ -1,28 +1,30 @@
 use {
-    crate::core::compute_marginal_price,
-    dango_types::{
-        Dimensionless, Quantity, UsdPrice,
-        perps::{OrderKind, PairParam},
-    },
+    dango_types::{Dimensionless, UsdPrice, perps::OrderKind},
     grug::MathResult,
 };
 
 /// Compute the target price of an order. The order must be executed at a price
 /// better than or equal to this price.
+///
+/// For market orders, slippage is relative to the oracle price:
+///
+/// ```plain
+/// bid_target_price = oracle_price * (1 + max_slippage)
+/// ask_target_price = oracle_price * (1 - max_slippage)
+/// ```
+///
+/// For limit orders, the target price is simply the limit price.
 pub fn compute_target_price(
     kind: OrderKind,
     oracle_price: UsdPrice,
-    skew: Quantity,
-    pair_param: &PairParam,
     is_bid: bool,
 ) -> MathResult<UsdPrice> {
     match kind {
         OrderKind::Market { max_slippage } => {
-            let marginal_price = compute_marginal_price(oracle_price, skew, pair_param)?;
             if is_bid {
-                marginal_price.checked_mul(Dimensionless::ONE.checked_add(max_slippage)?)
+                oracle_price.checked_mul(Dimensionless::ONE.checked_add(max_slippage)?)
             } else {
-                marginal_price.checked_mul(Dimensionless::ONE.checked_sub(max_slippage)?)
+                oracle_price.checked_mul(Dimensionless::ONE.checked_sub(max_slippage)?)
             }
         },
         OrderKind::Limit { limit_price } => Ok(limit_price),
@@ -46,21 +48,16 @@ pub fn is_price_constraint_violated(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_types::perps::PairParam, test_case::test_case};
+    use {super::*, test_case::test_case};
 
-    // oracle_price = 100, skew_scale = 100, max_abs_premium = 0.05
-    #[test_case(  0,   0, true,  100_000_000 ; "zero slippage bid")]
-    #[test_case(  0,   0, false, 100_000_000 ; "zero slippage ask")]
-    #[test_case(  0,  10, true,  101_000_000 ; "neutral bid 1pct")]
-    #[test_case(  0,  10, false,  99_000_000 ; "neutral ask 1pct")]
-    #[test_case(  3,  10, true,  104_030_000 ; "positive skew bid 1pct")]
-    #[test_case(  3,  10, false, 101_970_000 ; "positive skew ask 1pct")]
-    #[test_case( -3,  10, true,   97_970_000 ; "negative skew bid 1pct")]
-    #[test_case( -3,  10, false,  96_030_000 ; "negative skew ask 1pct")]
-    #[test_case(  0,  50, true,  105_000_000 ; "neutral bid 5pct")]
-    #[test_case(  0,  50, false,  95_000_000 ; "neutral ask 5pct")]
+    // oracle_price = 100
+    #[test_case(  0, true,  100_000_000 ; "zero slippage bid")]
+    #[test_case(  0, false, 100_000_000 ; "zero slippage ask")]
+    #[test_case( 10, true,  101_000_000 ; "bid 1pct slippage")]
+    #[test_case( 10, false,  99_000_000 ; "ask 1pct slippage")]
+    #[test_case( 50, true,  105_000_000 ; "bid 5pct slippage")]
+    #[test_case( 50, false,  95_000_000 ; "ask 5pct slippage")]
     fn compute_target_price_market_works(
-        skew: i128,
         slippage_permille: i128,
         is_bid: bool,
         expected_raw: i128,
@@ -71,8 +68,6 @@ mod tests {
                     max_slippage: Dimensionless::new_permille(slippage_permille),
                 },
                 UsdPrice::new_int(100),
-                Quantity::new_int(skew),
-                &PairParam::new_mock(100, 50),
                 is_bid
             )
             .unwrap(),
@@ -80,18 +75,16 @@ mod tests {
         );
     }
 
-    #[test_case(105, 0, true,  105_000_000 ; "limit bid ignores skew")]
-    #[test_case( 95, 0, false,  95_000_000 ; "limit ask ignores skew")]
-    #[test_case(110, 5, true,  110_000_000 ; "limit bid nonzero skew")]
-    fn compute_target_price_limit_works(limit: i128, skew: i128, is_bid: bool, expected_raw: i128) {
+    #[test_case(105, true,  105_000_000 ; "limit bid")]
+    #[test_case( 95, false,  95_000_000 ; "limit ask")]
+    #[test_case(110, true,  110_000_000 ; "limit bid higher")]
+    fn compute_target_price_limit_works(limit: i128, is_bid: bool, expected_raw: i128) {
         assert_eq!(
             compute_target_price(
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(limit),
                 },
                 UsdPrice::new_int(100),
-                Quantity::new_int(skew),
-                &PairParam::new_mock(100, 50),
                 is_bid
             )
             .unwrap(),
