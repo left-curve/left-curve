@@ -96,7 +96,7 @@ mod tests {
             FundingPerUnit, Quantity, UsdPrice, UsdValue,
             perps::{Order, Position, UserState},
         },
-        grug::{Addr, Coins, MockContext, ResultExt, Storage, Timestamp, Uint64},
+        grug::{Addr, Coins, MockContext, ResultExt, Storage, Uint64},
         std::collections::BTreeMap,
     };
 
@@ -108,7 +108,6 @@ mod tests {
         (
             "perp/btcusd".parse().unwrap(),
             UsdPrice::new_int(50_000),
-            Timestamp::from_seconds(1000),
             Uint64::new(order_id),
         )
     }

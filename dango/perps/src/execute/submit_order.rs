@@ -73,7 +73,7 @@ pub fn submit_order(
     if let Some((limit_price, order_id, order)) = order_to_store {
         // Increment the order ID.
         let next_order_id = order_id + OrderId::ONE;
-        let order_key = (pair_id, limit_price, ctx.block.timestamp, order_id);
+        let order_key = (pair_id, limit_price, order_id);
 
         NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 

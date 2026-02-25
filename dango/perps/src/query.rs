@@ -138,13 +138,12 @@ fn query_orders_by_user(ctx: ImmutableCtx, user: Addr) -> StdResult<QueryOrdersB
 }
 
 fn into_query_order_response(
-    ((pair_id, limit_price, timestamp, order_id), order): (OrderKey, Order),
+    ((pair_id, limit_price, order_id), order): (OrderKey, Order),
 ) -> QueryOrderResponse {
     QueryOrderResponse {
         order_id,
         pair_id,
         limit_price,
-        timestamp,
         size: order.size,
         reduce_only: order.reduce_only,
         reserved_margin: order.reserved_margin,
@@ -155,10 +154,10 @@ fn into_query_order_response(
 /// orders are sorted respecting the price-time priority.
 /// Now, reverse the inversion, so the response contains the original limit price.
 fn into_query_order_response_with_inverted_price(
-    ((pair_id, limit_price, timestamp, order_id), order): (OrderKey, Order),
+    ((pair_id, limit_price, order_id), order): (OrderKey, Order),
 ) -> QueryOrderResponse {
     let limit_price = UsdPrice::MAX - limit_price;
-    into_query_order_response(((pair_id, limit_price, timestamp, order_id), order))
+    into_query_order_response(((pair_id, limit_price, order_id), order))
 }
 
 fn try_into_query_order_response(

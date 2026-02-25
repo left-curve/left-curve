@@ -3,7 +3,7 @@ use {
         UsdPrice,
         perps::{Order, OrderId, PairId, PairParam, PairState, Param, State, UserState},
     },
-    grug::{Addr, IndexedMap, Item, Map, MultiIndex, Timestamp, UniqueIndex},
+    grug::{Addr, IndexedMap, Item, Map, MultiIndex, UniqueIndex},
     std::collections::BTreeSet,
 };
 
@@ -27,7 +27,7 @@ pub const BIDS: IndexedMap<OrderKey, Order, OrderIndexes> =
 pub const ASKS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
 
-pub type OrderKey = (PairId, UsdPrice, Timestamp, OrderId);
+pub type OrderKey = (PairId, UsdPrice, OrderId);
 
 #[grug::index_list(OrderKey, Order)]
 pub struct OrderIndexes<'a> {
@@ -43,7 +43,7 @@ impl OrderIndexes<'static> {
     ) -> Self {
         OrderIndexes {
             order_id: UniqueIndex::new(
-                |(_, _, _, order_id), _| *order_id,
+                |(_, _, order_id), _| *order_id,
                 pk_namespace,
                 order_id_namespace,
             ),

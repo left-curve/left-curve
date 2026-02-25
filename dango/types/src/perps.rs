@@ -435,7 +435,6 @@ pub struct QueryOrderResponse {
     pub order_id: OrderId,
     pub pair_id: PairId,
     pub limit_price: UsdPrice,
-    pub timestamp: Timestamp,
     pub size: Quantity,
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
