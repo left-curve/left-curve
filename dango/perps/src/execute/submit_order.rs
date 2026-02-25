@@ -1,6 +1,6 @@
 use {
     crate::{
-        ASKS, BIDS, NEXT_ORDER_ID, NoCachePairQuerier, PAIR_STATES, PARAM, STATE, USER_STATES,
+        ASKS, BIDS, NEXT_ORDER_ID, NoCachePerpQuerier, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{
             accrue_funding, check_minimum_opening, check_oi_constraint, compute_available_margin,
             compute_exec_price, compute_initial_margin, compute_position_unrealized_funding,
@@ -41,7 +41,7 @@ pub fn submit_order(
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
-    let pair_querier = NoCachePairQuerier::new_local(ctx.storage);
+    let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
     // --------------------------- 2. Business logic ---------------------------
@@ -51,7 +51,7 @@ pub fn submit_order(
             ctx.sender,
             ctx.block.timestamp,
             ctx.querier,
-            &pair_querier,
+            &perp_querier,
             &mut oracle_querier,
             &param,
             state,
@@ -122,7 +122,7 @@ fn _submit_order(
     user: Addr,
     current_time: Timestamp,
     querier: QuerierWrapper,
-    pair_querier: &NoCachePairQuerier,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     param: &Param,
     mut state: State,
@@ -141,8 +141,8 @@ fn _submit_order(
 )> {
     // ------------- Step 1. Accrue funding before any OI changes --------------
 
-    let pair_param = pair_querier.query_pair_param(pair_id)?;
-    let mut pair_state = pair_querier.query_pair_state(pair_id)?;
+    let pair_param = perp_querier.query_pair_param(pair_id)?;
+    let mut pair_state = perp_querier.query_pair_state(pair_id)?;
 
     let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
 
@@ -206,7 +206,7 @@ fn _submit_order(
                 let order_to_store = store_limit_order(
                     user,
                     querier,
-                    pair_querier,
+                    perp_querier,
                     oracle_querier,
                     param,
                     &pair_param,
@@ -236,7 +236,7 @@ fn _submit_order(
     // Compute the initial margin requirement after this order is fully filled.
     let initial_margin = compute_initial_margin(
         &user_state,
-        pair_querier,
+        perp_querier,
         oracle_querier,
         pair_id,
         projected_size,
@@ -256,7 +256,7 @@ fn _submit_order(
         .checked_mul(settlement_currency_price)?;
 
     // Compute the user's current equity.
-    let equity = compute_user_equity(collateral_value, &user_state, pair_querier, oracle_querier)?;
+    let equity = compute_user_equity(collateral_value, &user_state, perp_querier, oracle_querier)?;
 
     // Margin check: user's equity must cover the sum of initial margin, trading
     // fee, and reserved margin from resting limit orders.
@@ -301,7 +301,7 @@ fn _submit_order(
 fn store_limit_order(
     user: Addr,
     querier: QuerierWrapper,
-    pair_querier: &NoCachePairQuerier,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     param: &Param,
     pair_param: &PairParam,
@@ -357,7 +357,7 @@ fn store_limit_order(
     let available_margin = compute_available_margin(
         collateral_value,
         user_state,
-        pair_querier,
+        perp_querier,
         oracle_querier,
         margin_to_reserve,
     )?;
@@ -380,7 +380,7 @@ fn store_limit_order(
     }
 
     // Give this order an order ID.
-    let order_id = pair_querier.query_next_order_id()?;
+    let order_id = perp_querier.query_next_order_id()?;
 
     Ok((limit_price, order_id, Order {
         user,
@@ -669,7 +669,7 @@ mod tests {
         collateral: u128,
     ) -> (
         MockQuerier,
-        NoCachePairQuerier<'static>,
+        NoCachePerpQuerier<'static>,
         OracleQuerier<'static>,
     ) {
         setup_queriers_ext(eth_dollars, pair_param, pair_state, collateral, None)
@@ -683,7 +683,7 @@ mod tests {
         next_order_id: Option<OrderId>,
     ) -> (
         MockQuerier,
-        NoCachePairQuerier<'static>,
+        NoCachePerpQuerier<'static>,
         OracleQuerier<'static>,
     ) {
         let mock_q = MockQuerier::new()
@@ -693,7 +693,7 @@ mod tests {
                 collateral,
             )
             .unwrap();
-        let pair_q = NoCachePairQuerier::new_mock(
+        let pair_q = NoCachePerpQuerier::new_mock(
             hash_map! { eth::DENOM.clone() => pair_param },
             hash_map! { eth::DENOM.clone() => pair_state },
             next_order_id,
@@ -2008,7 +2008,7 @@ mod tests {
         assert!(user_state.positions.contains_key(&eth::DENOM));
 
         // Step 2: close the position with fresh queriers using updated pair_state.
-        let pair_q2 = NoCachePairQuerier::new_mock(
+        let pair_q2 = NoCachePerpQuerier::new_mock(
             hash_map! { eth::DENOM.clone() => test_pair_param() },
             hash_map! { eth::DENOM.clone() => pair_state },
             None,

@@ -1,5 +1,5 @@
 use {
-    crate::NoCachePairQuerier,
+    crate::NoCachePerpQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         Quantity, UsdPrice, UsdValue,
@@ -53,7 +53,7 @@ pub fn compute_position_unrealized_funding(
 pub fn compute_user_equity(
     collateral_value: UsdValue,
     user_state: &UserState,
-    pair_querier: &NoCachePairQuerier,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<UsdValue> {
     let mut total_pnl = UsdValue::ZERO;
@@ -61,7 +61,7 @@ pub fn compute_user_equity(
 
     for (pair_id, position) in &user_state.positions {
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
-        let pair_state = pair_querier.query_pair_state(pair_id)?;
+        let pair_state = perp_querier.query_pair_state(pair_id)?;
 
         total_pnl.checked_add_assign(compute_position_unrealized_pnl(position, oracle_price)?)?;
         total_funding
@@ -87,14 +87,14 @@ pub fn compute_user_equity(
 /// value falls below the maintenance margin, he becomes eligible for liquidation.
 pub fn compute_maintenance_margin(
     user_state: &UserState,
-    pair_querier: &NoCachePairQuerier,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<UsdValue> {
     let mut total = UsdValue::ZERO;
 
     for (pair_id, position) in &user_state.positions {
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
-        let pair_param = pair_querier.query_pair_param(pair_id)?;
+        let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         let margin = position
             .size
@@ -124,7 +124,7 @@ pub fn compute_maintenance_margin(
 /// initial margin, otherwise the order is rejected.
 pub fn compute_initial_margin(
     user_state: &UserState,
-    pair_querier: &NoCachePairQuerier,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     projected_pair_id: &PairId,
     projected_size: Quantity,
@@ -134,7 +134,7 @@ pub fn compute_initial_margin(
 
     for (pair_id, position) in &user_state.positions {
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
-        let pair_param = pair_querier.query_pair_param(pair_id)?;
+        let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         let size = if pair_id == projected_pair_id {
             projected_pair_seen = true;
@@ -155,7 +155,7 @@ pub fn compute_initial_margin(
     // is non-zero, add its margin contribution.
     if !projected_pair_seen && projected_size.is_non_zero() {
         let oracle_price = oracle_querier.query_price_for_perps(projected_pair_id)?;
-        let pair_param = pair_querier.query_pair_param(projected_pair_id)?;
+        let pair_param = perp_querier.query_pair_param(projected_pair_id)?;
 
         let margin = projected_size
             .checked_abs()?
@@ -201,16 +201,16 @@ pub fn compute_required_margin(
 pub fn compute_available_margin(
     collateral_value: UsdValue,
     user_state: &UserState,
-    pair_querier: &NoCachePairQuerier,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     reserved_margin_value: UsdValue,
 ) -> anyhow::Result<UsdValue> {
-    let equity = compute_user_equity(collateral_value, user_state, pair_querier, oracle_querier)?;
+    let equity = compute_user_equity(collateral_value, user_state, perp_querier, oracle_querier)?;
 
     let mut used_margin = UsdValue::ZERO;
     for (pair_id, position) in &user_state.positions {
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
-        let pair_param = pair_querier.query_pair_param(pair_id)?;
+        let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         let margin = position
             .size
@@ -236,15 +236,15 @@ pub fn compute_available_margin(
 pub fn is_liquidatable(
     collateral_value: UsdValue,
     user_state: &UserState,
-    pair_querier: &NoCachePairQuerier,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<bool> {
     if user_state.positions.is_empty() {
         return Ok(false);
     }
 
-    let equity = compute_user_equity(collateral_value, user_state, pair_querier, oracle_querier)?;
-    let maintenance_margin = compute_maintenance_margin(user_state, pair_querier, oracle_querier)?;
+    let equity = compute_user_equity(collateral_value, user_state, perp_querier, oracle_querier)?;
+    let maintenance_margin = compute_maintenance_margin(user_state, perp_querier, oracle_querier)?;
 
     Ok(equity < maintenance_margin)
 }
@@ -333,14 +333,14 @@ mod tests {
     #[test]
     fn equity_no_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
             compute_user_equity(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier
             )
             .unwrap(),
@@ -363,7 +363,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             HashMap::new(),
             hash_map! {
                 eth::DENOM.clone() => PairState {
@@ -385,7 +385,7 @@ mod tests {
             compute_user_equity(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier
             )
             .unwrap(),
@@ -409,7 +409,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             HashMap::new(),
             hash_map! {
                 eth::DENOM.clone() => PairState {
@@ -431,7 +431,7 @@ mod tests {
             compute_user_equity(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier
             )
             .unwrap(),
@@ -462,7 +462,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             HashMap::new(),
             hash_map! {
                 eth::DENOM.clone() => PairState {
@@ -493,7 +493,7 @@ mod tests {
             compute_user_equity(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier
             )
             .unwrap(),
@@ -516,7 +516,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             HashMap::new(),
             hash_map! {
                 eth::DENOM.clone() => PairState {
@@ -538,7 +538,7 @@ mod tests {
             compute_user_equity(
                 UsdValue::new_int(100),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier
             )
             .unwrap(),
@@ -551,11 +551,11 @@ mod tests {
     #[test]
     fn maintenance_margin_no_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
-            compute_maintenance_margin(&user_state, &pair_querier, &mut oracle_querier).unwrap(),
+            compute_maintenance_margin(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
             UsdValue::ZERO,
         );
     }
@@ -575,7 +575,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     maintenance_margin_ratio: Dimensionless::new_permille(50),
@@ -594,7 +594,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_maintenance_margin(&user_state, &pair_querier, &mut oracle_querier).unwrap(),
+            compute_maintenance_margin(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
             UsdValue::new_int(1000),
         );
     }
@@ -619,7 +619,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     maintenance_margin_ratio: Dimensionless::new_permille(50),
@@ -647,7 +647,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_maintenance_margin(&user_state, &pair_querier, &mut oracle_querier).unwrap(),
+            compute_maintenance_margin(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
             UsdValue::new_int(2500),
         );
     }
@@ -659,7 +659,7 @@ mod tests {
     #[test]
     fn initial_margin_no_existing_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: Dimensionless::new_permille(100),
@@ -680,7 +680,7 @@ mod tests {
         assert_eq!(
             compute_initial_margin(
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 &eth::DENOM,
                 Quantity::new_int(10),
@@ -704,7 +704,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: Dimensionless::new_permille(100),
@@ -725,7 +725,7 @@ mod tests {
         assert_eq!(
             compute_initial_margin(
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 &eth::DENOM,
                 Quantity::new_int(10),
@@ -751,7 +751,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: Dimensionless::new_permille(100),
@@ -781,7 +781,7 @@ mod tests {
         assert_eq!(
             compute_initial_margin(
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 &btc::DENOM,
                 Quantity::new_int(1),
@@ -795,7 +795,7 @@ mod tests {
     #[test]
     fn initial_margin_zero_projected_size_skipped() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: Dimensionless::new_permille(100),
@@ -816,7 +816,7 @@ mod tests {
         assert_eq!(
             compute_initial_margin(
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 &eth::DENOM,
                 Quantity::ZERO,
@@ -847,7 +847,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: Dimensionless::new_permille(100),
@@ -877,7 +877,7 @@ mod tests {
         assert_eq!(
             compute_initial_margin(
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 &eth::DENOM,
                 Quantity::new_int(20),
@@ -922,14 +922,14 @@ mod tests {
     #[test]
     fn available_margin_no_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
             compute_available_margin(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 UsdValue::ZERO,
             )
@@ -954,7 +954,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: Dimensionless::new_permille(100),
@@ -981,7 +981,7 @@ mod tests {
             compute_available_margin(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 UsdValue::ZERO,
             )
@@ -1004,7 +1004,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: Dimensionless::new_permille(100),
@@ -1031,7 +1031,7 @@ mod tests {
             compute_available_margin(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 UsdValue::new_int(2_000),
             )
@@ -1057,7 +1057,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: Dimensionless::new_permille(100),
@@ -1084,7 +1084,7 @@ mod tests {
             compute_available_margin(
                 UsdValue::new_int(100),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 UsdValue::ZERO,
             )
@@ -1110,7 +1110,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: Dimensionless::new_permille(100),
@@ -1137,7 +1137,7 @@ mod tests {
             compute_available_margin(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 UsdValue::ZERO,
             )
@@ -1151,14 +1151,14 @@ mod tests {
     #[test]
     fn is_liquidatable_no_positions() {
         let user_state = UserState::default();
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert!(
             !is_liquidatable(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
             )
             .unwrap()
@@ -1181,7 +1181,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     maintenance_margin_ratio: Dimensionless::new_permille(50),
@@ -1208,7 +1208,7 @@ mod tests {
             !is_liquidatable(
                 UsdValue::new_int(10_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
             )
             .unwrap()
@@ -1231,7 +1231,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     maintenance_margin_ratio: Dimensionless::new_permille(50),
@@ -1258,7 +1258,7 @@ mod tests {
             !is_liquidatable(
                 UsdValue::new_int(1_000),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
             )
             .unwrap()
@@ -1281,7 +1281,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
                     maintenance_margin_ratio: Dimensionless::new_permille(50),
@@ -1308,7 +1308,7 @@ mod tests {
             is_liquidatable(
                 UsdValue::new_int(100),
                 &user_state,
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
             )
             .unwrap()
@@ -1339,7 +1339,7 @@ mod tests {
                 },
                 ..Default::default()
             };
-            let pair_querier = NoCachePairQuerier::new_mock(
+            let perp_querier = NoCachePerpQuerier::new_mock(
                 hash_map! {
                     eth::DENOM.clone() => PairParam {
                         maintenance_margin_ratio: Dimensionless::new_permille(50),
@@ -1364,7 +1364,7 @@ mod tests {
             (
                 UsdValue::new_int(collateral),
                 user_state,
-                pair_querier,
+                perp_querier,
                 oracle_querier,
             )
         };

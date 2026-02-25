@@ -6,14 +6,14 @@ use {
     std::{collections::HashMap, rc::Rc},
 };
 
-/// An abstraction for querying the parameters of trading pairs with in-memory caching.
-pub struct PairQuerier<'a> {
+/// An abstraction for querying perps contract state with in-memory caching.
+pub struct PerpQuerier<'a> {
     param_cache: Cache<'a, PairId, PairParam, anyhow::Error, ()>,
     state_cache: Cache<'a, PairId, PairState, anyhow::Error, ()>,
 }
 
-impl<'a> PairQuerier<'a> {
-    fn new(no_cache_querier: NoCachePairQuerier<'a>) -> Self {
+impl<'a> PerpQuerier<'a> {
+    fn new(no_cache_querier: NoCachePerpQuerier<'a>) -> Self {
         let no_cache_querier = Rc::new(no_cache_querier);
         let q1 = Rc::clone(&no_cache_querier);
         let q2 = Rc::clone(&no_cache_querier);
@@ -25,11 +25,11 @@ impl<'a> PairQuerier<'a> {
     }
 
     pub fn new_local(storage: &'a dyn Storage) -> Self {
-        Self::new(NoCachePairQuerier::new_local(storage))
+        Self::new(NoCachePerpQuerier::new_local(storage))
     }
 
     pub fn new_remote(address: Addr, querier: QuerierWrapper<'a>) -> Self {
-        Self::new(NoCachePairQuerier::new_remote(address, querier))
+        Self::new(NoCachePerpQuerier::new_remote(address, querier))
     }
 
     pub fn new_mock(
@@ -37,7 +37,7 @@ impl<'a> PairQuerier<'a> {
         pair_states: HashMap<PairId, PairState>,
         next_order_id: Option<OrderId>,
     ) -> Self {
-        Self::new(NoCachePairQuerier::new_mock(
+        Self::new(NoCachePerpQuerier::new_mock(
             pair_params,
             pair_states,
             next_order_id,
@@ -53,8 +53,8 @@ impl<'a> PairQuerier<'a> {
     }
 }
 
-/// An abstraction for querying the parameters of trading pairs.
-pub enum NoCachePairQuerier<'a> {
+/// An abstraction for querying perps contract state.
+pub enum NoCachePerpQuerier<'a> {
     /// Used when perps contract is the current contract.
     Local { storage: &'a dyn Storage },
     /// Used when perps contract is another contract.
@@ -71,7 +71,7 @@ pub enum NoCachePairQuerier<'a> {
 }
 
 #[rustfmt::skip]
-impl<'a> NoCachePairQuerier<'a> {
+impl<'a> NoCachePerpQuerier<'a> {
     pub fn new_local(storage: &'a dyn Storage) -> Self {
         Self::Local { storage }
     }

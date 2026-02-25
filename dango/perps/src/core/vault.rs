@@ -1,6 +1,6 @@
 use {
     super::funding::compute_unrecorded_funding_per_unit,
-    crate::NoCachePairQuerier,
+    crate::NoCachePerpQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, UsdPrice, UsdValue,
@@ -78,7 +78,7 @@ pub fn compute_pair_unrealized_funding(
 pub fn compute_vault_equity(
     vault_margin_value: UsdValue,
     pair_ids: &[PairId],
-    pair_querier: &NoCachePairQuerier,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     current_time: Timestamp,
 ) -> anyhow::Result<UsdValue> {
@@ -87,8 +87,8 @@ pub fn compute_vault_equity(
 
     for pair_id in pair_ids {
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
-        let pair_state = pair_querier.query_pair_state(pair_id)?;
-        let pair_param = pair_querier.query_pair_param(pair_id)?;
+        let pair_state = perp_querier.query_pair_state(pair_id)?;
+        let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         total_pnl.checked_add_assign(compute_pair_unrealized_pnl(&pair_state, oracle_price)?)?;
         total_funding.checked_add_assign(compute_pair_unrealized_funding(
@@ -118,7 +118,7 @@ pub fn compute_vault_equity(
 pub fn is_adl_triggerable(
     vault_margin_value: UsdValue,
     pair_ids: &[PairId],
-    pair_querier: &NoCachePairQuerier,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     current_time: Timestamp,
     adl_trigger_ratio: Dimensionless,
@@ -130,7 +130,7 @@ pub fn is_adl_triggerable(
     let vault_equity = compute_vault_equity(
         vault_margin_value,
         pair_ids,
-        pair_querier,
+        perp_querier,
         oracle_querier,
         current_time,
     )?;
@@ -139,7 +139,7 @@ pub fn is_adl_triggerable(
 
     for pair_id in pair_ids {
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
-        let pair_state = pair_querier.query_pair_state(pair_id)?;
+        let pair_state = perp_querier.query_pair_state(pair_id)?;
 
         let pair_oi = pair_state.long_oi.checked_add(pair_state.short_oi)?;
         let pair_notional = pair_oi.checked_mul(oracle_price)?;
@@ -285,14 +285,14 @@ mod tests {
 
     #[test]
     fn vault_equity_no_pairs() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
             compute_vault_equity(
                 UsdValue::new_int(10_000),
                 &[],
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
             )
@@ -306,7 +306,7 @@ mod tests {
     // equity = 10000 + (-5000) + 0 = 5000
     #[test]
     fn vault_equity_single_pair_pnl_only() {
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam::default(),
             },
@@ -332,7 +332,7 @@ mod tests {
             compute_vault_equity(
                 UsdValue::new_int(10_000),
                 std::slice::from_ref(&eth::DENOM),
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
             )
@@ -348,7 +348,7 @@ mod tests {
     // equity = 10000 + (-5000) + 20 = 5020
     #[test]
     fn vault_equity_single_pair_with_funding() {
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam::default(),
             },
@@ -376,7 +376,7 @@ mod tests {
             compute_vault_equity(
                 UsdValue::new_int(10_000),
                 std::slice::from_ref(&eth::DENOM),
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(100),
             )
@@ -393,7 +393,7 @@ mod tests {
     //   equity = 10000 + (-5000) + (-2000) = 3000
     #[test]
     fn vault_equity_multiple_pairs() {
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam::default(),
                 btc::DENOM.clone() => PairParam::default(),
@@ -431,7 +431,7 @@ mod tests {
             compute_vault_equity(
                 UsdValue::new_int(10_000),
                 &[eth::DENOM.clone(), btc::DENOM.clone()],
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
             )
@@ -445,7 +445,7 @@ mod tests {
     // equity = 100 + (-5000) = -4900
     #[test]
     fn vault_equity_negative() {
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam::default(),
             },
@@ -471,7 +471,7 @@ mod tests {
             compute_vault_equity(
                 UsdValue::new_int(100),
                 std::slice::from_ref(&eth::DENOM),
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
             )
@@ -484,14 +484,14 @@ mod tests {
 
     #[test]
     fn adl_no_pairs() {
-        let pair_querier = NoCachePairQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert!(
             !is_adl_triggerable(
                 UsdValue::new_int(10_000),
                 &[],
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
                 Dimensionless::new_permille(500),
@@ -508,7 +508,7 @@ mod tests {
     // 100000 >= 20000 → not triggerable
     #[test]
     fn adl_healthy_vault() {
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam::default(),
             },
@@ -536,7 +536,7 @@ mod tests {
             !is_adl_triggerable(
                 UsdValue::new_int(100_000),
                 std::slice::from_ref(&eth::DENOM),
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
                 Dimensionless::new_permille(500),
@@ -553,7 +553,7 @@ mod tests {
     // Need vault_equity = 20000 → vault_margin = 20000
     #[test]
     fn adl_at_boundary() {
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam::default(),
             },
@@ -581,7 +581,7 @@ mod tests {
             !is_adl_triggerable(
                 UsdValue::new_int(20_000),
                 std::slice::from_ref(&eth::DENOM),
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
                 Dimensionless::new_permille(500),
@@ -598,7 +598,7 @@ mod tests {
     // -4900 < 25000 → triggerable
     #[test]
     fn adl_distressed_vault() {
-        let pair_querier = NoCachePairQuerier::new_mock(
+        let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam::default(),
             },
@@ -626,7 +626,7 @@ mod tests {
             is_adl_triggerable(
                 UsdValue::new_int(100),
                 std::slice::from_ref(&eth::DENOM),
-                &pair_querier,
+                &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
                 Dimensionless::new_permille(500),
