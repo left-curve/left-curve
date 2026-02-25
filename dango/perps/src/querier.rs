@@ -14,9 +14,8 @@ pub struct PerpQuerier<'a> {
 
 impl<'a> PerpQuerier<'a> {
     fn new(no_cache_querier: NoCachePerpQuerier<'a>) -> Self {
-        let no_cache_querier = Rc::new(no_cache_querier);
-        let q1 = Rc::clone(&no_cache_querier);
-        let q2 = Rc::clone(&no_cache_querier);
+        let q1 = Rc::new(no_cache_querier);
+        let q2 = Rc::clone(&q1);
 
         Self {
             param_cache: Cache::new(move |pair_id, _| q1.query_pair_param(pair_id)),
