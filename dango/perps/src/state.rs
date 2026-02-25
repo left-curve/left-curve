@@ -4,11 +4,14 @@ use {
         perps::{Order, OrderId, PairId, PairParam, PairState, Param, State, UserState},
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Timestamp, UniqueIndex},
+    std::collections::BTreeSet,
 };
 
 pub const PARAM: Item<Param> = Item::new("param");
 
 pub const STATE: Item<State> = Item::new("state");
+
+pub const PAIR_IDS: Item<BTreeSet<PairId>> = Item::new("pair_ids");
 
 pub const PAIR_PARAMS: Map<&PairId, PairParam> = Map::new("pair_param");
 

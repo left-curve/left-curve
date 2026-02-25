@@ -1,6 +1,6 @@
 use {
     super::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
-    crate::{NoCachePerpQuerier, PAIR_STATES, STATE, core::compute_vault_equity},
+    crate::{NoCachePerpQuerier, PAIR_IDS, STATE, core::compute_vault_equity},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -8,25 +8,20 @@ use {
         perps::{self, PairId, State, settlement_currency},
     },
     grug::{
-        Coins, Message, MultiplyFraction, MutableCtx, Number as _, Order as IterationOrder,
-        Response, Signed, StdResult, Timestamp, Uint128,
+        Coins, Message, MultiplyFraction, MutableCtx, Number as _, Response, Signed, Timestamp,
+        Uint128,
     },
+    std::collections::BTreeSet,
 };
 
 pub fn deposit(ctx: MutableCtx, min_shares_to_mint: Option<Uint128>) -> anyhow::Result<Response> {
     // ---------------------------- 1. Preparation -----------------------------
 
-    // Load state, create querier objects.
     let mut state = STATE.load(ctx.storage)?;
+    let pair_ids = PAIR_IDS.load(ctx.storage)?;
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
-
-    // Find all the existing trading pairs.
-    // TODO: optimize this. Ideally we don't do database iteration which is slow.
-    let pair_ids = PAIR_STATES
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?;
 
     // --------------------------- 2. Business logic ---------------------------
 
@@ -69,7 +64,7 @@ fn _deposit(
     current_time: Timestamp,
     mut funds: Coins,
     state: &State,
-    pair_ids: &[PairId],
+    pair_ids: &BTreeSet<PairId>,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     min_shares_to_mint: Option<Uint128>,
@@ -181,7 +176,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(1_000_000),
             &state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -213,7 +208,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(1_000_000),
             &state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -239,7 +234,7 @@ mod tests {
             Timestamp::from_seconds(0),
             Coins::new(),
             &state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -273,7 +268,7 @@ mod tests {
             Timestamp::from_seconds(0),
             funds,
             &state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -320,7 +315,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(1_000_000),
             &state,
-            std::slice::from_ref(&eth::DENOM),
+            &BTreeSet::from([eth::DENOM.clone()]),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -345,7 +340,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(1_000_000),
             &state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
             Some(Uint128::new(1_000_000)),
@@ -370,7 +365,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(1_000_000),
             &state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
             Some(Uint128::new(1_000_001)),
@@ -423,7 +418,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(5_000_000_000),
             &state,
-            std::slice::from_ref(&eth::DENOM),
+            &BTreeSet::from([eth::DENOM.clone()]),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -478,7 +473,7 @@ mod tests {
             Timestamp::from_seconds(100),
             usdc_coins(5_000_000_000),
             &state,
-            std::slice::from_ref(&eth::DENOM),
+            &BTreeSet::from([eth::DENOM.clone()]),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -542,7 +537,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(1_000_000_000),
             &state,
-            &[eth::DENOM.clone(), btc::DENOM.clone()],
+            &BTreeSet::from([eth::DENOM.clone(), btc::DENOM.clone()]),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -572,7 +567,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(one_billion_usdc),
             &state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -609,7 +604,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(1_000_000),
             &state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
             None,
@@ -641,7 +636,7 @@ mod tests {
             Timestamp::from_seconds(0),
             usdc_coins(1_000_000),
             &state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
             None,

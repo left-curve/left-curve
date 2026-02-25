@@ -5,7 +5,7 @@ mod submit_order;
 mod withdraw;
 
 use {
-    crate::{PAIR_PARAMS, PAIR_STATES, PARAM, STATE},
+    crate::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE},
     dango_types::{
         UsdValue,
         perps::{CancelOrderRequest, ExecuteMsg, InstantiateMsg, PairState, State},
@@ -34,10 +34,12 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     PARAM.save(ctx.storage, &msg.param)?;
     STATE.save(ctx.storage, &State::default())?;
 
-    for (pair_id, pair_param) in msg.pair_params {
-        PAIR_PARAMS.save(ctx.storage, &pair_id, &pair_param)?;
-        PAIR_STATES.save(ctx.storage, &pair_id, &PairState::new(ctx.block.timestamp))?;
+    for (pair_id, pair_param) in &msg.pair_params {
+        PAIR_PARAMS.save(ctx.storage, pair_id, pair_param)?;
+        PAIR_STATES.save(ctx.storage, pair_id, &PairState::new(ctx.block.timestamp))?;
     }
+
+    PAIR_IDS.save(ctx.storage, &msg.pair_params.into_keys().collect())?;
 
     Ok(Response::new())
 }

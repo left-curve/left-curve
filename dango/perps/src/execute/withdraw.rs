@@ -1,8 +1,6 @@
 use {
     super::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
-    crate::{
-        NoCachePerpQuerier, PAIR_STATES, PARAM, STATE, USER_STATES, core::compute_vault_equity,
-    },
+    crate::{NoCachePerpQuerier, PAIR_IDS, PARAM, STATE, USER_STATES, core::compute_vault_equity},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -10,15 +8,18 @@ use {
         perps::{self, PairId, Param, State, Unlock, UserState, settlement_currency},
     },
     grug::{
-        Coins, IsZero, Message, MultiplyRatio, MutableCtx, Number as _, Order as IterationOrder,
-        Response, StdResult, Timestamp, Uint128,
+        Coins, IsZero, Message, MultiplyRatio, MutableCtx, Number as _, Response, Timestamp,
+        Uint128,
     },
+    std::collections::BTreeSet,
 };
 
 pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // ---------------------------- 1. Preparation -----------------------------
 
     let param = PARAM.load(ctx.storage)?;
+    let pair_ids = PAIR_IDS.load(ctx.storage)?;
+
     let mut state = STATE.load(ctx.storage)?;
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
@@ -26,10 +27,6 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
-
-    let pair_ids = PAIR_STATES
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?;
 
     // --------------------------- 2. Business logic ---------------------------
 
@@ -76,7 +73,7 @@ fn _withdraw(
     state: &State,
     param: &Param,
     user_state: &UserState,
-    pair_ids: &[PairId],
+    pair_ids: &BTreeSet<PairId>,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<(Uint128, Unlock)> {
@@ -209,7 +206,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -242,7 +239,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -272,7 +269,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -310,7 +307,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -359,7 +356,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            std::slice::from_ref(&eth::DENOM),
+            &BTreeSet::from([eth::DENOM.clone()]),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -415,7 +412,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            std::slice::from_ref(&eth::DENOM),
+            &BTreeSet::from([eth::DENOM.clone()]),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -463,7 +460,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -519,7 +516,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            std::slice::from_ref(&eth::DENOM),
+            &BTreeSet::from([eth::DENOM.clone()]),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -579,7 +576,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            std::slice::from_ref(&eth::DENOM),
+            &BTreeSet::from([eth::DENOM.clone()]),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -646,7 +643,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &[eth::DENOM.clone(), btc::DENOM.clone()],
+            &BTreeSet::from([eth::DENOM.clone(), btc::DENOM.clone()]),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -693,7 +690,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -727,7 +724,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
         )
@@ -761,7 +758,7 @@ mod tests {
             &state,
             &param,
             &user_state,
-            &[],
+            &BTreeSet::new(),
             &perp_querier,
             &mut oracle_querier,
         )

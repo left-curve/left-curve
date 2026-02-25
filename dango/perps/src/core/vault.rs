@@ -7,6 +7,7 @@ use {
         perps::{PairId, PairParam, PairState},
     },
     grug::Timestamp,
+    std::collections::BTreeSet,
 };
 
 /// Compute the vault's unrealized PnL for a single trading pair.
@@ -77,7 +78,7 @@ pub fn compute_pair_unrealized_funding(
 /// (trader pays), vault equity *adds* funding (vault receives the net).
 pub fn compute_vault_equity(
     vault_margin_value: UsdValue,
-    pair_ids: &[PairId],
+    pair_ids: &BTreeSet<PairId>,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     current_time: Timestamp,
@@ -113,20 +114,16 @@ pub fn compute_vault_equity(
 /// vault_equity < (long_oi + short_oi) * oracle_price * adl_trigger_ratio
 /// ```
 ///
-/// Early-returns `false` when there are no pairs (no open interest → no
-/// distress).
+/// With no pairs, `total_open_notional` is zero, so `vault_equity < 0` is
+/// always false for a non-negative margin — no distress.
 pub fn is_adl_triggerable(
     vault_margin_value: UsdValue,
-    pair_ids: &[PairId],
+    pair_ids: &BTreeSet<PairId>,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     current_time: Timestamp,
     adl_trigger_ratio: Dimensionless,
 ) -> anyhow::Result<bool> {
-    if pair_ids.is_empty() {
-        return Ok(false);
-    }
-
     let vault_equity = compute_vault_equity(
         vault_margin_value,
         pair_ids,
@@ -291,7 +288,7 @@ mod tests {
         assert_eq!(
             compute_vault_equity(
                 UsdValue::new_int(10_000),
-                &[],
+                &BTreeSet::new(),
                 &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -331,7 +328,7 @@ mod tests {
         assert_eq!(
             compute_vault_equity(
                 UsdValue::new_int(10_000),
-                std::slice::from_ref(&eth::DENOM),
+                &BTreeSet::from([eth::DENOM.clone()]),
                 &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -375,7 +372,7 @@ mod tests {
         assert_eq!(
             compute_vault_equity(
                 UsdValue::new_int(10_000),
-                std::slice::from_ref(&eth::DENOM),
+                &BTreeSet::from([eth::DENOM.clone()]),
                 &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(100),
@@ -430,7 +427,7 @@ mod tests {
         assert_eq!(
             compute_vault_equity(
                 UsdValue::new_int(10_000),
-                &[eth::DENOM.clone(), btc::DENOM.clone()],
+                &BTreeSet::from([eth::DENOM.clone(), btc::DENOM.clone()]),
                 &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -470,7 +467,7 @@ mod tests {
         assert_eq!(
             compute_vault_equity(
                 UsdValue::new_int(100),
-                std::slice::from_ref(&eth::DENOM),
+                &BTreeSet::from([eth::DENOM.clone()]),
                 &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -490,7 +487,7 @@ mod tests {
         assert!(
             !is_adl_triggerable(
                 UsdValue::new_int(10_000),
-                &[],
+                &BTreeSet::new(),
                 &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -535,7 +532,7 @@ mod tests {
         assert!(
             !is_adl_triggerable(
                 UsdValue::new_int(100_000),
-                std::slice::from_ref(&eth::DENOM),
+                &BTreeSet::from([eth::DENOM.clone()]),
                 &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -580,7 +577,7 @@ mod tests {
         assert!(
             !is_adl_triggerable(
                 UsdValue::new_int(20_000),
-                std::slice::from_ref(&eth::DENOM),
+                &BTreeSet::from([eth::DENOM.clone()]),
                 &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
@@ -625,7 +622,7 @@ mod tests {
         assert!(
             is_adl_triggerable(
                 UsdValue::new_int(100),
-                std::slice::from_ref(&eth::DENOM),
+                &BTreeSet::from([eth::DENOM.clone()]),
                 &perp_querier,
                 &mut oracle_querier,
                 Timestamp::from_seconds(0),
