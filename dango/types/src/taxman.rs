@@ -28,6 +28,8 @@ pub struct UserReferralData {
     pub referees_volume: Udec128,
     /// Total commission rebounded to the user's direct referees (USD).
     pub referees_commission_rebounded: Udec128,
+    /// Number of referees that has traded in a specific day.
+    pub active_users: Uint128,
 }
 
 impl UserReferralData {
@@ -42,6 +44,7 @@ impl UserReferralData {
             referees_commission_rebounded: self
                 .referees_commission_rebounded
                 .checked_sub(other.referees_commission_rebounded)?,
+            active_users: self.active_users.checked_sub(other.active_users)?,
         })
     }
 }
@@ -54,6 +57,8 @@ pub struct RefereeStats {
     pub volume: Udec128,
     /// Total commission rebounded to the referrer (USD).
     pub commission_rebounded: Udec128,
+    /// Timestamp of the last day the referee was active.
+    pub last_day_active: Timestamp,
 }
 
 #[grug::derive(Serde, Borsh)]

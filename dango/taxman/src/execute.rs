@@ -232,6 +232,7 @@ fn set_referral(ctx: MutableCtx, referrer: Referrer, referee: Referee) -> anyhow
         registered_at: ctx.block.timestamp,
         volume: Udec128::ZERO,
         commission_rebounded: Udec128::ZERO,
+        last_day_active: Timestamp::from_nanos(0),
     })?;
 
     let mut referrer_data = last_user_referral_data(ctx.storage, referrer)?;
@@ -539,6 +540,10 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
             &mut msgs,
         )?;
 
+        // Load the referrer to referee statistics.
+        let mut referrer_to_referee_stats = REFERRER_TO_REFEREE_STATISTICS
+            .load(ctx.storage, (first_referrer, payer_account_params.owner))?;
+
         if commission_rebound_value.is_non_zero() {
             // Store the referee commission rebounded value.
             store_referee_commission_rebound(
@@ -549,16 +554,31 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
             )?;
 
             // Update the total referee commission rebound for the referrer.
-            REFERRER_TO_REFEREE_STATISTICS.update(
+            referrer_to_referee_stats
+                .commission_rebounded
+                .checked_add_assign(commission_rebound_value)?;
+        }
+
+        // Check if the referee is already an active referee for the referrer for the current day.
+        if referrer_to_referee_stats.last_day_active < day_timestamp {
+            // Update the last day active for this referee.
+            referrer_to_referee_stats.last_day_active = day_timestamp;
+
+            // Increase the number of active users for the referrer.
+            let mut referrer_data = last_user_referral_data(ctx.storage, first_referrer)?;
+            referrer_data.active_users += Uint128::ONE;
+            USER_REFERRAL_DATA.save(
                 ctx.storage,
-                (first_referrer, payer_account_params.owner),
-                |mut data| {
-                    data.commission_rebounded
-                        .checked_add_assign(commission_rebound_value)?;
-                    Ok::<_, StdError>(data)
-                },
+                (first_referrer, day_timestamp),
+                &referrer_data,
             )?;
         }
+
+        REFERRER_TO_REFEREE_STATISTICS.save(
+            ctx.storage,
+            (first_referrer, payer_account_params.owner),
+            &referrer_to_referee_stats,
+        )?;
 
         // Max commission rate seen so far in the referrer chain.
         let mut max_commission_rate = *first_referrer_settings.commission_rebound;
