@@ -398,9 +398,6 @@ fn match_order(
             remaining_size.max(opposite)
         };
 
-        let fill_abs = taker_fill_size.checked_abs()?;
-        let resting_abs = resting_order.size.checked_abs()?;
-
         // --- Taker side ---
         settle_fill(
             pair_state,
@@ -439,24 +436,20 @@ fn match_order(
         )?;
 
         // Release reserved margin proportionally to the filled portion.
-        let proportion = fill_abs.checked_div(resting_abs)?;
-        let margin_to_release = resting_order.reserved_margin.checked_mul(proportion)?;
+        // Negative: taker and resting sizes have opposite signs.
+        let fill_fraction = taker_fill_size.checked_div(resting_order.size)?;
+        let margin_delta = resting_order.reserved_margin.checked_mul(fill_fraction)?;
 
-        (maker_state.reserved_margin).checked_sub_assign(margin_to_release)?;
+        // margin_delta < 0, so adding it reduces reserved margin.
+        (maker_state.reserved_margin).checked_add_assign(margin_delta)?;
 
         // Defer order mutation.
         let order_key = (pair_id.clone(), stored_price, order_id);
-        let resting_remaining = resting_abs.checked_sub(fill_abs)?;
+        let new_size = resting_order.size.checked_add(taker_fill_size)?;
 
-        if resting_remaining.is_non_zero() {
+        if new_size.is_non_zero() {
             // Partially filled: update size and reserved margin.
-            let new_size = if is_bid {
-                resting_remaining.checked_neg()? // ask has negative size
-            } else {
-                resting_remaining // bid has positive size
-            };
-
-            let new_reserved = (resting_order.reserved_margin).checked_sub(margin_to_release)?;
+            let new_reserved = (resting_order.reserved_margin).checked_add(margin_delta)?;
 
             let updated_order = Order {
                 user: maker_addr,
