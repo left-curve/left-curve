@@ -183,56 +183,20 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     Ok(Response::new().add_messages(messages))
 }
 
-/// Mutates:
-///
-/// - `pair_states` — OI updated per fill.
-/// - `user_state.positions` — closed (partially or fully) per the schedule.
-/// - `vault_state.positions` — opened for any vault-backstopped fills.
-/// - `state.insurance_fund` — adjusted by settled PnLs and bad debt.
-/// - `state.vault_margin` — adjusted by the vault's PnL entry.
-///
-/// Returns:
-///
-/// - Per-user payouts in settlement-currency base units.
-/// - Per-user collections in settlement-currency base units.
-/// - Maker `UserState`s to persist.
-/// - Order mutations to apply: `(pair_id, taker_is_bid, stored_price, order_id, Option<Order>)`.
-fn _liquidate(
-    storage: &dyn Storage,
-    user: Addr,
-    contract: Addr,
-    param: &Param,
+struct CloseEntry {
+    pair_id: PairId,
+    close_size: Quantity,
+}
+
+/// Build a schedule of positions to close, largest-MM-first, until the
+/// maintenance margin deficit is covered.
+fn compute_close_schedule(
+    user_state: &UserState,
     pair_params: &BTreeMap<PairId, PairParam>,
-    pair_states: &mut BTreeMap<PairId, PairState>,
-    user_state: &mut UserState,
-    vault_state: &mut UserState,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
-    collateral_value: UsdValue,
-    collateral_balance: Uint128,
-    oracle_querier: &mut OracleQuerier,
-    settlement_currency_price: UsdPrice,
-    state: &mut State,
-) -> anyhow::Result<(
-    BTreeMap<Addr, Uint128>,
-    Vec<(Addr, Uint128)>,
-    BTreeMap<Addr, UserState>,
-    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
-)> {
-    // -------------------- Step 1: Assert liquidatable -------------------------
-
-    let perp_querier = NoCachePerpQuerier::new_local(storage);
-
-    ensure!(
-        is_liquidatable(collateral_value, user_state, &perp_querier, oracle_querier)?,
-        "user is not liquidatable"
-    );
-
-    // ------------- Step 2: Compute close schedule (largest-MM-first) ----------
-
-    let equity = compute_user_equity(collateral_value, user_state, &perp_querier, oracle_querier)?;
-    let total_mm = compute_maintenance_margin(user_state, &perp_querier, oracle_querier)?;
-
-    let mut deficit = total_mm.checked_sub(equity)?;
+    deficit: UsdValue,
+) -> anyhow::Result<Vec<CloseEntry>> {
+    let mut deficit = deficit;
 
     // Build (mm_contribution, pair_id) list, sorted descending by MM.
     let mut mm_entries: Vec<(UsdValue, PairId)> = Vec::new();
@@ -254,11 +218,6 @@ fn _liquidate(
     mm_entries.sort_by(|a, b| b.0.cmp(&a.0));
 
     // Build the close schedule.
-    struct CloseEntry {
-        pair_id: PairId,
-        close_size: Quantity,
-    }
-
     let mut schedule = Vec::new();
 
     for (_, pair_id) in &mm_entries {
@@ -300,8 +259,27 @@ fn _liquidate(
         // only if there are precision issues. The guard at the top handles this.
     }
 
-    // -------- Step 3: Execute closes via the order book -----------------------
+    Ok(schedule)
+}
 
+/// Execute the close schedule against the order book, with vault backstop for
+/// any unfilled remainder.
+fn execute_close_schedule(
+    storage: &dyn Storage,
+    schedule: &[CloseEntry],
+    user: Addr,
+    contract: Addr,
+    param: &Param,
+    pair_states: &mut BTreeMap<PairId, PairState>,
+    user_state: &mut UserState,
+    vault_state: &mut UserState,
+    oracle_prices: &BTreeMap<PairId, UsdPrice>,
+) -> anyhow::Result<(
+    BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, UserState>,
+    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
+    UsdValue,
+)> {
     // Zero-fee param for liquidation fills.
     let liq_param = Param {
         taker_fee_rate: Dimensionless::ZERO,
@@ -314,7 +292,7 @@ fn _liquidate(
     let mut all_order_mutations: Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)> = Vec::new();
     let mut closed_notional = UsdValue::ZERO;
 
-    for entry in &schedule {
+    for entry in schedule {
         let pair_state = pair_states.get_mut(&entry.pair_id).unwrap();
         let oracle_price = oracle_prices[&entry.pair_id];
 
@@ -395,27 +373,43 @@ fn _liquidate(
         }
     }
 
-    // -------------------- Step 4: Liquidation fee -----------------------------
+    Ok((all_pnls, all_maker_states, all_order_mutations, closed_notional))
+}
 
-    let fee_usd = closed_notional.checked_mul(param.liquidation_fee_rate)?;
-    let user_pnl = all_pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
+/// Compute the liquidation fee, cap it at remaining margin, and deduct from
+/// the user's PnL entry.
+fn apply_liquidation_fee(
+    pnls: &mut BTreeMap<Addr, UsdValue>,
+    user: Addr,
+    closed_notional: UsdValue,
+    liquidation_fee_rate: Dimensionless,
+    collateral_value: UsdValue,
+) -> anyhow::Result<()> {
+    let fee_usd = closed_notional.checked_mul(liquidation_fee_rate)?;
+    let user_pnl = pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
     let remaining_margin = collateral_value.checked_add(user_pnl)?.max(UsdValue::ZERO);
     let actual_fee = fee_usd.min(remaining_margin);
 
     // Deduct the fee from the user's PnL entry. This routes the fee to the
     // insurance fund when settle_pnls converts USD values to base amounts.
     if actual_fee.is_non_zero() {
-        all_pnls
-            .entry(user)
+        pnls.entry(user)
             .or_default()
             .checked_sub_assign(actual_fee)?;
     }
 
-    // ------------- Step 5: Handle vault PnL + bad debt ------------------------
+    Ok(())
+}
 
-    // Extract vault's PnL entry and apply directly to state (the contract can't
-    // transfer to itself).
-    if let Some(vault_pnl) = all_pnls.remove(&contract) {
+/// Extract the vault's PnL from the map and apply directly to `state`
+/// (the contract can't transfer to itself).
+fn settle_vault_pnl(
+    pnls: &mut BTreeMap<Addr, UsdValue>,
+    contract: Addr,
+    settlement_currency_price: UsdPrice,
+    state: &mut State,
+) -> anyhow::Result<()> {
+    if let Some(vault_pnl) = pnls.remove(&contract) {
         if vault_pnl > UsdValue::ZERO {
             let amount = vault_pnl
                 .checked_div(settlement_currency_price)?
@@ -436,18 +430,102 @@ fn _liquidate(
         }
     }
 
+    Ok(())
+}
+
+/// Mutates:
+///
+/// - `pair_states` — OI updated per fill.
+/// - `user_state.positions` — closed (partially or fully) per the schedule.
+/// - `vault_state.positions` — opened for any vault-backstopped fills.
+/// - `state.insurance_fund` — adjusted by settled PnLs and bad debt.
+/// - `state.vault_margin` — adjusted by the vault's PnL entry.
+///
+/// Returns:
+///
+/// - Per-user payouts in settlement-currency base units.
+/// - Per-user collections in settlement-currency base units.
+/// - Maker `UserState`s to persist.
+/// - Order mutations to apply: `(pair_id, taker_is_bid, stored_price, order_id, Option<Order>)`.
+fn _liquidate(
+    storage: &dyn Storage,
+    user: Addr,
+    contract: Addr,
+    param: &Param,
+    pair_params: &BTreeMap<PairId, PairParam>,
+    pair_states: &mut BTreeMap<PairId, PairState>,
+    user_state: &mut UserState,
+    vault_state: &mut UserState,
+    oracle_prices: &BTreeMap<PairId, UsdPrice>,
+    collateral_value: UsdValue,
+    collateral_balance: Uint128,
+    oracle_querier: &mut OracleQuerier,
+    settlement_currency_price: UsdPrice,
+    state: &mut State,
+) -> anyhow::Result<(
+    BTreeMap<Addr, Uint128>,
+    Vec<(Addr, Uint128)>,
+    BTreeMap<Addr, UserState>,
+    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
+)> {
+    // -------------------- Step 1: Assert liquidatable -------------------------
+
+    let perp_querier = NoCachePerpQuerier::new_local(storage);
+
+    ensure!(
+        is_liquidatable(collateral_value, user_state, &perp_querier, oracle_querier)?,
+        "user is not liquidatable"
+    );
+
+    // ------------- Step 2: Compute close schedule (largest-MM-first) ----------
+
+    let equity = compute_user_equity(collateral_value, user_state, &perp_querier, oracle_querier)?;
+    let total_mm = compute_maintenance_margin(user_state, &perp_querier, oracle_querier)?;
+    let deficit = total_mm.checked_sub(equity)?;
+
+    let schedule = compute_close_schedule(user_state, pair_params, oracle_prices, deficit)?;
+
+    // -------- Step 3: Execute closes via the order book -----------------------
+
+    let (mut all_pnls, all_maker_states, all_order_mutations, closed_notional) =
+        execute_close_schedule(
+            storage,
+            &schedule,
+            user,
+            contract,
+            param,
+            pair_states,
+            user_state,
+            vault_state,
+            oracle_prices,
+        )?;
+
+    // -------------------- Step 4: Liquidation fee -----------------------------
+
+    apply_liquidation_fee(
+        &mut all_pnls,
+        user,
+        closed_notional,
+        param.liquidation_fee_rate,
+        collateral_value,
+    )?;
+
+    // ------------- Step 5: Handle vault PnL + bad debt ------------------------
+
+    settle_vault_pnl(&mut all_pnls, contract, settlement_currency_price, state)?;
+
     // ----------------------- Step 6: Settle PnLs ------------------------------
 
     let (payouts, mut collections) = settle_pnls(all_pnls, settlement_currency_price, state)?;
 
     // Bad debt check: if the user owes more than their collateral, cap the
     // collection and absorb the bad debt from the insurance fund.
-    if let Some((_, amount)) = collections.iter_mut().find(|(addr, _)| *addr == user) {
-        if *amount > collateral_balance {
-            let bad_debt = amount.checked_sub(collateral_balance)?;
-            state.insurance_fund.checked_sub_assign(bad_debt)?;
-            *amount = collateral_balance;
-        }
+    if let Some((_, amount)) = collections.iter_mut().find(|(addr, _)| *addr == user)
+        && *amount > collateral_balance
+    {
+        let bad_debt = amount.checked_sub(collateral_balance)?;
+        state.insurance_fund.checked_sub_assign(bad_debt)?;
+        *amount = collateral_balance;
     }
 
     // Remove zero-amount collections.
