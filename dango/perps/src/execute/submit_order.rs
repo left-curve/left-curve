@@ -15,18 +15,15 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue, bank,
         perps::{
-            Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, UserState,
+            Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, State, UserState,
             settlement_currency,
         },
     },
     grug::{
         Addr, Coins, IsZero, MathResult, Message, MutableCtx, Number, NumberConst,
-        Order as IterationOrder, QuerierExt, Response, Storage, coins,
+        Order as IterationOrder, QuerierExt, Response, Storage, Uint128, coins,
     },
-    std::{
-        cmp::Ordering,
-        collections::{BTreeMap, btree_map::Entry},
-    },
+    std::collections::{BTreeMap, btree_map::Entry},
 };
 
 pub fn submit_order(
@@ -64,7 +61,7 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (pnls, maker_states, order_mutations, order_to_store) = _submit_order(
+    let (payouts, collections, maker_states, order_mutations, order_to_store) = _submit_order(
         ctx.storage,
         ctx.sender,
         ctx.block.timestamp,
@@ -79,9 +76,13 @@ pub fn submit_order(
         kind,
         reduce_only,
         &mut oracle_querier,
+        settlement_currency_price,
+        &mut state,
     )?;
 
     // ------------------------ 3. Apply state changes -------------------------
+
+    STATE.save(ctx.storage, &state)?;
 
     PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
 
@@ -116,50 +117,30 @@ pub fn submit_order(
 
     // ---------------------- 4. Perform token transfers -----------------------
 
-    // Convert each user's net USD PnL to settlement currency base units
-    // and update the insurance fund. One rounding operation per user.
-    let mut messages = Vec::with_capacity(pnls.len());
+    let mut messages = Vec::with_capacity(payouts.len() + collections.len());
 
-    for (user, net_usd) in pnls {
-        let net_quantity = net_usd.checked_div(settlement_currency_price)?;
-
-        match net_usd.cmp(&UsdValue::ZERO) {
-            Ordering::Greater => {
-                // Contract pays user: floor rounding favors contract.
-                let amount = net_quantity.into_base_floor(settlement_currency::DECIMAL)?;
-
-                if amount.is_non_zero() {
-                    state.insurance_fund = state.insurance_fund.checked_sub(amount)?;
-                    messages.push(Message::transfer(
-                        user,
-                        coins! { settlement_currency::DENOM.clone() => amount },
-                    )?);
-                }
+    if !payouts.is_empty() {
+        messages.push(Message::batch_transfer(payouts.into_iter().map(
+            |(addr, amount)| {
+                (
+                    addr,
+                    coins! { settlement_currency::DENOM.clone() => amount },
+                )
             },
-            Ordering::Less => {
-                // User pays contract: ceil rounding favors contract.
-                let amount = net_quantity
-                    .checked_abs()?
-                    .into_base_ceil(settlement_currency::DECIMAL)?;
-
-                if amount.is_non_zero() {
-                    state.insurance_fund = state.insurance_fund.checked_add(amount)?;
-                    messages.push(Message::execute(
-                        BANK,
-                        &bank::ExecuteMsg::ForceTransfer {
-                            from: user,
-                            to: ctx.contract,
-                            coins: coins! { settlement_currency::DENOM.clone() => amount },
-                        },
-                        Coins::new(),
-                    )?);
-                }
-            },
-            Ordering::Equal => {},
-        }
+        ))?);
     }
 
-    STATE.save(ctx.storage, &state)?;
+    for (user, amount) in collections {
+        messages.push(Message::execute(
+            BANK,
+            &bank::ExecuteMsg::ForceTransfer {
+                from: user,
+                to: ctx.contract,
+                coins: coins! { settlement_currency::DENOM.clone() => amount },
+            },
+            Coins::new(),
+        )?);
+    }
 
     Ok(Response::new().add_messages(messages))
 }
@@ -173,10 +154,12 @@ pub fn submit_order(
 /// - `taker_state.positions` — opened / closed / flipped per fill.
 /// - `taker_state.reserved_margin` / `open_order_count` — updated if a
 ///   limit order remainder is stored.
+/// - `state.insurance_fund` — adjusted by settled PnLs.
 ///
 /// Returns:
 ///
-/// - Per-user net PnL in USD: `BTreeMap<Addr, UsdValue>`.
+/// - Per-user payouts in settlement-currency base units: `BTreeMap<Addr, Uint128>`.
+/// - Per-user collections in settlement-currency base units: `Vec<(Addr, Uint128)>`.
 /// - Maker `UserState`s to persist: `BTreeMap<Addr, UserState>`.
 /// - Order mutations to apply: `Vec<(OrderKey, Option<Order>)>`.
 /// - GTC order to store: `Option<(stored_price, order_id, Order)>`.
@@ -195,8 +178,11 @@ fn _submit_order(
     kind: OrderKind,
     reduce_only: bool,
     oracle_querier: &mut OracleQuerier,
+    settlement_price: UsdPrice,
+    state: &mut State,
 ) -> anyhow::Result<(
-    BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, Uint128>,
+    Vec<(Addr, Uint128)>,
     BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>)>,
     Option<(UsdPrice, OrderId, Order)>,
@@ -291,12 +277,20 @@ fn _submit_order(
                     reduce_only,
                 )?;
 
-                return Ok((pnls, maker_states, order_mutations, Some(order_to_store)));
+                let (payouts, collections) = settle_pnls(pnls, settlement_price, state)?;
+                return Ok((
+                    payouts,
+                    collections,
+                    maker_states,
+                    order_mutations,
+                    Some(order_to_store),
+                ));
             },
         }
     }
 
-    Ok((pnls, maker_states, order_mutations, None))
+    let (payouts, collections) = settle_pnls(pnls, settlement_price, state)?;
+    Ok((payouts, collections, maker_states, order_mutations, None))
 }
 
 /// Ensure the user's collateral balance satisfies both extreme cases:
@@ -557,6 +551,50 @@ fn settle_fill(
     pnls.entry(user).or_default().checked_add_assign(net)
 }
 
+/// Convert per-user USD PnLs into settlement-currency base-unit amounts and
+/// update the insurance fund accordingly.
+///
+/// Returns:
+///
+/// - Payouts: users the contract must pay (positive PnL, floor-rounded).
+/// - Collections: users who owe the contract (negative PnL, ceil-rounded).
+fn settle_pnls(
+    pnls: BTreeMap<Addr, UsdValue>,
+    settlement_price: UsdPrice,
+    state: &mut State,
+) -> anyhow::Result<(BTreeMap<Addr, Uint128>, Vec<(Addr, Uint128)>)> {
+    let mut payouts = BTreeMap::new();
+    let mut collections = Vec::new();
+
+    for (user, net_usd) in pnls {
+        if net_usd.is_zero() {
+            continue;
+        }
+
+        let net_quantity = net_usd.checked_div(settlement_price)?;
+
+        if net_usd > UsdValue::ZERO {
+            // Contract pays user: floor rounding favors contract.
+            let amount = net_quantity.into_base_floor(settlement_currency::DECIMAL)?;
+            if amount.is_non_zero() {
+                state.insurance_fund = state.insurance_fund.checked_sub(amount)?;
+                payouts.insert(user, amount);
+            }
+        } else {
+            // User pays contract: ceil rounding favors contract.
+            let amount = net_quantity
+                .checked_abs()?
+                .into_base_ceil(settlement_currency::DECIMAL)?;
+            if amount.is_non_zero() {
+                state.insurance_fund = state.insurance_fund.checked_add(amount)?;
+                collections.push((user, amount));
+            }
+        }
+    }
+
+    Ok((payouts, collections))
+}
+
 fn store_limit_order(
     storage: &dyn Storage,
     user: Addr,
@@ -634,6 +672,8 @@ mod tests {
 
     /// Large collateral value that trivially satisfies any margin check.
     const LARGE_COLLATERAL: UsdValue = UsdValue::new_int(999_999_999);
+
+    const SETTLEMENT_PRICE: UsdPrice = UsdPrice::new_int(1);
 
     fn test_oracle_querier() -> OracleQuerier<'static> {
         OracleQuerier::new_mock(hash_map! {
@@ -752,8 +792,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, _, order_mutations, order_to_store) = _submit_order(
+        let (_, _, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -770,6 +811,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -805,8 +848,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, _, _, order_to_store) = _submit_order(
+        let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -823,6 +867,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -848,6 +894,7 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
         let err = _submit_order(
             &ctx.storage,
@@ -866,6 +913,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         );
 
         assert!(err.is_err());
@@ -892,8 +941,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, _, _, order_to_store) = _submit_order(
+        let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -910,6 +960,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -935,8 +987,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, _, _, order_to_store) = _submit_order(
+        let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -953,6 +1006,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -982,8 +1037,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, _, _, order_to_store) = _submit_order(
+        let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -1000,6 +1056,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -1035,8 +1093,9 @@ mod tests {
             entry_funding_per_unit: FundingPerUnit::ZERO,
         });
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, _, _, order_to_store) = _submit_order(
+        let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -1053,6 +1112,8 @@ mod tests {
             },
             true,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -1076,6 +1137,7 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
         let err = _submit_order(
             &ctx.storage,
@@ -1094,6 +1156,8 @@ mod tests {
             },
             true,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         );
 
         assert!(err.is_err());
@@ -1120,8 +1184,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, _, order_mutations, order_to_store) = _submit_order(
+        let (_, _, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -1138,6 +1203,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -1170,8 +1237,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, maker_states, ..) = _submit_order(
+        let (_, _, maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -1188,6 +1256,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -1217,8 +1287,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (pnls, ..) = _submit_order(
+        let (payouts, collections, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -1235,16 +1306,17 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
         // Taker: no realized PnL (opening), fee = |10| * 50000 * 0.001 = 500 USD.
-        // Net = 0 - 500 = -500 USD.
-        assert_eq!(pnls[&TAKER], UsdValue::new_int(-500));
-
-        // Maker: no realized PnL (opening), fee = 0%.
-        // Net = 0.
-        assert_eq!(pnls[&MAKER_A], UsdValue::ZERO);
+        // Net = -$500 → collection of 500 × 10^6 base units.
+        assert!(payouts.is_empty());
+        assert_eq!(collections.len(), 1);
+        assert_eq!(collections[0].0, TAKER);
+        assert_eq!(collections[0].1, Uint128::new(500_000_000));
     }
 
     // ======== Tick size enforcement for limit orders =========================
@@ -1267,6 +1339,7 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
         // 50,100 is a valid multiple of tick size 100 — should succeed.
         let result = _submit_order(
@@ -1286,6 +1359,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         );
 
         assert!(result.is_ok());
@@ -1309,6 +1384,7 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
         let err = _submit_order(
             &ctx.storage,
@@ -1327,6 +1403,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         );
 
         assert!(err.is_err());
@@ -1354,8 +1432,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, _, order_mutations, order_to_store) = _submit_order(
+        let (_, _, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -1372,6 +1451,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -1409,8 +1490,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, maker_states, ..) = _submit_order(
+        let (_, _, maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -1427,6 +1509,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -1450,8 +1534,9 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
-        let (_, maker_states, ..) = _submit_order(
+        let (_, _, maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -1468,6 +1553,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         )
         .unwrap();
 
@@ -1497,6 +1584,7 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
         let err = _submit_order(
             &ctx.storage,
@@ -1515,6 +1603,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         );
 
         assert!(err.is_err());
@@ -1557,6 +1647,7 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
         let err = _submit_order(
             &ctx.storage,
@@ -1575,6 +1666,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         );
 
         assert!(err.is_err());
@@ -1617,6 +1710,7 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
         let mut oq = test_oracle_querier();
+        let mut state = State::default();
 
         let err = _submit_order(
             &ctx.storage,
@@ -1635,6 +1729,8 @@ mod tests {
             },
             false,
             &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
         );
 
         assert!(err.is_err());
@@ -1643,5 +1739,89 @@ mod tests {
             msg.contains("insufficient margin for limit order"),
             "expected 0%-fill margin error, got: {msg}"
         );
+    }
+
+    // =================== settle_pnls unit tests ==============================
+
+    #[test]
+    fn settle_pnls_mixed() {
+        let mut state = State {
+            insurance_fund: Uint128::new(1_000_000_000),
+            ..Default::default()
+        };
+
+        let pnls = BTreeMap::from([
+            (Addr::mock(1), UsdValue::new_int(100)),
+            (Addr::mock(2), UsdValue::new_int(-200)),
+            (Addr::mock(3), UsdValue::ZERO),
+        ]);
+
+        let (payouts, collections) = settle_pnls(pnls, SETTLEMENT_PRICE, &mut state).unwrap();
+
+        // Positive PnL: user 1 receives 100 × 10^6 base units.
+        assert_eq!(payouts.len(), 1);
+        assert_eq!(payouts[&Addr::mock(1)], Uint128::new(100_000_000));
+
+        // Negative PnL: user 2 owes 200 × 10^6 base units.
+        assert_eq!(collections.len(), 1);
+        assert_eq!(collections[0], (Addr::mock(2), Uint128::new(200_000_000)));
+
+        // 1_000_000_000 - 100_000_000 + 200_000_000
+        assert_eq!(state.insurance_fund, Uint128::new(1_100_000_000));
+    }
+
+    #[test]
+    fn settle_pnls_all_payouts() {
+        let mut state = State {
+            insurance_fund: Uint128::new(1_000_000_000),
+            ..Default::default()
+        };
+
+        let pnls = BTreeMap::from([
+            (Addr::mock(1), UsdValue::new_int(100)),
+            (Addr::mock(2), UsdValue::new_int(50)),
+        ]);
+
+        let (payouts, collections) = settle_pnls(pnls, SETTLEMENT_PRICE, &mut state).unwrap();
+
+        assert_eq!(payouts.len(), 2);
+        assert!(collections.is_empty());
+
+        // 1_000_000_000 - 100_000_000 - 50_000_000
+        assert_eq!(state.insurance_fund, Uint128::new(850_000_000));
+    }
+
+    #[test]
+    fn settle_pnls_all_collections() {
+        let mut state = State::default();
+
+        let pnls = BTreeMap::from([
+            (Addr::mock(1), UsdValue::new_int(-100)),
+            (Addr::mock(2), UsdValue::new_int(-200)),
+        ]);
+
+        let (payouts, collections) = settle_pnls(pnls, SETTLEMENT_PRICE, &mut state).unwrap();
+
+        assert!(payouts.is_empty());
+        assert_eq!(collections.len(), 2);
+
+        // 0 + 100_000_000 + 200_000_000
+        assert_eq!(state.insurance_fund, Uint128::new(300_000_000));
+    }
+
+    #[test]
+    fn settle_pnls_empty() {
+        let mut state = State {
+            insurance_fund: Uint128::new(500_000_000),
+            ..Default::default()
+        };
+
+        let pnls = BTreeMap::new();
+
+        let (payouts, collections) = settle_pnls(pnls, SETTLEMENT_PRICE, &mut state).unwrap();
+
+        assert!(payouts.is_empty());
+        assert!(collections.is_empty());
+        assert_eq!(state.insurance_fund, Uint128::new(500_000_000));
     }
 }
