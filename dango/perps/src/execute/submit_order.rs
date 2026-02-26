@@ -20,9 +20,12 @@ use {
     },
     grug::{
         Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst, Order as IterationOrder,
-        Response, StdResult, Storage, coins,
+        Response, Storage, coins,
     },
-    std::{cmp::Ordering, collections::BTreeMap},
+    std::{
+        cmp::Ordering,
+        collections::{BTreeMap, btree_map::Entry},
+    },
 };
 
 pub fn submit_order(
@@ -51,7 +54,7 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (transfers, order_to_store) = _submit_order(
+    let (transfers, maker_states, order_mutations, order_to_store) = _submit_order(
         ctx.storage,
         ctx.sender,
         ctx.block.timestamp,
@@ -71,6 +74,29 @@ pub fn submit_order(
     PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
 
     USER_STATES.save(ctx.storage, ctx.sender, &taker_state)?;
+
+    // Persist maker states modified during matching.
+    for (addr, maker_state) in &maker_states {
+        USER_STATES.save(ctx.storage, *addr, maker_state)?;
+    }
+
+    // Apply order book mutations (opposite side from taker's order).
+    let opposite_book = if size.is_positive() {
+        ASKS
+    } else {
+        BIDS
+    };
+
+    for (order_key, mutation) in order_mutations {
+        match mutation {
+            Some(order) => {
+                opposite_book.save(ctx.storage, order_key, &order)?;
+            },
+            None => {
+                opposite_book.remove(ctx.storage, order_key)?;
+            },
+        }
+    }
 
     if let Some((limit_price, order_id, order)) = order_to_store {
         let next_order_id = order_id + OrderId::ONE;
@@ -133,10 +159,11 @@ pub fn submit_order(
     Ok(Response::new().add_messages(messages))
 }
 
-/// Mutates:
+/// Semi-pure order submission: reads from storage but does not write.
+/// All storage mutations are returned as deferred side-effects.
 ///
-/// - `storage` — resting orders updated/removed during matching; maker
-///   `UserState`s saved after each fill.
+/// Mutates (in-memory only):
+///
 /// - `pair_state` — funding accrued; `long_oi` / `short_oi` updated.
 /// - `taker_state.positions` — opened / closed / flipped per fill.
 /// - `taker_state.reserved_margin` / `open_order_count` — updated if a
@@ -145,9 +172,11 @@ pub fn submit_order(
 /// Returns:
 ///
 /// - Per-user net PnL in USD: `BTreeMap<Addr, UsdValue>`.
+/// - Maker `UserState`s to persist: `BTreeMap<Addr, UserState>`.
+/// - Order mutations to apply: `Vec<(OrderKey, Option<Order>)>`.
 /// - GTC order to store: `Option<(stored_price, order_id, Order)>`.
 fn _submit_order(
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     sender: Addr,
     current_time: grug::Timestamp,
     param: &Param,
@@ -159,7 +188,12 @@ fn _submit_order(
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
-) -> anyhow::Result<(BTreeMap<Addr, UsdValue>, Option<(UsdPrice, OrderId, Order)>)> {
+) -> anyhow::Result<(
+    BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, UserState>,
+    Vec<(OrderKey, Option<Order>)>,
+    Option<(UsdPrice, OrderId, Order)>,
+)> {
     // ------------- Step 1. Accrue funding before any OI changes --------------
 
     accrue_funding(pair_state, pair_param, current_time, oracle_price)?;
@@ -197,7 +231,7 @@ fn _submit_order(
 
     // ---------------------- Step 6. Match against book ------------------------
 
-    let (filled_size, transfers) = match_order(
+    let (filled_size, transfers, maker_states, order_mutations) = match_order(
         storage,
         sender,
         param,
@@ -237,32 +271,40 @@ fn _submit_order(
                     reduce_only,
                 )?;
 
-                return Ok((transfers, Some(order_to_store)));
+                return Ok((
+                    transfers,
+                    maker_states,
+                    order_mutations,
+                    Some(order_to_store),
+                ));
             },
         }
     }
 
-    Ok((transfers, None))
+    Ok((transfers, maker_states, order_mutations, None))
 }
 
 /// Walk the opposite side of the book, filling at each resting order's price
 /// until the taker order is exhausted or no more acceptable prices exist.
 ///
-/// Mutates:
+/// This function is semi-pure: it reads from storage but does not write.
+/// Deferred side-effects (maker state changes, order mutations) are returned
+/// for the caller to apply.
 ///
-/// - `storage` — resting orders updated/removed; maker `UserState`s saved.
+/// Mutates (in-memory only):
+///
 /// - `pair_state.long_oi` / `pair_state.short_oi` — updated per fill.
 /// - `taker_state.positions` — opened / closed / flipped per fill.
 ///
 /// Returns:
 ///
 /// - Total size filled (same sign convention as taker's order).
-/// - Per-user net PnL in USD: `BTreeMap<Addr, UsdValue>`.
-///   Positive = user gains, negative = user loses.
-///   Includes both fill PnL (funding + realized) and trading fees
-///   (subtracted).
+/// - Per-user net PnL in USD (`BTreeMap<Addr, UsdValue>`).
+/// - Maker `UserState`s to persist (`BTreeMap<Addr, UserState>`).
+/// - Order mutations to apply (`Vec<(OrderKey, Option<Order>)>`):
+///   `None` = remove (fully filled), `Some` = update (partially filled).
 fn match_order(
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     sender: Addr,
     param: &Param,
     _pair_param: &PairParam,
@@ -272,25 +314,34 @@ fn match_order(
     mut remaining_size: Quantity,
     target_price: UsdPrice,
     is_bid: bool,
-) -> anyhow::Result<(Quantity, BTreeMap<Addr, UsdValue>)> {
+) -> anyhow::Result<(
+    Quantity,
+    BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, UserState>,
+    Vec<(OrderKey, Option<Order>)>,
+)> {
     let mut transfers: BTreeMap<Addr, UsdValue> = BTreeMap::new();
+    let mut maker_states: BTreeMap<Addr, UserState> = BTreeMap::new();
+    let mut order_mutations: Vec<(OrderKey, Option<Order>)> = Vec::new();
     let total_size = remaining_size;
 
-    // Collect resting orders from the opposite side of the book.
+    // Iterate lazily over resting orders from the opposite side of the book.
     // For a buy (bid), we match against asks (ascending by price = best ask first).
     // For a sell (ask), we match against bids (ascending by inverted price = best bid first).
-    // prefix() strips the PairId, so results are (UsdPrice, OrderId) suffixes.
-    let resting_orders: Vec<((UsdPrice, OrderId), Order)> = if is_bid {
-        ASKS.prefix(pair_id.clone())
-            .range(storage, None, None, IterationOrder::Ascending)
-            .collect::<StdResult<Vec<_>>>()?
+    let order_book = if is_bid {
+        ASKS
     } else {
-        BIDS.prefix(pair_id.clone())
-            .range(storage, None, None, IterationOrder::Ascending)
-            .collect::<StdResult<Vec<_>>>()?
+        BIDS
     };
 
-    for ((stored_price, order_id), resting_order) in resting_orders {
+    let resting_orders =
+        order_book
+            .prefix(pair_id.clone())
+            .range(storage, None, None, IterationOrder::Ascending);
+
+    for record in resting_orders {
+        let ((stored_price, order_id), resting_order) = record?;
+
         if remaining_size.is_zero() {
             break;
         }
@@ -348,9 +399,13 @@ fn match_order(
         // --- Maker side ---
         let maker_addr = resting_order.user;
 
-        let mut maker_state = USER_STATES
-            .may_load(storage, maker_addr)?
-            .unwrap_or_default();
+        let maker_state = match maker_states.entry(maker_addr) {
+            Entry::Vacant(e) => {
+                let state = USER_STATES.may_load(storage, *e.key())?.unwrap_or_default();
+                e.insert(state)
+            },
+            Entry::Occupied(e) => e.into_mut(),
+        };
 
         // Maker fill size is opposite sign from taker.
         let maker_fill_size = taker_fill_size.checked_neg()?;
@@ -364,7 +419,7 @@ fn match_order(
 
         let maker_pnl = execute_fill(
             pair_state,
-            &mut maker_state,
+            maker_state,
             pair_id,
             resting_price,
             maker_closing,
@@ -380,17 +435,12 @@ fn match_order(
             .reserved_margin
             .checked_sub_assign(margin_to_release)?;
 
-        // Update or remove the resting order.
+        // Defer order mutation.
         let order_key: OrderKey = (pair_id.clone(), stored_price, order_id);
         let resting_remaining = resting_abs.checked_sub(fill_abs)?;
 
         if resting_remaining.is_zero() {
-            // Fully filled: remove order.
-            if is_bid {
-                ASKS.remove(storage, order_key)?;
-            } else {
-                BIDS.remove(storage, order_key)?;
-            }
+            order_mutations.push((order_key, None));
             maker_state.open_order_count -= 1;
         } else {
             // Partially filled: update size and reserved margin.
@@ -410,15 +460,8 @@ fn match_order(
                 reserved_margin: new_reserved,
             };
 
-            if is_bid {
-                ASKS.save(storage, order_key, &updated_order)?;
-            } else {
-                BIDS.save(storage, order_key, &updated_order)?;
-            }
+            order_mutations.push((order_key, Some(updated_order)));
         }
-
-        // Save maker state.
-        USER_STATES.save(storage, maker_addr, &maker_state)?;
 
         // Accumulate maker transfer.
         let maker_net = maker_pnl.checked_sub(maker_fee)?;
@@ -433,7 +476,7 @@ fn match_order(
 
     let filled_size = total_size.checked_sub(remaining_size)?;
 
-    Ok((filled_size, transfers))
+    Ok((filled_size, transfers, maker_states, order_mutations))
 }
 
 fn store_limit_order(
@@ -615,8 +658,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let (_, order_to_store) = _submit_order(
-            &mut ctx.storage,
+        let (_, _, order_mutations, order_to_store) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -644,13 +687,9 @@ mod tests {
         // OI updated.
         assert_eq!(pair_state.long_oi, Quantity::new_int(10));
 
-        // Ask should be removed from book.
-        let remaining_asks: Vec<_> = ASKS
-            .prefix(pair_id())
-            .range(&ctx.storage, None, None, IterationOrder::Ascending)
-            .collect::<StdResult<Vec<_>>>()
-            .unwrap();
-        assert!(remaining_asks.is_empty());
+        // Ask should be removed from book (1 removal mutation).
+        assert_eq!(order_mutations.len(), 1);
+        assert!(order_mutations[0].1.is_none());
     }
 
     // ============= Market buy: partial fill (IOC cancels remainder) ===========
@@ -669,8 +708,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let (_, order_to_store) = _submit_order(
-            &mut ctx.storage,
+        let (_, _, _, order_to_store) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -710,7 +749,7 @@ mod tests {
         let mut taker_state = UserState::default();
 
         let err = _submit_order(
-            &mut ctx.storage,
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -750,8 +789,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let (_, order_to_store) = _submit_order(
-            &mut ctx.storage,
+        let (_, _, _, order_to_store) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -790,8 +829,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let (_, order_to_store) = _submit_order(
-            &mut ctx.storage,
+        let (_, _, _, order_to_store) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -834,8 +873,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let (_, order_to_store) = _submit_order(
-            &mut ctx.storage,
+        let (_, _, _, order_to_store) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -884,8 +923,8 @@ mod tests {
             entry_funding_per_unit: FundingPerUnit::ZERO,
         });
 
-        let (_, order_to_store) = _submit_order(
-            &mut ctx.storage,
+        let (_, _, _, order_to_store) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -923,7 +962,7 @@ mod tests {
         let mut taker_state = UserState::default();
 
         let err = _submit_order(
-            &mut ctx.storage,
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -963,8 +1002,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let (_, order_to_store) = _submit_order(
-            &mut ctx.storage,
+        let (_, _, order_mutations, order_to_store) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -989,13 +1028,9 @@ mod tests {
         assert!(order_to_store.is_none());
         assert_eq!(pair_state.short_oi, Quantity::new_int(10));
 
-        // Bid removed from book.
-        let remaining_bids: Vec<_> = BIDS
-            .prefix(pair_id())
-            .range(&ctx.storage, None, None, IterationOrder::Ascending)
-            .collect::<StdResult<Vec<_>>>()
-            .unwrap();
-        assert!(remaining_bids.is_empty());
+        // Bid removed from book (1 removal mutation).
+        assert_eq!(order_mutations.len(), 1);
+        assert!(order_mutations[0].1.is_none());
     }
 
     // =========== Two-sided settlement: both positions updated =================
@@ -1014,8 +1049,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let _ = _submit_order(
-            &mut ctx.storage,
+        let (_, maker_states, ..) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -1037,8 +1072,7 @@ mod tests {
         assert_eq!(taker_pos.size, Quantity::new_int(10));
 
         // Maker: short 10 @ 50000
-        let maker_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
-        let maker_pos = maker_state.positions.get(&pair_id()).unwrap();
+        let maker_pos = maker_states[&MAKER_A].positions.get(&pair_id()).unwrap();
         assert_eq!(maker_pos.size, Quantity::new_int(-10));
         assert_eq!(maker_pos.entry_price, UsdPrice::new_int(50_000));
     }
@@ -1059,8 +1093,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let (transfers, _) = _submit_order(
-            &mut ctx.storage,
+        let (transfers, ..) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -1107,7 +1141,7 @@ mod tests {
         let mut taker_state = UserState::default();
 
         let err = _submit_order(
-            &mut ctx.storage,
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -1148,8 +1182,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let (_, order_to_store) = _submit_order(
-            &mut ctx.storage,
+        let (_, _, order_mutations, order_to_store) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -1174,12 +1208,10 @@ mod tests {
 
         assert!(order_to_store.is_none());
 
-        let remaining_asks: Vec<_> = ASKS
-            .prefix(pair_id())
-            .range(&ctx.storage, None, None, IterationOrder::Ascending)
-            .collect::<StdResult<Vec<_>>>()
-            .unwrap();
-        assert!(remaining_asks.is_empty());
+        // Both asks fully filled (2 removal mutations).
+        assert_eq!(order_mutations.len(), 2);
+        assert!(order_mutations[0].1.is_none());
+        assert!(order_mutations[1].1.is_none());
     }
 
     // ======= Maker reserved margin release: full fill ========================
@@ -1202,8 +1234,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let _ = _submit_order(
-            &mut ctx.storage,
+        let (_, maker_states, ..) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -1220,9 +1252,8 @@ mod tests {
         )
         .unwrap();
 
-        let maker_state_after = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
-        assert_eq!(maker_state_after.reserved_margin, UsdValue::ZERO);
-        assert_eq!(maker_state_after.open_order_count, 0);
+        assert_eq!(maker_states[&MAKER_A].reserved_margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
     }
 
     // ======= Maker reserved margin release: partial fill =====================
@@ -1241,8 +1272,8 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let _ = _submit_order(
-            &mut ctx.storage,
+        let (_, maker_states, ..) = _submit_order(
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
@@ -1259,12 +1290,14 @@ mod tests {
         )
         .unwrap();
 
-        let maker_state_after = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
-        assert_eq!(maker_state_after.open_order_count, 1);
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 1);
 
         // initial_margin = 10 * 50000 / 20 = 25000 USD
         // 40% released, 60% remaining = 15000
-        assert_eq!(maker_state_after.reserved_margin, UsdValue::new_int(15_000));
+        assert_eq!(
+            maker_states[&MAKER_A].reserved_margin,
+            UsdValue::new_int(15_000)
+        );
     }
 
     // ======= Market buy: price beyond slippage ===============================
@@ -1284,7 +1317,7 @@ mod tests {
         let mut taker_state = UserState::default();
 
         let err = _submit_order(
-            &mut ctx.storage,
+            &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
             &param,
