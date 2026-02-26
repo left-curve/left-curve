@@ -1,7 +1,10 @@
 use {
     crate::{
         ASKS, BIDS, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
-        core::{accrue_funding, compute_maintenance_margin, compute_user_equity, is_liquidatable},
+        core::{
+            CloseEntry, accrue_funding, compute_close_schedule, compute_maintenance_margin,
+            compute_user_equity, is_liquidatable,
+        },
         execute::{
             BANK, ORACLE,
             cancel_order::cancel_all_orders_for,
@@ -181,85 +184,6 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     }
 
     Ok(Response::new().add_messages(messages))
-}
-
-struct CloseEntry {
-    pair_id: PairId,
-    close_size: Quantity,
-}
-
-/// Build a schedule of positions to close, largest-MM-first, until the
-/// maintenance margin deficit is covered.
-fn compute_close_schedule(
-    user_state: &UserState,
-    pair_params: &BTreeMap<PairId, PairParam>,
-    oracle_prices: &BTreeMap<PairId, UsdPrice>,
-    deficit: UsdValue,
-) -> anyhow::Result<Vec<CloseEntry>> {
-    let mut deficit = deficit;
-
-    // Build (mm_contribution, pair_id) list, sorted descending by MM.
-    let mut mm_entries: Vec<(UsdValue, PairId)> = Vec::new();
-
-    for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_prices[pair_id];
-        let pair_param = &pair_params[pair_id];
-
-        let mm_contribution = position
-            .size
-            .checked_abs()?
-            .checked_mul(oracle_price)?
-            .checked_mul(pair_param.maintenance_margin_ratio)?;
-
-        mm_entries.push((mm_contribution, pair_id.clone()));
-    }
-
-    // Sort by MM contribution descending.
-    mm_entries.sort_by(|a, b| b.0.cmp(&a.0));
-
-    // Build the close schedule.
-    let mut schedule = Vec::new();
-
-    for (_, pair_id) in &mm_entries {
-        if deficit <= UsdValue::ZERO {
-            break;
-        }
-
-        let position = &user_state.positions[pair_id];
-        let oracle_price = oracle_prices[pair_id];
-        let pair_param = &pair_params[pair_id];
-        let abs_size = position.size.checked_abs()?;
-
-        // close_amount = min(ceil(deficit / (P × mmr)), |size|)
-        let denom = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
-        let close_amount = deficit.checked_div(denom)?.min(abs_size);
-
-        // close_size = -sign(size) × close_amount (opposite direction to close)
-        let close_size = if position.size.is_positive() {
-            close_amount.checked_neg()?
-        } else {
-            close_amount
-        };
-
-        let mm_to_remove = close_amount
-            .checked_mul(oracle_price)?
-            .checked_mul(pair_param.maintenance_margin_ratio)?;
-
-        deficit = deficit.checked_sub(mm_to_remove)?.max(UsdValue::ZERO);
-
-        if close_size.is_non_zero() {
-            schedule.push(CloseEntry {
-                pair_id: pair_id.clone(),
-                close_size,
-            });
-        }
-
-        // If the full position is being closed, deficit should be exactly cleared for
-        // that contribution. But if we're doing partial, deficit might still be > 0
-        // only if there are precision issues. The guard at the top handles this.
-    }
-
-    Ok(schedule)
 }
 
 /// Execute the close schedule against the order book, with vault backstop for

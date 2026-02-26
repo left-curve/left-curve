@@ -1,3 +1,4 @@
+mod closure;
 mod decompose;
 mod fees;
 mod fill;
@@ -8,5 +9,6 @@ mod target_price;
 mod user;
 
 pub use {
-    decompose::*, fees::*, fill::*, funding::*, min_size::*, oi::*, target_price::*, user::*,
+    closure::*, decompose::*, fees::*, fill::*, funding::*, min_size::*, oi::*, target_price::*,
+    user::*,
 };
