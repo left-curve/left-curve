@@ -1,4 +1,9 @@
 use {
+    crate::{
+        NoCachePerpQuerier,
+        core::{compute_maintenance_margin, compute_user_equity},
+    },
+    dango_oracle::OracleQuerier,
     dango_types::{
         Quantity, UsdPrice, UsdValue,
         perps::{PairId, PairParam, UserState},
@@ -6,20 +11,41 @@ use {
     std::collections::BTreeMap,
 };
 
-pub struct CloseEntry {
-    pub pair_id: PairId,
-    pub close_size: Quantity,
+/// Returns true if the user is eligible for liquidation.
+///
+/// A user is liquidatable when their equity (collateral + unrealized PnL
+/// - accrued funding) falls below their total maintenance margin.
+///
+/// A user with no open positions is never liquidatable.
+pub fn is_liquidatable(
+    collateral_value: UsdValue,
+    user_state: &UserState,
+    perp_querier: &NoCachePerpQuerier,
+    oracle_querier: &mut OracleQuerier,
+) -> anyhow::Result<bool> {
+    if user_state.positions.is_empty() {
+        return Ok(false);
+    }
+
+    let equity = compute_user_equity(collateral_value, user_state, perp_querier, oracle_querier)?;
+    let maintenance_margin = compute_maintenance_margin(user_state, perp_querier, oracle_querier)?;
+
+    Ok(equity < maintenance_margin)
 }
 
 /// A policy for selecting which position(s) to close during liquidation.
 /// We start from the position that contributes the most to maintenance margin
 /// and go down, until the maintenance margin deficit is covered.
+///
+/// Returns:
+///
+/// - A vector of (pair_id, close_size) tuples.
 pub fn compute_close_schedule(
     user_state: &UserState,
     pair_params: &BTreeMap<PairId, PairParam>,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     deficit: UsdValue,
-) -> anyhow::Result<Vec<CloseEntry>> {
+) -> anyhow::Result<Vec<(PairId, Quantity)>> {
     let mut deficit = deficit;
 
     // Build (mm_contribution, pair_id) list, sorted descending by MM.
@@ -72,10 +98,7 @@ pub fn compute_close_schedule(
         deficit = deficit.checked_sub(mm_to_remove)?.max(UsdValue::ZERO);
 
         if close_size.is_non_zero() {
-            schedule.push(CloseEntry {
-                pair_id: pair_id.clone(),
-                close_size,
-            });
+            schedule.push((pair_id.clone(), close_size));
         }
 
         // If the full position is being closed, deficit should be exactly cleared for
@@ -94,9 +117,12 @@ mod tests {
         super::*,
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{PairParam, Position},
+            constants::eth,
+            oracle::PrecisionedPrice,
+            perps::{PairParam, PairState, Position},
         },
-        grug::btree_map,
+        grug::{Timestamp, Udec128, btree_map, hash_map},
+        std::collections::HashMap,
     };
 
     fn pair_btc() -> PairId {
@@ -120,6 +146,240 @@ mod tests {
             ..Default::default()
         }
     }
+
+    // ------------------------ `is_liquidatable` tests ------------------------
+
+    #[test]
+    fn is_liquidatable_no_positions() {
+        let user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
+
+        assert!(
+            !is_liquidatable(
+                UsdValue::new_int(10_000),
+                &user_state,
+                &perp_querier,
+                &mut oracle_querier,
+            )
+            .unwrap()
+        );
+    }
+
+    // collateral=10000, ETH long 10 @ entry=2000, oracle=2500, mmr=5%
+    // equity = 10000 + 10*(2500-2000) = 15000
+    // maint  = |10| * 2500 * 0.05 = 1250
+    // 15000 >= 1250 → not liquidatable
+    #[test]
+    fn is_liquidatable_healthy() {
+        let user_state = UserState {
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                },
+            },
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(0),
+                    ..Default::default()
+                },
+            },
+            None,
+        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(250_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        assert!(
+            !is_liquidatable(
+                UsdValue::new_int(10_000),
+                &user_state,
+                &perp_querier,
+                &mut oracle_querier,
+            )
+            .unwrap()
+        );
+    }
+
+    // equity exactly equals maintenance margin → not liquidatable (strict <)
+    // Need: equity = maint. maint = |10| * 2000 * 0.05 = 1000
+    // equity = collateral + pnl - funding = collateral + 0 - 0 = collateral
+    // So collateral = 1000
+    #[test]
+    fn is_liquidatable_at_boundary() {
+        let user_state = UserState {
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                },
+            },
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(0),
+                    ..Default::default()
+                },
+            },
+            None,
+        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(200_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        assert!(
+            !is_liquidatable(
+                UsdValue::new_int(1_000),
+                &user_state,
+                &perp_querier,
+                &mut oracle_querier,
+            )
+            .unwrap()
+        );
+    }
+
+    // collateral=100, ETH long 10 @ entry=2000, oracle=1500, mmr=5%
+    // equity = 100 + 10*(1500-2000) = 100 - 5000 = -4900
+    // maint  = |10| * 1500 * 0.05 = 750
+    // -4900 < 750 → liquidatable
+    #[test]
+    fn is_liquidatable_underwater() {
+        let user_state = UserState {
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                },
+            },
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(0),
+                    ..Default::default()
+                },
+            },
+            None,
+        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(150_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        assert!(
+            is_liquidatable(
+                UsdValue::new_int(100),
+                &user_state,
+                &perp_querier,
+                &mut oracle_querier,
+            )
+            .unwrap()
+        );
+    }
+
+    // Funding can push a user into liquidation territory.
+    //
+    // Setup: ETH long 10 @ entry=2000, oracle=2000 (no pnl), mmr=5%
+    //   funding_per_unit=100, entry=0 → accrued = 10 * 100 = 1000
+    //   maint = |10| * 2000 * 0.05 = 1000
+    //
+    // Case 1: collateral=10000
+    //   equity = 10000 + 0 - 1000 = 9000, maint=1000 → not liquidatable
+    //
+    // Case 2: collateral=900
+    //   equity = 900 + 0 - 1000 = -100, maint=1000 → liquidatable
+    #[test]
+    fn is_liquidatable_funding_pushes_under() {
+        let make_fixtures = |collateral: i128| {
+            let user_state = UserState {
+                positions: btree_map! {
+                    eth::DENOM.clone() => Position {
+                        size: Quantity::new_int(10),
+                        entry_price: UsdPrice::new_int(2000),
+                        entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    },
+                },
+                ..Default::default()
+            };
+            let perp_querier = NoCachePerpQuerier::new_mock(
+                hash_map! {
+                    eth::DENOM.clone() => PairParam {
+                        maintenance_margin_ratio: Dimensionless::new_permille(50),
+                        ..Default::default()
+                    },
+                },
+                hash_map! {
+                    eth::DENOM.clone() => PairState {
+                        funding_per_unit: FundingPerUnit::new_int(100),
+                        ..Default::default()
+                    },
+                },
+                None,
+            );
+            let oracle_querier = OracleQuerier::new_mock(hash_map! {
+                eth::DENOM.clone() => PrecisionedPrice::new(
+                    Udec128::new_percent(200_000),
+                    Timestamp::from_seconds(0),
+                    18,
+                ),
+            });
+            (
+                UsdValue::new_int(collateral),
+                user_state,
+                perp_querier,
+                oracle_querier,
+            )
+        };
+
+        // Case 1: healthy despite funding
+        let (col, us, pq, mut oq) = make_fixtures(10_000);
+        assert!(!is_liquidatable(col, &us, &pq, &mut oq).unwrap());
+
+        // Case 2: funding pushes equity below maintenance margin
+        let (col, us, pq, mut oq) = make_fixtures(900);
+        assert!(is_liquidatable(col, &us, &pq, &mut oq).unwrap());
+    }
+
+    // -------------------- `compute_close_schedule` tests ---------------------
 
     /// Single long position, deficit exceeds its MM → full close.
     ///
@@ -151,9 +411,9 @@ mod tests {
         .unwrap();
 
         assert_eq!(schedule.len(), 1);
-        assert_eq!(schedule[0].pair_id, pair_btc());
+        assert_eq!(schedule[0].0, pair_btc());
         // Closing a long → negative close_size
-        assert_eq!(schedule[0].close_size, Quantity::new_int(-10));
+        assert_eq!(schedule[0].1, Quantity::new_int(-10));
     }
 
     /// Two pairs, BTC has larger MM → processed first, both fully closed.
@@ -200,10 +460,10 @@ mod tests {
         // Both positions closed.
         assert_eq!(schedule.len(), 2);
         // BTC has larger MM (2350 > 1400) → first.
-        assert_eq!(schedule[0].pair_id, pair_btc());
-        assert_eq!(schedule[0].close_size, Quantity::new_int(-1));
-        assert_eq!(schedule[1].pair_id, pair_eth());
-        assert_eq!(schedule[1].close_size, Quantity::new_int(-10));
+        assert_eq!(schedule[0].0, pair_btc());
+        assert_eq!(schedule[0].1, Quantity::new_int(-1));
+        assert_eq!(schedule[1].0, pair_eth());
+        assert_eq!(schedule[1].1, Quantity::new_int(-10));
     }
 
     /// Deficit smaller than one position's full MM → partial close only.
@@ -236,8 +496,8 @@ mod tests {
         .unwrap();
 
         assert_eq!(schedule.len(), 1);
-        assert_eq!(schedule[0].pair_id, pair_btc());
+        assert_eq!(schedule[0].0, pair_btc());
         // Only 2 of 10 BTC closed
-        assert_eq!(schedule[0].close_size, Quantity::new_int(-2));
+        assert_eq!(schedule[0].1, Quantity::new_int(-2));
     }
 }

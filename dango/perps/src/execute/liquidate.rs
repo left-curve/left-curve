@@ -2,7 +2,7 @@ use {
     crate::{
         ASKS, BIDS, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{
-            CloseEntry, accrue_funding, compute_close_schedule, compute_maintenance_margin,
+            accrue_funding, compute_close_schedule, compute_maintenance_margin,
             compute_user_equity, is_liquidatable,
         },
         execute::{
@@ -190,7 +190,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// any unfilled remainder.
 fn execute_close_schedule(
     storage: &dyn Storage,
-    schedule: &[CloseEntry],
+    schedule: &[(PairId, Quantity)],
     user: Addr,
     contract: Addr,
     param: &Param,
@@ -216,11 +216,11 @@ fn execute_close_schedule(
     let mut all_order_mutations: Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)> = Vec::new();
     let mut closed_notional = UsdValue::ZERO;
 
-    for entry in schedule {
-        let pair_state = pair_states.get_mut(&entry.pair_id).unwrap();
-        let oracle_price = oracle_prices[&entry.pair_id];
+    for (pair_id, close_size) in schedule {
+        let pair_state = pair_states.get_mut(pair_id).unwrap();
+        let oracle_price = oracle_prices[pair_id];
 
-        let taker_is_bid = entry.close_size.is_positive();
+        let taker_is_bid = close_size.is_positive();
         let target_price = if taker_is_bid {
             UsdPrice::MAX
         } else {
@@ -230,13 +230,13 @@ fn execute_close_schedule(
         let (unfilled, pnls, maker_states, order_mutations) = match_order(
             storage,
             &liq_param,
-            &entry.pair_id,
+            pair_id,
             pair_state,
             user,
             user_state,
             taker_is_bid,
             target_price,
-            entry.close_size,
+            *close_size,
         )?;
 
         // Merge PnLs.
@@ -252,7 +252,7 @@ fn execute_close_schedule(
         // Collect order mutations with pair context.
         for (stored_price, order_id, mutation) in order_mutations {
             all_order_mutations.push((
-                entry.pair_id.clone(),
+                pair_id.clone(),
                 taker_is_bid,
                 stored_price,
                 order_id,
@@ -261,14 +261,14 @@ fn execute_close_schedule(
         }
 
         // Track closed notional for fee calculation.
-        let filled = entry.close_size.checked_sub(unfilled)?;
+        let filled = close_size.checked_sub(unfilled)?;
         closed_notional.checked_add_assign(filled.checked_abs()?.checked_mul(oracle_price)?)?;
 
         // Vault backstop: if there is unfilled remainder, the vault absorbs at oracle price.
         if unfilled.is_non_zero() {
             // User side: close at oracle price with zero fee.
             settle_fill(
-                &entry.pair_id,
+                pair_id,
                 pair_state,
                 user_state,
                 unfilled,
@@ -281,7 +281,7 @@ fn execute_close_schedule(
             // Vault side: opposite fill at oracle price with zero fee.
             let vault_fill = unfilled.checked_neg()?;
             settle_fill(
-                &entry.pair_id,
+                pair_id,
                 pair_state,
                 vault_state,
                 vault_fill,
@@ -297,7 +297,12 @@ fn execute_close_schedule(
         }
     }
 
-    Ok((all_pnls, all_maker_states, all_order_mutations, closed_notional))
+    Ok((
+        all_pnls,
+        all_maker_states,
+        all_order_mutations,
+        closed_notional,
+    ))
 }
 
 /// Compute the liquidation fee, cap it at remaining margin, and deduct from
