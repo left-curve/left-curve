@@ -1,3 +1,4 @@
+mod adl;
 mod closure;
 mod decompose;
 mod fees;
@@ -9,6 +10,6 @@ mod oi;
 mod target_price;
 
 pub use {
-    closure::*, decompose::*, fees::*, fill::*, funding::*, margin::*, min_size::*, oi::*,
+    adl::*, closure::*, decompose::*, fees::*, fill::*, funding::*, margin::*, min_size::*, oi::*,
     target_price::*,
 };

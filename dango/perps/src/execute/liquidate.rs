@@ -456,7 +456,10 @@ fn _liquidate(
         && *amount > collateral_balance
     {
         let bad_debt = amount.checked_sub(collateral_balance)?;
-        state.insurance_fund.checked_sub_assign(bad_debt)?;
+        let absorbed = bad_debt.min(state.insurance_fund);
+        let unabsorbed = bad_debt.checked_sub(absorbed)?;
+        state.insurance_fund.checked_sub_assign(absorbed)?;
+        state.adl_deficit.checked_add_assign(unabsorbed)?;
         *amount = collateral_balance;
     }
 

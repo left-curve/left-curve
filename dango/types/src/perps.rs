@@ -169,6 +169,11 @@ pub struct State {
     /// at liquidation) is absorbed here.
     pub insurance_fund: Uint128,
 
+    /// Accumulated bad debt that exceeded the insurance fund during
+    /// liquidations. When non-zero, ADL can be triggered. Reduced as
+    /// profitable positions are forcibly closed and their PnL forfeited.
+    pub adl_deficit: Uint128,
+
     /// The vault's trading margin (LP capital deposited into the exchange).
     /// The vault is a regular trader; its equity is computed identically to any
     /// user via `compute_user_equity`.

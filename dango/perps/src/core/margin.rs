@@ -16,7 +16,7 @@ use {
 ///
 /// Positive result means profit; negative means loss. The sign automatically
 /// accounts for position direction (long vs short).
-fn compute_position_unrealized_pnl(
+pub(super) fn compute_position_unrealized_pnl(
     position: &Position,
     oracle_price: UsdPrice,
 ) -> grug::MathResult<UsdValue> {
