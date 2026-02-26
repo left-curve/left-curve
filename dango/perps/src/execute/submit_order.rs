@@ -51,14 +51,16 @@ pub fn submit_order(
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
-    let settlement_price = oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
 
-    // Compute taker's collateral for margin check.
-    let taker_balance = ctx
+    let settlement_currency_price =
+        oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
+
+    let collateral_balance = ctx
         .querier
         .query_balance(ctx.sender, settlement_currency::DENOM.clone())?;
-    let collateral_value = Quantity::from_base(taker_balance, settlement_currency::DECIMAL)?
-        .checked_mul(settlement_price)?;
+
+    let collateral_value = Quantity::from_base(collateral_balance, settlement_currency::DECIMAL)?
+        .checked_mul(settlement_currency_price)?;
 
     // --------------------------- 2. Business logic ---------------------------
 
@@ -119,7 +121,7 @@ pub fn submit_order(
     let mut messages = Vec::with_capacity(pnls.len());
 
     for (user, net_usd) in pnls {
-        let net_quantity = net_usd.checked_div(settlement_price)?;
+        let net_quantity = net_usd.checked_div(settlement_currency_price)?;
 
         match net_usd.cmp(&UsdValue::ZERO) {
             Ordering::Greater => {
