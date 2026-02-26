@@ -231,7 +231,7 @@ fn _submit_order(
 
     // ---------------------- Step 6. Match against book ------------------------
 
-    let (filled_size, transfers, maker_states, order_mutations) = match_order(
+    let (unfilled, transfers, maker_states, order_mutations) = match_order(
         storage,
         sender,
         param,
@@ -243,8 +243,6 @@ fn _submit_order(
         is_bid,
     )?;
 
-    let unfilled = fillable_size.checked_sub(filled_size)?;
-
     // ------------- Step 7. Handle unfilled remainder -------------------------
 
     if unfilled.is_non_zero() {
@@ -252,7 +250,7 @@ fn _submit_order(
             OrderKind::Market { .. } => {
                 // IOC: cancel remainder. Error if nothing was filled at all.
                 ensure!(
-                    filled_size.is_non_zero(),
+                    unfilled < fillable_size,
                     "no liquidity at acceptable price! target_price: {}",
                     target_price
                 );
@@ -283,6 +281,158 @@ fn _submit_order(
     Ok((transfers, maker_states, order_mutations, None))
 }
 
+/// Walk the opposite side of the book, filling at each resting order's price
+/// until the taker order is exhausted or no more acceptable prices exist.
+///
+/// This function is semi-pure: it reads from storage but does not write.
+/// Deferred side-effects (maker state changes, order mutations) are returned
+/// for the caller to apply.
+///
+/// Mutates (in-memory only):
+///
+/// - `pair_state.long_oi` / `pair_state.short_oi` — updated per fill.
+/// - `taker_state.positions` — opened / closed / flipped per fill.
+///
+/// Returns:
+///
+/// - Remaining (unfilled) size (same sign convention as taker's order).
+/// - Per-user net PnL in USD (`BTreeMap<Addr, UsdValue>`).
+/// - Maker `UserState`s to persist (`BTreeMap<Addr, UserState>`).
+/// - Order mutations to apply (`Vec<(OrderKey, Option<Order>)>`):
+///   `None` = remove (fully filled), `Some` = update (partially filled).
+fn match_order(
+    storage: &dyn Storage,
+    sender: Addr,
+    param: &Param,
+    pair_state: &mut PairState,
+    taker_state: &mut UserState,
+    pair_id: &PairId,
+    mut remaining_size: Quantity,
+    target_price: UsdPrice,
+    is_bid: bool,
+) -> anyhow::Result<(
+    Quantity,
+    BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, UserState>,
+    Vec<(OrderKey, Option<Order>)>,
+)> {
+    let mut transfers = BTreeMap::new();
+    let mut maker_states = BTreeMap::new();
+    let mut order_mutations = Vec::new();
+
+    // Create iterator over the maker side of the order book.
+    // The iteration follows price-time priority.
+    let order_book = if is_bid {
+        ASKS
+    } else {
+        BIDS
+    };
+
+    let resting_orders =
+        order_book
+            .prefix(pair_id.clone())
+            .range(storage, None, None, IterationOrder::Ascending);
+
+    for record in resting_orders {
+        let ((stored_price, order_id), resting_order) = record?;
+
+        // Recover the real price: bids are stored inverted.
+        let resting_price = if is_bid {
+            stored_price // asks stored in natural order
+        } else {
+            UsdPrice::MAX - stored_price // un-invert bid price
+        };
+
+        // ----------------------- Termination condition -----------------------
+
+        if remaining_size.is_zero() {
+            break;
+        }
+
+        if is_price_constraint_violated(resting_price, target_price, is_bid) {
+            break;
+        }
+
+        // ---------------------- Determine fillable size ----------------------
+
+        let opposite = resting_order.size.checked_neg()?;
+
+        let taker_fill_size = if is_bid {
+            remaining_size.min(opposite)
+        } else {
+            remaining_size.max(opposite)
+        };
+
+        let maker_fill_size = taker_fill_size.checked_neg()?;
+
+        // Find the maker's user state.
+        let maker_state = match maker_states.entry(resting_order.user) {
+            Entry::Vacant(e) => {
+                let maybe_maker_state = USER_STATES.may_load(storage, resting_order.user)?;
+                e.insert(maybe_maker_state.unwrap_or_default())
+            },
+            Entry::Occupied(e) => e.into_mut(),
+        };
+
+        // -------------------- Settle PnL and trading fee ---------------------
+
+        settle_fill(
+            pair_id,
+            pair_state,
+            taker_state,
+            taker_fill_size,
+            resting_price,
+            param.taker_fee_rate,
+            &mut transfers,
+            sender,
+        )?;
+
+        settle_fill(
+            pair_id,
+            pair_state,
+            maker_state,
+            maker_fill_size,
+            resting_price,
+            param.maker_fee_rate,
+            &mut transfers,
+            resting_order.user,
+        )?;
+
+        // ---------------- Update maker's order and user state ----------------
+
+        // Release reserved margin proportionally to the filled portion.
+        let margin_delta = (resting_order.reserved_margin)
+            .checked_mul(maker_fill_size)?
+            .checked_div(resting_order.size)?;
+
+        (maker_state.reserved_margin).checked_sub_assign(margin_delta)?;
+
+        let order_key = (pair_id.clone(), stored_price, order_id);
+        let new_size = resting_order.size.checked_sub(maker_fill_size)?;
+
+        if new_size.is_non_zero() {
+            let new_reserved = (resting_order.reserved_margin).checked_sub(margin_delta)?;
+
+            let updated_order = Order {
+                user: resting_order.user,
+                size: new_size,
+                reduce_only: resting_order.reduce_only,
+                reserved_margin: new_reserved,
+            };
+
+            order_mutations.push((order_key, Some(updated_order)));
+        } else {
+            maker_state.open_order_count -= 1;
+
+            order_mutations.push((order_key, None));
+        }
+
+        remaining_size.checked_sub_assign(taker_fill_size)?;
+    }
+
+    Ok((remaining_size, transfers, maker_states, order_mutations))
+}
+
 /// Execute one side of a fill: decompose, apply to position, compute fee,
 /// accumulate net PnL into the transfers map.
 ///
@@ -292,9 +442,9 @@ fn _submit_order(
 /// - `user_state.positions` — opened / closed / flipped by `execute_fill`.
 /// - `transfers` — net PnL (pnl − fee) added for `user`.
 fn settle_fill(
+    pair_id: &PairId,
     pair_state: &mut PairState,
     user_state: &mut UserState,
-    pair_id: &PairId,
     fill_size: Quantity,
     fill_price: UsdPrice,
     fee_rate: Dimensionless,
@@ -317,165 +467,6 @@ fn settle_fill(
     let net = pnl.checked_sub(fee)?;
 
     transfers.entry(user).or_default().checked_add_assign(net)
-}
-
-/// Walk the opposite side of the book, filling at each resting order's price
-/// until the taker order is exhausted or no more acceptable prices exist.
-///
-/// This function is semi-pure: it reads from storage but does not write.
-/// Deferred side-effects (maker state changes, order mutations) are returned
-/// for the caller to apply.
-///
-/// Mutates (in-memory only):
-///
-/// - `pair_state.long_oi` / `pair_state.short_oi` — updated per fill.
-/// - `taker_state.positions` — opened / closed / flipped per fill.
-///
-/// Returns:
-///
-/// - Total size filled (same sign convention as taker's order).
-/// - Per-user net PnL in USD (`BTreeMap<Addr, UsdValue>`).
-/// - Maker `UserState`s to persist (`BTreeMap<Addr, UserState>`).
-/// - Order mutations to apply (`Vec<(OrderKey, Option<Order>)>`):
-///   `None` = remove (fully filled), `Some` = update (partially filled).
-fn match_order(
-    storage: &dyn Storage,
-    sender: Addr,
-    param: &Param,
-    pair_state: &mut PairState,
-    taker_state: &mut UserState,
-    pair_id: &PairId,
-    mut remaining_size: Quantity,
-    target_price: UsdPrice,
-    is_bid: bool,
-) -> anyhow::Result<(
-    Quantity,
-    BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UserState>,
-    Vec<(OrderKey, Option<Order>)>,
-)> {
-    let mut transfers: BTreeMap<Addr, UsdValue> = BTreeMap::new();
-    let mut maker_states: BTreeMap<Addr, UserState> = BTreeMap::new();
-    let mut order_mutations: Vec<(OrderKey, Option<Order>)> = Vec::new();
-    let total_size = remaining_size;
-
-    // Iterate lazily over resting orders from the opposite side of the book.
-    // For a buy (bid), we match against asks (ascending by price = best ask first).
-    // For a sell (ask), we match against bids (ascending by inverted price = best bid first).
-    let order_book = if is_bid {
-        ASKS
-    } else {
-        BIDS
-    };
-
-    let resting_orders =
-        order_book
-            .prefix(pair_id.clone())
-            .range(storage, None, None, IterationOrder::Ascending);
-
-    for record in resting_orders {
-        let ((stored_price, order_id), resting_order) = record?;
-
-        // Recover the real price: bids are stored inverted.
-        let resting_price = if is_bid {
-            stored_price // asks stored in natural order
-        } else {
-            UsdPrice::MAX.checked_sub(stored_price)? // un-invert bid price
-        };
-
-        // Price check: stop if the resting price is worse than the taker's target.
-        if is_price_constraint_violated(resting_price, target_price, is_bid) {
-            break;
-        }
-
-        // Determine fill size from taker's perspective (same sign as taker's order).
-        // Resting order has opposite sign, so negate it to get taker's sign convention,
-        // then clamp to the smaller magnitude.
-        let opposite = resting_order.size.checked_neg()?;
-        let taker_fill_size = if is_bid {
-            remaining_size.min(opposite)
-        } else {
-            remaining_size.max(opposite)
-        };
-
-        // --- Taker side ---
-        settle_fill(
-            pair_state,
-            taker_state,
-            pair_id,
-            taker_fill_size,
-            resting_price,
-            param.taker_fee_rate,
-            &mut transfers,
-            sender,
-        )?;
-
-        // --- Maker side ---
-        let maker_addr = resting_order.user;
-
-        let maker_state = match maker_states.entry(maker_addr) {
-            Entry::Vacant(e) => {
-                let maybe_maker_state = USER_STATES.may_load(storage, maker_addr)?;
-                e.insert(maybe_maker_state.unwrap_or_default())
-            },
-            Entry::Occupied(e) => e.into_mut(),
-        };
-
-        // Maker fill size is opposite sign from taker.
-        let maker_fill_size = taker_fill_size.checked_neg()?;
-
-        settle_fill(
-            pair_state,
-            maker_state,
-            pair_id,
-            maker_fill_size,
-            resting_price,
-            param.maker_fee_rate,
-            &mut transfers,
-            maker_addr,
-        )?;
-
-        // Release reserved margin proportionally to the filled portion.
-        // Negative: taker and resting sizes have opposite signs.
-        let fill_fraction = taker_fill_size.checked_div(resting_order.size)?;
-        let margin_delta = resting_order.reserved_margin.checked_mul(fill_fraction)?;
-
-        // margin_delta < 0, so adding it reduces reserved margin.
-        (maker_state.reserved_margin).checked_add_assign(margin_delta)?;
-
-        // Defer order mutation.
-        let order_key = (pair_id.clone(), stored_price, order_id);
-        let new_size = resting_order.size.checked_add(taker_fill_size)?;
-
-        if new_size.is_non_zero() {
-            // Partially filled: update size and reserved margin.
-            let new_reserved = (resting_order.reserved_margin).checked_add(margin_delta)?;
-
-            let updated_order = Order {
-                user: maker_addr,
-                size: new_size,
-                reduce_only: resting_order.reduce_only,
-                reserved_margin: new_reserved,
-            };
-
-            order_mutations.push((order_key, Some(updated_order)));
-        } else {
-            // Completely filled: delete the order.
-            order_mutations.push((order_key, None));
-            maker_state.open_order_count -= 1;
-        }
-
-        // Reduce remaining size.
-        remaining_size.checked_sub_assign(taker_fill_size)?;
-
-        if remaining_size.is_zero() {
-            break;
-        }
-    }
-
-    let filled_size = total_size.checked_sub(remaining_size)?;
-
-    Ok((filled_size, transfers, maker_states, order_mutations))
 }
 
 fn store_limit_order(
