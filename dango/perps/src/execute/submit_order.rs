@@ -4,8 +4,8 @@ use {
         USER_STATES,
         core::{
             accrue_funding, check_margin, check_minimum_order_size, check_oi_constraint,
-            compute_required_margin, compute_target_price, compute_trading_fee,
-            decompose_fill, execute_fill, is_price_constraint_violated,
+            compute_required_margin, compute_target_price, compute_trading_fee, decompose_fill,
+            execute_fill, is_price_constraint_violated,
         },
         execute::{BANK, ORACLE},
     },
@@ -224,6 +224,7 @@ fn _submit_order(
 
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
+
         check_margin(
             &perp_querier,
             oracle_querier,
@@ -292,6 +293,7 @@ fn _submit_order(
     }
 
     let (payouts, collections) = settle_pnls(pnls, settlement_price, state)?;
+
     Ok((payouts, collections, maker_states, order_mutations, None))
 }
 
