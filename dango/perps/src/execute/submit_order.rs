@@ -235,7 +235,6 @@ fn _submit_order(
         storage,
         sender,
         param,
-        pair_param,
         pair_state,
         taker_state,
         pair_id,
@@ -299,11 +298,13 @@ fn settle_fill(
         .get(pair_id)
         .map(|p| p.size)
         .unwrap_or_default();
+
     let (closing, opening) = decompose_fill(fill_size, current_pos);
 
     let pnl = execute_fill(
         pair_state, user_state, pair_id, fill_price, closing, opening,
     )?;
+
     let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
 
     pnl.checked_sub(fee)
@@ -332,7 +333,6 @@ fn match_order(
     storage: &dyn Storage,
     sender: Addr,
     param: &Param,
-    _pair_param: &PairParam,
     pair_state: &mut PairState,
     taker_state: &mut UserState,
     pair_id: &PairId,
@@ -366,10 +366,6 @@ fn match_order(
 
     for record in resting_orders {
         let ((stored_price, order_id), resting_order) = record?;
-
-        if remaining_size.is_zero() {
-            break;
-        }
 
         // Recover the real price: bids are stored inverted.
         let resting_price = if is_bid {
@@ -437,27 +433,22 @@ fn match_order(
         // Release reserved margin proportionally to the filled portion.
         let proportion = fill_abs.checked_div(resting_abs)?;
         let margin_to_release = resting_order.reserved_margin.checked_mul(proportion)?;
-        maker_state
-            .reserved_margin
-            .checked_sub_assign(margin_to_release)?;
+
+        (maker_state.reserved_margin).checked_sub_assign(margin_to_release)?;
 
         // Defer order mutation.
-        let order_key: OrderKey = (pair_id.clone(), stored_price, order_id);
+        let order_key = (pair_id.clone(), stored_price, order_id);
         let resting_remaining = resting_abs.checked_sub(fill_abs)?;
 
-        if resting_remaining.is_zero() {
-            order_mutations.push((order_key, None));
-            maker_state.open_order_count -= 1;
-        } else {
+        if resting_remaining.is_non_zero() {
             // Partially filled: update size and reserved margin.
             let new_size = if is_bid {
                 resting_remaining.checked_neg()? // ask has negative size
             } else {
                 resting_remaining // bid has positive size
             };
-            let new_reserved = resting_order
-                .reserved_margin
-                .checked_sub(margin_to_release)?;
+
+            let new_reserved = (resting_order.reserved_margin).checked_sub(margin_to_release)?;
 
             let updated_order = Order {
                 user: maker_addr,
@@ -467,6 +458,10 @@ fn match_order(
             };
 
             order_mutations.push((order_key, Some(updated_order)));
+        } else {
+            // Completely filled: delete the order.
+            order_mutations.push((order_key, None));
+            maker_state.open_order_count -= 1;
         }
 
         // Accumulate maker transfer.
@@ -476,7 +471,11 @@ fn match_order(
             .checked_add_assign(maker_net)?;
 
         // Reduce remaining size.
-        remaining_size = remaining_size.checked_sub(taker_fill_size)?;
+        remaining_size.checked_sub_assign(taker_fill_size)?;
+
+        if remaining_size.is_zero() {
+            break;
+        }
     }
 
     let filled_size = total_size.checked_sub(remaining_size)?;
@@ -507,6 +506,7 @@ fn store_limit_order(
         let floored_int = ratio.into_inner().into_int_floor();
         let reconstructed =
             Dimensionless::new_int(floored_int.0).checked_mul(pair_param.tick_size)?;
+
         ensure!(
             reconstructed == limit_price,
             "limit price {} is not a multiple of tick size {}",
@@ -524,9 +524,7 @@ fn store_limit_order(
     )?;
 
     user_state.open_order_count += 1;
-    user_state
-        .reserved_margin
-        .checked_add_assign(margin_to_reserve)?;
+    (user_state.reserved_margin).checked_add_assign(margin_to_reserve)?;
 
     // Invert price for buy orders so storage order matches price-time priority.
     let stored_price = if size.is_positive() {
