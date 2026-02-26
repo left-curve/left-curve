@@ -284,6 +284,31 @@ fn _submit_order(
     Ok((transfers, maker_states, order_mutations, None))
 }
 
+/// Execute one side of a fill: decompose, apply to position, compute fee,
+/// return net PnL (positive = user gains).
+fn settle_fill(
+    pair_state: &mut PairState,
+    user_state: &mut UserState,
+    pair_id: &PairId,
+    fill_size: Quantity,
+    fill_price: UsdPrice,
+    fee_rate: Dimensionless,
+) -> grug::MathResult<UsdValue> {
+    let current_pos = user_state
+        .positions
+        .get(pair_id)
+        .map(|p| p.size)
+        .unwrap_or_default();
+    let (closing, opening) = decompose_fill(fill_size, current_pos);
+
+    let pnl = execute_fill(
+        pair_state, user_state, pair_id, fill_price, closing, opening,
+    )?;
+    let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
+
+    pnl.checked_sub(fee)
+}
+
 /// Walk the opposite side of the book, filling at each resting order's price
 /// until the taker order is exhausted or no more acceptable prices exist.
 ///
@@ -372,24 +397,14 @@ fn match_order(
         let resting_abs = resting_order.size.checked_abs()?;
 
         // --- Taker side ---
-        let taker_current_pos = taker_state
-            .positions
-            .get(pair_id)
-            .map(|p| p.size)
-            .unwrap_or_default();
-        let (taker_closing, taker_opening) = decompose_fill(taker_fill_size, taker_current_pos);
-
-        let taker_pnl = execute_fill(
+        let taker_net = settle_fill(
             pair_state,
             taker_state,
             pair_id,
+            taker_fill_size,
             resting_price,
-            taker_closing,
-            taker_opening,
+            param.taker_fee_rate,
         )?;
-
-        let taker_fee = compute_trading_fee(taker_fill_size, resting_price, param.taker_fee_rate)?;
-        let taker_net = taker_pnl.checked_sub(taker_fee)?;
 
         transfers
             .entry(sender)
@@ -401,8 +416,8 @@ fn match_order(
 
         let maker_state = match maker_states.entry(maker_addr) {
             Entry::Vacant(e) => {
-                let state = USER_STATES.may_load(storage, *e.key())?.unwrap_or_default();
-                e.insert(state)
+                let maybe_maker_state = USER_STATES.may_load(storage, maker_addr)?;
+                e.insert(maybe_maker_state.unwrap_or_default())
             },
             Entry::Occupied(e) => e.into_mut(),
         };
@@ -410,23 +425,14 @@ fn match_order(
         // Maker fill size is opposite sign from taker.
         let maker_fill_size = taker_fill_size.checked_neg()?;
 
-        let maker_current_pos = maker_state
-            .positions
-            .get(pair_id)
-            .map(|p| p.size)
-            .unwrap_or_default();
-        let (maker_closing, maker_opening) = decompose_fill(maker_fill_size, maker_current_pos);
-
-        let maker_pnl = execute_fill(
+        let maker_net = settle_fill(
             pair_state,
             maker_state,
             pair_id,
+            maker_fill_size,
             resting_price,
-            maker_closing,
-            maker_opening,
+            param.maker_fee_rate,
         )?;
-
-        let maker_fee = compute_trading_fee(maker_fill_size, resting_price, param.maker_fee_rate)?;
 
         // Release reserved margin proportionally to the filled portion.
         let proportion = fill_abs.checked_div(resting_abs)?;
@@ -464,7 +470,6 @@ fn match_order(
         }
 
         // Accumulate maker transfer.
-        let maker_net = maker_pnl.checked_sub(maker_fee)?;
         transfers
             .entry(maker_addr)
             .or_default()
