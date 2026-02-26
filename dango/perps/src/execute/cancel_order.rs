@@ -1,8 +1,8 @@
 use {
     crate::{ASKS, BIDS, USER_STATES},
     anyhow::{anyhow, ensure},
-    dango_types::perps::OrderId,
-    grug::{MutableCtx, Order as IterationOrder, Response, StdResult},
+    dango_types::perps::{OrderId, UserState},
+    grug::{Addr, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
 };
 
 pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Response> {
@@ -51,26 +51,9 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
 }
 
 pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    // Load the sender's user state.
     let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
-    // For bids and asks respectively, first collect all orders into memory;
-    // then for each order, 1) delete it, 2) release reserved margin and decrement
-    // open order count.
-    for map in [BIDS, ASKS] {
-        for (order_key, order) in map
-            .idx
-            .user
-            .prefix(ctx.sender)
-            .range(ctx.storage, None, None, IterationOrder::Ascending)
-            .collect::<StdResult<Vec<_>>>()?
-        {
-            map.remove(ctx.storage, order_key)?;
-
-            user_state.open_order_count -= 1;
-            (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
-        }
-    }
+    cancel_all_orders_for(ctx.storage, ctx.sender, &mut user_state)?;
 
     // Delete the user state if it's empty. Otherwise, save the updated user state.
     if user_state.is_empty() {
@@ -80,6 +63,33 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     }
 
     Ok(Response::new())
+}
+
+/// Cancel all resting orders for a user, updating the in-memory `user_state`.
+///
+/// Writes to `BIDS` / `ASKS` in storage but does **not** persist `user_state`
+/// — the caller is responsible for saving or removing it.
+pub(crate) fn cancel_all_orders_for(
+    storage: &mut dyn Storage,
+    user: Addr,
+    user_state: &mut UserState,
+) -> anyhow::Result<()> {
+    for map in [BIDS, ASKS] {
+        for (order_key, order) in map
+            .idx
+            .user
+            .prefix(user)
+            .range(storage, None, None, IterationOrder::Ascending)
+            .collect::<StdResult<Vec<_>>>()?
+        {
+            map.remove(storage, order_key)?;
+
+            user_state.open_order_count -= 1;
+            (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
+        }
+    }
+
+    Ok(())
 }
 
 // ----------------------------------- tests -----------------------------------

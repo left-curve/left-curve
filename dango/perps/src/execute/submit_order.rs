@@ -396,7 +396,7 @@ fn check_margin(
 /// - Maker `UserState`s to persist (`BTreeMap<Addr, UserState>`).
 /// - Order mutations to apply (`Vec<(OrderKey, Option<Order>)>`):
 ///   `None` = remove (fully filled), `Some` = update (partially filled).
-fn match_order(
+pub(crate) fn match_order(
     storage: &dyn Storage,
     param: &Param,
     pair_id: &PairId,
@@ -525,7 +525,7 @@ fn match_order(
 /// - `pair_state.long_oi` / `pair_state.short_oi` — updated by `execute_fill`.
 /// - `user_state.positions` — opened / closed / flipped by `execute_fill`.
 /// - `pnls` — net PnL (pnl − fee) added for `user`.
-fn settle_fill(
+pub(crate) fn settle_fill(
     pair_id: &PairId,
     pair_state: &mut PairState,
     user_state: &mut UserState,
@@ -560,7 +560,7 @@ fn settle_fill(
 ///
 /// - Payouts: users the contract must pay (positive PnL, floor-rounded).
 /// - Collections: users who owe the contract (negative PnL, ceil-rounded).
-fn settle_pnls(
+pub(crate) fn settle_pnls(
     pnls: BTreeMap<Addr, UsdValue>,
     settlement_price: UsdPrice,
     state: &mut State,
@@ -579,7 +579,7 @@ fn settle_pnls(
             // Contract pays user: floor rounding favors contract.
             let amount = net_quantity.into_base_floor(settlement_currency::DECIMAL)?;
             if amount.is_non_zero() {
-                state.insurance_fund = state.insurance_fund.checked_sub(amount)?;
+                state.insurance_fund.checked_sub_assign(amount)?;
                 payouts.insert(user, amount);
             }
         } else {
@@ -588,7 +588,7 @@ fn settle_pnls(
                 .checked_abs()?
                 .into_base_ceil(settlement_currency::DECIMAL)?;
             if amount.is_non_zero() {
-                state.insurance_fund = state.insurance_fund.checked_add(amount)?;
+                state.insurance_fund.checked_add_assign(amount)?;
                 collections.push((user, amount));
             }
         }
