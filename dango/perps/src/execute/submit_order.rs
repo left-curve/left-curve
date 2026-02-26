@@ -3,10 +3,10 @@ use {
         ASKS, BIDS, NEXT_ORDER_ID, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
         USER_STATES,
         core::{
-            accrue_funding, check_minimum_opening, check_oi_constraint, compute_available_margin,
-            compute_initial_margin, compute_required_margin, compute_target_price,
-            compute_trading_fee, compute_user_equity, decompose_fill, execute_fill,
-            is_price_constraint_violated,
+            accrue_funding, check_minimum_order_size, check_oi_constraint,
+            compute_available_margin, compute_initial_margin, compute_required_margin,
+            compute_target_price, compute_trading_fee, compute_user_equity, decompose_fill,
+            execute_fill, is_price_constraint_violated,
         },
         execute::{BANK, ORACLE},
     },
@@ -191,7 +191,13 @@ fn _submit_order(
 
     accrue_funding(pair_state, pair_param, current_time, oracle_price)?;
 
-    // ----------------------- Step 2. Decompose order -------------------------
+    // -------------- Step 2. Check minimum order size -------------------------
+
+    if !reduce_only {
+        check_minimum_order_size(size, oracle_price, pair_param)?;
+    }
+
+    // ----------------------- Step 3. Decompose order -------------------------
 
     let current_position = taker_state
         .positions
@@ -208,10 +214,6 @@ fn _submit_order(
     let fillable_size = closing_size.checked_add(opening_size)?;
 
     ensure!(fillable_size.is_non_zero(), "fillable size is zero");
-
-    // -------------- Step 3. Check minimum opening constraint -----------------
-
-    check_minimum_opening(opening_size, oracle_price, pair_param)?;
 
     // -------------- Step 4. Check OI constraint for opening ------------------
 

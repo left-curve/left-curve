@@ -126,9 +126,10 @@ pub struct PairParam {
     /// When skew == 0, the rate drifts back toward zero at this speed.
     pub max_funding_velocity: FundingVelocity,
 
-    /// Minimum notional value for the opening portion of an order.
-    /// This prevents the opening of dust positions.
-    pub min_opening_size: UsdValue,
+    /// Minimum notional value for an order. Reduce-only orders are exempt.
+    /// Prevents dust orders from cluttering the order book.
+    #[serde(alias = "min_opening_size")]
+    pub min_order_size: UsdValue,
 
     /// Margin requirement when opening or increasing a position in this trading
     /// pair. E.g. 5% indicates a 1 / 5% = 20x maximum leverage.
