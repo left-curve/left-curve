@@ -7,7 +7,6 @@ use {
             is_price_constraint_violated,
         },
         execute::{BANK, ORACLE},
-        state::OrderKey,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -75,41 +74,34 @@ pub fn submit_order(
 
     USER_STATES.save(ctx.storage, ctx.sender, &taker_state)?;
 
-    // Persist maker states modified during matching.
     for (addr, maker_state) in &maker_states {
         USER_STATES.save(ctx.storage, *addr, maker_state)?;
     }
 
-    // Apply order book mutations (opposite side from taker's order).
-    let opposite_book = if size.is_positive() {
-        ASKS
+    let (taker_book, maker_book) = if size.is_positive() {
+        (BIDS, ASKS)
     } else {
-        BIDS
+        (ASKS, BIDS)
     };
 
-    for (order_key, mutation) in order_mutations {
+    for (stored_price, order_id, mutation) in order_mutations {
+        let order_key = (pair_id.clone(), stored_price, order_id);
         match mutation {
             Some(order) => {
-                opposite_book.save(ctx.storage, order_key, &order)?;
+                maker_book.save(ctx.storage, order_key, &order)?;
             },
             None => {
-                opposite_book.remove(ctx.storage, order_key)?;
+                maker_book.remove(ctx.storage, order_key)?;
             },
         }
     }
 
-    if let Some((limit_price, order_id, order)) = order_to_store {
-        let next_order_id = order_id + OrderId::ONE;
-        let order_key = (pair_id, limit_price, order_id);
-
-        NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
-
-        if size.is_positive() {
-            BIDS.save(ctx.storage, order_key, &order)?;
-        } else {
-            ASKS.save(ctx.storage, order_key, &order)?;
-        }
+    if let Some((stored_price, order_id, order)) = order_to_store {
+        NEXT_ORDER_ID.save(ctx.storage, &(order_id + OrderId::ONE))?;
+        taker_book.save(ctx.storage, (pair_id, stored_price, order_id), &order)?;
     }
+
+    // ---------------------- 4. Perform token transfers -----------------------
 
     // Convert each user's net USD PnL to settlement currency base units
     // and update the insurance fund. One rounding operation per user.
@@ -191,7 +183,7 @@ fn _submit_order(
 ) -> anyhow::Result<(
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UserState>,
-    Vec<(OrderKey, Option<Order>)>,
+    Vec<(UsdPrice, OrderId, Option<Order>)>,
     Option<(UsdPrice, OrderId, Order)>,
 )> {
     // ------------- Step 1. Accrue funding before any OI changes --------------
@@ -313,7 +305,7 @@ fn match_order(
     Quantity,
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UserState>,
-    Vec<(OrderKey, Option<Order>)>,
+    Vec<(UsdPrice, OrderId, Option<Order>)>,
 )> {
     let mut transfers = BTreeMap::new();
     let mut maker_states = BTreeMap::new();
@@ -399,8 +391,6 @@ fn match_order(
 
         // ---------------- Update maker's order and user state ----------------
 
-        let order_key = (pair_id.clone(), stored_price, order_id);
-
         // Release reserved margin proportionally to the filled portion.
         let margin_to_release = (resting_order.reserved_margin)
             .checked_mul(maker_fill_size)?
@@ -418,9 +408,9 @@ fn match_order(
 
         if resting_order.size.is_zero() {
             maker_state.open_order_count -= 1;
-            order_mutations.push((order_key, None));
+            order_mutations.push((stored_price, order_id, None));
         } else {
-            order_mutations.push((order_key, Some(resting_order)));
+            order_mutations.push((stored_price, order_id, Some(resting_order)));
         }
 
         remaining_size.checked_sub_assign(taker_fill_size)?;
@@ -582,7 +572,7 @@ mod tests {
 
     /// Place a resting ask (sell) order on the book.
     fn place_ask(storage: &mut dyn Storage, maker: Addr, price: i128, size: i128, order_id: u64) {
-        let key: OrderKey = (pair_id(), UsdPrice::new_int(price), Uint64::new(order_id));
+        let key = (pair_id(), UsdPrice::new_int(price), Uint64::new(order_id));
         let order = Order {
             user: maker,
             size: Quantity::new_int(-size.abs()),
@@ -606,7 +596,7 @@ mod tests {
     /// Place a resting bid (buy) order on the book.
     fn place_bid(storage: &mut dyn Storage, maker: Addr, price: i128, size: i128, order_id: u64) {
         let inverted_price = UsdPrice::MAX.checked_sub(UsdPrice::new_int(price)).unwrap();
-        let key: OrderKey = (pair_id(), inverted_price, Uint64::new(order_id));
+        let key = (pair_id(), inverted_price, Uint64::new(order_id));
         let order = Order {
             user: maker,
             size: Quantity::new_int(size.abs()),
@@ -674,7 +664,7 @@ mod tests {
 
         // Ask should be removed from book (1 removal mutation).
         assert_eq!(order_mutations.len(), 1);
-        assert!(order_mutations[0].1.is_none());
+        assert!(order_mutations[0].2.is_none());
     }
 
     // ============= Market buy: partial fill (IOC cancels remainder) ===========
@@ -1015,7 +1005,7 @@ mod tests {
 
         // Bid removed from book (1 removal mutation).
         assert_eq!(order_mutations.len(), 1);
-        assert!(order_mutations[0].1.is_none());
+        assert!(order_mutations[0].2.is_none());
     }
 
     // =========== Two-sided settlement: both positions updated =================
@@ -1195,8 +1185,8 @@ mod tests {
 
         // Both asks fully filled (2 removal mutations).
         assert_eq!(order_mutations.len(), 2);
-        assert!(order_mutations[0].1.is_none());
-        assert!(order_mutations[1].1.is_none());
+        assert!(order_mutations[0].2.is_none());
+        assert!(order_mutations[1].2.is_none());
     }
 
     // ======= Maker reserved margin release: full fill ========================
