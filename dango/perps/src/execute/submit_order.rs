@@ -284,7 +284,13 @@ fn _submit_order(
 }
 
 /// Execute one side of a fill: decompose, apply to position, compute fee,
-/// return net PnL (positive = user gains).
+/// accumulate net PnL into the transfers map.
+///
+/// Mutates:
+///
+/// - `pair_state.long_oi` / `pair_state.short_oi` — updated by `execute_fill`.
+/// - `user_state.positions` — opened / closed / flipped by `execute_fill`.
+/// - `transfers` — net PnL (pnl − fee) added for `user`.
 fn settle_fill(
     pair_state: &mut PairState,
     user_state: &mut UserState,
@@ -292,7 +298,9 @@ fn settle_fill(
     fill_size: Quantity,
     fill_price: UsdPrice,
     fee_rate: Dimensionless,
-) -> grug::MathResult<UsdValue> {
+    transfers: &mut BTreeMap<Addr, UsdValue>,
+    user: Addr,
+) -> grug::MathResult<()> {
     let current_pos = user_state
         .positions
         .get(pair_id)
@@ -306,8 +314,9 @@ fn settle_fill(
     )?;
 
     let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
+    let net = pnl.checked_sub(fee)?;
 
-    pnl.checked_sub(fee)
+    transfers.entry(user).or_default().checked_add_assign(net)
 }
 
 /// Walk the opposite side of the book, filling at each resting order's price
@@ -393,19 +402,16 @@ fn match_order(
         let resting_abs = resting_order.size.checked_abs()?;
 
         // --- Taker side ---
-        let taker_net = settle_fill(
+        settle_fill(
             pair_state,
             taker_state,
             pair_id,
             taker_fill_size,
             resting_price,
             param.taker_fee_rate,
+            &mut transfers,
+            sender,
         )?;
-
-        transfers
-            .entry(sender)
-            .or_default()
-            .checked_add_assign(taker_net)?;
 
         // --- Maker side ---
         let maker_addr = resting_order.user;
@@ -421,13 +427,15 @@ fn match_order(
         // Maker fill size is opposite sign from taker.
         let maker_fill_size = taker_fill_size.checked_neg()?;
 
-        let maker_net = settle_fill(
+        settle_fill(
             pair_state,
             maker_state,
             pair_id,
             maker_fill_size,
             resting_price,
             param.maker_fee_rate,
+            &mut transfers,
+            maker_addr,
         )?;
 
         // Release reserved margin proportionally to the filled portion.
@@ -463,12 +471,6 @@ fn match_order(
             order_mutations.push((order_key, None));
             maker_state.open_order_count -= 1;
         }
-
-        // Accumulate maker transfer.
-        transfers
-            .entry(maker_addr)
-            .or_default()
-            .checked_add_assign(maker_net)?;
 
         // Reduce remaining size.
         remaining_size.checked_sub_assign(taker_fill_size)?;
