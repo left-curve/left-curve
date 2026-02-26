@@ -53,7 +53,7 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (transfers, maker_states, order_mutations, order_to_store) = _submit_order(
+    let (pnls, maker_states, order_mutations, order_to_store) = _submit_order(
         ctx.storage,
         ctx.sender,
         ctx.block.timestamp,
@@ -105,9 +105,9 @@ pub fn submit_order(
 
     // Convert each user's net USD PnL to settlement currency base units
     // and update the insurance fund. One rounding operation per user.
-    let mut messages = Vec::with_capacity(transfers.len());
+    let mut messages = Vec::with_capacity(pnls.len());
 
-    for (user, net_usd) in transfers {
+    for (user, net_usd) in pnls {
         let net_quantity = net_usd.checked_div(settlement_price)?;
 
         match net_usd.cmp(&UsdValue::ZERO) {
@@ -223,7 +223,7 @@ fn _submit_order(
 
     // ---------------------- Step 6. Match against book ------------------------
 
-    let (unfilled, transfers, maker_states, order_mutations) = match_order(
+    let (unfilled, pnls, maker_states, order_mutations) = match_order(
         storage,
         sender,
         param,
@@ -259,17 +259,12 @@ fn _submit_order(
                     reduce_only,
                 )?;
 
-                return Ok((
-                    transfers,
-                    maker_states,
-                    order_mutations,
-                    Some(order_to_store),
-                ));
+                return Ok((pnls, maker_states, order_mutations, Some(order_to_store)));
             },
         }
     }
 
-    Ok((transfers, maker_states, order_mutations, None))
+    Ok((pnls, maker_states, order_mutations, None))
 }
 
 /// Walk the opposite side of the book, filling at each resting order's price
@@ -307,7 +302,7 @@ fn match_order(
     BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>)>,
 )> {
-    let mut transfers = BTreeMap::new();
+    let mut pnls = BTreeMap::new();
     let mut maker_states = BTreeMap::new();
     let mut order_mutations = Vec::new();
 
@@ -374,7 +369,7 @@ fn match_order(
             taker_fill_size,
             resting_price,
             param.taker_fee_rate,
-            &mut transfers,
+            &mut pnls,
             sender,
         )?;
 
@@ -385,7 +380,7 @@ fn match_order(
             maker_fill_size,
             resting_price,
             param.maker_fee_rate,
-            &mut transfers,
+            &mut pnls,
             resting_order.user,
         )?;
 
@@ -416,17 +411,14 @@ fn match_order(
         remaining_size.checked_sub_assign(taker_fill_size)?;
     }
 
-    Ok((remaining_size, transfers, maker_states, order_mutations))
+    Ok((remaining_size, pnls, maker_states, order_mutations))
 }
 
-/// Execute one side of a fill: decompose, apply to position, compute fee,
-/// accumulate net PnL into the transfers map.
-///
 /// Mutates:
 ///
 /// - `pair_state.long_oi` / `pair_state.short_oi` — updated by `execute_fill`.
 /// - `user_state.positions` — opened / closed / flipped by `execute_fill`.
-/// - `transfers` — net PnL (pnl − fee) added for `user`.
+/// - `pnls` — net PnL (pnl − fee) added for `user`.
 fn settle_fill(
     pair_id: &PairId,
     pair_state: &mut PairState,
@@ -434,7 +426,7 @@ fn settle_fill(
     fill_size: Quantity,
     fill_price: UsdPrice,
     fee_rate: Dimensionless,
-    transfers: &mut BTreeMap<Addr, UsdValue>,
+    pnls: &mut BTreeMap<Addr, UsdValue>,
     user: Addr,
 ) -> grug::MathResult<()> {
     let current_pos = user_state
@@ -452,7 +444,7 @@ fn settle_fill(
     let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
     let net = pnl.checked_sub(fee)?;
 
-    transfers.entry(user).or_default().checked_add_assign(net)
+    pnls.entry(user).or_default().checked_add_assign(net)
 }
 
 fn store_limit_order(
@@ -1052,10 +1044,10 @@ mod tests {
         assert_eq!(maker_pos.entry_price, UsdPrice::new_int(50_000));
     }
 
-    // =========== Fee accounting: net transfers include fees ====================
+    // ============= Fee accounting: net PnLs include fees =====================
 
     #[test]
-    fn transfers_include_fees() {
+    fn pnls_include_fees() {
         let mut ctx = MockContext::new()
             .with_sender(TAKER)
             .with_funds(Coins::default());
@@ -1068,7 +1060,7 @@ mod tests {
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState::default();
 
-        let (transfers, ..) = _submit_order(
+        let (pnls, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             Timestamp::from_nanos(0),
@@ -1088,11 +1080,11 @@ mod tests {
 
         // Taker: no realized PnL (opening), fee = |10| * 50000 * 0.001 = 500 USD.
         // Net = 0 - 500 = -500 USD.
-        assert_eq!(transfers[&TAKER], UsdValue::new_int(-500));
+        assert_eq!(pnls[&TAKER], UsdValue::new_int(-500));
 
         // Maker: no realized PnL (opening), fee = 0%.
         // Net = 0.
-        assert_eq!(transfers[&MAKER_A], UsdValue::ZERO);
+        assert_eq!(pnls[&MAKER_A], UsdValue::ZERO);
     }
 
     // ======== Tick size enforcement for limit orders =========================
