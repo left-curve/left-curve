@@ -450,7 +450,7 @@ fn store_limit_order(
         param.max_open_orders
     );
 
-    // Enforce tick size: limit_price must be an integer multiple of tick_size.
+    // Enforce tick size: `limit_price` must be an integer multiple of `tick_size`.
     // Divide, floor to integer, multiply back, and verify equality.
     if pair_param.tick_size.is_non_zero() {
         let ratio = limit_price.checked_div(pair_param.tick_size)?;
@@ -460,7 +460,7 @@ fn store_limit_order(
 
         ensure!(
             reconstructed == limit_price,
-            "limit price {} is not a multiple of tick size {}",
+            "limit price ({}) is not a multiple of tick size ({})",
             limit_price,
             pair_param.tick_size,
         );
