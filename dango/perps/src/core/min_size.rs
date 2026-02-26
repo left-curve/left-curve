@@ -11,6 +11,7 @@ pub fn check_minimum_order_size(
     pair_param: &PairParam,
 ) -> anyhow::Result<()> {
     let notional = size.checked_abs()?.checked_mul(oracle_price)?;
+
     ensure!(
         notional >= pair_param.min_order_size,
         "order size is below minimum: {} < {}",

@@ -24,7 +24,7 @@ use {
         Addr, Coins, IsZero, Message, MutableCtx, Number, QuerierExt, Response, Storage, Uint128,
         coins,
     },
-    std::collections::BTreeMap,
+    std::{cmp::Ordering, collections::BTreeMap},
 };
 
 pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
@@ -96,7 +96,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         );
     }
 
-    // ---------------------- 6. Call inner function ---------------------------
+    // --------------------------- 6. Business logic ---------------------------
 
     let (payouts, collections, maker_states, order_mutations) = _liquidate(
         ctx.storage,
@@ -129,11 +129,11 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         USER_STATES.save(ctx.storage, user, &user_state)?;
     }
 
-    USER_STATES.save(ctx.storage, ctx.contract, &vault_state)?;
-
     for (addr, maker_state) in &maker_states {
         USER_STATES.save(ctx.storage, *addr, maker_state)?;
     }
+
+    USER_STATES.save(ctx.storage, ctx.contract, &vault_state)?;
 
     // -------------------- 8. Apply order mutations ---------------------------
 
@@ -279,12 +279,11 @@ fn execute_close_schedule(
             )?;
 
             // Vault side: opposite fill at oracle price with zero fee.
-            let vault_fill = unfilled.checked_neg()?;
             settle_fill(
                 pair_id,
                 pair_state,
                 vault_state,
-                vault_fill,
+                unfilled.checked_neg()?,
                 oracle_price,
                 Dimensionless::ZERO,
                 &mut all_pnls,
@@ -339,23 +338,27 @@ fn settle_vault_pnl(
     state: &mut State,
 ) -> anyhow::Result<()> {
     if let Some(vault_pnl) = pnls.remove(&contract) {
-        if vault_pnl > UsdValue::ZERO {
-            let amount = vault_pnl
-                .checked_div(settlement_currency_price)?
-                .into_base_floor(settlement_currency::DECIMAL)?;
+        match vault_pnl.cmp(&UsdValue::ZERO) {
+            Ordering::Greater => {
+                let amount = vault_pnl
+                    .checked_div(settlement_currency_price)?
+                    .into_base_floor(settlement_currency::DECIMAL)?;
 
-            if amount.is_non_zero() {
-                state.vault_margin = state.vault_margin.checked_add(amount)?;
-            }
-        } else if vault_pnl < UsdValue::ZERO {
-            let amount = vault_pnl
-                .checked_abs()?
-                .checked_div(settlement_currency_price)?
-                .into_base_ceil(settlement_currency::DECIMAL)?;
+                if amount.is_non_zero() {
+                    state.vault_margin = state.vault_margin.checked_add(amount)?;
+                }
+            },
+            Ordering::Less => {
+                let amount = vault_pnl
+                    .checked_abs()?
+                    .checked_div(settlement_currency_price)?
+                    .into_base_ceil(settlement_currency::DECIMAL)?;
 
-            if amount.is_non_zero() {
-                state.vault_margin = state.vault_margin.checked_sub(amount)?;
-            }
+                if amount.is_non_zero() {
+                    state.vault_margin = state.vault_margin.checked_sub(amount)?;
+                }
+            },
+            _ => {},
         }
     }
 

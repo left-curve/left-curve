@@ -4,6 +4,7 @@ use {
         perps::{PairId, PairState, Position, UserState},
     },
     grug::MathResult,
+    std::cmp::Ordering,
 };
 
 /// Execute a fill for a single user. Updates position and OI; settles
@@ -129,22 +130,24 @@ fn update_oi(
     closing_size: Quantity,
     opening_size: Quantity,
 ) -> MathResult<()> {
-    if closing_size.is_negative() {
-        // Closing a long position with a sell order.
-        pair_state.long_oi.checked_add_assign(closing_size)?;
-    } else if closing_size.is_positive() {
-        // Closing a short position with a buy order.
-        pair_state.short_oi.checked_sub_assign(closing_size)?;
+    match closing_size.cmp(&Quantity::ZERO) {
+        Ordering::Less => {
+            pair_state.long_oi.checked_add_assign(closing_size)?;
+        },
+        Ordering::Greater => {
+            pair_state.short_oi.checked_sub_assign(closing_size)?;
+        },
+        _ => {},
     }
 
-    if opening_size.is_positive() {
-        // Opening a long position with a buy order.
-        pair_state.long_oi.checked_add_assign(opening_size)?;
-    } else if opening_size.is_negative() {
-        // Opening a short position with a sell order.
-        pair_state
-            .short_oi
-            .checked_add_assign(opening_size.checked_abs()?)?;
+    match opening_size.cmp(&Quantity::ZERO) {
+        Ordering::Less => {
+            (pair_state.short_oi).checked_add_assign(opening_size.checked_abs()?)?;
+        },
+        Ordering::Greater => {
+            pair_state.long_oi.checked_add_assign(opening_size)?;
+        },
+        _ => {},
     }
 
     Ok(())
