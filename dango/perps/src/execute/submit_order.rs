@@ -243,7 +243,7 @@ fn _submit_order(
         is_bid,
     )?;
 
-    // ------------- Step 7. Handle unfilled remainder -------------------------
+    // ------------------- Step 7. Handle unfilled remainder -------------------
 
     if unfilled.is_non_zero() {
         match kind {
@@ -251,8 +251,7 @@ fn _submit_order(
                 // IOC: cancel remainder. Error if nothing was filled at all.
                 ensure!(
                     unfilled < fillable_size,
-                    "no liquidity at acceptable price! target_price: {}",
-                    target_price
+                    "no liquidity at acceptable price! target_price: {target_price}"
                 );
             },
             OrderKind::Limit { limit_price } => {
@@ -334,7 +333,7 @@ fn match_order(
             .range(storage, None, None, IterationOrder::Ascending);
 
     for record in resting_orders {
-        let ((stored_price, order_id), resting_order) = record?;
+        let ((stored_price, order_id), mut resting_order) = record?;
 
         // Recover the real price: bids are stored inverted.
         let resting_price = if is_bid {
@@ -400,31 +399,28 @@ fn match_order(
 
         // ---------------- Update maker's order and user state ----------------
 
+        let order_key = (pair_id.clone(), stored_price, order_id);
+
         // Release reserved margin proportionally to the filled portion.
-        let margin_delta = (resting_order.reserved_margin)
+        let margin_to_release = (resting_order.reserved_margin)
             .checked_mul(maker_fill_size)?
             .checked_div(resting_order.size)?;
 
-        (maker_state.reserved_margin).checked_sub_assign(margin_delta)?;
+        maker_state
+            .reserved_margin
+            .checked_sub_assign(margin_to_release)?;
 
-        let order_key = (pair_id.clone(), stored_price, order_id);
-        let new_size = resting_order.size.checked_sub(maker_fill_size)?;
+        resting_order
+            .reserved_margin
+            .checked_sub_assign(margin_to_release)?;
 
-        if new_size.is_non_zero() {
-            let new_reserved = (resting_order.reserved_margin).checked_sub(margin_delta)?;
+        resting_order.size.checked_sub_assign(maker_fill_size)?;
 
-            let updated_order = Order {
-                user: resting_order.user,
-                size: new_size,
-                reduce_only: resting_order.reduce_only,
-                reserved_margin: new_reserved,
-            };
-
-            order_mutations.push((order_key, Some(updated_order)));
-        } else {
+        if resting_order.size.is_zero() {
             maker_state.open_order_count -= 1;
-
             order_mutations.push((order_key, None));
+        } else {
+            order_mutations.push((order_key, Some(resting_order)));
         }
 
         remaining_size.checked_sub_assign(taker_fill_size)?;
