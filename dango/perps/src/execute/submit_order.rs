@@ -18,8 +18,8 @@ use {
         },
     },
     grug::{
-        Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst, Order as IterationOrder,
-        Response, Storage, coins,
+        Addr, Coins, IsZero, MathResult, Message, MutableCtx, Number, NumberConst,
+        Order as IterationOrder, Response, Storage, coins,
     },
     std::{
         cmp::Ordering,
@@ -169,7 +169,7 @@ pub fn submit_order(
 /// - GTC order to store: `Option<(stored_price, order_id, Order)>`.
 fn _submit_order(
     storage: &dyn Storage,
-    sender: Addr,
+    taker: Addr,
     current_time: grug::Timestamp,
     param: &Param,
     pair_param: &PairParam,
@@ -218,21 +218,21 @@ fn _submit_order(
 
     // ------------------- Step 5. Compute target price ------------------------
 
-    let is_bid = size.is_positive();
-    let target_price = compute_target_price(kind, oracle_price, is_bid)?;
+    let taker_is_bid = size.is_positive();
+    let target_price = compute_target_price(kind, oracle_price, taker_is_bid)?;
 
     // ---------------------- Step 6. Match against book ------------------------
 
     let (unfilled, pnls, maker_states, order_mutations) = match_order(
         storage,
-        sender,
         param,
-        pair_state,
-        taker_state,
         pair_id,
-        fillable_size,
+        pair_state,
+        taker,
+        taker_state,
+        taker_is_bid,
         target_price,
-        is_bid,
+        fillable_size,
     )?;
 
     // ------------------- Step 7. Handle unfilled remainder -------------------
@@ -240,17 +240,15 @@ fn _submit_order(
     if unfilled.is_non_zero() {
         match kind {
             OrderKind::Market { .. } => {
-                // IOC: cancel remainder. Error if nothing was filled at all.
                 ensure!(
                     unfilled < fillable_size,
                     "no liquidity at acceptable price! target_price: {target_price}"
                 );
             },
             OrderKind::Limit { limit_price } => {
-                // GTC: store remainder as a resting limit order.
                 let order_to_store = store_limit_order(
                     storage,
-                    sender,
+                    taker,
                     param,
                     pair_param,
                     taker_state,
@@ -267,14 +265,7 @@ fn _submit_order(
     Ok((pnls, maker_states, order_mutations, None))
 }
 
-/// Walk the opposite side of the book, filling at each resting order's price
-/// until the taker order is exhausted or no more acceptable prices exist.
-///
-/// This function is semi-pure: it reads from storage but does not write.
-/// Deferred side-effects (maker state changes, order mutations) are returned
-/// for the caller to apply.
-///
-/// Mutates (in-memory only):
+/// Mutates:
 ///
 /// - `pair_state.long_oi` / `pair_state.short_oi` — updated per fill.
 /// - `taker_state.positions` — opened / closed / flipped per fill.
@@ -288,14 +279,14 @@ fn _submit_order(
 ///   `None` = remove (fully filled), `Some` = update (partially filled).
 fn match_order(
     storage: &dyn Storage,
-    sender: Addr,
     param: &Param,
-    pair_state: &mut PairState,
-    taker_state: &mut UserState,
     pair_id: &PairId,
-    mut remaining_size: Quantity,
+    pair_state: &mut PairState,
+    taker: Addr,
+    taker_state: &mut UserState,
+    taker_is_bid: bool,
     target_price: UsdPrice,
-    is_bid: bool,
+    mut remaining_size: Quantity,
 ) -> anyhow::Result<(
     Quantity,
     BTreeMap<Addr, UsdValue>,
@@ -308,26 +299,22 @@ fn match_order(
 
     // Create iterator over the maker side of the order book.
     // The iteration follows price-time priority.
-    let order_book = if is_bid {
+    let maker_book = if taker_is_bid {
         ASKS
     } else {
         BIDS
     };
 
-    let resting_orders =
-        order_book
+    let maker_orders =
+        maker_book
             .prefix(pair_id.clone())
             .range(storage, None, None, IterationOrder::Ascending);
 
-    for record in resting_orders {
-        let ((stored_price, order_id), mut resting_order) = record?;
+    for record in maker_orders {
+        let ((stored_price, maker_order_id), mut maker_order) = record?;
 
-        // Recover the real price: bids are stored inverted.
-        let resting_price = if is_bid {
-            stored_price // asks stored in natural order
-        } else {
-            UsdPrice::MAX - stored_price // un-invert bid price
-        };
+        // If the maker is bid (i.e. taker is ask), we need to "un-invert" the price.
+        let resting_price = may_invert_price(stored_price, !taker_is_bid)?;
 
         // ----------------------- Termination condition -----------------------
 
@@ -335,15 +322,15 @@ fn match_order(
             break;
         }
 
-        if is_price_constraint_violated(resting_price, target_price, is_bid) {
+        if is_price_constraint_violated(resting_price, target_price, taker_is_bid) {
             break;
         }
 
         // ---------------------- Determine fillable size ----------------------
 
-        let opposite = resting_order.size.checked_neg()?;
+        let opposite = maker_order.size.checked_neg()?;
 
-        let taker_fill_size = if is_bid {
+        let taker_fill_size = if taker_is_bid {
             remaining_size.min(opposite)
         } else {
             remaining_size.max(opposite)
@@ -351,16 +338,16 @@ fn match_order(
 
         let maker_fill_size = taker_fill_size.checked_neg()?;
 
+        // -------------------- Settle PnL and trading fee ---------------------
+
         // Find the maker's user state.
-        let maker_state = match maker_states.entry(resting_order.user) {
+        let maker_state = match maker_states.entry(maker_order.user) {
             Entry::Vacant(e) => {
-                let maybe_maker_state = USER_STATES.may_load(storage, resting_order.user)?;
+                let maybe_maker_state = USER_STATES.may_load(storage, maker_order.user)?;
                 e.insert(maybe_maker_state.unwrap_or_default())
             },
             Entry::Occupied(e) => e.into_mut(),
         };
-
-        // -------------------- Settle PnL and trading fee ---------------------
 
         settle_fill(
             pair_id,
@@ -370,7 +357,7 @@ fn match_order(
             resting_price,
             param.taker_fee_rate,
             &mut pnls,
-            sender,
+            taker,
         )?;
 
         settle_fill(
@@ -381,31 +368,31 @@ fn match_order(
             resting_price,
             param.maker_fee_rate,
             &mut pnls,
-            resting_order.user,
+            maker_order.user,
         )?;
 
         // ---------------- Update maker's order and user state ----------------
 
         // Release reserved margin proportionally to the filled portion.
-        let margin_to_release = (resting_order.reserved_margin)
+        let margin_to_release = (maker_order.reserved_margin)
             .checked_mul(maker_fill_size)?
-            .checked_div(resting_order.size)?;
+            .checked_div(maker_order.size)?;
 
         maker_state
             .reserved_margin
             .checked_sub_assign(margin_to_release)?;
 
-        resting_order
+        maker_order
             .reserved_margin
             .checked_sub_assign(margin_to_release)?;
 
-        resting_order.size.checked_sub_assign(maker_fill_size)?;
+        maker_order.size.checked_sub_assign(maker_fill_size)?;
 
-        if resting_order.size.is_zero() {
+        if maker_order.size.is_zero() {
             maker_state.open_order_count -= 1;
-            order_mutations.push((stored_price, order_id, None));
+            order_mutations.push((stored_price, maker_order_id, None));
         } else {
-            order_mutations.push((stored_price, order_id, Some(resting_order)));
+            order_mutations.push((stored_price, maker_order_id, Some(maker_order)));
         }
 
         remaining_size.checked_sub_assign(taker_fill_size)?;
@@ -491,11 +478,7 @@ fn store_limit_order(
     (user_state.reserved_margin).checked_add_assign(margin_to_reserve)?;
 
     // Invert price for buy orders so storage order matches price-time priority.
-    let stored_price = if size.is_positive() {
-        UsdPrice::MAX.checked_sub(limit_price)?
-    } else {
-        limit_price
-    };
+    let stored_price = may_invert_price(limit_price, size.is_positive())?;
 
     // Allocate order ID.
     let order_id = NEXT_ORDER_ID.may_load(storage)?.unwrap_or(OrderId::ONE);
@@ -506,6 +489,17 @@ fn store_limit_order(
         reduce_only,
         reserved_margin: margin_to_reserve,
     }))
+}
+
+/// When storing a bid order, we "invert" the price such that orders are sorted
+/// according to price-time priority. Conversely, when reading orders from the
+/// book, we need to "un-invert" the price. This function does both.
+fn may_invert_price(price: UsdPrice, is_bid: bool) -> MathResult<UsdPrice> {
+    if is_bid {
+        UsdPrice::MAX.checked_sub(price)
+    } else {
+        Ok(price)
+    }
 }
 
 // ----------------------------------- tests -----------------------------------
