@@ -451,15 +451,9 @@ fn store_limit_order(
     );
 
     // Enforce tick size: `limit_price` must be an integer multiple of `tick_size`.
-    // Divide, floor to integer, multiply back, and verify equality.
     if pair_param.tick_size.is_non_zero() {
-        let ratio = limit_price.checked_div(pair_param.tick_size)?;
-        let floored_int = ratio.into_inner().into_int_floor();
-        let reconstructed =
-            Dimensionless::new_int(floored_int.0).checked_mul(pair_param.tick_size)?;
-
         ensure!(
-            reconstructed == limit_price,
+            limit_price.checked_rem(pair_param.tick_size)?.is_zero(),
             "limit price ({}) is not a multiple of tick size ({})",
             limit_price,
             pair_param.tick_size,
@@ -1079,6 +1073,45 @@ mod tests {
     }
 
     // ======== Tick size enforcement for limit orders =========================
+
+    #[test]
+    fn tick_size_valid_multiple_accepted() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let mut pair_param = test_pair_param();
+        pair_param.tick_size = UsdPrice::new_int(100);
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &pair_param)
+            .unwrap();
+
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState::default();
+
+        // 50,100 is a valid multiple of tick size 100 — should succeed.
+        let result = _submit_order(
+            &ctx.storage,
+            TAKER,
+            Timestamp::from_nanos(0),
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(50_100),
+            },
+            false,
+        );
+
+        assert!(result.is_ok());
+    }
 
     #[test]
     fn tick_size_enforcement() {

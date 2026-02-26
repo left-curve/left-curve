@@ -116,6 +116,10 @@ impl<Q, U, D> Number<Q, U, D> {
     {
         self.inner.checked_div(rhs.inner).map(Number::new)
     }
+
+    pub fn checked_rem(self, rhs: Self) -> MathResult<Self> {
+        self.inner.checked_rem(rhs.inner).map(Self::new)
+    }
 }
 
 impl<Q, U, D> Number<Q, U, D>
