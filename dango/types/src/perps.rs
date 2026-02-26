@@ -3,7 +3,7 @@ use {
         Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue,
     },
     grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
-    std::{collections::BTreeMap, sync::LazyLock},
+    std::{collections::{BTreeMap, VecDeque}, sync::LazyLock},
 };
 
 // --------------------------------- Constants ---------------------------------
@@ -227,7 +227,7 @@ impl PairState {
 #[derive(Default)]
 pub struct UserState {
     /// The user's vault withdrawals that are pending cooldown.
-    pub unlocks: Vec<Unlock>, // TODO: use VecDeque?
+    pub unlocks: VecDeque<Unlock>,
 
     /// The user's open positions.
     pub positions: BTreeMap<PairId, Position>,
@@ -309,9 +309,10 @@ pub enum ExecuteMsg {
     },
 
     /// Request to withdraw funds from the counterparty vault.
-    ///
-    /// The request will be fulfilled after the cooldown period has elapsed.
     Unlock {},
+
+    /// Claim funds from unlocks that have already completed cooldown.
+    Claim {},
 
     /// Submit an order.
     SubmitOrder {
@@ -346,12 +347,6 @@ pub enum ExecuteMsg {
     /// This is enabled when the insurance fund is depleted after absorbing bad
     /// debt from liquidations.
     Deleverage { user: Addr },
-
-    /// Actions to be triggered at the beginning of a block, right after the
-    /// oracle update.
-    ///
-    /// Can only be called by the oracle contract.
-    OnOracleUpdate {},
 }
 
 #[grug::derive(Serde, QueryRequest)]

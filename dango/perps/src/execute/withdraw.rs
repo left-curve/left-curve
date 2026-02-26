@@ -42,7 +42,7 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     (state.vault_share_supply).checked_sub_assign(shares_to_burn)?;
 
     // Update user state.
-    user_state.unlocks.push(unlock);
+    user_state.unlocks.push_back(unlock);
 
     // ------------------------ 3. Apply state changes -------------------------
 
@@ -142,6 +142,7 @@ mod tests {
         super::*,
         dango_types::{oracle::PrecisionedPrice, perps::settlement_currency},
         grug::{Coin, Duration, Udec128, Uint128, hash_map},
+        std::collections::VecDeque,
         test_case::test_case,
     };
 
@@ -320,7 +321,7 @@ mod tests {
 
         // Already at max_unlocks (2 existing unlocks).
         let user_state = UserState {
-            unlocks: vec![
+            unlocks: VecDeque::from([
                 Unlock {
                     amount_to_release: Uint128::new(100),
                     end_time: Timestamp::from_seconds(100),
@@ -329,7 +330,7 @@ mod tests {
                     amount_to_release: Uint128::new(200),
                     end_time: Timestamp::from_seconds(200),
                 },
-            ],
+            ]),
             ..Default::default()
         };
 

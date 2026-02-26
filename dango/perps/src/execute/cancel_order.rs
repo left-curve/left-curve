@@ -97,7 +97,7 @@ mod tests {
             perps::{Order, Position, UserState},
         },
         grug::{Addr, Coins, MockContext, ResultExt, Storage, Uint64},
-        std::collections::BTreeMap,
+        std::collections::{BTreeMap, VecDeque},
     };
 
     const USER: Addr = Addr::mock(1);
@@ -159,7 +159,7 @@ mod tests {
         positions: BTreeMap<dango_types::perps::PairId, Position>,
     ) {
         let state = UserState {
-            unlocks: vec![],
+            unlocks: VecDeque::new(),
             positions,
             reserved_margin: UsdValue::new_int(reserved_margin),
             open_order_count,
