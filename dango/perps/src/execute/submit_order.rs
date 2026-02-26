@@ -468,11 +468,8 @@ fn store_limit_order(
 
     // Reserve margin for worst case (entire order is opening).
     // Use taker fee rate as worst-case fee reservation.
-    let margin_to_reserve = compute_required_margin(size, limit_price, pair_param)?.checked_add(
-        size.checked_abs()?
-            .checked_mul(limit_price)?
-            .checked_mul(param.taker_fee_rate)?,
-    )?;
+    let margin_to_reserve = compute_required_margin(size, limit_price, pair_param)?
+        .checked_add(compute_trading_fee(size, limit_price, param.taker_fee_rate)?)?;
 
     user_state.open_order_count += 1;
     (user_state.reserved_margin).checked_add_assign(margin_to_reserve)?;
