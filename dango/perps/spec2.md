@@ -361,19 +361,6 @@ struct PairState {
     /// `entry_funding_per_unit`.
     pub cumulative_funding_per_unit: Ratio<UsdValue, HumanAmount>,
 
-    /// Sum of `position.size * position.entry_funding_per_unit` across all open
-    /// positions for this pair.
-    ///
-    /// Maintained for efficient aggregate computations but NOT used for vault
-    /// equity (since the vault is a regular trader with explicit positions).
-    pub oi_weighted_entry_funding: UsdValue,
-
-    /// Sum of `position.size * position.entry_price` across all open
-    /// positions for this pair.
-    ///
-    /// Maintained for efficient aggregate computations but NOT used for vault
-    /// equity (since the vault is a regular trader with explicit positions).
-    pub oi_weighted_entry_price: UsdValue,
 }
 ```
 
@@ -1215,7 +1202,7 @@ fn handle_submit_order(
 ///
 /// IMPORTANT: The caller must call `accrue_funding` before calling this
 /// function. This ensures `cumulative_funding_per_unit` is up-to-date
-/// before we settle per-position funding and update `oi_weighted_entry_funding`.
+/// before we settle per-position funding.
 fn execute_fill(
     state: &mut State,
     pair_state: &mut PairState,
@@ -1226,12 +1213,8 @@ fn execute_fill(
     opening_size: HumanAmount,
     usdt_price: Ratio<UsdValue, BaseAmount>,
 ) {
-    // ---- Always: remove old accumulator contributions if position exists ----
+    // ---- Settle funding if position exists ----
     if let Some(pos) = user_state.positions.get_mut(&pair_id) {
-        pair_state.oi_weighted_entry_price -= pos.size * pos.entry_price;
-        pair_state.oi_weighted_entry_funding -= pos.size * pos.entry_funding_per_unit;
-
-        // ---- Always: settle funding (resets entry_funding_per_unit) ----
         settle_funding(state, pair_state, user_state, pos, usdt_price);
     }
 
@@ -1245,13 +1228,7 @@ fn execute_fill(
         apply_opening(user_state, pair_state, &pair_id, opening_size, exec_price);
     }
 
-    // ---- Always: re-add accumulator contributions if position still exists ----
-    if let Some(pos) = user_state.positions.get(&pair_id) {
-        pair_state.oi_weighted_entry_price += pos.size * pos.entry_price;
-        pair_state.oi_weighted_entry_funding += pos.size * pos.entry_funding_per_unit;
-    }
-
-    // ---- Always: update OI ----
+    // ---- Update OI ----
     update_oi(pair_state, opening_size, closing_size);
 }
 
@@ -1871,9 +1848,7 @@ Since the vault is a regular trader with explicit positions, its equity is compu
 /// The vault is stored as a UserState at VAULT_ADDR. Its equity is computed
 /// identically to any user: margin + unrealized_pnl - accrued_funding.
 ///
-/// No special formula, no aggregate accumulators needed. The oi_weighted_entry_price
-/// and oi_weighted_entry_funding accumulators in PairState are maintained for
-/// potential analytics use but are NOT required for vault equity.
+/// No special formula, no aggregate accumulators needed.
 fn compute_vault_equity(
     pair_states: &Map<PairId, PairState>,
     pair_params_map: &Map<PairId, PairParams>,
