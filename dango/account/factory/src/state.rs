@@ -20,6 +20,8 @@ pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
 
 pub const ACCOUNTS_BY_USER: Set<(UserIndex, Addr)> = dango_auth::account_factory::ACCOUNTS_BY_USER;
 
+pub const MAIN_ACCOUNT: Map<UserIndex, Addr> = Map::new("main_account");
+
 // Base is default to 1, because an account is opened automatically upon the
 // creation of each user.
 pub const ACCOUNT_COUNT_BY_USER: Counters<UserIndex, u8> = Counters::new("account_count", 1, 1);
