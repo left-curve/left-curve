@@ -63,16 +63,16 @@ pub struct Param {
 
     /// Fee charged to makers (limit orders that rest on the book) as a fraction
     /// of the fill's notional value, deducted from the user's margin and
-    /// transferred to the insurance fund on every fill.
+    /// transferred to the vault on every fill.
     pub maker_fee_rate: Dimensionless,
 
     /// Fee charged to takers (market orders and crossing limit orders) as a
     /// fraction of the fill's notional value, deducted from the user's margin
-    /// and transferred to the insurance fund on every fill.
+    /// and transferred to the vault on every fill.
     pub taker_fee_rate: Dimensionless,
 
-    /// Fee paid to the insurance fund as a fraction of the total notional value
-    /// of positions being liquidated, capped at the user's remaining margin
+    /// Fee paid to the vault as a fraction of the total notional value of
+    /// positions being liquidated, capped at the user's remaining margin
     /// after position closure.
     ///
     /// fee = min(
@@ -170,26 +170,22 @@ impl PairParam {
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct State {
-    /// The insurance fund balance. All PnL settlement, trading fees, and
-    /// liquidation fees flow through this fund. Bad debt (negative user equity
-    /// at liquidation) is absorbed here.
-    pub insurance_fund: Uint128,
+    /// Total supply of the vault's share token.
+    pub vault_share_supply: Uint128,
 
-    /// Accumulated bad debt that exceeded the insurance fund during
-    /// liquidations. When non-zero, ADL can be triggered. Reduced as
-    /// profitable positions are forcibly closed and their PnL forfeited.
-    pub adl_deficit: Uint128,
-
-    /// The vault's trading margin (LP capital deposited into the exchange).
-    /// The vault is a regular trader; its equity is computed identically to any
-    /// user via `compute_user_equity`.
+    /// The vault margin (LP capital deposited into the exchange). All PnL
+    /// settlement, trading fees, liquidation fees, and bad debt flow through
+    /// this balance. The vault is a regular trader; its equity is computed
+    /// identically to any user via `compute_user_equity`.
     ///
     /// This does not equal the vault's token balance tracked by the bank
     /// contract, which also includes unlocks that are pending cooldown.
     pub vault_margin: Uint128,
 
-    /// Total supply of the vault's share token.
-    pub vault_share_supply: Uint128,
+    /// Accumulated bad debt that exceeded the vault during liquidations.
+    /// When non-zero, ADL can be triggered. Reduced as profitable positions
+    /// are forcibly closed and their PnL forfeited.
+    pub adl_deficit: Uint128,
 }
 
 /// State of an individual trading pair.
@@ -356,8 +352,8 @@ pub enum ExecuteMsg {
     /// Forcibly close all of a user's positions, even if the user has sufficient
     /// amount of collateral.
     ///
-    /// This is enabled when the insurance fund is depleted after absorbing bad
-    /// debt from liquidations.
+    /// This is enabled when the vault cannot fully absorb bad debt from
+    /// liquidations.
     Deleverage { user: Addr },
 }
 

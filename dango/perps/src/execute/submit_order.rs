@@ -153,7 +153,7 @@ pub fn submit_order(
 /// - `taker_state.positions` — opened / closed / flipped per fill.
 /// - `taker_state.reserved_margin` / `open_order_count` — updated if a
 ///   limit order remainder is stored.
-/// - `state.insurance_fund` — adjusted by settled PnLs.
+/// - `state.vault_margin` — adjusted by settled PnLs.
 ///
 /// Returns:
 ///
@@ -467,7 +467,7 @@ pub(crate) fn settle_fill(
 }
 
 /// Convert per-user USD PnLs into settlement-currency base-unit amounts and
-/// update the insurance fund accordingly.
+/// update the vault margin accordingly.
 ///
 /// Returns:
 ///
@@ -492,7 +492,7 @@ pub(crate) fn settle_pnls(
             // Contract pays user: floor rounding favors contract.
             let amount = net_quantity.into_base_floor(settlement_currency::DECIMAL)?;
             if amount.is_non_zero() {
-                state.insurance_fund.checked_sub_assign(amount)?;
+                state.vault_margin.checked_sub_assign(amount)?;
                 payouts.insert(user, amount);
             }
         } else {
@@ -501,7 +501,7 @@ pub(crate) fn settle_pnls(
                 .checked_abs()?
                 .into_base_ceil(settlement_currency::DECIMAL)?;
             if amount.is_non_zero() {
-                state.insurance_fund.checked_add_assign(amount)?;
+                state.vault_margin.checked_add_assign(amount)?;
                 collections.push((user, amount));
             }
         }
@@ -1535,7 +1535,7 @@ mod tests {
     #[test]
     fn settle_pnls_mixed() {
         let mut state = State {
-            insurance_fund: Uint128::new(1_000_000_000),
+            vault_margin: Uint128::new(1_000_000_000),
             ..Default::default()
         };
 
@@ -1556,13 +1556,13 @@ mod tests {
         assert_eq!(collections[0], (Addr::mock(2), Uint128::new(200_000_000)));
 
         // 1_000_000_000 - 100_000_000 + 200_000_000
-        assert_eq!(state.insurance_fund, Uint128::new(1_100_000_000));
+        assert_eq!(state.vault_margin, Uint128::new(1_100_000_000));
     }
 
     #[test]
     fn settle_pnls_all_payouts() {
         let mut state = State {
-            insurance_fund: Uint128::new(1_000_000_000),
+            vault_margin: Uint128::new(1_000_000_000),
             ..Default::default()
         };
 
@@ -1577,7 +1577,7 @@ mod tests {
         assert!(collections.is_empty());
 
         // 1_000_000_000 - 100_000_000 - 50_000_000
-        assert_eq!(state.insurance_fund, Uint128::new(850_000_000));
+        assert_eq!(state.vault_margin, Uint128::new(850_000_000));
     }
 
     #[test]
@@ -1595,13 +1595,13 @@ mod tests {
         assert_eq!(collections.len(), 2);
 
         // 0 + 100_000_000 + 200_000_000
-        assert_eq!(state.insurance_fund, Uint128::new(300_000_000));
+        assert_eq!(state.vault_margin, Uint128::new(300_000_000));
     }
 
     #[test]
     fn settle_pnls_empty() {
         let mut state = State {
-            insurance_fund: Uint128::new(500_000_000),
+            vault_margin: Uint128::new(500_000_000),
             ..Default::default()
         };
 
@@ -1611,6 +1611,6 @@ mod tests {
 
         assert!(payouts.is_empty());
         assert!(collections.is_empty());
-        assert_eq!(state.insurance_fund, Uint128::new(500_000_000));
+        assert_eq!(state.vault_margin, Uint128::new(500_000_000));
     }
 }

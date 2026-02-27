@@ -1,8 +1,7 @@
 # Liquidation & Auto-Deleveraging (ADL)
 
 This document describes how the perpetual futures exchange protects itself from
-under-collateralised accounts and socialises losses that exceed the insurance
-fund.
+under-collateralised accounts and socialises losses that exceed the vault.
 
 ## 1 Liquidation trigger
 
@@ -90,7 +89,7 @@ remaining_margin = max(0, collateral + user_pnl_after_closes)
 fee = min(raw_fee, remaining_margin)
 ```
 
-The fee is deducted from the user's PnL and routed to the **insurance fund**.
+The fee is deducted from the user's PnL and routed to the **vault**.
 It is capped at the remaining margin so the fee itself never creates bad debt.
 
 ## 5 PnL settlement
@@ -113,18 +112,18 @@ balance, bad debt arises:
 bad_debt = collections − collateral_balance
 ```
 
-The insurance fund absorbs as much as it can:
+The vault absorbs as much as it can:
 
 ```plain
-absorbed  = min(bad_debt, insurance_fund)
+absorbed  = min(bad_debt, vault_margin)
 unabsorbed = bad_debt − absorbed
 
-insurance_fund −= absorbed
-adl_deficit    += unabsorbed
+vault_margin −= absorbed
+adl_deficit  += unabsorbed
 ```
 
-If the insurance fund fully covers the bad debt, the system returns to normal.
-If not, the unabsorbed amount is recorded as the **ADL deficit** and triggers
+If the vault fully covers the bad debt, the system returns to normal. If not,
+the unabsorbed amount is recorded as the **ADL deficit** and triggers
 auto-deleveraging.
 
 ## 7 ADL trigger
@@ -136,9 +135,8 @@ adl_deficit > 0
 ```
 
 This can only happen when a liquidation produces bad debt that exceeds the
-insurance fund. Once active, addresses listed in the `adl_operators` parameter
-set may call the deleverage action on profitable accounts until the deficit is
-cleared.
+vault. Once active, addresses listed in the `adl_operators` parameter set may
+call the deleverage action on profitable accounts until the deficit is cleared.
 
 ## 8 ADL ranking
 
@@ -176,12 +174,12 @@ deficit:
 ```plain
 pnl = Σ realised_pnl_from_adl_closes          (always > 0 for selected users)
 
-insurance_fund += pnl                          # restock
-forfeited       = min(pnl, adl_deficit)
-payout          = pnl − forfeited
+vault_margin += pnl                            # restock
+forfeited     = min(pnl, adl_deficit)
+payout        = pnl − forfeited
 
-insurance_fund −= payout
-adl_deficit    −= forfeited
+vault_margin −= payout
+adl_deficit  −= forfeited
 ```
 
 The user forfeits up to _adl_deficit_ of their profit to make the exchange
@@ -251,19 +249,19 @@ Alice collateral  = $3,000
 Alice receives    = $3,000 − $2,547.50 = $452.50
 
 Bad debt = $0      (collateral covers everything)
-Insurance fund    += $47.50
+Vault            += $47.50
 ```
 
-### Example 2 — Bad debt absorbed by the insurance fund
+### Example 2 — Bad debt absorbed by the vault
 
 **Setup**
 
-|                | Charlie    | Dana        |
-| -------------- | ---------- | ----------- |
-| Direction      | Long 1 BTC | Short 1 BTC |
-| Entry price    | $50,000    | $50,000     |
-| Collateral     | $3,000     | $10,000     |
-| Insurance fund | $5,000     |             |
+|              | Charlie    | Dana        |
+| ------------ | ---------- | ----------- |
+| Direction    | Long 1 BTC | Short 1 BTC |
+| Entry price  | $50,000    | $50,000     |
+| Collateral   | $3,000     | $10,000     |
+| Vault margin | $5,000     |             |
 
 **BTC drops to $46,000**
 
@@ -308,25 +306,25 @@ bad debt           = $4,000 − $3,000 = $1,000
 absorbed   = min($1,000, $5,000) = $1,000
 unabsorbed = $0
 
-Insurance fund: $5,000 − $1,000 = $4,000
-ADL deficit:    $0
+Vault margin: $5,000 − $1,000 = $4,000
+ADL deficit:  $0
 ```
 
-The insurance fund absorbs the full $1,000 shortfall. Charlie's entire $3,000
+The vault absorbs the full $1,000 shortfall. Charlie's entire $3,000
 collateral is collected and no ADL is needed.
 
-### Example 3 — Insurance fund exhausted, ADL triggered
+### Example 3 — Vault exhausted, ADL triggered
 
 **Setup**
 
-|                | Charlie    | Dana        |
-| -------------- | ---------- | ----------- |
-| Direction      | Long 1 BTC | Short 1 BTC |
-| Entry price    | $50,000    | $50,000     |
-| Collateral     | $3,000     | $10,000     |
-| Insurance fund | $500       |             |
+|              | Charlie    | Dana        |
+| ------------ | ---------- | ----------- |
+| Direction    | Long 1 BTC | Short 1 BTC |
+| Entry price  | $50,000    | $50,000     |
+| Collateral   | $3,000     | $10,000     |
+| Vault margin | $500       |             |
 
-Same positions as Example 2, but the insurance fund is smaller.
+Same positions as Example 2, but the vault is smaller.
 
 **BTC drops to $46,000**
 
@@ -339,11 +337,11 @@ bad debt       = $4,000 − $3,000 = $1,000
 absorbed       = min($1,000, $500) = $500
 unabsorbed     = $500
 
-Insurance fund: $500 − $500 = $0
-ADL deficit:    $500
+Vault margin: $500 − $500 = $0
+ADL deficit:  $500
 ```
 
-The insurance fund is exhausted with $500 of bad debt remaining. ADL activates.
+The vault is exhausted with $500 of bad debt remaining. ADL activates.
 
 _ADL — selecting Dana_
 
@@ -373,23 +371,22 @@ Dana realised PnL = $4,000
 _Forfeiture_
 
 ```plain
-insurance_fund += $4,000            →  $4,000
-forfeited       = min($4,000, $500) =  $500
-payout          = $4,000 − $500     =  $3,500
+vault_margin += $4,000            →  $4,000
+forfeited     = min($4,000, $500) =  $500
+payout        = $4,000 − $500     =  $3,500
 
-insurance_fund −= $3,500            →  $500
-adl_deficit    −= $500              →  $0
+vault_margin −= $3,500            →  $500
+adl_deficit  −= $500              →  $0
 ```
 
 Dana forfeits $500 of her $4,000 profit to cover the remaining deficit and
-receives $3,500. The insurance fund is restocked to $500 and the ADL deficit is
-cleared.
+receives $3,500. The vault is restocked to $500 and the ADL deficit is cleared.
 
 **Final state**
 
-|                | Balance                                             |
-| -------------- | --------------------------------------------------- |
-| Charlie        | $0 (fully liquidated)                               |
-| Dana           | $10,000 + $3,500 = $13,500 (profit reduced by $500) |
-| Insurance fund | $500                                                |
-| ADL deficit    | $0                                                  |
+| &nbsp;       | Balance                                             |
+| ------------ | --------------------------------------------------- |
+| Charlie      | $0 (fully liquidated)                               |
+| Dana         | $10,000 + $3,500 = $13,500 (profit reduced by $500) |
+| Vault margin | $500                                                |
+| ADL deficit  | $0                                                  |

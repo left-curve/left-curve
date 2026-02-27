@@ -123,7 +123,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 ///
 /// - `pair_states` — OI updated per fill.
 /// - `user_state.positions` — profitable positions closed.
-/// - `state.insurance_fund` — restocked from forfeited PnL.
+/// - `state.vault_margin` — restocked from forfeited PnL.
 /// - `state.adl_deficit` — reduced by forfeited amount.
 ///
 /// Returns an optional payout `(user, amount)` in settlement-currency base units.
@@ -196,15 +196,15 @@ fn _deleverage(
         let pnl_quantity = user_pnl.checked_div(settlement_currency_price)?;
         let pnl_base = pnl_quantity.into_base_floor(settlement_currency::DECIMAL)?;
 
-        // Restock insurance fund with full PnL.
-        state.insurance_fund.checked_add_assign(pnl_base)?;
+        // Restock vault with full PnL.
+        state.vault_margin.checked_add_assign(pnl_base)?;
 
         // Forfeit up to the deficit.
         let forfeited = pnl_base.min(state.adl_deficit);
         let payout = pnl_base.checked_sub(forfeited)?;
 
         // Pay out the non-forfeited portion.
-        state.insurance_fund.checked_sub_assign(payout)?;
+        state.vault_margin.checked_sub_assign(payout)?;
         state.adl_deficit.checked_sub_assign(forfeited)?;
 
         if payout.is_non_zero() {
@@ -315,9 +315,9 @@ mod tests {
         USER_STATES.save(storage, user, &user_state).unwrap();
     }
 
-    fn state_with_deficit(insurance_fund: u128, adl_deficit: u128) -> State {
+    fn state_with_deficit(vault_margin: u128, adl_deficit: u128) -> State {
         State {
-            insurance_fund: Uint128::new(insurance_fund),
+            vault_margin: Uint128::new(vault_margin),
             adl_deficit: Uint128::new(adl_deficit),
             ..Default::default()
         }
@@ -511,12 +511,12 @@ mod tests {
         assert_eq!(pair_states[&pair_btc()].long_oi, Quantity::ZERO);
 
         // PnL = 15000 USDC = 15_000_000_000 base
-        // insurance_fund += 15_000_000_000 (restock)
+        // vault_margin += 15_000_000_000 (restock)
         // forfeited = min(15_000_000_000, 5_000_000_000) = 5_000_000_000
         // payout = 15_000_000_000 - 5_000_000_000 = 10_000_000_000
-        // insurance_fund -= 10_000_000_000 (payout)
-        // net insurance_fund = 0 + 15_000_000_000 - 10_000_000_000 = 5_000_000_000
-        assert_eq!(state.insurance_fund, Uint128::new(5_000_000_000));
+        // vault_margin -= 10_000_000_000 (payout)
+        // net vault_margin = 0 + 15_000_000_000 - 10_000_000_000 = 5_000_000_000
+        assert_eq!(state.vault_margin, Uint128::new(5_000_000_000));
         assert_eq!(state.adl_deficit, Uint128::ZERO);
 
         // Payout should be 10_000_000_000.
@@ -584,8 +584,8 @@ mod tests {
         // All PnL forfeited, no payout.
         assert_eq!(result.unwrap(), None);
 
-        // insurance_fund = 0 + 15_000_000_000 (restock) - 0 (no payout) = 15_000_000_000
-        assert_eq!(state.insurance_fund, Uint128::new(15_000_000_000));
+        // vault_margin = 0 + 15_000_000_000 (restock) - 0 (no payout) = 15_000_000_000
+        assert_eq!(state.vault_margin, Uint128::new(15_000_000_000));
         // deficit: 20_000_000_000 - 15_000_000_000 = 5_000_000_000
         assert_eq!(state.adl_deficit, Uint128::new(5_000_000_000));
     }
@@ -722,7 +722,7 @@ mod tests {
         assert!(result.is_ok(), "deleverage failed: {:?}", result.err());
 
         // _deleverage never force-collects from user. It only pays out from
-        // the insurance fund. The collateral is not touched.
+        // the vault. The collateral is not touched.
         // (No collections returned — only an optional payout.)
     }
 }

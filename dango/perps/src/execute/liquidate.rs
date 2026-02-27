@@ -319,7 +319,7 @@ fn apply_liquidation_fee(
     let actual_fee = fee_usd.min(remaining_margin);
 
     // Deduct the fee from the user's PnL entry. This routes the fee to the
-    // insurance fund when settle_pnls converts USD values to base amounts.
+    // vault when settle_pnls converts USD values to base amounts.
     if actual_fee.is_non_zero() {
         pnls.entry(user)
             .or_default()
@@ -370,7 +370,7 @@ fn settle_vault_pnl(
 /// - `pair_states` — OI updated per fill.
 /// - `user_state.positions` — closed (partially or fully) per the schedule.
 /// - `vault_state.positions` — opened for any vault-backstopped fills.
-/// - `state.insurance_fund` — adjusted by settled PnLs and bad debt.
+/// - `state.vault_margin` — adjusted by settled PnLs and bad debt.
 /// - `state.vault_margin` — adjusted by the vault's PnL entry.
 ///
 /// Returns:
@@ -451,14 +451,14 @@ fn _liquidate(
     let (payouts, mut collections) = settle_pnls(all_pnls, settlement_currency_price, state)?;
 
     // Bad debt check: if the user owes more than their collateral, cap the
-    // collection and absorb the bad debt from the insurance fund.
+    // collection and absorb the bad debt from the vault.
     if let Some((_, amount)) = collections.iter_mut().find(|(addr, _)| *addr == user)
         && *amount > collateral_balance
     {
         let bad_debt = amount.checked_sub(collateral_balance)?;
-        let absorbed = bad_debt.min(state.insurance_fund);
+        let absorbed = bad_debt.min(state.vault_margin);
         let unabsorbed = bad_debt.checked_sub(absorbed)?;
-        state.insurance_fund.checked_sub_assign(absorbed)?;
+        state.vault_margin.checked_sub_assign(absorbed)?;
         state.adl_deficit.checked_add_assign(unabsorbed)?;
         *amount = collateral_balance;
     }
@@ -466,12 +466,8 @@ fn _liquidate(
     // Remove zero-amount collections.
     collections.retain(|(_, amount)| amount.is_non_zero());
 
-    // If the user has a payout, it goes to the insurance fund instead (the user
-    // was liquidated; any remaining equity after paying off debts is forfeit to
-    // the insurance fund via the liquidation fee mechanism — but any payout
-    // from settle_pnls is legitimate margin return).
-    // Actually, payouts from settle_pnls are legitimate — they happen when
-    // the user's positions were closed at a profit. Keep them.
+    // Payouts from settle_pnls are legitimate — they happen when the user's
+    // positions were closed at a profit. Keep them.
 
     Ok((payouts, collections, all_maker_states, all_order_mutations))
 }
@@ -596,9 +592,9 @@ mod tests {
         ASKS.save(storage, key, &order).unwrap();
     }
 
-    fn state_with_insurance(amount: u128) -> State {
+    fn state_with_vault(amount: u128) -> State {
         State {
-            insurance_fund: Uint128::new(amount),
+            vault_margin: Uint128::new(amount),
             ..Default::default()
         }
     }
@@ -731,7 +727,7 @@ mod tests {
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let mut vault_state = UserState::default();
-        let mut state = state_with_insurance(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
         let collateral_balance = Uint128::new(2_400_000_000);
@@ -811,7 +807,7 @@ mod tests {
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let mut vault_state = UserState::default();
-        let mut state = state_with_insurance(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
         let collateral_balance = Uint128::new(2_400_000_000);
@@ -926,7 +922,7 @@ mod tests {
         oracle_prices.insert(pair_eth(), UsdPrice::new_int(2_800));
 
         let mut vault_state = UserState::default();
-        let mut state = state_with_insurance(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000_000_000);
 
         let collateral_value = UsdValue::new_int(4_000);
         let collateral_balance = Uint128::new(4_000_000_000);
@@ -1017,7 +1013,7 @@ mod tests {
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let mut vault_state = UserState::default();
-        let mut state = state_with_insurance(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000_000_000);
 
         let collateral_value = UsdValue::new_int(2_500);
         let collateral_balance = Uint128::new(2_500_000_000);
