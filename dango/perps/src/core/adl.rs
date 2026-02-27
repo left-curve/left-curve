@@ -1,7 +1,4 @@
-use dango_types::{
-    Dimensionless, UsdPrice, UsdValue,
-    perps::Position,
-};
+use dango_types::{Dimensionless, UsdPrice, UsdValue, perps::Position};
 
 /// Compute the ADL ranking score for a single position.
 ///
@@ -50,8 +47,8 @@ mod tests {
     fn long_in_profit() {
         // Long 1 BTC at $50k, oracle $55k → PnL = $5k
         let pos = make_position(1, 50_000);
-        let score = compute_adl_score(&pos, UsdPrice::new_int(55_000), UsdValue::new_int(10_000))
-            .unwrap();
+        let score =
+            compute_adl_score(&pos, UsdPrice::new_int(55_000), UsdValue::new_int(10_000)).unwrap();
 
         assert!(score > Dimensionless::ZERO);
     }
@@ -60,8 +57,8 @@ mod tests {
     fn short_in_profit() {
         // Short 1 BTC at $55k, oracle $50k → PnL = $5k
         let pos = make_position(-1, 55_000);
-        let score = compute_adl_score(&pos, UsdPrice::new_int(50_000), UsdValue::new_int(10_000))
-            .unwrap();
+        let score =
+            compute_adl_score(&pos, UsdPrice::new_int(50_000), UsdValue::new_int(10_000)).unwrap();
 
         assert!(score > Dimensionless::ZERO);
     }
@@ -70,8 +67,8 @@ mod tests {
     fn position_at_loss_returns_zero() {
         // Long 1 BTC at $50k, oracle $45k → PnL = -$5k
         let pos = make_position(1, 50_000);
-        let score = compute_adl_score(&pos, UsdPrice::new_int(45_000), UsdValue::new_int(10_000))
-            .unwrap();
+        let score =
+            compute_adl_score(&pos, UsdPrice::new_int(45_000), UsdValue::new_int(10_000)).unwrap();
 
         assert_eq!(score, Dimensionless::ZERO);
     }
@@ -79,8 +76,7 @@ mod tests {
     #[test]
     fn zero_equity_returns_zero() {
         let pos = make_position(1, 50_000);
-        let score =
-            compute_adl_score(&pos, UsdPrice::new_int(55_000), UsdValue::ZERO).unwrap();
+        let score = compute_adl_score(&pos, UsdPrice::new_int(55_000), UsdValue::ZERO).unwrap();
 
         assert_eq!(score, Dimensionless::ZERO);
     }

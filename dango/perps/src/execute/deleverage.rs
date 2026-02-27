@@ -1,12 +1,8 @@
 use {
     crate::{
-        NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, STATE, USER_STATES,
+        NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{accrue_funding, compute_adl_score, compute_user_equity},
-        execute::{
-            ORACLE,
-            cancel_order::cancel_all_orders_for,
-            submit_order::settle_fill,
-        },
+        execute::{ORACLE, cancel_order::cancel_all_orders_for, submit_order::settle_fill},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -20,6 +16,13 @@ use {
 
 pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // ----------------------------- 1. Load state + checks -----------------------
+
+    let param = PARAM.load(ctx.storage)?;
+
+    ensure!(
+        param.adl_operators.contains(&ctx.sender),
+        "sender is not an authorized ADL operator"
+    );
 
     let mut state = STATE.load(ctx.storage)?;
 
@@ -225,19 +228,17 @@ mod tests {
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             oracle::PrecisionedPrice,
-            perps::{
-                PairId, PairParam, PairState, Param, Position, State,
-                settlement_currency,
-            },
+            perps::{PairId, PairParam, PairState, Param, Position, State, settlement_currency},
         },
         grug::{
             Addr, Coins, MockContext, NumberConst, Storage, Timestamp, Udec128, Uint128, hash_map,
         },
-        std::collections::BTreeMap,
+        std::collections::{BTreeMap, BTreeSet},
     };
 
-    const USER: Addr = Addr::mock(1);
     const CONTRACT: Addr = Addr::mock(0);
+
+    const USER: Addr = Addr::mock(1);
 
     fn pair_btc() -> PairId {
         "perp/btcusd".parse().unwrap()
@@ -253,6 +254,7 @@ mod tests {
             maker_fee_rate: Dimensionless::new_permille(10),
             liquidation_fee_rate: Dimensionless::new_permille(10),
             max_open_orders: 100,
+            adl_operators: BTreeSet::from([Addr::mock(99)]),
             ..Default::default()
         }
     }

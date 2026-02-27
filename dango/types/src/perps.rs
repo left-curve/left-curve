@@ -3,7 +3,10 @@ use {
         Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue,
     },
     grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
-    std::{collections::{BTreeMap, VecDeque}, sync::LazyLock},
+    std::{
+        collections::{BTreeMap, BTreeSet, VecDeque},
+        sync::LazyLock,
+    },
 };
 
 // --------------------------------- Constants ---------------------------------
@@ -77,6 +80,9 @@ pub struct Param {
     ///   user_remaining_margin
     /// )
     pub liquidation_fee_rate: Dimensionless,
+
+    /// Set of addresses authorized to call `Deleverage`.
+    pub adl_operators: BTreeSet<Addr>,
 }
 
 /// Parameters that apply to an individual trading pair.

@@ -136,8 +136,9 @@ adl_deficit > 0
 ```
 
 This can only happen when a liquidation produces bad debt that exceeds the
-insurance fund. Once active, any third party may call the deleverage action on
-profitable accounts until the deficit is cleared.
+insurance fund. Once active, addresses listed in the `adl_operators` parameter
+set may call the deleverage action on profitable accounts until the deficit is
+cleared.
 
 ## 8 ADL ranking
 
