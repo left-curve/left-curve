@@ -199,7 +199,7 @@ pub fn compute_required_margin(
 ///
 /// Returns zero when equity falls below the used + reserved requirement
 /// (the user cannot open new positions or withdraw, and may face liquidation).
-pub(super) fn compute_available_margin(
+pub fn compute_available_margin(
     collateral_value: UsdValue,
     user_state: &UserState,
     perp_querier: &NoCachePerpQuerier,

@@ -1,15 +1,27 @@
 use {
     crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, ORPHANED_TRANSFERS, SUPPLIES},
     anyhow::{anyhow, bail, ensure},
-    dango_types::bank::{
-        Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
+    dango_oracle::OracleQuerier,
+    dango_perps::{NoCachePerpQuerier, USER_STATES},
+    dango_types::{
+        bank::{
+            Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
+        },
+        perps::settlement_currency,
     },
     grug::{
         Addr, BankMsg, Coins, Denom, EventBuilder, IsZero, MutableCtx, Number, NumberConst, Part,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
+        QuerierExt, Response, StdError, StdResult, Storage, StorageQuerier, SudoCtx, Uint128, addr,
     },
     std::collections::HashMap,
 };
+
+/// Address of the perps contract.
+// TODO: update with the actual deployed perps contract address.
+const PERPS: Addr = addr!("0000000000000000000000000000000000000000");
+
+/// Address of the oracle contract.
+const ORACLE: Addr = addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d");
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
@@ -256,6 +268,38 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
 ///    the tokens by calling the `recover_transfer` method.
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> anyhow::Result<Response> {
+    // Sum settlement currency being transferred out across all recipients.
+    let total_settlement = msg
+        .transfers
+        .values()
+        .try_fold(Uint128::ZERO, |acc, coins| {
+            acc.checked_add(coins.amount_of(&settlement_currency::DENOM))
+        })?;
+
+    // If the sender is transferring settlement currency, ensure they have
+    // sufficient available margin to cover the transfer.
+    if total_settlement.is_non_zero()
+        && let Some(user_state) = ctx
+            .querier
+            .may_query_wasm_path(PERPS, &USER_STATES.path(msg.from))?
+        && !user_state.positions.is_empty()
+    {
+        let perp_querier = NoCachePerpQuerier::new_remote(PERPS, ctx.querier);
+        let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
+
+        let balance = BALANCES
+            .may_load(ctx.storage, (&msg.from, &settlement_currency::DENOM))?
+            .unwrap_or(Uint128::ZERO);
+
+        crate::perp_margin::check_perps_margin(
+            &user_state,
+            balance,
+            total_settlement,
+            &perp_querier,
+            &mut oracle_querier,
+        )?;
+    }
+
     let mut events = EventBuilder::with_capacity(msg.transfers.len() * 3);
 
     for (to, coins) in msg.transfers {
