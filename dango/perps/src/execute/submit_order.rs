@@ -20,8 +20,8 @@ use {
         },
     },
     grug::{
-        Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst,
-        Order as IterationOrder, QuerierExt, Response, Storage, Uint128, coins,
+        Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst, Order as IterationOrder,
+        QuerierExt, Response, Storage, Uint128, coins,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
