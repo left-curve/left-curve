@@ -27,7 +27,7 @@ pub fn compute_target_price(
                 oracle_price.checked_mul(Dimensionless::ONE.checked_sub(max_slippage)?)
             }
         },
-        OrderKind::Limit { limit_price } => Ok(limit_price),
+        OrderKind::Limit { limit_price, .. } => Ok(limit_price),
     }
 }
 
@@ -83,6 +83,7 @@ mod tests {
             compute_target_price(
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(limit),
+                    post_only: false,
                 },
                 UsdPrice::new_int(100),
                 is_bid

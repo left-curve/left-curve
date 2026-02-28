@@ -218,6 +218,30 @@ fn _submit_order(
 
     check_oi_constraint(opening_size, pair_state, pair_param)?;
 
+    // ---------------------- Step 5. Post-only fast path ----------------------
+
+    if let Some(limit_price) = kind.post_only_price() {
+        let order_to_store = store_post_only_limit_order(
+            storage,
+            taker,
+            param,
+            pair_param,
+            taker_state,
+            pair_id,
+            fillable_size,
+            limit_price,
+            reduce_only,
+        )?;
+
+        return Ok((
+            BTreeMap::new(),
+            Vec::new(),
+            BTreeMap::new(),
+            Vec::new(),
+            Some(order_to_store),
+        ));
+    }
+
     // ----------------- Step 5: Pre-match taker margin check ------------------
     //
     // Reduce-only orders only reduce exposure, so they skip the check.
@@ -268,7 +292,7 @@ fn _submit_order(
                     "no liquidity at acceptable price! target_price: {target_price}"
                 );
             },
-            OrderKind::Limit { limit_price } => {
+            OrderKind::Limit { limit_price, .. } => {
                 let order_to_store = store_limit_order(
                     storage,
                     taker,
@@ -508,6 +532,71 @@ pub(crate) fn settle_pnls(
     }
 
     Ok((payouts, collections))
+}
+
+/// Validate and store a post-only limit order. Rejects if the limit price
+/// would cross the best resting order on the opposite side of the book.
+///
+/// Mutates:
+///
+/// - `taker_state.reserved_margin` — increased by the margin reserved for
+///   the resting order.
+/// - `taker_state.open_order_count` — incremented by one.
+///
+/// Returns:
+///
+/// - `(stored_price, order_id, Order)` — the resting order to persist.
+fn store_post_only_limit_order(
+    storage: &dyn Storage,
+    taker: Addr,
+    param: &Param,
+    pair_param: &PairParam,
+    taker_state: &mut UserState,
+    pair_id: &PairId,
+    size: Quantity,
+    limit_price: UsdPrice,
+    reduce_only: bool,
+) -> anyhow::Result<(UsdPrice, OrderId, Order)> {
+    let taker_is_bid = size.is_positive();
+    let maker_is_bid = !taker_is_bid;
+
+    let maker_book = if taker_is_bid {
+        ASKS
+    } else {
+        BIDS
+    };
+
+    if let Some(record) = maker_book
+        .prefix(pair_id.clone())
+        .range(storage, None, None, IterationOrder::Ascending)
+        .next()
+    {
+        let ((stored_price, _), _) = record?;
+        let best_price = may_invert_price(stored_price, maker_is_bid)?;
+
+        if taker_is_bid {
+            ensure!(
+                limit_price < best_price,
+                "post-only buy at {limit_price} would cross best ask at {best_price}"
+            );
+        } else {
+            ensure!(
+                limit_price > best_price,
+                "post-only sell at {limit_price} would cross best bid at {best_price}"
+            );
+        }
+    }
+
+    store_limit_order(
+        storage,
+        taker,
+        param,
+        pair_param,
+        taker_state,
+        size,
+        limit_price,
+        reduce_only,
+    )
 }
 
 fn store_limit_order(
@@ -872,6 +961,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
+                post_only: false,
             },
             false,
             &mut oq,
@@ -918,6 +1008,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
+                post_only: false,
             },
             false,
             &mut oq,
@@ -968,6 +1059,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
+                post_only: false,
             },
             false,
             &mut oq,
@@ -1271,6 +1363,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_100),
+                post_only: false,
             },
             false,
             &mut oq,
@@ -1315,6 +1408,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_050),
+                post_only: false,
             },
             false,
             &mut oq,
@@ -1612,5 +1706,331 @@ mod tests {
         assert!(payouts.is_empty());
         assert!(collections.is_empty());
         assert_eq!(state.vault_margin, Uint128::new(500_000_000));
+    }
+
+    // =================== Post-only order tests ===============================
+
+    #[test]
+    fn post_only_buy_rests_below_best_ask() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState::default();
+        let mut oq = test_oracle_querier();
+        let mut state = State::default();
+
+        let (payouts, collections, _, order_mutations, order_to_store) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            Timestamp::from_nanos(0),
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_000),
+            LARGE_COLLATERAL,
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                post_only: true,
+            },
+            false,
+            &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
+        )
+        .unwrap();
+
+        // No fills — order rests.
+        assert!(!taker_state.positions.contains_key(&pair_id()));
+        assert!(order_to_store.is_some());
+        let (_, _, order) = order_to_store.unwrap();
+        assert_eq!(order.size, Quantity::new_int(10));
+
+        // No payouts/collections/mutations.
+        assert!(payouts.is_empty());
+        assert!(collections.is_empty());
+        assert!(order_mutations.is_empty());
+    }
+
+    #[test]
+    fn post_only_buy_at_best_ask_rejected() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState::default();
+        let mut oq = test_oracle_querier();
+        let mut state = State::default();
+
+        let err = _submit_order(
+            &ctx.storage,
+            TAKER,
+            Timestamp::from_nanos(0),
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_000),
+            LARGE_COLLATERAL,
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(50_000),
+                post_only: true,
+            },
+            false,
+            &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
+        );
+
+        assert!(err.is_err());
+        assert!(err.unwrap_err().to_string().contains("post-only buy"));
+    }
+
+    #[test]
+    fn post_only_buy_above_best_ask_rejected() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState::default();
+        let mut oq = test_oracle_querier();
+        let mut state = State::default();
+
+        let err = _submit_order(
+            &ctx.storage,
+            TAKER,
+            Timestamp::from_nanos(0),
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_000),
+            LARGE_COLLATERAL,
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(51_000),
+                post_only: true,
+            },
+            false,
+            &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
+        );
+
+        assert!(err.is_err());
+        assert!(err.unwrap_err().to_string().contains("post-only buy"));
+    }
+
+    #[test]
+    fn post_only_sell_rests_above_best_bid() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_bid(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState::default();
+        let mut oq = test_oracle_querier();
+        let mut state = State::default();
+
+        let (payouts, collections, _, order_mutations, order_to_store) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            Timestamp::from_nanos(0),
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_000),
+            LARGE_COLLATERAL,
+            Quantity::new_int(-10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(51_000),
+                post_only: true,
+            },
+            false,
+            &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
+        )
+        .unwrap();
+
+        // No fills — order rests.
+        assert!(!taker_state.positions.contains_key(&pair_id()));
+        assert!(order_to_store.is_some());
+        let (_, _, order) = order_to_store.unwrap();
+        assert_eq!(order.size, Quantity::new_int(-10));
+
+        assert!(payouts.is_empty());
+        assert!(collections.is_empty());
+        assert!(order_mutations.is_empty());
+    }
+
+    #[test]
+    fn post_only_sell_at_best_bid_rejected() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_bid(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState::default();
+        let mut oq = test_oracle_querier();
+        let mut state = State::default();
+
+        let err = _submit_order(
+            &ctx.storage,
+            TAKER,
+            Timestamp::from_nanos(0),
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_000),
+            LARGE_COLLATERAL,
+            Quantity::new_int(-10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(50_000),
+                post_only: true,
+            },
+            false,
+            &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
+        );
+
+        assert!(err.is_err());
+        assert!(err.unwrap_err().to_string().contains("post-only sell"));
+    }
+
+    #[test]
+    fn post_only_buy_empty_book_succeeds() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        // No asks placed — empty book.
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState::default();
+        let mut oq = test_oracle_querier();
+        let mut state = State::default();
+
+        let (.., order_to_store) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            Timestamp::from_nanos(0),
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_000),
+            LARGE_COLLATERAL,
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                post_only: true,
+            },
+            false,
+            &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
+        )
+        .unwrap();
+
+        assert!(order_to_store.is_some());
+        let (_, _, order) = order_to_store.unwrap();
+        assert_eq!(order.size, Quantity::new_int(10));
+    }
+
+    #[test]
+    fn post_only_reduce_only_rests() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_bid(&mut ctx.storage, MAKER_A, 48_000, 20, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        pair_state.long_oi = Quantity::new_int(5);
+
+        let mut taker_state = UserState::default();
+        taker_state.positions.insert(pair_id(), Position {
+            size: Quantity::new_int(5),
+            entry_price: UsdPrice::new_int(50_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+        });
+        let mut oq = test_oracle_querier();
+        let mut state = State::default();
+
+        let (.., order_to_store) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            Timestamp::from_nanos(0),
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_000),
+            LARGE_COLLATERAL,
+            Quantity::new_int(-5),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(51_000),
+                post_only: true,
+            },
+            true,
+            &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
+        )
+        .unwrap();
+
+        // Order rests, reduce_only flag preserved.
+        assert!(order_to_store.is_some());
+        let (_, _, order) = order_to_store.unwrap();
+        assert_eq!(order.size, Quantity::new_int(-5));
+        assert!(order.reduce_only);
     }
 }

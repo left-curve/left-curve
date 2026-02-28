@@ -288,7 +288,7 @@ pub fn check_margin(
 
     // --------------------------- Check 2: 0% fill ----------------------------
 
-    if let OrderKind::Limit { limit_price } = kind {
+    if let OrderKind::Limit { limit_price, .. } = kind {
         let available_margin = compute_available_margin(
             collateral_value,
             taker_state,
@@ -1274,6 +1274,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
+                post_only: false,
             },
         );
 
@@ -1345,6 +1346,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(55_000),
+                post_only: false,
             },
         );
 

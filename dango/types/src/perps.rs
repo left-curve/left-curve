@@ -42,7 +42,28 @@ pub enum OrderKind {
     Market { max_slippage: Dimensionless },
 
     /// Trade at the specified limit price.
-    Limit { limit_price: UsdPrice },
+    ///
+    /// When `post_only` is true, the order is rejected if it would
+    /// immediately match against a resting order on the opposite side.
+    /// This guarantees the submitter becomes a maker.
+    Limit {
+        limit_price: UsdPrice,
+        post_only: bool,
+    },
+}
+
+impl OrderKind {
+    /// If this is a post-only limit order, return the limit price.
+    /// Otherwise, return `None`.
+    pub fn post_only_price(self) -> Option<UsdPrice> {
+        match self {
+            OrderKind::Limit {
+                limit_price,
+                post_only: true,
+            } => Some(limit_price),
+            _ => None,
+        }
+    }
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
