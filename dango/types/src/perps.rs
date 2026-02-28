@@ -155,7 +155,6 @@ pub struct PairParam {
 
     /// Minimum notional value for an order. Reduce-only orders are exempt.
     /// Prevents dust orders from cluttering the order book.
-    #[serde(alias = "min_opening_size")]
     pub min_order_size: UsdValue,
 
     /// Margin requirement when opening or increasing a position in this trading
