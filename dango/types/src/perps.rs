@@ -110,24 +110,16 @@ pub struct Param {
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct PairParam {
+    /// Minimum price increment for limit orders in this pair. All limit order
+    /// prices must be an integer multiple of `tick_size`.
+    pub tick_size: UsdPrice,
+
     /// A scaling factor that determines how greatly an imbalance in long/short
     /// open interests (the "skew") should affect the funding rate. The greater
     /// the value of the scaling factor, the less the effect. Used only for the
     /// funding fee mechanism (not for pricing, which is determined by the order
     /// book).
     pub skew_scale: Quantity,
-
-    /// The maximum allowed open interest for both long and short.
-    /// I.e. the following must be satisfied:
-    ///
-    /// pair_state.long_oi <= max_abs_oi && pair_state.short_oi <= max_abs_oi
-    ///
-    /// This constraint does not apply to reduce-only orders.
-    pub max_abs_oi: Quantity,
-
-    /// Minimum price increment for limit orders in this pair. All limit order
-    /// prices must be an integer multiple of `tick_size`.
-    pub tick_size: UsdPrice,
 
     /// Half the bid-ask spread the vault quotes around the oracle price. The
     /// vault places bids at `oracle_price * (1 - vault_half_spread)` and asks
@@ -137,6 +129,18 @@ pub struct PairParam {
     /// Maximum notional size (in quote currency) of the vault's resting orders
     /// on each side of the book. Limits the vault's exposure per pair.
     pub vault_max_quote_size: Quantity,
+
+    /// Minimum notional value for an order. Reduce-only orders are exempt.
+    /// Prevents dust orders from cluttering the order book.
+    pub min_order_size: UsdValue,
+
+    /// The maximum allowed open interest for both long and short.
+    /// I.e. the following must be satisfied:
+    ///
+    /// pair_state.long_oi <= max_abs_oi && pair_state.short_oi <= max_abs_oi
+    ///
+    /// This constraint does not apply to reduce-only orders.
+    pub max_abs_oi: Quantity,
 
     /// Maximum absolute funding rate, as a fraction per day.
     ///
@@ -152,10 +156,6 @@ pub struct PairParam {
     /// When |skew| = skew_scale, the funding rate changes by this much per day.
     /// When skew == 0, the rate drifts back toward zero at this speed.
     pub max_funding_velocity: FundingVelocity,
-
-    /// Minimum notional value for an order. Reduce-only orders are exempt.
-    /// Prevents dust orders from cluttering the order book.
-    pub min_order_size: UsdValue,
 
     /// Margin requirement when opening or increasing a position in this trading
     /// pair. E.g. 5% indicates a 1 / 5% = 20x maximum leverage.
