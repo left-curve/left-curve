@@ -2,8 +2,8 @@ use {
     crate::{
         ASKS, BIDS, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{
-            accrue_funding, compute_close_schedule, compute_maintenance_margin,
-            compute_user_equity, is_liquidatable,
+            compute_close_schedule, compute_maintenance_margin, compute_user_equity,
+            is_liquidatable,
         },
         execute::{
             BANK, ORACLE,
@@ -51,7 +51,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     cancel_all_orders_for(ctx.storage, user, &mut user_state)?;
 
-    // ------------------- 3. Accrue funding for all pairs ---------------------
+    // ------------------- 3. Load pair params and states ---------------------
 
     // Collect pair IDs first to avoid borrow conflicts.
     let pair_ids = user_state.positions.keys().cloned().collect::<Vec<_>>();
@@ -61,19 +61,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     for pair_id in &pair_ids {
         let pair_param = PAIR_PARAMS.load(ctx.storage, pair_id)?;
-        let mut pair_state = PAIR_STATES.load(ctx.storage, pair_id)?;
-
-        let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
-
-        accrue_funding(
-            &mut pair_state,
-            &pair_param,
-            ctx.block.timestamp,
-            oracle_price,
-        )?;
-
-        // Save accrued pair state so NoCachePerpQuerier reads it.
-        PAIR_STATES.save(ctx.storage, pair_id, &pair_state)?;
+        let pair_state = PAIR_STATES.load(ctx.storage, pair_id)?;
 
         pair_params.insert(pair_id.clone(), pair_param);
         pair_states.insert(pair_id.clone(), pair_state);
@@ -516,7 +504,6 @@ mod tests {
         PairParam {
             initial_margin_ratio: Dimensionless::new_permille(100), // 10%
             maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
-            skew_scale: Quantity::new_int(100_000),
             max_abs_oi: Quantity::new_int(1_000_000),
             ..Default::default()
         }
@@ -526,7 +513,6 @@ mod tests {
         PairParam {
             initial_margin_ratio: Dimensionless::new_permille(100), // 10%
             maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
-            skew_scale: Quantity::new_int(100_000),
             max_abs_oi: Quantity::new_int(1_000_000),
             ..Default::default()
         }

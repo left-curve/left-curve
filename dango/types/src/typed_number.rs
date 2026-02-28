@@ -10,7 +10,7 @@ use {
         marker::PhantomData,
         ops::{Add, Neg, Sub},
     },
-    typenum::{N1, N2, P1, Z0},
+    typenum::{N1, P1, Z0},
 };
 
 // -------------------------------- Number type --------------------------------
@@ -286,6 +286,3 @@ pub type FundingPerUnit = Number<N1, P1, Z0>;
 
 /// Funding rate: duration⁻¹
 pub type FundingRate = Number<Z0, Z0, N1>;
-
-/// Funding velocity, i.e. the rate at which funding rate changes: duration⁻²
-pub type FundingVelocity = Number<Z0, Z0, N2>;

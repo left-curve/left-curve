@@ -1,7 +1,5 @@
 use {
-    crate::{
-        Dimensionless, FundingPerUnit, FundingRate, FundingVelocity, Quantity, UsdPrice, UsdValue,
-    },
+    crate::{Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
     grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
@@ -114,12 +112,15 @@ pub struct PairParam {
     /// prices must be an integer multiple of `tick_size`.
     pub tick_size: UsdPrice,
 
-    /// A scaling factor that determines how greatly an imbalance in long/short
-    /// open interests (the "skew") should affect the funding rate. The greater
-    /// the value of the scaling factor, the less the effect. Used only for the
-    /// funding fee mechanism (not for pricing, which is determined by the order
-    /// book).
-    pub skew_scale: Quantity,
+    /// Notional value used to compute impact prices from the order book.
+    /// The cron job walks bids/asks to find the average execution price for
+    /// selling/buying this much notional.
+    pub impact_notional: UsdValue,
+
+    /// Duration between funding collections. The cron job runs more
+    /// frequently to sample premiums; funding is only applied when this
+    /// period elapses.
+    pub funding_period: Duration,
 
     /// Half the bid-ask spread the vault quotes around the oracle price. The
     /// vault places bids at `oracle_price * (1 - vault_half_spread)` and asks
@@ -151,12 +152,6 @@ pub struct PairParam {
     /// debt spirals during prolonged skew.
     pub max_abs_funding_rate: FundingRate,
 
-    /// Maximum rate the funding rate may change, as a fraction per day.
-    ///
-    /// When |skew| = skew_scale, the funding rate changes by this much per day.
-    /// When skew == 0, the rate drifts back toward zero at this speed.
-    pub max_funding_velocity: FundingVelocity,
-
     /// Margin requirement when opening or increasing a position in this trading
     /// pair. E.g. 5% indicates a 1 / 5% = 20x maximum leverage.
     ///
@@ -175,12 +170,12 @@ pub struct PairParam {
 }
 
 impl PairParam {
-    /// Build a `PairParam` with the funding-relevant fields varied;
-    /// all other fields use inert defaults. Intended for tests.
-    pub fn new_mock(skew_scale: i128) -> Self {
+    /// Build a `PairParam` with sensible defaults for testing.
+    pub fn new_mock() -> Self {
         Self {
-            skew_scale: Quantity::new_int(skew_scale),
             max_abs_oi: Quantity::new_int(1_000_000),
+            impact_notional: UsdValue::new_int(10_000),
+            funding_period: Duration::from_hours(1),
             ..Default::default()
         }
     }
@@ -218,18 +213,6 @@ pub struct PairState {
     /// The sum of the absolute value of the sizes of all short positions.
     pub short_oi: Quantity,
 
-    /// The difference between long and short OI. Equals `self.long_oi - self.short_oi`.
-    pub skew: Quantity,
-
-    /// Instantaneous funding rate (fraction per day) at the `last_funding_time`.
-    ///
-    /// Positive = longs pay shorts (and vault collects the net)
-    /// Negative = shorts pay longs (and vault collects the net)
-    ///
-    /// The rate changes linearly over time according to the velocity model:
-    ///   rate' = rate + velocity * elapsed_days
-    pub funding_rate: FundingRate,
-
     /// Cumulative funding per unit of position size, denominated in USD.
     ///
     /// This is an ever-increasing accumulator. To compute a position's accrued
@@ -237,8 +220,15 @@ pub struct PairState {
     /// `entry_funding_per_unit`.
     pub funding_per_unit: FundingPerUnit,
 
-    /// Timestamp of the most recent funding accrual.
+    /// Timestamp of the most recent funding collection.
     pub last_funding_time: Timestamp,
+
+    /// Running sum of premium samples since the last funding collection.
+    /// Divided by `premium_samples` to get the average premium.
+    pub premium_sum: Dimensionless,
+
+    /// Number of premium samples accumulated since last funding collection.
+    pub premium_samples: i128,
 }
 
 impl PairState {

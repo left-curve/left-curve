@@ -3,11 +3,12 @@ use {
         ASKS, BIDS, NEXT_ORDER_ID, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
         USER_STATES,
         core::{
-            accrue_funding, check_margin, check_minimum_order_size, check_oi_constraint,
-            compute_available_margin, compute_required_margin, compute_target_price,
-            compute_trading_fee, decompose_fill, execute_fill, is_price_constraint_violated,
+            check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
+            compute_required_margin, compute_target_price, compute_trading_fee, decompose_fill,
+            execute_fill, is_price_constraint_violated,
         },
         execute::{BANK, ORACLE},
+        price::may_invert_price,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -19,7 +20,7 @@ use {
         },
     },
     grug::{
-        Addr, Coins, IsZero, MathResult, Message, MutableCtx, Number, NumberConst,
+        Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst,
         Order as IterationOrder, QuerierExt, Response, Storage, Uint128, coins,
     },
     std::collections::{BTreeMap, btree_map::Entry},
@@ -63,7 +64,6 @@ pub fn submit_order(
     let (payouts, collections, maker_states, order_mutations, order_to_store) = _submit_order(
         ctx.storage,
         ctx.sender,
-        ctx.block.timestamp,
         &param,
         &pair_param,
         &mut pair_state,
@@ -165,7 +165,6 @@ pub fn submit_order(
 fn _submit_order(
     storage: &dyn Storage,
     taker: Addr,
-    current_time: grug::Timestamp,
     param: &Param,
     pair_param: &PairParam,
     pair_state: &mut PairState,
@@ -186,11 +185,7 @@ fn _submit_order(
     Vec<(UsdPrice, OrderId, Option<Order>)>,
     Option<(UsdPrice, OrderId, Order)>,
 )> {
-    // ------------- Step 1. Accrue funding before any OI changes --------------
-
-    accrue_funding(pair_state, pair_param, current_time, oracle_price)?;
-
-    // -------------- Step 2. Check minimum order size -------------------------
+    // -------------- Step 1. Check minimum order size -------------------------
 
     if !reduce_only {
         check_minimum_order_size(size, oracle_price, pair_param)?;
@@ -684,17 +679,6 @@ fn store_limit_order(
     }))
 }
 
-/// When storing a bid order, we "invert" the price such that orders are sorted
-/// according to price-time priority. Conversely, when reading orders from the
-/// book, we need to "un-invert" the price. This function does both.
-fn may_invert_price(price: UsdPrice, is_bid: bool) -> MathResult<UsdPrice> {
-    if is_bid {
-        UsdPrice::MAX.checked_sub(price)
-    } else {
-        Ok(price)
-    }
-}
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -745,7 +729,6 @@ mod tests {
 
     fn test_pair_param() -> PairParam {
         PairParam {
-            skew_scale: Quantity::new_int(1_000),
             max_abs_oi: Quantity::new_int(1_000_000),
             tick_size: UsdPrice::new_int(1),
             initial_margin_ratio: Dimensionless::new_permille(50), // 5%
@@ -837,7 +820,6 @@ mod tests {
         let (_, _, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -893,7 +875,6 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -939,7 +920,6 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -986,7 +966,6 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1033,7 +1012,6 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1084,7 +1062,6 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1141,7 +1118,6 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1185,7 +1161,6 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1232,7 +1207,6 @@ mod tests {
         let (_, _, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1285,7 +1259,6 @@ mod tests {
         let (_, _, maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1335,7 +1308,6 @@ mod tests {
         let (payouts, collections, ..) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1388,7 +1360,6 @@ mod tests {
         let result = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1433,7 +1404,6 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1482,7 +1452,6 @@ mod tests {
         let (_, _, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1540,7 +1509,6 @@ mod tests {
         let (_, _, maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1584,7 +1552,6 @@ mod tests {
         let (_, _, maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1634,7 +1601,6 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1765,7 +1731,6 @@ mod tests {
         let (payouts, collections, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1816,7 +1781,6 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1858,7 +1822,6 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1900,7 +1863,6 @@ mod tests {
         let (payouts, collections, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1950,7 +1912,6 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -1992,7 +1953,6 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -2043,7 +2003,6 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,
@@ -2099,7 +2058,6 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
-            Timestamp::from_nanos(0),
             &param,
             &pair_param,
             &mut pair_state,

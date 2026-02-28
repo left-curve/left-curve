@@ -10,9 +10,6 @@ use {
 /// Execute a fill for a single user. Updates position and OI; settles
 /// funding on the existing position.
 ///
-/// The caller must call `accrue_funding` before invoking this function so
-/// that `pair_state.funding_per_unit` is current.
-///
 /// Returns the raw PnL (funding + realized) as a `UsdValue`.
 /// Positive = user gains, negative = user loses.
 /// Does NOT include trading fees — the caller handles those separately.
