@@ -4,7 +4,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         Quantity, UsdPrice, UsdValue,
-        perps::{OrderKind, PairId, PairParam, PairState, Param, Position, UserState},
+        perps::{PairId, PairParam, PairState, Param, Position, UserState},
     },
 };
 
@@ -228,31 +228,22 @@ pub fn compute_available_margin(
         .max(UsdValue::ZERO))
 }
 
-/// Ensure the user's collateral balance satisfies both extreme cases:
+/// Ensure the user's collateral balance satisfies the 100%-fill scenario:
+/// user's equity must be no less than required initial margin + reserved
+/// margin for existing resting orders + fee.
 ///
-/// 1. The order is filled 100%: user's equity must be no less than required
-///    initial margin + reserved margin for existing resting orders + fee.
-/// 2. The order is filled 0%: user's available margin must be no less than
-///    required margin for this order + fee. (This check is only performed for
-///    GTC orders.)
-///
-/// In practice, the order may be filled anywhere between 0% to 100%. However,
-/// if the user's margin satisfies both the extreme cases, it must satisfy all
-/// general cases.
+/// The 0%-fill scenario (limit-order reservation) is checked separately
+/// inside `store_limit_order`.
 pub fn check_margin(
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     taker_state: &UserState,
     param: &Param,
-    pair_param: &PairParam,
     pair_id: &PairId,
     oracle_price: UsdPrice,
     collateral_value: UsdValue,
     size: Quantity,
-    kind: OrderKind,
 ) -> anyhow::Result<()> {
-    // -------------------------- Check 1: 100% fill ---------------------------
-
     let equity = compute_user_equity(collateral_value, taker_state, perp_querier, oracle_querier)?;
 
     let current_position = taker_state
@@ -285,32 +276,6 @@ pub fn check_margin(
         projected_fee,
         taker_state.reserved_margin
     );
-
-    // --------------------------- Check 2: 0% fill ----------------------------
-
-    if let OrderKind::Limit { limit_price, .. } = kind {
-        let available_margin = compute_available_margin(
-            collateral_value,
-            taker_state,
-            perp_querier,
-            oracle_querier,
-            taker_state.reserved_margin,
-        )?;
-
-        let projected_rm = compute_required_margin(size, limit_price, pair_param)?;
-
-        let projected_fee = super::compute_trading_fee(size, limit_price, param.taker_fee_rate)?;
-
-        let required_margin = projected_rm.checked_add(projected_fee)?;
-
-        ensure!(
-            available_margin >= required_margin,
-            "insufficient margin for limit order: available ({}) < required ({}) + fee ({})",
-            available_margin,
-            projected_rm,
-            projected_fee
-        );
-    }
 
     Ok(())
 }
@@ -1217,18 +1182,11 @@ mod tests {
     /// 100%-fill check fails: equity ($25,200) < IM ($25,000) + fee ($500) = $25,500
     ///
     /// No existing position. oracle = $50,000, IMR = 5%, taker_fee = 0.1%
-    /// Buy limit 10 BTC @ $49,000
+    /// Buy 10 BTC
     ///
-    /// 100% fill:
     ///   projected_im = |10| * 50,000 * 0.05 = $25,000
     ///   fee          = |10| * 50,000 * 0.001 = $500
     ///   Need equity >= $25,500, but equity = $25,200 → FAILS
-    ///
-    /// 0% fill:
-    ///   margin_to_reserve = |10| * 49,000 * 0.05 + |10| * 49,000 * 0.001
-    ///                     = $24,500 + $490 = $24,990
-    ///   available = equity = $25,200
-    ///   $25,200 >= $24,990 → passes
     #[test]
     fn margin_check_full_fill_fails() {
         let pair_id: PairId = "perp/btcusd".parse().unwrap();
@@ -1236,10 +1194,6 @@ mod tests {
             taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
             ..Default::default()
         };
-        let pair_param = PairParam {
-            initial_margin_ratio: Dimensionless::new_permille(50), // 5%
-            ..Default::default()
-        };
         let taker_state = UserState::default();
 
         let perp_querier = NoCachePerpQuerier::new_mock(
@@ -1267,15 +1221,10 @@ mod tests {
             &mut oracle_querier,
             &taker_state,
             &param,
-            &pair_param,
             &pair_id,
             UsdPrice::new_int(50_000),
             UsdValue::new_int(25_200),
             Quantity::new_int(10),
-            OrderKind::Limit {
-                limit_price: UsdPrice::new_int(49_000),
-                post_only: false,
-            },
         );
 
         assert!(result.is_err());
@@ -1283,78 +1232,6 @@ mod tests {
         assert!(
             msg.contains("insufficient margin:"),
             "expected 100%-fill margin error, got: {msg}"
-        );
-    }
-
-    /// 0%-fill check fails: available ($27,000) < reserved ($27,500) + fee ($550) = $28,050
-    ///
-    /// No existing position. oracle = $50,000, IMR = 5%, taker_fee = 0.1%
-    /// Buy limit 10 BTC @ $55,000
-    ///
-    /// 100% fill:
-    ///   projected_im = |10| * 50,000 * 0.05 = $25,000
-    ///   fee          = |10| * 50,000 * 0.001 = $500
-    ///   Need equity >= $25,500, equity = $27,000 → passes
-    ///
-    /// 0% fill:
-    ///   margin_to_reserve = |10| * 55,000 * 0.05 + |10| * 55,000 * 0.001
-    ///                     = $27,500 + $550 = $28,050
-    ///   available = equity = $27,000
-    ///   $27,000 < $28,050 → FAILS
-    #[test]
-    fn margin_check_zero_fill_fails() {
-        let pair_id: PairId = "perp/btcusd".parse().unwrap();
-        let param = Param {
-            taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
-            ..Default::default()
-        };
-        let pair_param = PairParam {
-            initial_margin_ratio: Dimensionless::new_permille(50), // 5%
-            ..Default::default()
-        };
-        let taker_state = UserState::default();
-
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                pair_id.clone() => PairParam {
-                    initial_margin_ratio: Dimensionless::new_permille(50),
-                    ..Default::default()
-                },
-            },
-            hash_map! {
-                pair_id.clone() => PairState::default(),
-            },
-            None,
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
-                Timestamp::from_seconds(0),
-                8,
-            ),
-        });
-
-        let result = check_margin(
-            &perp_querier,
-            &mut oracle_querier,
-            &taker_state,
-            &param,
-            &pair_param,
-            &pair_id,
-            UsdPrice::new_int(50_000),
-            UsdValue::new_int(27_000),
-            Quantity::new_int(10),
-            OrderKind::Limit {
-                limit_price: UsdPrice::new_int(55_000),
-                post_only: false,
-            },
-        );
-
-        assert!(result.is_err());
-        let msg = result.unwrap_err().to_string();
-        assert!(
-            msg.contains("insufficient margin for limit order"),
-            "expected 0%-fill margin error, got: {msg}"
         );
     }
 }

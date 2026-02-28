@@ -4,8 +4,8 @@ use {
         USER_STATES,
         core::{
             accrue_funding, check_margin, check_minimum_order_size, check_oi_constraint,
-            compute_required_margin, compute_target_price, compute_trading_fee, decompose_fill,
-            execute_fill, is_price_constraint_violated,
+            compute_available_margin, compute_required_margin, compute_target_price,
+            compute_trading_fee, decompose_fill, execute_fill, is_price_constraint_violated,
         },
         execute::{BANK, ORACLE},
     },
@@ -231,6 +231,8 @@ fn _submit_order(
             fillable_size,
             limit_price,
             reduce_only,
+            collateral_value,
+            oracle_querier,
         )?;
 
         return Ok((
@@ -254,12 +256,10 @@ fn _submit_order(
             oracle_querier,
             taker_state,
             param,
-            pair_param,
             pair_id,
             oracle_price,
             collateral_value,
             size,
-            kind,
         )?;
     }
 
@@ -302,6 +302,8 @@ fn _submit_order(
                     unfilled,
                     limit_price,
                     reduce_only,
+                    collateral_value,
+                    oracle_querier,
                 )?;
 
                 let (payouts, collections) = settle_pnls(pnls, settlement_price, state)?;
@@ -556,6 +558,8 @@ fn store_post_only_limit_order(
     size: Quantity,
     limit_price: UsdPrice,
     reduce_only: bool,
+    collateral_value: UsdValue,
+    oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<(UsdPrice, OrderId, Order)> {
     let taker_is_bid = size.is_positive();
     let maker_is_bid = !taker_is_bid;
@@ -596,9 +600,20 @@ fn store_post_only_limit_order(
         size,
         limit_price,
         reduce_only,
+        collateral_value,
+        oracle_querier,
     )
 }
 
+/// Mutates:
+///
+/// - `user_state.reserved_margin` — increased by the margin reserved for
+///   the resting order.
+/// - `user_state.open_order_count` — incremented by one.
+///
+/// Returns:
+///
+/// - `(stored_price, order_id, Order)` — the resting order to persist.
 fn store_limit_order(
     storage: &dyn Storage,
     user: Addr,
@@ -608,6 +623,8 @@ fn store_limit_order(
     size: Quantity,
     limit_price: UsdPrice,
     reduce_only: bool,
+    collateral_value: UsdValue,
+    oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<(UsdPrice, OrderId, Order)> {
     ensure!(
         user_state.open_order_count < param.max_open_orders,
@@ -630,6 +647,26 @@ fn store_limit_order(
     let margin_to_reserve = compute_required_margin(size, limit_price, pair_param)?.checked_add(
         compute_trading_fee(size, limit_price, param.taker_fee_rate)?,
     )?;
+
+    // 0%-fill margin check: verify the user can afford this reservation.
+    if !reduce_only {
+        let perp_querier = NoCachePerpQuerier::new_local(storage);
+
+        let available_margin = compute_available_margin(
+            collateral_value,
+            user_state,
+            &perp_querier,
+            oracle_querier,
+            user_state.reserved_margin,
+        )?;
+
+        ensure!(
+            available_margin >= margin_to_reserve,
+            "insufficient margin for limit order: available ({}) < required ({})",
+            available_margin,
+            margin_to_reserve
+        );
+    }
 
     user_state.open_order_count += 1;
     (user_state.reserved_margin).checked_add_assign(margin_to_reserve)?;
@@ -2032,5 +2069,61 @@ mod tests {
         let (_, _, order) = order_to_store.unwrap();
         assert_eq!(order.size, Quantity::new_int(-5));
         assert!(order.reduce_only);
+    }
+
+    // ======= Post-only insufficient margin rejected ==========================
+
+    /// Post-only buy with insufficient collateral is rejected by the 0%-fill
+    /// margin check inside `store_limit_order`.
+    ///
+    /// pair: BTC, oracle = $50,000, IMR = 5%, taker_fee = 0.1%
+    /// Buy 10 BTC post-only @ $49,000
+    ///   margin_to_reserve = |10| * 49,000 * 0.05 + |10| * 49,000 * 0.001
+    ///                     = $24,500 + $490 = $24,990
+    ///   collateral = $1,000 → available = $1,000 < $24,990 → FAILS
+    #[test]
+    fn post_only_insufficient_margin_rejected() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState::default();
+        let mut oq = test_oracle_querier();
+        let mut state = State::default();
+
+        let err = _submit_order(
+            &ctx.storage,
+            TAKER,
+            Timestamp::from_nanos(0),
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_000),
+            UsdValue::new_int(1_000), // insufficient collateral
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                post_only: true,
+            },
+            false,
+            &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
+        );
+
+        assert!(err.is_err());
+        let msg = err.unwrap_err().to_string();
+        assert!(
+            msg.contains("insufficient margin for limit order"),
+            "expected limit-order margin error, got: {msg}"
+        );
     }
 }
