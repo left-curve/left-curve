@@ -284,43 +284,42 @@ fn _submit_order(
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
 
-    if unfilled.is_non_zero() {
+    let order_to_store = if unfilled.is_non_zero() {
         match kind {
+            OrderKind::Limit { limit_price, .. } => Some(store_limit_order(
+                storage,
+                taker,
+                param,
+                pair_param,
+                taker_state,
+                unfilled,
+                limit_price,
+                reduce_only,
+                collateral_value,
+                oracle_querier,
+            )?),
             OrderKind::Market { .. } => {
                 ensure!(
                     unfilled < fillable_size,
                     "no liquidity at acceptable price! target_price: {target_price}"
                 );
-            },
-            OrderKind::Limit { limit_price, .. } => {
-                let order_to_store = store_limit_order(
-                    storage,
-                    taker,
-                    param,
-                    pair_param,
-                    taker_state,
-                    unfilled,
-                    limit_price,
-                    reduce_only,
-                    collateral_value,
-                    oracle_querier,
-                )?;
 
-                let (payouts, collections) = settle_pnls(pnls, settlement_price, state)?;
-                return Ok((
-                    payouts,
-                    collections,
-                    maker_states,
-                    order_mutations,
-                    Some(order_to_store),
-                ));
+                None
             },
         }
-    }
+    } else {
+        None
+    };
 
     let (payouts, collections) = settle_pnls(pnls, settlement_price, state)?;
 
-    Ok((payouts, collections, maker_states, order_mutations, None))
+    Ok((
+        payouts,
+        collections,
+        maker_states,
+        order_mutations,
+        order_to_store,
+    ))
 }
 
 /// Mutates:
