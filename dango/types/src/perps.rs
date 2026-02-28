@@ -40,12 +40,14 @@ pub enum OrderKind {
     Market { max_slippage: Dimensionless },
 
     /// Trade at the specified limit price.
-    ///
-    /// When `post_only` is true, the order is rejected if it would
-    /// immediately match against a resting order on the opposite side.
-    /// This guarantees the submitter becomes a maker.
     Limit {
         limit_price: UsdPrice,
+
+        /// Indicates the order is to be inserted into the book as a maker order
+        /// without being matched.
+        ///
+        /// The order's limit price must not cross the best offer price on the
+        /// other side of the book. Reject if violated.
         post_only: bool,
     },
 }
