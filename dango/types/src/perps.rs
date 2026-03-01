@@ -70,11 +70,6 @@ impl OrderKind {
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct Param {
-    /// Once a request to withdraw liquidity from the counterparty vault has been
-    /// submitted, the waiting time that must elapsed before the funds are released
-    /// to the liquidity provider.
-    pub vault_cooldown_period: Duration,
-
     /// Maximum number of unlock requests a single user may have.
     pub max_unlocks: usize,
 
@@ -102,6 +97,10 @@ pub struct Param {
     /// )
     pub liquidation_fee_rate: Dimensionless,
 
+    /// Duration between funding collections. The cron job applies funding
+    /// only when this period elapses.
+    pub funding_period: Duration,
+
     /// Set of addresses authorized to call `Deleverage`.
     pub adl_operators: BTreeSet<Addr>,
 
@@ -111,9 +110,32 @@ pub struct Param {
     /// or weights change.
     pub vault_total_weight: Dimensionless,
 
-    /// Duration between funding collections. The cron job applies funding
-    /// only when this period elapses.
-    pub funding_period: Duration,
+    /// Once a request to withdraw liquidity from the counterparty vault has been
+    /// submitted, the waiting time that must elapsed before the funds are released
+    /// to the liquidity provider.
+    pub vault_cooldown_period: Duration,
+}
+
+/// Global state that concerns the counterparty vault and all trading pairs.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct State {
+    /// Timestamp of the most recent funding collection.
+    pub last_funding_time: Timestamp,
+
+    /// Total supply of the vault's share token.
+    pub vault_share_supply: Uint128,
+
+    /// The vault margin (LP capital deposited into the exchange), denominated in
+    /// USD. All PnL settlement, trading fees, liquidation fees, and bad debt
+    /// flow through this balance. The vault is a regular trader; its equity is
+    /// computed identically to any user via `compute_user_equity`.
+    pub vault_margin: UsdValue,
+
+    /// Accumulated bad debt that exceeded the vault during liquidations,
+    /// denominated in USD. When non-zero, ADL can be triggered. Reduced as
+    /// profitable positions are forcibly closed and their PnL forfeited.
+    pub adl_deficit: UsdValue,
 }
 
 /// Parameters that apply to an individual trading pair.
@@ -123,20 +145,6 @@ pub struct PairParam {
     /// Minimum price increment for limit orders in this pair. All limit order
     /// prices must be an integer multiple of `tick_size`.
     pub tick_size: UsdPrice,
-
-    /// Notional value used to compute impact prices from the order book.
-    /// The cron job walks bids/asks to find the average execution price for
-    /// selling/buying this much notional.
-    pub impact_notional: UsdValue,
-
-    /// Half the bid-ask spread the vault quotes around the oracle price. The
-    /// vault places bids at `oracle_price * (1 - vault_half_spread)` and asks
-    /// at `oracle_price * (1 + vault_half_spread)`.
-    pub vault_half_spread: Dimensionless,
-
-    /// Maximum notional size (in quote currency) of the vault's resting orders
-    /// on each side of the book. Limits the vault's exposure per pair.
-    pub vault_max_quote_size: Quantity,
 
     /// Minimum notional value for an order. Reduce-only orders are exempt.
     /// Prevents dust orders from cluttering the order book.
@@ -175,10 +183,24 @@ pub struct PairParam {
     /// maintenance_margin = |position_size| * oracle_price * maintenance_margin_ratio
     pub maintenance_margin_ratio: Dimensionless,
 
+    /// Notional value used to compute impact prices from the order book.
+    /// The cron job walks bids/asks to find the average execution price for
+    /// selling/buying this much notional.
+    pub impact_notional: UsdValue,
+
     /// Weight determining what fraction of the vault's available margin
     /// is allocated to this pair for market-making.
     /// The pair's share = `vault_liquidity_weight / Param::vault_total_weight`.
     pub vault_liquidity_weight: Dimensionless,
+
+    /// Half the bid-ask spread the vault quotes around the oracle price. The
+    /// vault places bids at `oracle_price * (1 - vault_half_spread)` and asks
+    /// at `oracle_price * (1 + vault_half_spread)`.
+    pub vault_half_spread: Dimensionless,
+
+    /// Maximum notional size (in quote currency) of the vault's resting orders
+    /// on each side of the book. Limits the vault's exposure per pair.
+    pub vault_max_quote_size: Quantity,
 }
 
 impl PairParam {
@@ -190,28 +212,6 @@ impl PairParam {
             ..Default::default()
         }
     }
-}
-
-/// Global state that concerns the counterparty vault and all trading pairs.
-#[grug::derive(Serde, Borsh)]
-#[derive(Default)]
-pub struct State {
-    /// Total supply of the vault's share token.
-    pub vault_share_supply: Uint128,
-
-    /// The vault margin (LP capital deposited into the exchange), denominated in
-    /// USD. All PnL settlement, trading fees, liquidation fees, and bad debt
-    /// flow through this balance. The vault is a regular trader; its equity is
-    /// computed identically to any user via `compute_user_equity`.
-    pub vault_margin: UsdValue,
-
-    /// Accumulated bad debt that exceeded the vault during liquidations,
-    /// denominated in USD. When non-zero, ADL can be triggered. Reduced as
-    /// profitable positions are forcibly closed and their PnL forfeited.
-    pub adl_deficit: UsdValue,
-
-    /// Timestamp of the most recent funding collection.
-    pub last_funding_time: Timestamp,
 }
 
 /// State of an individual trading pair.
@@ -236,14 +236,14 @@ pub struct PairState {
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct UserState {
-    /// The user's vault withdrawals that are pending cooldown.
-    pub unlocks: VecDeque<Unlock>,
+    /// The user's deposited margin, denominated in USD.
+    pub margin: UsdValue,
 
     /// The user's open positions.
     pub positions: BTreeMap<PairId, Position>,
 
-    /// The user's deposited margin, denominated in USD.
-    pub margin: UsdValue,
+    /// The user's vault withdrawals that are pending cooldown.
+    pub unlocks: VecDeque<Unlock>,
 
     /// Margin reserved for resting limit orders.
     pub reserved_margin: UsdValue,
@@ -277,12 +277,12 @@ pub struct Position {
 /// cooldown period to elapse.
 #[grug::derive(Serde, Borsh)]
 pub struct Unlock {
+    /// The time when cooldown completes.
+    pub end_time: Timestamp,
+
     /// The USD value to be released once cooldown completes. Token conversion
     /// happens at claim time using the current oracle price.
     pub amount_to_release: UsdValue,
-
-    /// The time when cooldown completes.
-    pub end_time: Timestamp,
 }
 
 /// A resting limit order, waiting to be fulfilled.
@@ -316,18 +316,6 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    /// Add liquidity to the counterparty vault.
-    AddLiquidity {
-        /// Revert if less than this amount of shares is minted.
-        min_shares_to_mint: Option<Uint128>,
-    },
-
-    /// Request to withdraw liquidity from the counterparty vault.
-    RemoveLiquidity {},
-
-    /// Claim funds from vault unlocks that have already completed cooldown.
-    Claim {},
-
     /// Deposit settlement currency into the trader's margin account.
     /// The deposited tokens are converted to USD at the current oracle price
     /// and credited to `user_state.margin`.
@@ -360,6 +348,15 @@ pub enum ExecuteMsg {
 
     /// Cancel a resting limit order.
     CancelOrder(CancelOrderRequest),
+
+    /// Add liquidity to the counterparty vault.
+    AddLiquidity {
+        /// Revert if less than this amount of shares is minted.
+        min_shares_to_mint: Option<Uint128>,
+    },
+
+    /// Request to withdraw liquidity from the counterparty vault.
+    RemoveLiquidity {},
 
     /// Forcibly close all of a user's positions, if the user has less collateral
     /// than the maintenance margin required by his positions.

@@ -1,6 +1,5 @@
 mod add_liquidity;
 mod cancel_order;
-mod claim;
 mod deleverage;
 mod deposit;
 mod liquidate;
@@ -37,6 +36,7 @@ pub(crate) const ORACLE: Addr = addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d"
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     PARAM.save(ctx.storage, &msg.param)?;
+
     STATE.save(ctx.storage, &State {
         last_funding_time: ctx.block.timestamp,
         ..Default::default()
@@ -44,6 +44,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 
     for (pair_id, pair_param) in &msg.pair_params {
         PAIR_PARAMS.save(ctx.storage, pair_id, pair_param)?;
+
         PAIR_STATES.save(ctx.storage, pair_id, &PairState::default())?;
     }
 
@@ -55,11 +56,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::AddLiquidity { min_shares_to_mint } => {
-            add_liquidity::add_liquidity(ctx, min_shares_to_mint)
-        },
-        ExecuteMsg::RemoveLiquidity {} => remove_liquidity::remove_liquidity(ctx),
-        ExecuteMsg::Claim {} => claim::claim(ctx),
         ExecuteMsg::Deposit {} => deposit::deposit(ctx),
         ExecuteMsg::Withdraw { margin } => withdraw::withdraw(ctx, margin),
         ExecuteMsg::SubmitOrder {
@@ -72,6 +68,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             cancel_order::cancel_one_order(ctx, order_id)
         },
         ExecuteMsg::CancelOrder(CancelOrderRequest::All) => cancel_order::cancel_all_orders(ctx),
+        ExecuteMsg::AddLiquidity { min_shares_to_mint } => {
+            add_liquidity::add_liquidity(ctx, min_shares_to_mint)
+        },
+        ExecuteMsg::RemoveLiquidity {} => remove_liquidity::remove_liquidity(ctx),
         ExecuteMsg::Liquidate { user } => liquidate::liquidate(ctx, user),
         ExecuteMsg::Deleverage { user } => deleverage::deleverage(ctx, user),
         ExecuteMsg::OnOracleUpdate {} => on_oracle_update::on_oracle_update(ctx),
