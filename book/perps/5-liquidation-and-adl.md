@@ -209,7 +209,7 @@ All examples use:
 | Pair                           | BTC / USD  |
 | Maintenance-margin ratio (mmr) | 5 %        |
 | Liquidation-fee rate           | 0.1 %      |
-| Settlement currency            | USDC at $1 |
+| Settlement currency            | USDC at \$1 |
 
 ### Example 1 — Clean liquidation (no bad debt)
 
@@ -218,10 +218,10 @@ All examples use:
 |             | Alice      | Bob         |
 | ----------- | ---------- | ----------- |
 | Direction   | Long 1 BTC | Short 1 BTC |
-| Entry price | $50,000    | $50,000     |
-| Collateral  | $3,000     | $10,000     |
+| Entry price | \$50,000   | \$50,000    |
+| Collateral  | \$3,000    | \$10,000    |
 
-**BTC drops to $47,500**
+**BTC drops to \$47,500**
 
 _Alice's account_
 
@@ -243,7 +243,7 @@ Alice has one position; the full 1 BTC long is scheduled for closure.
 
 _Execution_
 
-The long is closed (sold) at the oracle price of $47,500 (order book or vault
+The long is closed (sold) at the oracle price of \$47,500 (order book or vault
 backstop).
 
 $$
@@ -293,11 +293,11 @@ $$
 |              | Charlie    | Dana        |
 | ------------ | ---------- | ----------- |
 | Direction    | Long 1 BTC | Short 1 BTC |
-| Entry price  | $50,000    | $50,000     |
-| Collateral   | $3,000     | $10,000     |
-| Vault margin | $5,000     |             |
+| Entry price  | \$50,000   | \$50,000    |
+| Collateral   | \$3,000    | \$10,000    |
+| Vault margin | \$5,000    |             |
 
-**BTC drops to $46,000**
+**BTC drops to \$46,000**
 
 _Charlie's account_
 
@@ -319,7 +319,7 @@ Charlie's full 1 BTC long is scheduled for closure.
 
 _Execution_
 
-Closed at oracle price $46,000.
+Closed at oracle price \$46,000.
 
 $$
 \mathtt{CharliePnL} = 1 \times (\$46{,}000 - \$50{,}000) = -\$4{,}000
@@ -355,7 +355,7 @@ $$
 \mathtt{vaultMargin}: \$5{,}000 - \$1{,}000 = \$4{,}000
 $$
 
-The vault absorbs the full $1,000 shortfall. Charlie's entire $3,000
+The vault absorbs the full \$1,000 shortfall. Charlie's entire \$3,000
 collateral is collected and no ADL is needed.
 
 ### Example 3 — Vault exhausted, ADL triggered
@@ -365,13 +365,13 @@ collateral is collected and no ADL is needed.
 |              | Charlie    | Dana        |
 | ------------ | ---------- | ----------- |
 | Direction    | Long 1 BTC | Short 1 BTC |
-| Entry price  | $50,000    | $50,000     |
-| Collateral   | $3,000     | $10,000     |
-| Vault margin | $500       |             |
+| Entry price  | \$50,000   | \$50,000    |
+| Collateral   | \$3,000    | \$10,000    |
+| Vault margin | \$500      |             |
 
 Same positions as Example 2, but the vault is smaller.
 
-**BTC drops to $46,000**
+**BTC drops to \$46,000**
 
 _Charlie's liquidation_ proceeds identically:
 
@@ -391,11 +391,11 @@ $$
 \mathtt{vaultMargin}: \$500 - \$1{,}000 = -\$500
 $$
 
-The vault margin is negative, indicating $500 of unresolved bad debt. ADL activates.
+The vault margin is negative, indicating \$500 of unresolved bad debt. ADL activates.
 
 _ADL — selecting Dana_
 
-Dana holds a short that is profitable at $46,000:
+Dana holds a short that is profitable at \$46,000:
 
 $$
 \mathtt{unrealisedPnl} = -1 \times (\$46{,}000 - \$50{,}000) = \$4{,}000 \;\text{(profit)}
@@ -425,7 +425,7 @@ Score is positive, so Dana is eligible for ADL.
 
 _ADL — closing Dana's position_
 
-Dana's short is fully closed at the oracle price of $46,000 with zero fees.
+Dana's short is fully closed at the oracle price of \$46,000 with zero fees.
 
 $$
 \mathtt{DanaRealisedPnl} = \$4{,}000
@@ -449,13 +449,13 @@ $$
 \mathtt{vaultMargin} \gets -\$500 + \$500 = \$0
 $$
 
-Dana forfeits $500 of her $4,000 profit to cover the deficit and
-receives $3,500. The vault margin is recovered to $0.
+Dana forfeits \$500 of her \$4,000 profit to cover the deficit and
+receives \$3,500. The vault margin is recovered to \$0.
 
 **Final state**
 
 |              | Balance                                             |
 | ------------ | --------------------------------------------------- |
-| Charlie      | $0 (fully liquidated)                               |
-| Dana         | $10,000 + $3,500 = $13,500 (profit reduced by $500) |
-| Vault margin | $0                                                  |
+| Charlie      | \$0 (fully liquidated)                                |
+| Dana         | \$10,000 + \$3,500 = \$13,500 (profit reduced by \$500) |
+| Vault margin | \$0                                                   |

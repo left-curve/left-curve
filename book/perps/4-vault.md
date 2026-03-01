@@ -25,7 +25,7 @@ first-depositor inflation attack.
 | Name           | Value     |
 | -------------- | --------- |
 | Virtual shares | 1,000,000 |
-| Virtual assets | $1        |
+| Virtual assets | \$1       |
 
 ### Share minting
 
@@ -49,7 +49,7 @@ parameter lets depositors revert if slippage is too high.
 The virtual terms dominate when real supply and equity are small. An attacker
 cannot inflate the share price to steal from subsequent depositors because the
 initial share price is effectively
-$\$1 / 1{,}000{,}000 = \$0.000001$ per share.
+$$\$1 / 1{,}000{,}000 = \$0.000001$$ per share.
 
 ### ADL pause
 
