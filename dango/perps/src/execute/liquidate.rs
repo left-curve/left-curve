@@ -28,6 +28,8 @@ use {
 };
 
 pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
+    ensure!(user != ctx.contract, "cannot liquidate the vault");
+
     // ----------------------------- 1. Load state -----------------------------
 
     let param = PARAM.load(ctx.storage)?;
@@ -69,7 +71,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 4. Load vault state --------------------------------
 
-    let mut vault_state = USER_STATES
+    let vault_state = USER_STATES
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
@@ -94,7 +96,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         &pair_params,
         &mut pair_states,
         &mut user_state,
-        &mut vault_state,
+        vault_state,
         &oracle_prices,
         collateral_value,
         collateral_balance,
@@ -117,11 +119,11 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         USER_STATES.save(ctx.storage, user, &user_state)?;
     }
 
+    // The maker_states map includes the vault state (seeded before matching),
+    // so all makers and the vault are saved in one pass.
     for (addr, maker_state) in &maker_states {
         USER_STATES.save(ctx.storage, *addr, maker_state)?;
     }
-
-    USER_STATES.save(ctx.storage, ctx.contract, &vault_state)?;
 
     // -------------------- 8. Apply order mutations ---------------------------
 
@@ -176,6 +178,11 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
 /// Execute the close schedule against the order book, with vault backstop for
 /// any unfilled remainder.
+///
+/// `maker_states` is a shared map of maker `UserState`s that persists across
+/// `match_order` calls. It must be seeded with the vault's state (keyed by
+/// `contract`) before calling this function, so that book-matched fills and
+/// backstop fills accumulate on the same `UserState` object.
 fn execute_close_schedule(
     storage: &dyn Storage,
     schedule: &[(PairId, Quantity)],
@@ -184,11 +191,10 @@ fn execute_close_schedule(
     param: &Param,
     pair_states: &mut BTreeMap<PairId, PairState>,
     user_state: &mut UserState,
-    vault_state: &mut UserState,
+    maker_states: &mut BTreeMap<Addr, UserState>,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
     UsdValue,
 )> {
@@ -200,7 +206,6 @@ fn execute_close_schedule(
     };
 
     let mut all_pnls: BTreeMap<Addr, UsdValue> = BTreeMap::new();
-    let mut all_maker_states: BTreeMap<Addr, UserState> = BTreeMap::new();
     let mut all_order_mutations: Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)> = Vec::new();
     let mut closed_notional = UsdValue::ZERO;
 
@@ -215,7 +220,7 @@ fn execute_close_schedule(
             UsdPrice::ZERO
         };
 
-        let (unfilled, pnls, maker_states, order_mutations) = match_order(
+        let (unfilled, pnls, order_mutations) = match_order(
             storage,
             &liq_param,
             pair_id,
@@ -225,16 +230,12 @@ fn execute_close_schedule(
             taker_is_bid,
             target_price,
             *close_size,
+            maker_states,
         )?;
 
         // Merge PnLs.
         for (addr, pnl) in pnls {
             all_pnls.entry(addr).or_default().checked_add_assign(pnl)?;
-        }
-
-        // Merge maker states.
-        for (addr, ms) in maker_states {
-            all_maker_states.insert(addr, ms);
         }
 
         // Collect order mutations with pair context.
@@ -267,6 +268,8 @@ fn execute_close_schedule(
             )?;
 
             // Vault side: opposite fill at oracle price with zero fee.
+            // Use the vault state from the shared maker_states map.
+            let vault_state = maker_states.entry(contract).or_default();
             settle_fill(
                 pair_id,
                 pair_state,
@@ -284,12 +287,7 @@ fn execute_close_schedule(
         }
     }
 
-    Ok((
-        all_pnls,
-        all_maker_states,
-        all_order_mutations,
-        closed_notional,
-    ))
+    Ok((all_pnls, all_order_mutations, closed_notional))
 }
 
 /// Compute the liquidation fee, cap it at remaining margin, and deduct from
@@ -339,7 +337,7 @@ fn _liquidate(
     pair_params: &BTreeMap<PairId, PairParam>,
     pair_states: &mut BTreeMap<PairId, PairState>,
     user_state: &mut UserState,
-    vault_state: &mut UserState,
+    vault_state: UserState,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     collateral_value: UsdValue,
     collateral_balance: Uint128,
@@ -371,18 +369,22 @@ fn _liquidate(
 
     // -------- Step 3: Execute closes via the order book -----------------------
 
-    let (mut all_pnls, all_maker_states, all_order_mutations, closed_notional) =
-        execute_close_schedule(
-            storage,
-            &schedule,
-            user,
-            contract,
-            param,
-            pair_states,
-            user_state,
-            vault_state,
-            oracle_prices,
-        )?;
+    // Seed the shared maker states map with the vault state so that
+    // book-matched fills and backstop fills accumulate on the same object.
+    let mut all_maker_states: BTreeMap<Addr, UserState> = BTreeMap::new();
+    all_maker_states.insert(contract, vault_state);
+
+    let (mut all_pnls, all_order_mutations, closed_notional) = execute_close_schedule(
+        storage,
+        &schedule,
+        user,
+        contract,
+        param,
+        pair_states,
+        user_state,
+        &mut all_maker_states,
+        oracle_prices,
+    )?;
 
     // -------------------- Step 4: Liquidation fee -----------------------------
 
@@ -580,7 +582,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(50_000));
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        let mut vault_state = UserState::default();
+        let vault_state = UserState::default();
         let mut state = STATE.load(&ctx.storage).unwrap();
 
         // collateral_value = 10000, equity = 10000 + 0 = 10000, MM = 2500
@@ -613,7 +615,7 @@ mod tests {
             &pair_params,
             &mut pair_states,
             &mut user_state,
-            &mut vault_state,
+            vault_state,
             &oracle_prices,
             collateral_value,
             collateral_balance,
@@ -676,7 +678,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_500));
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        let mut vault_state = UserState::default();
+        let vault_state = UserState::default();
         let mut state = state_with_vault(1_000_000_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
@@ -707,7 +709,7 @@ mod tests {
             &pair_params,
             &mut pair_states,
             &mut user_state,
-            &mut vault_state,
+            vault_state,
             &oracle_prices,
             collateral_value,
             collateral_balance,
@@ -756,7 +758,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_500));
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        let mut vault_state = UserState::default();
+        let vault_state = UserState::default();
         let mut state = state_with_vault(1_000_000_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
@@ -787,7 +789,7 @@ mod tests {
             &pair_params,
             &mut pair_states,
             &mut user_state,
-            &mut vault_state,
+            vault_state,
             &oracle_prices,
             collateral_value,
             collateral_balance,
@@ -798,17 +800,20 @@ mod tests {
 
         assert!(result.is_ok(), "vault backstop failed: {:?}", result.err());
 
+        let (_, _, maker_states, _) = result.unwrap();
+
         // User's position should be closed.
         assert!(user_state.positions.is_empty());
 
         // Vault buys from the user (who is selling to close their long),
         // so the vault ends up with a long position.
+        let vault_final = &maker_states[&CONTRACT];
         assert!(
-            vault_state.positions.contains_key(&pair_btc()),
+            vault_final.positions.contains_key(&pair_btc()),
             "vault should have the backstop position"
         );
 
-        let vault_pos = &vault_state.positions[&pair_btc()];
+        let vault_pos = &vault_final.positions[&pair_btc()];
         assert_eq!(vault_pos.size, Quantity::new_int(10));
     }
 
@@ -871,7 +876,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_000));
         oracle_prices.insert(pair_eth(), UsdPrice::new_int(2_800));
 
-        let mut vault_state = UserState::default();
+        let vault_state = UserState::default();
         let mut state = state_with_vault(1_000_000_000_000);
 
         let collateral_value = UsdValue::new_int(4_000);
@@ -907,7 +912,7 @@ mod tests {
             &pair_params,
             &mut pair_states,
             &mut user_state,
-            &mut vault_state,
+            vault_state,
             &oracle_prices,
             collateral_value,
             collateral_balance,
@@ -962,7 +967,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        let mut vault_state = UserState::default();
+        let vault_state = UserState::default();
         let mut state = state_with_vault(1_000_000_000_000);
 
         let collateral_value = UsdValue::new_int(2_500);
@@ -993,7 +998,7 @@ mod tests {
             &pair_params,
             &mut pair_states,
             &mut user_state,
-            &mut vault_state,
+            vault_state,
             &oracle_prices,
             collateral_value,
             collateral_balance,
@@ -1010,5 +1015,301 @@ mod tests {
         // Remaining margin = 2500 + (-2000) = 500
         // Actual fee = min(24000, 500) = 500
         // The fee should be capped at 500, not the full 24000.
+    }
+
+    #[test]
+    fn vault_self_liquidation_rejected() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        let param = default_param();
+        let pair_state = PairState::new(Timestamp::from_seconds(0));
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state,
+        )]);
+
+        let result = liquidate(ctx.as_mutable(), CONTRACT);
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("cannot liquidate the vault"),
+            "expected 'cannot liquidate the vault' error"
+        );
+    }
+
+    /// A maker with orders on two pairs is matched during a multi-pair
+    /// liquidation. With the shared maker states map, both pairs' position
+    /// changes must be preserved in the maker's final state.
+    ///
+    /// User is short on both pairs (closing = buy = taker_is_bid = true →
+    /// matches against ASKS). MAKER has long positions with corresponding
+    /// asks that get closed when matched.
+    #[test]
+    fn multi_pair_maker_state_preserved() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = default_param();
+
+        // User is short → short_oi tracks their positions.
+        let mut btc_state = PairState::new(Timestamp::from_seconds(0));
+        btc_state.short_oi = Quantity::new_int(1);
+
+        let mut eth_state = PairState::new(Timestamp::from_seconds(0));
+        eth_state.short_oi = Quantity::new_int(10);
+
+        setup_storage(&mut ctx.storage, &param, &[
+            (pair_btc(), btc_pair_param(), btc_state.clone()),
+            (pair_eth(), eth_pair_param(), eth_state.clone()),
+        ]);
+
+        // User has:
+        // - Short 1 BTC at entry 47000, oracle 50000 → PnL = -1*(50000-47000) = -3000
+        // - Short 10 ETH at entry 2800, oracle 3000 → PnL = -10*(3000-2800) = -2000
+        // Total PnL = -5000, collateral = 4000, equity = -1000
+        // MM = 1*50000*0.05 + 10*3000*0.05 = 2500 + 1500 = 4000
+        // equity(-1000) < MM(4000) → liquidatable
+        let mut user_state = UserState::default();
+        user_state.positions.insert(pair_btc(), Position {
+            size: Quantity::new_int(-1),
+            entry_price: UsdPrice::new_int(47_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+        });
+        user_state.positions.insert(pair_eth(), Position {
+            size: Quantity::new_int(-10),
+            entry_price: UsdPrice::new_int(2_800),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+        });
+        USER_STATES
+            .save(&mut ctx.storage, USER, &user_state)
+            .unwrap();
+
+        // MAKER has long positions with asks on both pairs.
+        // The ask fills will close the maker's longs.
+        let mut maker_state = UserState {
+            open_order_count: 2,
+            ..Default::default()
+        };
+        maker_state.positions.insert(pair_btc(), Position {
+            size: Quantity::new_int(1),
+            entry_price: UsdPrice::new_int(50_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+        });
+        maker_state.positions.insert(pair_eth(), Position {
+            size: Quantity::new_int(10),
+            entry_price: UsdPrice::new_int(3_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+        });
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+
+        // Ask orders for MAKER on both pairs (selling to close their longs).
+        save_ask(&mut ctx.storage, &pair_btc(), 1, MAKER, -1, 50_000);
+        save_ask(&mut ctx.storage, &pair_eth(), 2, MAKER, -10, 3_000);
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+        pair_params.insert(pair_eth(), eth_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), btc_state);
+        pair_states.insert(pair_eth(), eth_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(50_000));
+        oracle_prices.insert(pair_eth(), UsdPrice::new_int(3_000));
+
+        let vault_state = UserState::default();
+        let mut state = state_with_vault(1_000_000_000_000);
+
+        let collateral_value = UsdValue::new_int(4_000);
+        let collateral_balance = Uint128::new(4_000_000_000);
+
+        use {
+            dango_types::oracle::PrecisionedPrice,
+            grug::{Udec128, hash_map},
+        };
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            pair_btc() => PrecisionedPrice::new(
+                Udec128::new_percent(5_000_000),
+                Timestamp::from_seconds(0),
+                8,
+            ),
+            pair_eth() => PrecisionedPrice::new(
+                Udec128::new_percent(300_000),
+                Timestamp::from_seconds(0),
+                8,
+            ),
+            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Timestamp::from_seconds(0),
+                6,
+            ),
+        });
+
+        let result = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            &param,
+            &pair_params,
+            &mut pair_states,
+            &mut user_state,
+            vault_state,
+            &oracle_prices,
+            collateral_value,
+            collateral_balance,
+            &mut oracle_querier,
+            UsdPrice::new_int(1),
+            &mut state,
+        );
+
+        assert!(
+            result.is_ok(),
+            "multi-pair maker liq failed: {:?}",
+            result.err()
+        );
+
+        let (_, _, maker_states, _) = result.unwrap();
+
+        // The maker should have fills from BOTH pairs preserved.
+        let final_maker = &maker_states[&MAKER];
+        assert!(
+            !final_maker.positions.contains_key(&pair_btc()),
+            "MAKER BTC position should be closed (fully filled)"
+        );
+        assert!(
+            !final_maker.positions.contains_key(&pair_eth()),
+            "MAKER ETH position should be closed (fully filled)"
+        );
+    }
+
+    /// The vault has a resting ask matched during liquidation AND provides
+    /// backstop for the remainder. Both fills must be preserved in the vault's
+    /// final state.
+    ///
+    /// User is short 10 BTC → to close, they buy. The taker is bid, matching
+    /// against ASKs. The vault has a resting ask for 3 BTC. The remaining 7
+    /// are backstopped by the vault at oracle price.
+    #[test]
+    fn vault_maker_and_backstop_fills_preserved() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = default_param();
+        let mut pair_state = PairState::new(Timestamp::from_seconds(0));
+        pair_state.short_oi = Quantity::new_int(10);
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        // User has short 10 BTC at 47500, oracle 50000 → loss of $25,000.
+        // PnL = -10 * (50000 - 47500) = -25000
+        // Collateral = 2400 → equity = 2400 - 25000 = -22600
+        // MM = 10 * 50000 * 0.05 = 25000
+        // -22600 < 25000 → liquidatable
+        save_position(&mut ctx.storage, USER, &pair_btc(), -10, 47_500);
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+
+        // Vault has a resting ask for 3 BTC at 50000 (will be matched as maker).
+        // The vault has a long 3 position that is being offered via the ask.
+        let mut vault_state = UserState::default();
+        vault_state.positions.insert(pair_btc(), Position {
+            size: Quantity::new_int(3),
+            entry_price: UsdPrice::new_int(50_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+        });
+        vault_state.open_order_count = 1;
+        USER_STATES
+            .save(&mut ctx.storage, CONTRACT, &vault_state)
+            .unwrap();
+
+        save_ask(&mut ctx.storage, &pair_btc(), 1, CONTRACT, -3, 50_000);
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(50_000));
+
+        let mut state = state_with_vault(1_000_000_000_000);
+
+        let collateral_value = UsdValue::new_int(2_400);
+        let collateral_balance = Uint128::new(2_400_000_000);
+
+        use {
+            dango_types::oracle::PrecisionedPrice,
+            grug::{Udec128, hash_map},
+        };
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            pair_btc() => PrecisionedPrice::new(
+                Udec128::new_percent(5_000_000),
+                Timestamp::from_seconds(0),
+                8,
+            ),
+            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Timestamp::from_seconds(0),
+                6,
+            ),
+        });
+
+        let result = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            &param,
+            &pair_params,
+            &mut pair_states,
+            &mut user_state,
+            vault_state,
+            &oracle_prices,
+            collateral_value,
+            collateral_balance,
+            &mut oracle_querier,
+            UsdPrice::new_int(1),
+            &mut state,
+        );
+
+        assert!(
+            result.is_ok(),
+            "vault maker+backstop failed: {:?}",
+            result.err()
+        );
+
+        let (_, _, maker_states, _) = result.unwrap();
+
+        // The vault had +3 long. During liquidation:
+        // - Maker fill: sold 3 BTC (closing the vault's +3 long via the ask)
+        // - Backstop fill: sold 7 BTC at oracle price (new short)
+        // Net vault position: 0 (from closed long) + (-7) from backstop = -7 short.
+        let vault_final = &maker_states[&CONTRACT];
+        assert!(
+            vault_final.positions.contains_key(&pair_btc()),
+            "vault should have a BTC position"
+        );
+        let vault_pos = &vault_final.positions[&pair_btc()];
+        assert_eq!(
+            vault_pos.size,
+            Quantity::new_int(-7),
+            "vault should have -7 BTC short (3 maker fill closed the long, 7 backstop)"
+        );
     }
 }

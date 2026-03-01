@@ -15,6 +15,8 @@ use {
 };
 
 pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
+    ensure!(user != ctx.contract, "cannot ADL the vault");
+
     // ----------------------------- 1. Load state + checks -----------------------
 
     let param = PARAM.load(ctx.storage)?;
@@ -710,5 +712,33 @@ mod tests {
         // _deleverage never force-collects from user. It only pays out from
         // the vault. The collateral is not touched.
         // (No collections returned — only an optional payout.)
+    }
+
+    #[test]
+    fn vault_adl_rejected() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_sender(Addr::mock(99))
+            .with_funds(Coins::default());
+
+        let param = default_param();
+        let state = state_with_deficit(0, 5_000_000_000);
+
+        setup_storage(&mut ctx.storage, &param, &state, &[(
+            pair_btc(),
+            btc_pair_param(),
+            PairState::new(Timestamp::from_seconds(0)),
+        )]);
+
+        let result = super::deleverage(ctx.as_mutable(), CONTRACT);
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("cannot ADL the vault"),
+            "expected 'cannot ADL the vault' error"
+        );
     }
 }

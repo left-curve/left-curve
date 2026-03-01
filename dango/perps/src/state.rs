@@ -21,6 +21,8 @@ pub const USER_STATES: Map<Addr, UserState> = Map::new("user_state");
 
 pub const NEXT_ORDER_ID: Item<OrderId> = Item::new("next_order_id");
 
+pub const LAST_VAULT_ORDERS_UPDATE: Item<u64> = Item::new("last_vault_orders_update");
+
 pub const BIDS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("bid", OrderIndexes::new("bid", "bid__id", "bid__user"));
 

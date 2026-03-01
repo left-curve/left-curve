@@ -1,10 +1,12 @@
 use {
     crate::{
-        ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM, STATE, USER_STATES,
+        ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM, STATE,
+        USER_STATES,
         core::compute_vault_quotes,
         execute::{ORACLE, cancel_order::cancel_all_orders_for},
         price::may_invert_price,
     },
+    anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         Quantity, UsdValue,
@@ -25,6 +27,13 @@ use {
 ///
 /// Returns: empty `Response` (no token transfers).
 pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let last_update = LAST_VAULT_ORDERS_UPDATE.may_load(ctx.storage)?.unwrap_or(0);
+
+    ensure!(
+        ctx.block.height > last_update,
+        "vault orders already updated this block"
+    );
+
     let param = PARAM.load(ctx.storage)?;
     let state = STATE.load(ctx.storage)?;
     let pair_ids = PAIR_IDS.load(ctx.storage)?;
@@ -55,6 +64,8 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
         } else {
             USER_STATES.save(ctx.storage, ctx.contract, &vault_state)?;
         }
+
+        LAST_VAULT_ORDERS_UPDATE.save(ctx.storage, &ctx.block.height)?;
 
         return Ok(Response::new());
     }
@@ -139,6 +150,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     }
 
     // Step 5: Persist updated state.
+    LAST_VAULT_ORDERS_UPDATE.save(ctx.storage, &ctx.block.height)?;
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
     if vault_state.is_empty() {
@@ -148,4 +160,42 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     }
 
     Ok(Response::new())
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::LAST_VAULT_ORDERS_UPDATE,
+        grug::{Addr, Coins, MockContext},
+    };
+
+    const CONTRACT: Addr = Addr::mock(0);
+
+    #[test]
+    fn on_oracle_update_once_per_block() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_sender(Addr::mock(99))
+            .with_funds(Coins::default())
+            .with_block_height(10);
+
+        // Simulate a previous successful call at block 10.
+        LAST_VAULT_ORDERS_UPDATE
+            .save(&mut ctx.storage, &10)
+            .unwrap();
+
+        // Second call at the same block height should fail.
+        let result = super::on_oracle_update(ctx.as_mutable());
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("already updated this block"),
+            "expected 'already updated this block' error"
+        );
+    }
 }

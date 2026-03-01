@@ -1,6 +1,7 @@
 use {
     crate::{
-        PARAM, STATE, USER_STATES,
+        NoCachePerpQuerier, PARAM, STATE, USER_STATES,
+        core::compute_user_equity,
         execute::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
     },
     anyhow::ensure,
@@ -31,6 +32,12 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
+    let vault_user_state = USER_STATES
+        .may_load(ctx.storage, ctx.contract)?
+        .unwrap_or_default();
+
+    let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
+
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
     // --------------------------- 2. Business logic ---------------------------
@@ -41,6 +48,8 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
         &state,
         &param,
         &user_state,
+        &vault_user_state,
+        &perp_querier,
         &mut oracle_querier,
     )?;
 
@@ -69,6 +78,9 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
 }
 
 /// The actual logic for handling the withdrawal.
+///
+/// Mutates: nothing (pure computation).
+///
 /// Returns: 1) the amount of shares to burn, 2) the unlock record.
 fn _withdraw(
     current_time: Timestamp,
@@ -76,6 +88,8 @@ fn _withdraw(
     state: &State,
     param: &Param,
     user_state: &UserState,
+    vault_user_state: &UserState,
+    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<(Uint128, Unlock)> {
     // Query the price of the settlement currency.
@@ -97,15 +111,17 @@ fn _withdraw(
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
-    let effective_supply = state.vault_share_supply.checked_add(VIRTUAL_SHARES)?;
-
+    // Compute the vault's true equity including unrealized PnL and funding.
     let vault_margin_value = Quantity::from_base(state.vault_margin, settlement_currency::DECIMAL)?
         .checked_mul(settlement_currency_price)?;
+    let vault_equity = compute_user_equity(
+        vault_margin_value,
+        vault_user_state,
+        perp_querier,
+        oracle_querier,
+    )?;
 
-    // TODO(order-book): Replace with new `compute_vault_equity` that treats
-    // the vault as a regular trader (via `compute_user_equity` with the vault's
-    // address/state). For now, vault equity = vault margin value (no PnL/funding).
-    let vault_equity = vault_margin_value;
+    let effective_supply = state.vault_share_supply.checked_add(VIRTUAL_SHARES)?;
 
     let effective_equity = vault_equity.checked_add(VIRTUAL_ASSETS)?;
 
@@ -148,7 +164,7 @@ mod tests {
     use {
         super::*,
         dango_types::{oracle::PrecisionedPrice, perps::settlement_currency},
-        grug::{Coin, Duration, Udec128, Uint128, hash_map},
+        grug::{Coin, Duration, MockStorage, Udec128, Uint128, hash_map},
         std::collections::VecDeque,
         test_case::test_case,
     };
@@ -181,6 +197,7 @@ mod tests {
     // amount = floor(2_000_000 * 1_000_000 / 2_000_000) = 1_000_000
     #[test]
     fn first_withdrawal_symmetric() {
+        let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -192,6 +209,8 @@ mod tests {
         };
         let param = default_param();
         let user_state = UserState::default();
+        let vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let (shares, unlock) = _withdraw(
             Timestamp::from_seconds(0),
@@ -199,6 +218,8 @@ mod tests {
             &state,
             &param,
             &user_state,
+            &vault_user_state,
+            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();
@@ -212,6 +233,7 @@ mod tests {
     // amount = floor(2_000_000 * 500_000 / 2_000_000) = 500_000
     #[test]
     fn partial_withdrawal() {
+        let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -223,6 +245,8 @@ mod tests {
         };
         let param = default_param();
         let user_state = UserState::default();
+        let vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let (_, unlock) = _withdraw(
             Timestamp::from_seconds(0),
@@ -230,6 +254,8 @@ mod tests {
             &state,
             &param,
             &user_state,
+            &vault_user_state,
+            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();
@@ -240,6 +266,7 @@ mod tests {
     // ---- Test 3: zero shares rejected ----
     #[test]
     fn zero_shares_rejected() {
+        let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -251,6 +278,8 @@ mod tests {
         };
         let param = default_param();
         let user_state = UserState::default();
+        let vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _withdraw(
             Timestamp::from_seconds(0),
@@ -258,6 +287,8 @@ mod tests {
             &state,
             &param,
             &user_state,
+            &vault_user_state,
+            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap_err();
@@ -270,6 +301,7 @@ mod tests {
     fn unexpected_coins_rejected() {
         use dango_types::constants::eth;
 
+        let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -281,6 +313,8 @@ mod tests {
         };
         let param = default_param();
         let user_state = UserState::default();
+        let vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let mut funds = share_coins(1_000_000);
         funds
@@ -296,6 +330,8 @@ mod tests {
             &state,
             &param,
             &user_state,
+            &vault_user_state,
+            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap_err();
@@ -303,14 +339,10 @@ mod tests {
         assert!(err.to_string().contains("unexpected"));
     }
 
-    // TODO(order-book): Tests 5, 6, 8, 9, 10 depend on vault equity accounting
-    // with unrealized PnL and funding across trading pairs. These will be
-    // re-enabled once the new `compute_vault_equity` (treating the vault as
-    // a regular trader) is implemented.
-
     // ---- Test 7: max unlocks exceeded ----
     #[test]
     fn max_unlocks_exceeded() {
+        let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -325,6 +357,8 @@ mod tests {
             vault_cooldown_period: Duration::from_seconds(86400),
             ..Default::default()
         };
+        let vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         // Already at max_unlocks (2 existing unlocks).
         let user_state = UserState {
@@ -347,6 +381,8 @@ mod tests {
             &state,
             &param,
             &user_state,
+            &vault_user_state,
+            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap_err();
@@ -370,6 +406,7 @@ mod tests {
     #[test_case(99, 1_000_918 ; "usdc below peg")]
     #[test_case(101, 999_099 ; "usdc above peg")]
     fn non_dollar_settlement_price(price_percent: u128, expected_release: u128) {
+        let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(price_percent),
@@ -385,6 +422,8 @@ mod tests {
         };
         let param = default_param();
         let user_state = UserState::default();
+        let vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let (_, unlock) = _withdraw(
             Timestamp::from_seconds(0),
@@ -392,6 +431,8 @@ mod tests {
             &state,
             &param,
             &user_state,
+            &vault_user_state,
+            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();
@@ -402,6 +443,7 @@ mod tests {
     // ---- Test 12: unlock end_time is correct ----
     #[test]
     fn unlock_end_time_correct() {
+        let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -417,6 +459,8 @@ mod tests {
             ..Default::default()
         };
         let user_state = UserState::default();
+        let vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let (_, unlock) = _withdraw(
             Timestamp::from_seconds(1_000_000),
@@ -424,6 +468,8 @@ mod tests {
             &state,
             &param,
             &user_state,
+            &vault_user_state,
+            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();
@@ -438,6 +484,7 @@ mod tests {
     // amount = floor(11_000_001 * 3_000_000 / 8_000_000) = floor(4_125_000.375) = 4_125_000
     #[test]
     fn amount_rounded_floor() {
+        let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
         });
@@ -449,6 +496,8 @@ mod tests {
         };
         let param = default_param();
         let user_state = UserState::default();
+        let vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let (_, unlock) = _withdraw(
             Timestamp::from_seconds(0),
@@ -456,6 +505,8 @@ mod tests {
             &state,
             &param,
             &user_state,
+            &vault_user_state,
+            &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();

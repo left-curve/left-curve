@@ -270,7 +270,9 @@ fn _submit_order(
 
     // ---------------------- Step 7. Match against book -----------------------
 
-    let (unfilled, mut pnls, maker_states, order_mutations) = match_order(
+    let mut maker_states = BTreeMap::new();
+
+    let (unfilled, mut pnls, order_mutations) = match_order(
         storage,
         param,
         pair_id,
@@ -280,6 +282,7 @@ fn _submit_order(
         taker_is_bid,
         target_price,
         fillable_size,
+        &mut maker_states,
     )?;
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
@@ -328,13 +331,14 @@ fn _submit_order(
 ///
 /// - `pair_state.long_oi` / `pair_state.short_oi` — updated per fill.
 /// - `taker_state.positions` — opened / closed / flipped per fill.
+/// - `maker_states` — each matched maker's `UserState` is loaded from storage
+///   (if not already present) and updated in place.
 ///
 /// Returns:
 ///
 /// - Remaining (unfilled) size (same sign convention as taker's order).
 /// - Per-user net PnL in USD (`BTreeMap<Addr, UsdValue>`).
-/// - Maker `UserState`s to persist (`BTreeMap<Addr, UserState>`).
-/// - Order mutations to apply (`Vec<(OrderKey, Option<Order>)>`):
+/// - Order mutations to apply (`Vec<(StoredPrice, OrderId, Option<Order>)>`):
 ///   `None` = remove (fully filled), `Some` = update (partially filled).
 pub(crate) fn match_order(
     storage: &dyn Storage,
@@ -346,14 +350,13 @@ pub(crate) fn match_order(
     taker_is_bid: bool,
     target_price: UsdPrice,
     mut remaining_size: Quantity,
+    maker_states: &mut BTreeMap<Addr, UserState>,
 ) -> anyhow::Result<(
     Quantity,
     BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>)>,
 )> {
     let mut pnls = BTreeMap::new();
-    let mut maker_states = BTreeMap::new();
     let mut order_mutations = Vec::new();
 
     // Create iterator over the maker side of the order book.
@@ -457,7 +460,7 @@ pub(crate) fn match_order(
         remaining_size.checked_sub_assign(taker_fill_size)?;
     }
 
-    Ok((remaining_size, pnls, maker_states, order_mutations))
+    Ok((remaining_size, pnls, order_mutations))
 }
 
 /// Mutates:
