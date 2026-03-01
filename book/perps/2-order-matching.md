@@ -3,7 +3,7 @@
 This chapter describes how orders are submitted, matched, filled, and settled
 in the on-chain perpetual futures order book.
 
-## 1 Order types
+## 1. Order types
 
 Every order carries an `OrderKind`:
 
@@ -26,7 +26,7 @@ Resting orders on the book are stored as:
 
 The pair ID, order ID, and limit price are part of the storage key.
 
-## 2 Order decomposition
+## 2. Order decomposition
 
 Before matching, every fill is decomposed into a **closing** and an **opening**
 portion based on the user's current position:
@@ -41,7 +41,7 @@ Both closing and opening carry the same sign as the original order size (or are
 zero). For **reduce-only** orders, the opening portion is forced to zero — if
 the resulting fillable size is zero, the transaction is rejected.
 
-## 3 Target price
+## 3. Target price
 
 The target price defines the worst acceptable execution price for the taker:
 
@@ -65,7 +65,7 @@ A price constraint is **violated** when:
 - Bid: $\mathtt{execPrice} > \mathtt{targetPrice}$
 - Ask: $\mathtt{execPrice} < \mathtt{targetPrice}$
 
-## 4 Matching engine
+## 4. Matching engine
 
 The matching engine iterates the opposite side of the book in **price-time
 priority**:
@@ -97,7 +97,7 @@ After each fill the maker order is updated: reserved margin is released
 proportionally, and if fully filled the order is removed from the book and
 `open_order_count` is decremented.
 
-## 4a Pre-match margin check
+## 5. Pre-match margin check
 
 Before matching begins, the taker's margin is verified (skipped for
 reduce-only orders). The check ensures the user can afford the **worst
@@ -114,7 +114,7 @@ $|\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{takerFeeRate}$.
 
 This prevents a taker from submitting orders they cannot collateralise.
 
-## 5 Self-trade prevention
+## 6. Self-trade prevention
 
 The exchange uses **EXPIRE\_MAKER** mode. When the taker encounters their own
 resting order on the opposite side:
@@ -124,11 +124,11 @@ resting order on the opposite side:
 3. The taker **continues matching deeper** in the book — no fill occurs for the
    self-matched order.
 
-## 6 Fill execution
+## 7. Fill execution
 
 Each fill between taker and maker is executed as follows:
 
-### 6a Funding settlement
+### 7a. Funding settlement
 
 Accrued funding is settled on the user's existing position before the fill:
 
@@ -139,7 +139,7 @@ $$
 The negated accrued funding is added to the user's PnL (positive accrued
 funding is a cost to longs).
 
-### 6b Closing PnL
+### 7b. Closing PnL
 
 For the closing portion of the fill:
 
@@ -158,7 +158,7 @@ $$
 The position size is reduced by the closing amount. If the position is fully
 closed, it is removed from state.
 
-### 6c Opening position
+### 7c. Opening position
 
 For the opening portion of the fill:
 
@@ -170,7 +170,7 @@ $$
 \mathtt{entryPrice} \gets \frac{|\mathtt{oldSize}| \times \mathtt{oldEntry} + |\mathtt{openingSize}| \times \mathtt{fillPrice}}{|\mathtt{newSize}|}
 $$
 
-### 6d OI update
+### 7d. OI update
 
 Open interest is updated per side:
 
@@ -179,7 +179,7 @@ Open interest is updated per side:
 - Opening a long: $\mathtt{longOI} \mathrel{+}= |\mathtt{openingSize}|$
 - Opening a short: $\mathtt{shortOI} \mathrel{+}= |\mathtt{openingSize}|$
 
-## 7 Trading fees
+## 8. Trading fees
 
 Fees are charged on every fill:
 
@@ -197,13 +197,13 @@ The fee rate differs by role:
 Fees are always positive (absolute value of fill size is used). They are routed
 to the vault via the settlement loop described below.
 
-## 8 PnL settlement
+## 9. PnL settlement
 
 After all fills in an order are complete, PnLs and fees are settled atomically
 as in-place USD margin adjustments. No token conversions occur during
 settlement — all values are pure `UsdValue` arithmetic.
 
-### 8a Fee loop (processed first)
+### 9a. Fee loop
 
 For each non-vault user with a non-zero fee:
 
@@ -219,7 +219,7 @@ Fees from the vault to itself are skipped (no-op). Processing fees first
 ensures collected fees augment $\mathtt{vaultMargin}$ before any vault losses
 are absorbed.
 
-### 8b PnL loop
+### 9b. PnL loop
 
 **Non-vault users:**
 
@@ -239,7 +239,7 @@ $$
 A negative $\mathtt{vaultMargin}$ represents a deficit (bad debt not yet
 recovered via [ADL](5-liquidation-and-adl.md)).
 
-## 9 Unfilled remainder
+## 10. Unfilled remainder
 
 After matching completes:
 
@@ -278,7 +278,7 @@ side:
 
 If the opposite book is empty, the order always succeeds.
 
-## 10 Open interest constraint
+## 11. Open interest constraint
 
 Each pair has a $\mathtt{maxAbsOI}$ parameter enforcing a per-side cap:
 
@@ -289,7 +289,7 @@ The constraint is checked **before matching** and does not apply to reduce-only
 orders (which have zero opening size). Long and short OI limits are independent
 but share the same $\mathtt{maxAbsOI}$ parameter.
 
-## 11 Order cancellation
+## 12. Order cancellation
 
 ### Single cancel
 

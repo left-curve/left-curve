@@ -135,7 +135,7 @@ $$
 $$
 
 $$
-\mathtt{quoteSize} = \min\!\left(\frac{\mathtt{halfMargin}}{\mathtt{oraclePrice} \times \mathtt{imr}},\; \mathtt{maxQuoteSize}\right)
+\mathtt{quoteSize} = \min \left(\frac{\mathtt{halfMargin}}{\mathtt{oraclePrice} \times \mathtt{imr}},\; \mathtt{maxQuoteSize}\right)
 $$
 
 where $\mathtt{imr}$ is the initial margin ratio.

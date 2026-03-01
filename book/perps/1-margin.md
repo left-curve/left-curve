@@ -1,6 +1,6 @@
 # Margin
 
-## 1 Overview
+## 1. Overview
 
 All trader margin is held **internally** in the perps contract as a USD value
 (`UsdValue`) on each user's state. PnL and fee settlement is pure USD
@@ -16,7 +16,7 @@ Token conversion only happens at two boundaries:
 
 Internal logics of the perps contract use USD amounts exclusively.
 
-## 2 Trader Deposit
+## 2. Trader Deposit
 
 The user sends settlement currency as attached funds. The perps contract:
 
@@ -26,21 +26,21 @@ The user sends settlement currency as attached funds. The perps contract:
 
 The tokens remain in the perps contract's bank balance.
 
-## 3 Trader Withdraw
+## 3. Trader Withdraw
 
 The user specifies how much USD margin to withdraw. The perps contract:
 
-1. Computes available margin (equity minus used margin minus reserved margin;
+1. Computes $\mathtt{availableMargin}$ (equity minus used margin minus reserved margin;
    see [§8](#8-available-margin)),
    clamped to zero.
-2. Ensures the requested amount does not exceed available margin.
+2. Ensures the requested amount does not exceed $\mathtt{availableMargin}$.
 3. Deducts the amount from `userState.margin`.
 4. Converts USD to settlement-currency tokens at the current oracle price
    (floor-rounded for safety — the contract keeps slightly more than strictly
    needed).
 5. Transfers the tokens to the user.
 
-## 4 Equity
+## 4. Equity
 
 A user's **equity** (net account value) is:
 
@@ -64,7 +64,7 @@ $$
 Positive accrued funding is a cost to the trader (subtracted from equity).
 Refer to [Funding](3-funding.md) for details on the funding rate.
 
-## 5 Initial margin (IM)
+## 5. Initial margin (IM)
 
 $$
 \mathtt{IM} = \sum |\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{imr}
@@ -83,7 +83,7 @@ user's current position in that pair is replaced by the hypothetical
 post-fill position (`currentSize + orderSize`). Positions in other pairs use
 their actual sizes.
 
-## 6 Maintenance margin (MM)
+## 6. Maintenance margin (MM)
 
 $$
 \mathtt{MM} = \sum |\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{mmr}
@@ -98,7 +98,7 @@ $$
 
 See [Liquidation](5-liquidation-and-adl.md) for details.
 
-## 7 Reserved margin
+## 7. Reserved margin
 
 When a GTC limit order is placed, margin is reserved for the worst-case
 scenario (the entire order is opening):
@@ -114,10 +114,10 @@ on cancellation. Reduce-only orders reserve zero margin (they can only close).
 See [Order matching §9](2-order-matching.md#9-unfilled-remainder) for when
 reservation occurs.
 
-## 8 Available margin
+## 8. Available margin
 
 $$
-\mathtt{available} = \max\!\big(0,\; \mathtt{equity} - \mathtt{usedMargin} - \mathtt{reservedMargin}\big)
+\mathtt{available} = \max \big(0,\; \mathtt{equity} - \mathtt{usedMargin} - \mathtt{reservedMargin}\big)
 $$
 
 where `usedMargin` is the IM of current positions (§5 formula applied to

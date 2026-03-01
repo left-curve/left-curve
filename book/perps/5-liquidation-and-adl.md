@@ -3,7 +3,7 @@
 This document describes how the perpetual futures exchange protects itself from
 under-collateralised accounts and socialises losses that exceed the vault.
 
-## 1 Liquidation trigger
+## 1. Liquidation trigger
 
 Every account has an **equity** and a **maintenance margin** (MM):
 
@@ -27,7 +27,7 @@ An account with no open positions is never liquidatable regardless of its equity
 
 ---
 
-## 2 Close schedule
+## 2. Close schedule
 
 When an account is liquidatable the system computes the **minimum set of
 position closures** needed to restore it above maintenance margin.
@@ -57,18 +57,18 @@ short with a buy). Only positions that contribute to the deficit are touched and
 they may be **partially closed** when the deficit is small relative to the
 position.
 
-## 3 Position closure
+## 3. Position closure
 
 Each entry in the close schedule is executed in two phases:
 
-### 3a Order-book matching
+### 3a. Order-book matching
 
 The close is submitted as a **market order** against the on-chain order book.
 It matches resting limit orders at price-time priority. Any filled amount is
 settled normally (mark-to-market PnL between the entry price and the fill
 price).
 
-### 3b Vault backstop
+### 3b. Vault backstop
 
 If any quantity remains **unfilled** after the order book is exhausted, the
 **vault** absorbs it. Both the liquidated user and the vault are settled at the
@@ -78,7 +78,7 @@ guarantees every liquidation completes regardless of order-book depth.
 Liquidation fills (both order-book and backstop) carry **zero trading fees** for
 both taker and maker.
 
-## 4 Liquidation fee
+## 4. Liquidation fee
 
 After all positions in the schedule are closed, a one-time liquidation fee is
 charged:
@@ -98,14 +98,14 @@ $$
 The fee is deducted from the user's PnL and routed to the **vault**.
 It is capped at the remaining margin so the fee itself never creates bad debt.
 
-## 5 PnL settlement
+## 5. PnL settlement
 
 All PnL from the liquidation fills (user, counterparties, vault) is settled
 atomically as in-place USD margin adjustments — no token transfers occur. Both
 user and vault PnL are applied via the same settlement logic described in
 [Order matching §8](2-order-matching.md#8-pnl-settlement).
 
-## 6 Bad debt
+## 6. Bad debt
 
 If the amount the liquidated user owes exceeds their remaining collateral
 balance, bad debt arises:
@@ -124,7 +124,7 @@ This can drive $\mathtt{vaultMargin}$ negative. A negative vault margin
 represents the **ADL deficit** — bad debt not yet recovered — and triggers
 auto-deleveraging.
 
-## 7 ADL trigger
+## 7. ADL trigger
 
 Auto-deleveraging activates whenever
 
@@ -137,7 +137,7 @@ vault's available margin. Once active, addresses listed in the `adl_operators`
 parameter set may call the deleverage action on profitable accounts until
 $\mathtt{vaultMargin}$ is restored to zero or above.
 
-## 8 ADL ranking
+## 8. ADL ranking
 
 Each profitable position is scored to determine closure priority:
 
@@ -159,7 +159,7 @@ The score naturally favours accounts that are both highly profitable and highly
 leveraged — those who benefited most from the move that caused the bad debt and
 who pose the greatest risk if the market reverses.
 
-## 9 ADL closure
+## 9. ADL closure
 
 All of the target user's profitable positions (score > 0) are closed:
 
@@ -170,7 +170,7 @@ All of the target user's profitable positions (score > 0) are closed:
 Because ADL uses the oracle price, the affected user experiences no slippage
 beyond what the oracle already reflects.
 
-## 10 Forfeiture
+## 10. Forfeiture
 
 After ADL closes are settled the user's total realised PnL is applied to the
 deficit:
