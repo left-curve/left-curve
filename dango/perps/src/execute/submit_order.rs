@@ -340,6 +340,10 @@ fn _submit_order(
 /// - Per-user net PnL in USD (`BTreeMap<Addr, UsdValue>`).
 /// - Order mutations to apply (`Vec<(StoredPrice, OrderId, Option<Order>)>`):
 ///   `None` = remove (fully filled), `Some` = update (partially filled).
+///
+/// Self-trade prevention (EXPIRE_MAKER): if a resting order belongs to
+/// the taker, the order is cancelled and the taker continues matching
+/// deeper in the book.
 pub(crate) fn match_order(
     storage: &dyn Storage,
     param: &Param,
@@ -386,6 +390,22 @@ pub(crate) fn match_order(
 
         if is_price_constraint_violated(resting_price, target_price, taker_is_bid) {
             break;
+        }
+
+        // --------- Self-trade prevention (EXPIRE_MAKER) ----------
+
+        // If we come across a maker order that was placed by the taker himself,
+        // cancel the maker order and move on.
+        // This is consistent with industry standard practice. Specifically, it
+        // corresponds to Binance's EXPIRE_MAKER mode:
+        // https://developers.binance.com/docs/binance-spot-api-docs/faqs/stp_faq
+        if maker_order.user == taker {
+            taker_state.open_order_count -= 1;
+            (taker_state.reserved_margin).checked_sub_assign(maker_order.reserved_margin)?;
+
+            order_mutations.push((stored_price, maker_order_id, None));
+
+            continue;
         }
 
         // ---------------------- Determine fillable size ----------------------
@@ -2164,5 +2184,87 @@ mod tests {
             msg.contains("insufficient margin for limit order"),
             "expected limit-order margin error, got: {msg}"
         );
+    }
+
+    // ======= Self-trade prevention (EXPIRE_MAKER) ========================
+
+    #[test]
+    fn self_trade_prevention_expire_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        // TAKER has a resting ask at 50,000 (order_id 100).
+        place_ask(&mut ctx.storage, TAKER, 50_000, 10, 100);
+        // MAKER_A has a resting ask behind it at 50,100 (order_id 101).
+        place_ask(&mut ctx.storage, MAKER_A, 50_100, 10, 101);
+
+        // Snapshot taker state after placing the resting order.
+        let taker_state_before = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        assert_eq!(taker_state_before.open_order_count, 1);
+        let taker_reserved_before = taker_state_before.reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+
+        // Start with the taker state from storage (has the resting order's
+        // reserved margin and open_order_count).
+        let mut taker_state = taker_state_before.clone();
+        let mut oq = test_oracle_querier();
+        let mut state = State::default();
+
+        let (_, _, maker_states, order_mutations, _) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id(),
+            UsdPrice::new_int(50_100),
+            LARGE_COLLATERAL,
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100), // 10%
+            },
+            false,
+            &mut oq,
+            SETTLEMENT_PRICE,
+            &mut state,
+        )
+        .unwrap();
+
+        // 1) Taker's own ask was cancelled (mutation = None).
+        assert_eq!(order_mutations.len(), 2);
+        assert!(
+            order_mutations[0].2.is_none(),
+            "taker's resting order should be removed"
+        );
+
+        // 2) Taker's open_order_count was decremented (the resting order
+        //    was cancelled by STP).
+        assert_eq!(taker_state.open_order_count, 0);
+
+        // 3) Taker's reserved margin from the cancelled order was released.
+        assert!(taker_reserved_before.is_non_zero());
+        // The reserved_margin for the cancelled order is fully released.
+        // Only trading-fee deductions (from the fill against MAKER_A) remain.
+        assert!(taker_state.reserved_margin < taker_reserved_before);
+
+        // 4) Taker DID fill against the second maker's ask at 50,100.
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(10));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(50_100));
+
+        // 5) MAKER_A's ask was fully filled (second mutation = None).
+        assert!(
+            order_mutations[1].2.is_none(),
+            "MAKER_A's order should be fully filled"
+        );
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
     }
 }
