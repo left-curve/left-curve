@@ -114,26 +114,14 @@ $$
 \mathtt{badDebt} = \mathtt{collections} - \mathtt{collateralBalance}
 $$
 
-The vault absorbs as much as it can:
+The bad debt is subtracted from the vault margin:
 
 $$
-\mathtt{absorbed} = \min(\mathtt{badDebt},\; \mathtt{vaultMargin})
+\mathtt{vaultMargin} \gets \mathtt{vaultMargin} - \mathtt{badDebt}
 $$
 
-$$
-\mathtt{unabsorbed} = \mathtt{badDebt} - \mathtt{absorbed}
-$$
-
-$$
-\mathtt{vaultMargin} \gets \mathtt{vaultMargin} - \mathtt{absorbed}
-$$
-
-$$
-\mathtt{vaultDeficit} \gets \mathtt{vaultDeficit} + \mathtt{unabsorbed}
-$$
-
-If the vault fully covers the bad debt, the system returns to normal. If not,
-the unabsorbed amount is recorded as the **ADL deficit** and triggers
+This can drive $\mathtt{vaultMargin}$ negative. A negative vault margin
+represents the **ADL deficit** — bad debt not yet recovered — and triggers
 auto-deleveraging.
 
 ## 7 ADL trigger
@@ -141,12 +129,13 @@ auto-deleveraging.
 Auto-deleveraging activates whenever
 
 $$
-\mathtt{vaultDeficit} > 0
+\mathtt{vaultMargin} < 0
 $$
 
 This can only happen when a liquidation produces bad debt that exceeds the
-vault. Once active, addresses listed in the `adl_operators` parameter set may
-call the deleverage action on profitable accounts until the deficit is cleared.
+vault's available margin. Once active, addresses listed in the `adl_operators`
+parameter set may call the deleverage action on profitable accounts until
+$\mathtt{vaultMargin}$ is restored to zero or above.
 
 ## 8 ADL ranking
 
@@ -191,28 +180,25 @@ $$
 $$
 
 $$
-\mathtt{vaultMargin} \gets \mathtt{vaultMargin} + \mathtt{pnl}
+\mathtt{deficit} = |\mathtt{vaultMargin}|
 $$
 
 $$
-\mathtt{forfeited} = \min(\mathtt{pnl},\; \mathtt{vaultDeficit})
+\mathtt{forfeited} = \min(\mathtt{pnl},\; \mathtt{deficit})
 $$
 
 $$
-\mathtt{payout} = \mathtt{pnl} - \mathtt{forfeited}
+\mathtt{credit} = \mathtt{pnl} - \mathtt{forfeited}
 $$
 
 $$
-\mathtt{vaultMargin} \gets \mathtt{vaultMargin} - \mathtt{payout}
+\mathtt{vaultMargin} \gets \mathtt{vaultMargin} + \mathtt{forfeited}
 $$
 
-$$
-\mathtt{vaultDeficit} \gets \mathtt{vaultDeficit} - \mathtt{forfeited}
-$$
-
-The user forfeits up to $\mathtt{vaultDeficit}$ of their profit to make the exchange
-whole. The remainder is paid out normally. No collateral beyond the realised PnL
-is ever seized.
+The user forfeits up to the absolute value of the negative $\mathtt{vaultMargin}$
+of their profit to make the exchange whole. The remainder ($\mathtt{credit}$) is
+added to the user's margin. No collateral beyond the realised PnL is ever
+seized.
 
 ## Examples
 
@@ -366,7 +352,7 @@ $$
 $$
 
 $$
-\mathtt{vaultMargin}: \$5{,}000 - \$1{,}000 = \$4{,}000, \quad \mathtt{vaultDeficit}: \$0
+\mathtt{vaultMargin}: \$5{,}000 - \$1{,}000 = \$4{,}000
 $$
 
 The vault absorbs the full $1,000 shortfall. Charlie's entire $3,000
@@ -402,10 +388,10 @@ $$
 $$
 
 $$
-\mathtt{vaultMargin}: \$500 - \$500 = \$0, \quad \mathtt{vaultDeficit}: \$500
+\mathtt{vaultMargin}: \$500 - \$1{,}000 = -\$500
 $$
 
-The vault is exhausted with $500 of bad debt remaining. ADL activates.
+The vault margin is negative, indicating $500 of unresolved bad debt. ADL activates.
 
 _ADL — selecting Dana_
 
@@ -448,7 +434,7 @@ $$
 _Forfeiture_
 
 $$
-\mathtt{vaultMargin} \gets \mathtt{vaultMargin} + \$4{,}000 = \$4{,}000
+\mathtt{deficit} = |\mathtt{vaultMargin}| = \$500
 $$
 
 $$
@@ -456,19 +442,15 @@ $$
 $$
 
 $$
-\mathtt{payout} = \$4{,}000 - \$500 = \$3{,}500
+\mathtt{credit} = \$4{,}000 - \$500 = \$3{,}500
 $$
 
 $$
-\mathtt{vaultMargin} \gets \$4{,}000 - \$3{,}500 = \$500
+\mathtt{vaultMargin} \gets -\$500 + \$500 = \$0
 $$
 
-$$
-\mathtt{vaultDeficit} \gets \$500 - \$500 = \$0
-$$
-
-Dana forfeits $500 of her $4,000 profit to cover the remaining deficit and
-receives $3,500. The vault is restocked to $500 and the ADL deficit is cleared.
+Dana forfeits $500 of her $4,000 profit to cover the deficit and
+receives $3,500. The vault margin is recovered to $0.
 
 **Final state**
 
@@ -476,5 +458,4 @@ receives $3,500. The vault is restocked to $500 and the ADL deficit is cleared.
 | ------------ | --------------------------------------------------- |
 | Charlie      | $0 (fully liquidated)                               |
 | Dana         | $10,000 + $3,500 = $13,500 (profit reduced by $500) |
-| Vault margin | $500                                                |
-| ADL deficit  | $0                                                  |
+| Vault margin | $0                                                  |

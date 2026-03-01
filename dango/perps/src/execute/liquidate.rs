@@ -299,7 +299,6 @@ fn apply_liquidation_fee(
 /// - `user_state.positions` — closed (partially or fully) per the schedule.
 /// - `user_state.margin` — adjusted by settled PnLs, fees, and bad debt.
 /// - `state.vault_margin` — adjusted by settled PnLs and bad debt.
-/// - `state.vault_deficit` — increased if bad debt exceeds vault margin.
 ///
 /// Returns:
 ///
@@ -380,16 +379,12 @@ fn _liquidate(
     *user_state = all_maker_states.remove(&user).unwrap();
 
     // Bad debt check: if the user's margin went negative after settlement,
-    // floor at zero and absorb the bad debt from the vault / vault_deficit.
+    // floor at zero and subtract the bad debt from vault_margin (which may
+    // go negative, representing the deficit).
     if user_state.margin < UsdValue::ZERO {
         let bad_debt = user_state.margin.checked_abs()?;
         user_state.margin = UsdValue::ZERO;
-
-        let absorbed = bad_debt.min(state.vault_margin);
-        let unabsorbed = bad_debt.checked_sub(absorbed)?;
-
-        state.vault_margin.checked_sub_assign(absorbed)?;
-        state.vault_deficit.checked_add_assign(unabsorbed)?;
+        state.vault_margin.checked_sub_assign(bad_debt)?;
     }
 
     Ok((all_maker_states, all_order_mutations))

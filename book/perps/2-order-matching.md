@@ -215,34 +215,12 @@ debt (see [Liquidation](5-liquidation-and-adl.md)).
 
 **Vault:**
 
-Profit is applied to `state.vaultMargin`, first repaying any existing
-`vaultDeficit`:
-
 $$
-\mathtt{repaid} = \min(\mathtt{pnl},\; \mathtt{vaultDeficit})
+\mathtt{vaultMargin} \mathrel{+}= \mathtt{pnl}
 $$
 
-$$
-\mathtt{vaultDeficit} \mathrel{-}= \mathtt{repaid}
-$$
-
-$$
-\mathtt{vaultMargin} \mathrel{+}= \mathtt{pnl} - \mathtt{repaid}
-$$
-
-Loss absorbs from `vaultMargin`; any shortfall becomes `vaultDeficit`:
-
-$$
-\mathtt{absorbed} = \min(|\mathtt{pnl}|,\; \mathtt{vaultMargin})
-$$
-
-$$
-\mathtt{vaultMargin} \mathrel{-}= \mathtt{absorbed}
-$$
-
-$$
-\mathtt{vaultDeficit} \mathrel{+}= |\mathtt{pnl}| - \mathtt{absorbed}
-$$
+A negative $\mathtt{vaultMargin}$ represents a deficit (bad debt not yet
+recovered via [ADL](5-liquidation-and-adl.md)).
 
 ### Why no payouts or collections
 

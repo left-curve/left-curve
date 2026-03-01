@@ -476,7 +476,6 @@ pub(crate) fn settle_fill(
 /// Mutates:
 ///
 /// - `state.vault_margin` — adjusted by vault PnL and non-vault fees.
-/// - `state.vault_deficit` — increased if vault loss exceeds vault margin.
 /// - `user_states[*].margin` — adjusted by non-vault PnL and fees.
 ///
 /// Returns: `()` — all side effects are applied in-place.
@@ -508,23 +507,9 @@ pub(crate) fn settle_pnls(
         }
 
         if user == contract {
-            // Vault PnL.
-            if pnl > UsdValue::ZERO {
-                // Vault profit: first repay vault_deficit, then increase vault_margin.
-                let repaid = pnl.min(state.vault_deficit);
-                let remainder = pnl.checked_sub(repaid)?;
-
-                state.vault_deficit.checked_sub_assign(repaid)?;
-                state.vault_margin.checked_add_assign(remainder)?;
-            } else {
-                // Vault loss: absorb from vault_margin, excess becomes vault_deficit.
-                let loss = pnl.checked_abs()?;
-                let absorbed = loss.min(state.vault_margin);
-                let unabsorbed = loss.checked_sub(absorbed)?;
-
-                state.vault_margin.checked_sub_assign(absorbed)?;
-                state.vault_deficit.checked_add_assign(unabsorbed)?;
-            }
+            // Vault PnL: just let vault_margin go negative (a negative value
+            // represents the deficit / bad debt).
+            state.vault_margin.checked_add_assign(pnl)?;
         } else {
             // Non-vault user: adjust their margin directly.
             if let Some(us) = user_states.get_mut(&user) {
@@ -1769,15 +1754,13 @@ mod tests {
 
         settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        assert_eq!(state.vault_margin, UsdValue::ZERO);
-        assert_eq!(state.vault_deficit, UsdValue::new_int(400));
+        assert_eq!(state.vault_margin, UsdValue::new_int(-400));
     }
 
     #[test]
-    fn settle_pnls_vault_profit_repays_vault_deficit() {
+    fn settle_pnls_vault_profit_recovers_negative_margin() {
         let mut state = State {
-            vault_margin: UsdValue::ZERO,
-            vault_deficit: UsdValue::new_int(300),
+            vault_margin: UsdValue::new_int(-300),
             ..Default::default()
         };
         let mut user_states = BTreeMap::new();
@@ -1788,9 +1771,7 @@ mod tests {
 
         settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        // vault_deficit fully repaid.
-        assert_eq!(state.vault_deficit, UsdValue::ZERO);
-        // Remainder goes to vault_margin: $500 - $300 = $200.
+        // vault_margin recovers: -300 + 500 = 200.
         assert_eq!(state.vault_margin, UsdValue::new_int(200));
     }
 
@@ -2397,8 +2378,6 @@ mod tests {
         //
         // Total Δ = $500 + $10,000 + $490 = $10,990
         assert_eq!(state.vault_margin, UsdValue::new_int(110_990));
-
-        assert!(state.vault_deficit.is_zero());
     }
 
     /// Vault opens short at $50,000 then closes at $51,000 → loss of $10,000.
@@ -2421,17 +2400,15 @@ mod tests {
         //
         // Total Δ = $500 + $510 - $10,000 = -$8,990
         assert_eq!(state.vault_margin, UsdValue::new_int(91_010));
-
-        assert!(state.vault_deficit.is_zero());
     }
 
     /// Vault has an existing short position at $50,000. A new taker (MAKER_B)
     /// sells against the vault's bid at $51,000, closing the vault's short at a
     /// loss. vault_margin is only $1,000 — not enough to cover the $10,000 loss,
-    /// so the excess flows into vault_deficit.
+    /// so vault_margin goes negative (representing the deficit).
     ///
     /// Fees are collected first (augmenting vault_margin), then the vault loss
-    /// absorbs from the fee-augmented margin.
+    /// is applied.
     #[test]
     fn vault_maker_realizes_loss_with_bad_debt() {
         let mut ctx = MockContext::new()
@@ -2500,10 +2477,7 @@ mod tests {
         //   vault_margin = $1,000 + $510 = $1,510
         //
         // PnL loop: vault loss = $10,000
-        //   absorbed = min($10,000, $1,510) = $1,510
-        //   unabsorbed → vault_deficit = $8,490
-        //   vault_margin → $0
-        assert_eq!(state.vault_margin, UsdValue::ZERO);
-        assert_eq!(state.vault_deficit, UsdValue::new_int(8_490));
+        //   vault_margin = $1,510 - $10,000 = -$8,490
+        assert_eq!(state.vault_margin, UsdValue::new_int(-8_490));
     }
 }

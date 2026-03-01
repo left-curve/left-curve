@@ -33,7 +33,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut state = STATE.load(ctx.storage)?;
 
-    ensure!(state.vault_deficit.is_non_zero(), "no ADL deficit");
+    ensure!(state.vault_margin.is_negative(), "no ADL deficit");
 
     let mut user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
 
@@ -101,8 +101,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// - `pair_states` — OI updated per fill.
 /// - `user_state.positions` — profitable positions closed.
 /// - `user_state.margin` — credited with non-forfeited PnL.
-/// - `state.vault_margin` — restocked from forfeited PnL.
-/// - `state.vault_deficit` — reduced by forfeited amount.
+/// - `state.vault_margin` — recovered toward zero from forfeited PnL.
 ///
 /// Returns: `()`
 fn _deleverage(
@@ -172,16 +171,12 @@ fn _deleverage(
     let user_pnl = pnls.remove(&user).unwrap_or(UsdValue::ZERO);
 
     if user_pnl > UsdValue::ZERO {
-        // Restock vault with full PnL.
-        state.vault_margin.checked_add_assign(user_pnl)?;
-
-        // Forfeit up to the deficit.
-        let forfeited = user_pnl.min(state.vault_deficit);
+        // The deficit is the absolute value of the negative vault_margin.
+        let deficit = state.vault_margin.checked_neg()?;
+        let forfeited = user_pnl.min(deficit);
         let credit = user_pnl.checked_sub(forfeited)?;
 
-        // Credit the non-forfeited portion to the user's margin.
-        state.vault_margin.checked_sub_assign(credit)?;
-        state.vault_deficit.checked_sub_assign(forfeited)?;
+        state.vault_margin.checked_add_assign(forfeited)?;
 
         if credit.is_non_zero() {
             user_state.margin.checked_add_assign(credit)?;
@@ -287,10 +282,9 @@ mod tests {
         USER_STATES.save(storage, user, &user_state).unwrap();
     }
 
-    fn state_with_deficit(vault_margin: i128, vault_deficit: i128) -> State {
+    fn state_with_margin(vault_margin: i128) -> State {
         State {
             vault_margin: UsdValue::new_int(vault_margin),
-            vault_deficit: UsdValue::new_int(vault_deficit),
             ..Default::default()
         }
     }
@@ -305,7 +299,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let state = State::default(); // vault_deficit = 0
+        let state = State::default(); // vault_margin = 0 (no deficit)
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
@@ -332,7 +326,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let state = state_with_deficit(0, 5_000);
+        let state = state_with_margin(-5_000);
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
@@ -360,7 +354,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut state = state_with_deficit(0, 5_000);
+        let mut state = state_with_margin(-5_000);
         let pair_state = PairState::default();
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
@@ -419,7 +413,7 @@ mod tests {
 
         let param = default_param();
         // Deficit = $5,000
-        let mut state = state_with_deficit(0, 5_000);
+        let mut state = state_with_margin(-5_000);
         let pair_state = PairState {
             long_oi: Quantity::new_int(1),
             ..Default::default()
@@ -474,14 +468,11 @@ mod tests {
         // OI should be reduced.
         assert_eq!(pair_states[&pair_btc()].long_oi, Quantity::ZERO);
 
-        // PnL = $15,000
-        // vault_margin += 15,000 (restock)
+        // PnL = $15,000, deficit = |vault_margin| = $5,000
         // forfeited = min(15,000, 5,000) = 5,000
         // credit = 15,000 - 5,000 = 10,000
-        // vault_margin -= 10,000 (credit to user)
-        // net vault_margin = 0 + 15,000 - 10,000 = 5,000
-        assert_eq!(state.vault_margin, UsdValue::new_int(5_000));
-        assert_eq!(state.vault_deficit, UsdValue::ZERO);
+        // vault_margin = -5,000 + 5,000 = 0
+        assert_eq!(state.vault_margin, UsdValue::ZERO);
 
         // User margin should increase by 10,000.
         assert_eq!(user_state.margin, UsdValue::new_int(20_000));
@@ -495,7 +486,7 @@ mod tests {
 
         let param = default_param();
         // Deficit = $20,000, PnL will be $15,000
-        let mut state = state_with_deficit(0, 20_000);
+        let mut state = state_with_margin(-20_000);
         let pair_state = PairState {
             long_oi: Quantity::new_int(1),
             ..Default::default()
@@ -544,10 +535,8 @@ mod tests {
         // All PnL forfeited, no credit to user margin.
         assert_eq!(user_state.margin, collateral_value);
 
-        // vault_margin = 0 + 15,000 (restock) - 0 (no credit) = 15,000
-        assert_eq!(state.vault_margin, UsdValue::new_int(15_000));
-        // deficit: 20,000 - 15,000 = 5,000
-        assert_eq!(state.vault_deficit, UsdValue::new_int(5_000));
+        // vault_margin = -20,000 + 15,000 = -5,000
+        assert_eq!(state.vault_margin, UsdValue::new_int(-5_000));
     }
 
     #[test]
@@ -557,7 +546,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut state = state_with_deficit(0, 3_000);
+        let mut state = state_with_margin(-3_000);
 
         let btc_state = PairState::default();
         let eth_state = PairState::default();
@@ -628,7 +617,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut state = state_with_deficit(0, 5_000);
+        let mut state = state_with_margin(-5_000);
         let pair_state = PairState {
             long_oi: Quantity::new_int(1),
             ..Default::default()
@@ -686,7 +675,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let state = state_with_deficit(0, 5_000);
+        let state = state_with_margin(-5_000);
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),

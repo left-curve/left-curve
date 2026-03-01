@@ -126,20 +126,10 @@ pub struct State {
     /// Total supply of the vault's share token.
     pub vault_share_supply: Uint128,
 
-    /// The vault margin (LP capital deposited into the exchange), denominated in
-    /// USD. All PnL settlement, trading fees, liquidation fees, and bad debt
-    /// flow through this balance. The vault is a regular trader; its equity is
-    /// computed identically to any user via `compute_user_equity`.
+    /// The vault's margin, denominated in USD.
+    /// All PnL settlement, trading fees, liquidation fees, and bad debt flow
+    /// through this balance.
     pub vault_margin: UsdValue,
-
-    /// Accumulated bad debt from two possible sources:
-    ///
-    /// - the vault absorbs bad debt from bankrupted positions during liquidations;
-    /// - the vault suffers big realized loss of its own positions;
-    ///
-    /// denominated in USD. When non-zero, ADL can be triggered. Reduced as
-    /// profitable positions are forcibly closed and their PnL forfeited.
-    pub vault_deficit: UsdValue,
 }
 
 /// Parameters that apply to an individual trading pair.

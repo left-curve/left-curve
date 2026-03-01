@@ -53,7 +53,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     let vault_margin_value = state.vault_margin;
 
     // If vault_total_weight is zero, no pairs have weights configured — skip.
-    if param.vault_total_weight.is_zero() || vault_margin_value.is_zero() {
+    if param.vault_total_weight.is_zero() || !vault_margin_value.is_positive() {
         // Persist vault state (orders were cancelled).
         if vault_state.is_empty() {
             USER_STATES.remove(ctx.storage, ctx.contract)?;
