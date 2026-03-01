@@ -579,9 +579,13 @@ pub(crate) fn settle_pnls(
         if user == contract {
             // Vault's own PnL → adjust vault_margin.
             if pnl > UsdValue::ZERO {
-                let amount = quantity.into_base_floor(settlement_currency::DECIMAL)?;
+                let amount = quantity.into_base_ceil(settlement_currency::DECIMAL)?;
                 if amount.is_non_zero() {
-                    state.vault_margin = state.vault_margin.checked_add(amount)?;
+                    // First repay adl_deficit, then increase vault_margin.
+                    let repaid = amount.min(state.adl_deficit);
+                    let remainder = amount.checked_sub(repaid)?;
+                    state.adl_deficit.checked_sub_assign(repaid)?;
+                    state.vault_margin = state.vault_margin.checked_add(remainder)?;
                 }
             } else {
                 let amount = quantity
@@ -1884,6 +1888,29 @@ mod tests {
         assert!(collections.is_empty());
         assert_eq!(state.vault_margin, Uint128::ZERO);
         assert_eq!(state.adl_deficit, Uint128::new(400_000_000));
+    }
+
+    #[test]
+    fn settle_pnls_vault_profit_repays_adl_deficit() {
+        let mut state = State {
+            vault_margin: Uint128::ZERO,
+            adl_deficit: Uint128::new(300_000_000), // $300
+            ..Default::default()
+        };
+
+        // Vault profit of $500.
+        let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
+        let fees = BTreeMap::new();
+
+        let (payouts, collections) =
+            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+
+        assert!(payouts.is_empty());
+        assert!(collections.is_empty());
+        // adl_deficit fully repaid.
+        assert_eq!(state.adl_deficit, Uint128::ZERO);
+        // Remainder goes to vault_margin: $500 - $300 = $200.
+        assert_eq!(state.vault_margin, Uint128::new(200_000_000));
     }
 
     #[test]
