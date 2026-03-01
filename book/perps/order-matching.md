@@ -250,3 +250,25 @@ Each pair has a $\mathtt{maxAbsOI}$ parameter enforcing a per-side cap:
 The constraint is checked **before matching** and does not apply to reduce-only
 orders (which have zero opening size). Long and short OI limits are independent
 but share the same $\mathtt{maxAbsOI}$ parameter.
+
+## 11 Order cancellation
+
+### Single cancel
+
+A user can cancel any individual resting order by its order ID. The contract
+looks up the ID in BIDS first, then ASKS. Only the order's owner can cancel it.
+
+On cancellation:
+
+1. The order is removed from the book.
+2. `reserved_margin` is released (subtracted from the user's total).
+3. `open_order_count` is decremented.
+4. If the user state is now empty (no positions, no open orders, no pending
+   unlocks), it is deleted from storage.
+
+### Bulk cancel
+
+A user can cancel **all** of their resting orders across both sides of the book
+in a single transaction. The contract iterates the user's orders in BIDS then
+ASKS, removing each one and releasing margin. The same cleanup logic applies —
+if the user state becomes empty after all orders are removed, it is deleted.
