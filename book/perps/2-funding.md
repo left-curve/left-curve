@@ -1,6 +1,6 @@
-# Funding Rates
+# Funding
 
-Funding rates are periodic payments between longs and shorts that anchor the
+Fundings are periodic payments between longs and shorts that anchor the
 perpetual contract price to the oracle. When the market trades above the oracle,
 longs pay shorts; when below, shorts pay longs. This mechanism discourages
 persistent deviations from the spot price without requiring contract expiry.

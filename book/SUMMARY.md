@@ -3,7 +3,7 @@
 # Perp DEX
 
 - [Order matching](perps/1-order-matching.md)
-- [Funding rates](perps/2-funding.md)
+- [Funding](perps/2-funding.md)
 - [Vault](perps/3-vault.md)
 - [Settlement](perps/4-settlement.md)
 - [Liquidation & ADL](perps/5-liquidation-and-adl.md)
