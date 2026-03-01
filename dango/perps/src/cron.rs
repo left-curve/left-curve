@@ -49,7 +49,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             .range(ctx.storage, None, None, IterationOrder::Ascending)
             .map(|res| {
                 let ((stored_price, _), order) = res?;
-                let real_price = may_invert_price(stored_price, true)?;
+                let real_price = may_invert_price(stored_price, true);
                 Ok((real_price, order.size))
             });
 

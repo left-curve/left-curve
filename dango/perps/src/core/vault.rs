@@ -1,5 +1,5 @@
 use {
-    dango_types::{Dimensionless, Quantity, UsdPrice, UsdValue, perps::PairParam},
+    dango_types::{Quantity, UsdPrice, UsdValue, perps::PairParam},
     grug::MathResult,
 };
 
@@ -37,7 +37,7 @@ pub fn compute_vault_quotes(
     }
 
     // Per-side margin (split equally between bid and ask).
-    let half_margin = allocated_margin.checked_div(Dimensionless::new_int(2))?;
+    let half_margin = allocated_margin.half();
 
     // Margin-constrained size per side:
     // size = half_margin / (oracle_price * initial_margin_ratio)

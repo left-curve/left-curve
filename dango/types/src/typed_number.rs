@@ -8,7 +8,7 @@ use {
     std::{
         fmt,
         marker::PhantomData,
-        ops::{Add, Neg, Sub},
+        ops::{Add, Neg, Not, Sub},
     },
     typenum::{N1, P1, Z0},
 };
@@ -26,7 +26,6 @@ pub struct Number<Q, U, D> {
 }
 
 impl<Q, U, D> Number<Q, U, D> {
-    pub const HALF: Self = Self::new(Dec128_6::raw(Int128::new(500_000)));
     pub const MAX: Self = Self::new(Dec128_6::MAX);
     pub const MIN: Self = Self::new(Dec128_6::MIN);
     pub const ONE: Self = Self::new(Dec128_6::ONE);
@@ -71,6 +70,12 @@ impl<Q, U, D> Number<Q, U, D> {
 
     pub fn into_inner(self) -> Dec128_6 {
         self.inner
+    }
+
+    /// Divide the number by two, rounded towards negative infinity.
+    /// Internally uses bitwise right shift.
+    pub fn half(self) -> Self {
+        Self::new(Dec128_6::raw(self.inner.0 >> 1))
     }
 
     pub fn checked_abs(self) -> MathResult<Self> {
@@ -155,6 +160,14 @@ impl<Q, U, D> Neg for Number<Q, U, D> {
 
     fn neg(self) -> Self::Output {
         Self::new(-self.inner) // Panics when the inner value is `i128::MIN`.
+    }
+}
+
+impl<Q, U, D> Not for Number<Q, U, D> {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self::new(!self.inner)
     }
 }
 

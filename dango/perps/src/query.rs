@@ -1,11 +1,8 @@
 use {
     crate::{ASKS, BIDS, OrderKey, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
-    dango_types::{
-        UsdPrice,
-        perps::{
-            Order, OrderId, PairId, PairParam, PairState, QueryMsg, QueryOrderResponse,
-            QueryOrdersByUserResponse, UserState,
-        },
+    dango_types::perps::{
+        Order, OrderId, PairId, PairParam, PairState, QueryMsg, QueryOrderResponse,
+        QueryOrdersByUserResponse, UserState,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder,
@@ -156,7 +153,7 @@ fn into_query_order_response(
 fn into_query_order_response_with_inverted_price(
     ((pair_id, limit_price, order_id), order): (OrderKey, Order),
 ) -> QueryOrderResponse {
-    let limit_price = UsdPrice::MAX - limit_price;
+    let limit_price = !limit_price;
     into_query_order_response(((pair_id, limit_price, order_id), order))
 }
 

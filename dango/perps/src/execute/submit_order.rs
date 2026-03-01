@@ -380,7 +380,7 @@ pub(crate) fn match_order(
         let ((stored_price, maker_order_id), mut maker_order) = record?;
 
         // If the maker is bid (i.e. taker is ask), we need to "un-invert" the price.
-        let resting_price = may_invert_price(stored_price, !taker_is_bid)?;
+        let resting_price = may_invert_price(stored_price, !taker_is_bid);
 
         // ----------------------- Termination condition -----------------------
 
@@ -646,7 +646,7 @@ fn store_post_only_limit_order(
         .next()
     {
         let ((stored_price, _), _) = record?;
-        let best_price = may_invert_price(stored_price, maker_is_bid)?;
+        let best_price = may_invert_price(stored_price, maker_is_bid);
 
         if taker_is_bid {
             ensure!(
@@ -742,7 +742,7 @@ fn store_limit_order(
     (user_state.reserved_margin).checked_add_assign(margin_to_reserve)?;
 
     // Invert price for buy orders so storage order matches price-time priority.
-    let stored_price = may_invert_price(limit_price, size.is_positive())?;
+    let stored_price = may_invert_price(limit_price, size.is_positive());
 
     // Allocate order ID.
     let order_id = NEXT_ORDER_ID.may_load(storage)?.unwrap_or(OrderId::ONE);
@@ -854,7 +854,7 @@ mod tests {
 
     /// Place a resting bid (buy) order on the book.
     fn place_bid(storage: &mut dyn Storage, maker: Addr, price: i128, size: i128, order_id: u64) {
-        let inverted_price = UsdPrice::MAX.checked_sub(UsdPrice::new_int(price)).unwrap();
+        let inverted_price = !UsdPrice::new_int(price);
         let key = (pair_id(), inverted_price, Uint64::new(order_id));
         let order = Order {
             user: maker,

@@ -95,8 +95,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
             .range(ctx.storage, None, None, IterationOrder::Ascending)
             .next()
             .transpose()?
-            .map(|((stored_price, _), _)| may_invert_price(stored_price, true))
-            .transpose()?;
+            .map(|((stored_price, _), _)| may_invert_price(stored_price, true));
 
         let best_ask = ASKS
             .prefix(pair_id.clone())
@@ -111,7 +110,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         // Place bid order.
         if let Some(bid_quote) = bid {
-            let stored_price = may_invert_price(bid_quote.price, true)?;
+            let stored_price = may_invert_price(bid_quote.price, true);
             let order = Order {
                 user: ctx.contract,
                 size: bid_quote.size,
