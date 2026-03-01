@@ -15,6 +15,6 @@ version       = { workspace = true }
 library = []
 
 [dependencies]
-anyhow       = { workspace = true }
-dango-types  = { workspace = true }
-grug         = { workspace = true }
+anyhow      = { workspace = true }
+dango-types = { workspace = true }
+grug        = { workspace = true }
