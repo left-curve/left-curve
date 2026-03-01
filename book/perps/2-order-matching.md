@@ -237,8 +237,8 @@ If the check passes, `reserved_margin` is increased by $\mathtt{marginToReserve}
 
 **Post-only limit orders** take a fast path that bypasses the matching engine entirely. They are rejected if they would cross the best price on the opposite side:
 
-- Buy: $\mathtt{limitPrice} < \mathtt{bestAsk}$ (strict)
-- Sell: $\mathtt{limitPrice} > \mathtt{bestBid}$ (strict)
+- Buy: $\mathtt{limitPrice} \geq \mathtt{bestAsk}$
+- Sell: $\mathtt{limitPrice} \leq \mathtt{bestBid}$
 
 If the opposite book is empty, the order always succeeds.
 
