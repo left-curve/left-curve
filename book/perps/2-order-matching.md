@@ -97,6 +97,23 @@ After each fill the maker order is updated: reserved margin is released
 proportionally, and if fully filled the order is removed from the book and
 `open_order_count` is decremented.
 
+## 4a Pre-match margin check
+
+Before matching begins, the taker's margin is verified (skipped for
+reduce-only orders). The check ensures the user can afford the **worst
+case** — a 100 % fill:
+
+$$
+\mathtt{equity} \geq \mathtt{projectedIM} + \mathtt{projectedFee} + \mathtt{reservedMargin}
+$$
+
+where $\mathtt{projectedIM}$ is the initial margin assuming the full order
+fills (see [Margin §5](1-margin.md#5-initial-margin-im)) and
+$\mathtt{projectedFee}$ is
+$|\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{takerFeeRate}$.
+
+This prevents a taker from submitting orders they cannot collateralise.
+
 ## 5 Self-trade prevention
 
 The exchange uses **EXPIRE\_MAKER** mode. When the taker encounters their own
@@ -222,13 +239,6 @@ $$
 A negative $\mathtt{vaultMargin}$ represents a deficit (bad debt not yet
 recovered via [ADL](5-liquidation-and-adl.md)).
 
-### Why no payouts or collections
-
-Under the old design, settlement produced token transfers (payouts to winners,
-collections from losers). With internalized margin, all changes are in-memory
-mutations to `userState.margin` and `state.vaultMargin`. No messages are
-emitted from `settle_pnls`.
-
 ## 9 Unfilled remainder
 
 After matching completes:
@@ -240,7 +250,24 @@ After matching completes:
   Storage requires:
   - `open_order_count < max_open_orders`
   - Price is aligned to the pair's tick size ($\mathtt{limitPrice} \bmod \mathtt{tickSize} = 0$)
-  - Sufficient available margin (skipped for reduce-only orders)
+  - Sufficient available margin (skipped for reduce-only orders) — see below
+
+**Margin reservation (non-reduce-only):**
+
+The unfilled portion's margin requirement is computed and checked against
+available margin (see [Margin §7–§8](1-margin.md#7-reserved-margin)):
+
+$$
+\mathtt{marginToReserve} = |\mathtt{openingSize}| \times \mathtt{limitPrice} \times \mathtt{imr}
+$$
+
+$$
+\mathtt{availableMargin} \geq \mathtt{marginToReserve}
+$$
+
+If the check passes, `reservedMargin` is increased by $\mathtt{marginToReserve}$
+and `openOrderCount` is incremented. This is the **0 %-fill scenario** check —
+it ensures the user can afford the order even if nothing fills immediately.
 
 **Post-only limit orders** take a fast path that bypasses the matching engine
 entirely. They are rejected if they would cross the best price on the opposite
@@ -267,7 +294,8 @@ but share the same $\mathtt{maxAbsOI}$ parameter.
 ### Single cancel
 
 A user can cancel any individual resting order by its order ID. The contract
-looks up the ID in BIDS first, then ASKS. Only the order's owner can cancel it.
+looks up the ID in `BIDS` first, then `ASKS`. Only the order's owner can cancel
+it.
 
 On cancellation:
 
@@ -280,6 +308,6 @@ On cancellation:
 ### Bulk cancel
 
 A user can cancel **all** of their resting orders across both sides of the book
-in a single transaction. The contract iterates the user's orders in BIDS then
-ASKS, removing each one and releasing margin. The same cleanup logic applies —
+in a single transaction. The contract iterates the user's orders in `BIDS` then
+`ASKS`, removing each one and releasing margin. The same cleanup logic applies —
 if the user state becomes empty after all orders are removed, it is deleted.

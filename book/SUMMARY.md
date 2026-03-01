@@ -2,7 +2,7 @@
 
 # Perp DEX
 
-- [Deposit & withdrawal](perps/1-deposit-and-withdrawal.md)
+- [Margin](perps/1-margin.md)
 - [Order matching](perps/2-order-matching.md)
 - [Funding](perps/3-funding.md)
 - [Vault](perps/4-vault.md)

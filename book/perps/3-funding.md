@@ -55,7 +55,7 @@ cron invocation finalises the funding rate:
 2. **Clamp** to the configured bounds:
 
    $$
-   \mathtt{rate} = \mathrm{clamp}\!\bigl(\mathtt{avgPremium},\; [-\mathtt{maxAbsFundingRate},\; +\mathtt{maxAbsFundingRate}]\bigr)
+   \mathtt{rate} = \mathrm{clamp} \bigl( \mathtt{avgPremium},\; [-\mathtt{maxAbsFundingRate},\; +\mathtt{maxAbsFundingRate}] \bigr)
    $$
 
 3. **Funding delta** — scale by the actual elapsed interval and oracle price:
