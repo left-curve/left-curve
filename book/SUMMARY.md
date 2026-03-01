@@ -2,10 +2,10 @@
 
 # Perp DEX
 
-- [Order matching](perps/1-order-matching.md)
-- [Funding](perps/2-funding.md)
-- [Vault](perps/3-vault.md)
-- [Settlement](perps/4-settlement.md)
+- [Deposit & withdrawal](perps/1-deposit-and-withdrawal.md)
+- [Order matching](perps/2-order-matching.md)
+- [Funding](perps/3-funding.md)
+- [Vault](perps/4-vault.md)
 - [Liquidation & ADL](perps/5-liquidation-and-adl.md)
 
 ---
