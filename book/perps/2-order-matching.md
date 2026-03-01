@@ -182,34 +182,74 @@ to the vault via the settlement loop described below.
 
 ## 8 PnL settlement
 
-After all fills in an order are complete, PnLs and fees are converted from USD
-values to settlement-currency base units and settled atomically in two loops:
+After all fills in an order are complete, PnLs and fees are settled atomically
+as in-place USD margin adjustments. No token conversions occur during
+settlement — all values are pure `UsdValue` arithmetic.
 
 ### 8a Fee loop (processed first)
 
-For each non-vault user with non-zero fees:
+For each non-vault user with a non-zero fee:
 
 $$
-\mathtt{amount} = \lceil \mathtt{fee} \mathbin{/} \mathtt{settlementPrice} \rceil
+\mathtt{userState.margin} \mathrel{-}= \mathtt{fee}
 $$
 
-The amount is added to $\mathtt{vaultMargin}$ and the user owes a collection.
-The vault's own fees (vault as maker) are skipped — paying yourself is a no-op.
+$$
+\mathtt{state.vaultMargin} \mathrel{+}= \mathtt{fee}
+$$
 
-Processing fees first ensures collected fees augment $\mathtt{vaultMargin}$
-before any vault losses are absorbed.
+Fees from the vault to itself are skipped (no-op). Processing fees first
+ensures collected fees augment $\mathtt{vaultMargin}$ before any vault losses
+are absorbed.
 
 ### 8b PnL loop
 
-| Case                       | Conversion                                                | Action                                                                    |
-| -------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **Vault profit** (PnL > 0) | $\lceil \mathtt{pnl} / \mathtt{settlementPrice} \rceil$   | Repay $\mathtt{vaultDeficit}$ first, then increase $\mathtt{vaultMargin}$ |
-| **Vault loss** (PnL < 0)   | $\lceil                                                   | \mathtt{pnl}                                                              | / \mathtt{settlementPrice} \rceil$ | Absorb from $\mathtt{vaultMargin}$; unabsorbed becomes $\mathtt{vaultDeficit}$ |
-| **User profit** (PnL > 0)  | $\lfloor \mathtt{pnl} / \mathtt{settlementPrice} \rfloor$ | User receives a payout                                                    |
-| **User loss** (PnL < 0)    | $\lceil                                                   | \mathtt{pnl}                                                              | / \mathtt{settlementPrice} \rceil$ | User owes a collection                                                         |
+**Non-vault users:**
 
-Rounding rules protect the protocol: payouts use floor (protocol keeps dust),
-collections use ceil (protocol collects dust).
+$$
+\mathtt{userState.margin} \mathrel{+}= \mathtt{pnl}
+$$
+
+A user's margin can go negative temporarily — the outer function handles bad
+debt (see [Liquidation](5-liquidation-and-adl.md)).
+
+**Vault:**
+
+Profit is applied to `state.vaultMargin`, first repaying any existing
+`vaultDeficit`:
+
+$$
+\mathtt{repaid} = \min(\mathtt{pnl},\; \mathtt{vaultDeficit})
+$$
+
+$$
+\mathtt{vaultDeficit} \mathrel{-}= \mathtt{repaid}
+$$
+
+$$
+\mathtt{vaultMargin} \mathrel{+}= \mathtt{pnl} - \mathtt{repaid}
+$$
+
+Loss absorbs from `vaultMargin`; any shortfall becomes `vaultDeficit`:
+
+$$
+\mathtt{absorbed} = \min(|\mathtt{pnl}|,\; \mathtt{vaultMargin})
+$$
+
+$$
+\mathtt{vaultMargin} \mathrel{-}= \mathtt{absorbed}
+$$
+
+$$
+\mathtt{vaultDeficit} \mathrel{+}= |\mathtt{pnl}| - \mathtt{absorbed}
+$$
+
+### Why no payouts or collections
+
+Under the old design, settlement produced token transfers (payouts to winners,
+collections from losers). With internalized margin, all changes are in-memory
+mutations to `userState.margin` and `state.vaultMargin`. No messages are
+emitted from `settle_pnls`.
 
 ## 9 Unfilled remainder
 

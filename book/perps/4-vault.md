@@ -6,7 +6,7 @@ The vault is the **counterparty of last resort** for the perpetual futures
 exchange. It serves three functions:
 
 1. **Backstop liquidity** — absorbs unfilled liquidation volume at the oracle
-   price (see [Liquidation & ADL](liquidation-and-adl.md#3b-vault-backstop)).
+   price (see [Liquidation & ADL](5-liquidation-and-adl.md#3b-vault-backstop)).
 2. **Bad-debt absorption** — covers losses when a liquidated account's
    collateral is insufficient.
 3. **Passive market-making** — continuously quotes bid/ask orders around the
@@ -55,7 +55,7 @@ $\$1 / 1{,}000{,}000 = \$0.000001$ per share.
 
 Deposits are **paused** when $\mathtt{vaultDeficit} > 0$. This prevents new
 capital from entering a vault that has unresolved bad debt — the deficit must
-be cleared via [ADL](liquidation-and-adl.md#7-adl-trigger) first.
+be cleared via [ADL](5-liquidation-and-adl.md#7-adl-trigger) first.
 
 ## 3 RemoveLiquidity
 

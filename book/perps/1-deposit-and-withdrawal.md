@@ -1,4 +1,4 @@
-# Settlement
+# Deposit & Withdrawal
 
 ## 1 Overview
 
@@ -49,76 +49,7 @@ The user specifies how much USD margin to withdraw. The perps contract:
    needed).
 5. Transfers the tokens to the user.
 
-## 4 PnL settlement (`settle_pnls`)
-
-During order matching and liquidation, the contract accumulates per-user PnL
-and fee maps (`BTreeMap<Addr, UsdValue>`). After all fills are computed, a
-single `settle_pnls` call applies everything in place:
-
-### Fee loop (runs first)
-
-For each non-vault user with a fee:
-
-$$
-\mathtt{userState.margin} \mathrel{-}= \mathtt{fee}
-$$
-
-$$
-\mathtt{state.vaultMargin} \mathrel{+}= \mathtt{fee}
-$$
-
-Fees from the vault to itself are skipped (no-op).
-
-### PnL loop
-
-**Non-vault users:**
-
-$$
-\mathtt{userState.margin} \mathrel{+}= \mathtt{pnl}
-$$
-
-A user's margin can go negative temporarily — the outer function handles bad
-debt (see [Liquidation](liquidation-and-adl.md)).
-
-**Vault:**
-
-Profit is applied to `state.vaultMargin`, first repaying any existing
-`vaultDeficit`:
-
-$$
-\mathtt{repaid} = \min(\mathtt{pnl},\; \mathtt{vaultDeficit})
-$$
-
-$$
-\mathtt{vaultDeficit} \mathrel{-}= \mathtt{repaid}
-$$
-
-$$
-\mathtt{vaultMargin} \mathrel{+}= \mathtt{pnl} - \mathtt{repaid}
-$$
-
-Loss absorbs from `vaultMargin`; any shortfall becomes `vaultDeficit`:
-
-$$
-\mathtt{absorbed} = \min(|\mathtt{pnl}|,\; \mathtt{vaultMargin})
-$$
-
-$$
-\mathtt{vaultMargin} \mathrel{-}= \mathtt{absorbed}
-$$
-
-$$
-\mathtt{vaultDeficit} \mathrel{+}= |\mathtt{pnl}| - \mathtt{absorbed}
-$$
-
-### Why no payouts or collections
-
-Under the old design, settlement produced token transfers (payouts to winners,
-collections from losers). With internalized margin, all changes are in-memory
-mutations to `userState.margin` and `state.vaultMargin`. No messages are
-emitted from `settle_pnls`.
-
-## 5 Vault margin
+## 4 Vault margin
 
 The vault's margin (`state.vaultMargin`) is a `UsdValue` that tracks:
 

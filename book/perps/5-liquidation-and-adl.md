@@ -101,13 +101,9 @@ It is capped at the remaining margin so the fee itself never creates bad debt.
 ## 5 PnL settlement
 
 All PnL from the liquidation fills (user, counterparties, vault) is settled
-atomically:
-
-- **Positive PnL** — the user (or vault) receives a payout.
-- **Negative PnL** — the user owes a collection.
-
-The vault's PnL is applied directly to a dedicated vault-margin balance rather
-than transferred as tokens.
+atomically as in-place USD margin adjustments — no token transfers occur. Both
+user and vault PnL are applied via the same settlement logic described in
+[Order matching §8](2-order-matching.md#8-pnl-settlement).
 
 ## 6 Bad debt
 
