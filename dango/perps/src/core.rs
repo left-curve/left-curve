@@ -8,8 +8,9 @@ mod margin;
 mod min_size;
 mod oi;
 mod target_price;
+mod vault;
 
 pub use {
     adl::*, closure::*, decompose::*, fees::*, fill::*, funding::*, margin::*, min_size::*, oi::*,
-    target_price::*,
+    target_price::*, vault::*,
 };

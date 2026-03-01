@@ -3,6 +3,7 @@ mod claim;
 mod deleverage;
 mod deposit;
 mod liquidate;
+mod on_oracle_update;
 mod submit_order;
 mod withdraw;
 
@@ -64,5 +65,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::CancelOrder(CancelOrderRequest::All) => cancel_order::cancel_all_orders(ctx),
         ExecuteMsg::Liquidate { user } => liquidate::liquidate(ctx, user),
         ExecuteMsg::Deleverage { user } => deleverage::deleverage(ctx, user),
+        ExecuteMsg::OnOracleUpdate {} => on_oracle_update::on_oracle_update(ctx),
     }
 }

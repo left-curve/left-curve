@@ -23,7 +23,10 @@ use {
         Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst, Order as IterationOrder,
         QuerierExt, Response, Storage, Uint128, coins,
     },
-    std::collections::{BTreeMap, btree_map::Entry},
+    std::{
+        cmp::Ordering,
+        collections::{BTreeMap, btree_map::Entry},
+    },
 };
 
 pub fn submit_order(
@@ -64,6 +67,7 @@ pub fn submit_order(
     let (payouts, collections, maker_states, order_mutations, order_to_store) = _submit_order(
         ctx.storage,
         ctx.sender,
+        ctx.contract,
         &param,
         &pair_param,
         &mut pair_state,
@@ -165,6 +169,7 @@ pub fn submit_order(
 fn _submit_order(
     storage: &dyn Storage,
     taker: Addr,
+    contract: Addr,
     param: &Param,
     pair_param: &PairParam,
     pair_state: &mut PairState,
@@ -265,7 +270,7 @@ fn _submit_order(
 
     // ---------------------- Step 7. Match against book -----------------------
 
-    let (unfilled, pnls, maker_states, order_mutations) = match_order(
+    let (unfilled, mut pnls, maker_states, order_mutations) = match_order(
         storage,
         param,
         pair_id,
@@ -305,6 +310,8 @@ fn _submit_order(
     } else {
         None
     };
+
+    settle_vault_pnl(&mut pnls, contract, settlement_price, state)?;
 
     let (payouts, collections) = settle_pnls(pnls, settlement_price, state)?;
 
@@ -530,6 +537,52 @@ pub(crate) fn settle_pnls(
     Ok((payouts, collections))
 }
 
+/// Extract the vault's PnL from the map and apply directly to `state`
+/// (the contract can't transfer to itself).
+///
+/// Mutates:
+///
+/// - `pnls` — removes the vault's entry.
+/// - `state.vault_margin` — adjusted by vault's PnL.
+/// - `state.adl_deficit` — increased if vault loss exceeds vault margin.
+pub(crate) fn settle_vault_pnl(
+    pnls: &mut BTreeMap<Addr, UsdValue>,
+    contract: Addr,
+    settlement_currency_price: UsdPrice,
+    state: &mut State,
+) -> anyhow::Result<()> {
+    if let Some(vault_pnl) = pnls.remove(&contract) {
+        match vault_pnl.cmp(&UsdValue::ZERO) {
+            Ordering::Greater => {
+                let amount = vault_pnl
+                    .checked_div(settlement_currency_price)?
+                    .into_base_floor(settlement_currency::DECIMAL)?;
+
+                if amount.is_non_zero() {
+                    state.vault_margin = state.vault_margin.checked_add(amount)?;
+                }
+            },
+            Ordering::Less => {
+                let amount = vault_pnl
+                    .checked_abs()?
+                    .checked_div(settlement_currency_price)?
+                    .into_base_ceil(settlement_currency::DECIMAL)?;
+
+                if amount.is_non_zero() {
+                    let absorbed = amount.min(state.vault_margin);
+                    let unabsorbed = amount.checked_sub(absorbed)?;
+
+                    state.vault_margin.checked_sub_assign(absorbed)?;
+                    state.adl_deficit.checked_add_assign(unabsorbed)?;
+                }
+            },
+            _ => {},
+        }
+    }
+
+    Ok(())
+}
+
 /// Validate and store a post-only limit order. Rejects if the limit price
 /// would cross the best resting order on the opposite side of the book.
 ///
@@ -690,6 +743,7 @@ mod tests {
         grug::{Coins, MockContext, Timestamp, Udec128, Uint64, hash_map},
     };
 
+    const CONTRACT: Addr = Addr::mock(0);
     const TAKER: Addr = Addr::mock(1);
     const MAKER_A: Addr = Addr::mock(2);
     const MAKER_B: Addr = Addr::mock(3);
@@ -820,6 +874,7 @@ mod tests {
         let (_, _, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -875,6 +930,7 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -920,6 +976,7 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -966,6 +1023,7 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1012,6 +1070,7 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1062,6 +1121,7 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1118,6 +1178,7 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1161,6 +1222,7 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1207,6 +1269,7 @@ mod tests {
         let (_, _, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1259,6 +1322,7 @@ mod tests {
         let (_, _, maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1308,6 +1372,7 @@ mod tests {
         let (payouts, collections, ..) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1360,6 +1425,7 @@ mod tests {
         let result = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1404,6 +1470,7 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1452,6 +1519,7 @@ mod tests {
         let (_, _, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1509,6 +1577,7 @@ mod tests {
         let (_, _, maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1552,6 +1621,7 @@ mod tests {
         let (_, _, maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1601,6 +1671,7 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1731,6 +1802,7 @@ mod tests {
         let (payouts, collections, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1781,6 +1853,7 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1822,6 +1895,7 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1863,6 +1937,7 @@ mod tests {
         let (payouts, collections, _, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1912,6 +1987,7 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -1953,6 +2029,7 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -2003,6 +2080,7 @@ mod tests {
         let (.., order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,
@@ -2058,6 +2136,7 @@ mod tests {
         let err = _submit_order(
             &ctx.storage,
             TAKER,
+            CONTRACT,
             &param,
             &pair_param,
             &mut pair_state,

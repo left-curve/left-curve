@@ -1,6 +1,8 @@
 use {
-    super::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
-    crate::{PAIR_IDS, PARAM, STATE, USER_STATES},
+    crate::{
+        PARAM, STATE, USER_STATES,
+        execute::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
+    },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -17,9 +19,14 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // ---------------------------- 1. Preparation -----------------------------
 
     let param = PARAM.load(ctx.storage)?;
-    let _pair_ids = PAIR_IDS.load(ctx.storage)?;
 
     let mut state = STATE.load(ctx.storage)?;
+
+    ensure!(
+        state.adl_deficit.is_zero(),
+        "withdrawals paused: unresolved ADL deficit"
+    );
+
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();

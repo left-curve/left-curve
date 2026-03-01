@@ -8,7 +8,7 @@ use {
         execute::{
             BANK, ORACLE,
             cancel_order::cancel_all_orders_for,
-            submit_order::{match_order, settle_fill, settle_pnls},
+            submit_order::{match_order, settle_fill, settle_pnls, settle_vault_pnl},
         },
     },
     anyhow::ensure,
@@ -24,7 +24,7 @@ use {
         Addr, Coins, IsZero, Message, MutableCtx, Number, QuerierExt, Response, Storage, Uint128,
         coins,
     },
-    std::{cmp::Ordering, collections::BTreeMap},
+    std::collections::BTreeMap,
 };
 
 pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
@@ -312,42 +312,6 @@ fn apply_liquidation_fee(
         pnls.entry(user)
             .or_default()
             .checked_sub_assign(actual_fee)?;
-    }
-
-    Ok(())
-}
-
-/// Extract the vault's PnL from the map and apply directly to `state`
-/// (the contract can't transfer to itself).
-fn settle_vault_pnl(
-    pnls: &mut BTreeMap<Addr, UsdValue>,
-    contract: Addr,
-    settlement_currency_price: UsdPrice,
-    state: &mut State,
-) -> anyhow::Result<()> {
-    if let Some(vault_pnl) = pnls.remove(&contract) {
-        match vault_pnl.cmp(&UsdValue::ZERO) {
-            Ordering::Greater => {
-                let amount = vault_pnl
-                    .checked_div(settlement_currency_price)?
-                    .into_base_floor(settlement_currency::DECIMAL)?;
-
-                if amount.is_non_zero() {
-                    state.vault_margin = state.vault_margin.checked_add(amount)?;
-                }
-            },
-            Ordering::Less => {
-                let amount = vault_pnl
-                    .checked_abs()?
-                    .checked_div(settlement_currency_price)?
-                    .into_base_ceil(settlement_currency::DECIMAL)?;
-
-                if amount.is_non_zero() {
-                    state.vault_margin = state.vault_margin.checked_sub(amount)?;
-                }
-            },
-            _ => {},
-        }
     }
 
     Ok(())

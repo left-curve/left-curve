@@ -1,20 +1,29 @@
 use {
-    super::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
-    crate::{PAIR_IDS, STATE},
+    crate::{
+        STATE,
+        execute::{BANK, ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
+    },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         Quantity, bank,
         perps::{self, State, settlement_currency},
     },
-    grug::{Coins, Message, MultiplyFraction, MutableCtx, Number as _, Response, Signed, Uint128},
+    grug::{
+        Coins, IsZero, Message, MultiplyFraction, MutableCtx, Number as _, Response, Signed,
+        Uint128,
+    },
 };
 
 pub fn deposit(ctx: MutableCtx, min_shares_to_mint: Option<Uint128>) -> anyhow::Result<Response> {
     // ---------------------------- 1. Preparation -----------------------------
 
     let mut state = STATE.load(ctx.storage)?;
-    let _pair_ids = PAIR_IDS.load(ctx.storage)?;
+
+    ensure!(
+        state.adl_deficit.is_zero(),
+        "deposits paused: unresolved ADL deficit"
+    );
 
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 

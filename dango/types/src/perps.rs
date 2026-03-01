@@ -104,6 +104,12 @@ pub struct Param {
 
     /// Set of addresses authorized to call `Deleverage`.
     pub adl_operators: BTreeSet<Addr>,
+
+    /// Sum of `vault_liquidity_weight` across all trading pairs.
+    /// Precomputed to avoid iterating all pair params when placing
+    /// vault orders. Must be kept in sync when pairs are added/removed
+    /// or weights change.
+    pub vault_total_weight: Dimensionless,
 }
 
 /// Parameters that apply to an individual trading pair.
@@ -169,6 +175,11 @@ pub struct PairParam {
     ///
     /// maintenance_margin = |position_size| * oracle_price * maintenance_margin_ratio
     pub maintenance_margin_ratio: Dimensionless,
+
+    /// Weight determining what fraction of the vault's available margin
+    /// is allocated to this pair for market-making.
+    /// The pair's share = `vault_liquidity_weight / Param::vault_total_weight`.
+    pub vault_liquidity_weight: Dimensionless,
 }
 
 impl PairParam {
@@ -367,6 +378,12 @@ pub enum ExecuteMsg {
     /// This is enabled when the vault cannot fully absorb bad debt from
     /// liquidations.
     Deleverage { user: Addr },
+
+    /// Triggered at the beginning of each block, right after the oracle update.
+    ///
+    /// The vault places new orders based on the oracle price, the state of the
+    /// order book at the time, and its policy for market making.
+    OnOracleUpdate {},
 }
 
 #[grug::derive(Serde, QueryRequest)]
