@@ -67,7 +67,7 @@ $$
 $$
 
 $$
-\mathtt{remainingMargin} = \max (0,\; \mathtt{collateral} + \mathtt{userPnlAfterCloses})
+\mathtt{remainingMargin} = \max (0,\; \mathtt{margin} + \mathtt{userPnlAfterCloses})
 $$
 
 $$
@@ -82,13 +82,15 @@ All PnL from the liquidation fills (user, counterparties, vault) is settled atom
 
 ## 6. Bad debt
 
-If the amount the liquidated user owes exceeds their remaining collateral balance, bad debt arises:
+After PnL and fee settlement, if the user's margin is negative the absolute value is bad debt. The margin is floored to zero and the bad debt is subtracted from vault margin:
 
 $$
-\mathtt{badDebt} = \mathtt{collections} - \mathtt{collateralBalance}
+\mathtt{badDebt} = |\min(0,\; \mathtt{margin\ after\ settlement})|
 $$
 
-The bad debt is subtracted from the vault margin:
+$$
+\mathtt{user.margin} \gets 0
+$$
 
 $$
 \mathtt{vaultMargin} \mathrel{-}= \mathtt{badDebt}
@@ -178,7 +180,7 @@ All examples use:
 | ----------- | ---------- | ----------- |
 | Direction   | Long 1 BTC | Short 1 BTC |
 | Entry price | \$50,000   | \$50,000    |
-| Collateral  | \$3,000    | \$10,000    |
+| Margin      | \$3,000    | \$10,000    |
 
 **BTC drops to \$47,500**
 
@@ -226,22 +228,22 @@ $$
 \mathtt{fee} = \min(\$47.50,\; \$500) = \$47.50
 $$
 
-_Settlement_
+_Settlement (margin arithmetic)_
+
+Alice's margin starts at \$3,000.
 
 $$
-\text{Alice owes} = \$2{,}500 + \$47.50 = \$2{,}547.50
-$$
-
-$$
-\text{Alice receives} = \$3{,}000 - \$2{,}547.50 = \$452.50
-$$
-
-$$
-\mathtt{badDebt} = \$0 \quad (\text{collateral covers everything})
+\mathtt{margin} \mathrel{-}= \$47.50 \quad (\text{fee}) \;\Rightarrow\; \$2{,}952.50
 $$
 
 $$
-\mathtt{vaultMargin} \mathrel{+}= \$47.50
+\mathtt{margin} \mathrel{+}= (-\$2{,}500) \quad (\text{PnL}) \;\Rightarrow\; \$452.50
+$$
+
+Final margin is positive — no bad debt.
+
+$$
+\mathtt{vaultMargin} \mathrel{+}= \$47.50 \quad (\text{fee revenue})
 $$
 
 ### Example 2 — Bad debt absorbed by the vault
@@ -252,7 +254,7 @@ $$
 | ------------ | ---------- | ----------- |
 | Direction    | Long 1 BTC | Short 1 BTC |
 | Entry price  | \$50,000   | \$50,000    |
-| Collateral   | \$3,000    | \$10,000    |
+| Margin       | \$3,000    | \$10,000    |
 | Vault margin | \$5,000    |             |
 
 **BTC drops to \$46,000**
@@ -295,25 +297,25 @@ $$
 
 Charlie's equity is already negative so no fee can be collected.
 
-_Settlement and bad debt_
+_Settlement and bad debt (margin arithmetic)_
+
+Charlie's margin starts at \$3,000. Fee is \$0 (remaining margin was zero).
 
 $$
-\text{Charlie owes} = \$4{,}000, \quad \text{Charlie collateral} = \$3{,}000
+\mathtt{margin} \mathrel{+}= (-\$4{,}000) \quad (\text{PnL}) \;\Rightarrow\; -\$1{,}000
 $$
 
-$$
-\mathtt{badDebt} = \$4{,}000 - \$3{,}000 = \$1{,}000
-$$
+Margin is negative, so bad debt arises:
 
 $$
-\mathtt{absorbed} = \min(\$1{,}000,\; \$5{,}000) = \$1{,}000, \quad \mathtt{unabsorbed} = \$0
+\mathtt{badDebt} = |-\$1{,}000| = \$1{,}000, \quad \mathtt{margin} \gets \$0
 $$
 
 $$
 \mathtt{vaultMargin}: \$5{,}000 - \$1{,}000 = \$4{,}000
 $$
 
-The vault absorbs the full \$1,000 shortfall. Charlie's entire \$3,000 collateral is collected and no ADL is needed.
+The vault absorbs the full \$1,000 bad debt. No ADL is needed.
 
 ### Example 3 — Vault exhausted, ADL triggered
 
@@ -323,7 +325,7 @@ The vault absorbs the full \$1,000 shortfall. Charlie's entire \$3,000 collatera
 | ------------ | ---------- | ----------- |
 | Direction    | Long 1 BTC | Short 1 BTC |
 | Entry price  | \$50,000   | \$50,000    |
-| Collateral   | \$3,000    | \$10,000    |
+| Margin       | \$3,000    | \$10,000    |
 | Vault margin | \$500      |             |
 
 Same positions as Example 2, but the vault is smaller.
@@ -336,19 +338,17 @@ $$
 \mathtt{CharliePnL} = -\$4{,}000
 $$
 
-$$
-\mathtt{badDebt} = \$4{,}000 - \$3{,}000 = \$1{,}000
-$$
+Charlie's margin after PnL settlement is −\$1,000 (same as Example 2):
 
 $$
-\mathtt{absorbed} = \min(\$1{,}000,\; \$500) = \$500, \quad \mathtt{unabsorbed} = \$500
+\mathtt{badDebt} = |-\$1{,}000| = \$1{,}000, \quad \mathtt{margin} \gets \$0
 $$
 
 $$
 \mathtt{vaultMargin}: \$500 - \$1{,}000 = -\$500
 $$
 
-The vault margin is negative, indicating \$500 of unresolved bad debt. ADL activates.
+The vault margin is negative — \$500 of unresolved bad debt. ADL activates.
 
 _ADL — selecting Dana_
 
