@@ -23,7 +23,10 @@ use {
         Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst, Order as IterationOrder,
         QuerierExt, Response, Storage, Uint128, coins,
     },
-    std::collections::{BTreeMap, btree_map::Entry},
+    std::{
+        cmp::Ordering,
+        collections::{BTreeMap, btree_map::Entry},
+    },
 };
 
 pub fn submit_order(
@@ -159,7 +162,7 @@ pub fn submit_order(
 /// Returns:
 ///
 /// - Per-user payouts in settlement-currency base units: `BTreeMap<Addr, Uint128>`.
-/// - Per-user collections in settlement-currency base units: `Vec<(Addr, Uint128)>`.
+/// - Per-user collections in settlement-currency base units: `BTreeMap<Addr, Uint128>`.
 /// - Maker `UserState`s to persist: `BTreeMap<Addr, UserState>`.
 /// - Order mutations to apply: `Vec<(OrderKey, Option<Order>)>`.
 /// - GTC order to store: `Option<(stored_price, order_id, Order)>`.
@@ -182,7 +185,7 @@ fn _submit_order(
     state: &mut State,
 ) -> anyhow::Result<(
     BTreeMap<Addr, Uint128>,
-    Vec<(Addr, Uint128)>,
+    BTreeMap<Addr, Uint128>,
     BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>)>,
     Option<(UsdPrice, OrderId, Order)>,
@@ -234,7 +237,7 @@ fn _submit_order(
 
         return Ok((
             BTreeMap::new(),
-            Vec::new(),
+            BTreeMap::new(),
             BTreeMap::new(),
             Vec::new(),
             Some(order_to_store),
@@ -543,8 +546,8 @@ pub(crate) fn settle_pnls(
     settlement_price: UsdPrice,
     state: &mut State,
     contract: Addr,
-) -> anyhow::Result<(BTreeMap<Addr, Uint128>, Vec<(Addr, Uint128)>)> {
-    let mut payouts = BTreeMap::new();
+) -> anyhow::Result<(BTreeMap<Addr, Uint128>, BTreeMap<Addr, Uint128>)> {
+    let mut payouts: BTreeMap<Addr, Uint128> = BTreeMap::new();
     let mut collections: BTreeMap<Addr, Uint128> = BTreeMap::new();
 
     // ---- Fee loop (first: collect fees so they help absorb vault losses) ----
@@ -576,18 +579,22 @@ pub(crate) fn settle_pnls(
 
         let quantity = pnl.checked_div(settlement_price)?;
 
-        if user == contract {
-            // Vault's own PnL → adjust vault_margin.
-            if pnl > UsdValue::ZERO {
+        match (user == contract, pnl.cmp(&UsdValue::ZERO)) {
+            // Vault realizes a profit.
+            (true, Ordering::Greater) => {
                 let amount = quantity.into_base_ceil(settlement_currency::DECIMAL)?;
+
                 if amount.is_non_zero() {
                     // First repay adl_deficit, then increase vault_margin.
                     let repaid = amount.min(state.adl_deficit);
                     let remainder = amount.checked_sub(repaid)?;
+
                     state.adl_deficit.checked_sub_assign(repaid)?;
                     state.vault_margin = state.vault_margin.checked_add(remainder)?;
                 }
-            } else {
+            },
+            // Vault realizes a loss.
+            (true, Ordering::Less) => {
                 let amount = quantity
                     .checked_abs()?
                     .into_base_ceil(settlement_currency::DECIMAL)?;
@@ -595,37 +602,39 @@ pub(crate) fn settle_pnls(
                 if amount.is_non_zero() {
                     let absorbed = amount.min(state.vault_margin);
                     let unabsorbed = amount.checked_sub(absorbed)?;
+
                     state.vault_margin.checked_sub_assign(absorbed)?;
                     state.adl_deficit.checked_add_assign(unabsorbed)?;
                 }
-            }
-        } else if pnl > UsdValue::ZERO {
-            // Non-vault profit → payout.
-            let amount = quantity.into_base_floor(settlement_currency::DECIMAL)?;
-            if amount.is_non_zero() {
-                payouts.insert(user, amount);
-            }
-        } else {
-            // Non-vault loss → collection.
-            let amount = quantity
-                .checked_abs()?
-                .into_base_ceil(settlement_currency::DECIMAL)?;
+            },
+            // Non-vault user realizes a profit: payout.
+            (false, Ordering::Greater) => {
+                let amount = quantity.into_base_floor(settlement_currency::DECIMAL)?;
 
-            if amount.is_non_zero() {
-                *collections.entry(user).or_default() = collections
-                    .get(&user)
-                    .copied()
-                    .unwrap_or_default()
-                    .checked_add(amount)?;
-            }
+                if amount.is_non_zero() {
+                    payouts
+                        .entry(user)
+                        .or_default()
+                        .checked_add_assign(amount)?;
+                }
+            },
+            // Non-vault user realizes a loss: collection.
+            (false, Ordering::Less) => {
+                let amount = quantity
+                    .checked_abs()?
+                    .into_base_ceil(settlement_currency::DECIMAL)?;
+
+                if amount.is_non_zero() {
+                    collections
+                        .entry(user)
+                        .or_default()
+                        .checked_add_assign(amount)?;
+                }
+            },
+            // Zero PnL -- nothing to do.
+            (_, Ordering::Equal) => {},
         }
     }
-
-    // Convert collections map to Vec, filtering out zero amounts.
-    let collections: Vec<(Addr, Uint128)> = collections
-        .into_iter()
-        .filter(|(_, a)| a.is_non_zero())
-        .collect();
 
     Ok((payouts, collections))
 }
@@ -1442,8 +1451,7 @@ mod tests {
         // Net = -$500 → collection of 500 × 10^6 base units.
         assert!(payouts.is_empty());
         assert_eq!(collections.len(), 1);
-        assert_eq!(collections[0].0, TAKER);
-        assert_eq!(collections[0].1, Uint128::new(500_000_000));
+        assert_eq!(collections[&TAKER], Uint128::new(500_000_000));
     }
 
     // ======== Tick size enforcement for limit orders =========================
@@ -1766,8 +1774,7 @@ mod tests {
         assert_eq!(payouts[&Addr::mock(1)], Uint128::new(100_000_000));
 
         // Negative PnL: user 2 owes 200 × 10^6 base units.
-        assert_eq!(collections.len(), 1);
-        assert_eq!(collections[0], (Addr::mock(2), Uint128::new(200_000_000)));
+        assert_eq!(collections[&Addr::mock(2)], Uint128::new(200_000_000));
 
         // Non-vault PnL does not change vault_margin.
         assert_eq!(state.vault_margin, Uint128::ZERO);
@@ -2413,7 +2420,7 @@ mod tests {
         open_price: i128,
         close_price: i128,
         size: i128,
-    ) -> (State, BTreeMap<Addr, Uint128>, Vec<(Addr, Uint128)>) {
+    ) -> (State, BTreeMap<Addr, Uint128>, BTreeMap<Addr, Uint128>) {
         let mut ctx = MockContext::new()
             .with_sender(TAKER)
             .with_funds(Coins::default());
@@ -2487,7 +2494,7 @@ mod tests {
         let mut taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
         let mut oq = test_oracle_querier();
 
-        let (payouts, collections, _, _, _) = _submit_order(
+        let (payouts, collections, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,

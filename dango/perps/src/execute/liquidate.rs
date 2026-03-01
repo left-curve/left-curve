@@ -360,7 +360,7 @@ fn _liquidate(
     state: &mut State,
 ) -> anyhow::Result<(
     BTreeMap<Addr, Uint128>,
-    Vec<(Addr, Uint128)>,
+    BTreeMap<Addr, Uint128>,
     BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
 )> {
@@ -413,8 +413,13 @@ fn _liquidate(
 
     // ----------------------- Step 5: Settle PnLs ------------------------------
 
-    let (payouts, mut collections) =
-        settle_pnls(all_pnls, all_fees, settlement_currency_price, state, contract)?;
+    let (payouts, mut collections) = settle_pnls(
+        all_pnls,
+        all_fees,
+        settlement_currency_price,
+        state,
+        contract,
+    )?;
 
     // Bad debt check: if the user owes more than their collateral, cap the
     // collection and absorb the bad debt from the vault.
@@ -430,7 +435,7 @@ fn _liquidate(
     }
 
     // Remove zero-amount collections.
-    collections.retain(|(_, amount)| amount.is_non_zero());
+    collections.retain(|_, amount| amount.is_non_zero());
 
     // Payouts from settle_pnls are legitimate — they happen when the user's
     // positions were closed at a profit. Keep them.
