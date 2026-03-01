@@ -172,7 +172,7 @@ $$
 
 The fee rate differs by role:
 
-| Role  | Rate             | Typical value |
+| Role  | Rate             | Example value |
 | ----- | ---------------- | ------------- |
 | Taker | `taker_fee_rate` | 0.1 %         |
 | Maker | `maker_fee_rate` | 0 %           |
