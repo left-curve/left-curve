@@ -746,10 +746,7 @@ fn store_limit_order(
     }
 
     // Reserve margin for worst case (entire order is opening).
-    // Use taker fee rate as worst-case fee reservation.
-    let margin_to_reserve = compute_required_margin(size, limit_price, pair_param)?.checked_add(
-        compute_trading_fee(size, limit_price, param.taker_fee_rate)?,
-    )?;
+    let margin_to_reserve = compute_required_margin(size, limit_price, pair_param)?;
 
     // 0%-fill margin check: verify the user can afford this reservation.
     if !reduce_only {
@@ -2270,11 +2267,10 @@ mod tests {
     /// Post-only buy with insufficient collateral is rejected by the 0%-fill
     /// margin check inside `store_limit_order`.
     ///
-    /// pair: BTC, oracle = $50,000, IMR = 5%, taker_fee = 0.1%
+    /// pair: BTC, oracle = $50,000, IMR = 5%
     /// Buy 10 BTC post-only @ $49,000
-    ///   margin_to_reserve = |10| * 49,000 * 0.05 + |10| * 49,000 * 0.001
-    ///                     = $24,500 + $490 = $24,990
-    ///   collateral = $1,000 → available = $1,000 < $24,990 → FAILS
+    ///   margin_to_reserve = |10| * 49,000 * 0.05 = $24,500
+    ///   collateral = $1,000 → available = $1,000 < $24,500 → FAILS
     #[test]
     fn post_only_insufficient_margin_rejected() {
         let mut ctx = MockContext::new()

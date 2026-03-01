@@ -180,13 +180,6 @@ The fee rate differs by role:
 Fees are always positive (absolute value of fill size is used). They are routed
 to the vault via the settlement loop described below.
 
-When a limit order is stored on the book, margin is reserved at the **taker fee
-rate** (worst case) to ensure the fee can always be paid:
-
-$$
-\mathtt{reservedMargin} = \mathtt{requiredMargin}(\mathtt{size}, \mathtt{limitPrice}) + \mathtt{fee}(\mathtt{size}, \mathtt{limitPrice}, \mathtt{takerFeeRate})
-$$
-
 ## 8 PnL settlement
 
 After all fills in an order are complete, PnLs and fees are converted from USD
