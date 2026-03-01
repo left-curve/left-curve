@@ -34,9 +34,9 @@ position closures** needed to restore it above maintenance margin.
 
 1. For every open position, compute its MM contribution:
 
-$$
-\mathtt{mmContribution} = |\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{mmr}
-$$
+   $$
+   \mathtt{mmContribution} = |\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{mmr}
+   $$
 
 2. Sort positions by MM contribution **descending** (largest first).
 

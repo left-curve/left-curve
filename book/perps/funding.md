@@ -48,27 +48,27 @@ cron invocation finalises the funding rate:
 
 1. **Average premium:**
 
-$$
-\mathtt{avgPremium} = \mathtt{premiumSum} \mathbin{/} \mathtt{premiumSamples}
-$$
+   $$
+   \mathtt{avgPremium} = \mathtt{premiumSum} \mathbin{/} \mathtt{premiumSamples}
+   $$
 
 2. **Clamp** to the configured bounds:
 
-$$
-\mathtt{rate} = \mathrm{clamp}\!\bigl(\mathtt{avgPremium},\; [-\mathtt{maxAbsFundingRate},\; +\mathtt{maxAbsFundingRate}]\bigr)
-$$
+   $$
+   \mathtt{rate} = \mathrm{clamp}\!\bigl(\mathtt{avgPremium},\; [-\mathtt{maxAbsFundingRate},\; +\mathtt{maxAbsFundingRate}]\bigr)
+   $$
 
 3. **Funding delta** — scale by the actual elapsed interval and oracle price:
 
-$$
-\mathtt{fundingDelta} = \mathtt{rate} \times \mathtt{interval} \times \mathtt{oraclePrice}
-$$
+   $$
+   \mathtt{fundingDelta} = \mathtt{rate} \times \mathtt{interval} \times \mathtt{oraclePrice}
+   $$
 
 4. **Accumulate** into the pair-level running total:
 
-$$
-\mathtt{fundingPerUnit} \mathrel{+}= \mathtt{fundingDelta}
-$$
+   $$
+   \mathtt{fundingPerUnit} \mathrel{+}= \mathtt{fundingDelta}
+   $$
 
 5. **Reset** accumulators: $\mathtt{premiumSum} \gets 0$,
    $\mathtt{premiumSamples} \gets 0$, $\mathtt{lastFundingTime} \gets \mathtt{now}$.
@@ -97,8 +97,8 @@ accounting.
 
 ## 5 Parameters
 
-| Field                   | Type           | Description                                                                 |
-| ----------------------- | -------------- | --------------------------------------------------------------------------- |
-| `funding_period`        | `Duration`     | Minimum time between funding collections.                                   |
-| `impact_notional`       | `UsdValue`     | Notional depth walked on each side of the book to compute impact prices.    |
-| `max_abs_funding_rate`  | `FundingRate`  | Symmetric clamp applied to the average premium before scaling to a delta. Prevents runaway rates during prolonged skew. |
+| Field                  | Type          | Description                                                                                                             |
+| ---------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `funding_period`       | `Duration`    | Minimum time between funding collections.                                                                               |
+| `impact_notional`      | `UsdValue`    | Notional depth walked on each side of the book to compute impact prices.                                                |
+| `max_abs_funding_rate` | `FundingRate` | Symmetric clamp applied to the average premium before scaling to a delta. Prevents runaway rates during prolonged skew. |

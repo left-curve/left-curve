@@ -17,12 +17,12 @@ Every order carries an `OrderKind`:
 
 Resting orders on the book are stored as:
 
-| Field             | Description                                     |
-| ----------------- | ----------------------------------------------- |
-| `user`            | Owner address                                   |
-| `size`            | Signed quantity (positive = buy, negative = sell)|
-| `reduce_only`     | If true, can only close an existing position    |
-| `reserved_margin` | Margin locked for this order                    |
+| Field             | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| `user`            | Owner address                                     |
+| `size`            | Signed quantity (positive = buy, negative = sell) |
+| `reduce_only`     | If true, can only close an existing position      |
+| `reserved_margin` | Margin locked for this order                      |
 
 The pair ID, order ID, and limit price are part of the storage key.
 
@@ -31,11 +31,11 @@ The pair ID, order ID, and limit price are part of the storage key.
 Before matching, every fill is decomposed into a **closing** and an **opening**
 portion based on the user's current position:
 
-| Order direction | Current position | Closing size            | Opening size                  |
-| --------------- | ---------------- | ----------------------- | ----------------------------- |
+| Order direction | Current position | Closing size                                | Opening size                       |
+| --------------- | ---------------- | ------------------------------------------- | ---------------------------------- |
 | Buy (+)         | Short (−)        | $\min(\mathtt{size},\; -\mathtt{position})$ | $\mathtt{size} - \mathtt{closing}$ |
 | Sell (−)        | Long (+)         | $\max(\mathtt{size},\; -\mathtt{position})$ | $\mathtt{size} - \mathtt{closing}$ |
-| Same direction  | Any              | $0$                     | $\mathtt{size}$               |
+| Same direction  | Any              | $0$                                         | $\mathtt{size}$                    |
 
 Both closing and opening carry the same sign as the original order size (or are
 zero). For **reduce-only** orders, the opening portion is forced to zero — if
@@ -172,10 +172,10 @@ $$
 
 The fee rate differs by role:
 
-| Role  | Rate               | Typical value |
-| ----- | ------------------ | ------------- |
-| Taker | `taker_fee_rate`   | 0.1 %         |
-| Maker | `maker_fee_rate`   | 0 %           |
+| Role  | Rate             | Typical value |
+| ----- | ---------------- | ------------- |
+| Taker | `taker_fee_rate` | 0.1 %         |
+| Maker | `maker_fee_rate` | 0 %           |
 
 Fees are always positive (absolute value of fill size is used). They are routed
 to the vault via the settlement loop described below.
@@ -208,12 +208,12 @@ before any vault losses are absorbed.
 
 ### 8b PnL loop
 
-| Case | Conversion | Action |
-| ---- | ---------- | ------ |
-| **Vault profit** (PnL > 0) | $\lceil \mathtt{pnl} / \mathtt{settlementPrice} \rceil$ | Repay $\mathtt{adlDeficit}$ first, then increase $\mathtt{vaultMargin}$ |
-| **Vault loss** (PnL < 0) | $\lceil |\mathtt{pnl}| / \mathtt{settlementPrice} \rceil$ | Absorb from $\mathtt{vaultMargin}$; unabsorbed becomes $\mathtt{adlDeficit}$ |
-| **User profit** (PnL > 0) | $\lfloor \mathtt{pnl} / \mathtt{settlementPrice} \rfloor$ | User receives a payout |
-| **User loss** (PnL < 0) | $\lceil |\mathtt{pnl}| / \mathtt{settlementPrice} \rceil$ | User owes a collection |
+| Case                       | Conversion                                                | Action                                                                  |
+| -------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Vault profit** (PnL > 0) | $\lceil \mathtt{pnl} / \mathtt{settlementPrice} \rceil$   | Repay $\mathtt{adlDeficit}$ first, then increase $\mathtt{vaultMargin}$ |
+| **Vault loss** (PnL < 0)   | $\lceil                                                   | \mathtt{pnl}                                                            | / \mathtt{settlementPrice} \rceil$ | Absorb from $\mathtt{vaultMargin}$; unabsorbed becomes $\mathtt{adlDeficit}$ |
+| **User profit** (PnL > 0)  | $\lfloor \mathtt{pnl} / \mathtt{settlementPrice} \rfloor$ | User receives a payout                                                  |
+| **User loss** (PnL < 0)    | $\lceil                                                   | \mathtt{pnl}                                                            | / \mathtt{settlementPrice} \rceil$ | User owes a collection                                                       |
 
 Rounding rules protect the protocol: payouts use floor (protocol keeps dust),
 collections use ceil (protocol collects dust).

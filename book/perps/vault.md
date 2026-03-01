@@ -22,10 +22,10 @@ first-depositor inflation attack.
 
 ### Constants
 
-| Name             | Value         |
-| ---------------- | ------------- |
-| Virtual shares   | 1,000,000     |
-| Virtual assets   | $1            |
+| Name           | Value     |
+| -------------- | --------- |
+| Virtual shares | 1,000,000 |
+| Virtual assets | $1        |
 
 ### Share minting
 
@@ -181,14 +181,14 @@ Skip if notional is below the minimum order size.
 
 ### Per-pair parameters
 
-| Parameter                 | Role                                        |
-| ------------------------- | ------------------------------------------- |
-| `vault_half_spread`       | Half the bid-ask spread around oracle price  |
-| `vault_max_quote_size`    | Maximum size per side                        |
-| `vault_liquidity_weight`  | Weight for margin allocation across pairs    |
-| `tick_size`               | Price granularity for snapping               |
-| `initial_margin_ratio`    | Used to compute margin-constrained size      |
-| `min_order_size`          | Minimum notional to place an order           |
+| Parameter                | Role                                        |
+| ------------------------ | ------------------------------------------- |
+| `vault_half_spread`      | Half the bid-ask spread around oracle price |
+| `vault_max_quote_size`   | Maximum size per side                       |
+| `vault_liquidity_weight` | Weight for margin allocation across pairs   |
+| `tick_size`              | Price granularity for snapping              |
+| `initial_margin_ratio`   | Used to compute margin-constrained size     |
+| `min_order_size`         | Minimum notional to place an order          |
 
 If any of `vault_half_spread`, `vault_max_quote_size`, `vault_liquidity_weight`,
 `tick_size`, or the allocated margin is zero, the vault skips quoting for that
