@@ -9,8 +9,8 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Quantity, UsdValue,
-        perps::{Order, OrderId, settlement_currency},
+        UsdValue,
+        perps::{Order, OrderId},
     },
     grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
 };
@@ -49,12 +49,8 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // Step 2: Compute the vault's available margin.
     // After cancellation, reserved_margin is zero and all vault capital is in
-    // state.vault_margin. Convert to USD.
-    let settlement_currency_price =
-        oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
-
-    let vault_margin_value = Quantity::from_base(state.vault_margin, settlement_currency::DECIMAL)?
-        .checked_mul(settlement_currency_price)?;
+    // state.vault_margin (already UsdValue).
+    let vault_margin_value = state.vault_margin;
 
     // If vault_total_weight is zero, no pairs have weights configured — skip.
     if param.vault_total_weight.is_zero() || vault_margin_value.is_zero() {

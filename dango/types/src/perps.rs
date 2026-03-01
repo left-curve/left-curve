@@ -201,19 +201,16 @@ pub struct State {
     /// Total supply of the vault's share token.
     pub vault_share_supply: Uint128,
 
-    /// The vault margin (LP capital deposited into the exchange). All PnL
-    /// settlement, trading fees, liquidation fees, and bad debt flow through
-    /// this balance. The vault is a regular trader; its equity is computed
-    /// identically to any user via `compute_user_equity`.
-    ///
-    /// This does not equal the vault's token balance tracked by the bank
-    /// contract, which also includes unlocks that are pending cooldown.
-    pub vault_margin: Uint128,
+    /// The vault margin (LP capital deposited into the exchange), denominated in
+    /// USD. All PnL settlement, trading fees, liquidation fees, and bad debt
+    /// flow through this balance. The vault is a regular trader; its equity is
+    /// computed identically to any user via `compute_user_equity`.
+    pub vault_margin: UsdValue,
 
-    /// Accumulated bad debt that exceeded the vault during liquidations.
-    /// When non-zero, ADL can be triggered. Reduced as profitable positions
-    /// are forcibly closed and their PnL forfeited.
-    pub adl_deficit: Uint128,
+    /// Accumulated bad debt that exceeded the vault during liquidations,
+    /// denominated in USD. When non-zero, ADL can be triggered. Reduced as
+    /// profitable positions are forcibly closed and their PnL forfeited.
+    pub adl_deficit: UsdValue,
 }
 
 /// State of an individual trading pair.
@@ -263,6 +260,9 @@ pub struct UserState {
     /// The user's open positions.
     pub positions: BTreeMap<PairId, Position>,
 
+    /// The user's deposited margin, denominated in USD.
+    pub margin: UsdValue,
+
     /// Margin reserved for resting limit orders.
     pub reserved_margin: UsdValue,
 
@@ -295,8 +295,9 @@ pub struct Position {
 /// cooldown period to elapse.
 #[grug::derive(Serde, Borsh)]
 pub struct Unlock {
-    /// The amount of settlement currency to be released once cooldown completes.
-    pub amount_to_release: Uint128,
+    /// The USD value to be released once cooldown completes. Token conversion
+    /// happens at claim time using the current oracle price.
+    pub amount_to_release: UsdValue,
 
     /// The time when cooldown completes.
     pub end_time: Timestamp,
@@ -334,16 +335,26 @@ pub struct InstantiateMsg {
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     /// Add liquidity to the counterparty vault.
-    Deposit {
+    AddLiquidity {
         /// Revert if less than this amount of shares is minted.
         min_shares_to_mint: Option<Uint128>,
     },
 
-    /// Request to withdraw funds from the counterparty vault.
-    Unlock {},
+    /// Request to withdraw liquidity from the counterparty vault.
+    RemoveLiquidity {},
 
-    /// Claim funds from unlocks that have already completed cooldown.
+    /// Claim funds from vault unlocks that have already completed cooldown.
     Claim {},
+
+    /// Deposit settlement currency into the trader's margin account.
+    /// The deposited tokens are converted to USD at the current oracle price
+    /// and credited to `user_state.margin`.
+    Deposit {},
+
+    /// Withdraw margin from the trader's margin account.
+    /// The requested USD amount is converted to settlement currency at the
+    /// current oracle price (floor-rounded) and transferred to the user.
+    Withdraw { margin: UsdValue },
 
     /// Submit an order.
     SubmitOrder {

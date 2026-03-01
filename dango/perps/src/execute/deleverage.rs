@@ -7,13 +7,18 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue,
-        perps::{PairId, PairState, State, UserState, settlement_currency},
+        Dimensionless, UsdPrice, UsdValue,
+        perps::{PairId, PairState, State, UserState},
     },
-    grug::{Addr, IsZero, Message, MutableCtx, Number, QuerierExt, Response, Uint128, coins},
+    grug::{Addr, MutableCtx, Response},
     std::collections::BTreeMap,
 };
 
+/// Auto-deleverage profitable positions to reduce the vault's ADL deficit.
+///
+/// Mutates: `STATE`, `PAIR_STATES`, `USER_STATES`.
+///
+/// Returns: empty `Response` (all PnL settled via internal margins).
 pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     ensure!(user != ctx.contract, "cannot ADL the vault");
 
@@ -36,15 +41,8 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
-    let settlement_currency_price =
-        oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
-
-    let collateral_balance = ctx
-        .querier
-        .query_balance(user, settlement_currency::DENOM.clone())?;
-
-    let collateral_value = Quantity::from_base(collateral_balance, settlement_currency::DECIMAL)?
-        .checked_mul(settlement_currency_price)?;
+    // Collateral is the trader's internal margin (UsdValue).
+    let collateral_value = user_state.margin;
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
@@ -67,7 +65,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 4–6. Core ADL logic --------------------------------
 
-    let payout = _deleverage(
+    _deleverage(
         ctx.storage,
         user,
         &mut pair_states,
@@ -75,7 +73,6 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         &oracle_prices,
         collateral_value,
         &mut oracle_querier,
-        settlement_currency_price,
         &mut state,
     )?;
 
@@ -93,18 +90,8 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         USER_STATES.save(ctx.storage, user, &user_state)?;
     }
 
-    // -------------------- 8. Generate messages -------------------------------
-
-    let mut messages = Vec::new();
-
-    if let Some((addr, amount)) = payout {
-        messages.push(Message::transfer(
-            addr,
-            coins! { settlement_currency::DENOM.clone() => amount },
-        )?);
-    }
-
-    Ok(Response::new().add_messages(messages))
+    // No token transfers — all PnL settled via internal margins.
+    Ok(Response::new())
 }
 
 /// Core ADL logic: rank positions, close profitable ones, handle forfeiture.
@@ -113,10 +100,11 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 ///
 /// - `pair_states` — OI updated per fill.
 /// - `user_state.positions` — profitable positions closed.
+/// - `user_state.margin` — credited with non-forfeited PnL.
 /// - `state.vault_margin` — restocked from forfeited PnL.
 /// - `state.adl_deficit` — reduced by forfeited amount.
 ///
-/// Returns an optional payout `(user, amount)` in settlement-currency base units.
+/// Returns: `()`
 fn _deleverage(
     storage: &dyn grug::Storage,
     user: Addr,
@@ -125,9 +113,8 @@ fn _deleverage(
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     collateral_value: UsdValue,
     oracle_querier: &mut OracleQuerier,
-    settlement_currency_price: UsdPrice,
     state: &mut State,
-) -> anyhow::Result<Option<(Addr, Uint128)>> {
+) -> anyhow::Result<()> {
     // -------------------- Step 1: Compute equity + rank ----------------------
 
     let perp_querier = NoCachePerpQuerier::new_local(storage);
@@ -185,29 +172,26 @@ fn _deleverage(
     let user_pnl = pnls.remove(&user).unwrap_or(UsdValue::ZERO);
 
     if user_pnl > UsdValue::ZERO {
-        let pnl_quantity = user_pnl.checked_div(settlement_currency_price)?;
-        let pnl_base = pnl_quantity.into_base_floor(settlement_currency::DECIMAL)?;
-
         // Restock vault with full PnL.
-        state.vault_margin.checked_add_assign(pnl_base)?;
+        state.vault_margin.checked_add_assign(user_pnl)?;
 
         // Forfeit up to the deficit.
-        let forfeited = pnl_base.min(state.adl_deficit);
-        let payout = pnl_base.checked_sub(forfeited)?;
+        let forfeited = user_pnl.min(state.adl_deficit);
+        let credit = user_pnl.checked_sub(forfeited)?;
 
-        // Pay out the non-forfeited portion.
-        state.vault_margin.checked_sub_assign(payout)?;
+        // Credit the non-forfeited portion to the user's margin.
+        state.vault_margin.checked_sub_assign(credit)?;
         state.adl_deficit.checked_sub_assign(forfeited)?;
 
-        if payout.is_non_zero() {
-            return Ok(Some((user, payout)));
+        if credit.is_non_zero() {
+            user_state.margin.checked_add_assign(credit)?;
         }
     }
 
     // If PnL is negative or zero, don't penalize the user further.
     // No deficit reduction (need another ADL target).
 
-    Ok(None)
+    Ok(())
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -220,11 +204,9 @@ mod tests {
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             oracle::PrecisionedPrice,
-            perps::{PairId, PairParam, PairState, Param, Position, State, settlement_currency},
+            perps::{PairId, PairParam, PairState, Param, Position, State},
         },
-        grug::{
-            Addr, Coins, MockContext, NumberConst, Storage, Timestamp, Udec128, Uint128, hash_map,
-        },
+        grug::{Addr, Coins, MockContext, Storage, Timestamp, Udec128, hash_map},
         std::collections::{BTreeMap, BTreeSet},
     };
 
@@ -305,10 +287,10 @@ mod tests {
         USER_STATES.save(storage, user, &user_state).unwrap();
     }
 
-    fn state_with_deficit(vault_margin: u128, adl_deficit: u128) -> State {
+    fn state_with_deficit(vault_margin: i128, adl_deficit: i128) -> State {
         State {
-            vault_margin: Uint128::new(vault_margin),
-            adl_deficit: Uint128::new(adl_deficit),
+            vault_margin: UsdValue::new_int(vault_margin),
+            adl_deficit: UsdValue::new_int(adl_deficit),
             ..Default::default()
         }
     }
@@ -350,7 +332,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let state = state_with_deficit(0, 5_000_000_000);
+        let state = state_with_deficit(0, 5_000);
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
@@ -378,7 +360,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut state = state_with_deficit(0, 5_000_000_000);
+        let mut state = state_with_deficit(0, 5_000);
         let pair_state = PairState::new(Timestamp::from_seconds(0));
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
@@ -403,14 +385,10 @@ mod tests {
                 Timestamp::from_seconds(0),
                 8,
             ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
-            ),
         });
 
         let collateral_value = UsdValue::new_int(10_000);
+        user_state.margin = collateral_value;
 
         let result = _deleverage(
             &ctx.storage,
@@ -420,7 +398,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
@@ -441,8 +418,8 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        // Deficit = 5000 USDC (5_000_000_000 base units)
-        let mut state = state_with_deficit(0, 5_000_000_000);
+        // Deficit = $5,000
+        let mut state = state_with_deficit(0, 5_000);
         let mut pair_state = PairState::new(Timestamp::from_seconds(0));
         pair_state.long_oi = Quantity::new_int(1);
 
@@ -468,14 +445,10 @@ mod tests {
                 Timestamp::from_seconds(0),
                 8,
             ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
-            ),
         });
 
         let collateral_value = UsdValue::new_int(10_000);
+        user_state.margin = collateral_value;
 
         let result = _deleverage(
             &ctx.storage,
@@ -485,7 +458,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
@@ -500,18 +472,17 @@ mod tests {
         // OI should be reduced.
         assert_eq!(pair_states[&pair_btc()].long_oi, Quantity::ZERO);
 
-        // PnL = 15000 USDC = 15_000_000_000 base
-        // vault_margin += 15_000_000_000 (restock)
-        // forfeited = min(15_000_000_000, 5_000_000_000) = 5_000_000_000
-        // payout = 15_000_000_000 - 5_000_000_000 = 10_000_000_000
-        // vault_margin -= 10_000_000_000 (payout)
-        // net vault_margin = 0 + 15_000_000_000 - 10_000_000_000 = 5_000_000_000
-        assert_eq!(state.vault_margin, Uint128::new(5_000_000_000));
-        assert_eq!(state.adl_deficit, Uint128::ZERO);
+        // PnL = $15,000
+        // vault_margin += 15,000 (restock)
+        // forfeited = min(15,000, 5,000) = 5,000
+        // credit = 15,000 - 5,000 = 10,000
+        // vault_margin -= 10,000 (credit to user)
+        // net vault_margin = 0 + 15,000 - 10,000 = 5,000
+        assert_eq!(state.vault_margin, UsdValue::new_int(5_000));
+        assert_eq!(state.adl_deficit, UsdValue::ZERO);
 
-        // Payout should be 10_000_000_000.
-        let payout = result.unwrap();
-        assert_eq!(payout, Some((USER, Uint128::new(10_000_000_000))));
+        // User margin should increase by 10,000.
+        assert_eq!(user_state.margin, UsdValue::new_int(20_000));
     }
 
     #[test]
@@ -521,8 +492,8 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        // Deficit = 20000 USDC, PnL will be 15000
-        let mut state = state_with_deficit(0, 20_000_000_000);
+        // Deficit = $20,000, PnL will be $15,000
+        let mut state = state_with_deficit(0, 20_000);
         let mut pair_state = PairState::new(Timestamp::from_seconds(0));
         pair_state.long_oi = Quantity::new_int(1);
 
@@ -548,14 +519,10 @@ mod tests {
                 Timestamp::from_seconds(0),
                 8,
             ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
-            ),
         });
 
         let collateral_value = UsdValue::new_int(10_000);
+        user_state.margin = collateral_value;
 
         let result = _deleverage(
             &ctx.storage,
@@ -565,19 +532,18 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
         assert!(result.is_ok(), "deleverage failed: {:?}", result.err());
 
-        // All PnL forfeited, no payout.
-        assert_eq!(result.unwrap(), None);
+        // All PnL forfeited, no credit to user margin.
+        assert_eq!(user_state.margin, collateral_value);
 
-        // vault_margin = 0 + 15_000_000_000 (restock) - 0 (no payout) = 15_000_000_000
-        assert_eq!(state.vault_margin, Uint128::new(15_000_000_000));
-        // deficit: 20_000_000_000 - 15_000_000_000 = 5_000_000_000
-        assert_eq!(state.adl_deficit, Uint128::new(5_000_000_000));
+        // vault_margin = 0 + 15,000 (restock) - 0 (no credit) = 15,000
+        assert_eq!(state.vault_margin, UsdValue::new_int(15_000));
+        // deficit: 20,000 - 15,000 = 5,000
+        assert_eq!(state.adl_deficit, UsdValue::new_int(5_000));
     }
 
     #[test]
@@ -587,7 +553,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut state = state_with_deficit(0, 3_000_000_000);
+        let mut state = state_with_deficit(0, 3_000);
 
         let btc_state = PairState::new(Timestamp::from_seconds(0));
         let eth_state = PairState::new(Timestamp::from_seconds(0));
@@ -622,14 +588,10 @@ mod tests {
                 Timestamp::from_seconds(0),
                 8,
             ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
-            ),
         });
 
         let collateral_value = UsdValue::new_int(10_000);
+        user_state.margin = collateral_value;
 
         let result = _deleverage(
             &ctx.storage,
@@ -639,7 +601,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
@@ -657,13 +618,13 @@ mod tests {
     }
 
     #[test]
-    fn collateral_unchanged() {
+    fn margin_credited_not_collected() {
         let mut ctx = MockContext::new()
             .with_contract(CONTRACT)
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut state = state_with_deficit(0, 5_000_000_000);
+        let mut state = state_with_deficit(0, 5_000);
         let mut pair_state = PairState::new(Timestamp::from_seconds(0));
         pair_state.long_oi = Quantity::new_int(1);
 
@@ -688,14 +649,10 @@ mod tests {
                 Timestamp::from_seconds(0),
                 8,
             ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
-            ),
         });
 
         let collateral_value = UsdValue::new_int(10_000);
+        user_state.margin = collateral_value;
 
         let result = _deleverage(
             &ctx.storage,
@@ -705,15 +662,14 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
         assert!(result.is_ok(), "deleverage failed: {:?}", result.err());
 
-        // _deleverage never force-collects from user. It only pays out from
-        // the vault. The collateral is not touched.
-        // (No collections returned — only an optional payout.)
+        // _deleverage never force-collects from user. The non-forfeited PnL
+        // is credited to user_state.margin. Original margin is preserved.
+        assert!(user_state.margin >= collateral_value);
     }
 
     #[test]
@@ -724,7 +680,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let state = state_with_deficit(0, 5_000_000_000);
+        let state = state_with_deficit(0, 5_000);
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),

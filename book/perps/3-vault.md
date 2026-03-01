@@ -15,9 +15,9 @@ exchange. It serves three functions:
 Liquidity providers (LPs) deposit settlement currency into the vault and
 receive fungible vault shares in return.
 
-## 2 Deposit
+## 2 AddLiquidity
 
-Deposits follow an **ERC-4626 virtual-shares** pattern to prevent the
+Adding liquidity follows an **ERC-4626 virtual-shares** pattern to prevent the
 first-depositor inflation attack.
 
 ### Constants
@@ -57,15 +57,16 @@ Deposits are **paused** when $\mathtt{adlDeficit} > 0$. This prevents new
 capital from entering a vault that has unresolved bad debt — the deficit must
 be cleared via [ADL](liquidation-and-adl.md#7-adl-trigger) first.
 
-## 3 Withdraw
+## 3 RemoveLiquidity
 
-Withdrawals are a two-step process: **unlock** (initiate) and **claim**
-(finalize after cooldown).
+Withdrawals are a two-step process: **RemoveLiquidity** (initiate) and
+**Claim** (finalize after cooldown).
 
-### Unlock
+### RemoveLiquidity
 
-The LP sends vault shares back to the contract. The amount of settlement
-currency to release is computed as:
+The LP sends vault shares back to the contract. The USD value to release is
+computed directly (no base-unit conversion needed — vault margin is already
+stored in USD):
 
 $$
 \mathtt{effectiveSupply} = \mathtt{vaultShareSupply} + \mathtt{virtualShares}
@@ -76,15 +77,11 @@ $$
 $$
 
 $$
-\mathtt{vaultEquityBase} = \left\lfloor \frac{\mathtt{effectiveEquity}}{\mathtt{settlementPrice}} \times 10^{\mathtt{decimal}} \right\rfloor
+\mathtt{amountToRelease} = \left\lfloor \mathtt{effectiveEquity} \times \frac{\mathtt{sharesToBurn}}{\mathtt{effectiveSupply}} \right\rfloor
 $$
 
-$$
-\mathtt{amountToRelease} = \left\lfloor \mathtt{vaultEquityBase} \times \frac{\mathtt{sharesToBurn}}{\mathtt{effectiveSupply}} \right\rfloor
-$$
-
-Floor rounding again protects the vault. The shares are burned and the
-settlement amount is recorded as a pending unlock:
+Floor rounding protects the vault. The shares are burned and the USD amount is
+recorded as a pending unlock:
 
 $$
 \mathtt{endTime} = \mathtt{currentTime} + \mathtt{vaultCooldownPeriod}
@@ -92,9 +89,10 @@ $$
 
 ### Claim
 
-After $\mathtt{endTime}$ has passed, the LP calls claim to receive the
-settlement currency. Multiple matured unlocks are batched into a single
-transfer.
+After $\mathtt{endTime}$ has passed, the LP calls Claim to receive the
+settlement currency. Multiple matured unlocks are batched and converted from
+USD to settlement-currency tokens at the **current oracle price**
+(floor-rounded).
 
 ### ADL pause
 
@@ -109,8 +107,8 @@ $$
 \mathtt{vaultEquity} = \mathtt{vaultMarginValue} + \sum \mathtt{unrealisedPnl} - \sum \mathtt{accruedFunding}
 $$
 
-where $\mathtt{vaultMarginValue}$ is the vault's deposited capital converted to
-USD, and the sums run over all of the vault's open positions.
+where $\mathtt{vaultMargin}$ is the vault's internal USD margin (updated in-place
+during settlement), and the sums run over all of the vault's open positions.
 
 If $\mathtt{effectiveEquity}$ is non-positive the vault is in catastrophic loss
 and both deposits and withdrawals are disabled.

@@ -173,6 +173,7 @@ mod tests {
             positions,
             reserved_margin: UsdValue::new_int(reserved_margin),
             open_order_count,
+            margin: UsdValue::ZERO,
         };
 
         USER_STATES.save(storage, user, &state).unwrap();

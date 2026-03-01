@@ -2,128 +2,129 @@
 
 ## 1 Overview
 
-The **bank contract** is the system-level token ledger. It holds all user
-balances and processes every transfer. For the perps contract it enforces two
-special rules:
+All trader margin is held **internally** in the perps contract as a USD value
+(`UsdValue`) on each user's state. PnL and fee settlement is pure USD
+arithmetic — no token conversions are needed during matching or liquidation.
 
-1. **Margin check on transfer** — prevents users with open perps positions from
-   withdrawing collateral that backs those positions.
-2. **Perps overdraw** — allows the perps contract to send settlement currency it
-   does not yet hold, tracking the shortfall as a deficit.
+Token conversion only happens at two boundaries:
 
-## 2 Margin check on transfer
+- **Deposit** — the user sends settlement currency (USDC) to the perps
+  contract; the oracle price converts the token amount to USD and credits
+  `userState.margin`.
+- **Withdraw** — the user requests a USD amount; the oracle price converts it
+  to settlement-currency tokens (floor-rounded) and transfers them out.
 
-When a user transfers settlement currency and has open perps positions, the
-bank queries the perps contract to verify the transfer does not breach margin
-requirements.
+This design eliminates rounding errors that accumulate from repeated USD-to-token
+conversions, reduces cross-contract calls, and keeps margining logic entirely
+inside the perps contract.
 
-The check triggers only when **all three conditions** hold:
+## 2 Trader Deposit
 
-1. The transfer includes settlement currency.
-2. The sender has a user state in the perps contract.
-3. That user state has at least one open position.
+```
+ExecuteMsg::Deposit {}
+```
 
-### Available margin
+The user sends settlement currency as attached funds. The perps contract:
 
-$$
-\mathtt{equity} = \mathtt{collateralValue} + \sum \mathtt{unrealisedPnl} - \sum \mathtt{accruedFunding}
-$$
+1. Queries the oracle for the settlement-currency price.
+2. Converts the token amount to USD: $\mathtt{depositValue} = \mathtt{amount} \times \mathtt{price}$.
+3. Credits `userState.margin` by $\mathtt{depositValue}$.
 
-$$
-\mathtt{usedMargin} = \sum |\mathtt{positionSize}| \times \mathtt{oraclePrice} \times \mathtt{imr}
-$$
+The tokens remain in the perps contract's bank balance.
 
-$$
-\mathtt{availableMargin} = \max\!\left(0,\; \mathtt{equity} - \mathtt{usedMargin} - \mathtt{reservedMargin}\right)
-$$
+## 3 Trader Withdraw
 
-where $\mathtt{imr}$ is the initial margin ratio and $\mathtt{reservedMargin}$
-is margin locked for resting limit orders.
+```
+ExecuteMsg::Withdraw { margin: UsdValue }
+```
 
-The available margin is converted back to settlement-currency base units using
-**floor** rounding (conservative — the user gets slightly less):
+The user specifies how much USD margin to withdraw. The perps contract:
 
-$$
-\mathtt{availableBase} = \left\lfloor \frac{\mathtt{availableMargin}}{\mathtt{settlementPrice}} \times 10^{\mathtt{decimal}} \right\rfloor
-$$
+1. Computes available margin (equity minus used margin minus reserved margin),
+   clamped to zero.
+2. Ensures the requested amount does not exceed available margin.
+3. Deducts the amount from `userState.margin`.
+4. Converts USD to settlement-currency tokens at the current oracle price
+   (floor-rounded for safety — the contract keeps slightly more than strictly
+   needed).
+5. Transfers the tokens to the user.
 
-The transfer is **rejected** if:
+## 4 PnL settlement (`settle_pnls`)
 
-$$
-\mathtt{transferAmount} > \mathtt{availableBase}
-$$
+During order matching and liquidation, the contract accumulates per-user PnL
+and fee maps (`BTreeMap<Addr, UsdValue>`). After all fills are computed, a
+single `settle_pnls` call applies everything in place:
 
-## 3 Perps overdraw
+### Fee loop (runs first)
 
-In perpetual futures, whenever there is a winner there is necessarily a loser.
-When the winner realises positive PnL, the perps contract must pay out
-settlement currency from its balance. But the corresponding loser may not have
-realised their loss yet — they may still hold the position open.
-
-This creates a timing mismatch: the contract may need to send tokens it does
-not yet hold. Rather than blocking the winner's payout, the bank allows the
-perps contract to **overdraw** its settlement-currency balance. The shortfall
-is tracked in a dedicated storage slot:
+For each non-vault user with a fee:
 
 $$
-\mathtt{PERP\_DEFICIT} \in \mathbb{Z}_{\geq 0}
-$$
-
-## 4 `decrease_perp_balance`
-
-When the perps contract sends settlement currency, the bank uses a special
-balance-decrease function that absorbs as much as possible from the actual
-balance and records the remainder as deficit:
-
-$$
-\mathtt{absorbed} = \min(\mathtt{amount},\; \mathtt{balance})
+\mathtt{userState.margin} \mathrel{-}= \mathtt{fee}
 $$
 
 $$
-\mathtt{balance} \gets \mathtt{balance} - \mathtt{absorbed}
+\mathtt{state.vaultMargin} \mathrel{+}= \mathtt{fee}
+$$
+
+Fees from the vault to itself are skipped (no-op).
+
+### PnL loop
+
+**Non-vault users:**
+
+$$
+\mathtt{userState.margin} \mathrel{+}= \mathtt{pnl}
+$$
+
+A user's margin can go negative temporarily — the outer function handles bad
+debt (see [Liquidation](liquidation-and-adl.md)).
+
+**Vault:**
+
+Profit is applied to `state.vaultMargin`, first repaying any existing
+`adlDeficit`:
+
+$$
+\mathtt{repaid} = \min(\mathtt{pnl},\; \mathtt{adlDeficit})
 $$
 
 $$
-\mathtt{deficit} \gets \mathtt{deficit} + (\mathtt{amount} - \mathtt{absorbed})
-$$
-
-This function **never errors** due to insufficient balance. It always succeeds,
-recording any shortfall. If the resulting balance is zero the storage entry is
-deleted; if the deficit is updated it is saved.
-
-## 5 `increase_perp_balance`
-
-When the perps contract receives settlement currency (e.g. a loser realising
-their loss), the bank repays the deficit **first** before crediting the
-balance:
-
-$$
-\mathtt{absorbed} = \min(\mathtt{amount},\; \mathtt{deficit})
+\mathtt{adlDeficit} \mathrel{-}= \mathtt{repaid}
 $$
 
 $$
-\mathtt{deficit} \gets \mathtt{deficit} - \mathtt{absorbed}
+\mathtt{vaultMargin} \mathrel{+}= \mathtt{pnl} - \mathtt{repaid}
+$$
+
+Loss absorbs from `vaultMargin`; any shortfall becomes `adlDeficit`:
+
+$$
+\mathtt{absorbed} = \min(|\mathtt{pnl}|,\; \mathtt{vaultMargin})
 $$
 
 $$
-\mathtt{balance} \gets \mathtt{balance} + (\mathtt{amount} - \mathtt{absorbed})
+\mathtt{vaultMargin} \mathrel{-}= \mathtt{absorbed}
 $$
 
-If the new deficit is zero the storage entry is removed entirely.
+$$
+\mathtt{adlDeficit} \mathrel{+}= |\mathtt{pnl}| - \mathtt{absorbed}
+$$
 
-## 6 Invariant
+### Why no payouts or collections
 
-The deficit is **temporary by design**. Every winner's profit has a
-corresponding loser with an equal-and-opposite unrealised PnL. That loser must
-eventually realise their loss — either by closing voluntarily or by being
-[liquidated](liquidation-and-adl.md). When they do, settlement currency flows
-back to the perps contract via `increase_perp_balance`, repaying the deficit.
+Under the old design, settlement produced token transfers (payouts to winners,
+collections from losers). With internalized margin, all changes are in-memory
+mutations to `userState.margin` and `state.vaultMargin`. No messages are
+emitted from `settle_pnls`.
 
-The guarantee rests on two properties:
+## 5 Vault margin
 
-1. Every winner implies a loser with matching unrealised loss.
-2. Losers are **forced** to close via liquidation when their equity falls below
-   the maintenance margin.
+The vault's margin (`state.vaultMargin`) is a `UsdValue` that tracks:
 
-Therefore $\mathtt{PERP\_DEFICIT}$ is bounded by the aggregate unrealised losses
-of all losing positions, and those positions are guaranteed to close eventually.
+- LP deposits (via `AddLiquidity` → converted at oracle price).
+- Trading fees earned from all non-vault users.
+- The vault's own realized PnL from market-making and backstop fills.
+
+It is **not** a bank balance — it is an internal accounting value. Actual
+tokens only move when LPs claim unlocks or traders deposit/withdraw.

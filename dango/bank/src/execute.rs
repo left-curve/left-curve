@@ -1,27 +1,15 @@
 use {
-    crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, ORPHANED_TRANSFERS, PERP_DEFICIT, SUPPLIES},
+    crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, ORPHANED_TRANSFERS, SUPPLIES},
     anyhow::{anyhow, bail, ensure},
-    dango_oracle::OracleQuerier,
-    dango_perps::{NoCachePerpQuerier, USER_STATES},
-    dango_types::{
-        bank::{
-            Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
-        },
-        perps::{self, settlement_currency},
+    dango_types::bank::{
+        Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
     },
     grug::{
         Addr, BankMsg, Coins, Denom, EventBuilder, IsZero, MutableCtx, Number, NumberConst, Part,
-        QuerierExt, Response, StdError, StdResult, Storage, StorageQuerier, SudoCtx, Uint128, addr,
+        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
     },
-    std::{collections::HashMap, ops::Deref},
+    std::collections::HashMap,
 };
-
-/// Address of the perps contract.
-// TODO: update with the actual deployed perps contract address.
-const PERPS: Addr = addr!("0000000000000000000000000000000000000000");
-
-/// Address of the oracle contract.
-const ORACLE: Addr = addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d");
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
@@ -268,46 +256,6 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
 ///    the tokens by calling the `recover_transfer` method.
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> anyhow::Result<Response> {
-    // ---------------------------- 1. Margin check ----------------------------
-
-    // If the tokens being transferred include the perps settlement currency,
-    // we need to ensure the amount being transferred is no more than the user's
-    // available margin.
-
-    // Sum settlement currency being transferred out across all recipients.
-    let total_settlement = msg
-        .transfers
-        .values()
-        .try_fold(Uint128::ZERO, |acc, coins| {
-            acc.checked_add(coins.amount_of(&settlement_currency::DENOM))
-        })?;
-
-    // If the sender is transferring settlement currency, ensure they have
-    // sufficient available margin to cover the transfer.
-    if total_settlement.is_non_zero()
-        && let Some(user_state) = ctx
-            .querier
-            .may_query_wasm_path(PERPS, &USER_STATES.path(msg.from))?
-        && !user_state.positions.is_empty()
-    {
-        let perp_querier = NoCachePerpQuerier::new_remote(PERPS, ctx.querier);
-        let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
-
-        let balance = BALANCES
-            .may_load(ctx.storage, (&msg.from, &settlement_currency::DENOM))?
-            .unwrap_or(Uint128::ZERO);
-
-        crate::perp_margin::check_perps_margin(
-            &user_state,
-            balance,
-            total_settlement,
-            &perp_querier,
-            &mut oracle_querier,
-        )?;
-    }
-
-    // --------------------------- 2. Balance update ---------------------------
-
     let mut events = EventBuilder::with_capacity(msg.transfers.len() * 3);
 
     for (to, coins) in msg.transfers {
@@ -327,39 +275,9 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> anyhow::Result<Response> {
             ctx.contract
         };
 
-        // Special rule if the address is the perps contract and the denom is
-        // its settlement currency.
-        //
-        // When sending, we allow the perp contract to "overdraw" its balance.
-        // If perp contract's balance is less than the amount it's sending, we
-        // reduce its balance to zero and add the shortfall to the `PERP_DEFICIT`
-        // storage slot. Conversely, when the perp contract receives a transfer,
-        // we first reduce `PERP_DEFICIT` (if any) and only add the remainder to
-        // its balance.
-        //
-        // To understand why, the context: in perpetual futures, whenever there
-        // is a winner, there is necessary a loser. When the winner realizes his
-        // positive PnL, the perp contract must pay out settlement currency tokens
-        // from its balance to the user. Conversely, when a loser realizes his
-        // negative PnL, he must pay the contract. The contract acts as a middle
-        // man coordinating the flow of PnL between the parties. However, when
-        // the winner realizes his PnL, the loser may not want to do it yet. Thus,
-        // the contract may not have sufficient token to pay the winner. In is
-        // case, we allow it to overdraw. The deficit should be temporarily, as
-        // the loser has to realize his loss at one point (either closing voluntarily
-        // or getting liquidated).
         for coin in &coins {
-            if msg.from == PERPS && coin.denom == perps::settlement_currency::DENOM.deref() {
-                decrease_perp_balance(ctx.storage, *coin.amount)?;
-            } else {
-                decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
-            }
-
-            if recipient == PERPS && coin.denom == perps::settlement_currency::DENOM.deref() {
-                increase_perp_balance(ctx.storage, *coin.amount)?;
-            } else {
-                increase_balance(ctx.storage, &recipient, coin.denom, *coin.amount)?;
-            }
+            decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
+            increase_balance(ctx.storage, &recipient, coin.denom, *coin.amount)?;
         }
 
         events
@@ -471,62 +389,4 @@ fn decrease_balance(
                 "failed to decrease balance! address: {address}, denom: {denom}, amount: {amount}, reason: {err}"
             )
         })
-}
-
-/// Increases the perps contract's settlement currency balance, repaying any
-/// outstanding deficit first.
-fn increase_perp_balance(storage: &mut dyn Storage, amount: Uint128) -> anyhow::Result<()> {
-    let deficit = PERP_DEFICIT.may_load(storage)?.unwrap_or(Uint128::ZERO);
-
-    let absorbed = amount.min(deficit);
-    let remainder = amount.checked_sub(absorbed)?;
-
-    // Reduce the deficit by the absorbed amount. Remove if zero.
-    let new_deficit = deficit.checked_sub(absorbed)?;
-    if new_deficit.is_zero() {
-        PERP_DEFICIT.remove(storage);
-    } else {
-        PERP_DEFICIT.save(storage, &new_deficit)?;
-    }
-
-    // Credit the remainder to the balance.
-    if remainder.is_non_zero() {
-        let balance = BALANCES
-            .may_load(storage, (&PERPS, &settlement_currency::DENOM))?
-            .unwrap_or(Uint128::ZERO)
-            .checked_add(remainder)?;
-        BALANCES.save(storage, (&PERPS, &settlement_currency::DENOM), &balance)?;
-    }
-
-    Ok(())
-}
-
-/// Decreases the perps contract's settlement currency balance, allowing
-/// overdraw by tracking the shortfall in `PERP_DEFICIT`.
-fn decrease_perp_balance(storage: &mut dyn Storage, amount: Uint128) -> anyhow::Result<()> {
-    let balance = BALANCES
-        .may_load(storage, (&PERPS, &settlement_currency::DENOM))?
-        .unwrap_or(Uint128::ZERO);
-
-    let absorbed = amount.min(balance);
-    let remainder = amount.checked_sub(absorbed)?;
-
-    // Reduce the balance by the absorbed amount. Remove if zero.
-    let new_balance = balance.checked_sub(absorbed)?;
-    if new_balance.is_zero() {
-        BALANCES.remove(storage, (&PERPS, &settlement_currency::DENOM));
-    } else {
-        BALANCES.save(storage, (&PERPS, &settlement_currency::DENOM), &new_balance)?;
-    }
-
-    // Add the remainder to the deficit.
-    if remainder.is_non_zero() {
-        let deficit = PERP_DEFICIT
-            .may_load(storage)?
-            .unwrap_or(Uint128::ZERO)
-            .checked_add(remainder)?;
-        PERP_DEFICIT.save(storage, &deficit)?;
-    }
-
-    Ok(())
 }

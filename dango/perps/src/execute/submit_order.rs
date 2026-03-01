@@ -7,26 +7,17 @@ use {
             compute_required_margin, compute_target_price, compute_trading_fee, decompose_fill,
             execute_fill, is_price_constraint_violated,
         },
-        execute::{BANK, ORACLE},
+        execute::ORACLE,
         price::may_invert_price,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue, bank,
-        perps::{
-            Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, State, UserState,
-            settlement_currency,
-        },
+        Dimensionless, Quantity, UsdPrice, UsdValue,
+        perps::{Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, State, UserState},
     },
-    grug::{
-        Addr, Coins, IsZero, Message, MutableCtx, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, Response, Storage, Uint128, coins,
-    },
-    std::{
-        cmp::Ordering,
-        collections::{BTreeMap, btree_map::Entry},
-    },
+    grug::{Addr, MutableCtx, NumberConst, Order as IterationOrder, Response, Storage},
+    std::collections::{BTreeMap, btree_map::Entry},
 };
 
 pub fn submit_order(
@@ -52,19 +43,12 @@ pub fn submit_order(
 
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
 
-    let settlement_currency_price =
-        oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
-
-    let collateral_balance = ctx
-        .querier
-        .query_balance(ctx.sender, settlement_currency::DENOM.clone())?;
-
-    let collateral_value = Quantity::from_base(collateral_balance, settlement_currency::DECIMAL)?
-        .checked_mul(settlement_currency_price)?;
+    // Collateral is the trader's internal margin (UsdValue).
+    let collateral_value = taker_state.margin;
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (payouts, collections, maker_states, order_mutations, order_to_store) = _submit_order(
+    let (maker_states, order_mutations, order_to_store) = _submit_order(
         ctx.storage,
         ctx.sender,
         ctx.contract,
@@ -79,7 +63,6 @@ pub fn submit_order(
         kind,
         reduce_only,
         &mut oracle_querier,
-        settlement_currency_price,
         &mut state,
     )?;
 
@@ -118,34 +101,8 @@ pub fn submit_order(
         taker_book.save(ctx.storage, (pair_id, stored_price, order_id), &order)?;
     }
 
-    // ---------------------- 4. Perform token transfers -----------------------
-
-    let mut messages = Vec::with_capacity(payouts.len() + collections.len());
-
-    if !payouts.is_empty() {
-        messages.push(Message::batch_transfer(payouts.into_iter().map(
-            |(addr, amount)| {
-                (
-                    addr,
-                    coins! { settlement_currency::DENOM.clone() => amount },
-                )
-            },
-        ))?);
-    }
-
-    for (user, amount) in collections {
-        messages.push(Message::execute(
-            BANK,
-            &bank::ExecuteMsg::ForceTransfer {
-                from: user,
-                to: ctx.contract,
-                coins: coins! { settlement_currency::DENOM.clone() => amount },
-            },
-            Coins::new(),
-        )?);
-    }
-
-    Ok(Response::new().add_messages(messages))
+    // No token transfers — all PnL/fees settled via user_state.margin.
+    Ok(Response::new())
 }
 
 /// Semi-pure order submission: reads from storage but does not write.
@@ -161,8 +118,6 @@ pub fn submit_order(
 ///
 /// Returns:
 ///
-/// - Per-user payouts in settlement-currency base units: `BTreeMap<Addr, Uint128>`.
-/// - Per-user collections in settlement-currency base units: `BTreeMap<Addr, Uint128>`.
 /// - Maker `UserState`s to persist: `BTreeMap<Addr, UserState>`.
 /// - Order mutations to apply: `Vec<(OrderKey, Option<Order>)>`.
 /// - GTC order to store: `Option<(stored_price, order_id, Order)>`.
@@ -181,11 +136,8 @@ fn _submit_order(
     kind: OrderKind,
     reduce_only: bool,
     oracle_querier: &mut OracleQuerier,
-    settlement_price: UsdPrice,
     state: &mut State,
 ) -> anyhow::Result<(
-    BTreeMap<Addr, Uint128>,
-    BTreeMap<Addr, Uint128>,
     BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>)>,
     Option<(UsdPrice, OrderId, Order)>,
@@ -235,13 +187,7 @@ fn _submit_order(
             oracle_querier,
         )?;
 
-        return Ok((
-            BTreeMap::new(),
-            BTreeMap::new(),
-            BTreeMap::new(),
-            Vec::new(),
-            Some(order_to_store),
-        ));
+        return Ok((BTreeMap::new(), Vec::new(), Some(order_to_store)));
     }
 
     // ----------------- Step 5: Pre-match taker margin check ------------------
@@ -314,15 +260,13 @@ fn _submit_order(
         None
     };
 
-    let (payouts, collections) = settle_pnls(pnls, fees, settlement_price, state, contract)?;
+    // Merge taker into user_states for settlement.
+    maker_states.insert(taker, taker_state.clone());
+    settle_pnls(pnls, fees, state, contract, &mut maker_states)?;
+    // Extract taker back.
+    *taker_state = maker_states.remove(&taker).unwrap();
 
-    Ok((
-        payouts,
-        collections,
-        maker_states,
-        order_mutations,
-        order_to_store,
-    ))
+    Ok((maker_states, order_mutations, order_to_store))
 }
 
 /// Mutates:
@@ -521,35 +465,28 @@ pub(crate) fn settle_fill(
     fees.entry(user).or_default().checked_add_assign(fee)
 }
 
-/// Settle PnLs and fees into settlement-currency base-unit amounts.
+/// Settle PnLs and fees directly in USD on user margins.
 ///
 /// Two loops:
-/// 1. **Fee loop** (first): non-vault fees increase `vault_margin` and become
-///    collections. Vault fees are skipped (paying yourself is a no-op).
+/// 1. **Fee loop** (first): non-vault fees increase `vault_margin` and are
+///    deducted from the user's margin. Vault fees are skipped (no-op).
 /// 2. **PnL loop** (second): vault PnL adjusts `vault_margin` (with bad-debt
-///    tracking). Non-vault PnL becomes payouts (profit) or collections (loss)
-///    without touching `vault_margin` — the losing counterparty pays the
-///    winning one directly.
+///    tracking). Non-vault PnL adjusts `user_state.margin` directly.
 ///
 /// Mutates:
 ///
 /// - `state.vault_margin` — adjusted by vault PnL and non-vault fees.
 /// - `state.adl_deficit` — increased if vault loss exceeds vault margin.
+/// - `user_states[*].margin` — adjusted by non-vault PnL and fees.
 ///
-/// Returns:
-///
-/// - Payouts: users the contract must pay (positive PnL, floor-rounded).
-/// - Collections: users who owe the contract (negative PnL + fees, ceil-rounded).
+/// Returns: `()` — all side effects are applied in-place.
 pub(crate) fn settle_pnls(
     pnls: BTreeMap<Addr, UsdValue>,
     fees: BTreeMap<Addr, UsdValue>,
-    settlement_price: UsdPrice,
     state: &mut State,
     contract: Addr,
-) -> anyhow::Result<(BTreeMap<Addr, Uint128>, BTreeMap<Addr, Uint128>)> {
-    let mut payouts: BTreeMap<Addr, Uint128> = BTreeMap::new();
-    let mut collections: BTreeMap<Addr, Uint128> = BTreeMap::new();
-
+    user_states: &mut BTreeMap<Addr, UserState>,
+) -> anyhow::Result<()> {
     // ---- Fee loop (first: collect fees so they help absorb vault losses) ----
     for (user, fee) in fees {
         if fee.is_zero() || user == contract {
@@ -557,17 +494,10 @@ pub(crate) fn settle_pnls(
         }
 
         // Non-vault fee → vault_margin increases, user pays.
-        let amount = fee
-            .checked_div(settlement_price)?
-            .into_base_ceil(settlement_currency::DECIMAL)?;
+        state.vault_margin.checked_add_assign(fee)?;
 
-        if amount.is_non_zero() {
-            state.vault_margin = state.vault_margin.checked_add(amount)?;
-            *collections.entry(user).or_default() = collections
-                .get(&user)
-                .copied()
-                .unwrap_or_default()
-                .checked_add(amount)?;
+        if let Some(us) = user_states.get_mut(&user) {
+            us.margin.checked_sub_assign(fee)?;
         }
     }
 
@@ -577,66 +507,33 @@ pub(crate) fn settle_pnls(
             continue;
         }
 
-        let quantity = pnl.checked_div(settlement_price)?;
+        if user == contract {
+            // Vault PnL.
+            if pnl > UsdValue::ZERO {
+                // Vault profit: first repay adl_deficit, then increase vault_margin.
+                let repaid = pnl.min(state.adl_deficit);
+                let remainder = pnl.checked_sub(repaid)?;
 
-        match (user == contract, pnl.cmp(&UsdValue::ZERO)) {
-            // Vault realizes a profit.
-            (true, Ordering::Greater) => {
-                let amount = quantity.into_base_ceil(settlement_currency::DECIMAL)?;
+                state.adl_deficit.checked_sub_assign(repaid)?;
+                state.vault_margin.checked_add_assign(remainder)?;
+            } else {
+                // Vault loss: absorb from vault_margin, excess becomes adl_deficit.
+                let loss = pnl.checked_abs()?;
+                let absorbed = loss.min(state.vault_margin);
+                let unabsorbed = loss.checked_sub(absorbed)?;
 
-                if amount.is_non_zero() {
-                    // First repay adl_deficit, then increase vault_margin.
-                    let repaid = amount.min(state.adl_deficit);
-                    let remainder = amount.checked_sub(repaid)?;
-
-                    state.adl_deficit.checked_sub_assign(repaid)?;
-                    state.vault_margin = state.vault_margin.checked_add(remainder)?;
-                }
-            },
-            // Vault realizes a loss.
-            (true, Ordering::Less) => {
-                let amount = quantity
-                    .checked_abs()?
-                    .into_base_ceil(settlement_currency::DECIMAL)?;
-
-                if amount.is_non_zero() {
-                    let absorbed = amount.min(state.vault_margin);
-                    let unabsorbed = amount.checked_sub(absorbed)?;
-
-                    state.vault_margin.checked_sub_assign(absorbed)?;
-                    state.adl_deficit.checked_add_assign(unabsorbed)?;
-                }
-            },
-            // Non-vault user realizes a profit: payout.
-            (false, Ordering::Greater) => {
-                let amount = quantity.into_base_floor(settlement_currency::DECIMAL)?;
-
-                if amount.is_non_zero() {
-                    payouts
-                        .entry(user)
-                        .or_default()
-                        .checked_add_assign(amount)?;
-                }
-            },
-            // Non-vault user realizes a loss: collection.
-            (false, Ordering::Less) => {
-                let amount = quantity
-                    .checked_abs()?
-                    .into_base_ceil(settlement_currency::DECIMAL)?;
-
-                if amount.is_non_zero() {
-                    collections
-                        .entry(user)
-                        .or_default()
-                        .checked_add_assign(amount)?;
-                }
-            },
-            // Zero PnL -- nothing to do.
-            (_, Ordering::Equal) => {},
+                state.vault_margin.checked_sub_assign(absorbed)?;
+                state.adl_deficit.checked_add_assign(unabsorbed)?;
+            }
+        } else {
+            // Non-vault user: adjust their margin directly.
+            if let Some(us) = user_states.get_mut(&user) {
+                us.margin.checked_add_assign(pnl)?;
+            }
         }
     }
 
-    Ok((payouts, collections))
+    Ok(())
 }
 
 /// Validate and store a post-only limit order. Rejects if the limit price
@@ -804,19 +701,12 @@ mod tests {
     /// Large collateral value that trivially satisfies any margin check.
     const LARGE_COLLATERAL: UsdValue = UsdValue::new_int(999_999_999);
 
-    const SETTLEMENT_PRICE: UsdPrice = UsdPrice::new_int(1);
-
     fn test_oracle_querier() -> OracleQuerier<'static> {
         OracleQuerier::new_mock(hash_map! {
             pair_id() => PrecisionedPrice::new(
                 Udec128::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
                 8,
-            ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100), // $1
-                Timestamp::from_seconds(0),
-                6,
             ),
         })
     }
@@ -924,7 +814,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (_, _, _, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -941,7 +831,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -997,7 +886,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1043,7 +931,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         );
 
@@ -1091,7 +978,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1138,7 +1024,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1189,7 +1074,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1245,7 +1129,6 @@ mod tests {
             },
             true,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1289,7 +1172,6 @@ mod tests {
             },
             true,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         );
 
@@ -1319,7 +1201,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (_, _, _, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1336,7 +1218,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1372,7 +1253,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (_, _, maker_states, ..) = _submit_order(
+        let (maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1389,7 +1270,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1422,7 +1302,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (payouts, collections, ..) = _submit_order(
+        _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1439,16 +1319,16 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
 
-        // Taker: no realized PnL (opening), fee = |10| * 50000 * 0.001 = 500 USD.
-        // Net = -$500 → collection of 500 × 10^6 base units.
-        assert!(payouts.is_empty());
-        assert_eq!(collections.len(), 1);
-        assert_eq!(collections[&TAKER], Uint128::new(500_000_000));
+        // Taker: no realized PnL (opening), fee = |10| * 50000 * 0.001 = $500.
+        // Margin decreases by $500.
+        assert_eq!(taker_state.margin, UsdValue::new_int(-500));
+
+        // Fee goes to vault.
+        assert_eq!(state.vault_margin, UsdValue::new_int(500));
     }
 
     // ======== Tick size enforcement for limit orders =========================
@@ -1492,7 +1372,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         );
 
@@ -1537,7 +1416,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         );
 
@@ -1568,7 +1446,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (_, _, _, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1585,7 +1463,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1626,7 +1503,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (_, _, maker_states, ..) = _submit_order(
+        let (maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1643,7 +1520,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1670,7 +1546,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (_, _, maker_states, ..) = _submit_order(
+        let (maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1687,7 +1563,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1737,7 +1612,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         );
 
@@ -1754,8 +1628,12 @@ mod tests {
     #[test]
     fn settle_pnls_mixed() {
         let mut state = State::default();
+        let mut user_states = BTreeMap::from([
+            (Addr::mock(1), UserState::default()),
+            (Addr::mock(2), UserState::default()),
+            (Addr::mock(3), UserState::default()),
+        ]);
 
-        // Non-vault users: PnL only (no fees), no vault_margin change.
         let pnls = BTreeMap::from([
             (Addr::mock(1), UsdValue::new_int(100)),
             (Addr::mock(2), UsdValue::new_int(-200)),
@@ -1763,23 +1641,28 @@ mod tests {
         ]);
         let fees = BTreeMap::new();
 
-        let (payouts, collections) =
-            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+        settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        // Positive PnL: user 1 receives 100 × 10^6 base units.
-        assert_eq!(payouts.len(), 1);
-        assert_eq!(payouts[&Addr::mock(1)], Uint128::new(100_000_000));
+        // Positive PnL: user 1 margin += $100.
+        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(100));
 
-        // Negative PnL: user 2 owes 200 × 10^6 base units.
-        assert_eq!(collections[&Addr::mock(2)], Uint128::new(200_000_000));
+        // Negative PnL: user 2 margin -= $200.
+        assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(-200));
+
+        // Zero PnL: user 3 margin unchanged.
+        assert_eq!(user_states[&Addr::mock(3)].margin, UsdValue::ZERO);
 
         // Non-vault PnL does not change vault_margin.
-        assert_eq!(state.vault_margin, Uint128::ZERO);
+        assert_eq!(state.vault_margin, UsdValue::ZERO);
     }
 
     #[test]
     fn settle_pnls_all_payouts() {
         let mut state = State::default();
+        let mut user_states = BTreeMap::from([
+            (Addr::mock(1), UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
 
         let pnls = BTreeMap::from([
             (Addr::mock(1), UsdValue::new_int(100)),
@@ -1787,19 +1670,22 @@ mod tests {
         ]);
         let fees = BTreeMap::new();
 
-        let (payouts, collections) =
-            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+        settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        assert_eq!(payouts.len(), 2);
-        assert!(collections.is_empty());
+        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(100));
+        assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(50));
 
         // Non-vault PnL does not change vault_margin.
-        assert_eq!(state.vault_margin, Uint128::ZERO);
+        assert_eq!(state.vault_margin, UsdValue::ZERO);
     }
 
     #[test]
     fn settle_pnls_all_collections() {
         let mut state = State::default();
+        let mut user_states = BTreeMap::from([
+            (Addr::mock(1), UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
 
         let pnls = BTreeMap::from([
             (Addr::mock(1), UsdValue::new_int(-100)),
@@ -1807,37 +1693,38 @@ mod tests {
         ]);
         let fees = BTreeMap::new();
 
-        let (payouts, collections) =
-            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+        settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        assert!(payouts.is_empty());
-        assert_eq!(collections.len(), 2);
+        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(-100));
+        assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(-200));
 
         // Non-vault PnL does not change vault_margin.
-        assert_eq!(state.vault_margin, Uint128::ZERO);
+        assert_eq!(state.vault_margin, UsdValue::ZERO);
     }
 
     #[test]
     fn settle_pnls_empty() {
         let mut state = State {
-            vault_margin: Uint128::new(500_000_000),
+            vault_margin: UsdValue::new_int(500),
             ..Default::default()
         };
+        let mut user_states = BTreeMap::new();
 
         let pnls = BTreeMap::new();
         let fees = BTreeMap::new();
 
-        let (payouts, collections) =
-            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+        settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        assert!(payouts.is_empty());
-        assert!(collections.is_empty());
-        assert_eq!(state.vault_margin, Uint128::new(500_000_000));
+        assert_eq!(state.vault_margin, UsdValue::new_int(500));
     }
 
     #[test]
     fn settle_pnls_fees_increase_vault_margin() {
         let mut state = State::default();
+        let mut user_states = BTreeMap::from([
+            (Addr::mock(1), UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
 
         let pnls = BTreeMap::new();
         let fees = BTreeMap::from([
@@ -1845,95 +1732,87 @@ mod tests {
             (Addr::mock(2), UsdValue::new_int(100)),
         ]);
 
-        let (payouts, collections) =
-            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+        settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        assert!(payouts.is_empty());
-        assert_eq!(collections.len(), 2);
+        // Users' margins decrease by fee amounts.
+        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(-50));
+        assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(-100));
 
-        // Fees go to vault: vault_margin += 50 + 100 = 150 (in base units).
-        assert_eq!(state.vault_margin, Uint128::new(150_000_000));
+        // Fees go to vault: vault_margin += $50 + $100 = $150.
+        assert_eq!(state.vault_margin, UsdValue::new_int(150));
     }
 
     #[test]
     fn settle_pnls_vault_pnl_adjusts_margin() {
         let mut state = State {
-            vault_margin: Uint128::new(1_000_000_000),
+            vault_margin: UsdValue::new_int(1_000),
             ..Default::default()
         };
+        let mut user_states = BTreeMap::new();
 
         // Vault profit of $500.
         let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
         let fees = BTreeMap::new();
 
-        let (payouts, collections) =
-            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+        settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        assert!(payouts.is_empty());
-        assert!(collections.is_empty());
-        assert_eq!(state.vault_margin, Uint128::new(1_500_000_000));
+        assert_eq!(state.vault_margin, UsdValue::new_int(1_500));
     }
 
     #[test]
     fn settle_pnls_vault_loss_creates_bad_debt() {
         let mut state = State {
-            vault_margin: Uint128::new(100_000_000), // $100
+            vault_margin: UsdValue::new_int(100),
             ..Default::default()
         };
+        let mut user_states = BTreeMap::new();
 
         // Vault loss of $500.
         let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(-500))]);
         let fees = BTreeMap::new();
 
-        let (payouts, collections) =
-            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+        settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        assert!(payouts.is_empty());
-        assert!(collections.is_empty());
-        assert_eq!(state.vault_margin, Uint128::ZERO);
-        assert_eq!(state.adl_deficit, Uint128::new(400_000_000));
+        assert_eq!(state.vault_margin, UsdValue::ZERO);
+        assert_eq!(state.adl_deficit, UsdValue::new_int(400));
     }
 
     #[test]
     fn settle_pnls_vault_profit_repays_adl_deficit() {
         let mut state = State {
-            vault_margin: Uint128::ZERO,
-            adl_deficit: Uint128::new(300_000_000), // $300
+            vault_margin: UsdValue::ZERO,
+            adl_deficit: UsdValue::new_int(300),
             ..Default::default()
         };
+        let mut user_states = BTreeMap::new();
 
         // Vault profit of $500.
         let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
         let fees = BTreeMap::new();
 
-        let (payouts, collections) =
-            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+        settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        assert!(payouts.is_empty());
-        assert!(collections.is_empty());
         // adl_deficit fully repaid.
-        assert_eq!(state.adl_deficit, Uint128::ZERO);
+        assert_eq!(state.adl_deficit, UsdValue::ZERO);
         // Remainder goes to vault_margin: $500 - $300 = $200.
-        assert_eq!(state.vault_margin, Uint128::new(200_000_000));
+        assert_eq!(state.vault_margin, UsdValue::new_int(200));
     }
 
     #[test]
     fn settle_pnls_vault_fees_skipped() {
         let mut state = State {
-            vault_margin: Uint128::new(1_000_000_000),
+            vault_margin: UsdValue::new_int(1_000),
             ..Default::default()
         };
+        let mut user_states = BTreeMap::new();
 
         // Vault's own fees are a no-op (paying yourself).
         let pnls = BTreeMap::new();
         let fees = BTreeMap::from([(CONTRACT, UsdValue::new_int(100))]);
 
-        let (payouts, collections) =
-            settle_pnls(pnls, fees, SETTLEMENT_PRICE, &mut state, CONTRACT).unwrap();
+        settle_pnls(pnls, fees, &mut state, CONTRACT, &mut user_states).unwrap();
 
-        assert!(payouts.is_empty());
-        assert!(collections.is_empty());
-        assert_eq!(state.vault_margin, Uint128::new(1_000_000_000));
+        assert_eq!(state.vault_margin, UsdValue::new_int(1_000));
     }
 
     // =================== Post-only order tests ===============================
@@ -1954,7 +1833,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (payouts, collections, _, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1972,7 +1851,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -1983,9 +1861,7 @@ mod tests {
         let (_, _, order) = order_to_store.unwrap();
         assert_eq!(order.size, Quantity::new_int(10));
 
-        // No payouts/collections/mutations.
-        assert!(payouts.is_empty());
-        assert!(collections.is_empty());
+        // No mutations.
         assert!(order_mutations.is_empty());
     }
 
@@ -2023,7 +1899,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         );
 
@@ -2065,7 +1940,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         );
 
@@ -2089,7 +1963,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (payouts, collections, _, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2107,7 +1981,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -2118,8 +1991,6 @@ mod tests {
         let (_, _, order) = order_to_store.unwrap();
         assert_eq!(order.size, Quantity::new_int(-10));
 
-        assert!(payouts.is_empty());
-        assert!(collections.is_empty());
         assert!(order_mutations.is_empty());
     }
 
@@ -2157,7 +2028,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         );
 
@@ -2199,7 +2069,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -2250,7 +2119,6 @@ mod tests {
             },
             true,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -2305,7 +2173,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         );
 
@@ -2347,7 +2214,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let mut state = State::default();
 
-        let (_, _, maker_states, order_mutations, _) = _submit_order(
+        let (maker_states, order_mutations, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2364,7 +2231,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -2409,14 +2275,13 @@ mod tests {
     ///
     /// Mutates: nothing persisted.
     ///
-    /// Returns: the `State` after both trades, plus payouts/collections from the
-    /// closing trade.
+    /// Returns: the `State` after both trades.
     fn vault_maker_round_trip(
-        initial_vault_margin: Uint128,
+        initial_vault_margin: UsdValue,
         open_price: i128,
         close_price: i128,
         size: i128,
-    ) -> (State, BTreeMap<Addr, Uint128>, BTreeMap<Addr, Uint128>) {
+    ) -> State {
         let mut ctx = MockContext::new()
             .with_sender(TAKER)
             .with_funds(Coins::default());
@@ -2437,7 +2302,7 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, _, maker_states, order_mutations, _) = _submit_order(
+        let (maker_states, order_mutations, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2454,7 +2319,6 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
@@ -2490,7 +2354,7 @@ mod tests {
         let mut taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
         let mut oq = test_oracle_querier();
 
-        let (payouts, collections, ..) = _submit_order(
+        _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2507,72 +2371,62 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
 
-        (state, payouts, collections)
+        state
     }
 
     /// Vault opens short at $50,000 then closes at $49,000 → profit of $10,000.
     ///
     /// vault_margin changes from: vault PnL + non-vault fees only.
     /// Non-vault PnL (taker's loss) does NOT change vault_margin — the
-    /// losing counterparty pays the winning one directly.
+    /// losing counterparty's margin is adjusted internally.
     #[test]
     fn vault_maker_realizes_profit() {
-        let initial_margin = Uint128::new(100_000_000_000); // $100,000
+        let initial_margin = UsdValue::new_int(100_000);
 
-        let (state, payouts, collections) =
-            vault_maker_round_trip(initial_margin, 50_000, 49_000, 10);
+        let state = vault_maker_round_trip(initial_margin, 50_000, 49_000, 10);
 
         // vault_margin tracks vault PnL + fee flows only:
         //
         // Step 1 (open at $50,000):
-        //   taker fee = |10| × $50,000 × 0.001 = $500 → vault_margin += 500,000,000
+        //   taker fee = |10| × $50,000 × 0.001 = $500 → vault_margin += $500
         //
         // Step 2 (close at $49,000):
-        //   vault PnL = +$10,000 → vault_margin += 10,000,000,000
-        //   taker fee = $490 → vault_margin += 490,000,000
-        //   taker PnL = -$10,000 → collection (no vault_margin change)
+        //   vault PnL = +$10,000 → vault_margin += $10,000
+        //   taker fee = $490 → vault_margin += $490
+        //   taker PnL = -$10,000 → taker margin adjusted (no vault_margin change)
         //
-        // Total Δ = 500,000,000 + 10,000,000,000 + 490,000,000 = 10,990,000,000
-        assert_eq!(state.vault_margin, Uint128::new(110_990_000_000));
+        // Total Δ = $500 + $10,000 + $490 = $10,990
+        assert_eq!(state.vault_margin, UsdValue::new_int(110_990));
 
         assert!(state.adl_deficit.is_zero());
-
-        // Vault must not appear in payouts/collections.
-        assert!(!payouts.contains_key(&CONTRACT));
-        assert!(!collections.iter().any(|(addr, _)| *addr == CONTRACT));
     }
 
     /// Vault opens short at $50,000 then closes at $51,000 → loss of $10,000.
     /// vault_margin is large enough to absorb the loss entirely.
     #[test]
     fn vault_maker_realizes_loss_no_bad_debt() {
-        let initial_margin = Uint128::new(100_000_000_000); // $100,000
+        let initial_margin = UsdValue::new_int(100_000);
 
-        let (state, payouts, collections) =
-            vault_maker_round_trip(initial_margin, 50_000, 51_000, 10);
+        let state = vault_maker_round_trip(initial_margin, 50_000, 51_000, 10);
 
         // vault_margin tracks vault PnL + fee flows only:
         //
         // Step 1 (open at $50,000):
-        //   taker fee = $500 → vault_margin += 500,000,000
+        //   taker fee = $500 → vault_margin += $500
         //
         // Step 2 (close at $51,000):
-        //   taker fee = $510 → vault_margin += 510,000,000
-        //   vault PnL = -$10,000 → vault_margin -= 10,000,000,000
-        //   taker PnL = +$10,000 → payout (no vault_margin change)
+        //   taker fee = $510 → vault_margin += $510
+        //   vault PnL = -$10,000 → vault_margin -= $10,000
+        //   taker PnL = +$10,000 → taker margin adjusted (no vault_margin change)
         //
-        // Total Δ = 500,000,000 + 510,000,000 - 10,000,000,000 = -8,990,000,000
-        assert_eq!(state.vault_margin, Uint128::new(91_010_000_000));
+        // Total Δ = $500 + $510 - $10,000 = -$8,990
+        assert_eq!(state.vault_margin, UsdValue::new_int(91_010));
 
         assert!(state.adl_deficit.is_zero());
-
-        assert!(!payouts.contains_key(&CONTRACT));
-        assert!(!collections.iter().any(|(addr, _)| *addr == CONTRACT));
     }
 
     /// Vault has an existing short position at $50,000. A new taker (MAKER_B)
@@ -2618,14 +2472,14 @@ mod tests {
         let mut oq = test_oracle_querier();
 
         let mut state = State {
-            vault_margin: Uint128::new(1_000_000_000), // $1,000
+            vault_margin: UsdValue::new_int(1_000),
             ..Default::default()
         };
 
         // MAKER_B sells -10 → matches vault bid at $51,000.
         //   vault: closes short at $51,000 → loss = -$10,000
         //   MAKER_B: opens new short → PnL = 0, fee = |10| × $51,000 × 0.001 = $510
-        let (payouts, collections, ..) = _submit_order(
+        _submit_order(
             &ctx.storage,
             MAKER_B,
             CONTRACT,
@@ -2642,22 +2496,18 @@ mod tests {
             },
             false,
             &mut oq,
-            SETTLEMENT_PRICE,
             &mut state,
         )
         .unwrap();
 
-        // Fee loop first: MAKER_B fee = $510 → vault_margin += 510,000,000
-        //   vault_margin = 1,000,000,000 + 510,000,000 = 1,510,000,000
+        // Fee loop first: MAKER_B fee = $510 → vault_margin += $510
+        //   vault_margin = $1,000 + $510 = $1,510
         //
-        // PnL loop: vault loss = $10,000 = 10,000,000,000 base units.
-        //   absorbed = min(10,000,000,000, 1,510,000,000) = 1,510,000,000
-        //   unabsorbed → adl_deficit = 8,490,000,000
-        //   vault_margin → 0
-        assert_eq!(state.vault_margin, Uint128::ZERO);
-        assert_eq!(state.adl_deficit, Uint128::new(8_490_000_000));
-
-        assert!(!payouts.contains_key(&CONTRACT));
-        assert!(!collections.iter().any(|(addr, _)| *addr == CONTRACT));
+        // PnL loop: vault loss = $10,000
+        //   absorbed = min($10,000, $1,510) = $1,510
+        //   unabsorbed → adl_deficit = $8,490
+        //   vault_margin → $0
+        assert_eq!(state.vault_margin, UsdValue::ZERO);
+        assert_eq!(state.adl_deficit, UsdValue::new_int(8_490));
     }
 }

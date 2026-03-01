@@ -6,7 +6,7 @@ use {
             is_liquidatable,
         },
         execute::{
-            BANK, ORACLE,
+            ORACLE,
             cancel_order::cancel_all_orders_for,
             submit_order::{match_order, settle_fill, settle_pnls},
         },
@@ -14,19 +14,18 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue, bank,
-        perps::{
-            Order, OrderId, PairId, PairParam, PairState, Param, State, UserState,
-            settlement_currency,
-        },
+        Dimensionless, Quantity, UsdPrice, UsdValue,
+        perps::{Order, OrderId, PairId, PairParam, PairState, Param, State, UserState},
     },
-    grug::{
-        Addr, Coins, IsZero, Message, MutableCtx, Number, QuerierExt, Response, Storage, Uint128,
-        coins,
-    },
+    grug::{Addr, MutableCtx, Response, Storage},
     std::collections::BTreeMap,
 };
 
+/// Liquidate an underwater trader by closing their positions.
+///
+/// Mutates: `STATE`, `PAIR_STATES`, `USER_STATES` (liquidated user + makers).
+///
+/// Returns: empty `Response` (all PnL/fees settled via internal margins).
 pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     ensure!(user != ctx.contract, "cannot liquidate the vault");
 
@@ -39,15 +38,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
-    let settlement_currency_price =
-        oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
-
-    let collateral_balance = ctx
-        .querier
-        .query_balance(user, settlement_currency::DENOM.clone())?;
-
-    let collateral_value = Quantity::from_base(collateral_balance, settlement_currency::DECIMAL)?
-        .checked_mul(settlement_currency_price)?;
+    // Collateral is the trader's internal margin (UsdValue).
+    let collateral_value = user_state.margin;
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
@@ -88,7 +80,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------------- 6. Business logic ---------------------------
 
-    let (payouts, collections, maker_states, order_mutations) = _liquidate(
+    let (maker_states, order_mutations) = _liquidate(
         ctx.storage,
         user,
         ctx.contract,
@@ -99,9 +91,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         vault_state,
         &oracle_prices,
         collateral_value,
-        collateral_balance,
         &mut oracle_querier,
-        settlement_currency_price,
         &mut state,
     )?;
 
@@ -146,34 +136,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         }
     }
 
-    // -------------------- 9. Generate messages -------------------------------
-
-    let mut messages = Vec::with_capacity(payouts.len() + collections.len());
-
-    if !payouts.is_empty() {
-        messages.push(Message::batch_transfer(payouts.into_iter().map(
-            |(addr, amount)| {
-                (
-                    addr,
-                    coins! { settlement_currency::DENOM.clone() => amount },
-                )
-            },
-        ))?);
-    }
-
-    for (user, amount) in collections {
-        messages.push(Message::execute(
-            BANK,
-            &bank::ExecuteMsg::ForceTransfer {
-                from: user,
-                to: ctx.contract,
-                coins: coins! { settlement_currency::DENOM.clone() => amount },
-            },
-            Coins::new(),
-        )?);
-    }
-
-    Ok(Response::new().add_messages(messages))
+    // No token transfers — all PnL/fees settled via internal margins.
+    Ok(Response::new())
 }
 
 /// Execute the close schedule against the order book, with vault backstop for
@@ -333,14 +297,12 @@ fn apply_liquidation_fee(
 ///
 /// - `pair_states` — OI updated per fill.
 /// - `user_state.positions` — closed (partially or fully) per the schedule.
-/// - `vault_state.positions` — opened for any vault-backstopped fills.
+/// - `user_state.margin` — adjusted by settled PnLs, fees, and bad debt.
 /// - `state.vault_margin` — adjusted by settled PnLs and bad debt.
-/// - `state.vault_margin` — adjusted by the vault's PnL entry.
+/// - `state.adl_deficit` — increased if bad debt exceeds vault margin.
 ///
 /// Returns:
 ///
-/// - Per-user payouts in settlement-currency base units.
-/// - Per-user collections in settlement-currency base units.
 /// - Maker `UserState`s to persist.
 /// - Order mutations to apply: `(pair_id, taker_is_bid, stored_price, order_id, Option<Order>)`.
 fn _liquidate(
@@ -354,13 +316,9 @@ fn _liquidate(
     vault_state: UserState,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     collateral_value: UsdValue,
-    collateral_balance: Uint128,
     oracle_querier: &mut OracleQuerier,
-    settlement_currency_price: UsdPrice,
     state: &mut State,
 ) -> anyhow::Result<(
-    BTreeMap<Addr, Uint128>,
-    BTreeMap<Addr, Uint128>,
     BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
 )> {
@@ -413,34 +371,28 @@ fn _liquidate(
 
     // ----------------------- Step 5: Settle PnLs ------------------------------
 
-    let (payouts, mut collections) = settle_pnls(
-        all_pnls,
-        all_fees,
-        settlement_currency_price,
-        state,
-        contract,
-    )?;
+    // Merge the liquidated user into the maker states for settlement.
+    all_maker_states.insert(user, user_state.clone());
 
-    // Bad debt check: if the user owes more than their collateral, cap the
-    // collection and absorb the bad debt from the vault.
-    if let Some((_, amount)) = collections.iter_mut().find(|(addr, _)| *addr == user)
-        && *amount > collateral_balance
-    {
-        let bad_debt = amount.checked_sub(collateral_balance)?;
+    settle_pnls(all_pnls, all_fees, state, contract, &mut all_maker_states)?;
+
+    // Extract the user back.
+    *user_state = all_maker_states.remove(&user).unwrap();
+
+    // Bad debt check: if the user's margin went negative after settlement,
+    // floor at zero and absorb the bad debt from the vault / adl_deficit.
+    if user_state.margin < UsdValue::ZERO {
+        let bad_debt = user_state.margin.checked_abs()?;
+        user_state.margin = UsdValue::ZERO;
+
         let absorbed = bad_debt.min(state.vault_margin);
         let unabsorbed = bad_debt.checked_sub(absorbed)?;
+
         state.vault_margin.checked_sub_assign(absorbed)?;
         state.adl_deficit.checked_add_assign(unabsorbed)?;
-        *amount = collateral_balance;
     }
 
-    // Remove zero-amount collections.
-    collections.retain(|_, amount| amount.is_non_zero());
-
-    // Payouts from settle_pnls are legitimate — they happen when the user's
-    // positions were closed at a profit. Keep them.
-
-    Ok((payouts, collections, all_maker_states, all_order_mutations))
+    Ok((all_maker_states, all_order_mutations))
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -457,7 +409,7 @@ mod tests {
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             perps::{Order, PairParam, PairState, Param, Position, State, UserState},
         },
-        grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64, Uint128},
+        grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64},
         std::collections::BTreeMap,
     };
 
@@ -561,9 +513,9 @@ mod tests {
         ASKS.save(storage, key, &order).unwrap();
     }
 
-    fn state_with_vault(amount: u128) -> State {
+    fn state_with_vault(amount: i128) -> State {
         State {
-            vault_margin: Uint128::new(amount),
+            vault_margin: UsdValue::new_int(amount),
             ..Default::default()
         }
     }
@@ -605,7 +557,7 @@ mod tests {
         // collateral_value = 10000, equity = 10000 + 0 = 10000, MM = 2500
         // 10000 > 2500 → not liquidatable
         let collateral_value = UsdValue::new_int(10_000);
-        let collateral_balance = Uint128::new(10_000_000_000); // 10000 * 1e6
+        user_state.margin = collateral_value;
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -616,11 +568,6 @@ mod tests {
                 Udec128::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
                 8,
-            ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100), // $1
-                Timestamp::from_seconds(0),
-                6,
             ),
         });
 
@@ -635,9 +582,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             collateral_value,
-            collateral_balance,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
@@ -696,10 +641,10 @@ mod tests {
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
-        let collateral_balance = Uint128::new(2_400_000_000);
+        user_state.margin = collateral_value;
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -710,11 +655,6 @@ mod tests {
                 Udec128::new_percent(4_750_000), // $47,500
                 Timestamp::from_seconds(0),
                 8,
-            ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100), // $1
-                Timestamp::from_seconds(0),
-                6,
             ),
         });
 
@@ -729,9 +669,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             collateral_value,
-            collateral_balance,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
@@ -776,10 +714,10 @@ mod tests {
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
-        let collateral_balance = Uint128::new(2_400_000_000);
+        user_state.margin = collateral_value;
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -790,11 +728,6 @@ mod tests {
                 Udec128::new_percent(4_750_000),
                 Timestamp::from_seconds(0),
                 8,
-            ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
             ),
         });
 
@@ -809,15 +742,13 @@ mod tests {
             vault_state,
             &oracle_prices,
             collateral_value,
-            collateral_balance,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
         assert!(result.is_ok(), "vault backstop failed: {:?}", result.err());
 
-        let (_, _, maker_states, _) = result.unwrap();
+        let (maker_states, _) = result.unwrap();
 
         // User's position should be closed.
         assert!(user_state.positions.is_empty());
@@ -894,10 +825,10 @@ mod tests {
         oracle_prices.insert(pair_eth(), UsdPrice::new_int(2_800));
 
         let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000);
 
         let collateral_value = UsdValue::new_int(4_000);
-        let collateral_balance = Uint128::new(4_000_000_000);
+        user_state.margin = collateral_value;
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -914,11 +845,6 @@ mod tests {
                 Timestamp::from_seconds(0),
                 8,
             ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
-            ),
         });
 
         let result = _liquidate(
@@ -932,9 +858,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             collateral_value,
-            collateral_balance,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
@@ -985,10 +909,10 @@ mod tests {
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000);
 
         let collateral_value = UsdValue::new_int(2_500);
-        let collateral_balance = Uint128::new(2_500_000_000);
+        user_state.margin = collateral_value;
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -999,11 +923,6 @@ mod tests {
                 Udec128::new_percent(4_800_000),
                 Timestamp::from_seconds(0),
                 8,
-            ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
             ),
         });
 
@@ -1018,9 +937,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             collateral_value,
-            collateral_balance,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
@@ -1147,10 +1064,10 @@ mod tests {
         oracle_prices.insert(pair_eth(), UsdPrice::new_int(3_000));
 
         let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000);
 
         let collateral_value = UsdValue::new_int(4_000);
-        let collateral_balance = Uint128::new(4_000_000_000);
+        user_state.margin = collateral_value;
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -1167,11 +1084,6 @@ mod tests {
                 Timestamp::from_seconds(0),
                 8,
             ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
-            ),
         });
 
         let result = _liquidate(
@@ -1185,9 +1097,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             collateral_value,
-            collateral_balance,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
@@ -1197,7 +1107,7 @@ mod tests {
             result.err()
         );
 
-        let (_, _, maker_states, _) = result.unwrap();
+        let (maker_states, _) = result.unwrap();
 
         // The maker should have fills from BOTH pairs preserved.
         let final_maker = &maker_states[&MAKER];
@@ -1266,10 +1176,10 @@ mod tests {
         let mut oracle_prices = BTreeMap::new();
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(50_000));
 
-        let mut state = state_with_vault(1_000_000_000_000);
+        let mut state = state_with_vault(1_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
-        let collateral_balance = Uint128::new(2_400_000_000);
+        user_state.margin = collateral_value;
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -1280,11 +1190,6 @@ mod tests {
                 Udec128::new_percent(5_000_000),
                 Timestamp::from_seconds(0),
                 8,
-            ),
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(0),
-                6,
             ),
         });
 
@@ -1299,9 +1204,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             collateral_value,
-            collateral_balance,
             &mut oracle_querier,
-            UsdPrice::new_int(1),
             &mut state,
         );
 
@@ -1311,7 +1214,7 @@ mod tests {
             result.err()
         );
 
-        let (_, _, maker_states, _) = result.unwrap();
+        let (maker_states, _) = result.unwrap();
 
         // The vault had +3 long. During liquidation:
         // - Maker fill: sold 3 BTC (closing the vault's +3 long via the ask)
