@@ -1,19 +1,13 @@
 # Order Matching
 
-This chapter describes how orders are submitted, matched, filled, and settled
-in the on-chain perpetual futures order book.
+This chapter describes how orders are submitted, matched, filled, and settled in the on-chain perpetual futures order book.
 
 ## 1. Order types
 
 Every order carries an `OrderKind`:
 
-- **Market** — immediate-or-cancel (IOC). Specifies a `max_slippage` relative
-  to the oracle price. Any unfilled remainder after matching is discarded
-  (unless nothing filled at all, which is an error).
-- **Limit** — good-till-cancelled (GTC). Specifies a `limit_price`. Any
-  unfilled remainder is stored as a resting order on the book. If `post_only`
-  is set, the order is rejected if it would cross the best price on the
-  opposite side — it takes a fast path and never enters the matching engine.
+- **Market** — immediate-or-cancel (IOC). Specifies a `max_slippage` relative to the oracle price. Any unfilled remainder after matching is discarded (unless nothing filled at all, which is an error).
+- **Limit** — good-till-cancelled (GTC). Specifies a `limit_price`. Any unfilled remainder is stored as a resting order on the book. If `post_only` is set, the order is rejected if it would cross the best price on the opposite side — it takes a fast path and never enters the matching engine.
 
 Resting orders on the book are stored as:
 
@@ -28,8 +22,7 @@ The pair ID, order ID, and limit price are part of the storage key.
 
 ## 2. Order decomposition
 
-Before matching, every fill is decomposed into a **closing** and an **opening**
-portion based on the user's current position:
+Before matching, every fill is decomposed into a **closing** and an **opening** portion based on the user's current position:
 
 | Order direction | Current position | Closing size                                | Opening size                       |
 | --------------- | ---------------- | ------------------------------------------- | ---------------------------------- |
@@ -37,9 +30,7 @@ portion based on the user's current position:
 | Sell (−)        | Long (+)         | $\max(\mathtt{size},\; -\mathtt{position})$ | $\mathtt{size} - \mathtt{closing}$ |
 | Same direction  | Any              | $0$                                         | $\mathtt{size}$                    |
 
-Both closing and opening carry the same sign as the original order size (or are
-zero). For **reduce-only** orders, the opening portion is forced to zero — if
-the resulting fillable size is zero, the transaction is rejected.
+Both closing and opening carry the same sign as the original order size (or are zero). For **reduce-only** orders, the opening portion is forced to zero — if the resulting fillable size is zero, the transaction is rejected.
 
 ## 3. Target price
 
@@ -57,8 +48,7 @@ $$
 \mathtt{targetPrice} = \mathtt{oraclePrice} \times (1 - \mathtt{maxSlippage})
 $$
 
-**Limit orders:** $\mathtt{targetPrice} = \mathtt{limitPrice}$ (oracle price is
-ignored).
+**Limit orders:** $\mathtt{targetPrice} = \mathtt{limitPrice}$ (oracle price is ignored).
 
 A price constraint is **violated** when:
 
@@ -67,13 +57,10 @@ A price constraint is **violated** when:
 
 ## 4. Matching engine
 
-The matching engine iterates the opposite side of the book in **price-time
-priority**:
+The matching engine iterates the opposite side of the book in **price-time priority**:
 
 - A **bid** (buy) walks the asks in ascending price order (cheapest first).
-- An **ask** (sell) walks the bids in descending price order (most expensive
-  first). Bids are stored with bitwise-NOT inverted prices so that ascending
-  iteration over storage keys yields descending real prices.
+- An **ask** (sell) walks the bids in descending price order (most expensive first). Bids are stored with bitwise-NOT inverted prices so that ascending iteration over storage keys yields descending real prices.
 
 At each resting order the engine checks two **termination conditions**:
 
@@ -93,36 +80,27 @@ $$
 \mathtt{makerFillSize} = -\mathtt{takerFillSize}
 $$
 
-After each fill the maker order is updated: reserved margin is released
-proportionally, and if fully filled the order is removed from the book and
-`open_order_count` is decremented.
+After each fill the maker order is updated: reserved margin is released proportionally, and if fully filled the order is removed from the book and `open_order_count` is decremented.
 
 ## 5. Pre-match margin check
 
-Before matching begins, the taker's margin is verified (skipped for
-reduce-only orders). The check ensures the user can afford the **worst
-case** — a 100 % fill:
+Before matching begins, the taker's margin is verified (skipped for reduce-only orders). The check ensures the user can afford the **worst case** — a 100 % fill:
 
 $$
 \mathtt{equity} \geq \mathtt{projectedIM} + \mathtt{projectedFee} + \mathtt{reservedMargin}
 $$
 
-where $\mathtt{projectedIM}$ is the initial margin assuming the full order
-fills (see [Margin §5](1-margin.md#5-initial-margin-im)) and
-$\mathtt{projectedFee}$ is
-$|\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{takerFeeRate}$.
+where $\mathtt{projectedIM}$ is the initial margin assuming the full order fills (see [Margin §5](1-margin.md#5-initial-margin-im)) and $\mathtt{projectedFee}$ is $|\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{takerFeeRate}$.
 
 This prevents a taker from submitting orders they cannot collateralise.
 
 ## 6. Self-trade prevention
 
-The exchange uses **EXPIRE\_MAKER** mode. When the taker encounters their own
-resting order on the opposite side:
+The exchange uses **EXPIRE\_MAKER** mode. When the taker encounters their own resting order on the opposite side:
 
 1. The maker (resting) order is **cancelled** (removed from the book).
 2. The taker's `open_order_count` and `reserved_margin` are decremented.
-3. The taker **continues matching deeper** in the book — no fill occurs for the
-   self-matched order.
+3. The taker **continues matching deeper** in the book — no fill occurs for the self-matched order.
 
 ## 7. Fill execution
 
@@ -136,8 +114,7 @@ $$
 \mathtt{accruedFunding} = \mathtt{size} \times (\mathtt{fundingPerUnit} - \mathtt{entryFundingPerUnit})
 $$
 
-The negated accrued funding is added to the user's PnL (positive accrued
-funding is a cost to longs).
+The negated accrued funding is added to the user's PnL (positive accrued funding is a cost to longs).
 
 ### 7b. Closing PnL
 
@@ -155,16 +132,14 @@ $$
 \mathtt{pnl} = |\mathtt{closingSize}| \times (\mathtt{entryPrice} - \mathtt{fillPrice})
 $$
 
-The position size is reduced by the closing amount. If the position is fully
-closed, it is removed from state.
+The position size is reduced by the closing amount. If the position is fully closed, it is removed from state.
 
 ### 7c. Opening position
 
 For the opening portion of the fill:
 
 - **New position:** entry price is set to the fill price.
-- **Existing position (same direction):** entry price is blended as a weighted
-  average:
+- **Existing position (same direction):** entry price is blended as a weighted average:
 
 $$
 \mathtt{entryPrice} \gets \frac{|\mathtt{oldSize}| \times \mathtt{oldEntry} + |\mathtt{openingSize}| \times \mathtt{fillPrice}}{|\mathtt{newSize}|}
@@ -194,14 +169,11 @@ The fee rate differs by role:
 | Taker | `taker_fee_rate` | 0.1 %         |
 | Maker | `maker_fee_rate` | 0 %           |
 
-Fees are always positive (absolute value of fill size is used). They are routed
-to the vault via the settlement loop described below.
+Fees are always positive (absolute value of fill size is used). They are routed to the vault via the settlement loop described below.
 
 ## 9. PnL settlement
 
-After all fills in an order are complete, PnLs and fees are settled atomically
-as in-place USD margin adjustments. No token conversions occur during
-settlement — all values are pure `UsdValue` arithmetic.
+After all fills in an order are complete, PnLs and fees are settled atomically as in-place USD margin adjustments. No token conversions occur during settlement — all values are pure `UsdValue` arithmetic.
 
 ### 9a. Fee loop
 
@@ -215,9 +187,7 @@ $$
 \mathtt{state.vaultMargin} \mathrel{+}= \mathtt{fee}
 $$
 
-Fees from the vault to itself are skipped (no-op). Processing fees first
-ensures collected fees augment $\mathtt{vaultMargin}$ before any vault losses
-are absorbed.
+Fees from the vault to itself are skipped (no-op). Processing fees first ensures collected fees augment $\mathtt{vaultMargin}$ before any vault losses are absorbed.
 
 ### 9b. PnL loop
 
@@ -227,8 +197,7 @@ $$
 \mathtt{userState.margin} \mathrel{+}= \mathtt{pnl}
 $$
 
-A user's margin can go negative temporarily — the outer function handles bad
-debt (see [Liquidation](5-liquidation-and-adl.md)).
+A user's margin can go negative temporarily — the outer function handles bad debt (see [Liquidation](5-liquidation-and-adl.md)).
 
 **Vault:**
 
@@ -236,26 +205,21 @@ $$
 \mathtt{vaultMargin} \mathrel{+}= \mathtt{pnl}
 $$
 
-A negative $\mathtt{vaultMargin}$ represents a deficit (bad debt not yet
-recovered via [ADL](5-liquidation-and-adl.md)).
+A negative $\mathtt{vaultMargin}$ represents a deficit (bad debt not yet recovered via [ADL](5-liquidation-and-adl.md)).
 
 ## 10. Unfilled remainder
 
 After matching completes:
 
-- **Market orders:** the unfilled remainder is silently discarded. If nothing
-  was filled at all, the transaction reverts with _"no liquidity at acceptable
-  price"_.
-- **Limit orders (GTC):** the unfilled remainder is stored as a resting order.
-  Storage requires:
+- **Market orders:** the unfilled remainder is silently discarded. If nothing was filled at all, the transaction reverts with _"no liquidity at acceptable price"_.
+- **Limit orders (GTC):** the unfilled remainder is stored as a resting order. Storage requires:
   - `open_order_count < max_open_orders`
   - Price is aligned to the pair's tick size ($\mathtt{limitPrice} \bmod \mathtt{tickSize} = 0$)
   - Sufficient available margin (skipped for reduce-only orders) — see below
 
 **Margin reservation (non-reduce-only):**
 
-The unfilled portion's margin requirement is computed and checked against
-available margin (see [Margin §7–§8](1-margin.md#7-reserved-margin)):
+The unfilled portion's margin requirement is computed and checked against available margin (see [Margin §7–§8](1-margin.md#7-reserved-margin)):
 
 $$
 \mathtt{marginToReserve} = |\mathtt{openingSize}| \times \mathtt{limitPrice} \times \mathtt{imr}
@@ -265,13 +229,9 @@ $$
 \mathtt{availableMargin} \geq \mathtt{marginToReserve}
 $$
 
-If the check passes, `reservedMargin` is increased by $\mathtt{marginToReserve}$
-and `openOrderCount` is incremented. This is the **0 %-fill scenario** check —
-it ensures the user can afford the order even if nothing fills immediately.
+If the check passes, `reservedMargin` is increased by $\mathtt{marginToReserve}$ and `openOrderCount` is incremented. This is the **0 %-fill scenario** check — it ensures the user can afford the order even if nothing fills immediately.
 
-**Post-only limit orders** take a fast path that bypasses the matching engine
-entirely. They are rejected if they would cross the best price on the opposite
-side:
+**Post-only limit orders** take a fast path that bypasses the matching engine entirely. They are rejected if they would cross the best price on the opposite side:
 
 - Buy: $\mathtt{limitPrice} < \mathtt{bestAsk}$ (strict)
 - Sell: $\mathtt{limitPrice} > \mathtt{bestBid}$ (strict)
@@ -285,29 +245,21 @@ Each pair has a $\mathtt{maxAbsOI}$ parameter enforcing a per-side cap:
 - Long opening: $\mathtt{longOI} + \mathtt{openingSize} \leq \mathtt{maxAbsOI}$
 - Short opening: $\mathtt{shortOI} + |\mathtt{openingSize}| \leq \mathtt{maxAbsOI}$
 
-The constraint is checked **before matching** and does not apply to reduce-only
-orders (which have zero opening size). Long and short OI limits are independent
-but share the same $\mathtt{maxAbsOI}$ parameter.
+The constraint is checked **before matching** and does not apply to reduce-only orders (which have zero opening size). Long and short OI limits are independent but share the same $\mathtt{maxAbsOI}$ parameter.
 
 ## 12. Order cancellation
 
 ### Single cancel
 
-A user can cancel any individual resting order by its order ID. The contract
-looks up the ID in `BIDS` first, then `ASKS`. Only the order's owner can cancel
-it.
+A user can cancel any individual resting order by its order ID. The contract looks up the ID in `BIDS` first, then `ASKS`. Only the order's owner can cancel it.
 
 On cancellation:
 
 1. The order is removed from the book.
 2. `reserved_margin` is released (subtracted from the user's total).
 3. `open_order_count` is decremented.
-4. If the user state is now empty (no positions, no open orders, no pending
-   unlocks), it is deleted from storage.
+4. If the user state is now empty (no positions, no open orders, no pending unlocks), it is deleted from storage.
 
 ### Bulk cancel
 
-A user can cancel **all** of their resting orders across both sides of the book
-in a single transaction. The contract iterates the user's orders in `BIDS` then
-`ASKS`, removing each one and releasing margin. The same cleanup logic applies —
-if the user state becomes empty after all orders are removed, it is deleted.
+A user can cancel **all** of their resting orders across both sides of the book in a single transaction. The contract iterates the user's orders in `BIDS` then `ASKS`, removing each one and releasing margin. The same cleanup logic applies — if the user state becomes empty after all orders are removed, it is deleted.
