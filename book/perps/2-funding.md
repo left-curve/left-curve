@@ -11,8 +11,8 @@ Each funding cycle begins with measuring how far the order book deviates from
 the oracle. The contract computes two **impact prices** by walking the book:
 
 - **Impact bid** — the volume-weighted average price (VWAP) obtained by selling
-  $\mathtt{impactNotional}$ worth of base asset into the bid side.
-- **Impact ask** — the VWAP obtained by buying $\mathtt{impactNotional}$ worth
+  $\mathtt{impactSize}$ worth of base asset into the bid side.
+- **Impact ask** — the VWAP obtained by buying $\mathtt{impactSize}$ worth
   from the ask side.
 
 The premium is then:
@@ -21,7 +21,7 @@ $$
 \mathtt{premium} = \frac{\max(0,\;\mathtt{impactBid} - \mathtt{oracle}) - \max(0,\;\mathtt{oracle} - \mathtt{impactAsk})}{\mathtt{oracle}}
 $$
 
-If either side has insufficient depth to fill $\mathtt{impactNotional}$, its
+If either side has insufficient depth to fill $\mathtt{impactSize}$, its
 $\max(0, \ldots)$ term contributes zero. When both sides lack depth, the premium
 is zero.
 
@@ -100,5 +100,5 @@ accounting.
 | Field                  | Type          | Description                                                                                                             |
 | ---------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `funding_period`       | `Duration`    | Minimum time between funding collections.                                                                               |
-| `impact_notional`      | `UsdValue`    | Notional depth walked on each side of the book to compute impact prices.                                                |
+| `impact_size`          | `UsdValue`    | Notional depth walked on each side of the book to compute impact prices.                                                |
 | `max_abs_funding_rate` | `FundingRate` | Symmetric clamp applied to the average premium before scaling to a delta. Prevents runaway rates during prolonged skew. |

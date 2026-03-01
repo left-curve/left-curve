@@ -33,7 +33,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut state = STATE.load(ctx.storage)?;
 
-    ensure!(state.adl_deficit.is_non_zero(), "no ADL deficit");
+    ensure!(state.vault_deficit.is_non_zero(), "no ADL deficit");
 
     let mut user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
 
@@ -102,7 +102,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// - `user_state.positions` — profitable positions closed.
 /// - `user_state.margin` — credited with non-forfeited PnL.
 /// - `state.vault_margin` — restocked from forfeited PnL.
-/// - `state.adl_deficit` — reduced by forfeited amount.
+/// - `state.vault_deficit` — reduced by forfeited amount.
 ///
 /// Returns: `()`
 fn _deleverage(
@@ -176,12 +176,12 @@ fn _deleverage(
         state.vault_margin.checked_add_assign(user_pnl)?;
 
         // Forfeit up to the deficit.
-        let forfeited = user_pnl.min(state.adl_deficit);
+        let forfeited = user_pnl.min(state.vault_deficit);
         let credit = user_pnl.checked_sub(forfeited)?;
 
         // Credit the non-forfeited portion to the user's margin.
         state.vault_margin.checked_sub_assign(credit)?;
-        state.adl_deficit.checked_sub_assign(forfeited)?;
+        state.vault_deficit.checked_sub_assign(forfeited)?;
 
         if credit.is_non_zero() {
             user_state.margin.checked_add_assign(credit)?;
@@ -287,10 +287,10 @@ mod tests {
         USER_STATES.save(storage, user, &user_state).unwrap();
     }
 
-    fn state_with_deficit(vault_margin: i128, adl_deficit: i128) -> State {
+    fn state_with_deficit(vault_margin: i128, vault_deficit: i128) -> State {
         State {
             vault_margin: UsdValue::new_int(vault_margin),
-            adl_deficit: UsdValue::new_int(adl_deficit),
+            vault_deficit: UsdValue::new_int(vault_deficit),
             ..Default::default()
         }
     }
@@ -305,7 +305,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let state = State::default(); // adl_deficit = 0
+        let state = State::default(); // vault_deficit = 0
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
@@ -481,7 +481,7 @@ mod tests {
         // vault_margin -= 10,000 (credit to user)
         // net vault_margin = 0 + 15,000 - 10,000 = 5,000
         assert_eq!(state.vault_margin, UsdValue::new_int(5_000));
-        assert_eq!(state.adl_deficit, UsdValue::ZERO);
+        assert_eq!(state.vault_deficit, UsdValue::ZERO);
 
         // User margin should increase by 10,000.
         assert_eq!(user_state.margin, UsdValue::new_int(20_000));
@@ -547,7 +547,7 @@ mod tests {
         // vault_margin = 0 + 15,000 (restock) - 0 (no credit) = 15,000
         assert_eq!(state.vault_margin, UsdValue::new_int(15_000));
         // deficit: 20,000 - 15,000 = 5,000
-        assert_eq!(state.adl_deficit, UsdValue::new_int(5_000));
+        assert_eq!(state.vault_deficit, UsdValue::new_int(5_000));
     }
 
     #[test]

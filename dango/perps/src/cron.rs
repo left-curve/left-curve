@@ -176,8 +176,8 @@ fn process_funding_for_pair(
             Ok((stored_price, order.size.checked_abs()?))
         });
 
-    let impact_bid = compute_impact_price(bid_iter, pair_param.impact_notional)?;
-    let impact_ask = compute_impact_price(ask_iter, pair_param.impact_notional)?;
+    let impact_bid = compute_impact_price(bid_iter, pair_param.impact_size)?;
+    let impact_ask = compute_impact_price(ask_iter, pair_param.impact_size)?;
 
     let premium = compute_premium(impact_bid, impact_ask, oracle_price)?;
 

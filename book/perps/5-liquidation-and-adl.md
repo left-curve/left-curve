@@ -133,7 +133,7 @@ $$
 $$
 
 $$
-\mathtt{adlDeficit} \gets \mathtt{adlDeficit} + \mathtt{unabsorbed}
+\mathtt{vaultDeficit} \gets \mathtt{vaultDeficit} + \mathtt{unabsorbed}
 $$
 
 If the vault fully covers the bad debt, the system returns to normal. If not,
@@ -145,7 +145,7 @@ auto-deleveraging.
 Auto-deleveraging activates whenever
 
 $$
-\mathtt{adlDeficit} > 0
+\mathtt{vaultDeficit} > 0
 $$
 
 This can only happen when a liquidation produces bad debt that exceeds the
@@ -199,7 +199,7 @@ $$
 $$
 
 $$
-\mathtt{forfeited} = \min(\mathtt{pnl},\; \mathtt{adlDeficit})
+\mathtt{forfeited} = \min(\mathtt{pnl},\; \mathtt{vaultDeficit})
 $$
 
 $$
@@ -211,10 +211,10 @@ $$
 $$
 
 $$
-\mathtt{adlDeficit} \gets \mathtt{adlDeficit} - \mathtt{forfeited}
+\mathtt{vaultDeficit} \gets \mathtt{vaultDeficit} - \mathtt{forfeited}
 $$
 
-The user forfeits up to $\mathtt{adlDeficit}$ of their profit to make the exchange
+The user forfeits up to $\mathtt{vaultDeficit}$ of their profit to make the exchange
 whole. The remainder is paid out normally. No collateral beyond the realised PnL
 is ever seized.
 
@@ -370,7 +370,7 @@ $$
 $$
 
 $$
-\mathtt{vaultMargin}: \$5{,}000 - \$1{,}000 = \$4{,}000, \quad \mathtt{adlDeficit}: \$0
+\mathtt{vaultMargin}: \$5{,}000 - \$1{,}000 = \$4{,}000, \quad \mathtt{vaultDeficit}: \$0
 $$
 
 The vault absorbs the full $1,000 shortfall. Charlie's entire $3,000
@@ -406,7 +406,7 @@ $$
 $$
 
 $$
-\mathtt{vaultMargin}: \$500 - \$500 = \$0, \quad \mathtt{adlDeficit}: \$500
+\mathtt{vaultMargin}: \$500 - \$500 = \$0, \quad \mathtt{vaultDeficit}: \$500
 $$
 
 The vault is exhausted with $500 of bad debt remaining. ADL activates.
@@ -468,7 +468,7 @@ $$
 $$
 
 $$
-\mathtt{adlDeficit} \gets \$500 - \$500 = \$0
+\mathtt{vaultDeficit} \gets \$500 - \$500 = \$0
 $$
 
 Dana forfeits $500 of her $4,000 profit to cover the remaining deficit and

@@ -4,7 +4,7 @@ use {
 };
 
 /// Walk an ordered sequence of `(limit_price, size)` pairs and compute the
-/// volume-weighted average execution price for filling `impact_notional` worth
+/// volume-weighted average execution price for filling `impact_size` worth
 /// of notional value.
 ///
 /// Each item is `(limit_price, absolute_order_size)`. The caller is responsible
@@ -14,7 +14,7 @@ use {
 /// Returns: `Some(vwap)` if enough depth exists, `None` otherwise.
 pub fn compute_impact_price(
     orders: impl Iterator<Item = StdResult<(UsdPrice, Quantity)>>,
-    impact_notional: UsdValue,
+    impact_size: UsdValue,
 ) -> StdResult<Option<UsdPrice>> {
     let mut total_size = Quantity::ZERO;
     let mut total_notional = UsdValue::ZERO;
@@ -22,14 +22,14 @@ pub fn compute_impact_price(
     for result in orders {
         let (price, size) = result?;
         let order_notional = size.checked_mul(price)?;
-        let remaining = impact_notional.checked_sub(total_notional)?;
+        let remaining = impact_size.checked_sub(total_notional)?;
 
         if order_notional >= remaining {
             // Partial fill of this order completes the impact notional.
             let partial_size = remaining.checked_div(price)?;
 
             total_size.checked_add_assign(partial_size)?;
-            total_notional = impact_notional;
+            total_notional = impact_size;
 
             break;
         }
@@ -38,7 +38,7 @@ pub fn compute_impact_price(
         total_notional.checked_add_assign(order_notional)?;
     }
 
-    if total_notional < impact_notional {
+    if total_notional < impact_size {
         return Ok(None);
     }
 

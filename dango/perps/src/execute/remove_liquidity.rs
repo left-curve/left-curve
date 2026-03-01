@@ -27,7 +27,7 @@ pub fn remove_liquidity(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut state = STATE.load(ctx.storage)?;
 
     ensure!(
-        state.adl_deficit.is_zero(),
+        state.vault_deficit.is_zero(),
         "withdrawals paused: unresolved ADL deficit"
     );
 

@@ -83,21 +83,21 @@ debt (see [Liquidation](liquidation-and-adl.md)).
 **Vault:**
 
 Profit is applied to `state.vaultMargin`, first repaying any existing
-`adlDeficit`:
+`vaultDeficit`:
 
 $$
-\mathtt{repaid} = \min(\mathtt{pnl},\; \mathtt{adlDeficit})
+\mathtt{repaid} = \min(\mathtt{pnl},\; \mathtt{vaultDeficit})
 $$
 
 $$
-\mathtt{adlDeficit} \mathrel{-}= \mathtt{repaid}
+\mathtt{vaultDeficit} \mathrel{-}= \mathtt{repaid}
 $$
 
 $$
 \mathtt{vaultMargin} \mathrel{+}= \mathtt{pnl} - \mathtt{repaid}
 $$
 
-Loss absorbs from `vaultMargin`; any shortfall becomes `adlDeficit`:
+Loss absorbs from `vaultMargin`; any shortfall becomes `vaultDeficit`:
 
 $$
 \mathtt{absorbed} = \min(|\mathtt{pnl}|,\; \mathtt{vaultMargin})
@@ -108,7 +108,7 @@ $$
 $$
 
 $$
-\mathtt{adlDeficit} \mathrel{+}= |\mathtt{pnl}| - \mathtt{absorbed}
+\mathtt{vaultDeficit} \mathrel{+}= |\mathtt{pnl}| - \mathtt{absorbed}
 $$
 
 ### Why no payouts or collections

@@ -53,7 +53,7 @@ $\$1 / 1{,}000{,}000 = \$0.000001$ per share.
 
 ### ADL pause
 
-Deposits are **paused** when $\mathtt{adlDeficit} > 0$. This prevents new
+Deposits are **paused** when $\mathtt{vaultDeficit} > 0$. This prevents new
 capital from entering a vault that has unresolved bad debt — the deficit must
 be cleared via [ADL](liquidation-and-adl.md#7-adl-trigger) first.
 
@@ -96,7 +96,7 @@ USD to settlement-currency tokens at the **current oracle price**
 
 ### ADL pause
 
-Like deposits, withdrawals are **paused** when $\mathtt{adlDeficit} > 0$.
+Like deposits, withdrawals are **paused** when $\mathtt{vaultDeficit} > 0$.
 
 ## 4 Vault equity
 

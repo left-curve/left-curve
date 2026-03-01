@@ -132,10 +132,14 @@ pub struct State {
     /// computed identically to any user via `compute_user_equity`.
     pub vault_margin: UsdValue,
 
-    /// Accumulated bad debt that exceeded the vault during liquidations,
+    /// Accumulated bad debt from two possible sources:
+    ///
+    /// - the vault absorbs bad debt from bankrupted positions during liquidations;
+    /// - the vault suffers big realized loss of its own positions;
+    ///
     /// denominated in USD. When non-zero, ADL can be triggered. Reduced as
     /// profitable positions are forcibly closed and their PnL forfeited.
-    pub adl_deficit: UsdValue,
+    pub vault_deficit: UsdValue,
 }
 
 /// Parameters that apply to an individual trading pair.
@@ -186,7 +190,7 @@ pub struct PairParam {
     /// Notional value used to compute impact prices from the order book.
     /// The cron job walks bids/asks to find the average execution price for
     /// selling/buying this much notional.
-    pub impact_notional: UsdValue,
+    pub impact_size: UsdValue,
 
     /// Weight determining what fraction of the vault's available margin
     /// is allocated to this pair for market-making.
@@ -208,7 +212,7 @@ impl PairParam {
     pub fn new_mock() -> Self {
         Self {
             max_abs_oi: Quantity::new_int(1_000_000),
-            impact_notional: UsdValue::new_int(10_000),
+            impact_size: UsdValue::new_int(10_000),
             ..Default::default()
         }
     }

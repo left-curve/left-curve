@@ -27,7 +27,7 @@ pub fn add_liquidity(
     let mut state = STATE.load(ctx.storage)?;
 
     ensure!(
-        state.adl_deficit.is_zero(),
+        state.vault_deficit.is_zero(),
         "deposits paused: unresolved ADL deficit"
     );
 

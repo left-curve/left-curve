@@ -201,12 +201,12 @@ before any vault losses are absorbed.
 
 ### 8b PnL loop
 
-| Case                       | Conversion                                                | Action                                                                  |
-| -------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Vault profit** (PnL > 0) | $\lceil \mathtt{pnl} / \mathtt{settlementPrice} \rceil$   | Repay $\mathtt{adlDeficit}$ first, then increase $\mathtt{vaultMargin}$ |
-| **Vault loss** (PnL < 0)   | $\lceil                                                   | \mathtt{pnl}                                                            | / \mathtt{settlementPrice} \rceil$ | Absorb from $\mathtt{vaultMargin}$; unabsorbed becomes $\mathtt{adlDeficit}$ |
-| **User profit** (PnL > 0)  | $\lfloor \mathtt{pnl} / \mathtt{settlementPrice} \rfloor$ | User receives a payout                                                  |
-| **User loss** (PnL < 0)    | $\lceil                                                   | \mathtt{pnl}                                                            | / \mathtt{settlementPrice} \rceil$ | User owes a collection                                                       |
+| Case                       | Conversion                                                | Action                                                                    |
+| -------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **Vault profit** (PnL > 0) | $\lceil \mathtt{pnl} / \mathtt{settlementPrice} \rceil$   | Repay $\mathtt{vaultDeficit}$ first, then increase $\mathtt{vaultMargin}$ |
+| **Vault loss** (PnL < 0)   | $\lceil                                                   | \mathtt{pnl}                                                              | / \mathtt{settlementPrice} \rceil$ | Absorb from $\mathtt{vaultMargin}$; unabsorbed becomes $\mathtt{vaultDeficit}$ |
+| **User profit** (PnL > 0)  | $\lfloor \mathtt{pnl} / \mathtt{settlementPrice} \rfloor$ | User receives a payout                                                    |
+| **User loss** (PnL < 0)    | $\lceil                                                   | \mathtt{pnl}                                                              | / \mathtt{settlementPrice} \rceil$ | User owes a collection                                                         |
 
 Rounding rules protect the protocol: payouts use floor (protocol keeps dust),
 collections use ceil (protocol collects dust).
