@@ -7,18 +7,20 @@ under-collateralised accounts and socialises losses that exceed the vault.
 
 Every account has an **equity** and a **maintenance margin** (MM):
 
-```plain
-equity = collateral_value + Σ unrealised_pnl − Σ accrued_funding
+$$
+\mathtt{equity} = \mathtt{collateralValue} + \sum \mathtt{unrealisedPnl} - \sum \mathtt{accruedFunding}
+$$
 
-MM = Σ |position_size| × oracle_price × mmr
-```
+$$
+\mathtt{MM} = \sum |\mathtt{positionSize}| \times \mathtt{oraclePrice} \times \mathtt{mmr}
+$$
 
-where _mmr_ is the per-pair maintenance-margin ratio. An account becomes
+where $\mathtt{mmr}$ is the per-pair maintenance-margin ratio. An account becomes
 **liquidatable** when
 
-```plain
-equity < MM
-```
+$$
+\mathtt{equity} < \mathtt{MM}
+$$
 
 Strict inequality: an account whose equity exactly equals its MM is still safe.
 An account with no open positions is never liquidatable regardless of its equity.
@@ -32,24 +34,24 @@ position closures** needed to restore it above maintenance margin.
 
 1. For every open position, compute its MM contribution:
 
-   ```plain
-   mm_contribution = |size| × oracle_price × mmr
-   ```
+$$
+\mathtt{mmContribution} = |\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{mmr}
+$$
 
 2. Sort positions by MM contribution **descending** (largest first).
 
 3. Walk the sorted list and close just enough to cover the deficit:
 
-   ```plain
-   deficit = MM − equity
+```text
+deficit = MM − equity
 
-   for each position (largest MM first):
-       if deficit ≤ 0: stop
-       close_amount = min(⌈deficit / (oracle_price × mmr)⌉, |size|)
-       deficit −= close_amount × oracle_price × mmr
-   ```
+for each position (largest MM first):
+    if deficit ≤ 0: stop
+    close_amount = min(⌈deficit / (oracle_price × mmr)⌉, |size|)
+    deficit −= close_amount × oracle_price × mmr
+```
 
-This produces a vector of _(pair, close_size)_ entries. Each close_size has the
+This produces a vector of _(pair, close\_size)_ entries. Each close\_size has the
 **opposite sign** of the existing position (a long is closed with a sell, a
 short with a buy). Only positions that contribute to the deficit are touched and
 they may be **partially closed** when the deficit is small relative to the
@@ -81,13 +83,17 @@ both taker and maker.
 After all positions in the schedule are closed, a one-time liquidation fee is
 charged:
 
-```plain
-raw_fee = closed_notional × liquidation_fee_rate
+$$
+\mathtt{rawFee} = \mathtt{closedNotional} \times \mathtt{liquidationFeeRate}
+$$
 
-remaining_margin = max(0, collateral + user_pnl_after_closes)
+$$
+\mathtt{remainingMargin} = \max(0,\; \mathtt{collateral} + \mathtt{userPnlAfterCloses})
+$$
 
-fee = min(raw_fee, remaining_margin)
-```
+$$
+\mathtt{fee} = \min(\mathtt{rawFee},\; \mathtt{remainingMargin})
+$$
 
 The fee is deducted from the user's PnL and routed to the **vault**.
 It is capped at the remaining margin so the fee itself never creates bad debt.
@@ -97,8 +103,8 @@ It is capped at the remaining margin so the fee itself never creates bad debt.
 All PnL from the liquidation fills (user, counterparties, vault) is settled
 atomically:
 
-- **Positive PnL** → the user (or vault) receives a payout.
-- **Negative PnL** → the user owes a collection.
+- **Positive PnL** — the user (or vault) receives a payout.
+- **Negative PnL** — the user owes a collection.
 
 The vault's PnL is applied directly to a dedicated vault-margin balance rather
 than transferred as tokens.
@@ -108,19 +114,27 @@ than transferred as tokens.
 If the amount the liquidated user owes exceeds their remaining collateral
 balance, bad debt arises:
 
-```plain
-bad_debt = collections − collateral_balance
-```
+$$
+\mathtt{badDebt} = \mathtt{collections} - \mathtt{collateralBalance}
+$$
 
 The vault absorbs as much as it can:
 
-```plain
-absorbed  = min(bad_debt, vault_margin)
-unabsorbed = bad_debt − absorbed
+$$
+\mathtt{absorbed} = \min(\mathtt{badDebt},\; \mathtt{vaultMargin})
+$$
 
-vault_margin −= absorbed
-adl_deficit  += unabsorbed
-```
+$$
+\mathtt{unabsorbed} = \mathtt{badDebt} - \mathtt{absorbed}
+$$
+
+$$
+\mathtt{vaultMargin} \gets \mathtt{vaultMargin} - \mathtt{absorbed}
+$$
+
+$$
+\mathtt{adlDeficit} \gets \mathtt{adlDeficit} + \mathtt{unabsorbed}
+$$
 
 If the vault fully covers the bad debt, the system returns to normal. If not,
 the unabsorbed amount is recorded as the **ADL deficit** and triggers
@@ -130,9 +144,9 @@ auto-deleveraging.
 
 Auto-deleveraging activates whenever
 
-```plain
-adl_deficit > 0
-```
+$$
+\mathtt{adlDeficit} > 0
+$$
 
 This can only happen when a liquidation produces bad debt that exceeds the
 vault. Once active, addresses listed in the `adl_operators` parameter set may
@@ -142,17 +156,22 @@ call the deleverage action on profitable accounts until the deficit is cleared.
 
 Each profitable position is scored to determine closure priority:
 
-```plain
-pnl_pct   = unrealised_pnl / equity
-leverage   = notional / equity          (where notional = |size| × oracle_price)
+$$
+\mathtt{pnlPct} = \frac{\mathtt{unrealisedPnl}}{\mathtt{equity}}
+$$
 
-adl_score = pnl_pct × leverage
-```
+$$
+\mathtt{leverage} = \frac{\mathtt{notional}}{\mathtt{equity}} \quad \text{where } \mathtt{notional} = |\mathtt{size}| \times \mathtt{oraclePrice}
+$$
+
+$$
+\mathtt{adlScore} = \mathtt{pnlPct} \times \mathtt{leverage}
+$$
 
 Positions with non-positive PnL or non-positive equity score **zero** and are
 never selected. Among eligible positions, the **highest score** is closed first.
 The score naturally favours accounts that are both highly profitable and highly
-leveraged—those who benefited most from the move that caused the bad debt and
+leveraged — those who benefited most from the move that caused the bad debt and
 who pose the greatest risk if the market reverses.
 
 ## 9 ADL closure
@@ -171,18 +190,31 @@ beyond what the oracle already reflects.
 After ADL closes are settled the user's total realised PnL is applied to the
 deficit:
 
-```plain
-pnl = Σ realised_pnl_from_adl_closes          (always > 0 for selected users)
+$$
+\mathtt{pnl} = \sum \mathtt{realisedPnlFromAdlCloses} \quad (\text{always} > 0 \text{ for selected users})
+$$
 
-vault_margin += pnl                            # restock
-forfeited     = min(pnl, adl_deficit)
-payout        = pnl − forfeited
+$$
+\mathtt{vaultMargin} \gets \mathtt{vaultMargin} + \mathtt{pnl}
+$$
 
-vault_margin −= payout
-adl_deficit  −= forfeited
-```
+$$
+\mathtt{forfeited} = \min(\mathtt{pnl},\; \mathtt{adlDeficit})
+$$
 
-The user forfeits up to _adl_deficit_ of their profit to make the exchange
+$$
+\mathtt{payout} = \mathtt{pnl} - \mathtt{forfeited}
+$$
+
+$$
+\mathtt{vaultMargin} \gets \mathtt{vaultMargin} - \mathtt{payout}
+$$
+
+$$
+\mathtt{adlDeficit} \gets \mathtt{adlDeficit} - \mathtt{forfeited}
+$$
+
+The user forfeits up to $\mathtt{adlDeficit}$ of their profit to make the exchange
 whole. The remainder is paid out normally. No collateral beyond the realised PnL
 is ever seized.
 
@@ -211,12 +243,17 @@ All examples use:
 
 _Alice's account_
 
-```plain
-equity = $3,000 + 1 × ($47,500 − $50,000) = $3,000 − $2,500 = $500
-MM     = 1 × $47,500 × 5% = $2,375
+$$
+\mathtt{equity} = \$3{,}000 + 1 \times (\$47{,}500 - \$50{,}000) = \$3{,}000 - \$2{,}500 = \$500
+$$
 
-$500 < $2,375  →  liquidatable
-```
+$$
+\mathtt{MM} = 1 \times \$47{,}500 \times 5\% = \$2{,}375
+$$
+
+$$
+\$500 < \$2{,}375 \;\Rightarrow\; \text{liquidatable}
+$$
 
 _Close schedule_
 
@@ -227,30 +264,45 @@ _Execution_
 The long is closed (sold) at the oracle price of $47,500 (order book or vault
 backstop).
 
-```plain
-Alice PnL = 1 × ($47,500 − $50,000) = −$2,500
-```
+$$
+\mathtt{AlicePnL} = 1 \times (\$47{,}500 - \$50{,}000) = -\$2{,}500
+$$
 
 _Liquidation fee_
 
-```plain
-closed notional  = 1 × $47,500 = $47,500
-raw fee          = $47,500 × 0.1% = $47.50
-remaining margin = max(0, $3,000 − $2,500) = $500
+$$
+\mathtt{closedNotional} = 1 \times \$47{,}500 = \$47{,}500
+$$
 
-fee = min($47.50, $500) = $47.50
-```
+$$
+\mathtt{rawFee} = \$47{,}500 \times 0.1\% = \$47.50
+$$
+
+$$
+\mathtt{remainingMargin} = \max(0,\; \$3{,}000 - \$2{,}500) = \$500
+$$
+
+$$
+\mathtt{fee} = \min(\$47.50,\; \$500) = \$47.50
+$$
 
 _Settlement_
 
-```plain
-Alice owes        = $2,500 + $47.50 = $2,547.50
-Alice collateral  = $3,000
-Alice receives    = $3,000 − $2,547.50 = $452.50
+$$
+\text{Alice owes} = \$2{,}500 + \$47.50 = \$2{,}547.50
+$$
 
-Bad debt = $0      (collateral covers everything)
-Vault            += $47.50
-```
+$$
+\text{Alice receives} = \$3{,}000 - \$2{,}547.50 = \$452.50
+$$
+
+$$
+\mathtt{badDebt} = \$0 \quad (\text{collateral covers everything})
+$$
+
+$$
+\mathtt{vaultMargin} \mathrel{+}= \$47.50
+$$
 
 ### Example 2 — Bad debt absorbed by the vault
 
@@ -267,12 +319,17 @@ Vault            += $47.50
 
 _Charlie's account_
 
-```plain
-equity = $3,000 + 1 × ($46,000 − $50,000) = $3,000 − $4,000 = −$1,000
-MM     = 1 × $46,000 × 5% = $2,300
+$$
+\mathtt{equity} = \$3{,}000 + 1 \times (\$46{,}000 - \$50{,}000) = \$3{,}000 - \$4{,}000 = -\$1{,}000
+$$
 
-−$1,000 < $2,300  →  liquidatable
-```
+$$
+\mathtt{MM} = 1 \times \$46{,}000 \times 5\% = \$2{,}300
+$$
+
+$$
+-\$1{,}000 < \$2{,}300 \;\Rightarrow\; \text{liquidatable}
+$$
 
 _Close schedule_
 
@@ -282,33 +339,39 @@ _Execution_
 
 Closed at oracle price $46,000.
 
-```plain
-Charlie PnL = 1 × ($46,000 − $50,000) = −$4,000
-```
+$$
+\mathtt{CharliePnL} = 1 \times (\$46{,}000 - \$50{,}000) = -\$4{,}000
+$$
 
 _Liquidation fee_
 
-```plain
-remaining margin = max(0, $3,000 − $4,000) = $0
+$$
+\mathtt{remainingMargin} = \max(0,\; \$3{,}000 - \$4{,}000) = \$0
+$$
 
-fee = min(anything, $0) = $0
-```
+$$
+\mathtt{fee} = \min(\text{anything},\; \$0) = \$0
+$$
 
 Charlie's equity is already negative so no fee can be collected.
 
 _Settlement and bad debt_
 
-```plain
-Charlie owes       = $4,000
-Charlie collateral = $3,000
-bad debt           = $4,000 − $3,000 = $1,000
+$$
+\text{Charlie owes} = \$4{,}000, \quad \text{Charlie collateral} = \$3{,}000
+$$
 
-absorbed   = min($1,000, $5,000) = $1,000
-unabsorbed = $0
+$$
+\mathtt{badDebt} = \$4{,}000 - \$3{,}000 = \$1{,}000
+$$
 
-Vault margin: $5,000 − $1,000 = $4,000
-ADL deficit:  $0
-```
+$$
+\mathtt{absorbed} = \min(\$1{,}000,\; \$5{,}000) = \$1{,}000, \quad \mathtt{unabsorbed} = \$0
+$$
+
+$$
+\mathtt{vaultMargin}: \$5{,}000 - \$1{,}000 = \$4{,}000, \quad \mathtt{adlDeficit}: \$0
+$$
 
 The vault absorbs the full $1,000 shortfall. Charlie's entire $3,000
 collateral is collected and no ADL is needed.
@@ -330,16 +393,21 @@ Same positions as Example 2, but the vault is smaller.
 
 _Charlie's liquidation_ proceeds identically:
 
-```plain
-Charlie PnL    = −$4,000
-bad debt       = $4,000 − $3,000 = $1,000
+$$
+\mathtt{CharliePnL} = -\$4{,}000
+$$
 
-absorbed       = min($1,000, $500) = $500
-unabsorbed     = $500
+$$
+\mathtt{badDebt} = \$4{,}000 - \$3{,}000 = \$1{,}000
+$$
 
-Vault margin: $500 − $500 = $0
-ADL deficit:  $500
-```
+$$
+\mathtt{absorbed} = \min(\$1{,}000,\; \$500) = \$500, \quad \mathtt{unabsorbed} = \$500
+$$
+
+$$
+\mathtt{vaultMargin}: \$500 - \$500 = \$0, \quad \mathtt{adlDeficit}: \$500
+$$
 
 The vault is exhausted with $500 of bad debt remaining. ADL activates.
 
@@ -347,16 +415,29 @@ _ADL — selecting Dana_
 
 Dana holds a short that is profitable at $46,000:
 
-```plain
-Dana unrealised PnL = −1 × ($46,000 − $50,000) = $4,000  (profit)
-Dana equity         = $10,000 + $4,000 = $14,000
-notional            = 1 × $46,000 = $46,000
+$$
+\mathtt{unrealisedPnl} = -1 \times (\$46{,}000 - \$50{,}000) = \$4{,}000 \;\text{(profit)}
+$$
 
-pnl_pct  = $4,000 / $14,000  ≈ 0.286
-leverage = $46,000 / $14,000 ≈ 3.286
+$$
+\mathtt{equity} = \$10{,}000 + \$4{,}000 = \$14{,}000
+$$
 
-adl_score = 0.286 × 3.286 ≈ 0.94
-```
+$$
+\mathtt{notional} = 1 \times \$46{,}000 = \$46{,}000
+$$
+
+$$
+\mathtt{pnlPct} = \frac{\$4{,}000}{\$14{,}000} \approx 0.286
+$$
+
+$$
+\mathtt{leverage} = \frac{\$46{,}000}{\$14{,}000} \approx 3.286
+$$
+
+$$
+\mathtt{adlScore} = 0.286 \times 3.286 \approx 0.94
+$$
 
 Score is positive, so Dana is eligible for ADL.
 
@@ -364,27 +445,38 @@ _ADL — closing Dana's position_
 
 Dana's short is fully closed at the oracle price of $46,000 with zero fees.
 
-```plain
-Dana realised PnL = $4,000
-```
+$$
+\mathtt{DanaRealisedPnl} = \$4{,}000
+$$
 
 _Forfeiture_
 
-```plain
-vault_margin += $4,000            →  $4,000
-forfeited     = min($4,000, $500) =  $500
-payout        = $4,000 − $500     =  $3,500
+$$
+\mathtt{vaultMargin} \gets \mathtt{vaultMargin} + \$4{,}000 = \$4{,}000
+$$
 
-vault_margin −= $3,500            →  $500
-adl_deficit  −= $500              →  $0
-```
+$$
+\mathtt{forfeited} = \min(\$4{,}000,\; \$500) = \$500
+$$
+
+$$
+\mathtt{payout} = \$4{,}000 - \$500 = \$3{,}500
+$$
+
+$$
+\mathtt{vaultMargin} \gets \$4{,}000 - \$3{,}500 = \$500
+$$
+
+$$
+\mathtt{adlDeficit} \gets \$500 - \$500 = \$0
+$$
 
 Dana forfeits $500 of her $4,000 profit to cover the remaining deficit and
 receives $3,500. The vault is restocked to $500 and the ADL deficit is cleared.
 
 **Final state**
 
-| &nbsp;       | Balance                                             |
+|              | Balance                                             |
 | ------------ | --------------------------------------------------- |
 | Charlie      | $0 (fully liquidated)                               |
 | Dana         | $10,000 + $3,500 = $13,500 (profit reduced by $500) |
