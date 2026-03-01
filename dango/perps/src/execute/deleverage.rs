@@ -153,6 +153,7 @@ fn _deleverage(
     // --------- Step 2: Close profitable positions at oracle price ------------
 
     let mut pnls: BTreeMap<Addr, UsdValue> = BTreeMap::new();
+    let mut fees: BTreeMap<Addr, UsdValue> = BTreeMap::new();
 
     for (pair_id, _score) in &scored {
         let pair_state = pair_states.get_mut(pair_id).unwrap();
@@ -174,6 +175,7 @@ fn _deleverage(
             oracle_price,
             Dimensionless::ZERO,
             &mut pnls,
+            &mut fees,
             user,
         )?;
     }

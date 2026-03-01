@@ -8,7 +8,7 @@ use {
         execute::{
             BANK, ORACLE,
             cancel_order::cancel_all_orders_for,
-            submit_order::{match_order, settle_fill, settle_pnls, settle_vault_pnl},
+            submit_order::{match_order, settle_fill, settle_pnls},
         },
     },
     anyhow::ensure,
@@ -195,6 +195,7 @@ fn execute_close_schedule(
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, UsdValue>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
     UsdValue,
 )> {
@@ -206,6 +207,7 @@ fn execute_close_schedule(
     };
 
     let mut all_pnls: BTreeMap<Addr, UsdValue> = BTreeMap::new();
+    let mut all_fees: BTreeMap<Addr, UsdValue> = BTreeMap::new();
     let mut all_order_mutations: Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)> = Vec::new();
     let mut closed_notional = UsdValue::ZERO;
 
@@ -220,7 +222,7 @@ fn execute_close_schedule(
             UsdPrice::ZERO
         };
 
-        let (unfilled, pnls, order_mutations) = match_order(
+        let (unfilled, pnls, fees, order_mutations) = match_order(
             storage,
             &liq_param,
             pair_id,
@@ -236,6 +238,11 @@ fn execute_close_schedule(
         // Merge PnLs.
         for (addr, pnl) in pnls {
             all_pnls.entry(addr).or_default().checked_add_assign(pnl)?;
+        }
+
+        // Merge fees.
+        for (addr, fee) in fees {
+            all_fees.entry(addr).or_default().checked_add_assign(fee)?;
         }
 
         // Collect order mutations with pair context.
@@ -264,6 +271,7 @@ fn execute_close_schedule(
                 oracle_price,
                 Dimensionless::ZERO,
                 &mut all_pnls,
+                &mut all_fees,
                 user,
             )?;
 
@@ -278,6 +286,7 @@ fn execute_close_schedule(
                 oracle_price,
                 Dimensionless::ZERO,
                 &mut all_pnls,
+                &mut all_fees,
                 contract,
             )?;
 
@@ -287,13 +296,20 @@ fn execute_close_schedule(
         }
     }
 
-    Ok((all_pnls, all_order_mutations, closed_notional))
+    Ok((all_pnls, all_fees, all_order_mutations, closed_notional))
 }
 
-/// Compute the liquidation fee, cap it at remaining margin, and deduct from
-/// the user's PnL entry.
+/// Compute the liquidation fee, cap it at remaining margin, and add to the
+/// user's fee entry.
+///
+/// Mutates:
+///
+/// - `fees` — liquidation fee added for the user.
+///
+/// Returns: `()`
 fn apply_liquidation_fee(
-    pnls: &mut BTreeMap<Addr, UsdValue>,
+    pnls: &BTreeMap<Addr, UsdValue>,
+    fees: &mut BTreeMap<Addr, UsdValue>,
     user: Addr,
     closed_notional: UsdValue,
     liquidation_fee_rate: Dimensionless,
@@ -304,12 +320,10 @@ fn apply_liquidation_fee(
     let remaining_margin = collateral_value.checked_add(user_pnl)?.max(UsdValue::ZERO);
     let actual_fee = fee_usd.min(remaining_margin);
 
-    // Deduct the fee from the user's PnL entry. This routes the fee to the
-    // vault when settle_pnls converts USD values to base amounts.
     if actual_fee.is_non_zero() {
-        pnls.entry(user)
+        fees.entry(user)
             .or_default()
-            .checked_sub_assign(actual_fee)?;
+            .checked_add_assign(actual_fee)?;
     }
 
     Ok(())
@@ -374,7 +388,7 @@ fn _liquidate(
     let mut all_maker_states: BTreeMap<Addr, UserState> = BTreeMap::new();
     all_maker_states.insert(contract, vault_state);
 
-    let (mut all_pnls, all_order_mutations, closed_notional) = execute_close_schedule(
+    let (all_pnls, mut all_fees, all_order_mutations, closed_notional) = execute_close_schedule(
         storage,
         &schedule,
         user,
@@ -389,20 +403,18 @@ fn _liquidate(
     // -------------------- Step 4: Liquidation fee -----------------------------
 
     apply_liquidation_fee(
-        &mut all_pnls,
+        &all_pnls,
+        &mut all_fees,
         user,
         closed_notional,
         param.liquidation_fee_rate,
         collateral_value,
     )?;
 
-    // ------------- Step 5: Handle vault PnL + bad debt ------------------------
+    // ----------------------- Step 5: Settle PnLs ------------------------------
 
-    settle_vault_pnl(&mut all_pnls, contract, settlement_currency_price, state)?;
-
-    // ----------------------- Step 6: Settle PnLs ------------------------------
-
-    let (payouts, mut collections) = settle_pnls(all_pnls, settlement_currency_price, state)?;
+    let (payouts, mut collections) =
+        settle_pnls(all_pnls, all_fees, settlement_currency_price, state, contract)?;
 
     // Bad debt check: if the user owes more than their collateral, cap the
     // collection and absorb the bad debt from the vault.
