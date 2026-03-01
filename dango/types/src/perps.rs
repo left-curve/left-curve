@@ -110,6 +110,10 @@ pub struct Param {
     /// vault orders. Must be kept in sync when pairs are added/removed
     /// or weights change.
     pub vault_total_weight: Dimensionless,
+
+    /// Duration between funding collections. The cron job applies funding
+    /// only when this period elapses.
+    pub funding_period: Duration,
 }
 
 /// Parameters that apply to an individual trading pair.
@@ -124,11 +128,6 @@ pub struct PairParam {
     /// The cron job walks bids/asks to find the average execution price for
     /// selling/buying this much notional.
     pub impact_notional: UsdValue,
-
-    /// Duration between funding collections. The cron job runs more
-    /// frequently to sample premiums; funding is only applied when this
-    /// period elapses.
-    pub funding_period: Duration,
 
     /// Half the bid-ask spread the vault quotes around the oracle price. The
     /// vault places bids at `oracle_price * (1 - vault_half_spread)` and asks
@@ -188,7 +187,6 @@ impl PairParam {
         Self {
             max_abs_oi: Quantity::new_int(1_000_000),
             impact_notional: UsdValue::new_int(10_000),
-            funding_period: Duration::from_hours(1),
             ..Default::default()
         }
     }
@@ -211,6 +209,9 @@ pub struct State {
     /// denominated in USD. When non-zero, ADL can be triggered. Reduced as
     /// profitable positions are forcibly closed and their PnL forfeited.
     pub adl_deficit: UsdValue,
+
+    /// Timestamp of the most recent funding collection.
+    pub last_funding_time: Timestamp,
 }
 
 /// State of an individual trading pair.
@@ -229,25 +230,6 @@ pub struct PairState {
     /// funding, take the difference between the current value and the position's
     /// `entry_funding_per_unit`.
     pub funding_per_unit: FundingPerUnit,
-
-    /// Timestamp of the most recent funding collection.
-    pub last_funding_time: Timestamp,
-
-    /// Running sum of premium samples since the last funding collection.
-    /// Divided by `premium_samples` to get the average premium.
-    pub premium_sum: Dimensionless,
-
-    /// Number of premium samples accumulated since last funding collection.
-    pub premium_samples: i128,
-}
-
-impl PairState {
-    pub fn new(current_time: Timestamp) -> Self {
-        Self {
-            last_funding_time: current_time,
-            ..Default::default()
-        }
-    }
 }
 
 /// State of a specific user.

@@ -37,11 +37,14 @@ pub(crate) const ORACLE: Addr = addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d"
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     PARAM.save(ctx.storage, &msg.param)?;
-    STATE.save(ctx.storage, &State::default())?;
+    STATE.save(ctx.storage, &State {
+        last_funding_time: ctx.block.timestamp,
+        ..Default::default()
+    })?;
 
     for (pair_id, pair_param) in &msg.pair_params {
         PAIR_PARAMS.save(ctx.storage, pair_id, pair_param)?;
-        PAIR_STATES.save(ctx.storage, pair_id, &PairState::new(ctx.block.timestamp))?;
+        PAIR_STATES.save(ctx.storage, pair_id, &PairState::default())?;
     }
 
     PAIR_IDS.save(ctx.storage, &msg.pair_params.into_keys().collect())?;

@@ -178,7 +178,6 @@ mod tests {
     use {
         super::*,
         dango_types::{FundingPerUnit, perps::PairState},
-        grug::Timestamp,
         std::collections::BTreeMap,
     };
 
@@ -187,7 +186,7 @@ mod tests {
     }
 
     fn default_pair_state() -> PairState {
-        PairState::new(Timestamp::from_nanos(0))
+        PairState::default()
     }
 
     fn make_user_state(size: i128, entry_price: i128) -> UserState {

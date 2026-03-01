@@ -25,7 +25,7 @@ pub fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // Persist updated user state (or remove if empty).
     if user_state.is_empty() {
-        USER_STATES.remove(ctx.storage, ctx.sender);
+        USER_STATES.remove(ctx.storage, ctx.sender)?;
     } else {
         USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     }
@@ -174,7 +174,7 @@ mod tests {
 
         // Persist (the outer fn would do this).
         if user_state.is_empty() {
-            USER_STATES.remove(&mut ctx.storage, USER);
+            USER_STATES.remove(&mut ctx.storage, USER).unwrap();
         }
         assert!(USER_STATES.may_load(&ctx.storage, USER).unwrap().is_none());
     }

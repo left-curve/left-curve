@@ -55,7 +55,7 @@ pub fn withdraw(ctx: MutableCtx, margin: UsdValue) -> anyhow::Result<Response> {
 
     // Persist updated user state (or remove if empty).
     if user_state.is_empty() {
-        USER_STATES.remove(ctx.storage, ctx.sender);
+        USER_STATES.remove(ctx.storage, ctx.sender)?;
     } else {
         USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     }

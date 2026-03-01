@@ -104,7 +104,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     }
 
     if user_state.is_empty() {
-        USER_STATES.remove(ctx.storage, user);
+        USER_STATES.remove(ctx.storage, user)?;
     } else {
         USER_STATES.save(ctx.storage, user, &user_state)?;
     }
@@ -529,7 +529,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let pair_state = PairState::new(Timestamp::from_seconds(0));
+        let pair_state = PairState::default();
 
         setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
@@ -545,7 +545,7 @@ mod tests {
         pair_params.insert(pair_btc(), btc_pair_param());
 
         let mut pair_states = BTreeMap::new();
-        pair_states.insert(pair_btc(), PairState::new(Timestamp::from_seconds(0)));
+        pair_states.insert(pair_btc(), PairState::default());
 
         let mut oracle_prices = BTreeMap::new();
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(50_000));
@@ -600,8 +600,10 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut pair_state = PairState::new(Timestamp::from_seconds(0));
-        pair_state.long_oi = Quantity::new_int(10);
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(10),
+            ..Default::default()
+        };
 
         setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
@@ -689,8 +691,10 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut pair_state = PairState::new(Timestamp::from_seconds(0));
-        pair_state.long_oi = Quantity::new_int(10);
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(10),
+            ..Default::default()
+        };
 
         setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
@@ -773,8 +777,8 @@ mod tests {
 
         let param = default_param();
 
-        let btc_state = PairState::new(Timestamp::from_seconds(0));
-        let eth_state = PairState::new(Timestamp::from_seconds(0));
+        let btc_state = PairState::default();
+        let eth_state = PairState::default();
 
         setup_storage(&mut ctx.storage, &param, &[
             (pair_btc(), btc_pair_param(), btc_state.clone()),
@@ -881,8 +885,10 @@ mod tests {
             liquidation_fee_rate: Dimensionless::new_permille(500), // 50% fee to test capping
             ..default_param()
         };
-        let mut pair_state = PairState::new(Timestamp::from_seconds(0));
-        pair_state.long_oi = Quantity::new_int(1);
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
 
         setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
@@ -959,7 +965,7 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let pair_state = PairState::new(Timestamp::from_seconds(0));
+        let pair_state = PairState::default();
 
         setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
@@ -995,11 +1001,15 @@ mod tests {
         let param = default_param();
 
         // User is short → short_oi tracks their positions.
-        let mut btc_state = PairState::new(Timestamp::from_seconds(0));
-        btc_state.short_oi = Quantity::new_int(1);
+        let btc_state = PairState {
+            short_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
 
-        let mut eth_state = PairState::new(Timestamp::from_seconds(0));
-        eth_state.short_oi = Quantity::new_int(10);
+        let eth_state = PairState {
+            short_oi: Quantity::new_int(10),
+            ..Default::default()
+        };
 
         setup_storage(&mut ctx.storage, &param, &[
             (pair_btc(), btc_pair_param(), btc_state.clone()),
@@ -1135,8 +1145,10 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut pair_state = PairState::new(Timestamp::from_seconds(0));
-        pair_state.short_oi = Quantity::new_int(10);
+        let pair_state = PairState {
+            short_oi: Quantity::new_int(10),
+            ..Default::default()
+        };
 
         setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),

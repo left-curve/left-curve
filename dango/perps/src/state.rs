@@ -3,7 +3,7 @@ use {
         UsdPrice,
         perps::{Order, OrderId, PairId, PairParam, PairState, Param, State, UserState},
     },
-    grug::{Addr, IndexedMap, Item, Map, MultiIndex, UniqueIndex},
+    grug::{Addr, IndexedMap, Item, Map, MultiIndex, Timestamp, UniqueIndex},
     std::collections::BTreeSet,
 };
 
@@ -17,7 +17,8 @@ pub const PAIR_PARAMS: Map<&PairId, PairParam> = Map::new("pair_param");
 
 pub const PAIR_STATES: Map<&PairId, PairState> = Map::new("pair_state");
 
-pub const USER_STATES: Map<Addr, UserState> = Map::new("user_state");
+pub const USER_STATES: IndexedMap<Addr, UserState, UserStateIndexes> =
+    IndexedMap::new("us", UserStateIndexes::new("us", "us__unlock"));
 
 pub const NEXT_ORDER_ID: Item<OrderId> = Item::new("next_order_id");
 
@@ -50,6 +51,31 @@ impl OrderIndexes<'static> {
                 order_id_namespace,
             ),
             user: MultiIndex::new(|_, order| order.user, pk_namespace, user_namespace),
+        }
+    }
+}
+
+#[grug::index_list(Addr, UserState)]
+pub struct UserStateIndexes<'a> {
+    /// If the user state has one or more pending unlocks, the earlist ending
+    /// time of those unlocks; otherwise, `Timestamp::MAX`.
+    pub earliest_unlock_end_time: MultiIndex<'a, Addr, Timestamp, UserState>,
+}
+
+impl UserStateIndexes<'static> {
+    pub const fn new(pk_namespace: &'static str, idx_namespace: &'static str) -> Self {
+        UserStateIndexes {
+            earliest_unlock_end_time: MultiIndex::new(
+                |_, user_state| {
+                    user_state
+                        .unlocks
+                        .front()
+                        .map(|unlock| unlock.end_time)
+                        .unwrap_or(Timestamp::MAX)
+                },
+                pk_namespace,
+                idx_namespace,
+            ),
         }
     }
 }

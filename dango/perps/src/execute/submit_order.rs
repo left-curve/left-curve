@@ -740,11 +740,7 @@ mod tests {
             .save(storage, &pair_id(), &test_pair_param())
             .unwrap();
         PAIR_STATES
-            .save(
-                storage,
-                &pair_id(),
-                &PairState::new(Timestamp::from_nanos(0)),
-            )
+            .save(storage, &pair_id(), &PairState::default())
             .unwrap();
         NEXT_ORDER_ID.save(storage, &Uint64::new(1)).unwrap();
     }

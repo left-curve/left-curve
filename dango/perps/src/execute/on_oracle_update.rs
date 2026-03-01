@@ -56,7 +56,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     if param.vault_total_weight.is_zero() || vault_margin_value.is_zero() {
         // Persist vault state (orders were cancelled).
         if vault_state.is_empty() {
-            USER_STATES.remove(ctx.storage, ctx.contract);
+            USER_STATES.remove(ctx.storage, ctx.contract)?;
         } else {
             USER_STATES.save(ctx.storage, ctx.contract, &vault_state)?;
         }
@@ -149,7 +149,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
     if vault_state.is_empty() {
-        USER_STATES.remove(ctx.storage, ctx.contract);
+        USER_STATES.remove(ctx.storage, ctx.contract)?;
     } else {
         USER_STATES.save(ctx.storage, ctx.contract, &vault_state)?;
     }

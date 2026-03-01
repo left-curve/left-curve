@@ -85,7 +85,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     }
 
     if user_state.is_empty() {
-        USER_STATES.remove(ctx.storage, user);
+        USER_STATES.remove(ctx.storage, user)?;
     } else {
         USER_STATES.save(ctx.storage, user, &user_state)?;
     }
@@ -310,7 +310,7 @@ mod tests {
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
             btc_pair_param(),
-            PairState::new(Timestamp::from_seconds(0)),
+            PairState::default(),
         )]);
 
         save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
@@ -337,7 +337,7 @@ mod tests {
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
             btc_pair_param(),
-            PairState::new(Timestamp::from_seconds(0)),
+            PairState::default(),
         )]);
 
         // Don't save any positions for USER.
@@ -361,7 +361,7 @@ mod tests {
 
         let param = default_param();
         let mut state = state_with_deficit(0, 5_000);
-        let pair_state = PairState::new(Timestamp::from_seconds(0));
+        let pair_state = PairState::default();
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
@@ -420,8 +420,10 @@ mod tests {
         let param = default_param();
         // Deficit = $5,000
         let mut state = state_with_deficit(0, 5_000);
-        let mut pair_state = PairState::new(Timestamp::from_seconds(0));
-        pair_state.long_oi = Quantity::new_int(1);
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
@@ -494,8 +496,10 @@ mod tests {
         let param = default_param();
         // Deficit = $20,000, PnL will be $15,000
         let mut state = state_with_deficit(0, 20_000);
-        let mut pair_state = PairState::new(Timestamp::from_seconds(0));
-        pair_state.long_oi = Quantity::new_int(1);
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
@@ -555,8 +559,8 @@ mod tests {
         let param = default_param();
         let mut state = state_with_deficit(0, 3_000);
 
-        let btc_state = PairState::new(Timestamp::from_seconds(0));
-        let eth_state = PairState::new(Timestamp::from_seconds(0));
+        let btc_state = PairState::default();
+        let eth_state = PairState::default();
 
         setup_storage(&mut ctx.storage, &param, &state, &[
             (pair_btc(), btc_pair_param(), btc_state.clone()),
@@ -625,8 +629,10 @@ mod tests {
 
         let param = default_param();
         let mut state = state_with_deficit(0, 5_000);
-        let mut pair_state = PairState::new(Timestamp::from_seconds(0));
-        pair_state.long_oi = Quantity::new_int(1);
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
 
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
@@ -685,7 +691,7 @@ mod tests {
         setup_storage(&mut ctx.storage, &param, &state, &[(
             pair_btc(),
             btc_pair_param(),
-            PairState::new(Timestamp::from_seconds(0)),
+            PairState::default(),
         )]);
 
         let result = super::deleverage(ctx.as_mutable(), CONTRACT);

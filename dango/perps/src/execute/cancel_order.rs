@@ -57,7 +57,7 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // Delete the user state if it's empty. Otherwise, save the updated user state.
     if user_state.is_empty() {
-        USER_STATES.remove(ctx.storage, ctx.sender);
+        USER_STATES.remove(ctx.storage, ctx.sender)?;
     } else {
         USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     }
