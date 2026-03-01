@@ -4,7 +4,7 @@ This chapter describes how orders are submitted, matched, filled, and settled in
 
 ## 1. Order types
 
-Every order carries an `OrderKind`:
+An order can be order:
 
 - **Market** — immediate-or-cancel (IOC). Specifies a `max_slippage` relative to the oracle price. Any unfilled remainder after matching is discarded (unless nothing filled at all, which is an error).
 - **Limit** — good-till-cancelled (GTC). Specifies a `limit_price`. Any unfilled remainder is stored as a resting order on the book. If `post_only` is set, the order is rejected if it would cross the best price on the opposite side — it takes a fast path and never enters the matching engine.
@@ -90,13 +90,17 @@ $$
 \mathtt{equity} \geq \mathtt{projectedIM} + \mathtt{projectedFee} + \mathtt{reservedMargin}
 $$
 
-where $\mathtt{projectedIM}$ is the initial margin assuming the full order fills (see [Margin §5](1-margin.md#5-initial-margin-im)) and $\mathtt{projectedFee}$ is $|\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{takerFeeRate}$.
+where $\mathtt{projectedIM}$ is the initial margin assuming the full order fills (see [Margin §5](1-margin.md#5-initial-margin-im)) and $\mathtt{projectedFee}$ is
+
+$$
+|\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{takerFeeRate}
+$$
 
 This prevents a taker from submitting orders they cannot collateralise.
 
 ## 6. Self-trade prevention
 
-The exchange uses **EXPIRE\_MAKER** mode. When the taker encounters their own resting order on the opposite side:
+The exchange uses [`EXPIRE_MAKER`](https://developers.binance.com/docs/derivatives/usds-margined-futures/faq/stp-faq) mode. When the taker encounters their own resting order on the opposite side:
 
 1. The maker (resting) order is **cancelled** (removed from the book).
 2. The taker's `open_order_count` and `reserved_margin` are decremented.
@@ -213,7 +217,7 @@ After matching completes:
 
 - **Market orders:** the unfilled remainder is silently discarded. If nothing was filled at all, the transaction reverts with _"no liquidity at acceptable price"_.
 - **Limit orders (GTC):** the unfilled remainder is stored as a resting order. Storage requires:
-  - `open_order_count < max_open_orders`
+  - `open_order_count` < `max_open_orders`
   - Price is aligned to the pair's tick size ($\mathtt{limitPrice} \bmod \mathtt{tickSize} = 0$)
   - Sufficient available margin (skipped for reduce-only orders) — see below
 
@@ -229,7 +233,7 @@ $$
 \mathtt{availableMargin} \geq \mathtt{marginToReserve}
 $$
 
-If the check passes, `reservedMargin` is increased by $\mathtt{marginToReserve}$ and `openOrderCount` is incremented. This is the **0 %-fill scenario** check — it ensures the user can afford the order even if nothing fills immediately.
+If the check passes, `reserved_margin` is increased by $\mathtt{marginToReserve}$ and `open_order_count` is incremented. This is the **0 %-fill scenario** check — it ensures the user can afford the order even if nothing fills immediately.
 
 **Post-only limit orders** take a fast path that bypasses the matching engine entirely. They are rejected if they would cross the best price on the opposite side:
 
@@ -251,7 +255,7 @@ The constraint is checked **before matching** and does not apply to reduce-only 
 
 ### Single cancel
 
-A user can cancel any individual resting order by its order ID. The contract looks up the ID in `BIDS` first, then `ASKS`. Only the order's owner can cancel it.
+A user can cancel any individual resting order by its order ID.
 
 On cancellation:
 
@@ -262,4 +266,4 @@ On cancellation:
 
 ### Bulk cancel
 
-A user can cancel **all** of their resting orders across both sides of the book in a single transaction. The contract iterates the user's orders in `BIDS` then `ASKS`, removing each one and releasing margin. The same cleanup logic applies — if the user state becomes empty after all orders are removed, it is deleted.
+A user can cancel **all** of their resting orders across both sides of the book in a single transaction. The contract iterates the user's resting orders, removing each one and releasing margin. The same cleanup logic applies — if the user state becomes empty after all orders are removed, it is deleted.

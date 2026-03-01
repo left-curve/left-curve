@@ -22,11 +22,9 @@ $$
 
 Strict inequality: an account whose equity exactly equals its MM is still safe. An account with no open positions is never liquidatable regardless of its equity.
 
----
-
 ## 2. Close schedule
 
-When an account is liquidatable the system computes the **minimum set of position closures** needed to restore it above maintenance margin.
+When an account is liquidatable, the system computes the **minimum set of position closures** needed to restore it above maintenance margin.
 
 1. For every open position, compute its MM contribution:
 
@@ -38,22 +36,19 @@ When an account is liquidatable the system computes the **minimum set of positio
 
 3. Walk the sorted list and close just enough to cover the deficit:
 
-```text
-deficit = MM − equity
+   - $\mathtt{deficit} = \mathtt{MM} − \mathtt{equity}$
+   - For each position:
+     - If $\mathtt{deficit} \le 0$: stop
+     - $\mathtt{closeSize} = \min \left( \left\lceil \frac{\mathtt{deficit}}{\mathtt{oraclePrice} \times \mathtt{mmr}} \right\rceil,\; |\mathtt{size}| \right)$
+     - $\mathtt{deficit} \mathrel{-}= \mathtt{closeSize} \times \mathtt{oraclePrice} \times \mathtt{mmr}$
 
-for each position (largest MM first):
-    if deficit ≤ 0: stop
-    close_amount = min(⌈deficit / (oracle_price × mmr)⌉, |size|)
-    deficit −= close_amount × oracle_price × mmr
-```
-
-This produces a vector of _(pair, close\_size)_ entries. Each close\_size has the **opposite sign** of the existing position (a long is closed with a sell, a short with a buy). Only positions that contribute to the deficit are touched and they may be **partially closed** when the deficit is small relative to the position.
+This produces a vector of $(\mathtt{pairId},\; \mathtt{closeSize})$ entries. Each $\mathtt{closeSize}$ has the **opposite sign** of the existing position (a long is closed with a sell, a short with a buy). Only positions that contribute to the deficit are touched and they may be **partially closed** when the deficit is small relative to the position.
 
 ## 3. Position closure
 
 Each entry in the close schedule is executed in two phases:
 
-### 3a. Order-book matching
+### 3a. Order book matching
 
 The close is submitted as a **market order** against the on-chain order book. It matches resting limit orders at price-time priority. Any filled amount is settled normally (mark-to-market PnL between the entry price and the fill price).
 
@@ -72,11 +67,11 @@ $$
 $$
 
 $$
-\mathtt{remainingMargin} = \max(0,\; \mathtt{collateral} + \mathtt{userPnlAfterCloses})
+\mathtt{remainingMargin} = \max (0,\; \mathtt{collateral} + \mathtt{userPnlAfterCloses})
 $$
 
 $$
-\mathtt{fee} = \min(\mathtt{rawFee},\; \mathtt{remainingMargin})
+\mathtt{fee} = \min (\mathtt{rawFee},\; \mathtt{remainingMargin})
 $$
 
 The fee is deducted from the user's PnL and routed to the **vault**. It is capped at the remaining margin so the fee itself never creates bad debt.
@@ -96,7 +91,7 @@ $$
 The bad debt is subtracted from the vault margin:
 
 $$
-\mathtt{vaultMargin} \gets \mathtt{vaultMargin} - \mathtt{badDebt}
+\mathtt{vaultMargin} \mathrel{-}= \mathtt{badDebt}
 $$
 
 This can drive $\mathtt{vaultMargin}$ negative. A negative vault margin represents the **ADL deficit** — bad debt not yet recovered — and triggers auto-deleveraging.
@@ -120,7 +115,7 @@ $$
 $$
 
 $$
-\mathtt{leverage} = \frac{\mathtt{notional}}{\mathtt{equity}} \quad \text{where } \mathtt{notional} = |\mathtt{size}| \times \mathtt{oraclePrice}
+\mathtt{leverage} = \frac{\mathtt{notional}}{\mathtt{equity}},\; \text{where } \mathtt{notional} = |\mathtt{size}| \times \mathtt{oraclePrice}
 $$
 
 $$
@@ -143,7 +138,7 @@ Because ADL uses the oracle price, the affected user experiences no slippage bey
 After ADL closes are settled the user's total realised PnL is applied to the deficit:
 
 $$
-\mathtt{pnl} = \sum \mathtt{realisedPnlFromAdlCloses} \quad (\text{always} > 0 \text{ for selected users})
+\mathtt{pnl} = \sum \mathtt{realisedPnlFromAdlCloses}\; (\text{always} > 0 \text{ for selected users})
 $$
 
 $$
@@ -159,7 +154,7 @@ $$
 $$
 
 $$
-\mathtt{vaultMargin} \gets \mathtt{vaultMargin} + \mathtt{forfeited}
+\mathtt{vaultMargin} \mathrel{+}= \mathtt{forfeited}
 $$
 
 The user forfeits up to the absolute value of the negative $\mathtt{vaultMargin}$ of their profit to make the exchange whole. The remainder ($\mathtt{credit}$) is added to the user's margin. No collateral beyond the realised PnL is ever seized.

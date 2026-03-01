@@ -1,6 +1,6 @@
 # Vault
 
-## 1 Overview
+## 1. Overview
 
 The vault is the **counterparty of last resort** for the perpetual futures exchange. It serves three functions:
 
@@ -10,9 +10,9 @@ The vault is the **counterparty of last resort** for the perpetual futures excha
 
 Liquidity providers (LPs) deposit settlement currency into the vault and receive fungible vault shares in return.
 
-## 2 AddLiquidity
+## 2. Liquidity provision
 
-Adding liquidity follows an **ERC-4626 virtual-shares** pattern to prevent the first-depositor inflation attack.
+Adding liquidity follows an **ERC-4626 virtual shares** pattern to prevent the first depositor inflation attack.
 
 ### Constants
 
@@ -23,12 +23,18 @@ Adding liquidity follows an **ERC-4626 virtual-shares** pattern to prevent the f
 
 ### Share minting
 
+The LP sends settlement currency token of amount $\mathtt{depositAmount}$ to the contract.
+
 $$
 \mathtt{effectiveSupply} = \mathtt{vaultShareSupply} + \mathtt{virtualShares}
 $$
 
 $$
 \mathtt{effectiveEquity} = \mathtt{vaultEquity} + \mathtt{virtualAssets}
+$$
+
+$$
+\mathtt{depositValue} = \mathtt{depositAmount} \times \mathtt{settlementCurrencyPrice}
 $$
 
 $$
@@ -37,49 +43,39 @@ $$
 
 Floor rounding protects the vault from rounding exploitation. A minimum-shares parameter lets depositors revert if slippage is too high.
 
-### First-depositor protection
+### First depositor protection
 
-The virtual terms dominate when real supply and equity are small. An attacker cannot inflate the share price to steal from subsequent depositors because the initial share price is effectively $$\$1 / 1{,}000{,}000 = \$0.000001$$ per share.
+The virtual terms dominate when real supply and equity are small. An attacker cannot inflate the share price to steal from subsequent depositors because the initial share price is effectively $\$1 / 1{,}000{,}000 = \$0.000001$ per share.
 
 ### ADL pause
 
 Deposits are **paused** when $\mathtt{vaultMargin} < 0$. This prevents new capital from entering a vault that has unresolved bad debt — the deficit must be cleared via [ADL](5-liquidation-and-adl.md#7-adl-trigger) first.
 
-## 3 RemoveLiquidity
+## 3. Liquidity withdrawal
 
-Withdrawals are a two-step process: **RemoveLiquidity** (initiate) and **Claim** (finalize after cooldown).
-
-### RemoveLiquidity
-
-The LP sends vault shares back to the contract. The USD value to release is computed directly (no base-unit conversion needed — vault margin is already stored in USD):
+The LP sends vault shares back to the contract. The USD value to release is computed:
 
 $$
-\mathtt{effectiveSupply} = \mathtt{vaultShareSupply} + \mathtt{virtualShares}
+\mathtt{releaseValue} = \mathtt{effectiveEquity} \times \frac{\mathtt{sharesToBurn}}{\mathtt{effectiveSupply}}
 $$
 
-$$
-\mathtt{effectiveEquity} = \mathtt{vaultEquity} + \mathtt{virtualAssets}
-$$
-
-$$
-\mathtt{amountToRelease} = \left\lfloor \mathtt{effectiveEquity} \times \frac{\mathtt{sharesToBurn}}{\mathtt{effectiveSupply}} \right\rfloor
-$$
-
-Floor rounding protects the vault. The shares are burned and the USD amount is recorded as a pending unlock:
+The fund is not released immediately. A cooldown is initiated, with the ending time computed as:
 
 $$
 \mathtt{endTime} = \mathtt{currentTime} + \mathtt{vaultCooldownPeriod}
 $$
 
-### Claim
+Once $\mathtt{endTime}$ is reached, the contract is automatically triggered to release the fund to the LP. The amount of settlement currency tokens to be released is computed as:
 
-After $\mathtt{endTime}$ has passed, the LP calls Claim to receive the settlement currency. Multiple matured unlocks are batched and converted from USD to settlement-currency tokens at the **current oracle price** (floor-rounded).
+$$
+\mathtt{releaseAmount} = \left\lfloor \frac{\mathtt{releaseValue}}{\mathtt{settlementCurrencyPrice}} \right\rfloor
+$$
 
 ### ADL pause
 
 Like deposits, withdrawals are **paused** when $\mathtt{vaultMargin} < 0$.
 
-## 4 Vault equity
+## 4. Vault equity
 
 The vault has its own user state (positions acquired from market-making fills and liquidation backstops). Its equity follows the same formula as any user:
 
@@ -91,7 +87,9 @@ where $\mathtt{vaultMargin}$ is the vault's internal USD margin (updated in-plac
 
 If $\mathtt{effectiveEquity}$ is non-positive the vault is in catastrophic loss and both deposits and withdrawals are disabled.
 
-## 5 Market-making policy
+## 5. Market making policy
+
+The vault uses its margin to market make in the order book. For now, it does so following a naïve policy. We expect to optimize this in the future.
 
 Each block, after the oracle update, the vault cancels all existing quotes and recomputes bid/ask orders for every pair.
 
