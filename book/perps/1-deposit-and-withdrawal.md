@@ -14,15 +14,9 @@ Token conversion only happens at two boundaries:
 - **Withdraw** — the user requests a USD amount; the oracle price converts it
   to settlement-currency tokens (floor-rounded) and transfers them out.
 
-This design eliminates rounding errors that accumulate from repeated USD-to-token
-conversions, reduces cross-contract calls, and keeps margining logic entirely
-inside the perps contract.
+Internal logics of the perps contract use USD amounts exclusively.
 
 ## 2 Trader Deposit
-
-```
-ExecuteMsg::Deposit {}
-```
 
 The user sends settlement currency as attached funds. The perps contract:
 
@@ -34,10 +28,6 @@ The tokens remain in the perps contract's bank balance.
 
 ## 3 Trader Withdraw
 
-```
-ExecuteMsg::Withdraw { margin: UsdValue }
-```
-
 The user specifies how much USD margin to withdraw. The perps contract:
 
 1. Computes available margin (equity minus used margin minus reserved margin),
@@ -48,14 +38,3 @@ The user specifies how much USD margin to withdraw. The perps contract:
    (floor-rounded for safety — the contract keeps slightly more than strictly
    needed).
 5. Transfers the tokens to the user.
-
-## 4 Vault margin
-
-The vault's margin (`state.vaultMargin`) is a `UsdValue` that tracks:
-
-- LP deposits (via `AddLiquidity` → converted at oracle price).
-- Trading fees earned from all non-vault users.
-- The vault's own realized PnL from market-making and backstop fills.
-
-It is **not** a bank balance — it is an internal accounting value. Actual
-tokens only move when LPs claim unlocks or traders deposit/withdraw.
