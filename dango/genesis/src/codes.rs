@@ -117,10 +117,10 @@ impl GenesisCodes for RustVm {
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,
+            perps,
             taxman,
             vesting,
             warp,
-            perps,
         }
     }
 }

@@ -22,10 +22,10 @@ pub struct Contracts {
     pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
     pub oracle: Addr,
+    pub perps: Addr,
     pub taxman: Addr,
     pub vesting: Addr,
     pub warp: Addr,
-    pub perps: Addr,
 }
 
 #[derive(Clone, Copy)]
@@ -38,10 +38,10 @@ pub struct Codes<T> {
     pub gateway: T,
     pub hyperlane: Hyperlane<T>,
     pub oracle: T,
+    pub perps: T,
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
-    pub perps: T,
 }
 pub struct GenesisUser {
     pub salt: NewUserSalt,
@@ -115,16 +115,16 @@ pub struct OracleOption {
     pub pyth_trusted_signers: BTreeMap<Binary, Timestamp>,
 }
 
-pub struct VestingOption {
-    /// Cliff for Dango token unlocking.
-    pub unlocking_cliff: Duration,
-    /// Period for Dango token unlocking.
-    pub unlocking_period: Duration,
-}
-
 pub struct PerpsOption {
     /// Global parameters for the perpetuals contract.
     pub param: perps::Param,
     /// Per-pair parameters, keyed by the pair ID (e.g. "perp/ethusd").
     pub pair_params: BTreeMap<PairId, PairParam>,
+}
+
+pub struct VestingOption {
+    /// Cliff for Dango token unlocking.
+    pub unlocking_cliff: Duration,
+    /// Period for Dango token unlocking.
+    pub unlocking_period: Duration,
 }
