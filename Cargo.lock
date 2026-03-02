@@ -4157,6 +4157,7 @@ dependencies = [
  "metrics",
  "pyth-types",
  "test-case",
+ "tracing",
 ]
 
 [[package]]

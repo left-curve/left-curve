@@ -12,6 +12,7 @@
           "va": "0x75f38c6fcfc2fb8333e5c3ef89d13b7036abe3ff"
         },
         "oracle": "0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d",
+        "perps": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
         "taxman": "0xda70a9c1417aee00f960fe896add9d571f9c365b",
         "warp": "0x981e6817442143ce5128992c7ab4a317321f00e9"
       },

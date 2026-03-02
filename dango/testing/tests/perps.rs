@@ -4,14 +4,16 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
-        oracle::{self, PriceSource},
-        perps::{self, PairParam, Param, QueryOrdersByUserResponse, UserState},
+        oracle::{self, PriceSource, QueryPriceRequest},
+        perps::{self, PairParam, Param, UserState},
     },
     grug::{
-        Addressable, Coins, Denom, Duration, NumberConst, QuerierExt, ResultExt, Timestamp,
-        Udec128, Uint128, btree_map,
+        Addressable, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, NumberConst, QuerierExt,
+        ResultExt, Timestamp, Udec128, Uint128, btree_map, concat,
     },
-    std::collections::BTreeSet,
+    grug_app::CONTRACT_NAMESPACE,
+    pyth_types::{Channel, LeEcdsaMessage},
+    std::{collections::BTreeSet, str::FromStr},
 };
 
 fn pair_id() -> Denom {
@@ -145,7 +147,7 @@ fn trading_lifecycle() {
         .should_succeed();
 
     // Verify ask exists on the book.
-    let orders: QueryOrdersByUserResponse = suite
+    let orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -195,7 +197,7 @@ fn trading_lifecycle() {
     );
 
     // Maker's ask should be removed.
-    let orders: QueryOrdersByUserResponse = suite
+    let orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -363,7 +365,7 @@ fn limit_order_partial_fill_and_cancel() {
     assert_eq!(state.open_order_count, 1, "should have 1 open order");
 
     // Verify bid exists on the book.
-    let orders: QueryOrdersByUserResponse = suite
+    let orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -402,7 +404,7 @@ fn limit_order_partial_fill_and_cancel() {
     assert_eq!(state.open_order_count, 0, "should have 0 open orders");
 
     // Verify bid removed from book.
-    let orders: QueryOrdersByUserResponse = suite
+    let orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -1142,7 +1144,7 @@ fn vault_lp_lifecycle() {
         .should_succeed();
 
     // Vault should have orders on the book.
-    let vault_orders: QueryOrdersByUserResponse = suite
+    let vault_orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -1363,5 +1365,262 @@ fn vault_lp_lifecycle() {
         lp_state.margin > UsdValue::new_int(10_000),
         "LP margin ({}) should exceed original $10k (unlocks credited)",
         lp_state.margin
+    );
+}
+
+/// Verify that feeding Pyth prices triggers `OnOracleUpdate` (placing vault
+/// orders), and that when `OnOracleUpdate` fails the oracle price update is
+/// **not** reverted while the perps state changes from the failed call are
+/// rolled back.
+#[test]
+fn oracle_triggers_on_oracle_update() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Setup: Register Pyth price source for the perps pair + Fixed USDC source.
+    // Genesis already registers the LAZER trusted signer with Timestamp::MAX.
+    // We override USDC to Fixed so we don't need a USDC Pyth feed in this test.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: usdc::DECIMAL as u8,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+                pair.clone() => PriceSource::Pyth {
+                    id: 2,
+                    precision: 18,
+                    channel: Channel::RealTime,
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Setup: Deposit USDC and add vault liquidity (follows vault_lp_lifecycle).
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::AddLiquidity {
+                amount: UsdValue::new_int(5_000),
+                min_shares_to_mint: None,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Setup: Configure vault market-making weights.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Configure {
+                param: Param {
+                    vault_total_weight: Dimensionless::new_int(1),
+                    ..default_param()
+                },
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        vault_liquidity_weight: Dimensionless::new_int(1),
+                        vault_half_spread: Dimensionless::new_permille(50), // 5%
+                        vault_max_quote_size: Quantity::new_int(2),
+                        ..default_pair_param()
+                    },
+                },
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Vault should have no orders before any price is fed.
+    let vault_orders_0 = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: contracts.perps,
+        })
+        .should_succeed();
+
+    assert!(
+        vault_orders_0.bids.is_empty(),
+        "vault should have no bids before feeding prices"
+    );
+    assert!(
+        vault_orders_0.asks.is_empty(),
+        "vault should have no asks before feeding prices"
+    );
+
+    // -------------------------------------------------------------------------
+    // Step 1: Feed price #1. This triggers OnOracleUpdate via the submessage
+    // and the vault should place bid+ask orders.
+    // -------------------------------------------------------------------------
+
+    let message1 = LeEcdsaMessage {
+        payload: Binary::from_str(
+            "ddPHkyAnhCsRTAYAAQICAAAAAgDLzMJzLwAAAAT4/wcAAAACAPnb9QUAAAAABPj/",
+        )
+        .unwrap(),
+        signature: ByteArray::from_str(
+            "HJt9BJHEBuX0VhWDIjldnfwIYO9ufenGCVTMhQUwxhoYiX+TVDSqbNdQpXsRilNrS9Z7q/ET8obCBM9c97DmcQ==",
+        )
+        .unwrap(),
+        recovery_id: 1,
+    };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message1])),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Oracle price should be set for the perps pair.
+    let price1 = suite
+        .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+            denom: pair.clone(),
+        })
+        .unwrap();
+
+    assert!(
+        price1.humanized_price > Udec128::ZERO,
+        "oracle price should be set after feeding"
+    );
+
+    // Vault should have orders on the book (placed by OnOracleUpdate).
+    let vault_orders_1 = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: contracts.perps,
+        })
+        .should_succeed();
+
+    assert_eq!(
+        vault_orders_1.bids.len(),
+        1,
+        "vault should have exactly 1 bid after OnOracleUpdate"
+    );
+    assert_eq!(
+        vault_orders_1.asks.len(),
+        1,
+        "vault should have exactly 1 ask after OnOracleUpdate"
+    );
+    assert_eq!(
+        vault_orders_1.bids[0].pair_id, pair,
+        "bid should be for the perps pair"
+    );
+    assert_eq!(
+        vault_orders_1.asks[0].pair_id, pair,
+        "ask should be for the perps pair"
+    );
+
+    // bid = floor(oracle * 0.95) = floor(2038.056 * 0.95) = $1,936
+    // ask = ceil(oracle * 1.05) = ceil(2038.056 * 1.05) = $2,140
+    //
+    // Note that we use $1 tick size in the testing setup. It's not a sensible
+    // tick size for production, but it simplifies assertions like this.
+    assert_eq!(vault_orders_1.bids[0].limit_price, UsdPrice::new_int(1_936));
+    assert_eq!(vault_orders_1.asks[0].limit_price, UsdPrice::new_int(2_140));
+
+    // |size| = min(half_margin / (oracle * IMR), vault_max_quote_size)
+    //        = min(2500 / (2038.056 * 0.1), 2) = min(12.27, 2) = 2
+    assert_eq!(vault_orders_1.bids[0].size, Quantity::new_int(2));
+    assert_eq!(vault_orders_1.asks[0].size, Quantity::new_int(-2));
+
+    // -------------------------------------------------------------------------
+    // Step 2: Corrupt perps PARAM storage so OnOracleUpdate will fail on the
+    // next invocation (deserialization error).
+    // -------------------------------------------------------------------------
+
+    suite.app.db.with_state_storage_mut(|storage| {
+        let ns = concat(CONTRACT_NAMESPACE, contracts.perps.as_ref());
+        let full_key = concat(&ns, b"param");
+        storage.write(&full_key, b"garbled");
+    });
+
+    // -------------------------------------------------------------------------
+    // Step 3: Feed price #2. The oracle update itself succeeds (reply_on_error
+    // catches the perps failure), but OnOracleUpdate rolls back its state
+    // changes, so vault orders remain unchanged.
+    // -------------------------------------------------------------------------
+
+    let message2 = LeEcdsaMessage {
+        payload: Binary::from_str(
+            "ddPHk0DIiysRTAYAAQICAAAAAgD3e8JzLwAAAAT4/wcAAAACADDZ9QUAAAAABPj/",
+        )
+        .unwrap(),
+        signature: ByteArray::from_str(
+            "kToxd5mWk50/kezThZVzUf7cFIJ7t/fpDs5TboBop5Av9MgXhfcwsFPxtPwXkN7zwxul1U+Z/EOVje4HW53BBg==",
+        )
+        .unwrap(),
+        recovery_id: 0,
+    };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message2])),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Oracle price should have been updated (new timestamp or value).
+    let price2 = suite
+        .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+            denom: pair.clone(),
+        })
+        .unwrap();
+
+    assert!(
+        price2.timestamp >= price1.timestamp,
+        "oracle price should be updated despite OnOracleUpdate failure"
+    );
+
+    // Vault orders should be unchanged — the failed OnOracleUpdate rolled back
+    // any state changes it attempted (cancel + re-place). Compare order IDs to
+    // prove these are the exact same orders, not new ones at the same price.
+    let vault_orders_2 = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: contracts.perps,
+        })
+        .should_succeed();
+
+    assert!(
+        vault_orders_1
+            .bids
+            .iter()
+            .zip(vault_orders_2.bids.iter())
+            .all(|(a, b)| a.order_id == b.order_id),
+        "bid order IDs should be unchanged after failed OnOracleUpdate"
+    );
+    assert!(
+        vault_orders_1
+            .asks
+            .iter()
+            .zip(vault_orders_2.asks.iter())
+            .all(|(a, b)| a.order_id == b.order_id),
+        "ask order IDs should be unchanged after failed OnOracleUpdate"
     );
 }
