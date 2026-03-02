@@ -54,7 +54,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Deposit {} => deposit::deposit(ctx),
-        ExecuteMsg::Withdraw { margin } => withdraw::withdraw(ctx, margin),
+        ExecuteMsg::Withdraw { amount } => withdraw::withdraw(ctx, amount),
         ExecuteMsg::SubmitOrder {
             pair_id,
             size,
@@ -66,9 +66,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         },
         ExecuteMsg::CancelOrder(CancelOrderRequest::All) => cancel_order::cancel_all_orders(ctx),
         ExecuteMsg::AddLiquidity {
-            deposit_margin,
+            amount,
             min_shares_to_mint,
-        } => add_liquidity::add_liquidity(ctx, deposit_margin, min_shares_to_mint),
+        } => add_liquidity::add_liquidity(ctx, amount, min_shares_to_mint),
         ExecuteMsg::RemoveLiquidity { shares_to_burn } => {
             remove_liquidity::remove_liquidity(ctx, shares_to_burn)
         },

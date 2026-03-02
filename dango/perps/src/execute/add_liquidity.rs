@@ -20,7 +20,7 @@ use {
 /// Returns: `Response`.
 pub fn add_liquidity(
     ctx: MutableCtx,
-    deposit_margin: UsdValue,
+    amount: UsdValue,
     min_shares_to_mint: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     // ---------------------------- 1. Preparation -----------------------------
@@ -49,12 +49,12 @@ pub fn add_liquidity(
     // --------------------------- 2. Business logic ---------------------------
 
     _add_liquidity(
-        deposit_margin,
+        &perp_querier,
+        &mut oracle_querier,
         &mut state,
         &mut user_state,
         &vault_user_state,
-        &perp_querier,
-        &mut oracle_querier,
+        amount,
         min_shares_to_mint,
     )?;
 
@@ -75,19 +75,19 @@ pub fn add_liquidity(
 ///
 /// Returns: `()` on success.
 fn _add_liquidity(
-    deposit_margin: UsdValue,
+    perp_querier: &NoCachePerpQuerier,
+    oracle_querier: &mut OracleQuerier,
     state: &mut State,
     user_state: &mut UserState,
     vault_user_state: &UserState,
-    perp_querier: &NoCachePerpQuerier,
-    oracle_querier: &mut OracleQuerier,
+    amount: UsdValue,
     min_shares_to_mint: Option<Uint128>,
 ) -> anyhow::Result<()> {
     // ----------------------- Step 1. Validate deposit ------------------------
 
-    ensure!(deposit_margin.is_positive(), "nothing to do");
+    ensure!(amount.is_positive(), "nothing to do");
 
-    ensure!(user_state.margin >= deposit_margin, "insufficient margin");
+    ensure!(user_state.margin >= amount, "insufficient margin");
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
@@ -114,7 +114,7 @@ fn _add_liquidity(
     // -------------------------- Step 3. Mint shares --------------------------
 
     // deposit_margin is already a UsdValue — no conversion needed.
-    let ratio = deposit_margin
+    let ratio = amount
         .checked_div(effective_equity)?
         .into_inner()
         .checked_into_unsigned()?;
@@ -130,8 +130,8 @@ fn _add_liquidity(
     }
 
     // Deduct margin from user and credit to vault.
-    user_state.margin.checked_sub_assign(deposit_margin)?;
-    state.vault_margin.checked_add_assign(deposit_margin)?;
+    user_state.margin.checked_sub_assign(amount)?;
+    state.vault_margin.checked_add_assign(amount)?;
     (state.vault_share_supply).checked_add_assign(shares_to_mint)?;
 
     // Update user state.
@@ -169,12 +169,12 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            UsdValue::new_int(1),
+            &perp_querier,
+            &mut oracle_querier,
             &mut state,
             &mut user_state,
             &vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            UsdValue::new_int(1),
             None,
         )
         .unwrap();
@@ -206,12 +206,12 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            UsdValue::new_int(1),
+            &perp_querier,
+            &mut oracle_querier,
             &mut state,
             &mut user_state,
             &vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            UsdValue::new_int(1),
             None,
         )
         .unwrap();
@@ -233,12 +233,12 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _add_liquidity(
-            UsdValue::ZERO,
+            &perp_querier,
+            &mut oracle_querier,
             &mut state,
             &mut user_state,
             &vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            UsdValue::ZERO,
             None,
         )
         .unwrap_err();
@@ -262,12 +262,12 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _add_liquidity(
-            UsdValue::new_int(1),
+            &perp_querier,
+            &mut oracle_querier,
             &mut state,
             &mut user_state,
             &vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            UsdValue::new_int(1),
             None,
         )
         .unwrap_err();
@@ -296,12 +296,12 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            UsdValue::new_int(1),
+            &perp_querier,
+            &mut oracle_querier,
             &mut state,
             &mut user_state,
             &vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            UsdValue::new_int(1),
             Some(Uint128::new(1_000_000)),
         )
         .unwrap();
@@ -325,12 +325,12 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _add_liquidity(
-            UsdValue::new_int(1),
+            &perp_querier,
+            &mut oracle_querier,
             &mut state,
             &mut user_state,
             &vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            UsdValue::new_int(1),
             Some(Uint128::new(1_000_001)),
         )
         .unwrap_err();
@@ -361,12 +361,12 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            UsdValue::new_int(one_billion as i128),
+            &perp_querier,
+            &mut oracle_querier,
             &mut state,
             &mut user_state,
             &vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            UsdValue::new_int(one_billion as i128),
             None,
         )
         .unwrap();
@@ -400,12 +400,12 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            UsdValue::new_int(1),
+            &perp_querier,
+            &mut oracle_querier,
             &mut state,
             &mut user_state,
             &vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            UsdValue::new_int(1),
             None,
         )
         .unwrap();

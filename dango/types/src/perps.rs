@@ -307,7 +307,7 @@ pub enum ExecuteMsg {
     /// Withdraw margin from the trader's margin account.
     /// The requested USD amount is converted to settlement currency at the
     /// current oracle price (floor-rounded) and transferred to the user.
-    Withdraw { margin: UsdValue },
+    Withdraw { amount: UsdValue },
 
     /// Submit an order.
     SubmitOrder {
@@ -335,7 +335,8 @@ pub enum ExecuteMsg {
     /// Add liquidity to the counterparty vault by transferring margin to the vault.
     AddLiquidity {
         /// USD margin amount to transfer from the user's trading margin to the vault.
-        deposit_margin: UsdValue,
+        amount: UsdValue,
+
         /// Revert if less than this amount of shares is minted.
         min_shares_to_mint: Option<Uint128>,
     },
