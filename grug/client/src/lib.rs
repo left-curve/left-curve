@@ -104,8 +104,9 @@ impl QueryClient for TendermintRpcClient {
         // deserialize it.
         // If the Grug app works properly, these should always succeed.
         let proof = if prove {
-            ensure!(res.proof.is_some());
-            let proof = res.proof.unwrap();
+            let Some(proof) = res.proof else {
+                bail!("proof missing in `/store` query response");
+            };
             ensure!(proof.ops.len() == 1);
             ensure!(proof.ops[0].field_type == type_name::<Self::Proof>());
             ensure!(proof.ops[0].key == key.into_inner());

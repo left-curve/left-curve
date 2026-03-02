@@ -135,7 +135,14 @@ impl Cache {
     #[cfg(feature = "s3")]
     pub fn s3_bitmap(indexer_path: &IndexerPath) -> RoaringTreemap {
         if let Ok(file) = File::open(Self::s3_block_file_path(indexer_path)) {
-            RoaringTreemap::deserialize_from(BufReader::new(file)).unwrap()
+            match RoaringTreemap::deserialize_from(BufReader::new(file)) {
+                Ok(bitmap) => bitmap,
+                Err(_err) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(error = %_err, "Failed to deserialize S3 bitmap, starting with an empty bitmap");
+                    RoaringTreemap::new()
+                },
+            }
         } else {
             RoaringTreemap::new()
         }
@@ -377,11 +384,9 @@ impl Cache {
 
         for block_height in (last_synced_height + 1)..=last_stored_height {
             let context = context.clone();
-            let permit = semaphore
-                .clone()
-                .acquire_owned()
-                .await
-                .expect("Semaphore should not be acquired");
+            let permit = semaphore.clone().acquire_owned().await.map_err(|_err| {
+                IndexerError::runtime(format!("failed to acquire upload semaphore: {_err}"))
+            })?;
             let s3_bitmap = s3_bitmap.clone();
 
             let task = tokio::spawn(async move {

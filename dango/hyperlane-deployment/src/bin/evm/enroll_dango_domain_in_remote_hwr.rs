@@ -34,7 +34,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Load config
     let config = config::load_config()?;
-    let evm_config = config.evm.get(EVM_NETWORK).unwrap();
+    let evm_config = config
+        .evm
+        .get(EVM_NETWORK)
+        .ok_or_else(|| anyhow::anyhow!("missing EVM config for network `{EVM_NETWORK}`"))?;
 
     // Setup Ethereum provider
     let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;

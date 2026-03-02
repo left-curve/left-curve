@@ -4,7 +4,7 @@ use {
     indexer_httpd::graphql::mutation::Mutation,
 };
 
-fn main() {
+fn main() -> std::io::Result<()> {
     let schema = Schema::build(
         Query::default(),
         Mutation::default(),
@@ -12,12 +12,16 @@ fn main() {
     )
     .finish();
 
-    let filename = std::env::args()
-        .next_back()
-        .expect("No argument given. Please provide the path to the schema file.");
+    let filename = std::env::args().next_back().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "missing output path argument for schema file",
+        )
+    })?;
 
     let sdl = schema.sdl();
-    std::fs::write(&filename, sdl).unwrap();
+    std::fs::write(&filename, sdl)?;
 
     println!("Schema generated successfully at: {filename:?}");
+    Ok(())
 }

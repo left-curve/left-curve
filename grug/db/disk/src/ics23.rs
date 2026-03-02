@@ -1,8 +1,8 @@
 use {
-    crate::{DbResult, DiskDb, cf_preimages, new_read_options},
+    crate::{DbError, DbResult, DiskDb, cf_preimages, new_read_options},
     grug_app::{Db, IbcDb},
     grug_jmt::{ICS23_PROOF_SPEC, MerkleTree},
-    grug_types::{HashExt, Storage},
+    grug_types::{HashExt, StdError, Storage},
     ics23::{
         CommitmentProof, ExistenceProof, NonExistenceProof,
         commitment_proof::Proof as CommitmentProofInner,
@@ -57,7 +57,11 @@ impl IbcDb for DiskDb<MerkleTree> {
                     .next()
                     .map(|res| {
                         let (_, key) = res?;
-                        let value = state_storage.read(&key).unwrap();
+                        let value = state_storage.read(&key).ok_or_else(|| {
+                            DbError::from(StdError::host(format!(
+                                "missing left neighbor preimage value in state storage: {key:?}",
+                            )))
+                        })?;
                         generate_existence_proof(key.to_vec(), value)
                     })
                     .transpose()?;
@@ -70,7 +74,11 @@ impl IbcDb for DiskDb<MerkleTree> {
                     .next()
                     .map(|res| {
                         let (_, key) = res?;
-                        let value = state_storage.read(&key).unwrap();
+                        let value = state_storage.read(&key).ok_or_else(|| {
+                            DbError::from(StdError::host(format!(
+                                "missing right neighbor preimage value in state storage: {key:?}",
+                            )))
+                        })?;
                         generate_existence_proof(key.to_vec(), value)
                     })
                     .transpose()?;

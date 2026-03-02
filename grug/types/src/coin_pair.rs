@@ -12,11 +12,16 @@ use {
 #[macro_export]
 macro_rules! coin_pair {
     ($denom1:expr => $amount1:expr, $denom2:expr => $amount2:expr $(,)?) => {
-        $crate::CoinPair::new(
-            Coin::new($denom1, $amount1).unwrap(),
-            Coin::new($denom2, $amount2).unwrap(),
-        )
-        .unwrap()
+        match (
+            $crate::Coin::new($denom1, $amount1),
+            $crate::Coin::new($denom2, $amount2),
+        ) {
+            (Ok(coin1), Ok(coin2)) => match $crate::CoinPair::new(coin1, coin2) {
+                Ok(pair) => pair,
+                Err(err) => panic!("invalid coin pair: {err}"),
+            },
+            (Err(err), _) | (_, Err(err)) => panic!("invalid coin: {err}"),
+        }
     };
 }
 
@@ -89,18 +94,9 @@ impl CoinPair {
 
     /// Return a pair of mutable references to the two coins.
     pub fn as_mut(&mut self) -> (CoinRefMut<'_>, CoinRefMut<'_>) {
-        // Note: we can't do something like:
-        //
-        // ```rust
-        // return (self.first_mut(), self.second_mut());
-        // ```
-        //
-        // Because this involves two mutable borrows of `self.0`, which is not
-        // allowed. Instead we create a single mutable iterator and extract the
-        // two coins.
-        let mut iter_mut = self.0.iter_mut();
-        let coin1 = iter_mut.next().unwrap();
-        let coin2 = iter_mut.next().unwrap();
+        let (left, right) = self.0.split_at_mut(1);
+        let coin1 = &mut left[0];
+        let coin2 = &mut right[0];
 
         (
             CoinRefMut {
@@ -116,9 +112,9 @@ impl CoinPair {
 
     /// Return a pair of mutable references to the two coins, but in reverse order.
     pub fn as_mut_rev(&mut self) -> (CoinRefMut<'_>, CoinRefMut<'_>) {
-        let mut iter_mut = self.0.iter_mut();
-        let coin1 = iter_mut.next().unwrap();
-        let coin2 = iter_mut.next().unwrap();
+        let (left, right) = self.0.split_at_mut(1);
+        let coin1 = &mut left[0];
+        let coin2 = &mut right[0];
 
         (
             CoinRefMut {
@@ -239,8 +235,12 @@ impl TryFrom<Coins> for CoinPair {
         }
 
         let mut iter = coins.into_iter();
-        let coin1 = iter.next().unwrap();
-        let coin2 = iter.next().unwrap();
+        let Some(coin1) = iter.next() else {
+            return Err(StdError::invalid_coins("number of coins isn't exactly two"));
+        };
+        let Some(coin2) = iter.next() else {
+            return Err(StdError::invalid_coins("number of coins isn't exactly two"));
+        };
 
         Ok(Self([coin1, coin2]))
     }

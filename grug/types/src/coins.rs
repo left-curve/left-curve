@@ -16,7 +16,10 @@ use {
 #[macro_export]
 macro_rules! coins {
     ($($denom:expr => $amount:expr),* $(,)?) => {{
-        $crate::Coins::try_from($crate::btree_map! { $($denom => $amount),+ }).unwrap()
+        match $crate::Coins::try_from($crate::btree_map! { $($denom => $amount),+ }) {
+            Ok(coins) => coins,
+            Err(err) => panic!("invalid coins: {err}"),
+        }
     }};
 }
 
@@ -104,7 +107,9 @@ impl Coins {
             return Err(StdError::invalid_payment(1, self.len()));
         }
 
-        let (denom, amount) = self.0.iter().next().unwrap();
+        let Some((denom, amount)) = self.0.first_key_value() else {
+            return Err(StdError::invalid_payment(1, self.len()));
+        };
 
         Ok(CoinRef { denom, amount })
     }
@@ -128,7 +133,9 @@ impl Coins {
             return Err(StdError::invalid_payment(1, self.len()));
         }
 
-        let (denom, amount) = self.0.into_iter().next().unwrap();
+        let Some((denom, amount)) = self.0.into_iter().next() else {
+            return Err(StdError::invalid_payment(1, 0));
+        };
 
         Ok(Coin { denom, amount })
     }
@@ -154,8 +161,12 @@ impl Coins {
 
         let mut iter = self.0.iter();
 
-        let (denom1, amount1) = iter.next().unwrap();
-        let (denom2, amount2) = iter.next().unwrap();
+        let Some((denom1, amount1)) = iter.next() else {
+            return Err(StdError::invalid_payment(2, self.len()));
+        };
+        let Some((denom2, amount2)) = iter.next() else {
+            return Err(StdError::invalid_payment(2, self.len()));
+        };
 
         Ok((
             CoinRef {
@@ -178,8 +189,12 @@ impl Coins {
 
         let mut iter = self.0.into_iter();
 
-        let (denom1, amount1) = iter.next().unwrap();
-        let (denom2, amount2) = iter.next().unwrap();
+        let Some((denom1, amount1)) = iter.next() else {
+            return Err(StdError::invalid_payment(2, 0));
+        };
+        let Some((denom2, amount2)) = iter.next() else {
+            return Err(StdError::invalid_payment(2, 1));
+        };
 
         Ok((
             Coin {

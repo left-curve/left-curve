@@ -13,13 +13,25 @@ pub enum IndexerPath {
 
 impl Default for IndexerPath {
     fn default() -> Self {
-        Self::TempDir(Arc::new(tempfile::tempdir().expect("can't get a tempdir")))
+        Self::new_with_tempdir()
     }
 }
 
 impl IndexerPath {
     pub fn new_with_tempdir() -> Self {
-        Self::TempDir(Arc::new(tempfile::tempdir().expect("can't get a tempdir")))
+        match tempfile::tempdir() {
+            Ok(temp_dir) => Self::TempDir(Arc::new(temp_dir)),
+            Err(_) => {
+                let pid = std::process::id();
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis();
+                let fallback =
+                    std::env::temp_dir().join(format!("indexer-cache-{pid}-{timestamp}"));
+                Self::Dir(fallback)
+            },
+        }
     }
 
     pub fn new_with_dir(directory: PathBuf) -> Self {

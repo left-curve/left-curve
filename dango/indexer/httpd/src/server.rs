@@ -104,7 +104,11 @@ where
     #[cfg(feature = "metrics")]
     let metrics = actix_web_metrics::ActixWebMetricsBuilder::new()
         .build()
-        .unwrap();
+        .map_err(|err| {
+            std::io::Error::other(format!(
+                "failed to initialize dango HTTP metrics middleware: {err}"
+            ))
+        })?;
 
     #[cfg(feature = "metrics")]
     indexer_httpd::middlewares::metrics::init_httpd_metrics();

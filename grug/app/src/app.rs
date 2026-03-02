@@ -198,8 +198,12 @@ where
             if let Err((_event, err)) = output.into_result() {
                 #[cfg(feature = "tracing")]
                 {
+                    let serialized_event = match _event.to_json_string_pretty() {
+                        Ok(event) => event,
+                        Err(err) => format!("failed to serialize failed event: {err}"),
+                    };
                     tracing::error!(
-                        result = _event.to_json_string_pretty().unwrap(),
+                        result = serialized_event,
                         "Error during genesis message processing"
                     );
                 }
@@ -223,16 +227,22 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::info!(
-                chain_id,
-                time = block.timestamp.to_rfc3339_string(),
-                app_hash = root_hash.as_ref().unwrap().to_string(),
-                gas_used = gas_tracker.used(),
-                "Completed genesis"
-            );
+            if let Some(app_hash) = root_hash.as_ref() {
+                tracing::info!(
+                    chain_id,
+                    time = block.timestamp.to_rfc3339_string(),
+                    app_hash = app_hash.to_string(),
+                    gas_used = gas_tracker.used(),
+                    "Completed genesis"
+                );
+            }
         }
 
-        Ok(root_hash.unwrap())
+        let app_hash = root_hash.ok_or_else(|| {
+            AppError::db("expected non-empty app hash after initializing chain".to_string())
+        })?;
+
+        Ok(app_hash)
     }
 
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
@@ -265,8 +275,21 @@ where
 
         // Call naive proposal preparer to check the `max_tx_bytes`.
         let bytes = NaiveProposalPreparer
-            .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
-            .unwrap();
+            .prepare_proposal(
+                QuerierWrapper::new(&NaiveQuerier),
+                txs.clone(),
+                max_tx_bytes,
+            )
+            .unwrap_or_else(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(
+                        err = _err.to_string(),
+                        "Naive proposal preparer failed, returning unmodified tx list"
+                    );
+                }
+                txs
+            });
 
         #[cfg(feature = "tracing")]
         {
@@ -597,17 +620,21 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::info!(
-                height = block.info.height,
-                time = block.info.timestamp.to_rfc3339_string(),
-                app_hash = app_hash.as_ref().unwrap().to_string(),
-                "Finalized block"
-            );
+            if let Some(app_hash_value) = app_hash.as_ref() {
+                tracing::info!(
+                    height = block.info.height,
+                    time = block.info.timestamp.to_rfc3339_string(),
+                    app_hash = app_hash_value.to_string(),
+                    "Finalized block"
+                );
+            }
         }
 
         let block_outcome = BlockOutcome {
             height: block.info.height,
-            app_hash: app_hash.unwrap(),
+            app_hash: app_hash.ok_or_else(|| {
+                AppError::db("expected non-empty app hash after finalizing block".to_string())
+            })?,
             cron_outcomes,
             tx_outcomes,
         };
@@ -1502,7 +1529,7 @@ fn new_check_tx_outcome(
     events: CheckTxEvents,
 ) -> CheckTxOutcome {
     CheckTxOutcome {
-        gas_limit: gas_tracker.limit().unwrap(),
+        gas_limit: gas_tracker.limit().unwrap_or(u64::MAX),
         gas_used: gas_tracker.used(),
         result,
         events,
@@ -1515,7 +1542,7 @@ fn new_tx_outcome(
     result: GenericResult<()>,
 ) -> TxOutcome {
     TxOutcome {
-        gas_limit: gas_tracker.limit().unwrap(),
+        gas_limit: gas_tracker.limit().unwrap_or(u64::MAX),
         gas_used: gas_tracker.used(),
         events,
         result,

@@ -40,6 +40,10 @@ impl Iterator {
         }
 
         self.batch = Some(batch.into_iter());
-        self.batch.as_mut().unwrap().next()
+        if let Some(batch) = self.batch.as_mut() {
+            batch.next()
+        } else {
+            None
+        }
     }
 }
