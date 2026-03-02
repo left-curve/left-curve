@@ -106,7 +106,7 @@ mod tests {
             FundingPerUnit, Quantity, UsdPrice, UsdValue,
             perps::{Order, Position, UserState},
         },
-        grug::{Addr, Coins, MockContext, ResultExt, Storage, Uint64},
+        grug::{Addr, Coins, MockContext, ResultExt, Storage, Uint64, Uint128},
         std::collections::{BTreeMap, VecDeque},
     };
 
@@ -174,6 +174,7 @@ mod tests {
             reserved_margin: UsdValue::new_int(reserved_margin),
             open_order_count,
             margin: UsdValue::ZERO,
+            vault_shares: Uint128::new(0),
         };
 
         USER_STATES.save(storage, user, &state).unwrap();

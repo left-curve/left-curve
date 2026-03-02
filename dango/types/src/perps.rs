@@ -1,27 +1,13 @@
 use {
     crate::{Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
-    grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
-    std::{
-        collections::{BTreeMap, BTreeSet, VecDeque},
-        sync::LazyLock,
-    },
+    grug::{Addr, Denom, Duration, Timestamp, Uint64, Uint128},
+    std::collections::{BTreeMap, BTreeSet, VecDeque},
 };
 
-// --------------------------------- Constants ---------------------------------
+// ----------------------------------- Types -----------------------------------
 
 /// Denomination of the asset used to settle perpetual futures contracts.
 pub use crate::constants::usdc as settlement_currency;
-
-/// Namespace for tokens minted by the perps contract.
-pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("perps"));
-
-/// Sub-denomination of the vault share token.
-pub static SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("vault"));
-
-/// Full denom of the vault share token.
-pub static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["perps", "vault"]));
-
-// ----------------------------------- Types -----------------------------------
 
 /// Identifier of a trading pair. It should be a string that looks like e.g. "perp/btcusd".
 pub type PairId = Denom;
@@ -233,6 +219,9 @@ pub struct UserState {
     /// The user's deposited margin, denominated in USD.
     pub margin: UsdValue,
 
+    /// Vault shares owned by this user.
+    pub vault_shares: Uint128,
+
     /// The user's open positions.
     pub positions: BTreeMap<PairId, Position>,
 
@@ -350,7 +339,7 @@ pub enum ExecuteMsg {
     },
 
     /// Request to withdraw liquidity from the counterparty vault.
-    RemoveLiquidity {},
+    RemoveLiquidity { shares_to_burn: Uint128 },
 
     /// Forcibly close all of a user's positions, if the user has less collateral
     /// than the maintenance margin required by his positions.

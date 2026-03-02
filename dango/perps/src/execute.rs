@@ -27,9 +27,6 @@ const VIRTUAL_SHARES: Uint128 = Uint128::new(1_000_000);
 /// and prevent share inflation attacks.
 const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 
-/// Address of the bank contract.
-const BANK: Addr = addr!("e0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7");
-
 /// Address of the oracle contract.
 pub(crate) const ORACLE: Addr = addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d");
 
@@ -71,7 +68,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::AddLiquidity { min_shares_to_mint } => {
             add_liquidity::add_liquidity(ctx, min_shares_to_mint)
         },
-        ExecuteMsg::RemoveLiquidity {} => remove_liquidity::remove_liquidity(ctx),
+        ExecuteMsg::RemoveLiquidity { shares_to_burn } => {
+            remove_liquidity::remove_liquidity(ctx, shares_to_burn)
+        },
         ExecuteMsg::Liquidate { user } => liquidate::liquidate(ctx, user),
         ExecuteMsg::Deleverage { user } => deleverage::deleverage(ctx, user),
         ExecuteMsg::OnOracleUpdate {} => on_oracle_update::on_oracle_update(ctx),

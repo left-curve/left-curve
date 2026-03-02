@@ -8,7 +8,7 @@ The vault is the **counterparty of last resort** for the perpetual futures excha
 2. **Bad-debt absorption** — covers losses when a liquidated account's collateral is insufficient.
 3. **Passive market-making** — continuously quotes bid/ask orders around the oracle price on every pair, earning the spread.
 
-Liquidity providers (LPs) deposit settlement currency into the vault and receive fungible vault shares in return.
+Liquidity providers (LPs) deposit settlement currency into the vault and receive vault shares credited to their account.
 
 ## 2. Liquidity provision
 
@@ -53,7 +53,7 @@ Deposits are **paused** when $\mathtt{vaultMargin} < 0$. This prevents new capit
 
 ## 3. Liquidity withdrawal
 
-The LP sends vault shares back to the contract. The USD value to release is computed:
+The LP specifies how many vault shares to burn. The USD value to release is computed:
 
 $$
 \mathtt{releaseValue} = \mathtt{effectiveEquity} \times \frac{\mathtt{sharesToBurn}}{\mathtt{effectiveSupply}}
