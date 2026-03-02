@@ -138,7 +138,7 @@ fn _submit_order(
         check_minimum_order_size(size, oracle_price, pair_param)?;
     }
 
-    // ----------------------- Step 3. Decompose order -------------------------
+    // ----------------------- Step 2. Decompose order -------------------------
 
     let current_position = taker_state
         .positions
@@ -156,11 +156,11 @@ fn _submit_order(
 
     ensure!(fillable_size.is_non_zero(), "fillable size is zero");
 
-    // -------------- Step 4. Check OI constraint for opening ------------------
+    // -------------- Step 3. Check OI constraint for opening ------------------
 
     check_oi_constraint(opening_size, pair_state, pair_param)?;
 
-    // ---------------------- Step 5. Post-only fast path ----------------------
+    // ---------------------- Step 4. Post-only fast path ----------------------
 
     if let Some(limit_price) = kind.post_only_price() {
         let order_to_store = store_post_only_limit_order(
