@@ -23,7 +23,7 @@ Adding liquidity follows an **ERC-4626 virtual shares** pattern to prevent the f
 
 ### Share minting
 
-The LP sends settlement currency token of amount $\mathtt{depositAmount}$ to the contract.
+The LP specifies a USD margin amount $\mathtt{depositMargin}$ to transfer from their trading margin to the vault.
 
 $$
 \mathtt{effectiveSupply} = \mathtt{vaultShareSupply} + \mathtt{virtualShares}
@@ -34,11 +34,7 @@ $$
 $$
 
 $$
-\mathtt{depositValue} = \mathtt{depositAmount} \times \mathtt{settlementCurrencyPrice}
-$$
-
-$$
-\mathtt{sharesToMint} = \left\lfloor \mathtt{effectiveSupply} \times \frac{\mathtt{depositValue}}{\mathtt{effectiveEquity}} \right\rfloor
+\mathtt{sharesToMint} = \left\lfloor \mathtt{effectiveSupply} \times \frac{\mathtt{depositMargin}}{\mathtt{effectiveEquity}} \right\rfloor
 $$
 
 Floor rounding protects the vault from rounding exploitation. A minimum-shares parameter lets depositors revert if slippage is too high.
@@ -65,11 +61,7 @@ $$
 \mathtt{endTime} = \mathtt{currentTime} + \mathtt{vaultCooldownPeriod}
 $$
 
-Once $\mathtt{endTime}$ is reached, the contract is automatically triggered to release the fund to the LP. The amount of settlement currency tokens to be released is computed as:
-
-$$
-\mathtt{releaseAmount} = \left\lfloor \frac{\mathtt{releaseValue}}{\mathtt{settlementCurrencyPrice}} \right\rfloor
-$$
+Once $\mathtt{endTime}$ is reached, the contract credits the released USD value back to the LP's trading margin.
 
 ### ADL pause
 

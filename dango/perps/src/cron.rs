@@ -7,12 +7,12 @@ use {
     },
     dango_oracle::OracleQuerier,
     dango_types::{
-        Days, UsdPrice, UsdValue,
-        perps::{PairId, UserState, settlement_currency},
+        Days, UsdValue,
+        perps::{PairId, UserState},
     },
     grug::{
-        Addr, Coins, Message, Order as IterationOrder, PrefixBound, Response, StdResult, Storage,
-        SudoCtx, Timestamp, TransferBuilder,
+        Addr, Order as IterationOrder, PrefixBound, Response, StdResult, Storage, SudoCtx,
+        Timestamp,
     },
 };
 
@@ -20,25 +20,16 @@ use {
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
-    let maybe_payout = process_unlocks(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
+    process_unlocks(ctx.storage, ctx.block.timestamp)?;
 
     process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
-    Ok(Response::new().may_add_message(maybe_payout))
+    Ok(Response::new())
 }
 
-/// Pop matured unlocks from each user and compute the amount of settlement
-/// currency to release.
-fn process_unlocks(
-    storage: &mut dyn Storage,
-    current_time: Timestamp,
-    oracle_querier: &mut OracleQuerier,
-) -> anyhow::Result<Option<Message>> {
-    let mut transfers = TransferBuilder::<Coins>::new();
-
-    let settlement_currency_price =
-        oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
-
+/// Pop matured unlocks from each user and credit the released USD value back
+/// to their trading margin.
+fn process_unlocks(storage: &mut dyn Storage, current_time: Timestamp) -> anyhow::Result<()> {
     // Load all users whose earliest unlock has matured.
     let users = USER_STATES
         .idx
@@ -56,30 +47,17 @@ fn process_unlocks(
         .collect::<StdResult<Vec<_>>>()?;
 
     for (user, user_state) in users {
-        process_unlock_for_user(
-            storage,
-            current_time,
-            settlement_currency_price,
-            user,
-            user_state,
-            &mut transfers,
-        )?;
+        process_unlock_for_user(storage, current_time, user, user_state)?;
     }
 
-    if transfers.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(transfers.into_message()))
-    }
+    Ok(())
 }
 
 fn process_unlock_for_user(
     storage: &mut dyn Storage,
     current_time: Timestamp,
-    settlement_currency_price: UsdPrice,
     user: Addr,
     mut user_state: UserState,
-    transfers: &mut TransferBuilder<Coins>,
 ) -> anyhow::Result<()> {
     let mut amount_usd = UsdValue::ZERO;
 
@@ -94,14 +72,8 @@ fn process_unlock_for_user(
         user_state.unlocks.pop_front();
     }
 
-    // Convert the total USD amount to amount of the settlement currency token.
-    let amount_token = amount_usd
-        .checked_div(settlement_currency_price)?
-        .into_base_floor(settlement_currency::DECIMAL)?;
-
-    // Insert the tokens into pending transfer queue.
-    // No need to check whether `amount_token` != 0 here. The `insert` function handles this.
-    transfers.insert(user, settlement_currency::DENOM.clone(), amount_token)?;
+    // Credit the released USD value back to the user's trading margin.
+    user_state.margin.checked_add_assign(amount_usd)?;
 
     // Save the updated user state to storage.
     if user_state.is_empty() {
@@ -202,11 +174,11 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            FundingPerUnit, FundingRate, Quantity,
+            FundingPerUnit, FundingRate, Quantity, UsdPrice,
             oracle::PrecisionedPrice,
             perps::{Order, PairParam, PairState, Param, State, Unlock},
         },
-        grug::{Duration, MockStorage, NumberConst, Udec128, Uint64, hash_map},
+        grug::{Duration, MockStorage, Udec128, Uint64, hash_map},
         std::collections::{BTreeSet, VecDeque},
     };
 
@@ -234,20 +206,6 @@ mod tests {
                 end_time: Timestamp::from_seconds(secs),
             })
             .collect()
-    }
-
-    /// Mock oracle returning the settlement currency (USDC) at $1.
-    ///
-    /// Mutates: nothing.
-    /// Returns: an `OracleQuerier` suitable for `process_unlocks` tests.
-    fn settlement_oracle() -> OracleQuerier<'static> {
-        OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::ONE,
-                Timestamp::from_seconds(0),
-                6,
-            ),
-        })
     }
 
     /// Place a resting bid order into `BIDS` storage.
@@ -340,9 +298,8 @@ mod tests {
     // ==================== process_unlocks tests ====================
 
     #[test]
-    fn no_matured_unlocks_returns_none() {
+    fn no_matured_unlocks_unchanged() {
         let mut storage = MockStorage::new();
-        let mut oracle = settlement_oracle();
 
         let user_state = UserState {
             unlocks: unlocks_from(&[(1000, 200), (2000, 300)]),
@@ -350,18 +307,16 @@ mod tests {
         };
         USER_STATES.save(&mut storage, USER_A, &user_state).unwrap();
 
-        let result =
-            process_unlocks(&mut storage, Timestamp::from_seconds(100), &mut oracle).unwrap();
-        assert!(result.is_none());
+        process_unlocks(&mut storage, Timestamp::from_seconds(100)).unwrap();
 
         let loaded = USER_STATES.load(&storage, USER_A).unwrap();
         assert_eq!(loaded.unlocks.len(), 2);
+        assert_eq!(loaded.margin, UsdValue::ZERO);
     }
 
     #[test]
     fn single_user_single_matured_unlock() {
         let mut storage = MockStorage::new();
-        let mut oracle = settlement_oracle();
 
         let user_state = UserState {
             unlocks: unlocks_from(&[(1000, 100)]),
@@ -370,18 +325,17 @@ mod tests {
         USER_STATES.save(&mut storage, USER_A, &user_state).unwrap();
 
         // At t=100 the unlock matures (end_time > current_time is false).
-        let result =
-            process_unlocks(&mut storage, Timestamp::from_seconds(100), &mut oracle).unwrap();
-        assert!(result.is_some());
+        process_unlocks(&mut storage, Timestamp::from_seconds(100)).unwrap();
 
-        // Only state was the single unlock → user removed.
-        assert!(USER_STATES.may_load(&storage, USER_A).unwrap().is_none());
+        // Margin credited, unlocks cleared. User state persists because margin > 0.
+        let loaded = USER_STATES.load(&storage, USER_A).unwrap();
+        assert_eq!(loaded.margin, UsdValue::new_int(1000));
+        assert!(loaded.unlocks.is_empty());
     }
 
     #[test]
     fn single_user_partial_maturation() {
         let mut storage = MockStorage::new();
-        let mut oracle = settlement_oracle();
 
         let user_state = UserState {
             unlocks: unlocks_from(&[(1000, 100), (2000, 200), (3000, 300)]),
@@ -389,20 +343,18 @@ mod tests {
         };
         USER_STATES.save(&mut storage, USER_A, &user_state).unwrap();
 
-        // At t=200 the first two unlocks mature.
-        let result =
-            process_unlocks(&mut storage, Timestamp::from_seconds(200), &mut oracle).unwrap();
-        assert!(result.is_some());
+        // At t=200 the first two unlocks mature ($1000 + $2000 = $3000).
+        process_unlocks(&mut storage, Timestamp::from_seconds(200)).unwrap();
 
         let loaded = USER_STATES.load(&storage, USER_A).unwrap();
+        assert_eq!(loaded.margin, UsdValue::new_int(3000));
         assert_eq!(loaded.unlocks.len(), 1);
         assert_eq!(loaded.unlocks[0].amount_to_release, UsdValue::new_int(3000));
     }
 
     #[test]
-    fn multiple_users_batched_transfer() {
+    fn multiple_users_margin_credited() {
         let mut storage = MockStorage::new();
-        let mut oracle = settlement_oracle();
 
         USER_STATES
             .save(&mut storage, USER_A, &UserState {
@@ -417,19 +369,21 @@ mod tests {
             })
             .unwrap();
 
-        let result =
-            process_unlocks(&mut storage, Timestamp::from_seconds(100), &mut oracle).unwrap();
-        assert!(result.is_some());
+        process_unlocks(&mut storage, Timestamp::from_seconds(100)).unwrap();
 
-        // Both user states removed.
-        assert!(USER_STATES.may_load(&storage, USER_A).unwrap().is_none());
-        assert!(USER_STATES.may_load(&storage, USER_B).unwrap().is_none());
+        // Both users get margin credited.
+        let loaded_a = USER_STATES.load(&storage, USER_A).unwrap();
+        assert_eq!(loaded_a.margin, UsdValue::new_int(500));
+        assert!(loaded_a.unlocks.is_empty());
+
+        let loaded_b = USER_STATES.load(&storage, USER_B).unwrap();
+        assert_eq!(loaded_b.margin, UsdValue::new_int(700));
+        assert!(loaded_b.unlocks.is_empty());
     }
 
     #[test]
     fn user_with_margin_preserved_after_unlock() {
         let mut storage = MockStorage::new();
-        let mut oracle = settlement_oracle();
 
         // User has unlocks AND nonzero margin.
         let user_state = UserState {
@@ -439,24 +393,19 @@ mod tests {
         };
         USER_STATES.save(&mut storage, USER_A, &user_state).unwrap();
 
-        let result =
-            process_unlocks(&mut storage, Timestamp::from_seconds(200), &mut oracle).unwrap();
-        assert!(result.is_some());
+        process_unlocks(&mut storage, Timestamp::from_seconds(200)).unwrap();
 
-        // User state persists because margin keeps is_empty() false.
+        // User state persists, margin = original $500 + released $1000 = $1500.
         let loaded = USER_STATES.load(&storage, USER_A).unwrap();
-        assert_eq!(loaded.margin, UsdValue::new_int(500));
+        assert_eq!(loaded.margin, UsdValue::new_int(1500));
         assert!(loaded.unlocks.is_empty());
     }
 
     #[test]
-    fn no_users_returns_none() {
+    fn no_users_no_error() {
         let mut storage = MockStorage::new();
-        let mut oracle = settlement_oracle();
 
-        let result =
-            process_unlocks(&mut storage, Timestamp::from_seconds(100), &mut oracle).unwrap();
-        assert!(result.is_none());
+        process_unlocks(&mut storage, Timestamp::from_seconds(100)).unwrap();
     }
 
     // ==================== process_funding tests ====================

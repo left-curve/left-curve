@@ -332,8 +332,10 @@ pub enum ExecuteMsg {
     /// Cancel a resting limit order.
     CancelOrder(CancelOrderRequest),
 
-    /// Add liquidity to the counterparty vault.
+    /// Add liquidity to the counterparty vault by transferring margin to the vault.
     AddLiquidity {
+        /// USD margin amount to transfer from the user's trading margin to the vault.
+        deposit_margin: UsdValue,
         /// Revert if less than this amount of shares is minted.
         min_shares_to_mint: Option<Uint128>,
     },

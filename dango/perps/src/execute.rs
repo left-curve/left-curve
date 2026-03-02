@@ -65,9 +65,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             cancel_order::cancel_one_order(ctx, order_id)
         },
         ExecuteMsg::CancelOrder(CancelOrderRequest::All) => cancel_order::cancel_all_orders(ctx),
-        ExecuteMsg::AddLiquidity { min_shares_to_mint } => {
-            add_liquidity::add_liquidity(ctx, min_shares_to_mint)
-        },
+        ExecuteMsg::AddLiquidity {
+            deposit_margin,
+            min_shares_to_mint,
+        } => add_liquidity::add_liquidity(ctx, deposit_margin, min_shares_to_mint),
         ExecuteMsg::RemoveLiquidity { shares_to_burn } => {
             remove_liquidity::remove_liquidity(ctx, shares_to_burn)
         },

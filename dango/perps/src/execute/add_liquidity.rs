@@ -7,22 +7,25 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Quantity,
-        perps::{State, UserState, settlement_currency},
+        UsdValue,
+        perps::{State, UserState},
     },
-    grug::{Coins, IsZero, MultiplyFraction, MutableCtx, Number as _, Response, Signed, Uint128},
+    grug::{IsZero, MultiplyFraction, MutableCtx, Number as _, Response, Signed, Uint128},
 };
 
-/// Add liquidity to the counterparty vault.
+/// Add liquidity to the counterparty vault by transferring margin to the vault.
 ///
-/// Mutates: `STATE` (vault_margin, vault_share_supply), `USER_STATES` (vault_shares).
+/// Mutates: `STATE` (vault_margin, vault_share_supply), `USER_STATES` (margin, vault_shares).
 ///
 /// Returns: `Response`.
 pub fn add_liquidity(
     ctx: MutableCtx,
+    deposit_margin: UsdValue,
     min_shares_to_mint: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     // ---------------------------- 1. Preparation -----------------------------
+
+    ensure!(ctx.funds.is_empty(), "no funds expected");
 
     let mut state = STATE.load(ctx.storage)?;
 
@@ -46,7 +49,7 @@ pub fn add_liquidity(
     // --------------------------- 2. Business logic ---------------------------
 
     _add_liquidity(
-        ctx.funds,
+        deposit_margin,
         &mut state,
         &mut user_state,
         &vault_user_state,
@@ -67,11 +70,12 @@ pub fn add_liquidity(
 /// The actual logic for handling the add-liquidity operation.
 ///
 /// Mutates:
-///
 /// - `state` (vault_margin, vault_share_supply)
-/// - `user_state` (vault_shares)
+/// - `user_state` (margin, vault_shares)
+///
+/// Returns: `()` on success.
 fn _add_liquidity(
-    mut funds: Coins,
+    deposit_margin: UsdValue,
     state: &mut State,
     user_state: &mut UserState,
     vault_user_state: &UserState,
@@ -79,17 +83,11 @@ fn _add_liquidity(
     oracle_querier: &mut OracleQuerier,
     min_shares_to_mint: Option<Uint128>,
 ) -> anyhow::Result<()> {
-    // Query the price of the settlement currency.
-    let settlement_currency_price =
-        oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
+    // ----------------------- Step 1. Validate deposit ------------------------
 
-    // ------------------------- Step 1. Check deposit -------------------------
+    ensure!(deposit_margin.is_positive(), "nothing to do");
 
-    // Find how much settlement currency the user has deposited.
-    let deposit_amount = funds.take(settlement_currency::DENOM.clone()).amount;
-
-    // The user should not have deposited anything else.
-    ensure!(funds.is_empty(), "unexpected deposit: {:?}", funds);
+    ensure!(user_state.margin >= deposit_margin, "insufficient margin");
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
@@ -115,12 +113,8 @@ fn _add_liquidity(
 
     // -------------------------- Step 3. Mint shares --------------------------
 
-    // Compute the USD value of the settlement currency the user is depositing.
-    let deposit_value = Quantity::from_base(deposit_amount, settlement_currency::DECIMAL)?
-        .checked_mul(settlement_currency_price)?;
-
-    // Compute the amount of shares to mint.
-    let ratio = deposit_value
+    // deposit_margin is already a UsdValue — no conversion needed.
+    let ratio = deposit_margin
         .checked_div(effective_equity)?
         .into_inner()
         .checked_into_unsigned()?;
@@ -135,8 +129,9 @@ fn _add_liquidity(
         );
     }
 
-    // Update global state.
-    state.vault_margin.checked_add_assign(deposit_value)?;
+    // Deduct margin from user and credit to vault.
+    user_state.margin.checked_sub_assign(deposit_margin)?;
+    state.vault_margin.checked_add_assign(deposit_margin)?;
     (state.vault_share_supply).checked_add_assign(shares_to_mint)?;
 
     // Update user state.
@@ -151,44 +146,30 @@ fn _add_liquidity(
 mod tests {
     use {
         super::*,
-        dango_types::{
-            UsdValue,
-            oracle::PrecisionedPrice,
-            perps::{UserState, settlement_currency},
-        },
-        grug::{Coin, MockStorage, Timestamp, Udec128, Uint128, hash_map},
-        test_case::test_case,
+        dango_types::perps::UserState,
+        grug::{MockStorage, Uint128, hash_map},
     };
-
-    /// Helper: USDC oracle price at exactly $1 with precision 6.
-    fn usdc_price_at_dollar() -> PrecisionedPrice {
-        PrecisionedPrice::new(Udec128::new_percent(100), Timestamp::from_seconds(0), 6)
-    }
-
-    /// Helper: build `Coins` containing `amount` of the settlement currency (USDC).
-    fn usdc_coins(amount: u128) -> Coins {
-        Coins::one(settlement_currency::DENOM.clone(), amount).unwrap()
-    }
 
     // ---- Test 1: first deposit into an empty vault (no pairs) ----
     // effective_supply = 0 + 1_000_000 = 1_000_000
     // vault_equity = $0, effective_equity = $0 + $1 = $1
-    // deposit_value = $1, ratio = $1/$1 = 1.0
+    // deposit_margin = $1, ratio = $1/$1 = 1.0
     // shares = floor(1_000_000 × 1.0) = 1_000_000
     #[test]
     fn first_deposit_empty_vault() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-        });
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let mut state = State::default();
-        let mut user_state = UserState::default();
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(1),
+            ..Default::default()
+        };
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            usdc_coins(1_000_000),
+            UsdValue::new_int(1),
             &mut state,
             &mut user_state,
             &vault_user_state,
@@ -199,31 +180,33 @@ mod tests {
         .unwrap();
 
         assert_eq!(user_state.vault_shares, Uint128::new(1_000_000));
+        assert_eq!(user_state.margin, UsdValue::ZERO);
     }
 
     // ---- Test 2: second deposit of same size into a non-empty vault ----
     // effective_supply = 1_000_000 + 1_000_000 = 2_000_000
     // vault_equity = $1, effective_equity = $1 + $1 = $2
-    // deposit_value = $1, ratio = $1/$2 = 0.5
+    // deposit_margin = $1, ratio = $1/$2 = 0.5
     // shares = floor(2_000_000 × 0.5) = 1_000_000
     #[test]
     fn second_deposit_same_size() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-        });
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let mut state = State {
             vault_margin: UsdValue::new_int(1),
             vault_share_supply: Uint128::new(1_000_000),
             ..Default::default()
         };
-        let mut user_state = UserState::default();
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(1),
+            ..Default::default()
+        };
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            usdc_coins(1_000_000),
+            UsdValue::new_int(1),
             &mut state,
             &mut user_state,
             &vault_user_state,
@@ -234,6 +217,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(user_state.vault_shares, Uint128::new(1_000_000));
+        assert_eq!(user_state.margin, UsdValue::ZERO);
     }
 
     // ---- Test 3: zero deposit ----
@@ -241,9 +225,7 @@ mod tests {
     #[test]
     fn zero_add_liquidity() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-        });
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let mut state = State::default();
         let mut user_state = UserState::default();
@@ -251,7 +233,7 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _add_liquidity(
-            Coins::new(),
+            UsdValue::ZERO,
             &mut state,
             &mut user_state,
             &vault_user_state,
@@ -264,32 +246,23 @@ mod tests {
         assert!(err.to_string().contains("nothing to do"));
     }
 
-    // ---- Test 4: unexpected coins rejected ----
-    // USDC + an extra denom should error.
+    // ---- Test 4: insufficient margin rejected ----
+    // User has $0.50 margin, tries to deposit $1 → error.
     #[test]
-    fn unexpected_coins_rejected() {
-        use dango_types::constants::eth;
-
+    fn insufficient_margin_rejected() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-        });
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let mut state = State::default();
-        let mut user_state = UserState::default();
+        let mut user_state = UserState {
+            margin: UsdValue::new_permille(500),
+            ..Default::default()
+        };
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
-        let mut funds = usdc_coins(1_000_000);
-        funds
-            .insert(Coin {
-                denom: eth::DENOM.clone(),
-                amount: Uint128::new(100),
-            })
-            .unwrap();
-
         let err = _add_liquidity(
-            funds,
+            UsdValue::new_int(1),
             &mut state,
             &mut user_state,
             &vault_user_state,
@@ -299,7 +272,7 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(err.to_string().contains("unexpected deposit"));
+        assert!(err.to_string().contains("insufficient margin"));
     }
 
     // TODO(order-book): Tests 5, 8, 9, 10 depend on vault equity accounting
@@ -308,21 +281,22 @@ mod tests {
     // a regular trader) is implemented.
 
     // ---- Test 6: min_shares passes ----
-    // Empty vault, deposit 1 USDC → 1M shares. min=1M → passes.
+    // Empty vault, deposit $1 margin → 1M shares. min=1M → passes.
     #[test]
     fn min_shares_passes() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-        });
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let mut state = State::default();
-        let mut user_state = UserState::default();
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(1),
+            ..Default::default()
+        };
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            usdc_coins(1_000_000),
+            UsdValue::new_int(1),
             &mut state,
             &mut user_state,
             &vault_user_state,
@@ -336,21 +310,22 @@ mod tests {
     }
 
     // ---- Test 7: min_shares fails ----
-    // Empty vault, deposit 1 USDC → 1M shares. min=1_000_001 → error.
+    // Empty vault, deposit $1 margin → 1M shares. min=1_000_001 → error.
     #[test]
     fn min_shares_fails() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-        });
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let mut state = State::default();
-        let mut user_state = UserState::default();
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(1),
+            ..Default::default()
+        };
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _add_liquidity(
-            usdc_coins(1_000_000),
+            UsdValue::new_int(1),
             &mut state,
             &mut user_state,
             &vault_user_state,
@@ -364,27 +339,29 @@ mod tests {
     }
 
     // ---- Test 11: large deposit no overflow ----
-    // 1B USDC vault + 1B USDC deposit. Both are 1_000_000_000 * 1_000_000 base.
+    // 1B vault + 1B deposit margin.
     #[test]
     fn large_deposit_no_overflow() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-        });
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
-        let one_billion_usdc: u128 = 1_000_000_000 * 1_000_000;
+        let one_billion = 1_000_000_000_u128;
+        let one_billion_shares: u128 = one_billion * 1_000_000;
 
         let mut state = State {
-            vault_margin: UsdValue::new_int(1_000_000_000),
-            vault_share_supply: Uint128::new(one_billion_usdc),
+            vault_margin: UsdValue::new_int(one_billion as i128),
+            vault_share_supply: Uint128::new(one_billion_shares),
             ..Default::default()
         };
-        let mut user_state = UserState::default();
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(one_billion as i128),
+            ..Default::default()
+        };
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            usdc_coins(one_billion_usdc),
+            UsdValue::new_int(one_billion as i128),
             &mut state,
             &mut user_state,
             &vault_user_state,
@@ -399,67 +376,31 @@ mod tests {
         assert!(user_state.vault_shares > Uint128::new(0));
     }
 
-    // ---- Test 12: non-dollar settlement price (parametric) ----
-    // Empty vault, no pairs. Deposit 1 USDC.
-    // At $0.99: deposit_value=$0.99, effective_equity=$1, ratio=0.99
-    //   shares = floor(1_000_000 × 0.99) = 990_000
-    // At $1.01: deposit_value=$1.01, effective_equity=$1, ratio=1.01
-    //   shares = floor(1_000_000 × 1.01) = 1_010_000
-    #[test_case(99, 990_000 ; "usdc below peg")]
-    #[test_case(101, 1_010_000 ; "usdc above peg")]
-    fn non_dollar_settlement_price(price_percent: u128, expected_shares: u128) {
-        let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(price_percent),
-                Timestamp::from_seconds(0),
-                6,
-            ),
-        });
-
-        let mut state = State::default();
-        let mut user_state = UserState::default();
-        let vault_user_state = UserState::default();
-        let perp_querier = NoCachePerpQuerier::new_local(&storage);
-
-        _add_liquidity(
-            usdc_coins(1_000_000),
-            &mut state,
-            &mut user_state,
-            &vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
-            None,
-        )
-        .unwrap();
-
-        assert_eq!(user_state.vault_shares, Uint128::new(expected_shares));
-    }
-
     // ---- Test 13: shares rounded floor ----
     // margin=$2, supply=2_000_000, no pairs
     // effective_supply = 3_000_000, effective_equity = $3
-    // deposit 1 USDC: deposit_value = $1
+    // deposit $1 margin:
     // ratio = $1 / $3 = 0.333333...
     // shares = floor(3_000_000 × 0.333333) = 999_999
     #[test]
     fn shares_rounded_floor() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            settlement_currency::DENOM.clone() => usdc_price_at_dollar(),
-        });
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let mut state = State {
             vault_margin: UsdValue::new_int(2),
             vault_share_supply: Uint128::new(2_000_000),
             ..Default::default()
         };
-        let mut user_state = UserState::default();
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(1),
+            ..Default::default()
+        };
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            usdc_coins(1_000_000),
+            UsdValue::new_int(1),
             &mut state,
             &mut user_state,
             &vault_user_state,
