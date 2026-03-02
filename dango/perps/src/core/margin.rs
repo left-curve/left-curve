@@ -49,10 +49,9 @@ pub(super) fn compute_position_unrealized_funding(
 /// Compute a user's equity (net account value) across all open positions.
 ///
 /// ```plain
-/// equity = collateral_value + Σ(unrealized_pnl) - Σ(accrued_funding)
+/// equity = user_state.margin + Σ(unrealized_pnl) - Σ(accrued_funding)
 /// ```
 pub fn compute_user_equity(
-    collateral_value: UsdValue,
     user_state: &UserState,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
@@ -69,7 +68,8 @@ pub fn compute_user_equity(
             .checked_add_assign(compute_position_unrealized_funding(position, &pair_state)?)?;
     }
 
-    Ok(collateral_value
+    Ok(user_state
+        .margin
         .checked_add(total_pnl)?
         .checked_sub(total_funding)?)
 }
@@ -200,13 +200,12 @@ pub fn compute_required_margin(
 /// Returns zero when equity falls below the used + reserved requirement
 /// (the user cannot open new positions or withdraw, and may face liquidation).
 pub fn compute_available_margin(
-    collateral_value: UsdValue,
     user_state: &UserState,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     reserved_margin_value: UsdValue,
 ) -> anyhow::Result<UsdValue> {
-    let equity = compute_user_equity(collateral_value, user_state, perp_querier, oracle_querier)?;
+    let equity = compute_user_equity(user_state, perp_querier, oracle_querier)?;
 
     let mut used_margin = UsdValue::ZERO;
     for (pair_id, position) in &user_state.positions {
@@ -241,10 +240,9 @@ pub fn check_margin(
     param: &Param,
     pair_id: &PairId,
     oracle_price: UsdPrice,
-    collateral_value: UsdValue,
     size: Quantity,
 ) -> anyhow::Result<()> {
-    let equity = compute_user_equity(collateral_value, taker_state, perp_querier, oracle_querier)?;
+    let equity = compute_user_equity(taker_state, perp_querier, oracle_querier)?;
 
     let current_position = taker_state
         .positions
@@ -363,18 +361,15 @@ mod tests {
 
     #[test]
     fn equity_no_positions() {
-        let user_state = UserState::default();
+        let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
+            ..Default::default()
+        };
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
-            compute_user_equity(
-                UsdValue::new_int(10_000),
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier
-            )
-            .unwrap(),
+            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
             UsdValue::new_int(10_000),
         );
     }
@@ -385,6 +380,7 @@ mod tests {
     #[test]
     fn equity_single_position_pnl_only() {
         let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -413,13 +409,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_user_equity(
-                UsdValue::new_int(10_000),
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier
-            )
-            .unwrap(),
+            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
             UsdValue::new_int(15_000),
         );
     }
@@ -431,6 +421,7 @@ mod tests {
     #[test]
     fn equity_with_pnl_and_funding() {
         let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -459,13 +450,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_user_equity(
-                UsdValue::new_int(10_000),
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier
-            )
-            .unwrap(),
+            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
             UsdValue::new_int(14_980),
         );
     }
@@ -479,6 +464,7 @@ mod tests {
     #[test]
     fn equity_multiple_positions() {
         let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -521,13 +507,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_user_equity(
-                UsdValue::new_int(10_000),
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier
-            )
-            .unwrap(),
+            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
             UsdValue::new_int(16_980),
         );
     }
@@ -538,6 +518,7 @@ mod tests {
     #[test]
     fn equity_negative() {
         let user_state = UserState {
+            margin: UsdValue::new_int(100),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -566,13 +547,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_user_equity(
-                UsdValue::new_int(100),
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier
-            )
-            .unwrap(),
+            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
             UsdValue::new_int(-4900),
         );
     }
@@ -952,13 +927,15 @@ mod tests {
     // collateral=10000, no positions, no reserved → available = 10000
     #[test]
     fn available_margin_no_positions() {
-        let user_state = UserState::default();
+        let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
+            ..Default::default()
+        };
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new_int(10_000),
                 &user_state,
                 &perp_querier,
                 &mut oracle_querier,
@@ -976,6 +953,7 @@ mod tests {
     #[test]
     fn available_margin_with_profit() {
         let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -1010,7 +988,6 @@ mod tests {
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new_int(10_000),
                 &user_state,
                 &perp_querier,
                 &mut oracle_querier,
@@ -1026,6 +1003,7 @@ mod tests {
     #[test]
     fn available_margin_with_reserved() {
         let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -1060,7 +1038,6 @@ mod tests {
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new_int(10_000),
                 &user_state,
                 &perp_querier,
                 &mut oracle_querier,
@@ -1079,6 +1056,7 @@ mod tests {
     #[test]
     fn available_margin_clamped_to_zero() {
         let user_state = UserState {
+            margin: UsdValue::new_int(100),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -1113,7 +1091,6 @@ mod tests {
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new_int(100),
                 &user_state,
                 &perp_querier,
                 &mut oracle_querier,
@@ -1132,6 +1109,7 @@ mod tests {
     #[test]
     fn available_margin_with_funding() {
         let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -1166,7 +1144,6 @@ mod tests {
 
         assert_eq!(
             compute_available_margin(
-                UsdValue::new_int(10_000),
                 &user_state,
                 &perp_querier,
                 &mut oracle_querier,
@@ -1194,7 +1171,10 @@ mod tests {
             taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
             ..Default::default()
         };
-        let taker_state = UserState::default();
+        let taker_state = UserState {
+            margin: UsdValue::new_int(25_200),
+            ..Default::default()
+        };
 
         let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
@@ -1223,7 +1203,6 @@ mod tests {
             &param,
             &pair_id,
             UsdPrice::new_int(50_000),
-            UsdValue::new_int(25_200),
             Quantity::new_int(10),
         );
 

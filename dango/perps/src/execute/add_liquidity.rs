@@ -89,12 +89,7 @@ fn _add_liquidity(
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
-    let vault_equity = compute_user_equity(
-        vault_user_state.margin,
-        vault_user_state,
-        perp_querier,
-        oracle_querier,
-    )?;
+    let vault_equity = compute_user_equity(vault_user_state, perp_querier, oracle_querier)?;
 
     // Add virtual shares to the current vault share supply to arrive at the
     // effective supply.

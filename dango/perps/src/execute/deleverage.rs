@@ -43,9 +43,6 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
-    // Collateral is the trader's internal margin (UsdValue).
-    let collateral_value = user_state.margin;
-
     // -------------------- 2. Cancel all resting orders -----------------------
 
     cancel_all_orders_for(ctx.storage, user, &mut user_state)?;
@@ -73,7 +70,6 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         &mut pair_states,
         &mut user_state,
         &oracle_prices,
-        collateral_value,
         &mut oracle_querier,
         &mut vault_user_state,
     )?;
@@ -116,15 +112,13 @@ fn _deleverage(
     pair_states: &mut BTreeMap<PairId, PairState>,
     user_state: &mut UserState,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
-    collateral_value: UsdValue,
     oracle_querier: &mut OracleQuerier,
     vault_user_state: &mut UserState,
 ) -> anyhow::Result<()> {
     // -------------------- Step 1: Compute equity + rank ----------------------
 
     let perp_querier = NoCachePerpQuerier::new_local(storage);
-    let user_equity =
-        compute_user_equity(collateral_value, user_state, &perp_querier, oracle_querier)?;
+    let user_equity = compute_user_equity(user_state, &perp_querier, oracle_querier)?;
 
     let mut scored: Vec<(PairId, Dimensionless)> = Vec::new();
 
@@ -393,8 +387,7 @@ mod tests {
             ),
         });
 
-        let collateral_value = UsdValue::new_int(10_000);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(10_000);
 
         let result = _deleverage(
             &ctx.storage,
@@ -402,7 +395,6 @@ mod tests {
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
             &mut vault_user_state,
         );
@@ -458,8 +450,7 @@ mod tests {
             ),
         });
 
-        let collateral_value = UsdValue::new_int(10_000);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(10_000);
 
         let result = _deleverage(
             &ctx.storage,
@@ -467,7 +458,6 @@ mod tests {
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
             &mut vault_user_state,
         );
@@ -534,8 +524,7 @@ mod tests {
             ),
         });
 
-        let collateral_value = UsdValue::new_int(10_000);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(10_000);
 
         let result = _deleverage(
             &ctx.storage,
@@ -543,7 +532,6 @@ mod tests {
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
             &mut vault_user_state,
         );
@@ -551,7 +539,7 @@ mod tests {
         assert!(result.is_ok(), "deleverage failed: {:?}", result.err());
 
         // All PnL forfeited, no credit to user margin.
-        assert_eq!(user_state.margin, collateral_value);
+        assert_eq!(user_state.margin, UsdValue::new_int(10_000));
 
         // vault margin = -20,000 + 15,000 = -5,000
         assert_eq!(vault_user_state.margin, UsdValue::new_int(-5_000));
@@ -604,8 +592,7 @@ mod tests {
             ),
         });
 
-        let collateral_value = UsdValue::new_int(10_000);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(10_000);
 
         let result = _deleverage(
             &ctx.storage,
@@ -613,7 +600,6 @@ mod tests {
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
             &mut vault_user_state,
         );
@@ -670,8 +656,7 @@ mod tests {
             ),
         });
 
-        let collateral_value = UsdValue::new_int(10_000);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(10_000);
 
         let result = _deleverage(
             &ctx.storage,
@@ -679,7 +664,6 @@ mod tests {
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
             &mut vault_user_state,
         );
@@ -688,7 +672,7 @@ mod tests {
 
         // _deleverage never force-collects from user. The non-forfeited PnL
         // is credited to user_state.margin. Original margin is preserved.
-        assert!(user_state.margin >= collateral_value);
+        assert!(user_state.margin >= UsdValue::new_int(10_000));
     }
 
     #[test]

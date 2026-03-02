@@ -18,7 +18,6 @@ use {
 ///
 /// A user with no open positions is never liquidatable.
 pub fn is_liquidatable(
-    collateral_value: UsdValue,
     user_state: &UserState,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
@@ -27,7 +26,7 @@ pub fn is_liquidatable(
         return Ok(false);
     }
 
-    let equity = compute_user_equity(collateral_value, user_state, perp_querier, oracle_querier)?;
+    let equity = compute_user_equity(user_state, perp_querier, oracle_querier)?;
     let maintenance_margin = compute_maintenance_margin(user_state, perp_querier, oracle_querier)?;
 
     Ok(equity < maintenance_margin)
@@ -151,19 +150,14 @@ mod tests {
 
     #[test]
     fn is_liquidatable_no_positions() {
-        let user_state = UserState::default();
+        let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
+            ..Default::default()
+        };
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
-        assert!(
-            !is_liquidatable(
-                UsdValue::new_int(10_000),
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier,
-            )
-            .unwrap()
-        );
+        assert!(!is_liquidatable(&user_state, &perp_querier, &mut oracle_querier,).unwrap());
     }
 
     // collateral=10000, ETH long 10 @ entry=2000, oracle=2500, mmr=5%
@@ -173,6 +167,7 @@ mod tests {
     #[test]
     fn is_liquidatable_healthy() {
         let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -205,15 +200,7 @@ mod tests {
             ),
         });
 
-        assert!(
-            !is_liquidatable(
-                UsdValue::new_int(10_000),
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier,
-            )
-            .unwrap()
-        );
+        assert!(!is_liquidatable(&user_state, &perp_querier, &mut oracle_querier,).unwrap());
     }
 
     // equity exactly equals maintenance margin → not liquidatable (strict <)
@@ -223,6 +210,7 @@ mod tests {
     #[test]
     fn is_liquidatable_at_boundary() {
         let user_state = UserState {
+            margin: UsdValue::new_int(1_000),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -255,15 +243,7 @@ mod tests {
             ),
         });
 
-        assert!(
-            !is_liquidatable(
-                UsdValue::new_int(1_000),
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier,
-            )
-            .unwrap()
-        );
+        assert!(!is_liquidatable(&user_state, &perp_querier, &mut oracle_querier,).unwrap());
     }
 
     // collateral=100, ETH long 10 @ entry=2000, oracle=1500, mmr=5%
@@ -273,6 +253,7 @@ mod tests {
     #[test]
     fn is_liquidatable_underwater() {
         let user_state = UserState {
+            margin: UsdValue::new_int(100),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -305,15 +286,7 @@ mod tests {
             ),
         });
 
-        assert!(
-            is_liquidatable(
-                UsdValue::new_int(100),
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier,
-            )
-            .unwrap()
-        );
+        assert!(is_liquidatable(&user_state, &perp_querier, &mut oracle_querier,).unwrap());
     }
 
     // Funding can push a user into liquidation territory.
@@ -331,6 +304,7 @@ mod tests {
     fn is_liquidatable_funding_pushes_under() {
         let make_fixtures = |collateral: i128| {
             let user_state = UserState {
+                margin: UsdValue::new_int(collateral),
                 positions: btree_map! {
                     eth::DENOM.clone() => Position {
                         size: Quantity::new_int(10),
@@ -362,21 +336,16 @@ mod tests {
                     18,
                 ),
             });
-            (
-                UsdValue::new_int(collateral),
-                user_state,
-                perp_querier,
-                oracle_querier,
-            )
+            (user_state, perp_querier, oracle_querier)
         };
 
         // Case 1: healthy despite funding
-        let (col, us, pq, mut oq) = make_fixtures(10_000);
-        assert!(!is_liquidatable(col, &us, &pq, &mut oq).unwrap());
+        let (us, pq, mut oq) = make_fixtures(10_000);
+        assert!(!is_liquidatable(&us, &pq, &mut oq).unwrap());
 
         // Case 2: funding pushes equity below maintenance margin
-        let (col, us, pq, mut oq) = make_fixtures(900);
-        assert!(is_liquidatable(col, &us, &pq, &mut oq).unwrap());
+        let (us, pq, mut oq) = make_fixtures(900);
+        assert!(is_liquidatable(&us, &pq, &mut oq).unwrap());
     }
 
     // -------------------- `compute_close_schedule` tests ---------------------

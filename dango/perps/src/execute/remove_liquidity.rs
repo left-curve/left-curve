@@ -96,12 +96,7 @@ fn _remove_liquidity(
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
-    let vault_equity = compute_user_equity(
-        vault_user_state.margin,
-        vault_user_state,
-        perp_querier,
-        oracle_querier,
-    )?;
+    let vault_equity = compute_user_equity(vault_user_state, perp_querier, oracle_querier)?;
 
     let effective_supply = vault_share_supply.checked_add(VIRTUAL_SHARES)?;
 

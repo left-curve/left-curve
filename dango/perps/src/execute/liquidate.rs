@@ -37,9 +37,6 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
 
-    // Collateral is the trader's internal margin (UsdValue).
-    let collateral_value = user_state.margin;
-
     // -------------------- 2. Cancel all resting orders -----------------------
 
     cancel_all_orders_for(ctx.storage, user, &mut user_state)?;
@@ -89,7 +86,6 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         &mut user_state,
         vault_state,
         &oracle_prices,
-        collateral_value,
         &mut oracle_querier,
     )?;
 
@@ -157,7 +153,6 @@ fn _liquidate(
     user_state: &mut UserState,
     vault_state: UserState,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
-    collateral_value: UsdValue,
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
@@ -168,13 +163,13 @@ fn _liquidate(
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
     ensure!(
-        is_liquidatable(collateral_value, user_state, &perp_querier, oracle_querier)?,
+        is_liquidatable(user_state, &perp_querier, oracle_querier)?,
         "user is not liquidatable"
     );
 
     // ------------- Step 2: Compute close schedule (largest-MM-first) ----------
 
-    let equity = compute_user_equity(collateral_value, user_state, &perp_querier, oracle_querier)?;
+    let equity = compute_user_equity(user_state, &perp_querier, oracle_querier)?;
     let total_mm = compute_maintenance_margin(user_state, &perp_querier, oracle_querier)?;
     let deficit = total_mm.checked_sub(equity)?;
 
@@ -207,7 +202,7 @@ fn _liquidate(
         user,
         closed_notional,
         param.liquidation_fee_rate,
-        collateral_value,
+        user_state.margin,
     )?;
 
     // ----------------------- Step 5: Settle PnLs ------------------------------
@@ -373,11 +368,11 @@ fn apply_liquidation_fee(
     user: Addr,
     closed_notional: UsdValue,
     liquidation_fee_rate: Dimensionless,
-    collateral_value: UsdValue,
+    user_margin: UsdValue,
 ) -> anyhow::Result<()> {
     let fee_usd = closed_notional.checked_mul(liquidation_fee_rate)?;
     let user_pnl = pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
-    let remaining_margin = collateral_value.checked_add(user_pnl)?.max(UsdValue::ZERO);
+    let remaining_margin = user_margin.checked_add(user_pnl)?.max(UsdValue::ZERO);
     let actual_fee = fee_usd.min(remaining_margin);
 
     if actual_fee.is_non_zero() {
@@ -548,10 +543,9 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let vault_state = UserState::default();
 
-        // collateral_value = 10000, equity = 10000 + 0 = 10000, MM = 2500
+        // margin = 10000, equity = 10000 + 0 = 10000, MM = 2500
         // 10000 > 2500 → not liquidatable
-        let collateral_value = UsdValue::new_int(10_000);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(10_000);
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -575,7 +569,6 @@ mod tests {
             &mut user_state,
             vault_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
         );
 
@@ -637,8 +630,7 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let vault_state = vault_user_state_with_margin(1_000_000);
 
-        let collateral_value = UsdValue::new_int(2_400);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(2_400);
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -662,7 +654,6 @@ mod tests {
             &mut user_state,
             vault_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
         );
 
@@ -710,8 +701,7 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let vault_state = vault_user_state_with_margin(1_000_000);
 
-        let collateral_value = UsdValue::new_int(2_400);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(2_400);
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -735,7 +725,6 @@ mod tests {
             &mut user_state,
             vault_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
         );
 
@@ -819,8 +808,7 @@ mod tests {
 
         let vault_state = vault_user_state_with_margin(1_000_000);
 
-        let collateral_value = UsdValue::new_int(4_000);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(4_000);
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -849,7 +837,6 @@ mod tests {
             &mut user_state,
             vault_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
         );
 
@@ -903,8 +890,7 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let vault_state = vault_user_state_with_margin(1_000_000);
 
-        let collateral_value = UsdValue::new_int(2_500);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(2_500);
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -928,7 +914,6 @@ mod tests {
             &mut user_state,
             vault_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
         );
 
@@ -1060,8 +1045,7 @@ mod tests {
 
         let vault_state = vault_user_state_with_margin(1_000_000);
 
-        let collateral_value = UsdValue::new_int(4_000);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(4_000);
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -1090,7 +1074,6 @@ mod tests {
             &mut user_state,
             vault_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
         );
 
@@ -1175,8 +1158,7 @@ mod tests {
         let mut oracle_prices = BTreeMap::new();
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(50_000));
 
-        let collateral_value = UsdValue::new_int(2_400);
-        user_state.margin = collateral_value;
+        user_state.margin = UsdValue::new_int(2_400);
 
         use {
             dango_types::oracle::PrecisionedPrice,
@@ -1200,7 +1182,6 @@ mod tests {
             &mut user_state,
             vault_state,
             &oracle_prices,
-            collateral_value,
             &mut oracle_querier,
         );
 

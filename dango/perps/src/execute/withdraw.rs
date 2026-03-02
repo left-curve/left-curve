@@ -30,7 +30,6 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
         .unwrap_or_default();
 
     let available = compute_available_margin(
-        user_state.margin,
         &user_state,
         &perp_querier,
         &mut oracle_querier,
