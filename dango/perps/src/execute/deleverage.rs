@@ -120,7 +120,7 @@ fn _deleverage(
     let perp_querier = NoCachePerpQuerier::new_local(storage);
     let user_equity = compute_user_equity(user_state, &perp_querier, oracle_querier)?;
 
-    let mut scored: Vec<(PairId, Dimensionless)> = Vec::new();
+    let mut scored = Vec::new();
 
     for (pair_id, position) in &user_state.positions {
         let oracle_price = oracle_prices[pair_id];
@@ -138,8 +138,8 @@ fn _deleverage(
 
     // --------- Step 2: Close profitable positions at oracle price ------------
 
-    let mut pnls: BTreeMap<Addr, UsdValue> = BTreeMap::new();
-    let mut fees: BTreeMap<Addr, UsdValue> = BTreeMap::new();
+    let mut pnls = BTreeMap::new();
+    let mut fees = BTreeMap::new();
 
     for (pair_id, _score) in &scored {
         let pair_state = pair_states.get_mut(pair_id).unwrap();
@@ -170,7 +170,7 @@ fn _deleverage(
 
     let user_pnl = pnls.remove(&user).unwrap_or(UsdValue::ZERO);
 
-    if user_pnl > UsdValue::ZERO {
+    if user_pnl.is_positive() {
         // The deficit is the absolute value of the negative vault margin.
         let deficit = vault_user_state.margin.checked_neg()?;
         let forfeited = user_pnl.min(deficit);
@@ -310,7 +310,7 @@ mod tests {
         // Vault margin = 0 (no deficit).
         save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
 
-        let result = super::deleverage(ctx.as_mutable(), USER);
+        let result = deleverage(ctx.as_mutable(), USER);
 
         assert!(result.is_err());
         assert!(
@@ -338,7 +338,7 @@ mod tests {
 
         // Don't save any positions for USER.
 
-        let result = super::deleverage(ctx.as_mutable(), USER);
+        let result = deleverage(ctx.as_mutable(), USER);
 
         assert!(result.is_err());
         assert!(
@@ -692,7 +692,7 @@ mod tests {
 
         save_vault_margin(&mut ctx.storage, -5_000);
 
-        let result = super::deleverage(ctx.as_mutable(), CONTRACT);
+        let result = deleverage(ctx.as_mutable(), CONTRACT);
 
         assert!(result.is_err());
         assert!(

@@ -1,5 +1,5 @@
 use {
-    crate::NoCachePerpQuerier,
+    crate::{NoCachePerpQuerier, core::compute_trading_fee},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -207,6 +207,7 @@ pub fn compute_available_margin(
     let equity = compute_user_equity(user_state, perp_querier, oracle_querier)?;
 
     let mut used_margin = UsdValue::ZERO;
+
     for (pair_id, position) in &user_state.positions {
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
@@ -259,7 +260,7 @@ pub fn check_margin(
         projected_size,
     )?;
 
-    let projected_fee = super::compute_trading_fee(size, oracle_price, param.taker_fee_rate)?;
+    let projected_fee = compute_trading_fee(size, oracle_price, param.taker_fee_rate)?;
 
     let required_margin = projected_im
         .checked_add(projected_fee)?

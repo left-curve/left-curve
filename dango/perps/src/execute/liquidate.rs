@@ -179,7 +179,7 @@ fn _liquidate(
 
     // Seed the shared maker states map with the vault state so that
     // book-matched fills and backstop fills accumulate on the same object.
-    let mut all_maker_states: BTreeMap<Addr, UserState> = BTreeMap::new();
+    let mut all_maker_states = BTreeMap::new();
     all_maker_states.insert(contract, vault_state);
 
     let (all_pnls, mut all_fees, all_order_mutations, closed_notional) = execute_close_schedule(
@@ -218,7 +218,7 @@ fn _liquidate(
     // Bad debt check: if the user's margin went negative after settlement,
     // floor at zero and subtract the bad debt from the vault's margin (which
     // may go negative, representing the deficit).
-    if user_state.margin < UsdValue::ZERO {
+    if user_state.margin.is_negative() {
         let bad_debt = user_state.margin.checked_abs()?;
         user_state.margin = UsdValue::ZERO;
         all_maker_states
@@ -261,9 +261,9 @@ fn execute_close_schedule(
         ..param.clone()
     };
 
-    let mut all_pnls: BTreeMap<Addr, UsdValue> = BTreeMap::new();
-    let mut all_fees: BTreeMap<Addr, UsdValue> = BTreeMap::new();
-    let mut all_order_mutations: Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)> = Vec::new();
+    let mut all_pnls = BTreeMap::<_, UsdValue>::new();
+    let mut all_fees = BTreeMap::<_, UsdValue>::new();
+    let mut all_order_mutations = Vec::new();
     let mut closed_notional = UsdValue::ZERO;
 
     for (pair_id, close_size) in schedule {

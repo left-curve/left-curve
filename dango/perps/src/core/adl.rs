@@ -1,4 +1,7 @@
-use dango_types::{Dimensionless, UsdPrice, UsdValue, perps::Position};
+use {
+    crate::core::compute_position_unrealized_pnl,
+    dango_types::{Dimensionless, UsdPrice, UsdValue, perps::Position},
+};
 
 /// Compute the ADL ranking score for a single position.
 ///
@@ -13,7 +16,7 @@ pub fn compute_adl_score(
     oracle_price: UsdPrice,
     user_equity: UsdValue,
 ) -> grug::MathResult<Dimensionless> {
-    let unrealized_pnl = super::compute_position_unrealized_pnl(position, oracle_price)?;
+    let unrealized_pnl = compute_position_unrealized_pnl(position, oracle_price)?;
 
     if unrealized_pnl <= UsdValue::ZERO || user_equity <= UsdValue::ZERO {
         return Ok(Dimensionless::ZERO);

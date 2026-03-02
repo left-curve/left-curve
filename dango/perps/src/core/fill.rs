@@ -1,4 +1,5 @@
 use {
+    crate::core::compute_position_unrealized_funding,
     dango_types::{
         Quantity, UsdPrice, UsdValue,
         perps::{PairId, PairState, Position, UserState},
@@ -52,7 +53,7 @@ pub fn execute_fill(
 /// Returns the PnL from the user's perspective (negated accrued funding,
 /// since positive accrued = user cost).
 fn settle_funding(position: &mut Position, pair_state: &PairState) -> MathResult<UsdValue> {
-    let accrued = crate::core::compute_position_unrealized_funding(position, pair_state)?;
+    let accrued = compute_position_unrealized_funding(position, pair_state)?;
 
     position.entry_funding_per_unit = pair_state.funding_per_unit;
 

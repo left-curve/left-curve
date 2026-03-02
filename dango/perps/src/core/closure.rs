@@ -48,7 +48,7 @@ pub fn compute_close_schedule(
     let mut deficit = deficit;
 
     // Build (mm_contribution, pair_id) list, sorted descending by MM.
-    let mut mm_entries: Vec<(UsdValue, PairId)> = Vec::new();
+    let mut mm_entries = Vec::new();
 
     for (pair_id, position) in &user_state.positions {
         let oracle_price = oracle_prices[pair_id];

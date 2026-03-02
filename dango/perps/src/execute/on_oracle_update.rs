@@ -161,7 +161,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
 #[cfg(test)]
 mod tests {
     use {
-        crate::LAST_VAULT_ORDERS_UPDATE,
+        super::*,
         grug::{Addr, Coins, MockContext},
     };
 
@@ -181,7 +181,7 @@ mod tests {
             .unwrap();
 
         // Second call at the same block height should fail.
-        let result = super::on_oracle_update(ctx.as_mutable());
+        let result = on_oracle_update(ctx.as_mutable());
 
         assert!(result.is_err());
         assert!(
