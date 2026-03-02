@@ -75,6 +75,7 @@ impl GenesisCodes for RustVm {
             .with_execute(Box::new(dango_oracle::execute))
             .with_authenticate(Box::new(dango_oracle::authenticate))
             .with_query(Box::new(dango_oracle::query))
+            .with_reply(Box::new(dango_oracle::reply))
             .build();
 
         let taxman = ContractBuilder::new(Box::new(dango_taxman::instantiate))

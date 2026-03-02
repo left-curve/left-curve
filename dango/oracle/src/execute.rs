@@ -1,10 +1,15 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES, PYTH_TRUSTED_SIGNERS},
     anyhow::{bail, ensure},
-    dango_types::oracle::{ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource},
+    dango_types::{
+        DangoQuerier,
+        oracle::{ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource, ReplyMsg},
+        perps,
+    },
     grug::{
-        Api, AuthCtx, AuthMode, AuthResponse, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute,
-        MutableCtx, QuerierExt, Response, Storage, Timestamp, Tx,
+        Api, AuthCtx, AuthMode, AuthResponse, Binary, Coins, Denom, Inner, JsonDeExt, Message,
+        MsgExecute, MutableCtx, QuerierExt, Response, StdResult, Storage, SubMessage, SubMsgResult,
+        SudoCtx, Timestamp, Tx,
     },
     pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
     std::collections::BTreeMap,
@@ -72,6 +77,23 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         } => register_trusted_signer(ctx, public_key, expires_at),
         ExecuteMsg::RemoveTrustedSigner { public_key } => remove_trusted_signer(ctx, public_key),
         ExecuteMsg::FeedPrices(price_update) => feed_prices(ctx, price_update),
+    }
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn reply(_ctx: SudoCtx, msg: ReplyMsg, _res: SubMsgResult) -> StdResult<Response> {
+    match msg {
+        ReplyMsg::AfterOnOracleUpdate {} => {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(
+                    error = _res.unwrap_err(),
+                    "!!! PERPS ON_ORACLE_UPDATE FAILED !!!"
+                );
+            }
+
+            Ok(Response::new())
+        },
     }
 }
 
@@ -153,7 +175,18 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
         }
     }
 
-    Ok(Response::new())
+    Ok(Response::new().add_submessage({
+        // Call the perps contract's `on_oracle_update` function.
+        // The perps market making vault refreshes its quotes based on the latest
+        // oracle prices.
+        // Use `reply_on_error` to ensure that even if the perps contract errors,
+        // the oracle update itself isn't reverted.
+        let perps = ctx.querier.query_perps()?;
+        SubMessage::reply_on_error(
+            Message::execute(perps, &perps::ExecuteMsg::OnOracleUpdate {}, Coins::new())?,
+            &ReplyMsg::AfterOnOracleUpdate {},
+        )?
+    }))
 }
 
 fn verify_pyth_lazer_message(
