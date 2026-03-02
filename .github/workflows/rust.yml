@@ -1358,8 +1358,13 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTEND_ENABLED_FEATURES_DEV: ${{ vars.FRONTEND_ENABLED_FEATURES_DEV }}
         run: |
           cd deploy
+
+          # Allow configuring devnet frontend feature flags from GitHub vars.
+          # If the var is not set, default to enabling points.
+          FRONTEND_ENABLED_FEATURES_DEV="${FRONTEND_ENABLED_FEATURES_DEV:-points}"
 
           # Skip signature verification for images that weren't built in this workflow run
           # Ansible needs boolean false, not string "false", so we include it in the JSON
@@ -1374,7 +1379,7 @@ jobs:
           fi
 
           if [ "$GIT_REF" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true'"$VERIFY_SIGS_JSON"'}' -e github_sha=$GIT_COMMIT -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e dango_image_digest=$DEPLOY_BACKEND_DIGEST -e frontend_image_digest=$DEPLOY_FRONTEND_DIGEST -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true'"$VERIFY_SIGS_JSON"'}' -e frontend_enabled_features="$FRONTEND_ENABLED_FEATURES_DEV" -e github_sha=$GIT_COMMIT -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e dango_image_digest=$DEPLOY_BACKEND_DIGEST -e frontend_image_digest=$DEPLOY_FRONTEND_DIGEST -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71
           fi
 
           if [ "$EVENT_NAME" == "pull_request" ]; then

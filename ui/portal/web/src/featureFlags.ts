@@ -6,17 +6,17 @@ const FEATURE_SET = new Set<string>(FEATURE_IDS);
 
 const normalizeFeatureId = (value: string) => value.trim().toLowerCase();
 
-const getDisabledFeatures = (): Set<FeatureId> => {
-  const disabledFeatures = window.dango?.disabledFeatures;
-  if (!Array.isArray(disabledFeatures)) return new Set<FeatureId>();
+const getEnabledFeatures = (): Set<FeatureId> => {
+  const enabledFeatures = window.dango?.enabledFeatures;
+  if (!Array.isArray(enabledFeatures)) return new Set<FeatureId>();
 
   return new Set(
-    disabledFeatures
+    enabledFeatures
       .map(normalizeFeatureId)
       .filter((feature): feature is FeatureId => FEATURE_SET.has(feature)),
   );
 };
 
 export const isFeatureEnabled = (feature: FeatureId): boolean => {
-  return !getDisabledFeatures().has(feature);
+  return getEnabledFeatures().has(feature);
 };

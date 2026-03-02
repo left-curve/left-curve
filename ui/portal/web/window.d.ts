@@ -10,7 +10,7 @@ declare global {
         upUrl: string;
       };
       banner?: string;
-      disabledFeatures?: string[];
+      enabledFeatures?: string[];
     };
   }
 }

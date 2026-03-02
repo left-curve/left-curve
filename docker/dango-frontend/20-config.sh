@@ -20,8 +20,8 @@ csv_to_json_array() {
   '
 }
 
-disabled_features_json="$(csv_to_json_array "${FRONTEND_DISABLED_FEATURES:-}")"
+enabled_features_json="$(csv_to_json_array "${FRONTEND_ENABLED_FEATURES:-}")"
 
 cat > /usr/share/nginx/html/static/js/config.js <<EOF
-window.dango={"chain":{"id":"${CHAIN_ID:-localdango-1}","name":"Local","nativeCoin":"dango","blockExplorer":{"name":"Local Explorer","txPage":"/tx/\${txHash}","accountPage":"/account/\${address}","contractPage":"/contract/\${address}"},"urls":{"indexer":"${INDEXER_URL:-http://localhost:8080}"}},"urls":{"faucetUrl":"${FAUCET_URL:-http://localhost:8082/mint}","questUrl":"${QUEST_URL:-http://localhost:8081/check_username}","upUrl":"${UP_URL:-http://localhost:8080/up}"},"banner":"${BANNER}","disabledFeatures":${disabled_features_json}};
+window.dango={"chain":{"id":"${CHAIN_ID:-localdango-1}","name":"Local","nativeCoin":"dango","blockExplorer":{"name":"Local Explorer","txPage":"/tx/\${txHash}","accountPage":"/account/\${address}","contractPage":"/contract/\${address}"},"urls":{"indexer":"${INDEXER_URL:-http://localhost:8080}"}},"urls":{"faucetUrl":"${FAUCET_URL:-http://localhost:8082/mint}","questUrl":"${QUEST_URL:-http://localhost:8081/check_username}","upUrl":"${UP_URL:-http://localhost:8080/up}"},"banner":"${BANNER}","enabledFeatures":${enabled_features_json}};
 EOF
