@@ -1543,13 +1543,10 @@ fn oracle_triggers_on_oracle_update() {
     assert_eq!(vault_orders_1.bids[0].limit_price, UsdPrice::new_int(1_936));
     assert_eq!(vault_orders_1.asks[0].limit_price, UsdPrice::new_int(2_140));
 
-    // size = min(half_margin / (oracle * IMR), vault_max_quote_size)
-    //      = min(2500 / (2038.056 * 0.1), 2) = min(12.27, 2) = 2
+    // |size| = min(half_margin / (oracle * IMR), vault_max_quote_size)
+    //        = min(2500 / (2038.056 * 0.1), 2) = min(12.27, 2) = 2
     assert_eq!(vault_orders_1.bids[0].size, Quantity::new_int(2));
-    assert_eq!(
-        vault_orders_1.asks[0].size,
-        Quantity::new_int(2).checked_neg().unwrap()
-    );
+    assert_eq!(vault_orders_1.asks[0].size, Quantity::new_int(-2));
 
     // -------------------------------------------------------------------------
     // Step 2: Corrupt perps PARAM storage so OnOracleUpdate will fail on the
