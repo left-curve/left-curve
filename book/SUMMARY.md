@@ -1,8 +1,16 @@
 [Greeting](README.md)
 
+# Perp DEX
+
+- [Margin](perps/1-margin.md)
+- [Order matching](perps/2-order-matching.md)
+- [Funding](perps/3-funding.md)
+- [Vault](perps/4-vault.md)
+- [Liquidation & ADL](perps/5-liquidation-and-adl.md)
+
 ---
 
-# Dango DEX
+# Spot DEX
 
 - [Passive liquidity](dex/passive-liquidity/README.md)
 
