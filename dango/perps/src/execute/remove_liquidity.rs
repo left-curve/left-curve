@@ -45,23 +45,16 @@ pub fn remove_liquidity(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (shares_to_burn, unlock) = _remove_liquidity(
+    let shares_to_burn = _remove_liquidity(
         ctx.block.timestamp,
         ctx.funds,
-        &state,
         &param,
-        &user_state,
+        &mut state,
+        &mut user_state,
         &vault_user_state,
         &perp_querier,
         &mut oracle_querier,
     )?;
-
-    // Update global state: vault_margin is UsdValue.
-    (state.vault_margin).checked_sub_assign(unlock.amount_to_release)?;
-    (state.vault_share_supply).checked_sub_assign(shares_to_burn)?;
-
-    // Update user state.
-    user_state.unlocks.push_back(unlock);
 
     // ------------------------ 3. Apply state changes -------------------------
 
@@ -82,19 +75,19 @@ pub fn remove_liquidity(ctx: MutableCtx) -> anyhow::Result<Response> {
 
 /// The actual logic for handling the remove-liquidity operation.
 ///
-/// Mutates: nothing (pure computation).
+/// Mutates: `state` (vault_margin, vault_share_supply), `user_state` (unlock queue).
 ///
-/// Returns: 1) the amount of shares to burn, 2) the unlock record (with UsdValue).
+/// Returns: the amount of shares to burn.
 fn _remove_liquidity(
     current_time: Timestamp,
     mut funds: Coins,
-    state: &State,
     param: &Param,
-    user_state: &UserState,
+    state: &mut State,
+    user_state: &mut UserState,
     vault_user_state: &UserState,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
-) -> anyhow::Result<(Uint128, Unlock)> {
+) -> anyhow::Result<Uint128> {
     // -------------------- Step 1. Extract shares to burn ---------------------
 
     let shares_to_burn = funds.take(perps::DENOM.clone()).amount;
@@ -146,10 +139,19 @@ fn _remove_liquidity(
 
     let end_time = current_time + param.vault_cooldown_period;
 
-    Ok((shares_to_burn, Unlock {
+    let unlock = Unlock {
         amount_to_release,
         end_time,
-    }))
+    };
+
+    // Update global state: vault_margin is UsdValue.
+    (state.vault_margin).checked_sub_assign(amount_to_release)?;
+    (state.vault_share_supply).checked_sub_assign(shares_to_burn)?;
+
+    // Update user state.
+    user_state.unlocks.push_back(unlock);
+
+    Ok(shares_to_burn)
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -188,22 +190,22 @@ mod tests {
         let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
-        let state = State {
+        let mut state = State {
             vault_margin: UsdValue::new_int(1),
             vault_share_supply: Uint128::new(1_000_000),
             ..Default::default()
         };
         let param = default_param();
-        let user_state = UserState::default();
+        let mut user_state = UserState::default();
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
-        let (shares, unlock) = _remove_liquidity(
+        let shares = _remove_liquidity(
             Timestamp::from_seconds(0),
             share_coins(1_000_000),
-            &state,
             &param,
-            &user_state,
+            &mut state,
+            &mut user_state,
             &vault_user_state,
             &perp_querier,
             &mut oracle_querier,
@@ -211,6 +213,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(shares, Uint128::new(1_000_000));
+        let unlock = user_state.unlocks.back().unwrap();
         assert_eq!(unlock.amount_to_release, UsdValue::new_int(1));
     }
 
@@ -221,22 +224,22 @@ mod tests {
         let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
-        let state = State {
+        let mut state = State {
             vault_margin: UsdValue::new_int(1),
             vault_share_supply: Uint128::new(1_000_000),
             ..Default::default()
         };
         let param = default_param();
-        let user_state = UserState::default();
+        let mut user_state = UserState::default();
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
-        let (_, unlock) = _remove_liquidity(
+        let _shares = _remove_liquidity(
             Timestamp::from_seconds(0),
             share_coins(500_000),
-            &state,
             &param,
-            &user_state,
+            &mut state,
+            &mut user_state,
             &vault_user_state,
             &perp_querier,
             &mut oracle_querier,
@@ -245,6 +248,7 @@ mod tests {
 
         // effective_equity = $2, ratio = 500000/2000000 = 0.25
         // amount = floor($2 * 0.25) = $0.50
+        let unlock = user_state.unlocks.back().unwrap();
         assert!(unlock.amount_to_release > UsdValue::ZERO);
     }
 
@@ -254,22 +258,22 @@ mod tests {
         let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
-        let state = State {
+        let mut state = State {
             vault_margin: UsdValue::new_int(1),
             vault_share_supply: Uint128::new(1_000_000),
             ..Default::default()
         };
         let param = default_param();
-        let user_state = UserState::default();
+        let mut user_state = UserState::default();
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _remove_liquidity(
             Timestamp::from_seconds(0),
             Coins::new(),
-            &state,
             &param,
-            &user_state,
+            &mut state,
+            &mut user_state,
             &vault_user_state,
             &perp_querier,
             &mut oracle_querier,
@@ -287,13 +291,13 @@ mod tests {
         let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
-        let state = State {
+        let mut state = State {
             vault_margin: UsdValue::new_int(1),
             vault_share_supply: Uint128::new(1_000_000),
             ..Default::default()
         };
         let param = default_param();
-        let user_state = UserState::default();
+        let mut user_state = UserState::default();
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
@@ -308,9 +312,9 @@ mod tests {
         let err = _remove_liquidity(
             Timestamp::from_seconds(0),
             funds,
-            &state,
             &param,
-            &user_state,
+            &mut state,
+            &mut user_state,
             &vault_user_state,
             &perp_querier,
             &mut oracle_querier,
@@ -326,7 +330,7 @@ mod tests {
         let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
-        let state = State {
+        let mut state = State {
             vault_margin: UsdValue::new_int(1),
             vault_share_supply: Uint128::new(1_000_000),
             ..Default::default()
@@ -340,7 +344,7 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         // Already at max_unlocks (2 existing unlocks).
-        let user_state = UserState {
+        let mut user_state = UserState {
             unlocks: VecDeque::from([
                 Unlock {
                     amount_to_release: UsdValue::new_int(100),
@@ -357,9 +361,9 @@ mod tests {
         let err = _remove_liquidity(
             Timestamp::from_seconds(0),
             share_coins(500_000),
-            &state,
             &param,
-            &user_state,
+            &mut state,
+            &mut user_state,
             &vault_user_state,
             &perp_querier,
             &mut oracle_querier,
@@ -375,7 +379,7 @@ mod tests {
         let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
-        let state = State {
+        let mut state = State {
             vault_margin: UsdValue::new_int(1),
             vault_share_supply: Uint128::new(1_000_000),
             ..Default::default()
@@ -385,22 +389,23 @@ mod tests {
             max_unlocks: 10,
             ..Default::default()
         };
-        let user_state = UserState::default();
+        let mut user_state = UserState::default();
         let vault_user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
-        let (_, unlock) = _remove_liquidity(
+        let _shares = _remove_liquidity(
             Timestamp::from_seconds(1_000_000),
             share_coins(500_000),
-            &state,
             &param,
-            &user_state,
+            &mut state,
+            &mut user_state,
             &vault_user_state,
             &perp_querier,
             &mut oracle_querier,
         )
         .unwrap();
 
+        let unlock = user_state.unlocks.back().unwrap();
         assert_eq!(unlock.end_time, Timestamp::from_seconds(1_172_800));
     }
 }
