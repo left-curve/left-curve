@@ -51,6 +51,7 @@ pub type Timestamp = Duration;
 pub struct Duration(Dec<u128, 9>);
 
 impl Duration {
+    pub const MAX: Self = Self(Dec::MAX);
     pub const ZERO: Self = Self(Dec::ZERO);
 
     pub const fn from_nanos(nanos: u128) -> Self {

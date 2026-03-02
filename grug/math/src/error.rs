@@ -19,6 +19,10 @@ pub enum MathError {
         value: String,
     },
 
+    #[error("negation overflow: -{a} (type: {ty})")]
+    #[backtrace(private_constructor)]
+    OverflowNeg { ty: &'static str, a: String },
+
     #[error("addition overflow: {a} + {b} (type: {ty})")]
     #[backtrace(private_constructor)]
     OverflowAdd {
@@ -114,6 +118,13 @@ impl MathError {
         A: ToString,
     {
         Self::_overflow_conversion(type_name::<A>(), type_name::<B>(), source.to_string())
+    }
+
+    pub fn overflow_neg<T>(a: T) -> Self
+    where
+        T: ToString,
+    {
+        Self::_overflow_neg(type_name::<T>(), a.to_string())
     }
 
     pub fn overflow_add<T>(a: T, b: T) -> Self
