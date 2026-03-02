@@ -94,6 +94,7 @@ fn trading_lifecycle() {
     // Step 1: Trader (user1) deposits $10,000 USDC.
     // USDC has 6 decimals, so $10,000 = 10_000_000_000 base units.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -104,17 +105,19 @@ fn trading_lifecycle() {
         .should_succeed();
 
     // Verify trader's margin = $10,000.
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let state = state.unwrap();
+        .should_succeed()
+        .unwrap();
+
     assert_eq!(state.margin, UsdValue::new_int(10_000));
 
     // -------------------------------------------------------------------------
     // Step 2: Maker (user2) deposits $10,000 USDC and places ask: 10 ETH @ $2,000.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user2,
@@ -147,12 +150,14 @@ fn trading_lifecycle() {
             user: accounts.user2.address(),
         })
         .should_succeed();
+
     assert_eq!(orders.asks.len(), 1, "maker should have 1 ask");
 
     // -------------------------------------------------------------------------
     // Step 3: Trader market buys 10 ETH.
     // Fee = 10 * $2,000 * 0.1% = $20.  Margin after = $10,000 - $20 = $9,980.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -170,16 +175,17 @@ fn trading_lifecycle() {
         .should_succeed();
 
     // Verify position and margin.
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let state = state.unwrap();
+        .should_succeed()
+        .unwrap();
     let pos = state
         .positions
         .get(&pair)
         .expect("should have ETH position");
+
     assert_eq!(pos.size, Quantity::new_int(10), "should be 10 ETH long");
     assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
     assert_eq!(
@@ -194,6 +200,7 @@ fn trading_lifecycle() {
             user: accounts.user2.address(),
         })
         .should_succeed();
+
     assert!(
         orders.asks.is_empty(),
         "maker ask should be fully filled and removed"
@@ -203,6 +210,7 @@ fn trading_lifecycle() {
     // Step 4: Trader withdraws $7,000 (should succeed).
     // equity = $9,980, used IM = 10 * $2,000 * 10% = $2,000, available = $7,980.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -215,18 +223,20 @@ fn trading_lifecycle() {
         .should_succeed();
 
     // Verify margin = $9,980 - $7,000 = $2,980.
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let state = state.unwrap();
+        .should_succeed()
+        .unwrap();
+
     assert_eq!(state.margin, UsdValue::new_int(2_980));
 
     // -------------------------------------------------------------------------
     // Step 5: Trader withdraws $2,000 (should fail).
     // available = $2,980 - IM($2,000) = $980 < $2,000.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -259,6 +269,7 @@ fn limit_order_partial_fill_and_cancel() {
     // -------------------------------------------------------------------------
     // Step 1: Trader (user1) deposits $10,000 USDC.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -271,6 +282,7 @@ fn limit_order_partial_fill_and_cancel() {
     // -------------------------------------------------------------------------
     // Step 2: Maker (user2) deposits $10,000 USDC and places ask: 5 ETH @ $2,000.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user2,
@@ -302,6 +314,7 @@ fn limit_order_partial_fill_and_cancel() {
     // 5 fill against maker's ask, 5 rest as a bid on the book.
     // Fee = 5 * $2,000 * 0.1% = $10 (taker fee on the filled portion).
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -320,16 +333,17 @@ fn limit_order_partial_fill_and_cancel() {
         .should_succeed();
 
     // Verify position: 5 ETH long @ $2,000, margin = $9,990.
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let state = state.unwrap();
+        .should_succeed()
+        .unwrap();
     let pos = state
         .positions
         .get(&pair)
         .expect("should have ETH position");
+
     assert_eq!(pos.size, Quantity::new_int(5), "should be 5 ETH long");
     assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
     assert_eq!(
@@ -354,11 +368,13 @@ fn limit_order_partial_fill_and_cancel() {
             user: accounts.user1.address(),
         })
         .should_succeed();
+
     assert_eq!(orders.bids.len(), 1, "trader should have 1 resting bid");
 
     // -------------------------------------------------------------------------
     // Step 4: Trader cancels the resting order.
     // -------------------------------------------------------------------------
+
     let order_id = orders.bids[0].order_id;
 
     suite
@@ -371,12 +387,13 @@ fn limit_order_partial_fill_and_cancel() {
         .should_succeed();
 
     // Verify reserved_margin = $0 and open_order_count = 0.
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let state = state.unwrap();
+        .should_succeed()
+        .unwrap();
+
     assert_eq!(
         state.reserved_margin,
         UsdValue::ZERO,
@@ -390,6 +407,7 @@ fn limit_order_partial_fill_and_cancel() {
             user: accounts.user1.address(),
         })
         .should_succeed();
+
     assert!(orders.bids.is_empty(), "bids should be empty after cancel");
 
     // Verify position unchanged: still 5 ETH long @ $2,000.
@@ -397,6 +415,7 @@ fn limit_order_partial_fill_and_cancel() {
         .positions
         .get(&pair)
         .expect("should still have ETH position");
+
     assert_eq!(pos.size, Quantity::new_int(5), "should still be 5 ETH long");
     assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
 }
@@ -428,6 +447,7 @@ fn liquidation_on_order_book() {
     // LP (user4) deposits $100,000 USDC and adds $100,000 liquidity to the vault.
     // Trader (user1) deposits $3,000 USDC.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user4,
@@ -461,6 +481,7 @@ fn liquidation_on_order_book() {
     // -------------------------------------------------------------------------
     // Step 2: Maker (user2) deposits $10,000 USDC and places ask: 5 ETH @ $2,000.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user2,
@@ -491,6 +512,7 @@ fn liquidation_on_order_book() {
     // Step 3: Trader (user1) market buys 5 ETH.
     // Fee = 5 * $2,000 * 0.1% = $10.  Margin after = $3,000 - $10 = $2,990.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -508,12 +530,12 @@ fn liquidation_on_order_book() {
         .should_succeed();
 
     // Verify position: 5 ETH long @ $2,000, margin = $2,990.
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let state = state.unwrap();
+        .should_succeed()
+        .unwrap();
     let pos = state
         .positions
         .get(&pair)
@@ -531,11 +553,13 @@ fn liquidation_on_order_book() {
     // PnL = 5 * ($1,450 - $2,000) = -$2,750; equity = $2,990 - $2,750 = $240.
     // MM = 5 * $1,450 * 5% = $362.50; equity < MM -> liquidatable.
     // -------------------------------------------------------------------------
+
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
 
     // -------------------------------------------------------------------------
     // Step 5: Bidder (user3) deposits $10,000 USDC and places bid: 5 ETH @ $1,450.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user3,
@@ -576,7 +600,7 @@ fn liquidation_on_order_book() {
     // -------------------------------------------------------------------------
 
     // Capture vault margin before liquidation.
-    let vault_state_before: Option<UserState> = suite
+    let vault_state_before = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
         })
@@ -596,16 +620,17 @@ fn liquidation_on_order_book() {
         .should_succeed();
 
     // Trader position should be reduced from 5 to ~3.310345 ETH (partial close).
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let state = state.unwrap();
+        .should_succeed()
+        .unwrap();
     let pos = state
         .positions
         .get(&pair)
         .expect("trader should still have a reduced ETH position");
+
     // 5.000000 - 1.689655 = 3.310345 ETH remaining.
     assert_eq!(
         pos.size,
@@ -627,6 +652,7 @@ fn liquidation_on_order_book() {
         })
         .should_succeed();
     let vault_margin_after = vault_state_after.unwrap().margin;
+
     assert_eq!(
         vault_margin_after - vault_margin_before,
         UsdValue::new_raw(24_499_997),
@@ -634,16 +660,17 @@ fn liquidation_on_order_book() {
     );
 
     // Bidder (user3) should have ~1.689655 ETH long @ $1,450.
-    let bidder_state: Option<UserState> = suite
+    let bidder_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user3.address(),
         })
-        .should_succeed();
-    let bidder_state = bidder_state.unwrap();
+        .should_succeed()
+        .unwrap();
     let bidder_pos = bidder_state
         .positions
         .get(&pair)
         .expect("bidder should have ETH position");
+
     assert_eq!(
         bidder_pos.size,
         Quantity::new_raw(1_689_655),
@@ -684,6 +711,7 @@ fn liquidation_bad_debt_then_adl() {
     // -------------------------------------------------------------------------
     // Step 1: LP (user4) deposits $1,000 and adds $1,000 liquidity.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user4,
@@ -706,16 +734,19 @@ fn liquidation_bad_debt_then_adl() {
         .should_succeed();
 
     // Verify vault margin = $1,000.
-    let vault_state: Option<UserState> = suite
+    let vault_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
         })
-        .should_succeed();
-    assert_eq!(vault_state.unwrap().margin, UsdValue::new_int(1_000));
+        .should_succeed()
+        .unwrap();
+
+    assert_eq!(vault_state.margin, UsdValue::new_int(1_000));
 
     // -------------------------------------------------------------------------
     // Step 2: Trader A (user1) deposits $1,100 USDC.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -728,6 +759,7 @@ fn liquidation_bad_debt_then_adl() {
     // -------------------------------------------------------------------------
     // Step 3: Maker (user2) deposits $10,000, places ask: 5 ETH @ $2,000.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user2,
@@ -758,6 +790,7 @@ fn liquidation_bad_debt_then_adl() {
     // Step 4: Trader A market buys 5 ETH.
     // Fee = 5 * $2,000 * 0.1% = $10. Margin = $1,100 - $10 = $1,090.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -779,6 +812,7 @@ fn liquidation_bad_debt_then_adl() {
             user: accounts.user1.address(),
         })
         .should_succeed();
+
     assert_eq!(state.unwrap().margin, UsdValue::new_int(1_090));
 
     // -------------------------------------------------------------------------
@@ -833,17 +867,20 @@ fn liquidation_bad_debt_then_adl() {
         )
         .should_succeed();
 
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user3.address(),
         })
-        .should_succeed();
-    assert_eq!(state.unwrap().margin, UsdValue::new_int(9_990));
+        .should_succeed()
+        .unwrap();
+
+    assert_eq!(state.margin, UsdValue::new_int(9_990));
 
     // -------------------------------------------------------------------------
     // Step 8: Oracle → $1,450.
     // Trader A PnL = 5 * ($1,450 - $2,000) = -$2,750; equity = $1,090 - $2,750 = -$1,660.
     // -------------------------------------------------------------------------
+
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
 
     // -------------------------------------------------------------------------
@@ -855,6 +892,7 @@ fn liquidation_bad_debt_then_adl() {
     // Vault margin = $1,000 - $1,660 = -$660.
     // Vault inherits 5 long @ $1,450.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.owner,
@@ -867,11 +905,12 @@ fn liquidation_bad_debt_then_adl() {
         .should_succeed();
 
     // Trader A should have no positions and $0 margin.
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
         .should_succeed();
+
     // User state is empty (margin=0, no positions) — may be pruned.
     assert!(
         state.is_none() || state.as_ref().unwrap().positions.is_empty(),
@@ -884,29 +923,34 @@ fn liquidation_bad_debt_then_adl() {
     // vault margin before liq = $1,000 + $10 + $10 = $1,020.
     // Bad debt = $1,660 → vault margin = $1,020 - $1,660 = -$640.
     // -------------------------------------------------------------------------
-    let vault_state: Option<UserState> = suite
+    let vault_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
         })
-        .should_succeed();
-    let vault_state = vault_state.unwrap();
+        .should_succeed()
+        .unwrap();
+
     assert_eq!(
         vault_state.margin,
         UsdValue::new_int(-640),
         "vault margin should be -$640 (bad debt, after $20 taker fees)"
     );
+
     // Vault should have 5 long @ $1,450.
     let vault_pos = vault_state
         .positions
         .get(&pair)
         .expect("vault should have backstop position");
+
     assert_eq!(vault_pos.size, Quantity::new_int(5));
     assert_eq!(vault_pos.entry_price, UsdPrice::new_int(1_450));
 
     // -------------------------------------------------------------------------
     // Step 11: Configure: add owner as ADL operator.
     // -------------------------------------------------------------------------
+
     let owner_addr = accounts.owner.address();
+
     suite
         .execute(
             &mut accounts.owner,
@@ -931,6 +975,7 @@ fn liquidation_bad_debt_then_adl() {
     // Trader B margin = $9,990 + $2,110 = $12,100.
     // Vault margin = -$640 + $640 = $0.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.owner,
@@ -943,12 +988,13 @@ fn liquidation_bad_debt_then_adl() {
         .should_succeed();
 
     // Trader B: no positions, margin = $12,080.
-    let state: Option<UserState> = suite
+    let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user3.address(),
         })
-        .should_succeed();
-    let state = state.unwrap();
+        .should_succeed()
+        .unwrap();
+
     assert!(
         state.positions.is_empty(),
         "Trader B should have no positions after ADL"
@@ -960,12 +1006,13 @@ fn liquidation_bad_debt_then_adl() {
     );
 
     // Vault margin = $0.
-    let vault_state: Option<UserState> = suite
+    let vault_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
         })
-        .should_succeed();
-    let vault_state = vault_state.unwrap();
+        .should_succeed()
+        .unwrap();
+
     assert_eq!(
         vault_state.margin,
         UsdValue::ZERO,
@@ -1001,6 +1048,7 @@ fn vault_lp_lifecycle() {
     // -------------------------------------------------------------------------
     // Step 1: LP (user1) deposits $10,000 and adds $5,000 liquidity.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user1,
@@ -1022,23 +1070,30 @@ fn vault_lp_lifecycle() {
         )
         .should_succeed();
 
-    let lp_state: Option<UserState> = suite
+    let lp_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let lp_state = lp_state.unwrap();
-    let total_shares = lp_state.vault_shares;
-    assert!(total_shares > Uint128::ZERO, "LP should have shares");
+        .should_succeed()
+        .unwrap();
+
+    assert!(
+        lp_state.vault_shares > Uint128::ZERO,
+        "LP should have shares"
+    );
     assert_eq!(lp_state.margin, UsdValue::new_int(5_000), "LP margin = $5k");
 
-    let vault_state: Option<UserState> = suite
+    let total_shares = lp_state.vault_shares;
+
+    let vault_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
         })
-        .should_succeed();
+        .should_succeed()
+        .unwrap();
+
     assert_eq!(
-        vault_state.unwrap().margin,
+        vault_state.margin,
         UsdValue::new_int(5_000),
         "vault margin = $5,000"
     );
@@ -1048,6 +1103,7 @@ fn vault_lp_lifecycle() {
     // vault_total_weight = 1, vault_liquidity_weight = 1, vault_half_spread = 5%,
     // vault_max_quote_size = 2 ETH (small to keep math tractable).
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.owner,
@@ -1073,6 +1129,7 @@ fn vault_lp_lifecycle() {
     // -------------------------------------------------------------------------
     // Step 3: Call OnOracleUpdate so the vault places bid+ask.
     // -------------------------------------------------------------------------
+
     suite.make_empty_block();
 
     suite
@@ -1090,6 +1147,7 @@ fn vault_lp_lifecycle() {
             user: contracts.perps,
         })
         .should_succeed();
+
     assert!(
         !vault_orders.bids.is_empty(),
         "vault should have a bid on the book"
@@ -1100,8 +1158,8 @@ fn vault_lp_lifecycle() {
     );
 
     // Vault bid = $2,000 * (1 - 5%) = $1,900, ask = $2,000 * (1 + 5%) = $2,100.
-    let vault_bid_price = vault_orders.bids[0].limit_price;
-    assert_eq!(vault_bid_price, UsdPrice::new_int(1_900));
+    assert_eq!(vault_orders.bids[0].limit_price, UsdPrice::new_int(1_900));
+
     let vault_bid_size = vault_orders.bids[0].size;
 
     // -------------------------------------------------------------------------
@@ -1133,28 +1191,32 @@ fn vault_lp_lifecycle() {
         .should_succeed();
 
     // Vault should now have a long position.
-    let vault_state: Option<UserState> = suite
+    let vault_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
         })
-        .should_succeed();
-    let vault_state = vault_state.unwrap();
+        .should_succeed()
+        .unwrap();
     let vault_pos = vault_state
         .positions
         .get(&pair)
         .expect("vault should have a position");
+
     assert!(vault_pos.size.is_positive(), "vault should be long");
+
     let vault_long_size = vault_pos.size;
     let vault_margin_after_buy = vault_state.margin;
 
     // -------------------------------------------------------------------------
     // Step 5: Oracle → $2,200. Vault's long has unrealized profit.
     // -------------------------------------------------------------------------
+
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_200);
 
     // -------------------------------------------------------------------------
     // Step 6: OnOracleUpdate at $2,200 → vault refreshes orders.
     // -------------------------------------------------------------------------
+
     suite.make_empty_block();
 
     suite
@@ -1170,6 +1232,7 @@ fn vault_lp_lifecycle() {
     // Step 7: Taker buys back from vault's ask → vault realizes PnL.
     // Vault ask ≈ $2,200 * 1.05 = $2,310.
     // -------------------------------------------------------------------------
+
     suite
         .execute(
             &mut accounts.user2,
@@ -1187,12 +1250,13 @@ fn vault_lp_lifecycle() {
         .should_succeed();
 
     // Vault should have realized PnL → margin increased above pre-trade level.
-    let vault_state: Option<UserState> = suite
+    let vault_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
         })
-        .should_succeed();
-    let vault_state = vault_state.unwrap();
+        .should_succeed()
+        .unwrap();
+
     assert!(
         vault_state.margin > vault_margin_after_buy,
         "vault margin should increase after realized PnL"
@@ -1201,6 +1265,7 @@ fn vault_lp_lifecycle() {
     // -------------------------------------------------------------------------
     // Step 8: LP removes half shares. Share price includes realized profit.
     // -------------------------------------------------------------------------
+
     let half_shares = total_shares / Uint128::new(2);
 
     suite
@@ -1214,12 +1279,12 @@ fn vault_lp_lifecycle() {
         )
         .should_succeed();
 
-    let lp_state: Option<UserState> = suite
+    let lp_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let lp_state = lp_state.unwrap();
+        .should_succeed()
+        .unwrap();
     let unlock1_amount = lp_state.unlocks.back().unwrap().amount_to_release;
 
     // The unlock should be > $2,500 (half of original $5k) because the vault
@@ -1232,6 +1297,7 @@ fn vault_lp_lifecycle() {
     // -------------------------------------------------------------------------
     // Step 9: LP removes remaining shares.
     // -------------------------------------------------------------------------
+
     let remaining_shares = lp_state.vault_shares;
 
     suite
@@ -1245,33 +1311,37 @@ fn vault_lp_lifecycle() {
         )
         .should_succeed();
 
-    let lp_state: Option<UserState> = suite
+    let lp_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let lp_state = lp_state.unwrap();
+        .should_succeed()
+        .unwrap();
+
     assert_eq!(
         lp_state.unlocks.len(),
         2,
         "LP should have 2 pending unlocks"
     );
+
     let unlock2_amount = lp_state.unlocks.back().unwrap().amount_to_release;
 
     // -------------------------------------------------------------------------
     // Step 10: Advance time past cooldown (1 day) so cron processes unlocks.
     // -------------------------------------------------------------------------
+
     suite.increase_time(Duration::from_days(2));
 
     // -------------------------------------------------------------------------
     // Step 11: Verify total withdrawn reflects original $5k + vault profits.
     // -------------------------------------------------------------------------
-    let lp_state: Option<UserState> = suite
+
+    let lp_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed();
-    let lp_state = lp_state.unwrap();
+        .should_succeed()
+        .unwrap();
 
     // Unlocks should have been processed (queue empty).
     assert!(
@@ -1281,6 +1351,7 @@ fn vault_lp_lifecycle() {
 
     // Total credited = unlock1 + unlock2.
     let total_unlocked = unlock1_amount.checked_add(unlock2_amount).unwrap();
+
     assert!(
         total_unlocked > UsdValue::new_int(5_000),
         "total withdrawn ({total_unlocked}) should exceed original $5,000 deposit"
