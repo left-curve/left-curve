@@ -373,3 +373,258 @@ fn limit_order_partial_fill_and_cancel() {
     assert_eq!(pos.size, Quantity::new_int(5), "should still be 5 ETH long");
     assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
 }
+
+/// Covers: partial liquidation filled on order book, no bad debt.
+///
+/// Liquidation closes only enough of the position to cover the maintenance
+/// margin deficit, not the entire position.
+///
+/// | Step | Action                                          | Key numbers                                                                                                        | Assert                                                                                 |
+/// | ---- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+/// | 1    | Trader margin = $3,000; vault margin = $100,000 | —                                                                                                                  | —                                                                                      |
+/// | 2    | Maker places ask: 5 ETH @ $2,000                | —                                                                                                                  | —                                                                                      |
+/// | 3    | Trader market buys 5 ETH                        | fee = $10; margin = $2,990; position: 5 long @ $2,000                                                              | —                                                                                      |
+/// | 4    | Oracle drops to $1,450                          | PnL = 5x($1,450-$2,000) = -$2,750; equity = $240; MM = 5x$1,450x5% = $362.50                                       | equity < MM -> liquidatable                                                            |
+/// | 5    | Bidder places bid: 5 ETH @ $1,450               | —                                                                                                                  | —                                                                                      |
+/// | 6    | Liquidate trader                                | deficit = $122.50; close ~1.689655 ETH via book; liq_fee ~$24.50; margin after ~$2,036.19; ~3.31 ETH position stays | trader position reduced; trader margin ~$2,036; vault margin += ~$24.50; bidder filled |
+#[test]
+fn liquidation_on_order_book() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    // Register oracle prices: ETH = $2,000, USDC = $1.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Step 1: Fund vault and trader.
+    // LP (user4) deposits $100,000 USDC and adds $100,000 liquidity to the vault.
+    // Trader (user1) deposits $3,000 USDC.
+    // -------------------------------------------------------------------------
+    suite
+        .execute(
+            &mut accounts.user4,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user4,
+            contracts.perps,
+            &perps::ExecuteMsg::AddLiquidity {
+                amount: UsdValue::new_int(100_000),
+                min_shares_to_mint: None,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            Coins::one(usdc::DENOM.clone(), Uint128::new(3_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 2: Maker (user2) deposits $10,000 USDC and places ask: 5 ETH @ $2,000.
+    // -------------------------------------------------------------------------
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5), // sell / ask
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 3: Trader (user1) market buys 5 ETH.
+    // Fee = 5 * $2,000 * 0.1% = $10.  Margin after = $3,000 - $10 = $2,990.
+    // -------------------------------------------------------------------------
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5), // buy
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify position: 5 ETH long @ $2,000, margin = $2,990.
+    let state: Option<UserState> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+    let state = state.unwrap();
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("should have ETH position");
+    assert_eq!(pos.size, Quantity::new_int(5), "should be 5 ETH long");
+    assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
+    assert_eq!(
+        state.margin,
+        UsdValue::new_int(2_990),
+        "margin should be $2,990 after $10 fee"
+    );
+
+    // -------------------------------------------------------------------------
+    // Step 4: Oracle drops to $1,450.
+    // PnL = 5 * ($1,450 - $2,000) = -$2,750; equity = $2,990 - $2,750 = $240.
+    // MM = 5 * $1,450 * 5% = $362.50; equity < MM -> liquidatable.
+    // -------------------------------------------------------------------------
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
+
+    // -------------------------------------------------------------------------
+    // Step 5: Bidder (user3) deposits $10,000 USDC and places bid: 5 ETH @ $1,450.
+    // -------------------------------------------------------------------------
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5), // buy / bid
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_450),
+                    post_only: true,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 6: Liquidate trader (user1).
+    //
+    // Partial liquidation: deficit = MM - equity = $362.50 - $240 = $122.50
+    // close_amount = $122.50 / ($1,450 * 5%) = 1.689655 ETH
+    //
+    // Matched against bidder's bid at $1,450 (zero taker/maker fee for liq fills).
+    // Realized PnL = 1.689655 * ($1,450 - $2,000) = -$929.310250
+    // Closed notional = 1.689655 * $1,450 = $2,449.999750
+    // Liq fee = $2,449.999750 * 1% = $24.499997
+    // Trader margin after = $2,990 - $929.310250 - $24.499997 = $2,036.189753
+    // -------------------------------------------------------------------------
+
+    // Capture vault margin before liquidation.
+    let vault_state_before: Option<UserState> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: contracts.perps,
+        })
+        .should_succeed();
+    let vault_margin_before = vault_state_before.unwrap().margin;
+
+    // Anyone can call Liquidate.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Liquidate {
+                user: accounts.user1.address(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trader position should be reduced from 5 to ~3.310345 ETH (partial close).
+    let state: Option<UserState> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+    let state = state.unwrap();
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("trader should still have a reduced ETH position");
+    // 5.000000 - 1.689655 = 3.310345 ETH remaining.
+    assert_eq!(
+        pos.size,
+        Quantity::new_raw(3_310_345),
+        "trader should have ~3.31 ETH after partial liquidation"
+    );
+
+    // Trader margin = $2,036.189753 (raw 2_036_189_753).
+    assert_eq!(
+        state.margin,
+        UsdValue::new_raw(2_036_189_753),
+        "trader margin should be ~$2,036.19 after partial liquidation"
+    );
+
+    // Vault margin should have increased by the liquidation fee (~$24.50).
+    let vault_state_after: Option<UserState> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: contracts.perps,
+        })
+        .should_succeed();
+    let vault_margin_after = vault_state_after.unwrap().margin;
+    assert_eq!(
+        vault_margin_after - vault_margin_before,
+        UsdValue::new_raw(24_499_997),
+        "vault margin should increase by ~$24.50 liquidation fee"
+    );
+
+    // Bidder (user3) should have ~1.689655 ETH long @ $1,450.
+    let bidder_state: Option<UserState> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user3.address(),
+        })
+        .should_succeed();
+    let bidder_state = bidder_state.unwrap();
+    let bidder_pos = bidder_state
+        .positions
+        .get(&pair)
+        .expect("bidder should have ETH position");
+    assert_eq!(
+        bidder_pos.size,
+        Quantity::new_raw(1_689_655),
+        "bidder should have ~1.69 ETH long from partial fill"
+    );
+    assert_eq!(
+        bidder_pos.entry_price,
+        UsdPrice::new_int(1_450),
+        "bidder entry price should be $1,450"
+    );
+}
