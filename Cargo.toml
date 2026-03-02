@@ -188,12 +188,12 @@ tokio-stream                = { version = "0.1", features = ["sync"] }
 tokio-tungstenite           = { version = "0.28", features = ["native-tls"] }
 toml                        = "0.8"
 tower                       = "0.5"
-typenum                     = "1"
 tower-abci                  = "0.19"
 tracing                     = { version = "=0.1.41" }
 tracing-attributes          = { version = "=0.1.28" }
 tracing-opentelemetry       = "0.32"
 tracing-subscriber          = { version = "=0.3.19", features = ["env-filter", "fmt", "json"] }
+typenum                     = "1"
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "6"
