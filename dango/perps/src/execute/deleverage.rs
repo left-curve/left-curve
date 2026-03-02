@@ -2,7 +2,7 @@ use {
     crate::{
         NoCachePerpQuerier, PAIR_STATES, PARAM, USER_STATES,
         core::{compute_adl_score, compute_user_equity},
-        execute::{ORACLE, cancel_order::cancel_all_orders_for, submit_order::settle_fill},
+        execute::{cancel_order::cancel_all_orders_for, oracle, submit_order::settle_fill},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -41,7 +41,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     ensure!(!user_state.positions.is_empty(), "user has no positions");
 
-    let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     // -------------------- 2. Cancel all resting orders -----------------------
 

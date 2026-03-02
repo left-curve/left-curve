@@ -11,10 +11,10 @@ mod withdraw;
 use {
     crate::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE},
     dango_types::{
-        UsdValue,
+        DangoQuerier, UsdValue,
         perps::{CancelOrderRequest, ExecuteMsg, InstantiateMsg, PairState, State},
     },
-    grug::{Addr, MutableCtx, Response, Uint128, addr},
+    grug::{Addr, MutableCtx, QuerierWrapper, Response, Uint128},
 };
 
 /// Virtual shares added to total supply in share price calculations.
@@ -27,8 +27,25 @@ const VIRTUAL_SHARES: Uint128 = Uint128::new(1_000_000);
 /// and prevent share inflation attacks.
 const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 
-/// Address of the oracle contract.
-pub(crate) const ORACLE: Addr = addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d");
+/// Returns the oracle contract address.
+///
+/// In release builds, returns a compile-time constant for zero-cost lookups.
+/// In debug/test builds, queries the chain's `AppConfig` at runtime so that
+/// tests with dynamically-derived addresses work correctly.
+#[inline]
+pub(crate) fn oracle(querier: DangoQuerier) -> Addr {
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = querier;
+        grug::addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d")
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        use dango_types::DangoQuerier;
+        querier.query_oracle().unwrap()
+    }
+}
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {

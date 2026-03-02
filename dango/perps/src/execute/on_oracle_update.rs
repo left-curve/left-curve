@@ -3,7 +3,7 @@ use {
         ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
         USER_STATES,
         core::compute_vault_quotes,
-        execute::{ORACLE, cancel_order::cancel_all_orders_for},
+        execute::{cancel_order::cancel_all_orders_for, oracle},
         price::may_invert_price,
     },
     anyhow::ensure,
@@ -41,7 +41,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     // Step 1: Cancel all existing vault orders.
     cancel_all_orders_for(ctx.storage, ctx.contract, &mut vault_state)?;

@@ -1,5 +1,5 @@
 use {
-    crate::{USER_STATES, execute::ORACLE},
+    crate::{USER_STATES, execute::oracle},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{Quantity, perps::settlement_currency},
@@ -22,7 +22,7 @@ pub fn deposit(mut ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // -------------------- 2. Convert deposit to USD value --------------------
 
-    let settlement_currency_price = OracleQuerier::new_remote(ORACLE, ctx.querier)
+    let settlement_currency_price = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
         .query_price_for_perps(&settlement_currency::DENOM)?;
 
     let deposit_value = Quantity::from_base(deposit_amount, settlement_currency::DECIMAL)?

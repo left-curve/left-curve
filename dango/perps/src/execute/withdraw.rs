@@ -1,5 +1,5 @@
 use {
-    crate::{NoCachePerpQuerier, USER_STATES, core::compute_available_margin, execute::ORACLE},
+    crate::{NoCachePerpQuerier, USER_STATES, core::compute_available_margin, execute::oracle},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{UsdValue, perps::settlement_currency},
@@ -23,7 +23,7 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
     // ---------------------- 1. Compute available margin ----------------------
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
-    let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?

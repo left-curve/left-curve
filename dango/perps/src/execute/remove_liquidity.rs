@@ -2,7 +2,7 @@ use {
     crate::{
         NoCachePerpQuerier, PARAM, STATE, USER_STATES,
         core::compute_user_equity,
-        execute::{ORACLE, VIRTUAL_ASSETS, VIRTUAL_SHARES},
+        execute::{VIRTUAL_ASSETS, VIRTUAL_SHARES, oracle},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -39,7 +39,7 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
-    let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     // --------------------------- 2. Business logic ---------------------------
 

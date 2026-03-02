@@ -6,8 +6,8 @@ use {
             is_liquidatable,
         },
         execute::{
-            ORACLE,
             cancel_order::cancel_all_orders_for,
+            oracle,
             submit_order::{match_order, settle_fill, settle_pnls},
         },
     },
@@ -35,7 +35,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     // -------------------- 2. Cancel all resting orders -----------------------
 

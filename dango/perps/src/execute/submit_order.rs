@@ -7,7 +7,7 @@ use {
             compute_required_margin, compute_target_price, compute_trading_fee, decompose_fill,
             execute_fill, is_price_constraint_violated,
         },
-        execute::ORACLE,
+        execute::oracle,
         price::may_invert_price,
     },
     anyhow::ensure,
@@ -38,7 +38,7 @@ pub fn submit_order(
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
 

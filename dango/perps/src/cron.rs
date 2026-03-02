@@ -2,7 +2,7 @@ use {
     crate::{
         ASKS, BIDS, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{compute_funding_delta, compute_impact_price, compute_premium},
-        execute::ORACLE,
+        execute::oracle,
         price::may_invert_price,
     },
     dango_oracle::OracleQuerier,
@@ -18,7 +18,7 @@ use {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
-    let mut oracle_querier = OracleQuerier::new_remote(ORACLE, ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     process_unlocks(ctx.storage, ctx.block.timestamp)?;
 
