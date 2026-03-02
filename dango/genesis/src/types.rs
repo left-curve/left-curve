@@ -6,6 +6,7 @@ use {
         dex::PairUpdate,
         gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         oracle::PriceSource,
+        perps::{self, PairId, PairParam},
         taxman,
     },
     grug::{Addr, Binary, Coin, Coins, Denom, Duration, Timestamp, Uint128},
@@ -24,6 +25,7 @@ pub struct Contracts {
     pub taxman: Addr,
     pub vesting: Addr,
     pub warp: Addr,
+    pub perps: Addr,
 }
 
 #[derive(Clone, Copy)]
@@ -39,6 +41,7 @@ pub struct Codes<T> {
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
+    pub perps: T,
 }
 pub struct GenesisUser {
     pub salt: NewUserSalt,
@@ -53,6 +56,7 @@ pub struct GenesisOption {
     pub gateway: GatewayOption,
     pub hyperlane: HyperlaneOption,
     pub oracle: OracleOption,
+    pub perps: PerpsOption,
     pub vesting: VestingOption,
 }
 
@@ -116,4 +120,11 @@ pub struct VestingOption {
     pub unlocking_cliff: Duration,
     /// Period for Dango token unlocking.
     pub unlocking_period: Duration,
+}
+
+pub struct PerpsOption {
+    /// Global parameters for the perpetuals contract.
+    pub param: perps::Param,
+    /// Per-pair parameters, keyed by the pair ID (e.g. "perp/ethusd").
+    pub pair_params: BTreeMap<PairId, PairParam>,
 }

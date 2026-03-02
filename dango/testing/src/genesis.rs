@@ -8,9 +8,10 @@ use {
     },
     dango_genesis::{
         AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
-        GrugOption, HyperlaneOption, OracleOption, VestingOption,
+        GrugOption, HyperlaneOption, OracleOption, PerpsOption, VestingOption,
     },
     dango_types::{
+        Dimensionless, Quantity, UsdPrice,
         account_factory::NewUserSalt,
         auth::Key,
         bank::Metadata,
@@ -20,6 +21,7 @@ use {
         },
         dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
         gateway::{Origin, Remote, WithdrawalFee},
+        perps::{self, PairParam},
         taxman,
     },
     grug::{
@@ -178,6 +180,7 @@ impl Preset for GenesisOption {
             gateway: Preset::preset_test(),
             hyperlane: Preset::preset_test(),
             oracle: Preset::preset_test(),
+            perps: Preset::preset_test(),
             vesting: Preset::preset_test(),
         }
     }
@@ -623,6 +626,34 @@ impl Preset for OracleOption {
             pyth_trusted_signers: {
                 let trused_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
                 btree_map! { trused_signer => Timestamp::from_nanos(u128::MAX) } // FIXME: what's the appropriate expiration time for this?
+            },
+        }
+    }
+}
+
+impl Preset for PerpsOption {
+    fn preset_test() -> Self {
+        let pair_id: Denom = "perp/ethusd".parse().unwrap();
+        PerpsOption {
+            param: perps::Param {
+                taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
+                maker_fee_rate: Dimensionless::ZERO,
+                liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
+                vault_cooldown_period: Duration::from_days(1),
+                max_unlocks: 10,
+                max_open_orders: 100,
+                funding_period: Duration::from_hours(1),
+                adl_operators: BTreeSet::new(),
+                vault_total_weight: Dimensionless::ZERO,
+            },
+            pair_params: btree_map! {
+                pair_id => PairParam {
+                    initial_margin_ratio: Dimensionless::new_permille(100), // 10%
+                    maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
+                    tick_size: UsdPrice::new_int(1),
+                    max_abs_oi: Quantity::new_int(1_000_000),
+                    ..PairParam::new_mock()
+                },
             },
         }
     }

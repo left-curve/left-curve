@@ -405,7 +405,7 @@ pub enum QueryMsg {
     Order { order_id: OrderId },
 
     /// Query all orders of a single user.
-    #[returns(Vec<QueryOrderResponse>)]
+    #[returns(QueryOrdersByUserResponse)]
     OrdersByUser { user: Addr },
 }
 
