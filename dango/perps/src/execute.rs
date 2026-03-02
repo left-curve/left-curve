@@ -1,5 +1,6 @@
 mod add_liquidity;
 mod cancel_order;
+mod configure;
 mod deleverage;
 mod deposit;
 mod liquidate;
@@ -9,12 +10,12 @@ mod submit_order;
 mod withdraw;
 
 use {
-    crate::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE},
+    crate::STATE,
     dango_types::{
         DangoQuerier, UsdValue,
-        perps::{CancelOrderRequest, ExecuteMsg, InstantiateMsg, PairState, State},
+        perps::{CancelOrderRequest, ExecuteMsg, InstantiateMsg, State},
     },
-    grug::{Addr, MutableCtx, QuerierWrapper, Response, Uint128},
+    grug::{Addr, MutableCtx, Response, Uint128},
 };
 
 /// Virtual shares added to total supply in share price calculations.
@@ -33,7 +34,7 @@ const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 /// In debug/test builds, queries the chain's `AppConfig` at runtime so that
 /// tests with dynamically-derived addresses work correctly.
 #[inline]
-pub(crate) fn oracle(querier: DangoQuerier) -> Addr {
+pub(crate) fn oracle(querier: impl DangoQuerier) -> Addr {
     #[cfg(not(debug_assertions))]
     {
         let _ = querier;
@@ -42,29 +43,18 @@ pub(crate) fn oracle(querier: DangoQuerier) -> Addr {
 
     #[cfg(debug_assertions)]
     {
-        use dango_types::DangoQuerier;
         querier.query_oracle().unwrap()
     }
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    PARAM.save(ctx.storage, &msg.param)?;
-
     STATE.save(ctx.storage, &State {
         last_funding_time: ctx.block.timestamp,
         ..Default::default()
     })?;
 
-    for (pair_id, pair_param) in &msg.pair_params {
-        PAIR_PARAMS.save(ctx.storage, pair_id, pair_param)?;
-
-        PAIR_STATES.save(ctx.storage, pair_id, &PairState::default())?;
-    }
-
-    PAIR_IDS.save(ctx.storage, &msg.pair_params.into_keys().collect())?;
-
-    Ok(Response::new())
+    configure::configure(ctx, msg.param, msg.pair_params)
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -91,6 +81,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         },
         ExecuteMsg::Liquidate { user } => liquidate::liquidate(ctx, user),
         ExecuteMsg::Deleverage { user } => deleverage::deleverage(ctx, user),
+        ExecuteMsg::Configure { param, pair_params } => {
+            configure::configure(ctx, param, pair_params)
+        },
         ExecuteMsg::OnOracleUpdate {} => on_oracle_update::on_oracle_update(ctx),
     }
 }

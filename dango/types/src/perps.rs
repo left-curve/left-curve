@@ -350,6 +350,13 @@ pub enum ExecuteMsg {
     /// liquidations.
     Deleverage { user: Addr },
 
+    /// Update global and/or per-pair parameters.
+    /// Only callable by the chain owner (or GENESIS_SENDER during instantiation).
+    Configure {
+        param: Param,
+        pair_params: BTreeMap<PairId, PairParam>,
+    },
+
     /// Triggered at the beginning of each block, right after the oracle update.
     ///
     /// The vault places new orders based on the oracle price, the state of the
