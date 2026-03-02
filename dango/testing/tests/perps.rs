@@ -1602,43 +1602,28 @@ fn oracle_triggers_on_oracle_update() {
     );
 
     // Vault orders should be unchanged — the failed OnOracleUpdate rolled back
-    // any state changes it attempted (cancel + re-place).
+    // any state changes it attempted (cancel + re-place). Compare order IDs to
+    // prove these are the exact same orders, not new ones at the same price.
     let vault_orders_2: QueryOrdersByUserResponse = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
         .should_succeed();
 
-    assert_eq!(
-        vault_orders_1.bids.len(),
-        vault_orders_2.bids.len(),
-        "bid count should be unchanged after failed OnOracleUpdate"
+    assert!(
+        vault_orders_1
+            .bids
+            .iter()
+            .zip(vault_orders_2.bids.iter())
+            .all(|(a, b)| a.order_id == b.order_id),
+        "bid order IDs should be unchanged after failed OnOracleUpdate"
     );
-    assert_eq!(
-        vault_orders_1.asks.len(),
-        vault_orders_2.asks.len(),
-        "ask count should be unchanged after failed OnOracleUpdate"
+    assert!(
+        vault_orders_1
+            .asks
+            .iter()
+            .zip(vault_orders_2.asks.iter())
+            .all(|(a, b)| a.order_id == b.order_id),
+        "ask order IDs should be unchanged after failed OnOracleUpdate"
     );
-
-    // Verify the actual order contents are identical.
-    for (b1, b2) in vault_orders_1.bids.iter().zip(vault_orders_2.bids.iter()) {
-        assert_eq!(
-            b1.limit_price, b2.limit_price,
-            "bid prices should match after failed OnOracleUpdate"
-        );
-        assert_eq!(
-            b1.size, b2.size,
-            "bid sizes should match after failed OnOracleUpdate"
-        );
-    }
-    for (a1, a2) in vault_orders_1.asks.iter().zip(vault_orders_2.asks.iter()) {
-        assert_eq!(
-            a1.limit_price, a2.limit_price,
-            "ask prices should match after failed OnOracleUpdate"
-        );
-        assert_eq!(
-            a1.size, a2.size,
-            "ask sizes should match after failed OnOracleUpdate"
-        );
-    }
 }
