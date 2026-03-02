@@ -5,7 +5,7 @@ use {
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
         oracle::{self, PriceSource, QueryPriceRequest},
-        perps::{self, PairParam, Param, QueryOrdersByUserResponse, UserState},
+        perps::{self, PairParam, Param, UserState},
     },
     grug::{
         Addressable, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, NumberConst, QuerierExt,
@@ -147,7 +147,7 @@ fn trading_lifecycle() {
         .should_succeed();
 
     // Verify ask exists on the book.
-    let orders: QueryOrdersByUserResponse = suite
+    let orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -197,7 +197,7 @@ fn trading_lifecycle() {
     );
 
     // Maker's ask should be removed.
-    let orders: QueryOrdersByUserResponse = suite
+    let orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -365,7 +365,7 @@ fn limit_order_partial_fill_and_cancel() {
     assert_eq!(state.open_order_count, 1, "should have 1 open order");
 
     // Verify bid exists on the book.
-    let orders: QueryOrdersByUserResponse = suite
+    let orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -404,7 +404,7 @@ fn limit_order_partial_fill_and_cancel() {
     assert_eq!(state.open_order_count, 0, "should have 0 open orders");
 
     // Verify bid removed from book.
-    let orders: QueryOrdersByUserResponse = suite
+    let orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -1144,7 +1144,7 @@ fn vault_lp_lifecycle() {
         .should_succeed();
 
     // Vault should have orders on the book.
-    let vault_orders: QueryOrdersByUserResponse = suite
+    let vault_orders = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -1456,7 +1456,7 @@ fn oracle_triggers_on_oracle_update() {
         .should_succeed();
 
     // Vault should have no orders before any price is fed.
-    let vault_orders_0: QueryOrdersByUserResponse = suite
+    let vault_orders_0 = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -1510,7 +1510,7 @@ fn oracle_triggers_on_oracle_update() {
     );
 
     // Vault should have orders on the book (placed by OnOracleUpdate).
-    let vault_orders_1: QueryOrdersByUserResponse = suite
+    let vault_orders_1 = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -1604,7 +1604,7 @@ fn oracle_triggers_on_oracle_update() {
     // Vault orders should be unchanged — the failed OnOracleUpdate rolled back
     // any state changes it attempted (cancel + re-place). Compare order IDs to
     // prove these are the exact same orders, not new ones at the same price.
-    let vault_orders_2: QueryOrdersByUserResponse = suite
+    let vault_orders_2 = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
