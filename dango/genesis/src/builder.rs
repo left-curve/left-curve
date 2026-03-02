@@ -270,10 +270,10 @@ where
         gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         oracle,
+        perps,
         taxman,
         vesting,
         warp,
-        perps,
     };
 
     let config = Config {
@@ -283,7 +283,7 @@ where
         cronjobs: btree_map! {
             dex => Duration::ZERO, // Important: DEX cronjob is to be invoked at end of every block.
             gateway => opt.gateway.rate_limit_refresh_period,
-            perps => Duration::ZERO,
+            perps => Duration::from_minutes(1),
         },
         permissions: Permissions {
             upload: Permission::Nobody,

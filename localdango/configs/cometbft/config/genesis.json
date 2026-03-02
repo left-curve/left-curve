@@ -23,7 +23,7 @@
       "bank": "0xe0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7",
       "cronjobs": {
         "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1": "86400",
-        "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69": "0",
+        "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69": "60",
         "0xda32476efe31e535207f0ad690d337a4ebf54a22": "0"
       },
       "max_orphan_age": "604800",
