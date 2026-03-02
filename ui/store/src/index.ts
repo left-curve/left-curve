@@ -125,6 +125,15 @@ export {
   type UseQueryWithPaginationParameters,
   useQueryWithPagination,
 } from "./hooks/useQueryWithPagination.js";
+export { useExplorerTransaction } from "./hooks/explorer/useExplorerTransaction.js";
+export { useExplorerBlock, type ExplorerBlockState } from "./hooks/explorer/useExplorerBlock.js";
+export { useExplorerAccount, type ExplorerAccount } from "./hooks/explorer/useExplorerAccount.js";
+export { useExplorerContract, type ExplorerContract } from "./hooks/explorer/useExplorerContract.js";
+export { useExplorerTransactionsBySender } from "./hooks/explorer/useExplorerTransactionsBySender.js";
+export {
+  parseExplorerErrorMessage,
+  type ParsedExplorerError,
+} from "./hooks/explorer/parseExplorerErrorMessage.js";
 
 export {
   type UseSubmitTxParameters,
