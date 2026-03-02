@@ -3,6 +3,7 @@ import { SearchToken } from "./SearchToken";
 import {
   Badge,
   IconChevronDownFill,
+  PairStatValue,
   twMerge,
   useApp,
   useMediaQuery,
@@ -11,7 +12,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { useOrderBookState, type useProTradeState } from "@left-curve/store";
+import { useOrderBookState, usePairStats, type useProTradeState } from "@left-curve/store";
 import type React from "react";
 import type { PairId } from "@left-curve/dango/types";
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
@@ -24,6 +25,10 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
   const { pairId, onChangePairId } = state;
+  const pairStats = usePairStats({
+    baseDenom: pairId.baseDenom,
+    quoteDenom: pairId.quoteDenom,
+  });
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -69,13 +74,24 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
               <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.24hChange"]()}
               </p>
-              <p className="diatype-sm-bold text-center">-</p>
+              <PairStatValue
+                kind="priceChange24h"
+                value={pairStats.data?.priceChange24H}
+                formatOptions={{ maximumTotalDigits: 6 }}
+                className="diatype-sm-bold text-center"
+              />
             </div>
             <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
               <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.volume"]()}
               </p>
-              <p className="diatype-sm-bold text-center">-</p>
+              <PairStatValue
+                kind="volume24h"
+                value={pairStats.data?.volume24H}
+                currency={null}
+                formatOptions={{ maximumTotalDigits: 10 }}
+                className="diatype-sm-bold text-center"
+              />
             </div>
           </motion.div>
         ) : null}

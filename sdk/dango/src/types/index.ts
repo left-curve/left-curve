@@ -154,6 +154,7 @@ export type {
   RestingOrderBookState,
   LiquidityDepth,
   LiquidityDepthResponse,
+  PairStats,
 } from "./dex.js";
 
 export type {
