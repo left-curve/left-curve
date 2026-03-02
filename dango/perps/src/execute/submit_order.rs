@@ -486,7 +486,8 @@ pub(crate) fn settle_pnls(
     contract: Addr,
     user_states: &mut BTreeMap<Addr, UserState>,
 ) -> anyhow::Result<()> {
-    // ---- Fee loop (first: collect fees so they help absorb vault losses) ----
+    // ------------------------------ Settle fees ------------------------------
+
     for (user, fee) in fees {
         if fee.is_zero() || user == contract {
             continue;
@@ -500,7 +501,8 @@ pub(crate) fn settle_pnls(
         }
     }
 
-    // ---- PnL loop (second: vault losses can absorb from fee-augmented margin) ----
+    // ------------------------------ Settle PnLs ------------------------------
+
     for (user, pnl) in pnls {
         if pnl.is_zero() {
             continue;

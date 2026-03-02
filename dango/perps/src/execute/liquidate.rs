@@ -140,6 +140,103 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     Ok(Response::new())
 }
 
+/// Mutates:
+///
+/// - `pair_states` — OI updated per fill.
+/// - `user_state.positions` — closed (partially or fully) per the schedule.
+/// - `user_state.margin` — adjusted by settled PnLs, fees, and bad debt.
+/// - `state.vault_margin` — adjusted by settled PnLs and bad debt.
+///
+/// Returns:
+///
+/// - Maker `UserState`s to persist.
+/// - Order mutations to apply: `(pair_id, taker_is_bid, stored_price, order_id, Option<Order>)`.
+fn _liquidate(
+    storage: &dyn Storage,
+    user: Addr,
+    contract: Addr,
+    param: &Param,
+    pair_params: &BTreeMap<PairId, PairParam>,
+    pair_states: &mut BTreeMap<PairId, PairState>,
+    user_state: &mut UserState,
+    vault_state: UserState,
+    oracle_prices: &BTreeMap<PairId, UsdPrice>,
+    collateral_value: UsdValue,
+    oracle_querier: &mut OracleQuerier,
+    state: &mut State,
+) -> anyhow::Result<(
+    BTreeMap<Addr, UserState>,
+    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
+)> {
+    // -------------------- Step 1: Assert liquidatable -------------------------
+
+    let perp_querier = NoCachePerpQuerier::new_local(storage);
+
+    ensure!(
+        is_liquidatable(collateral_value, user_state, &perp_querier, oracle_querier)?,
+        "user is not liquidatable"
+    );
+
+    // ------------- Step 2: Compute close schedule (largest-MM-first) ----------
+
+    let equity = compute_user_equity(collateral_value, user_state, &perp_querier, oracle_querier)?;
+    let total_mm = compute_maintenance_margin(user_state, &perp_querier, oracle_querier)?;
+    let deficit = total_mm.checked_sub(equity)?;
+
+    let schedule = compute_close_schedule(user_state, pair_params, oracle_prices, deficit)?;
+
+    // -------- Step 3: Execute closes via the order book -----------------------
+
+    // Seed the shared maker states map with the vault state so that
+    // book-matched fills and backstop fills accumulate on the same object.
+    let mut all_maker_states: BTreeMap<Addr, UserState> = BTreeMap::new();
+    all_maker_states.insert(contract, vault_state);
+
+    let (all_pnls, mut all_fees, all_order_mutations, closed_notional) = execute_close_schedule(
+        storage,
+        &schedule,
+        user,
+        contract,
+        param,
+        pair_states,
+        user_state,
+        &mut all_maker_states,
+        oracle_prices,
+    )?;
+
+    // -------------------- Step 4: Liquidation fee -----------------------------
+
+    apply_liquidation_fee(
+        &all_pnls,
+        &mut all_fees,
+        user,
+        closed_notional,
+        param.liquidation_fee_rate,
+        collateral_value,
+    )?;
+
+    // ----------------------- Step 5: Settle PnLs ------------------------------
+
+    // Merge the liquidated user into the maker states for settlement.
+    all_maker_states.insert(user, user_state.clone());
+
+    settle_pnls(all_pnls, all_fees, state, contract, &mut all_maker_states)?;
+
+    // Extract the user back.
+    *user_state = all_maker_states.remove(&user).unwrap();
+
+    // Bad debt check: if the user's margin went negative after settlement,
+    // floor at zero and subtract the bad debt from vault_margin (which may
+    // go negative, representing the deficit).
+    if user_state.margin < UsdValue::ZERO {
+        let bad_debt = user_state.margin.checked_abs()?;
+        user_state.margin = UsdValue::ZERO;
+        state.vault_margin.checked_sub_assign(bad_debt)?;
+    }
+
+    Ok((all_maker_states, all_order_mutations))
+}
+
 /// Execute the close schedule against the order book, with vault backstop for
 /// any unfilled remainder.
 ///
@@ -291,103 +388,6 @@ fn apply_liquidation_fee(
     }
 
     Ok(())
-}
-
-/// Mutates:
-///
-/// - `pair_states` — OI updated per fill.
-/// - `user_state.positions` — closed (partially or fully) per the schedule.
-/// - `user_state.margin` — adjusted by settled PnLs, fees, and bad debt.
-/// - `state.vault_margin` — adjusted by settled PnLs and bad debt.
-///
-/// Returns:
-///
-/// - Maker `UserState`s to persist.
-/// - Order mutations to apply: `(pair_id, taker_is_bid, stored_price, order_id, Option<Order>)`.
-fn _liquidate(
-    storage: &dyn Storage,
-    user: Addr,
-    contract: Addr,
-    param: &Param,
-    pair_params: &BTreeMap<PairId, PairParam>,
-    pair_states: &mut BTreeMap<PairId, PairState>,
-    user_state: &mut UserState,
-    vault_state: UserState,
-    oracle_prices: &BTreeMap<PairId, UsdPrice>,
-    collateral_value: UsdValue,
-    oracle_querier: &mut OracleQuerier,
-    state: &mut State,
-) -> anyhow::Result<(
-    BTreeMap<Addr, UserState>,
-    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
-)> {
-    // -------------------- Step 1: Assert liquidatable -------------------------
-
-    let perp_querier = NoCachePerpQuerier::new_local(storage);
-
-    ensure!(
-        is_liquidatable(collateral_value, user_state, &perp_querier, oracle_querier)?,
-        "user is not liquidatable"
-    );
-
-    // ------------- Step 2: Compute close schedule (largest-MM-first) ----------
-
-    let equity = compute_user_equity(collateral_value, user_state, &perp_querier, oracle_querier)?;
-    let total_mm = compute_maintenance_margin(user_state, &perp_querier, oracle_querier)?;
-    let deficit = total_mm.checked_sub(equity)?;
-
-    let schedule = compute_close_schedule(user_state, pair_params, oracle_prices, deficit)?;
-
-    // -------- Step 3: Execute closes via the order book -----------------------
-
-    // Seed the shared maker states map with the vault state so that
-    // book-matched fills and backstop fills accumulate on the same object.
-    let mut all_maker_states: BTreeMap<Addr, UserState> = BTreeMap::new();
-    all_maker_states.insert(contract, vault_state);
-
-    let (all_pnls, mut all_fees, all_order_mutations, closed_notional) = execute_close_schedule(
-        storage,
-        &schedule,
-        user,
-        contract,
-        param,
-        pair_states,
-        user_state,
-        &mut all_maker_states,
-        oracle_prices,
-    )?;
-
-    // -------------------- Step 4: Liquidation fee -----------------------------
-
-    apply_liquidation_fee(
-        &all_pnls,
-        &mut all_fees,
-        user,
-        closed_notional,
-        param.liquidation_fee_rate,
-        collateral_value,
-    )?;
-
-    // ----------------------- Step 5: Settle PnLs ------------------------------
-
-    // Merge the liquidated user into the maker states for settlement.
-    all_maker_states.insert(user, user_state.clone());
-
-    settle_pnls(all_pnls, all_fees, state, contract, &mut all_maker_states)?;
-
-    // Extract the user back.
-    *user_state = all_maker_states.remove(&user).unwrap();
-
-    // Bad debt check: if the user's margin went negative after settlement,
-    // floor at zero and subtract the bad debt from vault_margin (which may
-    // go negative, representing the deficit).
-    if user_state.margin < UsdValue::ZERO {
-        let bad_debt = user_state.margin.checked_abs()?;
-        user_state.margin = UsdValue::ZERO;
-        state.vault_margin.checked_sub_assign(bad_debt)?;
-    }
-
-    Ok((all_maker_states, all_order_mutations))
 }
 
 // ----------------------------------- tests -----------------------------------
