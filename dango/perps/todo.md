@@ -1,0 +1,5 @@
+- [ ] volume tracking
+- [ ] tiered fee rate based on volume
+- [ ] query for order book depth
+- [ ] events
+- [ ] metrics
