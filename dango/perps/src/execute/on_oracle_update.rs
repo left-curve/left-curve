@@ -1,6 +1,6 @@
 use {
     crate::{
-        ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM, STATE,
+        ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
         USER_STATES,
         core::compute_vault_quotes,
         execute::{ORACLE, cancel_order::cancel_all_orders_for},
@@ -35,7 +35,6 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     );
 
     let param = PARAM.load(ctx.storage)?;
-    let state = STATE.load(ctx.storage)?;
     let pair_ids = PAIR_IDS.load(ctx.storage)?;
 
     let mut vault_state = USER_STATES
@@ -49,8 +48,8 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // Step 2: Compute the vault's available margin.
     // After cancellation, reserved_margin is zero and all vault capital is in
-    // state.vault_margin (already UsdValue).
-    let vault_margin_value = state.vault_margin;
+    // the vault's UserState margin.
+    let vault_margin_value = vault_state.margin;
 
     // If vault_total_weight is zero, no pairs have weights configured — skip.
     if param.vault_total_weight.is_zero() || !vault_margin_value.is_positive() {

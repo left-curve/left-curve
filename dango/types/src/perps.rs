@@ -111,11 +111,6 @@ pub struct State {
 
     /// Total supply of the vault's share token.
     pub vault_share_supply: Uint128,
-
-    /// The vault's margin, denominated in USD.
-    /// All PnL settlement, trading fees, liquidation fees, and bad debt flow
-    /// through this balance.
-    pub vault_margin: UsdValue,
 }
 
 /// Parameters that apply to an individual trading pair.

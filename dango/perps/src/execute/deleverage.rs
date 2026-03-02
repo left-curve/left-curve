@@ -1,6 +1,6 @@
 use {
     crate::{
-        NoCachePerpQuerier, PAIR_STATES, PARAM, STATE, USER_STATES,
+        NoCachePerpQuerier, PAIR_STATES, PARAM, USER_STATES,
         core::{compute_adl_score, compute_user_equity},
         execute::{ORACLE, cancel_order::cancel_all_orders_for, submit_order::settle_fill},
     },
@@ -8,7 +8,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, UsdPrice, UsdValue,
-        perps::{PairId, PairState, State, UserState},
+        perps::{PairId, PairState, UserState},
     },
     grug::{Addr, MutableCtx, Response},
     std::collections::BTreeMap,
@@ -31,9 +31,11 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         "sender is not an authorized ADL operator"
     );
 
-    let mut state = STATE.load(ctx.storage)?;
+    let mut vault_user_state = USER_STATES
+        .may_load(ctx.storage, ctx.contract)?
+        .unwrap_or_default();
 
-    ensure!(state.vault_margin.is_negative(), "no ADL deficit");
+    ensure!(vault_user_state.margin.is_negative(), "no ADL deficit");
 
     let mut user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
 
@@ -73,12 +75,10 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         &oracle_prices,
         collateral_value,
         &mut oracle_querier,
-        &mut state,
+        &mut vault_user_state,
     )?;
 
     // -------------------- 7. Apply state changes -----------------------------
-
-    STATE.save(ctx.storage, &state)?;
 
     for (pair_id, pair_state) in &pair_states {
         PAIR_STATES.save(ctx.storage, pair_id, pair_state)?;
@@ -88,6 +88,12 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         USER_STATES.remove(ctx.storage, user)?;
     } else {
         USER_STATES.save(ctx.storage, user, &user_state)?;
+    }
+
+    if vault_user_state.is_empty() {
+        USER_STATES.remove(ctx.storage, ctx.contract)?;
+    } else {
+        USER_STATES.save(ctx.storage, ctx.contract, &vault_user_state)?;
     }
 
     // No token transfers — all PnL settled via internal margins.
@@ -101,7 +107,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// - `pair_states` — OI updated per fill.
 /// - `user_state.positions` — profitable positions closed.
 /// - `user_state.margin` — credited with non-forfeited PnL.
-/// - `state.vault_margin` — recovered toward zero from forfeited PnL.
+/// - `vault_user_state.margin` — recovered toward zero from forfeited PnL.
 ///
 /// Returns: `()`
 fn _deleverage(
@@ -112,7 +118,7 @@ fn _deleverage(
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     collateral_value: UsdValue,
     oracle_querier: &mut OracleQuerier,
-    state: &mut State,
+    vault_user_state: &mut UserState,
 ) -> anyhow::Result<()> {
     // -------------------- Step 1: Compute equity + rank ----------------------
 
@@ -171,12 +177,12 @@ fn _deleverage(
     let user_pnl = pnls.remove(&user).unwrap_or(UsdValue::ZERO);
 
     if user_pnl > UsdValue::ZERO {
-        // The deficit is the absolute value of the negative vault_margin.
-        let deficit = state.vault_margin.checked_neg()?;
+        // The deficit is the absolute value of the negative vault margin.
+        let deficit = vault_user_state.margin.checked_neg()?;
         let forfeited = user_pnl.min(deficit);
         let credit = user_pnl.checked_sub(forfeited)?;
 
-        state.vault_margin.checked_add_assign(forfeited)?;
+        vault_user_state.margin.checked_add_assign(forfeited)?;
 
         if credit.is_non_zero() {
             user_state.margin.checked_add_assign(credit)?;
@@ -249,16 +255,24 @@ mod tests {
     fn setup_storage(
         storage: &mut dyn Storage,
         param: &Param,
-        state: &State,
         pairs: &[(PairId, PairParam, PairState)],
     ) {
         PARAM.save(storage, param).unwrap();
-        STATE.save(storage, state).unwrap();
+        STATE.save(storage, &State::default()).unwrap();
 
         for (pair_id, pair_param, pair_state) in pairs {
             PAIR_PARAMS.save(storage, pair_id, pair_param).unwrap();
             PAIR_STATES.save(storage, pair_id, pair_state).unwrap();
         }
+    }
+
+    /// Save vault `UserState` with the given margin.
+    fn save_vault_margin(storage: &mut dyn Storage, vault_margin: i128) {
+        let vault_state = UserState {
+            margin: UsdValue::new_int(vault_margin),
+            ..Default::default()
+        };
+        USER_STATES.save(storage, CONTRACT, &vault_state).unwrap();
     }
 
     fn save_position(
@@ -282,13 +296,6 @@ mod tests {
         USER_STATES.save(storage, user, &user_state).unwrap();
     }
 
-    fn state_with_margin(vault_margin: i128) -> State {
-        State {
-            vault_margin: UsdValue::new_int(vault_margin),
-            ..Default::default()
-        }
-    }
-
     // ======================== Public function tests ===========================
 
     #[test]
@@ -299,14 +306,14 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let state = State::default(); // vault_margin = 0 (no deficit)
 
-        setup_storage(&mut ctx.storage, &param, &state, &[(
+        setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
             btc_pair_param(),
             PairState::default(),
         )]);
 
+        // Vault margin = 0 (no deficit).
         save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
 
         let result = super::deleverage(ctx.as_mutable(), USER);
@@ -326,13 +333,14 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let state = state_with_margin(-5_000);
 
-        setup_storage(&mut ctx.storage, &param, &state, &[(
+        setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
             btc_pair_param(),
             PairState::default(),
         )]);
+
+        save_vault_margin(&mut ctx.storage, -5_000);
 
         // Don't save any positions for USER.
 
@@ -354,14 +362,18 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut state = state_with_margin(-5_000);
         let pair_state = PairState::default();
 
-        setup_storage(&mut ctx.storage, &param, &state, &[(
+        setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
             btc_pair_param(),
             pair_state.clone(),
         )]);
+
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(-5_000),
+            ..Default::default()
+        };
 
         // User has long 1 BTC at $50k, oracle at $45k → loss
         save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
@@ -392,7 +404,7 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
+            &mut vault_user_state,
         );
 
         assert!(result.is_err());
@@ -413,13 +425,16 @@ mod tests {
 
         let param = default_param();
         // Deficit = $5,000
-        let mut state = state_with_margin(-5_000);
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(-5_000),
+            ..Default::default()
+        };
         let pair_state = PairState {
             long_oi: Quantity::new_int(1),
             ..Default::default()
         };
 
-        setup_storage(&mut ctx.storage, &param, &state, &[(
+        setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
             btc_pair_param(),
             pair_state.clone(),
@@ -454,7 +469,7 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
+            &mut vault_user_state,
         );
 
         assert!(result.is_ok(), "deleverage failed: {:?}", result.err());
@@ -468,11 +483,11 @@ mod tests {
         // OI should be reduced.
         assert_eq!(pair_states[&pair_btc()].long_oi, Quantity::ZERO);
 
-        // PnL = $15,000, deficit = |vault_margin| = $5,000
+        // PnL = $15,000, deficit = |vault margin| = $5,000
         // forfeited = min(15,000, 5,000) = 5,000
         // credit = 15,000 - 5,000 = 10,000
-        // vault_margin = -5,000 + 5,000 = 0
-        assert_eq!(state.vault_margin, UsdValue::ZERO);
+        // vault margin = -5,000 + 5,000 = 0
+        assert_eq!(vault_user_state.margin, UsdValue::ZERO);
 
         // User margin should increase by 10,000.
         assert_eq!(user_state.margin, UsdValue::new_int(20_000));
@@ -486,13 +501,16 @@ mod tests {
 
         let param = default_param();
         // Deficit = $20,000, PnL will be $15,000
-        let mut state = state_with_margin(-20_000);
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(-20_000),
+            ..Default::default()
+        };
         let pair_state = PairState {
             long_oi: Quantity::new_int(1),
             ..Default::default()
         };
 
-        setup_storage(&mut ctx.storage, &param, &state, &[(
+        setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
             btc_pair_param(),
             pair_state.clone(),
@@ -527,7 +545,7 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
+            &mut vault_user_state,
         );
 
         assert!(result.is_ok(), "deleverage failed: {:?}", result.err());
@@ -535,8 +553,8 @@ mod tests {
         // All PnL forfeited, no credit to user margin.
         assert_eq!(user_state.margin, collateral_value);
 
-        // vault_margin = -20,000 + 15,000 = -5,000
-        assert_eq!(state.vault_margin, UsdValue::new_int(-5_000));
+        // vault margin = -20,000 + 15,000 = -5,000
+        assert_eq!(vault_user_state.margin, UsdValue::new_int(-5_000));
     }
 
     #[test]
@@ -546,12 +564,15 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut state = state_with_margin(-3_000);
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(-3_000),
+            ..Default::default()
+        };
 
         let btc_state = PairState::default();
         let eth_state = PairState::default();
 
-        setup_storage(&mut ctx.storage, &param, &state, &[
+        setup_storage(&mut ctx.storage, &param, &[
             (pair_btc(), btc_pair_param(), btc_state.clone()),
             (pair_eth(), eth_pair_param(), eth_state.clone()),
         ]);
@@ -594,7 +615,7 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
+            &mut vault_user_state,
         );
 
         assert!(result.is_ok(), "deleverage failed: {:?}", result.err());
@@ -617,13 +638,16 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let mut state = state_with_margin(-5_000);
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(-5_000),
+            ..Default::default()
+        };
         let pair_state = PairState {
             long_oi: Quantity::new_int(1),
             ..Default::default()
         };
 
-        setup_storage(&mut ctx.storage, &param, &state, &[(
+        setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
             btc_pair_param(),
             pair_state.clone(),
@@ -657,7 +681,7 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
+            &mut vault_user_state,
         );
 
         assert!(result.is_ok(), "deleverage failed: {:?}", result.err());
@@ -675,13 +699,14 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let state = state_with_margin(-5_000);
 
-        setup_storage(&mut ctx.storage, &param, &state, &[(
+        setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
             btc_pair_param(),
             PairState::default(),
         )]);
+
+        save_vault_margin(&mut ctx.storage, -5_000);
 
         let result = super::deleverage(ctx.as_mutable(), CONTRACT);
 

@@ -1,6 +1,6 @@
 use {
     crate::{
-        ASKS, BIDS, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
+        ASKS, BIDS, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, USER_STATES,
         core::{
             compute_close_schedule, compute_maintenance_margin, compute_user_equity,
             is_liquidatable,
@@ -15,7 +15,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
-        perps::{Order, OrderId, PairId, PairParam, PairState, Param, State, UserState},
+        perps::{Order, OrderId, PairId, PairParam, PairState, Param, UserState},
     },
     grug::{Addr, MutableCtx, Response, Storage},
     std::collections::BTreeMap,
@@ -32,7 +32,6 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // ----------------------------- 1. Load state -----------------------------
 
     let param = PARAM.load(ctx.storage)?;
-    let mut state = STATE.load(ctx.storage)?;
 
     let mut user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
 
@@ -92,12 +91,9 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         &oracle_prices,
         collateral_value,
         &mut oracle_querier,
-        &mut state,
     )?;
 
     // --------------------- 7. Apply state changes ----------------------------
-
-    STATE.save(ctx.storage, &state)?;
 
     for (pair_id, pair_state) in &pair_states {
         PAIR_STATES.save(ctx.storage, pair_id, pair_state)?;
@@ -145,11 +141,11 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// - `pair_states` — OI updated per fill.
 /// - `user_state.positions` — closed (partially or fully) per the schedule.
 /// - `user_state.margin` — adjusted by settled PnLs, fees, and bad debt.
-/// - `state.vault_margin` — adjusted by settled PnLs and bad debt.
 ///
 /// Returns:
 ///
-/// - Maker `UserState`s to persist.
+/// - Maker `UserState`s to persist (includes vault's `UserState` with updated
+///   margin from PnLs, fees, and bad debt).
 /// - Order mutations to apply: `(pair_id, taker_is_bid, stored_price, order_id, Option<Order>)`.
 fn _liquidate(
     storage: &dyn Storage,
@@ -163,7 +159,6 @@ fn _liquidate(
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     collateral_value: UsdValue,
     oracle_querier: &mut OracleQuerier,
-    state: &mut State,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
@@ -220,18 +215,22 @@ fn _liquidate(
     // Merge the liquidated user into the maker states for settlement.
     all_maker_states.insert(user, user_state.clone());
 
-    settle_pnls(all_pnls, all_fees, state, contract, &mut all_maker_states)?;
+    settle_pnls(all_pnls, all_fees, contract, &mut all_maker_states)?;
 
     // Extract the user back.
     *user_state = all_maker_states.remove(&user).unwrap();
 
     // Bad debt check: if the user's margin went negative after settlement,
-    // floor at zero and subtract the bad debt from vault_margin (which may
-    // go negative, representing the deficit).
+    // floor at zero and subtract the bad debt from the vault's margin (which
+    // may go negative, representing the deficit).
     if user_state.margin < UsdValue::ZERO {
         let bad_debt = user_state.margin.checked_abs()?;
         user_state.margin = UsdValue::ZERO;
-        state.vault_margin.checked_sub_assign(bad_debt)?;
+        all_maker_states
+            .get_mut(&contract)
+            .unwrap()
+            .margin
+            .checked_sub_assign(bad_debt)?;
     }
 
     Ok((all_maker_states, all_order_mutations))
@@ -408,6 +407,14 @@ mod tests {
         std::collections::BTreeMap,
     };
 
+    /// Create a vault `UserState` with the given margin.
+    fn vault_user_state_with_margin(margin: i128) -> UserState {
+        UserState {
+            margin: UsdValue::new_int(margin),
+            ..Default::default()
+        }
+    }
+
     const USER: Addr = Addr::mock(1);
     const MAKER: Addr = Addr::mock(2);
     const CONTRACT: Addr = Addr::mock(0);
@@ -508,13 +515,6 @@ mod tests {
         ASKS.save(storage, key, &order).unwrap();
     }
 
-    fn state_with_vault(amount: i128) -> State {
-        State {
-            vault_margin: UsdValue::new_int(amount),
-            ..Default::default()
-        }
-    }
-
     // ======================== Tests ========================
 
     #[test]
@@ -547,7 +547,6 @@ mod tests {
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let vault_state = UserState::default();
-        let mut state = STATE.load(&ctx.storage).unwrap();
 
         // collateral_value = 10000, equity = 10000 + 0 = 10000, MM = 2500
         // 10000 > 2500 → not liquidatable
@@ -578,7 +577,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
         );
 
         assert!(result.is_err());
@@ -637,8 +635,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_500));
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000);
+        let vault_state = vault_user_state_with_margin(1_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
         user_state.margin = collateral_value;
@@ -667,7 +664,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
         );
 
         assert!(result.is_ok(), "liquidation failed: {:?}", result.err());
@@ -712,8 +708,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_500));
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000);
+        let vault_state = vault_user_state_with_margin(1_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
         user_state.margin = collateral_value;
@@ -742,7 +737,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
         );
 
         assert!(result.is_ok(), "vault backstop failed: {:?}", result.err());
@@ -823,8 +817,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_000));
         oracle_prices.insert(pair_eth(), UsdPrice::new_int(2_800));
 
-        let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000);
+        let vault_state = vault_user_state_with_margin(1_000_000);
 
         let collateral_value = UsdValue::new_int(4_000);
         user_state.margin = collateral_value;
@@ -858,7 +851,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
         );
 
         assert!(result.is_ok(), "multi-pair liq failed: {:?}", result.err());
@@ -909,8 +901,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000);
+        let vault_state = vault_user_state_with_margin(1_000_000);
 
         let collateral_value = UsdValue::new_int(2_500);
         user_state.margin = collateral_value;
@@ -939,7 +930,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
         );
 
         assert!(result.is_ok(), "fee capping failed: {:?}", result.err());
@@ -1068,8 +1058,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(50_000));
         oracle_prices.insert(pair_eth(), UsdPrice::new_int(3_000));
 
-        let vault_state = UserState::default();
-        let mut state = state_with_vault(1_000_000);
+        let vault_state = vault_user_state_with_margin(1_000_000);
 
         let collateral_value = UsdValue::new_int(4_000);
         user_state.margin = collateral_value;
@@ -1103,7 +1092,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
         );
 
         assert!(
@@ -1160,14 +1148,18 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
 
         // Vault has a resting ask for 3 BTC at 50000 (will be matched as maker).
-        // The vault has a long 3 position that is being offered via the ask.
-        let mut vault_state = UserState::default();
+        // The vault has a long 3 position that is being offered via the ask,
+        // and $1,000,000 margin.
+        let mut vault_state = UserState {
+            margin: UsdValue::new_int(1_000_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
         vault_state.positions.insert(pair_btc(), Position {
             size: Quantity::new_int(3),
             entry_price: UsdPrice::new_int(50_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
         });
-        vault_state.open_order_count = 1;
         USER_STATES
             .save(&mut ctx.storage, CONTRACT, &vault_state)
             .unwrap();
@@ -1182,8 +1174,6 @@ mod tests {
 
         let mut oracle_prices = BTreeMap::new();
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(50_000));
-
-        let mut state = state_with_vault(1_000_000);
 
         let collateral_value = UsdValue::new_int(2_400);
         user_state.margin = collateral_value;
@@ -1212,7 +1202,6 @@ mod tests {
             &oracle_prices,
             collateral_value,
             &mut oracle_querier,
-            &mut state,
         );
 
         assert!(
