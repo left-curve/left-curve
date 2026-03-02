@@ -17,6 +17,7 @@ members = [
   "dango/indexer/sql-migration",
   "dango/mocks/httpd",
   "dango/oracle",
+  "dango/perps",
   "dango/proposal-preparer",
   "dango/scripts",
   "dango/taxman",
@@ -192,6 +193,7 @@ tracing                     = { version = "=0.1.41" }
 tracing-attributes          = { version = "=0.1.28" }
 tracing-opentelemetry       = "0.32"
 tracing-subscriber          = { version = "=0.3.19", features = ["env-filter", "fmt", "json"] }
+typenum                     = "1"
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "6"
@@ -220,6 +222,7 @@ dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
+dango-perps                 = { path = "dango/perps" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
 dango-scripts               = { path = "dango/scripts" }
 dango-taxman                = { path = "dango/taxman" }

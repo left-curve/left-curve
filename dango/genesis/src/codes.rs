@@ -94,6 +94,12 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_warp::query))
             .build();
 
+        let perps = ContractBuilder::new(Box::new(dango_perps::instantiate))
+            .with_execute(Box::new(dango_perps::execute))
+            .with_query(Box::new(dango_perps::query))
+            .with_cron_execute(Box::new(dango_perps::cron_execute))
+            .build();
+
         #[cfg(feature = "metrics")]
         {
             dango_dex::metrics::init_metrics();
@@ -111,6 +117,7 @@ impl GenesisCodes for RustVm {
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,
+            perps,
             taxman,
             vesting,
             warp,

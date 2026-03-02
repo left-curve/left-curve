@@ -3977,6 +3977,7 @@ dependencies = [
  "dango-dex",
  "dango-gateway",
  "dango-oracle",
+ "dango-perps",
  "dango-taxman",
  "dango-types",
  "dango-vesting",
@@ -4159,6 +4160,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-perps"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-oracle",
+ "dango-types",
+ "grug",
+ "metrics",
+ "test-case",
+ "tracing",
+]
+
+[[package]]
 name = "dango-proposal-preparer"
 version = "0.0.0"
 dependencies = [
@@ -4242,6 +4256,7 @@ dependencies = [
  "dango-indexer-sql",
  "dango-mock-httpd",
  "dango-oracle",
+ "dango-perps",
  "dango-proposal-preparer",
  "dango-taxman",
  "dango-types",
@@ -4296,6 +4311,7 @@ dependencies = [
  "async-graphql",
  "async-trait",
  "bnum",
+ "borsh",
  "grug",
  "hyperlane-types",
  "paste",
@@ -4303,6 +4319,7 @@ dependencies = [
  "sea-orm",
  "serde",
  "sha2 0.10.9",
+ "typenum",
 ]
 
 [[package]]

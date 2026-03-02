@@ -23,6 +23,7 @@
       "bank": "0xe0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7",
       "cronjobs": {
         "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1": "86400",
+        "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69": "60",
         "0xda32476efe31e535207f0ad690d337a4ebf54a22": "0"
       },
       "max_orphan_age": "604800",
@@ -86,6 +87,11 @@
       {
         "upload": {
           "code": "CQAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
+          "code": "DQAAAAAAAAA="
         }
       },
       {
@@ -862,6 +868,42 @@
             }
           },
           "salt": "ZGFuZ28vb3JhY2xl"
+        }
+      },
+      {
+        "instantiate": {
+          "admin": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
+          "code_hash": "B0BD73E6922C0D2496DBCB99EAC08EB5870090E59F6E06B1EB477D540002A5CD",
+          "funds": {},
+          "label": "dango/perps",
+          "msg": {
+            "pair_params": {
+              "perp/ethusd": {
+                "impact_size": "10000",
+                "initial_margin_ratio": "0.1",
+                "maintenance_margin_ratio": "0.05",
+                "max_abs_funding_rate": "0",
+                "max_abs_oi": "1000000",
+                "min_order_size": "0",
+                "tick_size": "1",
+                "vault_half_spread": "0",
+                "vault_liquidity_weight": "0",
+                "vault_max_quote_size": "0"
+              }
+            },
+            "param": {
+              "adl_operators": [],
+              "funding_period": "3600",
+              "liquidation_fee_rate": "0.01",
+              "maker_fee_rate": "0",
+              "max_open_orders": 100,
+              "max_unlocks": 10,
+              "taker_fee_rate": "0.001",
+              "vault_cooldown_period": "86400",
+              "vault_total_weight": "0"
+            }
+          },
+          "salt": "ZGFuZ28vcGVycHM="
         }
       },
       {

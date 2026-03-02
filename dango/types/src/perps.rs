@@ -1,0 +1,437 @@
+use {
+    crate::{Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
+    grug::{Addr, Denom, Duration, Timestamp, Uint64, Uint128},
+    std::collections::{BTreeMap, BTreeSet, VecDeque},
+};
+
+// ----------------------------------- Types -----------------------------------
+
+/// Denomination of the asset used to settle perpetual futures contracts.
+pub use crate::constants::usdc as settlement_currency;
+
+/// Identifier of a trading pair. It should be a string that looks like e.g. "perp/btcusd".
+pub type PairId = Denom;
+
+/// Identifies a resting limit order.
+pub type OrderId = Uint64;
+
+#[grug::derive(Serde)]
+#[derive(Copy)]
+pub enum OrderKind {
+    /// Trade at the best available prices in the order book, optionally
+    /// with a slippage tolerance relative to the oracle price.
+    ///
+    /// If the order cannot be fully filled, the unfilled portion is
+    /// canceled (immediate-or-cancel behavior).
+    Market { max_slippage: Dimensionless },
+
+    /// Trade at the specified limit price.
+    Limit {
+        limit_price: UsdPrice,
+
+        /// Indicates the order is to be inserted into the book as a maker order
+        /// without being matched.
+        ///
+        /// The order's limit price must not cross the best offer price on the
+        /// other side of the book. Reject if violated.
+        post_only: bool,
+    },
+}
+
+impl OrderKind {
+    /// If this is a post-only limit order, return the limit price.
+    /// Otherwise, return `None`.
+    pub fn post_only_price(self) -> Option<UsdPrice> {
+        match self {
+            OrderKind::Limit {
+                limit_price,
+                post_only: true,
+            } => Some(limit_price),
+            _ => None,
+        }
+    }
+}
+
+/// Global parameters that concerns the counterparty vault and all trading pairs.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct Param {
+    /// Maximum number of unlock requests a single user may have.
+    pub max_unlocks: usize,
+
+    /// Maximum number of resting limit order a single user may have across all
+    /// trading pairs.
+    pub max_open_orders: usize,
+
+    /// Fee charged to makers (limit orders that rest on the book) as a fraction
+    /// of the fill's notional value, deducted from the user's margin and
+    /// transferred to the vault on every fill.
+    pub maker_fee_rate: Dimensionless,
+
+    /// Fee charged to takers (market orders and crossing limit orders) as a
+    /// fraction of the fill's notional value, deducted from the user's margin
+    /// and transferred to the vault on every fill.
+    pub taker_fee_rate: Dimensionless,
+
+    /// Fee paid to the vault as a fraction of the total notional value of
+    /// positions being liquidated, capped at the user's remaining margin
+    /// after position closure.
+    ///
+    /// fee = min(
+    ///   ceil(|position_size| * oracle_price * liquidation_fee_rate / settlement_currency_price),
+    ///   user_remaining_margin
+    /// )
+    pub liquidation_fee_rate: Dimensionless,
+
+    /// Duration between funding collections. The cron job applies funding
+    /// only when this period elapses.
+    pub funding_period: Duration,
+
+    /// Set of addresses authorized to call `Deleverage`.
+    pub adl_operators: BTreeSet<Addr>,
+
+    /// Sum of `vault_liquidity_weight` across all trading pairs.
+    /// Precomputed to avoid iterating all pair params when placing
+    /// vault orders. Must be kept in sync when pairs are added/removed
+    /// or weights change.
+    pub vault_total_weight: Dimensionless,
+
+    /// Once a request to withdraw liquidity from the counterparty vault has been
+    /// submitted, the waiting time that must elapsed before the funds are released
+    /// to the liquidity provider.
+    pub vault_cooldown_period: Duration,
+}
+
+/// Global state that concerns the counterparty vault and all trading pairs.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct State {
+    /// Timestamp of the most recent funding collection.
+    pub last_funding_time: Timestamp,
+
+    /// Total supply of the vault's share token.
+    pub vault_share_supply: Uint128,
+}
+
+/// Parameters that apply to an individual trading pair.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct PairParam {
+    /// Minimum price increment for limit orders in this pair. All limit order
+    /// prices must be an integer multiple of `tick_size`.
+    pub tick_size: UsdPrice,
+
+    /// Minimum notional value for an order. Reduce-only orders are exempt.
+    /// Prevents dust orders from cluttering the order book.
+    pub min_order_size: UsdValue,
+
+    /// The maximum allowed open interest for both long and short.
+    /// I.e. the following must be satisfied:
+    ///
+    /// pair_state.long_oi <= max_abs_oi && pair_state.short_oi <= max_abs_oi
+    ///
+    /// This constraint does not apply to reduce-only orders.
+    pub max_abs_oi: Quantity,
+
+    /// Maximum absolute funding rate, as a fraction per day.
+    ///
+    /// That is, the daily funding rate is clamped to the range
+    /// [-max_abs_funding_rate, max_abs_funding_rate].
+    ///
+    /// This prevents runaway rates from causing cascading liquidations and bad
+    /// debt spirals during prolonged skew.
+    pub max_abs_funding_rate: FundingRate,
+
+    /// Margin requirement when opening or increasing a position in this trading
+    /// pair. E.g. 5% indicates a 1 / 5% = 20x maximum leverage.
+    ///
+    /// initial_margin = |position_size| * oracle_price * initial_margin_ratio
+    pub initial_margin_ratio: Dimensionless,
+
+    /// Margin requirement for maintaining a position in this trading pair.
+    ///
+    /// Must be strictly less than `initial_margin_ratio`.
+    ///
+    /// When a user's equity falls below the sum of maintenance margins across
+    /// all his positions, the user becomes eligible for liquidations.
+    ///
+    /// maintenance_margin = |position_size| * oracle_price * maintenance_margin_ratio
+    pub maintenance_margin_ratio: Dimensionless,
+
+    /// Notional value used to compute impact prices from the order book.
+    /// The cron job walks bids/asks to find the average execution price for
+    /// selling/buying this much notional.
+    pub impact_size: UsdValue,
+
+    /// Weight determining what fraction of the vault's available margin
+    /// is allocated to this pair for market-making.
+    /// The pair's share = `vault_liquidity_weight / Param::vault_total_weight`.
+    pub vault_liquidity_weight: Dimensionless,
+
+    /// Half the bid-ask spread the vault quotes around the oracle price. The
+    /// vault places bids at `oracle_price * (1 - vault_half_spread)` and asks
+    /// at `oracle_price * (1 + vault_half_spread)`.
+    pub vault_half_spread: Dimensionless,
+
+    /// Maximum notional size (in quote currency) of the vault's resting orders
+    /// on each side of the book. Limits the vault's exposure per pair.
+    pub vault_max_quote_size: Quantity,
+}
+
+impl PairParam {
+    /// Build a `PairParam` with sensible defaults for testing.
+    pub fn new_mock() -> Self {
+        Self {
+            max_abs_oi: Quantity::new_int(1_000_000),
+            impact_size: UsdValue::new_int(10_000),
+            ..Default::default()
+        }
+    }
+}
+
+/// State of an individual trading pair.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct PairState {
+    /// The sum of the sizes of all long positions.
+    pub long_oi: Quantity,
+
+    /// The sum of the absolute value of the sizes of all short positions.
+    pub short_oi: Quantity,
+
+    /// Cumulative funding per unit of position size, denominated in USD.
+    ///
+    /// This is an ever-increasing accumulator. To compute a position's accrued
+    /// funding, take the difference between the current value and the position's
+    /// `entry_funding_per_unit`.
+    pub funding_per_unit: FundingPerUnit,
+}
+
+/// State of a specific user.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct UserState {
+    /// The user's deposited margin, denominated in USD.
+    pub margin: UsdValue,
+
+    /// Vault shares owned by this user.
+    pub vault_shares: Uint128,
+
+    /// The user's open positions.
+    pub positions: BTreeMap<PairId, Position>,
+
+    /// The user's vault withdrawals that are pending cooldown.
+    pub unlocks: VecDeque<Unlock>,
+
+    /// Margin reserved for resting limit orders.
+    pub reserved_margin: UsdValue,
+
+    /// Number of resting limit orders the user currently has on the book.
+    pub open_order_count: usize,
+}
+
+impl UserState {
+    /// Return whether the `UserState` is completely empty.
+    pub fn is_empty(&self) -> bool {
+        self == &Self::default()
+    }
+}
+
+/// A user's position in a specific trading pair.
+#[grug::derive(Serde, Borsh)]
+pub struct Position {
+    /// The position's size. Position = long, negative = short.
+    pub size: Quantity,
+
+    /// The average price at which this position was entered.
+    pub entry_price: UsdPrice,
+
+    /// The value of `pair_state.cumulative_funding_per_unit` at the time when
+    /// this position was last opened, modified, or funding settled.
+    pub entry_funding_per_unit: FundingPerUnit,
+}
+
+/// A pending withdrawal of liquidity from the counterparty vault, awaiting the
+/// cooldown period to elapse.
+#[grug::derive(Serde, Borsh)]
+pub struct Unlock {
+    /// The time when cooldown completes.
+    pub end_time: Timestamp,
+
+    /// The USD value to be released once cooldown completes. Token conversion
+    /// happens at claim time using the current oracle price.
+    pub amount_to_release: UsdValue,
+}
+
+/// A resting limit order, waiting to be fulfilled.
+///
+/// This struct does not contain the pair ID, order ID, and the limit price,
+/// which are instead included in the storage key, with which this struct is
+/// saved in the contract storage .
+#[grug::derive(Serde, Borsh)]
+pub struct Order {
+    pub user: Addr,
+    pub size: Quantity,
+    pub reduce_only: bool,
+    pub reserved_margin: UsdValue,
+}
+
+#[grug::derive(Serde)]
+pub enum CancelOrderRequest {
+    /// Cancel a single order by ID.
+    One(OrderId),
+    /// Cancel all orders associated with the sender.
+    All,
+}
+
+// --------------------------------- Messages ----------------------------------
+
+#[grug::derive(Serde)]
+pub struct InstantiateMsg {
+    pub param: Param,
+    pub pair_params: BTreeMap<PairId, PairParam>,
+}
+
+#[grug::derive(Serde)]
+pub enum ExecuteMsg {
+    /// Deposit settlement currency into the trader's margin account.
+    /// The deposited tokens are converted to USD at the current oracle price
+    /// and credited to `user_state.margin`.
+    Deposit {},
+
+    /// Withdraw margin from the trader's margin account.
+    /// The requested USD amount is converted to settlement currency at the
+    /// current oracle price (floor-rounded) and transferred to the user.
+    Withdraw { amount: UsdValue },
+
+    /// Submit an order.
+    SubmitOrder {
+        pair_id: PairId,
+
+        /// The amount of futures contract to buy or sell.
+        /// Positive indicates buy, negative indicates sell.
+        size: Quantity,
+
+        /// Order type: market, limit, etc.
+        kind: OrderKind,
+
+        /// If true, the opening portion of the order is discarded, while the
+        /// closing portion of the order is always executed, ignoring the risk
+        /// parameters such as maximum open interest (OI).
+        ///
+        /// If false, the order must be executed in full. If any of the risk
+        /// parameters is violated, the entire order is aborted.
+        reduce_only: bool,
+    },
+
+    /// Cancel a resting limit order.
+    CancelOrder(CancelOrderRequest),
+
+    /// Add liquidity to the counterparty vault by transferring margin to the vault.
+    AddLiquidity {
+        /// USD margin amount to transfer from the user's trading margin to the vault.
+        amount: UsdValue,
+
+        /// Revert if less than this amount of shares is minted.
+        min_shares_to_mint: Option<Uint128>,
+    },
+
+    /// Request to withdraw liquidity from the counterparty vault.
+    RemoveLiquidity { shares_to_burn: Uint128 },
+
+    /// Forcibly close all of a user's positions, if the user has less collateral
+    /// than the maintenance margin required by his positions.
+    Liquidate { user: Addr },
+
+    /// Forcibly close all of a user's positions, even if the user has sufficient
+    /// amount of collateral.
+    ///
+    /// This is enabled when the vault cannot fully absorb bad debt from
+    /// liquidations.
+    Deleverage { user: Addr },
+
+    /// Update global and/or per-pair parameters.
+    /// Only callable by the chain owner (or GENESIS_SENDER during instantiation).
+    Configure {
+        param: Param,
+        pair_params: BTreeMap<PairId, PairParam>,
+    },
+
+    /// Triggered at the beginning of each block, right after the oracle update.
+    ///
+    /// The vault places new orders based on the oracle price, the state of the
+    /// order book at the time, and its policy for market making.
+    OnOracleUpdate {},
+}
+
+#[grug::derive(Serde, QueryRequest)]
+pub enum QueryMsg {
+    /// Query the global parameters.
+    #[returns(Param)]
+    Param {},
+
+    /// Query the pair-specific parameters of a single trading pair.
+    #[returns(Option<PairParam>)]
+    PairParam { pair_id: PairId },
+
+    /// Enumerate the pair-specific parameters of all trading pairs.
+    #[returns(BTreeMap<PairId, PairParam>)]
+    PairParams {
+        start_after: Option<PairId>,
+        limit: Option<u32>,
+    },
+
+    /// Query the global state.
+    #[returns(State)]
+    State {},
+
+    /// Query the pair-specific state of a single trading pair.
+    #[returns(Option<PairState>)]
+    PairState { pair_id: PairId },
+
+    /// Enumerate the pair-specific states of all trading pairs.
+    #[returns(BTreeMap<PairId, PairState>)]
+    PairStates {
+        start_after: Option<PairId>,
+        limit: Option<u32>,
+    },
+
+    /// Query the state of a single user.
+    #[returns(Option<UserState>)]
+    UserState { user: Addr },
+
+    /// Enumerate the states of all users.
+    #[returns(BTreeMap<Addr, UserState>)]
+    UserStates {
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+    },
+
+    /// Query a single order by ID.
+    #[returns(Option<QueryOrderResponse>)]
+    Order { order_id: OrderId },
+
+    /// Query all orders of a single user.
+    #[returns(QueryOrdersByUserResponse)]
+    OrdersByUser { user: Addr },
+}
+
+#[grug::derive(Serde)]
+pub struct QueryOrderResponse {
+    pub order_id: OrderId,
+    pub pair_id: PairId,
+    pub limit_price: UsdPrice,
+    pub size: Quantity,
+    pub reduce_only: bool,
+    pub reserved_margin: UsdValue,
+}
+
+#[grug::derive(Serde)]
+pub struct QueryOrdersByUserResponse {
+    pub bids: Vec<QueryOrderResponse>,
+    pub asks: Vec<QueryOrderResponse>,
+}
+
+// ---------------------------------- Events -----------------------------------
+
+// TODO

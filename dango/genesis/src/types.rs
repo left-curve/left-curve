@@ -6,6 +6,7 @@ use {
         dex::PairUpdate,
         gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         oracle::PriceSource,
+        perps::{self, PairId, PairParam},
         taxman,
     },
     grug::{Addr, Binary, Coin, Coins, Denom, Duration, Timestamp, Uint128},
@@ -21,6 +22,7 @@ pub struct Contracts {
     pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
     pub oracle: Addr,
+    pub perps: Addr,
     pub taxman: Addr,
     pub vesting: Addr,
     pub warp: Addr,
@@ -36,6 +38,7 @@ pub struct Codes<T> {
     pub gateway: T,
     pub hyperlane: Hyperlane<T>,
     pub oracle: T,
+    pub perps: T,
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
@@ -53,6 +56,7 @@ pub struct GenesisOption {
     pub gateway: GatewayOption,
     pub hyperlane: HyperlaneOption,
     pub oracle: OracleOption,
+    pub perps: PerpsOption,
     pub vesting: VestingOption,
 }
 
@@ -109,6 +113,13 @@ pub struct OracleOption {
     pub pyth_price_sources: BTreeMap<Denom, PriceSource>,
     /// Pyth Lazer trusted signers: public key and expiration timestamp.
     pub pyth_trusted_signers: BTreeMap<Binary, Timestamp>,
+}
+
+pub struct PerpsOption {
+    /// Global parameters for the perpetuals contract.
+    pub param: perps::Param,
+    /// Per-pair parameters, keyed by the pair ID (e.g. "perp/ethusd").
+    pub pair_params: BTreeMap<PairId, PairParam>,
 }
 
 pub struct VestingOption {
