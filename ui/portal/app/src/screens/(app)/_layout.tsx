@@ -12,6 +12,10 @@ export default function AppLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="convert" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
+          <Stack.Screen name="tx/[txHash]" options={{ headerShown: false }} />
+          <Stack.Screen name="block/[block]" options={{ headerShown: false }} />
+          <Stack.Screen name="account/[address]" options={{ headerShown: false }} />
+          <Stack.Screen name="contract/[address]" options={{ headerShown: false }} />
         </Stack>
       </View>
       <Menu />

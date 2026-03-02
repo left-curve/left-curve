@@ -1469,8 +1469,10 @@ jobs:
           export INDEXER_URL="http://localhost:$DANGO_PORT"
           export UP_URL="http://localhost:$DANGO_PORT/up"
           export FAUCET_URL="http://localhost:$FAUCET_PORT/mint"
+          export CHAIN_ID="$(jq -r '.chain_id' configs/cometbft/config/genesis.json)"
+          echo "Frontend CHAIN_ID set to $CHAIN_ID"
 
-          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml up -d --no-deps frontend
+          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml up -d --force-recreate --no-deps frontend
 
           docker compose ps
 
@@ -1479,7 +1481,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FRONTEND_URL: "http://localhost:5081"
+          PLAYWRIGHT_EXTERNAL_SERVER: "1"
         run: |
+          cd localdango
+          DANGO_PORT=$(docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml port dango 8080 | awk -F: '{print $NF}')
+          echo "Dango endpoint: http://localhost:$DANGO_PORT"
+          echo "Dango /status chain_id:"
+          curl -sSf "http://localhost:$DANGO_PORT/status" | jq -r '.result.node_info.network'
+          echo "Frontend config.js chain id snippet:"
+          curl -sSf "$FRONTEND_URL/static/js/config.js" | grep -o '"id":"[^"]*"' | head -n1 || true
+          echo "Frontend /up status code:"
+          curl -sS -o /dev/null -w "%{http_code}\n" "$FRONTEND_URL/up"
+          cd ..
+
           pnpm i --frozen-lockfile
           pnpm exec playwright install --only-shell chromium
           pnpm test:e2e

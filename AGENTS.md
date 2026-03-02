@@ -2,6 +2,9 @@
 
 This document is a generic, evergreen guide for new agents working in this repository. Feature-specific deep dives are documented as playbooks and linked at the end.
 
+# TypeScript Guidelines
+See `TYPESCRIPT_GUIDELINES.md`.
+
 ## Repository Overview
 
 - Rust + TypeScript monorepo: smart contracts (Dango), node (Grug), indexers, SDK, and UI.
