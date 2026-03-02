@@ -191,7 +191,7 @@ pub fn compute_required_margin(
 /// Compute the margin available for new orders or withdrawals.
 ///
 /// ```plain
-/// available = max(0, equity - used_margin - reserved_margin_value)
+/// available = max(0, equity - used_margin - reserved_margin)
 /// ```
 ///
 /// where `used_margin = Σ |size| * oracle_price * initial_margin_ratio`
@@ -203,7 +203,6 @@ pub fn compute_available_margin(
     user_state: &UserState,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
-    reserved_margin_value: UsdValue,
 ) -> anyhow::Result<UsdValue> {
     let equity = compute_user_equity(user_state, perp_querier, oracle_querier)?;
 
@@ -223,7 +222,7 @@ pub fn compute_available_margin(
 
     Ok(equity
         .checked_sub(used_margin)?
-        .checked_sub(reserved_margin_value)?
+        .checked_sub(user_state.reserved_margin)?
         .max(UsdValue::ZERO))
 }
 
@@ -935,13 +934,7 @@ mod tests {
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
-            compute_available_margin(
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier,
-                UsdValue::ZERO,
-            )
-            .unwrap(),
+            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
             UsdValue::new_int(10_000),
         );
     }
@@ -987,13 +980,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_available_margin(
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier,
-                UsdValue::ZERO,
-            )
-            .unwrap(),
+            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
             UsdValue::new_int(12_500),
         );
     }
@@ -1004,6 +991,7 @@ mod tests {
     fn available_margin_with_reserved() {
         let user_state = UserState {
             margin: UsdValue::new_int(10_000),
+            reserved_margin: UsdValue::new_int(2_000),
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
@@ -1037,13 +1025,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_available_margin(
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier,
-                UsdValue::new_int(2_000),
-            )
-            .unwrap(),
+            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
             UsdValue::new_int(10_500),
         );
     }
@@ -1090,13 +1072,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_available_margin(
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier,
-                UsdValue::ZERO,
-            )
-            .unwrap(),
+            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
             UsdValue::ZERO,
         );
     }
@@ -1143,13 +1119,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_available_margin(
-                &user_state,
-                &perp_querier,
-                &mut oracle_querier,
-                UsdValue::ZERO,
-            )
-            .unwrap(),
+            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
             UsdValue::new_int(12_480),
         );
     }

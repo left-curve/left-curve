@@ -626,12 +626,7 @@ fn store_limit_order(
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-        let available_margin = compute_available_margin(
-            user_state,
-            &perp_querier,
-            oracle_querier,
-            user_state.reserved_margin,
-        )?;
+        let available_margin = compute_available_margin(user_state, &perp_querier, oracle_querier)?;
 
         ensure!(
             available_margin >= margin_to_reserve,
