@@ -38,9 +38,11 @@ const SearchMenu: React.FC = () => {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const isIntentionalBlurRef = useRef(false);
 
   useClickAway(menuRef, () => {
     if (!isLg) return;
+    isIntentionalBlurRef.current = true;
     setSearchBarVisibility(false);
     setSearchText("");
   });
@@ -56,6 +58,7 @@ const SearchMenu: React.FC = () => {
       } else if (isSearchBarVisible && e.key === "Escape") {
         setSearchBarVisibility(false);
         setSearchText("");
+        isIntentionalBlurRef.current = true;
         inputRef.current?.blur();
       } else if (
         !["INPUT", "TEXT", "TEXTAREA"].includes(window.document.activeElement?.nodeName || "") &&
@@ -81,6 +84,7 @@ const SearchMenu: React.FC = () => {
   const hideMenu = () => {
     setSearchBarVisibility(false);
     setSearchText("");
+    isIntentionalBlurRef.current = true;
     inputRef.current?.blur();
   };
 
@@ -109,6 +113,18 @@ const SearchMenu: React.FC = () => {
                   ref={inputRef}
                   onValueChange={setSearchText}
                   value={searchText}
+                  onBlur={(e) => {
+                    if (isIntentionalBlurRef.current) {
+                      isIntentionalBlurRef.current = false;
+                      return;
+                    }
+
+                    if (!e.relatedTarget && isSearchBarVisible) {
+                      requestAnimationFrame(() => {
+                        inputRef.current?.focus();
+                      });
+                    }
+                  }}
                   className="bg-surface-secondary-rice pt-[4px] w-full outline-none focus:outline-none placeholder:text-ink-tertiary-500"
                 />
 

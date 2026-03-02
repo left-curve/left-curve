@@ -191,7 +191,10 @@ const ExecuteMsg: React.FC = () => {
         }
 
         if ("transfer" in message) {
-          return await signingClient.transfer({ sender: account.address, ...message.transfer });
+          return await signingClient.transfer({
+            sender: account.address,
+            transfer: message.transfer,
+          });
         }
 
         if ("upload" in message) {

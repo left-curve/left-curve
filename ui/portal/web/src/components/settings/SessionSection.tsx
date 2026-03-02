@@ -4,7 +4,6 @@ import {
   Button,
   CurrentBlock,
   IconEdit,
-  IconInfo,
   IconMobile,
   IconNetwork,
   IconStatus,

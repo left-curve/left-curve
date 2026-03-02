@@ -16,6 +16,7 @@ import { TxIndicator } from "./TxIndicator";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TestnetBanner } from "./TestnetBanner";
+import { isFeatureEnabled } from "~/featureFlags";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -29,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { isLg } = useMediaQuery();
 
   const isProSwap = location.pathname.includes("trade");
+  const isPointsEnabled = isFeatureEnabled("points");
 
   const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
 
@@ -70,15 +72,17 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           ) : null}
           {!isSearchBarVisible ? (
             <div className="flex gap-2 lg:hidden">
-              <IconButton
-                as={Link}
-                to="/points"
-                size="lg"
-                type="button"
-                className="rounded-lg shadow-account-card"
-              >
-                <IconGift />
-              </IconButton>
+              {isPointsEnabled ? (
+                <IconButton
+                  as={Link}
+                  to="/points"
+                  size="lg"
+                  type="button"
+                  className="rounded-lg shadow-account-card"
+                >
+                  <IconGift />
+                </IconButton>
+              ) : null}
               <IconButton
                 onClick={() =>
                   isConnected ? setSidebarVisibility(true) : showModal(Modals.Authenticate)
@@ -94,9 +98,11 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           ) : null}
         </div>
         <div className="hidden lg:flex gap-4 items-center justify-end order-2 lg:order-3">
-          <Button as={Link} to="/points" size="lg" className="rounded-lg">
-            {m["points.campaign"]()}
-          </Button>
+          {isPointsEnabled ? (
+            <Button as={Link} to="/points" size="lg" className="rounded-lg">
+              {m["points.campaign"]()}
+            </Button>
+          ) : null}
           <Button
             dng-connect-button="true"
             variant="utility"
