@@ -507,6 +507,7 @@ pub struct OrderRemoved {
 }
 
 #[grug::derive(Serde)]
+#[derive(Copy)]
 pub enum ReasonForOrderRemoval {
     /// The order was fully filled.
     Filled,

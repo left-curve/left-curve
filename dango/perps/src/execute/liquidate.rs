@@ -32,9 +32,9 @@ use {
 ///
 /// Returns: empty `Response` (all PnL/fees settled via internal margins).
 pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
-    ensure!(user != ctx.contract, "cannot liquidate the vault");
+    // --------------------- 1. Preparation + basic checks ---------------------
 
-    // ----------------------------- 1. Load state -----------------------------
+    ensure!(user != ctx.contract, "cannot liquidate the vault");
 
     let param = PARAM.load(ctx.storage)?;
 
@@ -42,15 +42,16 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
-    // -------------------- 2. Cancel all resting orders -----------------------
-
     let mut events = EventBuilder::new();
+
+    // -------------------- 2. Cancel all resting orders -----------------------
 
     _cancel_all_orders(
         ctx.storage,
         user,
         &mut user_state,
-        Some((&mut events, ReasonForOrderRemoval::Liquidated)),
+        Some(&mut events),
+        ReasonForOrderRemoval::Liquidated,
     )?;
 
     // ------------------- 3. Load pair params and states ---------------------
@@ -169,10 +170,9 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         }
     }
 
-    events.push(Liquidated { user })?;
-
-    // No token transfers — all PnL/fees settled via internal margins.
-    Ok(Response::new().add_events(events)?)
+    Ok(Response::new()
+        .add_events(events)?
+        .add_event(Liquidated { user })?)
 }
 
 /// Mutates:
@@ -365,7 +365,6 @@ fn execute_close_schedule(
         closed_notional.checked_add_assign(filled.checked_abs()?.checked_mul(oracle_price)?)?;
 
         // Vault backstop: if there is unfilled remainder, the vault absorbs at oracle price.
-        // Backstop fills are not order-book fills — no OrderFilled events emitted.
         if unfilled.is_non_zero() {
             // User side: close at oracle price with zero fee.
             settle_fill(
@@ -378,7 +377,7 @@ fn execute_close_schedule(
                 &mut all_pnls,
                 &mut all_fees,
                 user,
-                None,
+                None, // Backstop fills are not order-book fills — no OrderFilled events emitted.
             )?;
 
             // Vault side: opposite fill at oracle price with zero fee.

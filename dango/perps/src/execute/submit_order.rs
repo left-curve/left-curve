@@ -48,9 +48,9 @@ pub fn submit_order(
 
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
 
-    // --------------------------- 2. Business logic ---------------------------
-
     let mut events = EventBuilder::new();
+
+    // --------------------------- 2. Business logic ---------------------------
 
     let (maker_states, order_mutations, order_to_store) = _submit_order(
         ctx.storage,
@@ -127,18 +127,19 @@ pub fn submit_order(
 
     if let Some((stored_price, order_id, order)) = order_to_store {
         let is_bid = size.is_positive();
-        let real_price = may_invert_price(stored_price, is_bid);
+        let limit_price = may_invert_price(stored_price, is_bid);
 
         increase_liquidity_depths(
             ctx.storage,
             &pair_id,
             is_bid,
-            real_price,
+            limit_price,
             order.size.checked_abs()?,
             &pair_param.bucket_sizes,
         )?;
 
         NEXT_ORDER_ID.save(ctx.storage, &(order_id + OrderId::ONE))?;
+
         taker_book.save(
             ctx.storage,
             (pair_id.clone(), stored_price, order_id),
@@ -149,7 +150,7 @@ pub fn submit_order(
             order_id,
             pair_id,
             user: ctx.sender,
-            limit_price: may_invert_price(stored_price, is_bid),
+            limit_price,
             size: order.size,
         })?;
     }

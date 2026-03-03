@@ -41,7 +41,8 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
             user_state,
             order_key,
             order,
-            Some((&mut events, ReasonForOrderRemoval::Canceled)),
+            Some(&mut events),
+            ReasonForOrderRemoval::Canceled,
             |storage, pair_id| PAIR_PARAMS.load(storage, pair_id),
         )
     })?;
@@ -62,22 +63,18 @@ fn _cancel_one_order<F>(
     user_state: &mut UserState,
     order_key: OrderKey,
     order: Order,
-    events: Option<(&mut EventBuilder, ReasonForOrderRemoval)>,
+    events: Option<&mut EventBuilder>,
+    reason: ReasonForOrderRemoval,
     pair_param: F,
 ) -> StdResult<()>
 where
     F: FnOnce(&dyn Storage, &PairId) -> StdResult<PairParam>,
 {
-    let (pair_id, stored_price, _) = &order_key;
+    let (pair_id, stored_price, order_id) = order_key.clone();
     let is_bid = order.size.is_positive();
-    let user = order.user;
 
-    // Capture event data before the order key is consumed.
-    let event_pair_id = pair_id.clone();
-    let event_order_id = order_key.2;
-
-    let pair_param = pair_param(storage, pair_id)?;
-    let real_price = may_invert_price(*stored_price, is_bid);
+    let pair_param = pair_param(storage, &pair_id)?;
+    let real_price = may_invert_price(stored_price, is_bid);
 
     // Update user state.
     (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
@@ -86,7 +83,7 @@ where
     // Remove liquidity contributed by this order.
     decrease_liquidity_depths(
         storage,
-        pair_id,
+        &pair_id,
         is_bid,
         real_price,
         order.size.checked_abs()?,
@@ -100,11 +97,11 @@ where
         ASKS.remove(storage, order_key)?;
     }
 
-    if let Some((events, reason)) = events {
+    if let Some(events) = events {
         events.push(OrderRemoved {
-            order_id: event_order_id,
-            pair_id: event_pair_id,
-            user,
+            order_id,
+            pair_id,
+            user: order.user,
             reason,
         })?;
     }
@@ -120,7 +117,8 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             storage,
             ctx.sender,
             user_state,
-            Some((&mut events, ReasonForOrderRemoval::Canceled)),
+            Some(&mut events),
+            ReasonForOrderRemoval::Canceled,
         )
     })?;
 
@@ -135,7 +133,8 @@ pub(crate) fn _cancel_all_orders(
     storage: &mut dyn Storage,
     user: Addr,
     user_state: &mut UserState,
-    mut events: Option<(&mut EventBuilder, ReasonForOrderRemoval)>,
+    mut events: Option<&mut EventBuilder>,
+    reason: ReasonForOrderRemoval,
 ) -> StdResult<()> {
     // Collect all orders from the caller.
     let bids = BIDS
@@ -171,15 +170,13 @@ pub(crate) fn _cancel_all_orders(
 
     // Now mutate storage: update depths, remove orders, update user state.
     for (order_key, order) in bids.into_iter().chain(asks) {
-        let event_arg = events
-            .as_mut()
-            .map(|(eb, reason)| (&mut **eb, reason.clone()));
         _cancel_one_order(
             storage,
             user_state,
             order_key,
             order,
-            event_arg,
+            events.as_deref_mut(),
+            reason,
             |_, pair_id| Ok(pair_params[pair_id].clone()),
         )?;
     }

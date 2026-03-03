@@ -20,9 +20,9 @@ use {
 ///
 /// Returns: empty `Response` (all PnL settled via internal margins).
 pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
-    ensure!(user != ctx.contract, "cannot ADL the vault");
+    // --------------------- 1. Preparation + basic checks ---------------------
 
-    // ----------------------------- 1. Load state + checks -----------------------
+    ensure!(user != ctx.contract, "cannot ADL the vault");
 
     let param = PARAM.load(ctx.storage)?;
 
@@ -43,15 +43,16 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
-    // -------------------- 2. Cancel all resting orders -----------------------
-
     let mut events = EventBuilder::new();
+
+    // -------------------- 2. Cancel all resting orders -----------------------
 
     _cancel_all_orders(
         ctx.storage,
         user,
         &mut user_state,
-        Some((&mut events, ReasonForOrderRemoval::Deleveraged)),
+        Some(&mut events),
+        ReasonForOrderRemoval::Deleveraged,
     )?;
 
     // ------------------- 3. Load pair states and oracle prices ----------------
@@ -99,10 +100,10 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         USER_STATES.save(ctx.storage, ctx.contract, &vault_user_state)?;
     }
 
-    events.push(Deleveraged { user })?;
-
     // No token transfers — all PnL settled via internal margins.
-    Ok(Response::new().add_events(events)?)
+    Ok(Response::new()
+        .add_events(events)?
+        .add_event(Deleveraged { user })?)
 }
 
 /// Core ADL logic: rank positions, close profitable ones, handle forfeiture.
@@ -162,7 +163,6 @@ fn _deleverage(
             .size
             .checked_neg()?;
 
-        // ADL closures are not order-book fills — no OrderFilled events emitted.
         settle_fill(
             pair_id,
             pair_state,
@@ -173,7 +173,7 @@ fn _deleverage(
             &mut pnls,
             &mut fees,
             user,
-            None,
+            None, // ADL closures are not order-book fills — no OrderFilled events emitted.
         )?;
     }
 
