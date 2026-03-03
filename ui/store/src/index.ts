@@ -217,6 +217,38 @@ export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js"
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
 export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";
 
+export {
+  type UsePointsParameters,
+  usePoints,
+} from "./hooks/usePoints.js";
+
+export {
+  type UseBoxesParameters,
+  type NFTItem,
+  useBoxes,
+} from "./hooks/useBoxes.js";
+
+export {
+  type UseOatsParameters,
+  type OATStatus,
+  useOats,
+} from "./hooks/useOats.js";
+
+export {
+  type PointsResponse,
+  type LeaderboardEntry,
+  type BoxReward,
+  type OatEntry,
+  fetchUserPoints,
+  fetchLeaderboard,
+  fetchUserBoxes,
+  openBox,
+  fetchUserOats,
+  fetchCampaigns,
+  registerOat,
+  checkOat,
+} from "./hooks/pointsApi.js";
+
 export { rehydrate } from "./rehydrate.js";
 
 /* -------------------------------------------------------------------------- */

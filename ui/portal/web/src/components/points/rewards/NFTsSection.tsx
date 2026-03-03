@@ -8,43 +8,10 @@ type NFTItem = {
 };
 
 type NFTsSectionProps = {
-  nfts?: NFTItem[];
+  nfts: NFTItem[];
 };
 
-const defaultNFTs: NFTItem[] = [
-  {
-    rarity: "common",
-    quantity: 4,
-    imageSrc: "/images/points/nft/common.png",
-  },
-  {
-    rarity: "uncommon",
-    quantity: 2,
-    imageSrc: "/images/points/nft/uncommon.png",
-  },
-  {
-    rarity: "epic",
-    quantity: 2,
-    imageSrc: "/images/points/nft/epic.png",
-  },
-  {
-    rarity: "mythic",
-    quantity: 2,
-    imageSrc: "/images/points/nft/mythic.png",
-  },
-  {
-    rarity: "legendary",
-    quantity: 2,
-    imageSrc: "/images/points/nft/legendary.png",
-  },
-  {
-    rarity: "rare",
-    quantity: 2,
-    imageSrc: "/images/points/nft/rare.png",
-  },
-];
-
-export const NFTsSection: React.FC<NFTsSectionProps> = ({ nfts = defaultNFTs }) => {
+export const NFTsSection: React.FC<NFTsSectionProps> = ({ nfts }) => {
   return (
     <div className="flex flex-col gap-3">
       <p className="h3-bold text-ink-primary-900">My NFTs</p>
