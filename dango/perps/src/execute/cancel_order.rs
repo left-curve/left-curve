@@ -61,7 +61,7 @@ where
     let (pair_id, stored_price, _) = &order_key;
     let is_bid = order.size.is_positive();
 
-    let pair_param = pair_param(storage, &pair_id)?;
+    let pair_param = pair_param(storage, pair_id)?;
     let real_price = may_invert_price(*stored_price, is_bid);
 
     // Update user state.

@@ -5,11 +5,11 @@ use {
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
         oracle::{self, PriceSource, QueryPriceRequest},
-        perps::{self, PairParam, Param, UserState},
+        perps::{self, LiquidityDepthResponse, PairParam, Param, UserState},
     },
     grug::{
         Addressable, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, NumberConst, QuerierExt,
-        ResultExt, Timestamp, Udec128, Uint128, btree_map, concat,
+        ResultExt, Timestamp, Udec128, Uint128, btree_map, btree_set, concat,
     },
     grug_app::CONTRACT_NAMESPACE,
     pyth_types::{Channel, LeEcdsaMessage},
@@ -1622,5 +1622,170 @@ fn oracle_triggers_on_oracle_update() {
             .zip(vault_orders_2.asks.iter())
             .all(|(a, b)| a.order_id == b.order_id),
         "ask order IDs should be unchanged after failed OnOracleUpdate"
+    );
+}
+
+/// Verify that liquidity depth bookkeeping tracks resting orders correctly
+/// across three code paths: order placement, fill, and cancel-all.
+#[test]
+fn liquidity_depth_tracking() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Configure pair with a $100 bucket size for depth tracking.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Configure {
+                param: default_param(),
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        bucket_sizes: btree_set! { UsdPrice::new_int(100) },
+                        ..default_pair_param()
+                    },
+                },
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Deposit margin for both users.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    let query_depth = |suite: &dango_testing::TestSuite<_>| -> LiquidityDepthResponse {
+        suite
+            .query_wasm_smart(contracts.perps, perps::QueryLiquidityDepthRequest {
+                pair_id: pair.clone(),
+                bucket_size: UsdPrice::new_int(100),
+                limit: None,
+            })
+            .should_succeed()
+    };
+
+    // -------------------------------------------------------------------------
+    // Step 1: Initial state — no depth.
+    // -------------------------------------------------------------------------
+
+    let depth = query_depth(&suite);
+    assert!(depth.bids.is_empty(), "bids should be empty initially");
+    assert!(depth.asks.is_empty(), "asks should be empty initially");
+
+    // -------------------------------------------------------------------------
+    // Step 2: Maker (user2) places ask: sell 5 ETH @ $2,000 (post_only).
+    // Depth increases on the ask side.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let depth = query_depth(&suite);
+
+    assert!(depth.bids.is_empty(), "bids should still be empty");
+    assert_eq!(depth.asks.len(), 1, "asks should have 1 bucket");
+
+    let ask_bucket = depth.asks.get(&UsdPrice::new_int(2_000)).unwrap();
+
+    assert_eq!(ask_bucket.size, Quantity::new_int(5), "ask size = 5");
+    assert_eq!(
+        ask_bucket.notional,
+        UsdValue::new_int(10_000),
+        "ask notional = $10,000"
+    );
+
+    // -------------------------------------------------------------------------
+    // Step 3: Taker (user1) limit buys 10 ETH @ $2,000 (NOT post_only).
+    // 5 fill against maker's ask (ask depth → 0), 5 rest as bid (bid depth ↑).
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: false,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let depth = query_depth(&suite);
+
+    assert!(
+        depth.asks.is_empty(),
+        "asks should be empty after full fill"
+    );
+    assert_eq!(depth.bids.len(), 1, "bids should have 1 bucket");
+
+    let bid_bucket = depth.bids.get(&UsdPrice::new_int(2_000)).unwrap();
+
+    assert_eq!(bid_bucket.size, Quantity::new_int(5), "bid size = 5");
+    assert_eq!(
+        bid_bucket.notional,
+        UsdValue::new_int(10_000),
+        "bid notional = $10,000"
+    );
+
+    // -------------------------------------------------------------------------
+    // Step 4: Cancel all user1's orders → bid depth drops to zero.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::CancelOrder(perps::CancelOrderRequest::All),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let depth = query_depth(&suite);
+
+    assert!(
+        depth.bids.is_empty(),
+        "bids should be empty after cancel-all"
+    );
+    assert!(
+        depth.asks.is_empty(),
+        "asks should be empty after cancel-all"
     );
 }
