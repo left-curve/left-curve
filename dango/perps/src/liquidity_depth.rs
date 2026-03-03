@@ -9,7 +9,7 @@ use {
 ///
 /// - **Bid** (`is_bid = true`): floor to the nearest bucket ≤ price.
 /// - **Ask** (`is_bid = false`): ceil to the nearest bucket ≥ price.
-pub fn get_bucket(bucket_size: UsdPrice, is_bid: bool, price: UsdPrice) -> MathResult<UsdPrice> {
+fn get_bucket(bucket_size: UsdPrice, is_bid: bool, price: UsdPrice) -> MathResult<UsdPrice> {
     if is_bid {
         price.checked_floor_multiple(bucket_size)
     } else {
