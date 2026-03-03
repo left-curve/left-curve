@@ -84,7 +84,11 @@ pub fn submit_order(
         let maker_is_bid = !size.is_positive();
         let real_price = may_invert_price(stored_price, maker_is_bid);
 
-        // Remove the old depth contribution.
+        // Completely remove the old order's liquidity depth contribution.
+        // If the order still has some size remaining, we re-add it.
+        // Why don't we simply subtract the delta? To avoid a situation known as
+        // notional drift. See `../liquidity_depth.rs`, test function `partial_fill_no_residual_depth`
+        // for detail.
         decrease_liquidity_depths(
             ctx.storage,
             &pair_id,
@@ -95,10 +99,7 @@ pub fn submit_order(
         )?;
 
         match mutation {
-            Some(ref order) => {
-                maker_book.save(ctx.storage, order_key, order)?;
-
-                // Re-add the remaining size.
+            Some(order) => {
                 increase_liquidity_depths(
                     ctx.storage,
                     &pair_id,
@@ -107,6 +108,8 @@ pub fn submit_order(
                     order.size.checked_abs()?,
                     &pair_param.bucket_sizes,
                 )?;
+
+                maker_book.save(ctx.storage, order_key, &order)?;
             },
             None => {
                 maker_book.remove(ctx.storage, order_key)?;
@@ -440,6 +443,8 @@ pub(crate) fn match_order(
 
         // ---------------- Update maker's order and user state ----------------
 
+        let pre_fill_abs_size = maker_order.size.checked_abs()?;
+
         // Release reserved margin proportionally to the filled portion.
         let margin_to_release = (maker_order.reserved_margin)
             .checked_mul(maker_fill_size)?
@@ -453,12 +458,11 @@ pub(crate) fn match_order(
             .reserved_margin
             .checked_sub_assign(margin_to_release)?;
 
-        let pre_fill_abs_size = maker_order.size.checked_abs()?;
-
         maker_order.size.checked_sub_assign(maker_fill_size)?;
 
         if maker_order.size.is_zero() {
             maker_state.open_order_count -= 1;
+
             order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
         } else {
             order_mutations.push((

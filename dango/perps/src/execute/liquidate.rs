@@ -128,7 +128,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
         let pair_param = pair_params.get(&pair_id).unwrap();
 
-        // Remove the old depth contribution.
+        // Complete remove the order's liquidity depth contribution, and re-add
+        // the remaining size (if any) to prevent notional drift.
         decrease_liquidity_depths(
             ctx.storage,
             &pair_id,
@@ -139,10 +140,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         )?;
 
         match mutation {
-            Some(ref order) => {
-                maker_book.save(ctx.storage, order_key, order)?;
-
-                // Re-add the remaining size.
+            Some(order) => {
                 increase_liquidity_depths(
                     ctx.storage,
                     &pair_id,
@@ -151,6 +149,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
                     order.size.checked_abs()?,
                     &pair_param.bucket_sizes,
                 )?;
+
+                maker_book.save(ctx.storage, order_key, &order)?;
             },
             None => {
                 maker_book.remove(ctx.storage, order_key)?;
@@ -364,6 +364,7 @@ fn execute_close_schedule(
             // Vault side: opposite fill at oracle price with zero fee.
             // Use the vault state from the shared maker_states map.
             let vault_state = maker_states.entry(contract).or_default();
+
             settle_fill(
                 pair_id,
                 pair_state,
