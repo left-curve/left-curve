@@ -460,4 +460,79 @@ pub struct LiquidityDepthResponse {
 
 // ---------------------------------- Events -----------------------------------
 
-// TODO
+/// Event indicating an order has been partially or fully filled.
+///
+/// `closing_size` and `opening_size` correspond to the output of `decompose_fill`.
+/// They should have the same sign as, and sum up to, `fill_size`.
+/// For maker orders, their signs correspond to that of the maker order itself,
+/// not that of the taker order.
+///
+/// Examples (user is long 10):
+///
+/// - sell 4  → fill_size = -4,  closing_size = -4,  opening_size =  0
+/// - sell 10 → fill_size = -10, closing_size = -10, opening_size =  0
+/// - sell 15 → fill_size = -15, closing_size = -10, opening_size = -5 (flip to short 5)
+/// - buy  5  → fill_size =  5,  closing_size =  0,  opening_size =  5 (increase long)
+#[grug::event("order_filled")]
+#[grug::derive(Serde)]
+pub struct OrderFilled {
+    pub order_id: OrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub fill_price: UsdPrice,
+    pub fill_size: Quantity,
+    pub closing_size: Quantity,
+    pub opening_size: Quantity,
+}
+
+/// Event indicating an order have been inserted into the order book.
+#[grug::event("order_persisted")]
+#[grug::derive(Serde)]
+pub struct OrderPersisted {
+    pub order_id: OrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub limit_price: UsdPrice,
+    pub size: Quantity,
+}
+
+/// Event indicating an order has been removed from the order book.
+#[grug::event("order_removed")]
+#[grug::derive(Serde)]
+pub struct OrderRemoved {
+    pub order_id: OrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub reason: ReasonForOrderRemoval,
+}
+
+#[grug::derive(Serde)]
+pub enum ReasonForOrderRemoval {
+    /// The order was fully filled.
+    Filled,
+
+    /// The user voluntarily canceled the order.
+    Canceled,
+
+    /// The user was liquidated.
+    Liquidated,
+
+    /// The user submitted an order on the other side of the order book whose
+    /// price crossed this order's. Following the principle of self-trade prevention,
+    /// this order was canceled.
+    SelfTradePrevention,
+}
+
+/// Event indicating a user has been liquidated.
+#[grug::event("liquidated")]
+#[grug::derive(Serde)]
+pub struct Liquidated {
+    pub user: Addr,
+}
+
+/// Event indicating a user has been hit by auto-deleveraging (ADL).
+#[grug::event("deleveraged")]
+#[grug::derive(Serde)]
+pub struct Deleveraged {
+    pub user: Addr,
+}
