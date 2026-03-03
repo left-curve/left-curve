@@ -1626,7 +1626,8 @@ fn oracle_triggers_on_oracle_update() {
 }
 
 /// Verify that liquidity depth bookkeeping tracks resting orders correctly
-/// across three code paths: order placement, fill, and cancel-all.
+/// across four code paths: order placement, self-trade prevention (EXPIRE_MAKER),
+/// fill, and cancel-all.
 #[test]
 fn liquidity_depth_tracking() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
@@ -1691,8 +1692,44 @@ fn liquidity_depth_tracking() {
     assert!(depth.asks.is_empty(), "asks should be empty initially");
 
     // -------------------------------------------------------------------------
-    // Step 2: Maker (user2) places ask: sell 5 ETH @ $2,000 (post_only).
-    // Depth increases on the ask side.
+    // Step 2: user1 places ask: sell 3 ETH @ $2,000 (post_only).
+    // This order will be STP-cancelled when user1 later submits a buy.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-3),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let depth = query_depth(&suite);
+
+    assert!(depth.bids.is_empty(), "bids should still be empty");
+    assert_eq!(depth.asks.len(), 1, "asks should have 1 bucket");
+
+    let ask_bucket = depth.asks.get(&UsdPrice::new_int(2_000)).unwrap();
+
+    assert_eq!(ask_bucket.size, Quantity::new_int(3), "ask size = 3");
+    assert_eq!(
+        ask_bucket.notional,
+        UsdValue::new_int(6_000),
+        "ask notional = $6,000"
+    );
+
+    // -------------------------------------------------------------------------
+    // Step 3: user2 places ask: sell 5 ETH @ $2,000 (post_only).
+    // Ask depth accumulates: 3 + 5 = 8 ETH.
     // -------------------------------------------------------------------------
 
     suite
@@ -1719,16 +1756,20 @@ fn liquidity_depth_tracking() {
 
     let ask_bucket = depth.asks.get(&UsdPrice::new_int(2_000)).unwrap();
 
-    assert_eq!(ask_bucket.size, Quantity::new_int(5), "ask size = 5");
+    assert_eq!(ask_bucket.size, Quantity::new_int(8), "ask size = 8");
     assert_eq!(
         ask_bucket.notional,
-        UsdValue::new_int(10_000),
-        "ask notional = $10,000"
+        UsdValue::new_int(16_000),
+        "ask notional = $16,000"
     );
 
     // -------------------------------------------------------------------------
-    // Step 3: Taker (user1) limit buys 10 ETH @ $2,000 (NOT post_only).
-    // 5 fill against maker's ask (ask depth → 0), 5 rest as bid (bid depth ↑).
+    // Step 4: user1 limit buys 10 ETH @ $2,000 (NOT post_only).
+    // The matching engine walks the ask book:
+    //   - user1's own 3 ETH ask → EXPIRE_MAKER cancels it (ask depth −3).
+    //     Taker does NOT consume these; remaining taker size stays 10.
+    //   - user2's 5 ETH ask → fills 5 (ask depth −5). Remaining = 5.
+    //   - No more asks → 5 ETH rests as bid (bid depth +5).
     // -------------------------------------------------------------------------
 
     suite
@@ -1752,7 +1793,7 @@ fn liquidity_depth_tracking() {
 
     assert!(
         depth.asks.is_empty(),
-        "asks should be empty after full fill"
+        "asks should be empty after STP + fill"
     );
     assert_eq!(depth.bids.len(), 1, "bids should have 1 bucket");
 
@@ -1766,7 +1807,7 @@ fn liquidity_depth_tracking() {
     );
 
     // -------------------------------------------------------------------------
-    // Step 4: Cancel all user1's orders → bid depth drops to zero.
+    // Step 5: Cancel all user1's orders → bid depth drops to zero.
     // -------------------------------------------------------------------------
 
     suite
