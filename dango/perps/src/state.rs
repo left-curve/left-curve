@@ -1,6 +1,6 @@
 use {
     dango_types::{
-        UsdPrice,
+        Quantity, UsdPrice, UsdValue,
         perps::{Order, OrderId, PairId, PairParam, PairState, Param, State, UserState},
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Timestamp, UniqueIndex},
@@ -29,6 +29,8 @@ pub const BIDS: IndexedMap<OrderKey, Order, OrderIndexes> =
 
 pub const ASKS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
+
+pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 
 pub type OrderKey = (PairId, UsdPrice, OrderId);
 
@@ -79,3 +81,5 @@ impl UserStateIndexes<'static> {
         }
     }
 }
+
+pub type DepthKey<'a> = (&'a PairId, UsdPrice, bool, UsdPrice);

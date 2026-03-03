@@ -4,6 +4,7 @@ use {
         USER_STATES,
         core::compute_vault_quotes,
         execute::{cancel_order::cancel_all_orders_for, oracle},
+        liquidity_depth::increase_liquidity_depths,
         price::may_invert_price,
     },
     anyhow::ensure,
@@ -119,6 +120,15 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
                 &order,
             )?;
 
+            increase_liquidity_depths(
+                ctx.storage,
+                pair_id,
+                true,
+                bid_quote.price,
+                bid_quote.size.checked_abs()?,
+                &pair_param.bucket_sizes,
+            )?;
+
             vault_state.open_order_count += 1;
             next_order_id.checked_add_assign(Uint64::ONE)?;
         }
@@ -136,6 +146,15 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
                 ctx.storage,
                 (pair_id.clone(), ask_quote.price, next_order_id),
                 &order,
+            )?;
+
+            increase_liquidity_depths(
+                ctx.storage,
+                pair_id,
+                false,
+                ask_quote.price,
+                ask_quote.size.checked_abs()?,
+                &pair_param.bucket_sizes,
             )?;
 
             vault_state.open_order_count += 1;

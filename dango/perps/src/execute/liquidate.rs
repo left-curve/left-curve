@@ -10,6 +10,8 @@ use {
             oracle,
             submit_order::{match_order, settle_fill, settle_pnls},
         },
+        liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
+        price::may_invert_price,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -109,8 +111,10 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 8. Apply order mutations ---------------------------
 
-    for (pair_id, taker_is_bid, stored_price, order_id, mutation) in order_mutations {
-        let order_key = (pair_id, stored_price, order_id);
+    for (pair_id, taker_is_bid, stored_price, order_id, mutation, pre_fill_abs_size) in
+        order_mutations
+    {
+        let order_key = (pair_id.clone(), stored_price, order_id);
 
         let maker_book = if taker_is_bid {
             ASKS
@@ -118,9 +122,35 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
             BIDS
         };
 
+        // The maker is on the opposite side of the taker.
+        let maker_is_bid = !taker_is_bid;
+        let real_price = may_invert_price(stored_price, maker_is_bid);
+
+        let pair_param = pair_params.get(&pair_id).unwrap();
+
+        // Remove the old depth contribution.
+        decrease_liquidity_depths(
+            ctx.storage,
+            &pair_id,
+            maker_is_bid,
+            real_price,
+            pre_fill_abs_size,
+            &pair_param.bucket_sizes,
+        )?;
+
         match mutation {
-            Some(order) => {
-                maker_book.save(ctx.storage, order_key, &order)?;
+            Some(ref order) => {
+                maker_book.save(ctx.storage, order_key, order)?;
+
+                // Re-add the remaining size.
+                increase_liquidity_depths(
+                    ctx.storage,
+                    &pair_id,
+                    maker_is_bid,
+                    real_price,
+                    order.size.checked_abs()?,
+                    &pair_param.bucket_sizes,
+                )?;
             },
             None => {
                 maker_book.remove(ctx.storage, order_key)?;
@@ -142,7 +172,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 ///
 /// - Maker `UserState`s to persist (includes vault's `UserState` with updated
 ///   margin from PnLs, fees, and bad debt).
-/// - Order mutations to apply: `(pair_id, taker_is_bid, stored_price, order_id, Option<Order>)`.
+/// - Order mutations to apply: `(pair_id, taker_is_bid, stored_price, order_id, Option<Order>, pre_fill_abs_size)`.
 fn _liquidate(
     storage: &dyn Storage,
     user: Addr,
@@ -156,7 +186,7 @@ fn _liquidate(
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
-    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
+    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
 )> {
     // -------------------- Step 1: Assert liquidatable -------------------------
 
@@ -251,7 +281,7 @@ fn execute_close_schedule(
 ) -> anyhow::Result<(
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
-    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>)>,
+    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
     UsdValue,
 )> {
     // Zero-fee param for liquidation fills.
@@ -301,13 +331,14 @@ fn execute_close_schedule(
         }
 
         // Collect order mutations with pair context.
-        for (stored_price, order_id, mutation) in order_mutations {
+        for (stored_price, order_id, mutation, pre_fill_abs_size) in order_mutations {
             all_order_mutations.push((
                 pair_id.clone(),
                 taker_is_bid,
                 stored_price,
                 order_id,
                 mutation,
+                pre_fill_abs_size,
             ));
         }
 

@@ -1,8 +1,12 @@
 use {
-    crate::{ASKS, BIDS, OrderKey, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
-    dango_types::perps::{
-        Order, OrderId, PairId, PairParam, PairState, QueryMsg, QueryOrderResponse,
-        QueryOrdersByUserResponse, UserState,
+    crate::{ASKS, BIDS, DEPTHS, OrderKey, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+    anyhow::ensure,
+    dango_types::{
+        UsdPrice,
+        perps::{
+            LiquidityDepth, LiquidityDepthResponse, Order, OrderId, PairId, PairParam, PairState,
+            QueryMsg, QueryOrderResponse, QueryOrdersByUserResponse, UserState,
+        },
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder,
@@ -12,7 +16,7 @@ use {
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
         QueryMsg::Param {} => {
             let res = PARAM.load(ctx.storage)?;
@@ -54,7 +58,16 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_orders_by_user(ctx, user)?;
             res.to_json_value()
         },
+        QueryMsg::LiquidityDepth {
+            pair_id,
+            bucket_size,
+            limit,
+        } => {
+            let res = query_liquidity_depth(ctx, pair_id, bucket_size, limit)?;
+            res.to_json_value()
+        },
     }
+    .map_err(Into::into)
 }
 
 fn query_pair_params(
@@ -167,4 +180,45 @@ fn try_into_query_order_response_with_inverted_price(
     res: StdResult<(OrderKey, Order)>,
 ) -> StdResult<QueryOrderResponse> {
     res.map(into_query_order_response_with_inverted_price)
+}
+
+fn query_liquidity_depth(
+    ctx: ImmutableCtx,
+    pair_id: PairId,
+    bucket_size: UsdPrice,
+    limit: Option<u32>,
+) -> anyhow::Result<LiquidityDepthResponse> {
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+    let pair_param = PAIR_PARAMS.load(ctx.storage, &pair_id)?;
+
+    ensure!(
+        pair_param.bucket_sizes.contains(&bucket_size),
+        "bucket size {bucket_size} not configured for pair {pair_id}"
+    );
+
+    let bids = DEPTHS
+        .prefix(&pair_id)
+        .append(bucket_size)
+        .append(true)
+        .range(ctx.storage, None, None, IterationOrder::Descending)
+        .take(limit)
+        .map(|res| {
+            let (bucket, (size, notional)) = res?;
+            Ok((bucket, LiquidityDepth { size, notional }))
+        })
+        .collect::<StdResult<_>>()?;
+
+    let asks = DEPTHS
+        .prefix(&pair_id)
+        .append(bucket_size)
+        .append(false)
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let (bucket, (size, notional)) = res?;
+            Ok((bucket, LiquidityDepth { size, notional }))
+        })
+        .collect::<StdResult<_>>()?;
+
+    Ok(LiquidityDepthResponse { bids, asks })
 }

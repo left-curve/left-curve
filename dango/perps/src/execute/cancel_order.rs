@@ -1,8 +1,12 @@
 use {
-    crate::{ASKS, BIDS, USER_STATES},
+    crate::{
+        ASKS, BIDS, PAIR_PARAMS, USER_STATES, liquidity_depth::decrease_liquidity_depths,
+        price::may_invert_price,
+    },
     anyhow::{anyhow, ensure},
-    dango_types::perps::{OrderId, UserState},
+    dango_types::perps::{OrderId, PairId, PairParam, UserState},
     grug::{Addr, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Response> {
@@ -27,12 +31,27 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
         "you are not the owner of this order"
     );
 
-    // Delete the order.
-    if order.size.is_positive() {
-        BIDS.remove(ctx.storage, order_key)?;
+    // Delete the order and update depth.
+    let (pair_id, stored_price, _) = order_key;
+    let is_bid = order.size.is_positive();
+
+    if is_bid {
+        BIDS.remove(ctx.storage, (pair_id.clone(), stored_price, order_id))?;
     } else {
-        ASKS.remove(ctx.storage, order_key)?;
+        ASKS.remove(ctx.storage, (pair_id.clone(), stored_price, order_id))?;
     }
+
+    let pair_param = PAIR_PARAMS.load(ctx.storage, &pair_id)?;
+    let real_price = may_invert_price(stored_price, is_bid);
+
+    decrease_liquidity_depths(
+        ctx.storage,
+        &pair_id,
+        is_bid,
+        real_price,
+        order.size.checked_abs()?,
+        &pair_param.bucket_sizes,
+    )?;
 
     // Update user state: release reserved margin and decrement open order count.
     USER_STATES.modify(ctx.storage, ctx.sender, |mut user_state| -> StdResult<_> {
@@ -74,19 +93,56 @@ pub(crate) fn cancel_all_orders_for(
     user: Addr,
     user_state: &mut UserState,
 ) -> anyhow::Result<()> {
-    for map in [BIDS, ASKS] {
-        for (order_key, order) in map
-            .idx
-            .user
-            .prefix(user)
-            .range(storage, None, None, IterationOrder::Ascending)
-            .collect::<StdResult<Vec<_>>>()?
-        {
-            map.remove(storage, order_key)?;
+    // Collect all orders while storage is only immutably borrowed via the
+    // iterator, then batch-load distinct pair params before mutating.
+    let mut all_orders = Vec::new();
 
-            user_state.open_order_count -= 1;
-            (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
+    for map in [BIDS, ASKS] {
+        all_orders.extend(
+            map.idx
+                .user
+                .prefix(user)
+                .range(storage, None, None, IterationOrder::Ascending)
+                .collect::<StdResult<Vec<_>>>()?,
+        );
+    }
+
+    // Pre-load pair params for every distinct pair touched by the orders.
+    let pair_params: BTreeMap<PairId, PairParam> = all_orders
+        .iter()
+        .map(|(key, _)| key.0.clone())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .map(|pair_id| {
+            let pp = PAIR_PARAMS.load(storage, &pair_id)?;
+            Ok((pair_id, pp))
+        })
+        .collect::<StdResult<_>>()?;
+
+    // Now mutate storage: update depths, remove orders, update user state.
+    for (order_key, order) in all_orders {
+        let (pair_id, stored_price, _) = &order_key;
+        let is_bid = order.size.is_positive();
+        let real_price = may_invert_price(*stored_price, is_bid);
+        let pair_param = &pair_params[pair_id];
+
+        decrease_liquidity_depths(
+            storage,
+            pair_id,
+            is_bid,
+            real_price,
+            order.size.checked_abs()?,
+            &pair_param.bucket_sizes,
+        )?;
+
+        if is_bid {
+            BIDS.remove(storage, order_key)?;
+        } else {
+            ASKS.remove(storage, order_key)?;
         }
+
+        user_state.open_order_count -= 1;
+        (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
     }
 
     Ok(())
@@ -99,12 +155,12 @@ mod tests {
     use {
         super::*,
         crate::{
-            USER_STATES,
+            PAIR_PARAMS, USER_STATES,
             state::{ASKS, BIDS, OrderKey},
         },
         dango_types::{
             FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{Order, Position, UserState},
+            perps::{Order, PairParam, Position, UserState},
         },
         grug::{Addr, Coins, MockContext, ResultExt, Storage, Uint64, Uint128},
         std::collections::{BTreeMap, VecDeque},
@@ -113,13 +169,22 @@ mod tests {
     const USER: Addr = Addr::mock(1);
     const OTHER_USER: Addr = Addr::mock(2);
 
+    fn pair_id() -> PairId {
+        "perp/btcusd".parse().unwrap()
+    }
+
+    /// Ensure the pair param exists so depth bookkeeping doesn't fail.
+    fn ensure_pair_param(storage: &mut dyn Storage) {
+        if PAIR_PARAMS.may_load(storage, &pair_id()).unwrap().is_none() {
+            PAIR_PARAMS
+                .save(storage, &pair_id(), &PairParam::default())
+                .unwrap();
+        }
+    }
+
     /// Build an `OrderKey` with fixed defaults for pair, price, and timestamp.
     fn order_key(order_id: u64) -> OrderKey {
-        (
-            "perp/btcusd".parse().unwrap(),
-            UsdPrice::new_int(50_000),
-            Uint64::new(order_id),
-        )
+        (pair_id(), UsdPrice::new_int(50_000), Uint64::new(order_id))
     }
 
     /// Save a bid (positive size) into `BIDS`.
@@ -130,6 +195,7 @@ mod tests {
         size: i128,
         reserved_margin: i128,
     ) {
+        ensure_pair_param(storage);
         let key = order_key(order_id);
         let order = Order {
             user,
@@ -149,6 +215,7 @@ mod tests {
         size: i128,
         reserved_margin: i128,
     ) {
+        ensure_pair_param(storage);
         let key = order_key(order_id);
         let order = Order {
             user,

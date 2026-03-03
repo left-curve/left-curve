@@ -176,6 +176,10 @@ pub struct PairParam {
     /// Maximum notional size (in quote currency) of the vault's resting orders
     /// on each side of the book. Limits the vault's exposure per pair.
     pub vault_max_quote_size: Quantity,
+
+    /// Price bucket sizes for which aggregated order book depth is maintained.
+    /// Each entry defines a granularity level for the depth query.
+    pub bucket_sizes: BTreeSet<UsdPrice>,
 }
 
 impl PairParam {
@@ -414,6 +418,14 @@ pub enum QueryMsg {
     /// Query all orders of a single user.
     #[returns(QueryOrdersByUserResponse)]
     OrdersByUser { user: Addr },
+
+    /// Query aggregated order book depth at a specific bucket size.
+    #[returns(LiquidityDepthResponse)]
+    LiquidityDepth {
+        pair_id: PairId,
+        bucket_size: UsdPrice,
+        limit: Option<u32>,
+    },
 }
 
 #[grug::derive(Serde)]
@@ -430,6 +442,20 @@ pub struct QueryOrderResponse {
 pub struct QueryOrdersByUserResponse {
     pub bids: Vec<QueryOrderResponse>,
     pub asks: Vec<QueryOrderResponse>,
+}
+
+#[grug::derive(Serde)]
+pub struct LiquidityDepth {
+    /// Absolute order size aggregated in this bucket.
+    pub size: Quantity,
+    /// USD notional value aggregated in this bucket (size × price).
+    pub notional: UsdValue,
+}
+
+#[grug::derive(Serde)]
+pub struct LiquidityDepthResponse {
+    pub bids: BTreeMap<UsdPrice, LiquidityDepth>,
+    pub asks: BTreeMap<UsdPrice, LiquidityDepth>,
 }
 
 // ---------------------------------- Events -----------------------------------

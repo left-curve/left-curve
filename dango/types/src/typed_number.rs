@@ -155,6 +155,12 @@ where
     }
 }
 
+impl<Q, U, D> IsZero for Number<Q, U, D> {
+    fn is_zero(&self) -> bool {
+        self.inner.is_zero()
+    }
+}
+
 impl<Q, U, D> Neg for Number<Q, U, D> {
     type Output = Self;
 

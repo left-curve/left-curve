@@ -8,6 +8,7 @@ use {
             execute_fill, is_price_constraint_violated,
         },
         execute::oracle,
+        liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         price::may_invert_price,
     },
     anyhow::ensure,
@@ -76,11 +77,36 @@ pub fn submit_order(
         (ASKS, BIDS)
     };
 
-    for (stored_price, order_id, mutation) in order_mutations {
+    for (stored_price, order_id, mutation, pre_fill_abs_size) in order_mutations {
         let order_key = (pair_id.clone(), stored_price, order_id);
+
+        // The maker is on the opposite side of the taker.
+        let maker_is_bid = !size.is_positive();
+        let real_price = may_invert_price(stored_price, maker_is_bid);
+
+        // Remove the old depth contribution.
+        decrease_liquidity_depths(
+            ctx.storage,
+            &pair_id,
+            maker_is_bid,
+            real_price,
+            pre_fill_abs_size,
+            &pair_param.bucket_sizes,
+        )?;
+
         match mutation {
-            Some(order) => {
-                maker_book.save(ctx.storage, order_key, &order)?;
+            Some(ref order) => {
+                maker_book.save(ctx.storage, order_key, order)?;
+
+                // Re-add the remaining size.
+                increase_liquidity_depths(
+                    ctx.storage,
+                    &pair_id,
+                    maker_is_bid,
+                    real_price,
+                    order.size.checked_abs()?,
+                    &pair_param.bucket_sizes,
+                )?;
             },
             None => {
                 maker_book.remove(ctx.storage, order_key)?;
@@ -89,6 +115,18 @@ pub fn submit_order(
     }
 
     if let Some((stored_price, order_id, order)) = order_to_store {
+        let is_bid = size.is_positive();
+        let real_price = may_invert_price(stored_price, is_bid);
+
+        increase_liquidity_depths(
+            ctx.storage,
+            &pair_id,
+            is_bid,
+            real_price,
+            order.size.checked_abs()?,
+            &pair_param.bucket_sizes,
+        )?;
+
         NEXT_ORDER_ID.save(ctx.storage, &(order_id + OrderId::ONE))?;
         taker_book.save(ctx.storage, (pair_id, stored_price, order_id), &order)?;
     }
@@ -129,7 +167,7 @@ fn _submit_order(
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
-    Vec<(UsdPrice, OrderId, Option<Order>)>,
+    Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
     Option<(UsdPrice, OrderId, Order)>,
 )> {
     // -------------- Step 1. Check minimum order size -------------------------
@@ -276,8 +314,11 @@ fn _submit_order(
 /// - Remaining (unfilled) size (same sign convention as taker's order).
 /// - Per-user position PnL in USD (`BTreeMap<Addr, UsdValue>`).
 /// - Per-user trading fees in USD (`BTreeMap<Addr, UsdValue>`).
-/// - Order mutations to apply (`Vec<(StoredPrice, OrderId, Option<Order>)>`):
-///   `None` = remove (fully filled), `Some` = update (partially filled).
+/// - Order mutations to apply. Each entry is
+///   `(StoredPrice, OrderId, Option<Order>, pre_fill_abs_size)`:
+///   `None` = remove (fully filled / self-trade), `Some` = update (partially
+///   filled). `pre_fill_abs_size` is the maker order's absolute size *before*
+///   this match, used for depth bookkeeping.
 ///
 /// Self-trade prevention (EXPIRE_MAKER): if a resting order belongs to
 /// the taker, the order is cancelled and the taker continues matching
@@ -297,7 +338,7 @@ pub(crate) fn match_order(
     Quantity,
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
-    Vec<(UsdPrice, OrderId, Option<Order>)>,
+    Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
 )> {
     let mut pnls = BTreeMap::new();
     let mut fees = BTreeMap::new();
@@ -340,10 +381,12 @@ pub(crate) fn match_order(
         // corresponds to Binance's EXPIRE_MAKER mode:
         // https://developers.binance.com/docs/binance-spot-api-docs/faqs/stp_faq
         if maker_order.user == taker {
+            let pre_fill_abs_size = maker_order.size.checked_abs()?;
+
             taker_state.open_order_count -= 1;
             (taker_state.reserved_margin).checked_sub_assign(maker_order.reserved_margin)?;
 
-            order_mutations.push((stored_price, maker_order_id, None));
+            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
 
             continue;
         }
@@ -410,13 +453,20 @@ pub(crate) fn match_order(
             .reserved_margin
             .checked_sub_assign(margin_to_release)?;
 
+        let pre_fill_abs_size = maker_order.size.checked_abs()?;
+
         maker_order.size.checked_sub_assign(maker_fill_size)?;
 
         if maker_order.size.is_zero() {
             maker_state.open_order_count -= 1;
-            order_mutations.push((stored_price, maker_order_id, None));
+            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
         } else {
-            order_mutations.push((stored_price, maker_order_id, Some(maker_order)));
+            order_mutations.push((
+                stored_price,
+                maker_order_id,
+                Some(maker_order),
+                pre_fill_abs_size,
+            ));
         }
 
         remaining_size.checked_sub_assign(taker_fill_size)?;
@@ -2300,7 +2350,7 @@ mod tests {
         for (addr, ms) in &maker_states {
             USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
         }
-        for (stored_price, order_id, mutation) in order_mutations {
+        for (stored_price, order_id, mutation, _) in order_mutations {
             let key = (pair_id(), stored_price, order_id);
             match mutation {
                 Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
