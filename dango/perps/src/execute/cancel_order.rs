@@ -1,8 +1,12 @@
 use {
-    crate::{ASKS, BIDS, USER_STATES},
+    crate::{
+        ASKS, BIDS, OrderKey, PAIR_PARAMS, USER_STATES, liquidity_depth::decrease_liquidity_depths,
+        price::may_invert_price,
+    },
     anyhow::{anyhow, ensure},
-    dango_types::perps::{OrderId, UserState},
+    dango_types::perps::{Order, OrderId, PairId, PairParam, UserState},
     grug::{Addr, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Response> {
@@ -27,40 +31,65 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
         "you are not the owner of this order"
     );
 
-    // Delete the order.
-    if order.size.is_positive() {
-        BIDS.remove(ctx.storage, order_key)?;
-    } else {
-        ASKS.remove(ctx.storage, order_key)?;
-    }
-
-    // Update user state: release reserved margin and decrement open order count.
-    USER_STATES.modify(ctx.storage, ctx.sender, |mut user_state| -> StdResult<_> {
-        user_state.open_order_count -= 1;
-        (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
-
-        // Delete the user state if it's empty. Otherwise, save the updated user state.
-        if user_state.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(user_state))
-        }
+    update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
+        _cancel_one_order(storage, user_state, order_key, order, |storage, pair_id| {
+            PAIR_PARAMS.load(storage, pair_id)
+        })
     })?;
 
     Ok(Response::new())
 }
 
-pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
+/// Mutates:
+///
+/// - User state: releases reserved margin, decrement open order count.
+///   Does NOT save updated user state to storage. Closing this one order may be
+///   only step in a bigger routine -- the caller may want to do other changes
+///   to the user state before saving.
+/// - Remove the order from the `BIDS` or `ASKS` map.
+/// - Remove liquidity depth contributed by this order.
+fn _cancel_one_order<F>(
+    storage: &mut dyn Storage,
+    user_state: &mut UserState,
+    order_key: OrderKey,
+    order: Order,
+    pair_param: F,
+) -> StdResult<()>
+where
+    F: FnOnce(&dyn Storage, &PairId) -> StdResult<PairParam>,
+{
+    let (pair_id, stored_price, _) = &order_key;
+    let is_bid = order.size.is_positive();
 
-    cancel_all_orders_for(ctx.storage, ctx.sender, &mut user_state)?;
+    let pair_param = pair_param(storage, pair_id)?;
+    let real_price = may_invert_price(*stored_price, is_bid);
 
-    // Delete the user state if it's empty. Otherwise, save the updated user state.
-    if user_state.is_empty() {
-        USER_STATES.remove(ctx.storage, ctx.sender)?;
+    // Update user state.
+    (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
+    user_state.open_order_count -= 1;
+
+    // Remove liquidity contributed by this order.
+    decrease_liquidity_depths(
+        storage,
+        pair_id,
+        is_bid,
+        real_price,
+        order.size.checked_abs()?,
+        &pair_param.bucket_sizes,
+    )?;
+
+    // Remove the order from storage.
+    if is_bid {
+        BIDS.remove(storage, order_key)
     } else {
-        USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
+        ASKS.remove(storage, order_key)
     }
+}
+
+pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
+    update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
+        _cancel_all_orders(storage, ctx.sender, user_state)
+    })?;
 
     Ok(Response::new())
 }
@@ -69,27 +98,71 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 ///
 /// Writes to `BIDS` / `ASKS` in storage but does **not** persist `user_state`
 /// — the caller is responsible for saving or removing it.
-pub(crate) fn cancel_all_orders_for(
+pub(crate) fn _cancel_all_orders(
     storage: &mut dyn Storage,
     user: Addr,
     user_state: &mut UserState,
-) -> anyhow::Result<()> {
-    for map in [BIDS, ASKS] {
-        for (order_key, order) in map
-            .idx
-            .user
-            .prefix(user)
-            .range(storage, None, None, IterationOrder::Ascending)
-            .collect::<StdResult<Vec<_>>>()?
-        {
-            map.remove(storage, order_key)?;
+) -> StdResult<()> {
+    // Collect all orders from the caller.
+    let bids = BIDS
+        .idx
+        .user
+        .prefix(user)
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    let asks = ASKS
+        .idx
+        .user
+        .prefix(user)
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
 
-            user_state.open_order_count -= 1;
-            (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
-        }
+    // Collect the parameters of all pairs involved, so that we don't need to
+    // load it each time we cancel an order (DB read is slow).
+    let pair_ids = bids
+        .iter()
+        .chain(&asks)
+        .map(|(order_key, _)| {
+            let (pair_id, ..) = order_key;
+            pair_id.clone()
+        })
+        .collect::<BTreeSet<_>>();
+    let pair_params = pair_ids
+        .into_iter()
+        .map(|pair_id| {
+            let pp = PAIR_PARAMS.load(storage, &pair_id)?;
+            Ok((pair_id, pp))
+        })
+        .collect::<StdResult<BTreeMap<_, _>>>()?;
+
+    // Now mutate storage: update depths, remove orders, update user state.
+    for (order_key, order) in bids.into_iter().chain(asks) {
+        _cancel_one_order(storage, user_state, order_key, order, |_, pair_id| {
+            Ok(pair_params[pair_id].clone())
+        })?;
     }
 
     Ok(())
+}
+
+/// 1. Load the user's state.
+/// 2. Perform a mutable action on the user state. The action may have side
+///    effect on the storage.
+/// 3. If the user state becomes empty, delete it from storage; otherwise, save
+///    the updated user state to storage.
+fn update_user_state_with<F>(storage: &mut dyn Storage, user: Addr, action: F) -> StdResult<()>
+where
+    F: FnOnce(&mut dyn Storage, &mut UserState) -> StdResult<()>,
+{
+    let mut user_state = USER_STATES.load(storage, user)?;
+
+    action(storage, &mut user_state)?;
+
+    if user_state.is_empty() {
+        USER_STATES.remove(storage, user)
+    } else {
+        USER_STATES.save(storage, user, &user_state)
+    }
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -99,12 +172,12 @@ mod tests {
     use {
         super::*,
         crate::{
-            USER_STATES,
+            PAIR_PARAMS, USER_STATES,
             state::{ASKS, BIDS, OrderKey},
         },
         dango_types::{
             FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{Order, Position, UserState},
+            perps::{Order, PairId, PairParam, Position, UserState},
         },
         grug::{Addr, Coins, MockContext, ResultExt, Storage, Uint64, Uint128},
         std::collections::{BTreeMap, VecDeque},
@@ -113,13 +186,22 @@ mod tests {
     const USER: Addr = Addr::mock(1);
     const OTHER_USER: Addr = Addr::mock(2);
 
+    fn pair_id() -> PairId {
+        "perp/btcusd".parse().unwrap()
+    }
+
+    /// Ensure the pair param exists so depth bookkeeping doesn't fail.
+    fn ensure_pair_param(storage: &mut dyn Storage) {
+        if PAIR_PARAMS.may_load(storage, &pair_id()).unwrap().is_none() {
+            PAIR_PARAMS
+                .save(storage, &pair_id(), &PairParam::default())
+                .unwrap();
+        }
+    }
+
     /// Build an `OrderKey` with fixed defaults for pair, price, and timestamp.
     fn order_key(order_id: u64) -> OrderKey {
-        (
-            "perp/btcusd".parse().unwrap(),
-            UsdPrice::new_int(50_000),
-            Uint64::new(order_id),
-        )
+        (pair_id(), UsdPrice::new_int(50_000), Uint64::new(order_id))
     }
 
     /// Save a bid (positive size) into `BIDS`.
@@ -130,6 +212,7 @@ mod tests {
         size: i128,
         reserved_margin: i128,
     ) {
+        ensure_pair_param(storage);
         let key = order_key(order_id);
         let order = Order {
             user,
@@ -149,6 +232,7 @@ mod tests {
         size: i128,
         reserved_margin: i128,
     ) {
+        ensure_pair_param(storage);
         let key = order_key(order_id);
         let order = Order {
             user,

@@ -2,7 +2,7 @@ use {
     crate::{
         NoCachePerpQuerier, PAIR_STATES, PARAM, USER_STATES,
         core::{compute_adl_score, compute_user_equity},
-        execute::{cancel_order::cancel_all_orders_for, oracle, submit_order::settle_fill},
+        execute::{cancel_order::_cancel_all_orders, oracle, submit_order::settle_fill},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -45,7 +45,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
-    cancel_all_orders_for(ctx.storage, user, &mut user_state)?;
+    _cancel_all_orders(ctx.storage, user, &mut user_state)?;
 
     // ------------------- 3. Load pair states and oracle prices ----------------
 

@@ -3,7 +3,8 @@ use {
         ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
         USER_STATES,
         core::compute_vault_quotes,
-        execute::{cancel_order::cancel_all_orders_for, oracle},
+        execute::{cancel_order::_cancel_all_orders, oracle},
+        liquidity_depth::increase_liquidity_depths,
         price::may_invert_price,
     },
     anyhow::ensure,
@@ -44,7 +45,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     // Step 1: Cancel all existing vault orders.
-    cancel_all_orders_for(ctx.storage, ctx.contract, &mut vault_state)?;
+    _cancel_all_orders(ctx.storage, ctx.contract, &mut vault_state)?;
 
     // Step 2: Compute the vault's available margin.
     // After cancellation, reserved_margin is zero and all vault capital is in
@@ -119,6 +120,15 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
                 &order,
             )?;
 
+            increase_liquidity_depths(
+                ctx.storage,
+                pair_id,
+                true,
+                bid_quote.price,
+                bid_quote.size.checked_abs()?,
+                &pair_param.bucket_sizes,
+            )?;
+
             vault_state.open_order_count += 1;
             next_order_id.checked_add_assign(Uint64::ONE)?;
         }
@@ -136,6 +146,15 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
                 ctx.storage,
                 (pair_id.clone(), ask_quote.price, next_order_id),
                 &order,
+            )?;
+
+            increase_liquidity_depths(
+                ctx.storage,
+                pair_id,
+                false,
+                ask_quote.price,
+                ask_quote.size.checked_abs()?,
+                &pair_param.bucket_sizes,
             )?;
 
             vault_state.open_order_count += 1;
