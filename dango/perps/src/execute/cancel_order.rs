@@ -103,25 +103,31 @@ pub(crate) fn _cancel_all_orders(
     user: Addr,
     user_state: &mut UserState,
 ) -> StdResult<()> {
-    // Collect all orders while storage is only immutably borrowed via the
-    // iterator, then batch-load distinct pair params before mutating.
-    let mut all_orders = Vec::new();
+    // Collect all orders from the caller.
+    let bids = BIDS
+        .idx
+        .user
+        .prefix(user)
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    let asks = ASKS
+        .idx
+        .user
+        .prefix(user)
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
 
-    for map in [BIDS, ASKS] {
-        all_orders.extend(
-            map.idx
-                .user
-                .prefix(user)
-                .range(storage, None, None, IterationOrder::Ascending)
-                .collect::<StdResult<Vec<_>>>()?,
-        );
-    }
-
-    // Pre-load pair params for every distinct pair touched by the orders.
-    let pair_params = all_orders
+    // Collect the parameters of all pairs involved, so that we don't need to
+    // load it each time we cancel an order (DB read is slow).
+    let pair_ids = bids
         .iter()
-        .map(|(key, _)| key.0.clone())
-        .collect::<BTreeSet<_>>()
+        .chain(&asks)
+        .map(|(order_key, _)| {
+            let (pair_id, ..) = order_key;
+            pair_id.clone()
+        })
+        .collect::<BTreeSet<_>>();
+    let pair_params = pair_ids
         .into_iter()
         .map(|pair_id| {
             let pp = PAIR_PARAMS.load(storage, &pair_id)?;
@@ -130,7 +136,7 @@ pub(crate) fn _cancel_all_orders(
         .collect::<StdResult<BTreeMap<_, _>>>()?;
 
     // Now mutate storage: update depths, remove orders, update user state.
-    for (order_key, order) in all_orders {
+    for (order_key, order) in bids.into_iter().chain(asks) {
         _cancel_one_order(storage, user_state, order_key, order, |_, pair_id| {
             Ok(pair_params[pair_id].clone())
         })?;
