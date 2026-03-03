@@ -31,15 +31,9 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
         "you are not the owner of this order"
     );
 
-    let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
-
-    _cancel_one_order(ctx.storage, &mut user_state, order_key, order)?;
-
-    if user_state.is_empty() {
-        USER_STATES.remove(ctx.storage, ctx.sender)?;
-    } else {
-        USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
-    }
+    update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
+        _cancel_one_order(storage, user_state, order_key, order)
+    })?;
 
     Ok(Response::new())
 }
@@ -87,15 +81,9 @@ fn _cancel_one_order(
 }
 
 pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
-
-    _cancel_all_orders(ctx.storage, ctx.sender, &mut user_state)?;
-
-    if user_state.is_empty() {
-        USER_STATES.remove(ctx.storage, ctx.sender)?;
-    } else {
-        USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
-    }
+    update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
+        _cancel_all_orders(storage, ctx.sender, user_state)
+    })?;
 
     Ok(Response::new())
 }
@@ -108,7 +96,7 @@ pub(crate) fn _cancel_all_orders(
     storage: &mut dyn Storage,
     user: Addr,
     user_state: &mut UserState,
-) -> anyhow::Result<()> {
+) -> StdResult<()> {
     // Collect all orders while storage is only immutably borrowed via the
     // iterator, then batch-load distinct pair params before mutating.
     let mut all_orders = Vec::new();
@@ -141,6 +129,26 @@ pub(crate) fn _cancel_all_orders(
     }
 
     Ok(())
+}
+
+/// 1. Load the user's state.
+/// 2. Perform a mutable action on the user state. The action may have side
+///    effect on the storage.
+/// 3. If the user state becomes empty, delete it from storage; otherwise, save
+///    the updated user state to storage.
+fn update_user_state_with<F>(storage: &mut dyn Storage, user: Addr, action: F) -> StdResult<()>
+where
+    F: FnOnce(&mut dyn Storage, &mut UserState) -> StdResult<()>,
+{
+    let mut user_state = USER_STATES.load(storage, user)?;
+
+    action(storage, &mut user_state)?;
+
+    if user_state.is_empty() {
+        USER_STATES.remove(storage, user)
+    } else {
+        USER_STATES.save(storage, user, &user_state)
+    }
 }
 
 // ----------------------------------- tests -----------------------------------
