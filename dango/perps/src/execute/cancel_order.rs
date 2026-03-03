@@ -1,10 +1,10 @@
 use {
     crate::{
-        ASKS, BIDS, PAIR_PARAMS, USER_STATES, liquidity_depth::decrease_liquidity_depths,
+        ASKS, BIDS, OrderKey, PAIR_PARAMS, USER_STATES, liquidity_depth::decrease_liquidity_depths,
         price::may_invert_price,
     },
     anyhow::{anyhow, ensure},
-    dango_types::perps::{OrderId, PairId, PairParam, UserState},
+    dango_types::perps::{Order, OrderId, UserState},
     grug::{Addr, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -31,50 +31,66 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
         "you are not the owner of this order"
     );
 
-    // Delete the order and update depth.
-    let (pair_id, stored_price, _) = order_key;
-    let is_bid = order.size.is_positive();
+    let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
-    if is_bid {
-        BIDS.remove(ctx.storage, (pair_id.clone(), stored_price, order_id))?;
+    _cancel_one_order(ctx.storage, &mut user_state, order_key, order)?;
+
+    if user_state.is_empty() {
+        USER_STATES.remove(ctx.storage, ctx.sender)?;
     } else {
-        ASKS.remove(ctx.storage, (pair_id.clone(), stored_price, order_id))?;
+        USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     }
 
-    let pair_param = PAIR_PARAMS.load(ctx.storage, &pair_id)?;
-    let real_price = may_invert_price(stored_price, is_bid);
+    Ok(Response::new())
+}
 
+/// Mutates:
+///
+/// - User state: releases reserved margin, decrement open order count.
+///   Does NOT save updated user state to storage. Closing this one order may be
+///   only step in a bigger routine -- the caller may want to do other changes
+///   to the user state before saving.
+/// - Remove the order from the `BIDS` or `ASKS` map.
+/// - Remove liquidity depth contributed by this order.
+fn _cancel_one_order(
+    storage: &mut dyn Storage,
+    user_state: &mut UserState,
+    order_key: OrderKey,
+    order: Order,
+) -> StdResult<()> {
+    let (pair_id, stored_price, _) = &order_key;
+    let is_bid = order.size.is_positive();
+
+    let pair_param = PAIR_PARAMS.load(storage, &pair_id)?;
+    let real_price = may_invert_price(*stored_price, is_bid);
+
+    // Update user state.
+    (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
+    user_state.open_order_count -= 1;
+
+    // Remove liquidity contributed by this order.
     decrease_liquidity_depths(
-        ctx.storage,
-        &pair_id,
+        storage,
+        pair_id,
         is_bid,
         real_price,
         order.size.checked_abs()?,
         &pair_param.bucket_sizes,
     )?;
 
-    // Update user state: release reserved margin and decrement open order count.
-    USER_STATES.modify(ctx.storage, ctx.sender, |mut user_state| -> StdResult<_> {
-        user_state.open_order_count -= 1;
-        (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
-
-        // Delete the user state if it's empty. Otherwise, save the updated user state.
-        if user_state.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(user_state))
-        }
-    })?;
-
-    Ok(Response::new())
+    // Remove the order from storage.
+    if is_bid {
+        BIDS.remove(storage, order_key)
+    } else {
+        ASKS.remove(storage, order_key)
+    }
 }
 
 pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
-    cancel_all_orders_for(ctx.storage, ctx.sender, &mut user_state)?;
+    _cancel_all_orders(ctx.storage, ctx.sender, &mut user_state)?;
 
-    // Delete the user state if it's empty. Otherwise, save the updated user state.
     if user_state.is_empty() {
         USER_STATES.remove(ctx.storage, ctx.sender)?;
     } else {
@@ -88,7 +104,7 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 ///
 /// Writes to `BIDS` / `ASKS` in storage but does **not** persist `user_state`
 /// — the caller is responsible for saving or removing it.
-pub(crate) fn cancel_all_orders_for(
+pub(crate) fn _cancel_all_orders(
     storage: &mut dyn Storage,
     user: Addr,
     user_state: &mut UserState,
@@ -108,7 +124,7 @@ pub(crate) fn cancel_all_orders_for(
     }
 
     // Pre-load pair params for every distinct pair touched by the orders.
-    let pair_params: BTreeMap<PairId, PairParam> = all_orders
+    let _pair_params = all_orders
         .iter()
         .map(|(key, _)| key.0.clone())
         .collect::<BTreeSet<_>>()
@@ -117,32 +133,11 @@ pub(crate) fn cancel_all_orders_for(
             let pp = PAIR_PARAMS.load(storage, &pair_id)?;
             Ok((pair_id, pp))
         })
-        .collect::<StdResult<_>>()?;
+        .collect::<StdResult<BTreeMap<_, _>>>()?;
 
     // Now mutate storage: update depths, remove orders, update user state.
     for (order_key, order) in all_orders {
-        let (pair_id, stored_price, _) = &order_key;
-        let is_bid = order.size.is_positive();
-        let real_price = may_invert_price(*stored_price, is_bid);
-        let pair_param = &pair_params[pair_id];
-
-        decrease_liquidity_depths(
-            storage,
-            pair_id,
-            is_bid,
-            real_price,
-            order.size.checked_abs()?,
-            &pair_param.bucket_sizes,
-        )?;
-
-        if is_bid {
-            BIDS.remove(storage, order_key)?;
-        } else {
-            ASKS.remove(storage, order_key)?;
-        }
-
-        user_state.open_order_count -= 1;
-        (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
+        _cancel_one_order(storage, user_state, order_key, order)?;
     }
 
     Ok(())
@@ -160,7 +155,7 @@ mod tests {
         },
         dango_types::{
             FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{Order, PairParam, Position, UserState},
+            perps::{Order, PairId, PairParam, Position, UserState},
         },
         grug::{Addr, Coins, MockContext, ResultExt, Storage, Uint64, Uint128},
         std::collections::{BTreeMap, VecDeque},

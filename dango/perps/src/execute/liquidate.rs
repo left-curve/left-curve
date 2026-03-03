@@ -6,7 +6,7 @@ use {
             is_liquidatable,
         },
         execute::{
-            cancel_order::cancel_all_orders_for,
+            cancel_order::_cancel_all_orders,
             oracle,
             submit_order::{match_order, settle_fill, settle_pnls},
         },
@@ -41,7 +41,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
-    cancel_all_orders_for(ctx.storage, user, &mut user_state)?;
+    _cancel_all_orders(ctx.storage, user, &mut user_state)?;
 
     // ------------------- 3. Load pair params and states ---------------------
 

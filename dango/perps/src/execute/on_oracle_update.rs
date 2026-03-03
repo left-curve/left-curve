@@ -3,7 +3,7 @@ use {
         ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
         USER_STATES,
         core::compute_vault_quotes,
-        execute::{cancel_order::cancel_all_orders_for, oracle},
+        execute::{cancel_order::_cancel_all_orders, oracle},
         liquidity_depth::increase_liquidity_depths,
         price::may_invert_price,
     },
@@ -45,7 +45,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     // Step 1: Cancel all existing vault orders.
-    cancel_all_orders_for(ctx.storage, ctx.contract, &mut vault_state)?;
+    _cancel_all_orders(ctx.storage, ctx.contract, &mut vault_state)?;
 
     // Step 2: Compute the vault's available margin.
     // After cancellation, reserved_margin is zero and all vault capital is in
