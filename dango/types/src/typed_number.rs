@@ -125,6 +125,32 @@ impl<Q, U, D> Number<Q, U, D> {
     pub fn checked_rem(self, rhs: Self) -> MathResult<Self> {
         self.inner.checked_rem(rhs.inner).map(Self::new)
     }
+
+    /// Round `self` down to the nearest multiple of `multiple`.
+    pub fn checked_floor_multiple(self, multiple: Self) -> MathResult<Self> {
+        let rem = self.inner.checked_rem(multiple.inner)?;
+        match (rem.is_zero(), rem.is_negative()) {
+            (true, _) => Ok(self),
+            (false, false) => self.inner.checked_sub(rem).map(Self::new),
+            (false, true) => {
+                let adjustment = multiple.inner.checked_add(rem)?;
+                self.inner.checked_sub(adjustment).map(Self::new)
+            },
+        }
+    }
+
+    /// Round `self` up to the nearest multiple of `multiple`.
+    pub fn checked_ceil_multiple(self, multiple: Self) -> MathResult<Self> {
+        let rem = self.inner.checked_rem(multiple.inner)?;
+        match (rem.is_zero(), rem.is_negative()) {
+            (true, _) => Ok(self),
+            (false, false) => {
+                let adjustment = multiple.inner.checked_sub(rem)?;
+                self.inner.checked_add(adjustment).map(Self::new)
+            },
+            (false, true) => self.inner.checked_sub(rem).map(Self::new),
+        }
+    }
 }
 
 impl<Q, U, D> Number<Q, U, D>
@@ -305,3 +331,40 @@ pub type FundingPerUnit = Number<N1, P1, Z0>;
 
 /// Funding rate: duration⁻¹
 pub type FundingRate = Number<Z0, Z0, N1>;
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {super::*, std::str::FromStr, test_case::test_case};
+
+    /// Helper: parse a string into a `Dimensionless` number.
+    fn d(s: &str) -> Dimensionless {
+        Dimensionless::new(Dec128_6::from_str(s).unwrap())
+    }
+
+    fn di(n: i128) -> Dimensionless {
+        Dimensionless::new_int(n)
+    }
+
+    #[test_case(d("123.45"),  di(10) => d("120")       ; "basic floor")]
+    #[test_case(d("123.45"),  d("0.1") => d("123.4")   ; "sub-unit multiple")]
+    #[test_case(di(120),      di(10) => di(120)         ; "exact boundary unchanged")]
+    #[test_case(d("0.000001"), d("0.000001") => d("0.000001") ; "smallest representable unit")]
+    #[test_case(di(7),        di(3) => di(6)            ; "non-power-of-10")]
+    #[test_case(di(-7),       di(3) => di(-9)           ; "negative floors further down")]
+    #[test_case(di(-6),       di(3) => di(-6)           ; "negative exact boundary")]
+    fn nearest_multiple_floor(value: Dimensionless, multiple: Dimensionless) -> Dimensionless {
+        value.checked_floor_multiple(multiple).unwrap()
+    }
+
+    #[test_case(d("123.45"),  di(10) => di(130)         ; "basic ceil")]
+    #[test_case(d("123.45"),  d("0.1") => d("123.5")   ; "sub-unit multiple")]
+    #[test_case(di(130),      di(10) => di(130)         ; "exact boundary unchanged")]
+    #[test_case(di(7),        di(3) => di(9)            ; "non-power-of-10")]
+    #[test_case(di(-7),       di(3) => di(-6)           ; "negative ceils toward zero")]
+    #[test_case(di(-9),       di(3) => di(-9)           ; "negative exact boundary")]
+    fn nearest_multiple_ceil(value: Dimensionless, multiple: Dimensionless) -> Dimensionless {
+        value.checked_ceil_multiple(multiple).unwrap()
+    }
+}

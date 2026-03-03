@@ -1,7 +1,7 @@
 use {
     crate::DEPTHS,
     dango_types::{Quantity, UsdPrice, perps::PairId},
-    grug::{Dec128_6, Fraction, MathResult, Number, StdResult, Storage},
+    grug::{MathResult, StdResult, Storage},
     std::collections::BTreeSet,
 };
 
@@ -10,25 +10,10 @@ use {
 /// - **Bid** (`is_bid = true`): floor to the nearest bucket ≤ price.
 /// - **Ask** (`is_bid = false`): ceil to the nearest bucket ≥ price.
 pub fn get_bucket(bucket_size: UsdPrice, is_bid: bool, price: UsdPrice) -> MathResult<UsdPrice> {
-    // Work with the integer numerators of the inner Dec128_6 to minimise
-    // expensive mul/div operations and avoid intermediate overflow.
-    let price_num = price.into_inner().numerator();
-    let bucket_num = bucket_size.into_inner().numerator();
-
-    let lower_num = price_num.checked_div(bucket_num)?.checked_mul(bucket_num)?;
-    let lower = UsdPrice::new(Dec128_6::raw(lower_num));
-
-    debug_assert!(
-        lower <= price,
-        "lower bucket ({lower}) is somehow bigger than the price ({price})"
-    );
-
-    // If the order is an ask and the price isn't exactly on a bucket boundary,
-    // return one bucket higher.
-    if !is_bid && price > lower {
-        lower.checked_add(bucket_size)
+    if is_bid {
+        price.checked_floor_multiple(bucket_size)
     } else {
-        Ok(lower)
+        price.checked_ceil_multiple(bucket_size)
     }
 }
 
@@ -100,7 +85,12 @@ pub fn decrease_liquidity_depths(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug::MockStorage, std::str::FromStr, test_case::test_case};
+    use {
+        super::*,
+        grug::{Dec128_6, MockStorage},
+        std::str::FromStr,
+        test_case::test_case,
+    };
 
     /// Helper to parse a decimal string into `UsdPrice`.
     fn p(s: &str) -> UsdPrice {

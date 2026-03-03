@@ -29,3 +29,6 @@ sea-orm         = { workspace = true, optional = true }
 serde           = { workspace = true }
 sha2            = { workspace = true }
 typenum         = { workspace = true }
+
+[dev-dependencies]
+test-case = { workspace = true }
