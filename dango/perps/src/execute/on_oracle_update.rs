@@ -45,7 +45,8 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     // Step 1: Cancel all existing vault orders.
-    _cancel_all_orders(ctx.storage, ctx.contract, &mut vault_state)?;
+    // Vault order churn is not user-facing — no events emitted.
+    _cancel_all_orders(ctx.storage, ctx.contract, &mut vault_state, None)?;
 
     // Step 2: Compute the vault's available margin.
     // After cancellation, reserved_margin is zero and all vault capital is in

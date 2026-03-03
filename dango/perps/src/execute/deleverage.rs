@@ -8,9 +8,9 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, UsdPrice, UsdValue,
-        perps::{PairId, PairState, UserState},
+        perps::{Deleveraged, PairId, PairState, ReasonForOrderRemoval, UserState},
     },
-    grug::{Addr, MutableCtx, Response},
+    grug::{Addr, EventBuilder, MutableCtx, Response},
     std::collections::BTreeMap,
 };
 
@@ -45,7 +45,14 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
-    _cancel_all_orders(ctx.storage, user, &mut user_state)?;
+    let mut events = EventBuilder::new();
+
+    _cancel_all_orders(
+        ctx.storage,
+        user,
+        &mut user_state,
+        Some((&mut events, ReasonForOrderRemoval::Deleveraged)),
+    )?;
 
     // ------------------- 3. Load pair states and oracle prices ----------------
 
@@ -92,8 +99,10 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         USER_STATES.save(ctx.storage, ctx.contract, &vault_user_state)?;
     }
 
+    events.push(Deleveraged { user })?;
+
     // No token transfers — all PnL settled via internal margins.
-    Ok(Response::new())
+    Ok(Response::new().add_events(events)?)
 }
 
 /// Core ADL logic: rank positions, close profitable ones, handle forfeiture.
@@ -153,6 +162,7 @@ fn _deleverage(
             .size
             .checked_neg()?;
 
+        // ADL closures are not order-book fills — no OrderFilled events emitted.
         settle_fill(
             pair_id,
             pair_state,
@@ -163,6 +173,7 @@ fn _deleverage(
             &mut pnls,
             &mut fees,
             user,
+            None,
         )?;
     }
 

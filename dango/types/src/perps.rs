@@ -514,13 +514,16 @@ pub enum ReasonForOrderRemoval {
     /// The user voluntarily canceled the order.
     Canceled,
 
-    /// The user was liquidated.
-    Liquidated,
-
     /// The user submitted an order on the other side of the order book whose
     /// price crossed this order's. Following the principle of self-trade prevention,
     /// this order was canceled.
     SelfTradePrevention,
+
+    /// The user was liquidated.
+    Liquidated,
+
+    /// The user was hit by auto-deleveraging (ADL).
+    Deleveraged,
 }
 
 /// Event indicating a user has been liquidated.

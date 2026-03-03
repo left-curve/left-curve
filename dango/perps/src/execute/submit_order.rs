@@ -15,9 +15,14 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
-        perps::{Order, OrderId, OrderKind, PairId, PairParam, PairState, Param, UserState},
+        perps::{
+            Order, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
+            PairParam, PairState, Param, ReasonForOrderRemoval, UserState,
+        },
     },
-    grug::{Addr, MutableCtx, NumberConst, Order as IterationOrder, Response, Storage},
+    grug::{
+        Addr, EventBuilder, MutableCtx, NumberConst, Order as IterationOrder, Response, Storage,
+    },
     std::collections::{BTreeMap, btree_map::Entry},
 };
 
@@ -45,6 +50,8 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
+    let mut events = EventBuilder::new();
+
     let (maker_states, order_mutations, order_to_store) = _submit_order(
         ctx.storage,
         ctx.sender,
@@ -59,6 +66,7 @@ pub fn submit_order(
         kind,
         reduce_only,
         &mut oracle_querier,
+        &mut events,
     )?;
 
     // ------------------------ 3. Apply state changes -------------------------
@@ -131,11 +139,23 @@ pub fn submit_order(
         )?;
 
         NEXT_ORDER_ID.save(ctx.storage, &(order_id + OrderId::ONE))?;
-        taker_book.save(ctx.storage, (pair_id, stored_price, order_id), &order)?;
+        taker_book.save(
+            ctx.storage,
+            (pair_id.clone(), stored_price, order_id),
+            &order,
+        )?;
+
+        events.push(OrderPersisted {
+            order_id,
+            pair_id,
+            user: ctx.sender,
+            limit_price: may_invert_price(stored_price, is_bid),
+            size: order.size,
+        })?;
     }
 
     // No token transfers — all PnL/fees settled via user_state.margin.
-    Ok(Response::new())
+    Ok(Response::new().add_events(events)?)
 }
 
 /// Semi-pure order submission: reads from storage but does not write.
@@ -168,6 +188,7 @@ fn _submit_order(
     kind: OrderKind,
     reduce_only: bool,
     oracle_querier: &mut OracleQuerier,
+    events: &mut EventBuilder,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
@@ -245,6 +266,7 @@ fn _submit_order(
 
     // ---------------------- Step 7. Match against book -----------------------
 
+    let taker_order_id = NEXT_ORDER_ID.may_load(storage)?.unwrap_or(OrderId::ONE);
     let mut maker_states = BTreeMap::new();
 
     let (unfilled, pnls, fees, order_mutations) = match_order(
@@ -258,6 +280,8 @@ fn _submit_order(
         target_price,
         fillable_size,
         &mut maker_states,
+        events,
+        taker_order_id,
     )?;
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
@@ -337,6 +361,8 @@ pub(crate) fn match_order(
     target_price: UsdPrice,
     mut remaining_size: Quantity,
     maker_states: &mut BTreeMap<Addr, UserState>,
+    events: &mut EventBuilder,
+    taker_order_id: OrderId,
 ) -> anyhow::Result<(
     Quantity,
     BTreeMap<Addr, UsdValue>,
@@ -391,6 +417,13 @@ pub(crate) fn match_order(
 
             order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
 
+            events.push(OrderRemoved {
+                order_id: maker_order_id,
+                pair_id: pair_id.clone(),
+                user: taker,
+                reason: ReasonForOrderRemoval::SelfTradePrevention,
+            })?;
+
             continue;
         }
 
@@ -427,6 +460,7 @@ pub(crate) fn match_order(
             &mut pnls,
             &mut fees,
             taker,
+            Some((events, taker_order_id)),
         )?;
 
         settle_fill(
@@ -439,6 +473,7 @@ pub(crate) fn match_order(
             &mut pnls,
             &mut fees,
             maker_order.user,
+            Some((events, maker_order_id)),
         )?;
 
         // ---------------- Update maker's order and user state ----------------
@@ -464,6 +499,13 @@ pub(crate) fn match_order(
             maker_state.open_order_count -= 1;
 
             order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
+
+            events.push(OrderRemoved {
+                order_id: maker_order_id,
+                pair_id: pair_id.clone(),
+                user: maker_order.user,
+                reason: ReasonForOrderRemoval::Filled,
+            })?;
         } else {
             order_mutations.push((
                 stored_price,
@@ -485,6 +527,7 @@ pub(crate) fn match_order(
 /// - `user_state.positions` — opened / closed / flipped by `execute_fill`.
 /// - `pnls` — position PnL added for `user`.
 /// - `fees` — trading fee added for `user`.
+/// - `events` — `OrderFilled` event pushed (if `Some`).
 pub(crate) fn settle_fill(
     pair_id: &PairId,
     pair_state: &mut PairState,
@@ -495,7 +538,8 @@ pub(crate) fn settle_fill(
     pnls: &mut BTreeMap<Addr, UsdValue>,
     fees: &mut BTreeMap<Addr, UsdValue>,
     user: Addr,
-) -> grug::MathResult<()> {
+    events: Option<(&mut EventBuilder, OrderId)>,
+) -> grug::StdResult<()> {
     let current_pos = user_state
         .positions
         .get(pair_id)
@@ -511,7 +555,21 @@ pub(crate) fn settle_fill(
     let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
 
     pnls.entry(user).or_default().checked_add_assign(pnl)?;
-    fees.entry(user).or_default().checked_add_assign(fee)
+    fees.entry(user).or_default().checked_add_assign(fee)?;
+
+    if let Some((events, order_id)) = events {
+        events.push(OrderFilled {
+            order_id,
+            pair_id: pair_id.clone(),
+            user,
+            fill_price,
+            fill_size,
+            closing_size: closing,
+            opening_size: opening,
+        })?;
+    }
+
+    Ok(())
 }
 
 /// Settle PnLs and fees directly in USD on user margins.
@@ -853,6 +911,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -908,6 +967,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -953,6 +1013,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         );
 
         assert!(err.is_err());
@@ -1000,6 +1061,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1046,6 +1108,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1096,6 +1159,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1151,6 +1215,7 @@ mod tests {
             },
             true,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1194,6 +1259,7 @@ mod tests {
             },
             true,
             &mut oq,
+            &mut EventBuilder::new(),
         );
 
         assert!(err.is_err());
@@ -1240,6 +1306,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1292,6 +1359,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1341,6 +1409,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1399,6 +1468,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         );
 
         assert!(result.is_ok());
@@ -1443,6 +1513,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         );
 
         assert!(err.is_err());
@@ -1490,6 +1561,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1547,6 +1619,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1590,6 +1663,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1639,6 +1713,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         );
 
         assert!(err.is_err());
@@ -1869,6 +1944,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -1917,6 +1993,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         );
 
         assert!(err.is_err());
@@ -1958,6 +2035,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         );
 
         assert!(err.is_err());
@@ -1999,6 +2077,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -2046,6 +2125,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         );
 
         assert!(err.is_err());
@@ -2087,6 +2167,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -2137,6 +2218,7 @@ mod tests {
             },
             true,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -2191,6 +2273,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         );
 
         assert!(err.is_err());
@@ -2247,6 +2330,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -2341,6 +2425,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -2391,6 +2476,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 
@@ -2512,6 +2598,7 @@ mod tests {
             },
             false,
             &mut oq,
+            &mut EventBuilder::new(),
         )
         .unwrap();
 

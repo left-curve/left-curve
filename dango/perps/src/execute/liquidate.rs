@@ -17,9 +17,12 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
-        perps::{Order, OrderId, PairId, PairParam, PairState, Param, UserState},
+        perps::{
+            Liquidated, Order, OrderId, PairId, PairParam, PairState, Param, ReasonForOrderRemoval,
+            UserState,
+        },
     },
-    grug::{Addr, MutableCtx, Response, Storage},
+    grug::{Addr, EventBuilder, MutableCtx, NumberConst, Response, Storage},
     std::collections::BTreeMap,
 };
 
@@ -41,7 +44,14 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
-    _cancel_all_orders(ctx.storage, user, &mut user_state)?;
+    let mut events = EventBuilder::new();
+
+    _cancel_all_orders(
+        ctx.storage,
+        user,
+        &mut user_state,
+        Some((&mut events, ReasonForOrderRemoval::Liquidated)),
+    )?;
 
     // ------------------- 3. Load pair params and states ---------------------
 
@@ -89,6 +99,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         vault_state,
         &oracle_prices,
         &mut oracle_querier,
+        &mut events,
     )?;
 
     // --------------------- 7. Apply state changes ----------------------------
@@ -158,8 +169,10 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         }
     }
 
+    events.push(Liquidated { user })?;
+
     // No token transfers — all PnL/fees settled via internal margins.
-    Ok(Response::new())
+    Ok(Response::new().add_events(events)?)
 }
 
 /// Mutates:
@@ -184,6 +197,7 @@ fn _liquidate(
     vault_state: UserState,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     oracle_querier: &mut OracleQuerier,
+    events: &mut EventBuilder,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
@@ -222,6 +236,7 @@ fn _liquidate(
         user_state,
         &mut all_maker_states,
         oracle_prices,
+        events,
     )?;
 
     // -------------------- Step 4: Liquidation fee -----------------------------
@@ -278,6 +293,7 @@ fn execute_close_schedule(
     user_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
+    events: &mut EventBuilder,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
@@ -318,6 +334,8 @@ fn execute_close_schedule(
             target_price,
             *close_size,
             maker_states,
+            events,
+            OrderId::ZERO,
         )?;
 
         // Merge PnLs.
@@ -347,6 +365,7 @@ fn execute_close_schedule(
         closed_notional.checked_add_assign(filled.checked_abs()?.checked_mul(oracle_price)?)?;
 
         // Vault backstop: if there is unfilled remainder, the vault absorbs at oracle price.
+        // Backstop fills are not order-book fills — no OrderFilled events emitted.
         if unfilled.is_non_zero() {
             // User side: close at oracle price with zero fee.
             settle_fill(
@@ -359,6 +378,7 @@ fn execute_close_schedule(
                 &mut all_pnls,
                 &mut all_fees,
                 user,
+                None,
             )?;
 
             // Vault side: opposite fill at oracle price with zero fee.
@@ -375,6 +395,7 @@ fn execute_close_schedule(
                 &mut all_pnls,
                 &mut all_fees,
                 contract,
+                None,
             )?;
 
             // Add vault backstop notional.
@@ -602,6 +623,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             &mut oracle_querier,
+            &mut EventBuilder::new(),
         );
 
         assert!(result.is_err());
@@ -687,6 +709,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             &mut oracle_querier,
+            &mut EventBuilder::new(),
         );
 
         assert!(result.is_ok(), "liquidation failed: {:?}", result.err());
@@ -758,6 +781,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             &mut oracle_querier,
+            &mut EventBuilder::new(),
         );
 
         assert!(result.is_ok(), "vault backstop failed: {:?}", result.err());
@@ -870,6 +894,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             &mut oracle_querier,
+            &mut EventBuilder::new(),
         );
 
         assert!(result.is_ok(), "multi-pair liq failed: {:?}", result.err());
@@ -947,6 +972,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             &mut oracle_querier,
+            &mut EventBuilder::new(),
         );
 
         assert!(result.is_ok(), "fee capping failed: {:?}", result.err());
@@ -1107,6 +1133,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             &mut oracle_querier,
+            &mut EventBuilder::new(),
         );
 
         assert!(
@@ -1215,6 +1242,7 @@ mod tests {
             vault_state,
             &oracle_prices,
             &mut oracle_querier,
+            &mut EventBuilder::new(),
         );
 
         assert!(
