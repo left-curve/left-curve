@@ -4,7 +4,7 @@ use {
         price::may_invert_price,
     },
     anyhow::{anyhow, ensure},
-    dango_types::perps::{Order, OrderId, UserState},
+    dango_types::perps::{Order, OrderId, PairId, PairParam, UserState},
     grug::{Addr, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -32,7 +32,9 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
     );
 
     update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
-        _cancel_one_order(storage, user_state, order_key, order)
+        _cancel_one_order(storage, user_state, order_key, order, |storage, pair_id| {
+            PAIR_PARAMS.load(storage, pair_id)
+        })
     })?;
 
     Ok(Response::new())
@@ -46,16 +48,20 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
 ///   to the user state before saving.
 /// - Remove the order from the `BIDS` or `ASKS` map.
 /// - Remove liquidity depth contributed by this order.
-fn _cancel_one_order(
+fn _cancel_one_order<F>(
     storage: &mut dyn Storage,
     user_state: &mut UserState,
     order_key: OrderKey,
     order: Order,
-) -> StdResult<()> {
+    pair_param: F,
+) -> StdResult<()>
+where
+    F: FnOnce(&dyn Storage, &PairId) -> StdResult<PairParam>,
+{
     let (pair_id, stored_price, _) = &order_key;
     let is_bid = order.size.is_positive();
 
-    let pair_param = PAIR_PARAMS.load(storage, &pair_id)?;
+    let pair_param = pair_param(storage, &pair_id)?;
     let real_price = may_invert_price(*stored_price, is_bid);
 
     // Update user state.
@@ -112,7 +118,7 @@ pub(crate) fn _cancel_all_orders(
     }
 
     // Pre-load pair params for every distinct pair touched by the orders.
-    let _pair_params = all_orders
+    let pair_params = all_orders
         .iter()
         .map(|(key, _)| key.0.clone())
         .collect::<BTreeSet<_>>()
@@ -125,7 +131,9 @@ pub(crate) fn _cancel_all_orders(
 
     // Now mutate storage: update depths, remove orders, update user state.
     for (order_key, order) in all_orders {
-        _cancel_one_order(storage, user_state, order_key, order)?;
+        _cancel_one_order(storage, user_state, order_key, order, |_, pair_id| {
+            Ok(pair_params[pair_id].clone())
+        })?;
     }
 
     Ok(())
