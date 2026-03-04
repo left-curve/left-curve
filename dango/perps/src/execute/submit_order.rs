@@ -584,6 +584,7 @@ pub(crate) fn settle_fill(
             fill_size,
             closing_size: closing,
             opening_size: opening,
+            realized_pnl: pnl,
         })?;
     }
 

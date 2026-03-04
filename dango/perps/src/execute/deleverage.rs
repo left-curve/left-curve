@@ -72,7 +72,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 4–6. Core ADL logic --------------------------------
 
-    _deleverage(
+    let realized_pnl = _deleverage(
         ctx.storage,
         user,
         &mut pair_states,
@@ -103,7 +103,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // No token transfers — all PnL settled via internal margins.
     Ok(Response::new()
         .add_events(events)?
-        .add_event(Deleveraged { user })?)
+        .add_event(Deleveraged { user, realized_pnl })?)
 }
 
 /// Core ADL logic: rank positions, close profitable ones, handle forfeiture.
@@ -115,7 +115,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// - `user_state.margin` — credited with non-forfeited PnL.
 /// - `vault_user_state.margin` — recovered toward zero from forfeited PnL.
 ///
-/// Returns: `()`
+/// Returns: the user's realized PnL from the ADL closures.
 fn _deleverage(
     storage: &dyn grug::Storage,
     user: Addr,
@@ -124,7 +124,7 @@ fn _deleverage(
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     oracle_querier: &mut OracleQuerier,
     vault_user_state: &mut UserState,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<UsdValue> {
     // -------------------- Step 1: Compute equity + rank ----------------------
 
     let perp_querier = NoCachePerpQuerier::new_local(storage);
@@ -197,7 +197,7 @@ fn _deleverage(
     // If PnL is negative or zero, don't penalize the user further.
     // No deficit reduction (need another ADL target).
 
-    Ok(())
+    Ok(user_pnl)
 }
 
 // ----------------------------------- tests -----------------------------------

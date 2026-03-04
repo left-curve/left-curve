@@ -511,6 +511,7 @@ pub struct OrderFilled {
     pub fill_size: Quantity,
     pub closing_size: Quantity,
     pub opening_size: Quantity,
+    pub realized_pnl: UsdValue,
 }
 
 /// Event indicating an order have been inserted into the order book.
@@ -560,6 +561,7 @@ pub enum ReasonForOrderRemoval {
 #[grug::derive(Serde)]
 pub struct Liquidated {
     pub user: Addr,
+    pub realized_pnl: UsdValue,
 }
 
 /// Event indicating a user has been hit by auto-deleveraging (ADL).
@@ -567,4 +569,5 @@ pub struct Liquidated {
 #[grug::derive(Serde)]
 pub struct Deleveraged {
     pub user: Addr,
+    pub realized_pnl: UsdValue,
 }

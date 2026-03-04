@@ -89,7 +89,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------------- 6. Business logic ---------------------------
 
-    let (maker_states, order_mutations) = _liquidate(
+    let (maker_states, order_mutations, realized_pnl) = _liquidate(
         ctx.storage,
         user,
         ctx.contract,
@@ -172,7 +172,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     Ok(Response::new()
         .add_events(events)?
-        .add_event(Liquidated { user })?)
+        .add_event(Liquidated { user, realized_pnl })?)
 }
 
 /// Mutates:
@@ -201,6 +201,7 @@ fn _liquidate(
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
+    UsdValue,
 )> {
     // -------------------- Step 1: Assert liquidatable -------------------------
 
@@ -252,6 +253,8 @@ fn _liquidate(
 
     // ----------------------- Step 5: Settle PnLs ------------------------------
 
+    let user_realized_pnl = all_pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
+
     // Merge the liquidated user into the maker states for settlement.
     all_maker_states.insert(user, user_state.clone());
 
@@ -273,7 +276,7 @@ fn _liquidate(
             .checked_sub_assign(bad_debt)?;
     }
 
-    Ok((all_maker_states, all_order_mutations))
+    Ok((all_maker_states, all_order_mutations, user_realized_pnl))
 }
 
 /// Execute the close schedule against the order book, with vault backstop for
@@ -786,7 +789,7 @@ mod tests {
 
         assert!(result.is_ok(), "vault backstop failed: {:?}", result.err());
 
-        let (maker_states, _) = result.unwrap();
+        let (maker_states, ..) = result.unwrap();
 
         // User's position should be closed.
         assert!(user_state.positions.is_empty());
@@ -1142,7 +1145,7 @@ mod tests {
             result.err()
         );
 
-        let (maker_states, _) = result.unwrap();
+        let (maker_states, ..) = result.unwrap();
 
         // The maker should have fills from BOTH pairs preserved.
         let final_maker = &maker_states[&MAKER];
@@ -1251,7 +1254,7 @@ mod tests {
             result.err()
         );
 
-        let (maker_states, _) = result.unwrap();
+        let (maker_states, ..) = result.unwrap();
 
         // The vault had +3 long. During liquidation:
         // - Maker fill: sold 3 BTC (closing the vault's +3 long via the ask)
