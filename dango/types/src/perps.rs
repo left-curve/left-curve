@@ -460,6 +460,34 @@ pub struct LiquidityDepthResponse {
 
 // ---------------------------------- Events -----------------------------------
 
+// Events are emitted when:
+//
+// 1. **Push notifications**: Users need to be notified (e.g. fills, liquidation).
+// 2. **Indexing**: Data needs to be queryable.
+//    - For **users**: order history (`OrderPersisted`, `OrderRemoved(Canceled)`,
+//      `OrderFilled`) and PnL history (`OrderFilled`, `Liquidated`, `Deleveraged`).
+//    - For the **vault**: PnL history only (`OrderFilled`; vault can't be
+//      liquidated or ADL'd).
+//
+// Events are suppressed when not needed for either purpose:
+//
+// - Vault order lifecycle (`OrderPersisted`, `OrderRemoved(Canceled)`,
+//   `OrderRemoved(Filled)`) is internal churn (every block) — noise for indexers.
+// - Liquidation taker uses `OrderId::ZERO` as sentinel (no user-submitted order).
+// - Backstop fills and ADL closures are off-book — not `OrderFilled` events.
+//
+// | Event                   | User orders | Vault orders (maker)    |
+// |-------------------------|-------------|-------------------------|
+// | `OrderFilled`           | Yes         | Yes                     |
+// | `OrderPersisted`        | Yes         | No  (placed directly)   |
+// | `OrderRemoved(Canceled)`| Yes         | No  (suppressed)        |
+// | `OrderRemoved(Filled)`  | Yes         | No  (suppressed)        |
+// | `OrderRemoved(STP)`     | Yes         | N/A                     |
+// | `OrderRemoved(Liq.)`    | Yes         | N/A                     |
+// | `OrderRemoved(ADL)`     | Yes         | N/A                     |
+// | `Liquidated`            | Yes         | N/A                     |
+// | `Deleveraged`           | Yes         | N/A                     |
+
 /// Event indicating an order has been partially or fully filled.
 ///
 /// `closing_size` and `opening_size` correspond to the output of `decompose_fill`.

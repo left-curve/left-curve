@@ -279,7 +279,6 @@ fn _submit_order(
 
     // ---------------------- Step 7. Match against book -----------------------
 
-    let taker_order_id = NEXT_ORDER_ID.may_load(storage)?.unwrap_or(OrderId::ONE);
     let mut maker_states = BTreeMap::new();
 
     let (unfilled, pnls, fees, order_mutations) = match_order(
@@ -288,6 +287,7 @@ fn _submit_order(
         pair_id,
         pair_state,
         taker,
+        contract,
         taker_state,
         taker_is_bid,
         target_price,
@@ -370,6 +370,7 @@ pub(crate) fn match_order(
     pair_id: &PairId,
     pair_state: &mut PairState,
     taker: Addr,
+    contract: Addr,
     taker_state: &mut UserState,
     taker_is_bid: bool,
     target_price: UsdPrice,
@@ -514,12 +515,15 @@ pub(crate) fn match_order(
 
             order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
 
-            events.push(OrderRemoved {
-                order_id: maker_order_id,
-                pair_id: pair_id.clone(),
-                user: maker_order.user,
-                reason: ReasonForOrderRemoval::Filled,
-            })?;
+            // Vault order removal is internal churn — suppress the event.
+            if maker_order.user != contract {
+                events.push(OrderRemoved {
+                    order_id: maker_order_id,
+                    pair_id: pair_id.clone(),
+                    user: maker_order.user,
+                    reason: ReasonForOrderRemoval::Filled,
+                })?;
+            }
         } else {
             order_mutations.push((
                 stored_price,

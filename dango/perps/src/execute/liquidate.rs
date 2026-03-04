@@ -329,6 +329,7 @@ fn execute_close_schedule(
             pair_id,
             pair_state,
             user,
+            contract,
             user_state,
             taker_is_bid,
             target_price,
