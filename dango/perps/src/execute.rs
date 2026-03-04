@@ -10,12 +10,12 @@ mod submit_order;
 mod withdraw;
 
 use {
-    crate::STATE,
+    crate::{NEXT_ORDER_ID, STATE},
     dango_types::{
         DangoQuerier, UsdValue,
-        perps::{CancelOrderRequest, ExecuteMsg, InstantiateMsg, State},
+        perps::{CancelOrderRequest, ExecuteMsg, InstantiateMsg, OrderId, State},
     },
-    grug::{Addr, MutableCtx, Response, Uint128},
+    grug::{Addr, MutableCtx, NumberConst, Response, Uint128},
 };
 
 /// Virtual shares added to total supply in share price calculations.
@@ -53,6 +53,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         last_funding_time: ctx.block.timestamp,
         ..Default::default()
     })?;
+
+    NEXT_ORDER_ID.save(ctx.storage, &OrderId::ONE)?;
 
     configure::configure(ctx, msg.param, msg.pair_params)
 }
