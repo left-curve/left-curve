@@ -52,7 +52,7 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (maker_states, order_mutations, order_to_store) = _submit_order(
+    let (maker_states, order_mutations, order_to_store, next_order_id) = _submit_order(
         ctx.storage,
         ctx.sender,
         ctx.contract,
@@ -70,6 +70,8 @@ pub fn submit_order(
     )?;
 
     // ------------------------ 3. Apply state changes -------------------------
+
+    NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
     PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
 
@@ -138,8 +140,6 @@ pub fn submit_order(
             &pair_param.bucket_sizes,
         )?;
 
-        NEXT_ORDER_ID.save(ctx.storage, &(order_id + OrderId::ONE))?;
-
         taker_book.save(
             ctx.storage,
             (pair_id.clone(), stored_price, order_id),
@@ -194,6 +194,7 @@ fn _submit_order(
     BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
     Option<(UsdPrice, OrderId, Order)>,
+    OrderId,
 )> {
     // -------------- Step 1. Check minimum order size -------------------------
 
@@ -223,6 +224,11 @@ fn _submit_order(
 
     check_oi_constraint(opening_size, pair_state, pair_param)?;
 
+    // --------------- Step 3½. Allocate a unique order ID ---------------------
+
+    let taker_order_id = NEXT_ORDER_ID.load(storage)?;
+    let next_order_id = taker_order_id + OrderId::ONE;
+
     // ---------------------- Step 4. Post-only fast path ----------------------
 
     if let Some(limit_price) = kind.post_only_price() {
@@ -237,9 +243,15 @@ fn _submit_order(
             limit_price,
             reduce_only,
             oracle_querier,
+            taker_order_id,
         )?;
 
-        return Ok((BTreeMap::new(), Vec::new(), Some(order_to_store)));
+        return Ok((
+            BTreeMap::new(),
+            Vec::new(),
+            Some(order_to_store),
+            taker_order_id + OrderId::ONE,
+        ));
     }
 
     // ----------------- Step 5: Pre-match taker margin check ------------------
@@ -299,6 +311,7 @@ fn _submit_order(
                 limit_price,
                 reduce_only,
                 oracle_querier,
+                taker_order_id,
             )?),
             OrderKind::Market { .. } => {
                 ensure!(
@@ -327,7 +340,7 @@ fn _submit_order(
     // Extract taker back.
     *taker_state = maker_states.remove(&taker).unwrap();
 
-    Ok((maker_states, order_mutations, order_to_store))
+    Ok((maker_states, order_mutations, order_to_store, next_order_id))
 }
 
 /// Mutates:
@@ -652,6 +665,7 @@ fn store_post_only_limit_order(
     limit_price: UsdPrice,
     reduce_only: bool,
     oracle_querier: &mut OracleQuerier,
+    order_id: OrderId,
 ) -> anyhow::Result<(UsdPrice, OrderId, Order)> {
     let taker_is_bid = size.is_positive();
     let maker_is_bid = !taker_is_bid;
@@ -693,6 +707,7 @@ fn store_post_only_limit_order(
         limit_price,
         reduce_only,
         oracle_querier,
+        order_id,
     )
 }
 
@@ -715,6 +730,7 @@ fn store_limit_order(
     limit_price: UsdPrice,
     reduce_only: bool,
     oracle_querier: &mut OracleQuerier,
+    order_id: OrderId,
 ) -> anyhow::Result<(UsdPrice, OrderId, Order)> {
     ensure!(
         user_state.open_order_count < param.max_open_orders,
@@ -754,9 +770,6 @@ fn store_limit_order(
 
     // Invert price for buy orders so storage order matches price-time priority.
     let stored_price = may_invert_price(limit_price, size.is_positive());
-
-    // Allocate order ID.
-    let order_id = NEXT_ORDER_ID.may_load(storage)?.unwrap_or(OrderId::ONE);
 
     Ok((stored_price, order_id, Order {
         user,
@@ -896,7 +909,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -952,7 +965,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store) = _submit_order(
+        let (.., order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1045,7 +1058,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store) = _submit_order(
+        let (.., order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1092,7 +1105,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store) = _submit_order(
+        let (.., order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1143,7 +1156,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store) = _submit_order(
+        let (.., order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1200,7 +1213,7 @@ mod tests {
         });
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store) = _submit_order(
+        let (.., order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1291,7 +1304,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1546,7 +1559,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1928,7 +1941,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2061,7 +2074,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store) = _submit_order(
+        let (_, order_mutations, order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2151,7 +2164,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store) = _submit_order(
+        let (.., order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2202,7 +2215,7 @@ mod tests {
         });
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store) = _submit_order(
+        let (.., order_to_store, _) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2315,7 +2328,7 @@ mod tests {
         taker_state.margin = LARGE_COLLATERAL;
         let mut oq = test_oracle_querier();
 
-        let (maker_states, order_mutations, _) = _submit_order(
+        let (maker_states, order_mutations, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2410,7 +2423,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, order_mutations, _) = _submit_order(
+        let (maker_states, order_mutations, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2609,5 +2622,129 @@ mod tests {
         // PnL loop: vault loss = $10,000
         //   vault margin = $1,510 - $10,000 = -$8,490
         assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(-8_490));
+    }
+
+    // ===================== Regression: phantom order IDs =====================
+
+    /// Previously, `NEXT_ORDER_ID` was only incremented when an order entered
+    /// the book (GTC remainder or post-only). Market orders and limit orders
+    /// that were fully filled immediately used a "phantom" order ID: the
+    /// value of `NEXT_ORDER_ID` appeared in their `OrderFilled` events but
+    /// was never actually consumed, so a subsequent order could reuse the
+    /// same ID.
+    ///
+    /// After the fix, `_submit_order` always increments the order ID counter,
+    /// regardless of whether the order enters the book.
+    #[test]
+    fn orders_not_entering_book_should_increment_next_order_id() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+
+        // Case 1: Market order (fully filled, nothing enters book).
+        {
+            place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+            let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+            let mut taker_state = UserState {
+                margin: LARGE_COLLATERAL,
+                ..Default::default()
+            };
+            let mut oq = test_oracle_querier();
+
+            let (_, _, order_to_store, next_order_id) = _submit_order(
+                &ctx.storage,
+                TAKER,
+                CONTRACT,
+                &param,
+                &pair_param,
+                &mut pair_state,
+                &mut taker_state,
+                &pair_id(),
+                UsdPrice::new_int(50_000),
+                Quantity::new_int(10),
+                OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(100),
+                },
+                false,
+                &mut oq,
+                &mut EventBuilder::new(),
+            )
+            .unwrap();
+
+            assert!(
+                order_to_store.is_none(),
+                "market order should not enter book"
+            );
+            assert_eq!(
+                next_order_id,
+                OrderId::new(2),
+                "next_order_id must advance even when order doesn't enter book"
+            );
+
+            // Persist for case 2.
+            NEXT_ORDER_ID
+                .save(&mut ctx.storage, &next_order_id)
+                .unwrap();
+            PAIR_STATES
+                .save(&mut ctx.storage, &pair_id(), &pair_state)
+                .unwrap();
+
+            // Clean up the filled ask.
+            ASKS.remove(
+                &mut ctx.storage,
+                (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100)),
+            )
+            .unwrap();
+
+            // Place a fresh ask for case 2.
+            place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 200);
+        }
+
+        // Case 2: Limit order that fully fills (nothing enters book).
+        {
+            let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+            let mut taker_state = UserState {
+                margin: LARGE_COLLATERAL,
+                ..Default::default()
+            };
+            let mut oq = test_oracle_querier();
+
+            let (_, _, order_to_store, next_order_id) = _submit_order(
+                &ctx.storage,
+                TAKER,
+                CONTRACT,
+                &param,
+                &pair_param,
+                &mut pair_state,
+                &mut taker_state,
+                &pair_id(),
+                UsdPrice::new_int(50_000),
+                Quantity::new_int(10),
+                OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(50_000),
+                    post_only: false,
+                },
+                false,
+                &mut oq,
+                &mut EventBuilder::new(),
+            )
+            .unwrap();
+
+            assert!(
+                order_to_store.is_none(),
+                "fully-filled limit should not enter book"
+            );
+            assert_eq!(
+                next_order_id,
+                OrderId::new(3),
+                "next_order_id must advance again"
+            );
+        }
     }
 }

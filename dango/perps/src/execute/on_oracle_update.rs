@@ -11,7 +11,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         UsdValue,
-        perps::{Order, OrderId, ReasonForOrderRemoval},
+        perps::{Order, ReasonForOrderRemoval},
     },
     grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
 };
@@ -76,7 +76,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // ----------- Step 3: Iterate each pair and place vault orders ------------
 
-    let mut next_order_id = NEXT_ORDER_ID.may_load(ctx.storage)?.unwrap_or(OrderId::ONE);
+    let mut next_order_id = NEXT_ORDER_ID.load(ctx.storage)?;
 
     for pair_id in &pair_ids {
         let pair_param = PAIR_PARAMS.load(ctx.storage, pair_id)?;
