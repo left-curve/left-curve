@@ -9,10 +9,7 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        UsdValue,
-        perps::{Order, OrderId},
-    },
+    dango_types::{UsdValue, perps::Order},
     grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
 };
 
@@ -67,7 +64,7 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     }
 
     // Step 3: Load the next order ID once before the loop.
-    let mut next_order_id = NEXT_ORDER_ID.may_load(ctx.storage)?.unwrap_or(OrderId::ONE);
+    let mut next_order_id = NEXT_ORDER_ID.load(ctx.storage)?;
 
     // Step 4: Iterate each pair and place vault orders.
     for pair_id in &pair_ids {

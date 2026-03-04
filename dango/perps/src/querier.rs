@@ -2,7 +2,7 @@ use {
     crate::{NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES},
     anyhow::anyhow,
     dango_types::perps::{OrderId, PairId, PairParam, PairState},
-    grug::{Addr, Cache, NumberConst, QuerierWrapper, Storage, StorageQuerier},
+    grug::{Addr, Cache, QuerierWrapper, Storage, StorageQuerier},
     std::{collections::HashMap, rc::Rc},
 };
 
@@ -124,7 +124,7 @@ impl<'a> NoCachePerpQuerier<'a> {
     pub fn query_next_order_id(&self) -> anyhow::Result<OrderId> {
         let maybe_order_id = match self {
             Self::Local { storage } => {
-                NEXT_ORDER_ID.may_load(*storage)?
+                Some(NEXT_ORDER_ID.load(*storage)?)
             },
             Self::Remote { address, querier } => {
                 querier.may_query_wasm_path(*address, NEXT_ORDER_ID.path())?
@@ -132,7 +132,6 @@ impl<'a> NoCachePerpQuerier<'a> {
             Self::Mock { next_order_id, .. } => *next_order_id,
         };
 
-        // The first ever order, let's give it the ID of 1.
-        Ok(maybe_order_id.unwrap_or(OrderId::ONE))
+        Ok(maybe_order_id.unwrap())
     }
 }
