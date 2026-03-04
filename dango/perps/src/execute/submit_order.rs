@@ -63,6 +63,8 @@ pub fn submit_order(
 
     // ------------------------ 3. Apply state changes -------------------------
 
+    NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
+
     PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
 
     USER_STATES.save(ctx.storage, ctx.sender, &taker_state)?;
@@ -116,8 +118,6 @@ pub fn submit_order(
             },
         }
     }
-
-    NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
     if let Some((stored_price, order_id, order)) = order_to_store {
         let is_bid = size.is_positive();
@@ -203,9 +203,10 @@ fn _submit_order(
 
     check_oi_constraint(opening_size, pair_state, pair_param)?;
 
-    // -------------- Step 3½. Allocate a unique order ID ---------------------
+    // --------------- Step 3½. Allocate a unique order ID ---------------------
 
     let taker_order_id = NEXT_ORDER_ID.load(storage)?;
+    let next_order_id = taker_order_id + OrderId::ONE;
 
     // ---------------------- Step 4. Post-only fast path ----------------------
 
@@ -315,12 +316,7 @@ fn _submit_order(
     // Extract taker back.
     *taker_state = maker_states.remove(&taker).unwrap();
 
-    Ok((
-        maker_states,
-        order_mutations,
-        order_to_store,
-        taker_order_id + OrderId::ONE,
-    ))
+    Ok((maker_states, order_mutations, order_to_store, next_order_id))
 }
 
 /// Mutates:
@@ -2541,7 +2537,7 @@ mod tests {
         assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(-8_490));
     }
 
-    // ======= Regression: phantom order IDs ===================================
+    // ===================== Regression: phantom order IDs =====================
 
     /// Previously, `NEXT_ORDER_ID` was only incremented when an order entered
     /// the book (GTC remainder or post-only). Market orders and limit orders
