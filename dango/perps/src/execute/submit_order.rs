@@ -557,7 +557,7 @@ pub(crate) fn settle_fill(
     fees: &mut BTreeMap<Addr, UsdValue>,
     user: Addr,
     events: Option<(&mut EventBuilder, OrderId)>,
-) -> grug::StdResult<()> {
+) -> grug::StdResult<UsdValue> {
     let current_pos = user_state
         .positions
         .get(pair_id)
@@ -588,7 +588,7 @@ pub(crate) fn settle_fill(
         })?;
     }
 
-    Ok(())
+    Ok(pnl)
 }
 
 /// Settle PnLs and fees directly in USD on user margins.

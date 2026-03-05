@@ -485,19 +485,21 @@ pub struct LiquidityDepthResponse {
 // | `OrderRemoved(STP)`      | Yes         | N/A                  | N/A                   |
 // | `OrderRemoved(Liq.)`     | Yes         | N/A                  | N/A                   |
 // | `OrderRemoved(ADL)`      | Yes         | N/A                  | N/A                   |
-// | `Liquidated`             | Yes         | N/A                  | Yes                   |
+// | `Liquidated`             | 1 per pair  | N/A                  | 1 per pair            |
 // | `Deleveraged`            | Yes         | N/A                  | N/A                   |
 //
 // (*) Off-book fills that realize PnL without emitting `OrderFilled`:
 //
 // - **Liquidation backstop** — both taker (user being liquidated) and vault.
 //   `settle_fill` is called with `None` for events on both sides.
+//   The backstop PnL is reported via `Liquidated::backstop_realized_pnl`.
 // - **ADL** — both taker (user being ADL'd) and vault. The taker's
 //   `settle_fill` passes `None`; the vault has no `settle_fill` at all —
 //   its margin is adjusted directly via the forfeiture logic.
 //
-// In these cases, the total realized PnL is captured by the `Liquidated`
-// and `Deleveraged` events (via `realized_pnl`), not by `OrderFilled`.
+// For liquidation, the market-order PnL is captured by `OrderFilled` events
+// and the backstop PnL by `Liquidated` events (`backstop_realized_pnl`).
+// For ADL, the total realized PnL is captured by `Deleveraged`.
 
 /// Event indicating an order has been partially or fully filled.
 ///
@@ -567,12 +569,19 @@ pub enum ReasonForOrderRemoval {
     Deleveraged,
 }
 
-/// Event indicating a user has been liquidated.
+/// Event indicating a user has been liquidated in a specific pair.
+///
+/// Emitted once per pair closed during liquidation. The market-order portion's
+/// PnL is captured by `OrderFilled` events; this event reports only the
+/// backstop (off-book) portion.
 #[grug::event("liquidated")]
 #[grug::derive(Serde)]
 pub struct Liquidated {
     pub user: Addr,
-    pub realized_pnl: UsdValue,
+    pub pair_id: PairId,
+    pub backstop_realized_pnl: UsdValue,
+    pub backstop_size: Quantity,
+    pub backstop_price: UsdPrice,
 }
 
 /// Event indicating a user has been hit by auto-deleveraging (ADL).

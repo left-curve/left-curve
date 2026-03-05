@@ -89,7 +89,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------------- 6. Business logic ---------------------------
 
-    let (maker_states, order_mutations, realized_pnl) = _liquidate(
+    let (maker_states, order_mutations) = _liquidate(
         ctx.storage,
         user,
         ctx.contract,
@@ -170,9 +170,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         }
     }
 
-    Ok(Response::new()
-        .add_events(events)?
-        .add_event(Liquidated { user, realized_pnl })?)
+    Ok(Response::new().add_events(events)?)
 }
 
 /// Mutates:
@@ -201,7 +199,6 @@ fn _liquidate(
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
-    UsdValue,
 )> {
     // -------------------- Step 1: Assert liquidatable -------------------------
 
@@ -253,8 +250,6 @@ fn _liquidate(
 
     // ----------------------- Step 5: Settle PnLs ------------------------------
 
-    let user_realized_pnl = all_pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
-
     // Merge the liquidated user into the maker states for settlement.
     all_maker_states.insert(user, user_state.clone());
 
@@ -276,7 +271,7 @@ fn _liquidate(
             .checked_sub_assign(bad_debt)?;
     }
 
-    Ok((all_maker_states, all_order_mutations, user_realized_pnl))
+    Ok((all_maker_states, all_order_mutations))
 }
 
 /// Execute the close schedule against the order book, with vault backstop for
@@ -369,9 +364,9 @@ fn execute_close_schedule(
         closed_notional.checked_add_assign(filled.checked_abs()?.checked_mul(oracle_price)?)?;
 
         // Vault backstop: if there is unfilled remainder, the vault absorbs at oracle price.
-        if unfilled.is_non_zero() {
+        let (backstop_pnl, backstop_size, backstop_price) = if unfilled.is_non_zero() {
             // User side: close at oracle price with zero fee.
-            settle_fill(
+            let pnl = settle_fill(
                 pair_id,
                 pair_state,
                 user_state,
@@ -404,7 +399,19 @@ fn execute_close_schedule(
             // Add vault backstop notional.
             closed_notional
                 .checked_add_assign(unfilled.checked_abs()?.checked_mul(oracle_price)?)?;
-        }
+
+            (pnl, unfilled, oracle_price)
+        } else {
+            (UsdValue::ZERO, Quantity::ZERO, oracle_price)
+        };
+
+        events.push(Liquidated {
+            user,
+            pair_id: pair_id.clone(),
+            backstop_realized_pnl: backstop_pnl,
+            backstop_size,
+            backstop_price,
+        })?;
     }
 
     Ok((all_pnls, all_fees, all_order_mutations, closed_notional))
