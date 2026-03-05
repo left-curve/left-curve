@@ -476,17 +476,28 @@ pub struct LiquidityDepthResponse {
 // - Liquidation taker uses `OrderId::ZERO` as sentinel (no user-submitted order).
 // - Backstop fills and ADL closures are off-book — not `OrderFilled` events.
 //
-// | Event                   | User orders | Vault orders (maker)    |
-// |-------------------------|-------------|-------------------------|
-// | `OrderFilled`           | Yes         | Yes                     |
-// | `OrderPersisted`        | Yes         | No  (placed directly)   |
-// | `OrderRemoved(Canceled)`| Yes         | No  (suppressed)        |
-// | `OrderRemoved(Filled)`  | Yes         | No  (suppressed)        |
-// | `OrderRemoved(STP)`     | Yes         | N/A                     |
-// | `OrderRemoved(Liq.)`    | Yes         | N/A                     |
-// | `OrderRemoved(ADL)`     | Yes         | N/A                     |
-// | `Liquidated`            | Yes         | N/A                     |
-// | `Deleveraged`           | Yes         | N/A                     |
+// | Event                    | User orders | Vault orders (maker) | Liq. taker            |
+// |--------------------------|-------------|----------------------|-----------------------|
+// | `OrderFilled`            | Yes         | Yes                  | Book-matched only (*) |
+// | `OrderPersisted`         | Yes         | No  (placed directly)| N/A                   |
+// | `OrderRemoved(Canceled)` | Yes         | No  (suppressed)     | N/A                   |
+// | `OrderRemoved(Filled)`   | Yes         | No  (suppressed)     | N/A                   |
+// | `OrderRemoved(STP)`      | Yes         | N/A                  | N/A                   |
+// | `OrderRemoved(Liq.)`     | Yes         | N/A                  | N/A                   |
+// | `OrderRemoved(ADL)`      | Yes         | N/A                  | N/A                   |
+// | `Liquidated`             | Yes         | N/A                  | Yes                   |
+// | `Deleveraged`            | Yes         | N/A                  | N/A                   |
+//
+// (*) Off-book fills that realize PnL without emitting `OrderFilled`:
+//
+// - **Liquidation backstop** — both taker (user being liquidated) and vault.
+//   `settle_fill` is called with `None` for events on both sides.
+// - **ADL** — both taker (user being ADL'd) and vault. The taker's
+//   `settle_fill` passes `None`; the vault has no `settle_fill` at all —
+//   its margin is adjusted directly via the forfeiture logic.
+//
+// In these cases, the total realized PnL is captured by the `Liquidated`
+// and `Deleveraged` events (via `realized_pnl`), not by `OrderFilled`.
 
 /// Event indicating an order has been partially or fully filled.
 ///
