@@ -98,7 +98,7 @@ const LigueLevelItem: React.FC<LigueLevelItemProps> = ({ level, state }) => {
         )}
         <p
           className={twMerge(
-            "exposure-xs-italic lg:exposure-sm-italic text-ink-secondary-rice pb-2 lg:pb-3 text-center whitespace-nowrap",
+            "exposure-xs-italic lg:exposure-sm-italic text-ink-secondary-rice pb-2 lg:pb-3 text-center whitespace-nowrap z-10",
             isFuture && "text-gray-400",
             !isCurrent && "hidden md:block",
           )}
