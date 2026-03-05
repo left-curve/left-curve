@@ -478,20 +478,20 @@ pub struct LiquidityDepthResponse {
 //
 // | Event                    | User orders | Vault orders (maker) | Liq. taker            |
 // |--------------------------|-------------|----------------------|-----------------------|
-// | `Deposited`              | N/A         | N/A                  | N/A                   |
-// | `Withdrew`               | N/A         | N/A                  | N/A                   |
-// | `LiquidityAdded`         | N/A         | N/A                  | N/A                   |
-// | `LiquidityUnlocking`     | N/A         | N/A                  | N/A                   |
-// | `LiquidityReleased`      | N/A         | N/A                  | N/A                   |
+// | `Deposited`              | -           | -                    | -                     |
+// | `Withdrew`               | -           | -                    | -                     |
+// | `LiquidityAdded`         | -           | -                    | -                     |
+// | `LiquidityUnlocking`     | -           | -                    | -                     |
+// | `LiquidityReleased`      | -           | -                    | -                     |
 // | `OrderFilled`            | Yes         | Yes                  | Book-matched only (*) |
-// | `OrderPersisted`         | Yes         | No  (placed directly)| N/A                   |
-// | `OrderRemoved(Canceled)` | Yes         | No  (suppressed)     | N/A                   |
-// | `OrderRemoved(Filled)`   | Yes         | No  (suppressed)     | N/A                   |
-// | `OrderRemoved(STP)`      | Yes         | N/A                  | N/A                   |
-// | `OrderRemoved(Liq.)`     | Yes         | N/A                  | N/A                   |
-// | `OrderRemoved(ADL)`      | Yes         | N/A                  | N/A                   |
-// | `Liquidated`             | 1 per pair  | N/A                  | 1 per pair            |
-// | `Deleveraged`            | Yes         | N/A                  | N/A                   |
+// | `OrderPersisted`         | Yes         | No  (placed directly)| -                     |
+// | `OrderRemoved(Canceled)` | Yes         | No  (suppressed)     | -                     |
+// | `OrderRemoved(Filled)`   | Yes         | No  (suppressed)     | -                     |
+// | `OrderRemoved(STP)`      | Yes         | -                    | -                     |
+// | `OrderRemoved(Liq.)`     | Yes         | -                    | -                     |
+// | `OrderRemoved(ADL)`      | Yes         | -                    | -                     |
+// | `Liquidated`             | 1 per pair  | -                    | 1 per pair            |
+// | `Deleveraged`            | Yes         | -                    | -                     |
 //
 // (*) Off-book fills that realize PnL without emitting `OrderFilled`:
 //
