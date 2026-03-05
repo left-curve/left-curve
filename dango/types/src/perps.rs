@@ -639,7 +639,7 @@ pub struct Liquidated {
 #[grug::derive(Serde)]
 pub struct Deleveraged {
     pub user: Addr,
-    pub realized_pnl: UsdValue,
     pub closing_sizes: BTreeMap<PairId, Quantity>,
+    pub realized_pnl: UsdValue,
     pub forfeited_pnl: UsdValue,
 }

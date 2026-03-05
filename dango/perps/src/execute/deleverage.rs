@@ -103,8 +103,8 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // No token transfers — all PnL settled via internal margins.
     Ok(Response::new().add_events(events)?.add_event(Deleveraged {
         user,
-        realized_pnl,
         closing_sizes,
+        realized_pnl,
         forfeited_pnl,
     })?)
 }
