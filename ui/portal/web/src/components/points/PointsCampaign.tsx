@@ -131,7 +131,7 @@ const ReferralSection: React.FC = () => {
         </ResizerContainer>
       </ResizerContainer>
       <MyCommission mode={referralMode} />
-      <ReferralFaqs />
+      {referralMode === "affiliate" && <ReferralFaqs />}
     </div>
   );
 };
