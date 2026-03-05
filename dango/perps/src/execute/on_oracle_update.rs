@@ -9,7 +9,10 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{UsdValue, perps::Order},
+    dango_types::{
+        UsdValue,
+        perps::{Order, ReasonForOrderRemoval},
+    },
     grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
 };
 
@@ -41,10 +44,18 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
-    // Step 1: Cancel all existing vault orders.
-    _cancel_all_orders(ctx.storage, ctx.contract, &mut vault_state)?;
+    // --------------- Step 1: Cancel all existing vault orders ----------------
 
-    // Step 2: Compute the vault's available margin.
+    _cancel_all_orders(
+        ctx.storage,
+        ctx.contract,
+        &mut vault_state,
+        None, // Vault order churn is not user-facing — no events emitted.
+        ReasonForOrderRemoval::Canceled,
+    )?;
+
+    // ------------- Step 2: Compute the vault's available margin --------------
+
     // After cancellation, reserved_margin is zero and all vault capital is in
     // the vault's UserState margin.
     let vault_margin_value = vault_state.margin;
@@ -63,10 +74,10 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
         return Ok(Response::new());
     }
 
-    // Step 3: Load the next order ID once before the loop.
+    // ----------- Step 3: Iterate each pair and place vault orders ------------
+
     let mut next_order_id = NEXT_ORDER_ID.load(ctx.storage)?;
 
-    // Step 4: Iterate each pair and place vault orders.
     for pair_id in &pair_ids {
         let pair_param = PAIR_PARAMS.load(ctx.storage, pair_id)?;
 
@@ -159,8 +170,10 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
         }
     }
 
-    // Step 5: Persist updated state.
+    // --------------------- Step 4: Persist updated state ---------------------
+
     LAST_VAULT_ORDERS_UPDATE.save(ctx.storage, &ctx.block.height)?;
+
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
     if vault_state.is_empty() {

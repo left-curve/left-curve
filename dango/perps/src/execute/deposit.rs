@@ -2,7 +2,10 @@ use {
     crate::{USER_STATES, execute::oracle},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{Quantity, perps::settlement_currency},
+    dango_types::{
+        Quantity,
+        perps::{Deposited, settlement_currency},
+    },
     grug::{IsZero, MutableCtx, Response},
 };
 
@@ -38,5 +41,8 @@ pub fn deposit(mut ctx: MutableCtx) -> anyhow::Result<Response> {
 
     USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event(Deposited {
+        user: ctx.sender,
+        amount: deposit_value,
+    })?)
 }

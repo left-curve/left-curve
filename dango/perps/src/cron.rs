@@ -8,28 +8,34 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         Days, UsdValue,
-        perps::{PairId, UserState},
+        perps::{LiquidityReleased, PairId, UserState},
     },
     grug::{
-        Addr, Order as IterationOrder, PrefixBound, Response, StdResult, Storage, SudoCtx,
-        Timestamp,
+        Addr, EventBuilder, Order as IterationOrder, PrefixBound, Response, StdResult, Storage,
+        SudoCtx, Timestamp,
     },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut events = EventBuilder::new();
 
-    process_unlocks(ctx.storage, ctx.block.timestamp)?;
+    process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
+
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_events(events)?)
 }
 
 /// Pop matured unlocks from each user and credit the released USD value back
 /// to their trading margin.
-fn process_unlocks(storage: &mut dyn Storage, current_time: Timestamp) -> anyhow::Result<()> {
+fn process_unlocks(
+    storage: &mut dyn Storage,
+    current_time: Timestamp,
+    events: &mut EventBuilder,
+) -> anyhow::Result<()> {
     // Load all users whose earliest unlock has matured.
     let users = USER_STATES
         .idx
@@ -47,7 +53,7 @@ fn process_unlocks(storage: &mut dyn Storage, current_time: Timestamp) -> anyhow
         .collect::<StdResult<Vec<_>>>()?;
 
     for (user, user_state) in users {
-        process_unlock_for_user(storage, current_time, user, user_state)?;
+        process_unlock_for_user(storage, current_time, user, user_state, events)?;
     }
 
     Ok(())
@@ -58,6 +64,7 @@ fn process_unlock_for_user(
     current_time: Timestamp,
     user: Addr,
     mut user_state: UserState,
+    events: &mut EventBuilder,
 ) -> anyhow::Result<()> {
     let mut amount_usd = UsdValue::ZERO;
 
@@ -74,6 +81,13 @@ fn process_unlock_for_user(
 
     // Credit the released USD value back to the user's trading margin.
     user_state.margin.checked_add_assign(amount_usd)?;
+
+    if amount_usd.is_positive() {
+        events.push(LiquidityReleased {
+            user,
+            amount: amount_usd,
+        })?;
+    }
 
     // Save the updated user state to storage.
     if user_state.is_empty() {
@@ -307,7 +321,12 @@ mod tests {
         };
         USER_STATES.save(&mut storage, USER_A, &user_state).unwrap();
 
-        process_unlocks(&mut storage, Timestamp::from_seconds(100)).unwrap();
+        process_unlocks(
+            &mut storage,
+            Timestamp::from_seconds(100),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
 
         let loaded = USER_STATES.load(&storage, USER_A).unwrap();
         assert_eq!(loaded.unlocks.len(), 2);
@@ -325,7 +344,12 @@ mod tests {
         USER_STATES.save(&mut storage, USER_A, &user_state).unwrap();
 
         // At t=100 the unlock matures (end_time > current_time is false).
-        process_unlocks(&mut storage, Timestamp::from_seconds(100)).unwrap();
+        process_unlocks(
+            &mut storage,
+            Timestamp::from_seconds(100),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
 
         // Margin credited, unlocks cleared. User state persists because margin > 0.
         let loaded = USER_STATES.load(&storage, USER_A).unwrap();
@@ -344,7 +368,12 @@ mod tests {
         USER_STATES.save(&mut storage, USER_A, &user_state).unwrap();
 
         // At t=200 the first two unlocks mature ($1000 + $2000 = $3000).
-        process_unlocks(&mut storage, Timestamp::from_seconds(200)).unwrap();
+        process_unlocks(
+            &mut storage,
+            Timestamp::from_seconds(200),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
 
         let loaded = USER_STATES.load(&storage, USER_A).unwrap();
         assert_eq!(loaded.margin, UsdValue::new_int(3000));
@@ -369,7 +398,12 @@ mod tests {
             })
             .unwrap();
 
-        process_unlocks(&mut storage, Timestamp::from_seconds(100)).unwrap();
+        process_unlocks(
+            &mut storage,
+            Timestamp::from_seconds(100),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
 
         // Both users get margin credited.
         let loaded_a = USER_STATES.load(&storage, USER_A).unwrap();
@@ -393,7 +427,12 @@ mod tests {
         };
         USER_STATES.save(&mut storage, USER_A, &user_state).unwrap();
 
-        process_unlocks(&mut storage, Timestamp::from_seconds(200)).unwrap();
+        process_unlocks(
+            &mut storage,
+            Timestamp::from_seconds(200),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
 
         // User state persists, margin = original $500 + released $1000 = $1500.
         let loaded = USER_STATES.load(&storage, USER_A).unwrap();
@@ -405,7 +444,12 @@ mod tests {
     fn no_users_no_error() {
         let mut storage = MockStorage::new();
 
-        process_unlocks(&mut storage, Timestamp::from_seconds(100)).unwrap();
+        process_unlocks(
+            &mut storage,
+            Timestamp::from_seconds(100),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
     }
 
     // ==================== process_funding tests ====================

@@ -4,8 +4,10 @@ use {
         price::may_invert_price,
     },
     anyhow::{anyhow, ensure},
-    dango_types::perps::{Order, OrderId, PairId, PairParam, UserState},
-    grug::{Addr, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
+    dango_types::perps::{
+        Order, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval, UserState,
+    },
+    grug::{Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -31,13 +33,21 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
         "you are not the owner of this order"
     );
 
+    let mut events = EventBuilder::new();
+
     update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
-        _cancel_one_order(storage, user_state, order_key, order, |storage, pair_id| {
-            PAIR_PARAMS.load(storage, pair_id)
-        })
+        _cancel_one_order(
+            storage,
+            user_state,
+            order_key,
+            order,
+            Some(&mut events),
+            ReasonForOrderRemoval::Canceled,
+            |storage, pair_id| PAIR_PARAMS.load(storage, pair_id),
+        )
     })?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_events(events)?)
 }
 
 /// Mutates:
@@ -53,16 +63,18 @@ fn _cancel_one_order<F>(
     user_state: &mut UserState,
     order_key: OrderKey,
     order: Order,
+    events: Option<&mut EventBuilder>,
+    reason: ReasonForOrderRemoval,
     pair_param: F,
 ) -> StdResult<()>
 where
     F: FnOnce(&dyn Storage, &PairId) -> StdResult<PairParam>,
 {
-    let (pair_id, stored_price, _) = &order_key;
+    let (pair_id, stored_price, order_id) = order_key.clone();
     let is_bid = order.size.is_positive();
 
-    let pair_param = pair_param(storage, pair_id)?;
-    let real_price = may_invert_price(*stored_price, is_bid);
+    let pair_param = pair_param(storage, &pair_id)?;
+    let real_price = may_invert_price(stored_price, is_bid);
 
     // Update user state.
     (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
@@ -71,7 +83,7 @@ where
     // Remove liquidity contributed by this order.
     decrease_liquidity_depths(
         storage,
-        pair_id,
+        &pair_id,
         is_bid,
         real_price,
         order.size.checked_abs()?,
@@ -80,18 +92,37 @@ where
 
     // Remove the order from storage.
     if is_bid {
-        BIDS.remove(storage, order_key)
+        BIDS.remove(storage, order_key)?;
     } else {
-        ASKS.remove(storage, order_key)
+        ASKS.remove(storage, order_key)?;
     }
+
+    if let Some(events) = events {
+        events.push(OrderRemoved {
+            order_id,
+            pair_id,
+            user: order.user,
+            reason,
+        })?;
+    }
+
+    Ok(())
 }
 
 pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let mut events = EventBuilder::new();
+
     update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
-        _cancel_all_orders(storage, ctx.sender, user_state)
+        _cancel_all_orders(
+            storage,
+            ctx.sender,
+            user_state,
+            Some(&mut events),
+            ReasonForOrderRemoval::Canceled,
+        )
     })?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_events(events)?)
 }
 
 /// Cancel all resting orders for a user, updating the in-memory `user_state`.
@@ -102,6 +133,8 @@ pub(crate) fn _cancel_all_orders(
     storage: &mut dyn Storage,
     user: Addr,
     user_state: &mut UserState,
+    mut events: Option<&mut EventBuilder>,
+    reason: ReasonForOrderRemoval,
 ) -> StdResult<()> {
     // Collect all orders from the caller.
     let bids = BIDS
@@ -137,9 +170,15 @@ pub(crate) fn _cancel_all_orders(
 
     // Now mutate storage: update depths, remove orders, update user state.
     for (order_key, order) in bids.into_iter().chain(asks) {
-        _cancel_one_order(storage, user_state, order_key, order, |_, pair_id| {
-            Ok(pair_params[pair_id].clone())
-        })?;
+        _cancel_one_order(
+            storage,
+            user_state,
+            order_key,
+            order,
+            events.as_deref_mut(),
+            reason,
+            |_, pair_id| Ok(pair_params[pair_id].clone()),
+        )?;
     }
 
     Ok(())

@@ -460,4 +460,186 @@ pub struct LiquidityDepthResponse {
 
 // ---------------------------------- Events -----------------------------------
 
-// TODO
+// Events are emitted when:
+//
+// 1. **Push notifications**: Users need to be notified (e.g. fills, liquidation).
+// 2. **Indexing**: Data needs to be queryable.
+//    - For **users**: order history (`OrderPersisted`, `OrderRemoved(Canceled)`,
+//      `OrderFilled`) and PnL history (`OrderFilled`, `Liquidated`, `Deleveraged`).
+//    - For the **vault**: PnL history only (`OrderFilled`; vault can't be
+//      liquidated or ADL'd).
+//
+// Events are suppressed when not needed for either purpose:
+//
+// - Vault order lifecycle (`OrderPersisted`, `OrderRemoved(Canceled)`,
+//   `OrderRemoved(Filled)`) is internal churn (every block) — noise for indexers.
+// - Liquidation taker uses `OrderId::ZERO` as sentinel (no user-submitted order).
+// - Backstop fills and ADL closures are off-book — not `OrderFilled` events.
+//
+// | Event                    | User orders | Vault orders (maker) | Liq. taker            |
+// |--------------------------|-------------|----------------------|-----------------------|
+// | `Deposited`              | -           | -                    | -                     |
+// | `Withdrew`               | -           | -                    | -                     |
+// | `LiquidityAdded`         | -           | -                    | -                     |
+// | `LiquidityUnlocking`     | -           | -                    | -                     |
+// | `LiquidityReleased`      | -           | -                    | -                     |
+// | `OrderFilled`            | Yes         | Yes                  | Book-matched only (*) |
+// | `OrderPersisted`         | Yes         | No  (placed directly)| -                     |
+// | `OrderRemoved(Canceled)` | Yes         | No  (suppressed)     | -                     |
+// | `OrderRemoved(Filled)`   | Yes         | No  (suppressed)     | -                     |
+// | `OrderRemoved(STP)`      | Yes         | -                    | -                     |
+// | `OrderRemoved(Liq.)`     | Yes         | -                    | -                     |
+// | `OrderRemoved(ADL)`      | Yes         | -                    | -                     |
+// | `Liquidated`             | 1 per pair  | -                    | 1 per pair            |
+// | `Deleveraged`            | Yes         | -                    | -                     |
+//
+// (*) Off-book fills that realize PnL without emitting `OrderFilled`:
+//
+// - **Liquidation backstop** — both taker (user being liquidated) and vault.
+//   `settle_fill` is called with `None` for events on both sides.
+//   The backstop PnL is reported via `Liquidated::backstop_realized_pnl`.
+// - **ADL** — both taker (user being ADL'd) and vault. The taker's
+//   `settle_fill` passes `None`; the vault has no `settle_fill` at all —
+//   its margin is adjusted directly via the forfeiture logic.
+//
+// For liquidation, the market-order PnL is captured by `OrderFilled` events
+// and the backstop PnL by `Liquidated` events (`backstop_realized_pnl`).
+// For ADL, the total realized PnL is captured by `Deleveraged`.
+
+/// Event indicating a user has deposited margin into his perp account.
+#[grug::event("deposited")]
+#[grug::derive(Serde)]
+pub struct Deposited {
+    pub user: Addr,
+    pub amount: UsdValue,
+}
+
+/// Event indicating a user has withdrawn margin from his perp account.
+#[grug::event("withdrew")]
+#[grug::derive(Serde)]
+pub struct Withdrew {
+    pub user: Addr,
+    pub amount: UsdValue,
+}
+
+/// Event indicating a user has deposited liquidity from his perp account margin
+/// into the vault.
+#[grug::event("liquidity_added")]
+#[grug::derive(Serde)]
+pub struct LiquidityAdded {
+    pub user: Addr,
+    pub amount: UsdValue,
+    pub shares_minted: Uint128,
+}
+
+/// Event indicating a user has initiated unlocking of liquidity from the vault.
+#[grug::event("liquidity_unlocking")]
+#[grug::derive(Serde)]
+pub struct LiquidityUnlocking {
+    pub user: Addr,
+    pub amount: UsdValue,
+    pub shares_burned: Uint128,
+    pub end_time: Timestamp,
+}
+
+/// Event indicating a user's vault unlock has matured and the released USD
+/// value has been credited back to their trading margin.
+#[grug::event("liquidity_released")]
+#[grug::derive(Serde)]
+pub struct LiquidityReleased {
+    pub user: Addr,
+    pub amount: UsdValue,
+}
+
+/// Event indicating an order has been partially or fully filled.
+///
+/// `closing_size` and `opening_size` correspond to the output of `decompose_fill`.
+/// They should have the same sign as, and sum up to, `fill_size`.
+/// For maker orders, their signs correspond to that of the maker order itself,
+/// not that of the taker order.
+///
+/// Examples (user is long 10):
+///
+/// - sell 4  → fill_size = -4,  closing_size = -4,  opening_size =  0
+/// - sell 10 → fill_size = -10, closing_size = -10, opening_size =  0
+/// - sell 15 → fill_size = -15, closing_size = -10, opening_size = -5 (flip to short 5)
+/// - buy  5  → fill_size =  5,  closing_size =  0,  opening_size =  5 (increase long)
+#[grug::event("order_filled")]
+#[grug::derive(Serde)]
+pub struct OrderFilled {
+    pub order_id: OrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub fill_price: UsdPrice,
+    pub fill_size: Quantity,
+    pub closing_size: Quantity,
+    pub opening_size: Quantity,
+    pub realized_pnl: UsdValue,
+}
+
+/// Event indicating an order have been inserted into the order book.
+#[grug::event("order_persisted")]
+#[grug::derive(Serde)]
+pub struct OrderPersisted {
+    pub order_id: OrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub limit_price: UsdPrice,
+    pub size: Quantity,
+}
+
+/// Event indicating an order has been removed from the order book.
+#[grug::event("order_removed")]
+#[grug::derive(Serde)]
+pub struct OrderRemoved {
+    pub order_id: OrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub reason: ReasonForOrderRemoval,
+}
+
+#[grug::derive(Serde)]
+#[derive(Copy)]
+pub enum ReasonForOrderRemoval {
+    /// The order was fully filled.
+    Filled,
+
+    /// The user voluntarily canceled the order.
+    Canceled,
+
+    /// The user submitted an order on the other side of the order book whose
+    /// price crossed this order's. Following the principle of self-trade prevention,
+    /// this order was canceled.
+    SelfTradePrevention,
+
+    /// The user was liquidated.
+    Liquidated,
+
+    /// The user was hit by auto-deleveraging (ADL).
+    Deleveraged,
+}
+
+/// Event indicating a user has been liquidated in a specific pair.
+///
+/// Emitted once per pair closed during liquidation. The market-order portion's
+/// PnL is captured by `OrderFilled` events; this event reports only the
+/// backstop (off-book) portion.
+#[grug::event("liquidated")]
+#[grug::derive(Serde)]
+pub struct Liquidated {
+    pub user: Addr,
+    pub pair_id: PairId,
+    pub backstop_realized_pnl: UsdValue,
+    pub backstop_size: Quantity,
+    pub backstop_price: UsdPrice,
+}
+
+/// Event indicating a user has been hit by auto-deleveraging (ADL).
+#[grug::event("deleveraged")]
+#[grug::derive(Serde)]
+pub struct Deleveraged {
+    pub user: Addr,
+    pub closing_sizes: BTreeMap<PairId, Quantity>,
+    pub realized_pnl: UsdValue,
+    pub forfeited_pnl: UsdValue,
+}

@@ -6,7 +6,10 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{UsdValue, perps::UserState},
+    dango_types::{
+        UsdValue,
+        perps::{LiquidityAdded, UserState},
+    },
     grug::{IsZero, MultiplyFraction, MutableCtx, Number as _, Response, Signed, Uint128},
 };
 
@@ -45,7 +48,7 @@ pub fn add_liquidity(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    _add_liquidity(
+    let shares_minted = _add_liquidity(
         &perp_querier,
         &mut oracle_querier,
         &mut state.vault_share_supply,
@@ -61,7 +64,11 @@ pub fn add_liquidity(
     USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     USER_STATES.save(ctx.storage, ctx.contract, &vault_user_state)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event(LiquidityAdded {
+        user: ctx.sender,
+        amount,
+        shares_minted,
+    })?)
 }
 
 /// The actual logic for handling the add-liquidity operation.
@@ -71,7 +78,7 @@ pub fn add_liquidity(
 /// - `user_state` (margin, vault_shares)
 /// - `vault_user_state` (margin)
 ///
-/// Returns: `()` on success.
+/// Returns: the number of shares minted.
 fn _add_liquidity(
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
@@ -80,7 +87,7 @@ fn _add_liquidity(
     vault_user_state: &mut UserState,
     amount: UsdValue,
     min_shares_to_mint: Option<Uint128>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Uint128> {
     // ----------------------- Step 1. Validate deposit ------------------------
 
     ensure!(amount.is_positive(), "nothing to do");
@@ -129,7 +136,7 @@ fn _add_liquidity(
     // Update user state.
     user_state.vault_shares.checked_add_assign(shares_to_mint)?;
 
-    Ok(())
+    Ok(shares_to_mint)
 }
 
 // ----------------------------------- tests -----------------------------------
