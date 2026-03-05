@@ -27,6 +27,10 @@ const { publicVars } = loadEnv();
 
 const environment = process.env.CONFIG_ENVIRONMENT || "test";
 
+const enabledFeatures = process.env.ENABLED_FEATURES
+  ? process.env.ENABLED_FEATURES.split(",").map((f) => f.trim())
+  : [];
+
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
 const tradingViewPath = path.resolve(
@@ -120,6 +124,7 @@ const envConfig = `window.dango = ${JSON.stringify(
         }
       : urls,
     banner,
+    enabledFeatures,
   },
   null,
   2,
