@@ -542,6 +542,15 @@ pub struct LiquidityUnlocking {
     pub end_time: Timestamp,
 }
 
+/// Event indicating a user's vault unlock has matured and the released USD
+/// value has been credited back to their trading margin.
+#[grug::event("liquidity_released")]
+#[grug::derive(Serde)]
+pub struct LiquidityReleased {
+    pub user: Addr,
+    pub amount: UsdValue,
+}
+
 /// Event indicating an order has been partially or fully filled.
 ///
 /// `closing_size` and `opening_size` correspond to the output of `decompose_fill`.
@@ -623,15 +632,6 @@ pub struct Liquidated {
     pub backstop_realized_pnl: UsdValue,
     pub backstop_size: Quantity,
     pub backstop_price: UsdPrice,
-}
-
-/// Event indicating a user's vault unlock has matured and the released USD
-/// value has been credited back to their trading margin.
-#[grug::event("liquidity_released")]
-#[grug::derive(Serde)]
-pub struct LiquidityReleased {
-    pub user: Addr,
-    pub amount: UsdValue,
 }
 
 /// Event indicating a user has been hit by auto-deleveraging (ADL).
