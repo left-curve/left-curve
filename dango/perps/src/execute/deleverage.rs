@@ -7,7 +7,7 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Dimensionless, UsdPrice, UsdValue,
+        Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{Deleveraged, PairId, PairState, ReasonForOrderRemoval, UserState},
     },
     grug::{Addr, EventBuilder, MutableCtx, Response},
@@ -72,7 +72,7 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 4–6. Core ADL logic --------------------------------
 
-    let realized_pnl = _deleverage(
+    let (realized_pnl, closing_sizes, forfeited_pnl) = _deleverage(
         ctx.storage,
         user,
         &mut pair_states,
@@ -101,9 +101,12 @@ pub fn deleverage(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     }
 
     // No token transfers — all PnL settled via internal margins.
-    Ok(Response::new()
-        .add_events(events)?
-        .add_event(Deleveraged { user, realized_pnl })?)
+    Ok(Response::new().add_events(events)?.add_event(Deleveraged {
+        user,
+        realized_pnl,
+        closing_sizes,
+        forfeited_pnl,
+    })?)
 }
 
 /// Core ADL logic: rank positions, close profitable ones, handle forfeiture.
@@ -124,7 +127,7 @@ fn _deleverage(
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     oracle_querier: &mut OracleQuerier,
     vault_user_state: &mut UserState,
-) -> anyhow::Result<UsdValue> {
+) -> anyhow::Result<(UsdValue, BTreeMap<PairId, Quantity>, UsdValue)> {
     // -------------------- Step 1: Compute equity + rank ----------------------
 
     let perp_querier = NoCachePerpQuerier::new_local(storage);
@@ -150,6 +153,7 @@ fn _deleverage(
 
     let mut pnls = BTreeMap::new();
     let mut fees = BTreeMap::new();
+    let mut closing_sizes = BTreeMap::new();
 
     for (pair_id, _score) in &scored {
         let pair_state = pair_states.get_mut(pair_id).unwrap();
@@ -162,6 +166,8 @@ fn _deleverage(
             .unwrap()
             .size
             .checked_neg()?;
+
+        closing_sizes.insert(pair_id.clone(), close_size);
 
         settle_fill(
             pair_id,
@@ -180,14 +186,15 @@ fn _deleverage(
     // --------- Step 3: Settle PnL with partial forfeiture --------------------
 
     let user_pnl = pnls.remove(&user).unwrap_or(UsdValue::ZERO);
+    let mut forfeited_pnl = UsdValue::ZERO;
 
     if user_pnl.is_positive() {
         // The deficit is the absolute value of the negative vault margin.
         let deficit = vault_user_state.margin.checked_neg()?;
-        let forfeited = user_pnl.min(deficit);
-        let credit = user_pnl.checked_sub(forfeited)?;
+        forfeited_pnl = user_pnl.min(deficit);
+        let credit = user_pnl.checked_sub(forfeited_pnl)?;
 
-        vault_user_state.margin.checked_add_assign(forfeited)?;
+        vault_user_state.margin.checked_add_assign(forfeited_pnl)?;
 
         if credit.is_non_zero() {
             user_state.margin.checked_add_assign(credit)?;
@@ -197,7 +204,7 @@ fn _deleverage(
     // If PnL is negative or zero, don't penalize the user further.
     // No deficit reduction (need another ADL target).
 
-    Ok(user_pnl)
+    Ok((user_pnl, closing_sizes, forfeited_pnl))
 }
 
 // ----------------------------------- tests -----------------------------------

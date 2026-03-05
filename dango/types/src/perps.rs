@@ -640,4 +640,6 @@ pub struct Liquidated {
 pub struct Deleveraged {
     pub user: Addr,
     pub realized_pnl: UsdValue,
+    pub closing_sizes: BTreeMap<PairId, Quantity>,
+    pub forfeited_pnl: UsdValue,
 }
