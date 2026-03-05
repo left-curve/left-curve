@@ -7,8 +7,8 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Dimensionless,
-        perps::{Param, Unlock, UserState},
+        Dimensionless, UsdValue,
+        perps::{LiquidityUnlocking, Param, Unlock, UserState},
     },
     grug::{IsZero, MutableCtx, Number as _, Response, Timestamp, Uint128},
 };
@@ -43,7 +43,7 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 
     // --------------------------- 2. Business logic ---------------------------
 
-    _remove_liquidity(
+    let (amount, end_time) = _remove_liquidity(
         ctx.block.timestamp,
         shares_to_burn,
         &param,
@@ -60,7 +60,12 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
     USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     USER_STATES.save(ctx.storage, ctx.contract, &vault_user_state)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event(LiquidityUnlocking {
+        user: ctx.sender,
+        amount,
+        shares_burned: shares_to_burn,
+        end_time,
+    })?)
 }
 
 /// The actual logic for handling the remove-liquidity operation.
@@ -70,6 +75,8 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 /// - `vault_share_supply`
 /// - `user_state` (vault_shares, unlock queue)
 /// - `vault_user_state` (margin)
+///
+/// Returns: `(amount_to_release, end_time)`.
 fn _remove_liquidity(
     current_time: Timestamp,
     shares_to_burn: Uint128,
@@ -79,7 +86,7 @@ fn _remove_liquidity(
     vault_user_state: &mut UserState,
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<(UsdValue, Timestamp)> {
     // -------------------- Step 1. Validate shares to burn --------------------
 
     ensure!(shares_to_burn.is_non_zero(), "nothing to do");
@@ -141,7 +148,7 @@ fn _remove_liquidity(
     user_state.vault_shares.checked_sub_assign(shares_to_burn)?;
     user_state.unlocks.push_back(unlock);
 
-    Ok(())
+    Ok((amount_to_release, end_time))
 }
 
 // ----------------------------------- tests -----------------------------------

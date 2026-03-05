@@ -478,6 +478,11 @@ pub struct LiquidityDepthResponse {
 //
 // | Event                    | User orders | Vault orders (maker) | Liq. taker            |
 // |--------------------------|-------------|----------------------|-----------------------|
+// | `Deposited`              | N/A         | N/A                  | N/A                   |
+// | `Withdrew`               | N/A         | N/A                  | N/A                   |
+// | `LiquidityAdded`         | N/A         | N/A                  | N/A                   |
+// | `LiquidityUnlocking`     | N/A         | N/A                  | N/A                   |
+// | `LiquidityReleased`      | N/A         | N/A                  | N/A                   |
 // | `OrderFilled`            | Yes         | Yes                  | Book-matched only (*) |
 // | `OrderPersisted`         | Yes         | No  (placed directly)| N/A                   |
 // | `OrderRemoved(Canceled)` | Yes         | No  (suppressed)     | N/A                   |
@@ -500,6 +505,42 @@ pub struct LiquidityDepthResponse {
 // For liquidation, the market-order PnL is captured by `OrderFilled` events
 // and the backstop PnL by `Liquidated` events (`backstop_realized_pnl`).
 // For ADL, the total realized PnL is captured by `Deleveraged`.
+
+/// Event indicating a user has deposited margin into his perp account.
+#[grug::event("deposited")]
+#[grug::derive(Serde)]
+pub struct Deposited {
+    pub user: Addr,
+    pub amount: UsdValue,
+}
+
+/// Event indicating a user has withdrawn margin from his perp account.
+#[grug::event("withdrew")]
+#[grug::derive(Serde)]
+pub struct Withdrew {
+    pub user: Addr,
+    pub amount: UsdValue,
+}
+
+/// Event indicating a user has deposited liquidity from his perp account margin
+/// into the vault.
+#[grug::event("liquidity_added")]
+#[grug::derive(Serde)]
+pub struct LiquidityAdded {
+    pub user: Addr,
+    pub amount: UsdValue,
+    pub shares_minted: Uint128,
+}
+
+/// Event indicating a user has initiated unlocking of liquidity from the vault.
+#[grug::event("liquidity_unlocking")]
+#[grug::derive(Serde)]
+pub struct LiquidityUnlocking {
+    pub user: Addr,
+    pub amount: UsdValue,
+    pub shares_burned: Uint128,
+    pub end_time: Timestamp,
+}
 
 /// Event indicating an order has been partially or fully filled.
 ///
@@ -582,6 +623,15 @@ pub struct Liquidated {
     pub backstop_realized_pnl: UsdValue,
     pub backstop_size: Quantity,
     pub backstop_price: UsdPrice,
+}
+
+/// Event indicating a user's vault unlock has matured and the released USD
+/// value has been credited back to their trading margin.
+#[grug::event("liquidity_released")]
+#[grug::derive(Serde)]
+pub struct LiquidityReleased {
+    pub user: Addr,
+    pub amount: UsdValue,
 }
 
 /// Event indicating a user has been hit by auto-deleveraging (ADL).

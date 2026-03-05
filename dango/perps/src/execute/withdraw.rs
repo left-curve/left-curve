@@ -2,7 +2,10 @@ use {
     crate::{NoCachePerpQuerier, USER_STATES, core::compute_available_margin, execute::oracle},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{UsdValue, perps::settlement_currency},
+    dango_types::{
+        UsdValue,
+        perps::{Withdrew, settlement_currency},
+    },
     grug::{IsZero, Message, MutableCtx, Response, coins},
 };
 
@@ -61,8 +64,13 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
         USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     }
 
-    Ok(Response::new().add_message(Message::transfer(
-        ctx.sender,
-        coins! { settlement_currency::DENOM.clone() => refund },
-    )?))
+    Ok(Response::new()
+        .add_message(Message::transfer(
+            ctx.sender,
+            coins! { settlement_currency::DENOM.clone() => refund },
+        )?)
+        .add_event(Withdrew {
+            user: ctx.sender,
+            amount,
+        })?)
 }
