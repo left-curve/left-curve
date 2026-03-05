@@ -26,7 +26,6 @@ import type { AppState } from "@left-curve/applets-kit";
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="rounded-xl bg-surface-secondary-rice shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
-      <h3 className="h4-bold text-ink-primary-900 px-2">{m["settings.display"]()}</h3>
       {children}
     </div>
   );
