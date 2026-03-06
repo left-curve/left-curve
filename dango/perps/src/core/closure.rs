@@ -8,6 +8,7 @@ use {
         Quantity, UsdPrice, UsdValue,
         perps::{PairId, PairParam, UserState},
     },
+    grug::MathResult,
     std::collections::BTreeMap,
 };
 
@@ -44,7 +45,7 @@ pub fn compute_close_schedule(
     pair_params: &BTreeMap<PairId, PairParam>,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     deficit: UsdValue,
-) -> anyhow::Result<Vec<(PairId, Quantity)>> {
+) -> MathResult<Vec<(PairId, Quantity)>> {
     let mut deficit = deficit;
 
     // Build (mm_contribution, pair_id) list, sorted descending by MM.
@@ -122,28 +123,30 @@ pub fn compute_bankruptcy_price(
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     user_pnl: UsdValue,
     user_fees: UsdValue,
-) -> anyhow::Result<UsdPrice> {
+) -> MathResult<UsdPrice> {
     // Compute current equity including accumulated PnL/fees from prior fills.
-    let mut equity = user_state.margin;
-    equity.checked_add_assign(user_pnl)?;
-    equity.checked_sub_assign(user_fees)?;
+    let mut equity = user_state
+        .margin
+        .checked_add(user_pnl)?
+        .checked_sub(user_fees)?;
 
     for (pid, pos) in &user_state.positions {
         let oracle_price = oracle_prices[pid];
         let unrealized = pos
             .size
             .checked_mul(oracle_price.checked_sub(pos.entry_price)?)?;
+
         equity.checked_add_assign(unrealized)?;
     }
 
     let position = &user_state.positions[pair_id];
     let oracle_price = oracle_prices[pair_id];
-    let offset: UsdPrice = equity.checked_div(close_amount)?;
+    let offset = equity.checked_div(close_amount)?;
 
     if position.size.is_positive() {
-        Ok(oracle_price.checked_sub(offset)?)
+        oracle_price.checked_sub(offset)
     } else {
-        Ok(oracle_price.checked_add(offset)?)
+        oracle_price.checked_add(offset)
     }
 }
 
