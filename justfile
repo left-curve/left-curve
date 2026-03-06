@@ -32,6 +32,11 @@ test-grug:
 test-dango:
   RUST_BACKTRACE=1 cargo test --all-features -p dango-testing -- --nocapture
 
+# Run dango perp tests
+test-perps:
+  RUST_BACKTRACE=1 cargo test --all-features -p dango-perps -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features -p dango-testing --test perps -- --nocapture
+
 # Run indexer tests
 test-indexer:
   RUST_BACKTRACE=1 cargo test --all-features -p indexer-testing -- --nocapture
