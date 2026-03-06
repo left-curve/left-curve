@@ -684,21 +684,19 @@ pub(crate) fn settle_pnls(
         let protocol_fee = fee.checked_mul(param.protocol_fee_rate)?;
         let vault_fee = fee.checked_sub(protocol_fee)?;
 
+        // Protocol collector receives its share.
+        maker_states
+            .entry(param.protocol_treasury)
+            .or_default()
+            .margin
+            .checked_add_assign(protocol_fee)?;
+
         // Vault receives its share.
         maker_states
             .get_mut(&contract)
             .unwrap()
             .margin
             .checked_add_assign(vault_fee)?;
-
-        // Protocol collector receives its share.
-        if protocol_fee.is_non_zero() {
-            maker_states
-                .entry(param.protocol_treasury)
-                .or_default()
-                .margin
-                .checked_add_assign(protocol_fee)?;
-        }
 
         // Deduct fee from the paying user.
         if user == taker {
