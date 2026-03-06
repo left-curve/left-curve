@@ -39,10 +39,6 @@ Floor rounding protects the vault from rounding exploitation. A minimum-shares p
 
 The virtual terms dominate when real supply and equity are small. An attacker cannot inflate the share price to steal from subsequent depositors because the initial share price is effectively $\$1 / 1{,}000{,}000 = \$0.000001$ per share.
 
-### ADL pause
-
-Deposits are **paused** when $\mathtt{vaultMargin} < 0$. This prevents new capital from entering a vault with negative margin — the deficit must be recovered through market-making profits first.
-
 ## 3. Liquidity withdrawal
 
 The LP specifies how many vault shares to burn. The USD value to release is computed:
@@ -58,10 +54,6 @@ $$
 $$
 
 Once $\mathtt{endTime}$ is reached, the contract credits the released USD value back to the LP's trading margin.
-
-### ADL pause
-
-Like deposits, withdrawals are **paused** when $\mathtt{vaultMargin} < 0$.
 
 ## 4. Vault equity
 

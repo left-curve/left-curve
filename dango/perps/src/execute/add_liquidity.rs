@@ -33,11 +33,6 @@ pub fn add_liquidity(
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    ensure!(
-        !vault_user_state.margin.is_negative(),
-        "deposits paused: unresolved ADL deficit"
-    );
-
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
