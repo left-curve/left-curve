@@ -201,7 +201,7 @@ $$
 \mathtt{userState.margin} \mathrel{+}= \mathtt{pnl}
 $$
 
-A user's margin can go negative temporarily — the outer function handles bad debt (see [Liquidation](5-liquidation-and-adl.md)).
+A user's margin can go negative temporarily — the outer function handles bad debt (see [Liquidation](4-liquidation-and-adl.md)).
 
 **Vault:**
 
@@ -209,7 +209,7 @@ $$
 \mathtt{vaultMargin} \mathrel{+}= \mathtt{pnl}
 $$
 
-A negative $\mathtt{vaultMargin}$ represents a deficit (bad debt not yet recovered via [ADL](5-liquidation-and-adl.md)).
+A negative $\mathtt{vaultMargin}$ represents a deficit (bad debt not yet recovered via [ADL](4-liquidation-and-adl.md)).
 
 ## 10. Unfilled remainder
 

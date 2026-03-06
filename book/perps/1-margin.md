@@ -78,7 +78,7 @@ $$
 \mathtt{equity} < \mathtt{MM}
 $$
 
-See [Liquidation](5-liquidation-and-adl.md) for details.
+See [Liquidation](4-liquidation-and-adl.md) for details.
 
 ## 7. Reserved margin
 

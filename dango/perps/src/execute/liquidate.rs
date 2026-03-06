@@ -283,6 +283,7 @@ fn _liquidate(
         contract,
         user,
         user_state,
+        param,
         &mut all_maker_states,
     )?;
 

@@ -2,11 +2,7 @@
 
 ## 1. Overview
 
-The vault is the **counterparty of last resort** for the perpetual futures exchange. It serves three functions:
-
-1. **Backstop liquidity** — absorbs unfilled liquidation volume at the oracle price (see [Liquidation & ADL](5-liquidation-and-adl.md#3b-vault-backstop)).
-2. **Bad-debt absorption** — covers losses when a liquidated account's collateral is insufficient.
-3. **Passive market-making** — continuously quotes bid/ask orders around the oracle price on every pair, earning the spread.
+The vault is the **passive market maker** for the perpetual futures exchange. It continuously quotes bid/ask orders around the oracle price on every pair, earning the spread.
 
 Liquidity providers (LPs) deposit settlement currency into the vault and receive vault shares credited to their account.
 
@@ -45,7 +41,7 @@ The virtual terms dominate when real supply and equity are small. An attacker ca
 
 ### ADL pause
 
-Deposits are **paused** when $\mathtt{vaultMargin} < 0$. This prevents new capital from entering a vault that has unresolved bad debt — the deficit must be cleared via [ADL](5-liquidation-and-adl.md#7-adl-trigger) first.
+Deposits are **paused** when $\mathtt{vaultMargin} < 0$. This prevents new capital from entering a vault with negative margin — the deficit must be recovered through market-making profits first.
 
 ## 3. Liquidity withdrawal
 
@@ -69,7 +65,7 @@ Like deposits, withdrawals are **paused** when $\mathtt{vaultMargin} < 0$.
 
 ## 4. Vault equity
 
-The vault has its own user state (positions acquired from market-making fills and liquidation backstops). Its equity follows the same formula as any user:
+The vault has its own user state (positions acquired from market-making fills). Its equity follows the same formula as any user:
 
 $$
 \mathtt{vaultEquity} = \mathtt{vaultMarginValue} + \sum \mathtt{unrealisedPnl} - \sum \mathtt{accruedFunding}

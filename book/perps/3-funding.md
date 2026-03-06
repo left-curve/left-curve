@@ -75,7 +75,7 @@ $$
 \mathtt{entryFundingPerUnit} \gets \mathtt{fundingPerUnit}
 $$
 
-**Sign convention:** positive accrued funding is a cost to the holder (longs pay when the rate is positive, shorts pay when it is negative). The negated accrued funding is added to the user's realised PnL. See [Order matching §7a](2-order-matching.md#7a-funding-settlement) and [Vault §4](4-vault.md) for how this integrates with fill execution and vault accounting.
+**Sign convention:** positive accrued funding is a cost to the holder (longs pay when the rate is positive, shorts pay when it is negative). The negated accrued funding is added to the user's realised PnL. See [Order matching §7a](2-order-matching.md#7a-funding-settlement) and [Vault §4](5-vault.md) for how this integrates with fill execution and vault accounting.
 
 ## 5. Parameters
 

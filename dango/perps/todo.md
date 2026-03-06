@@ -1,5 +1,5 @@
 - [x] update proposal preparer to trigger vault order update
-- [ ] protocol fee
+- [x] protocol fee
 - [ ] volume tracking
 - [ ] tiered fee rate based on volume
 - [x] query for order book depth

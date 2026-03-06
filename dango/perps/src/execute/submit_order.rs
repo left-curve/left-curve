@@ -342,7 +342,15 @@ fn _submit_order(
             .unwrap_or_default()
     });
 
-    settle_pnls(pnls, fees, contract, taker, taker_state, &mut maker_states)?;
+    settle_pnls(
+        pnls,
+        fees,
+        contract,
+        taker,
+        taker_state,
+        param,
+        &mut maker_states,
+    )?;
 
     Ok((
         maker_states,
@@ -624,6 +632,7 @@ pub(crate) fn settle_fill(
             closing_size: closing,
             opening_size: opening,
             realized_pnl: pnl,
+            fee,
         })?;
     }
 
@@ -656,6 +665,7 @@ pub(crate) fn settle_pnls(
     contract: Addr,
     taker: Addr,
     taker_state: &mut UserState,
+    param: &Param,
     maker_states: &mut BTreeMap<Addr, UserState>,
 ) -> anyhow::Result<()> {
     debug_assert!(
@@ -670,12 +680,25 @@ pub(crate) fn settle_pnls(
             continue;
         }
 
-        // Non-vault fee → vault margin increases.
+        // Split the fee between the protocol treasury and the vault.
+        let protocol_fee = fee.checked_mul(param.protocol_fee_rate)?;
+        let vault_fee = fee.checked_sub(protocol_fee)?;
+
+        // Vault receives its share.
         maker_states
             .get_mut(&contract)
             .unwrap()
             .margin
-            .checked_add_assign(fee)?;
+            .checked_add_assign(vault_fee)?;
+
+        // Protocol collector receives its share.
+        if protocol_fee.is_non_zero() {
+            maker_states
+                .entry(param.protocol_treasury)
+                .or_default()
+                .margin
+                .checked_add_assign(protocol_fee)?;
+        }
 
         // Deduct fee from the paying user.
         if user == taker {
@@ -1831,6 +1854,7 @@ mod tests {
             CONTRACT,
             taker,
             &mut taker_state,
+            &Param::default(),
             &mut maker_states,
         )
         .unwrap();
@@ -1869,6 +1893,7 @@ mod tests {
             CONTRACT,
             taker,
             &mut taker_state,
+            &Param::default(),
             &mut maker_states,
         )
         .unwrap();
@@ -1901,6 +1926,7 @@ mod tests {
             CONTRACT,
             taker,
             &mut taker_state,
+            &Param::default(),
             &mut maker_states,
         )
         .unwrap();
@@ -1930,6 +1956,7 @@ mod tests {
             CONTRACT,
             taker,
             &mut taker_state,
+            &Param::default(),
             &mut maker_states,
         )
         .unwrap();
@@ -1958,6 +1985,7 @@ mod tests {
             CONTRACT,
             taker,
             &mut taker_state,
+            &Param::default(),
             &mut maker_states,
         )
         .unwrap();
@@ -1991,6 +2019,7 @@ mod tests {
             CONTRACT,
             taker,
             &mut taker_state,
+            &Param::default(),
             &mut maker_states,
         )
         .unwrap();
@@ -2017,6 +2046,7 @@ mod tests {
             CONTRACT,
             taker,
             &mut taker_state,
+            &Param::default(),
             &mut maker_states,
         )
         .unwrap();
@@ -2043,6 +2073,7 @@ mod tests {
             CONTRACT,
             taker,
             &mut taker_state,
+            &Param::default(),
             &mut maker_states,
         )
         .unwrap();
@@ -2070,11 +2101,42 @@ mod tests {
             CONTRACT,
             taker,
             &mut taker_state,
+            &Param::default(),
             &mut maker_states,
         )
         .unwrap();
 
         assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(1_000));
+    }
+
+    #[test]
+    fn settle_pnls_protocol_fee_split() {
+        let treasury = Addr::mock(99);
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let param = Param {
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            protocol_treasury: treasury,
+            ..Default::default()
+        };
+        let mut maker_states = BTreeMap::from([(CONTRACT, UserState::default())]);
+        let pnls = BTreeMap::new();
+        let fees = BTreeMap::from([(Addr::mock(1), UsdValue::new_int(100))]);
+
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &param,
+            &mut maker_states,
+        )
+        .unwrap();
+
+        assert_eq!(taker_state.margin, UsdValue::new_int(-100));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(80));
+        assert_eq!(maker_states[&treasury].margin, UsdValue::new_int(20));
     }
 
     // =================== Post-only order tests ===============================
