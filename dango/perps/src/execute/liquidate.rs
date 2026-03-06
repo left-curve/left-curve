@@ -11,10 +11,10 @@ use {
             submit_order::{match_order, settle_fill, settle_pnls},
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
-        price::may_invert_price,
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
+        price::may_invert_price,
         state::{LONGS, SHORTS},
     },
     anyhow::ensure,
