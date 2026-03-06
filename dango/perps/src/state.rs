@@ -3,9 +3,15 @@ use {
         Quantity, UsdPrice, UsdValue,
         perps::{Order, OrderId, PairId, PairParam, PairState, Param, State, UserState},
     },
-    grug::{Addr, IndexedMap, Item, Map, MultiIndex, Timestamp, UniqueIndex},
+    grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
     std::collections::BTreeSet,
 };
+
+// --------------------------------- constants ---------------------------------
+
+pub const NEXT_ORDER_ID: Item<OrderId> = Item::new("next_order_id");
+
+pub const LAST_VAULT_ORDERS_UPDATE: Item<u64> = Item::new("last_vault_orders_update");
 
 pub const PARAM: Item<Param> = Item::new("param");
 
@@ -20,9 +26,17 @@ pub const PAIR_STATES: Map<&PairId, PairState> = Map::new("pair_state");
 pub const USER_STATES: IndexedMap<Addr, UserState, UserStateIndexes> =
     IndexedMap::new("us", UserStateIndexes::new("us", "us__unlock"));
 
-pub const NEXT_ORDER_ID: Item<OrderId> = Item::new("next_order_id");
+/// For a given trading pair, users who have _long_ positions in this pair,
+/// indexed by their entry prices.
+///
+/// Used during auto-deleveraging (ADL) to find the most profitable positions.
+pub const LONGS: Set<(PairId, UsdPrice, Addr)> = Set::new("long");
 
-pub const LAST_VAULT_ORDERS_UPDATE: Item<u64> = Item::new("last_vault_orders_update");
+/// For a given trading pair, users who have _short_ positions in this pair,
+/// indexed by their entry prices.
+///
+/// Used during auto-deleveraging (ADL) to find the most profitable positions.
+pub const SHORTS: Set<(PairId, UsdPrice, Addr)> = Set::new("short");
 
 pub const BIDS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("bid", OrderIndexes::new("bid", "bid__id", "bid__user"));
@@ -31,6 +45,8 @@ pub const ASKS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
 
 pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
+
+// ----------------------------------- types -----------------------------------
 
 pub type OrderKey = (PairId, UsdPrice, OrderId);
 

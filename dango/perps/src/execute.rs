@@ -1,7 +1,6 @@
 mod add_liquidity;
 mod cancel_order;
 mod configure;
-mod deleverage;
 mod deposit;
 mod liquidate;
 mod on_oracle_update;
@@ -82,7 +81,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             remove_liquidity::remove_liquidity(ctx, shares_to_burn)
         },
         ExecuteMsg::Liquidate { user } => liquidate::liquidate(ctx, user),
-        ExecuteMsg::Deleverage { user } => deleverage::deleverage(ctx, user),
         ExecuteMsg::Configure { param, pair_params } => {
             configure::configure(ctx, param, pair_params)
         },

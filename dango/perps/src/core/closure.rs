@@ -108,6 +108,45 @@ pub fn compute_close_schedule(
     Ok(schedule)
 }
 
+/// Compute the bankruptcy price for a position being closed during liquidation.
+///
+/// This is the fill price at which the user's total equity would be exactly
+/// zero after closing `close_amount` of the position.
+///
+/// For longs:  bp = oracle_price - equity / close_amount
+/// For shorts: bp = oracle_price + equity / close_amount
+pub fn compute_bankruptcy_price(
+    user_state: &UserState,
+    pair_id: &PairId,
+    close_amount: Quantity,
+    oracle_prices: &BTreeMap<PairId, UsdPrice>,
+    user_pnl: UsdValue,
+    user_fees: UsdValue,
+) -> anyhow::Result<UsdPrice> {
+    // Compute current equity including accumulated PnL/fees from prior fills.
+    let mut equity = user_state.margin;
+    equity.checked_add_assign(user_pnl)?;
+    equity.checked_sub_assign(user_fees)?;
+
+    for (pid, pos) in &user_state.positions {
+        let oracle_price = oracle_prices[pid];
+        let unrealized = pos
+            .size
+            .checked_mul(oracle_price.checked_sub(pos.entry_price)?)?;
+        equity.checked_add_assign(unrealized)?;
+    }
+
+    let position = &user_state.positions[pair_id];
+    let oracle_price = oracle_prices[pair_id];
+    let offset: UsdPrice = equity.checked_div(close_amount)?;
+
+    if position.size.is_positive() {
+        Ok(oracle_price.checked_sub(offset)?)
+    } else {
+        Ok(oracle_price.checked_add(offset)?)
+    }
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -468,5 +507,110 @@ mod tests {
         assert_eq!(schedule[0].0, pair_btc());
         // Only 2 of 10 BTC closed
         assert_eq!(schedule[0].1, Quantity::new_int(-2));
+    }
+
+    // ==================== `compute_bankruptcy_price` tests ====================
+
+    #[test]
+    fn bankruptcy_price_long_single_position() {
+        // Long 1 BTC @ $50k, margin $3k, oracle $46k.
+        // Equity = 3k + 1*(46k - 50k) = -1k.
+        // bp = 46k - (-1k)/1 = 47k.
+        let user_state = UserState {
+            margin: UsdValue::new_int(3_000),
+            positions: BTreeMap::from([(pair_btc(), Position {
+                size: Quantity::new_int(1),
+                entry_price: UsdPrice::new_int(50_000),
+                entry_funding_per_unit: FundingPerUnit::ZERO,
+            })]),
+            ..Default::default()
+        };
+
+        let oracle_prices = BTreeMap::from([(pair_btc(), UsdPrice::new_int(46_000))]);
+
+        let bp = compute_bankruptcy_price(
+            &user_state,
+            &pair_btc(),
+            Quantity::new_int(1),
+            &oracle_prices,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+        )
+        .unwrap();
+
+        assert_eq!(bp, UsdPrice::new_int(47_000));
+    }
+
+    #[test]
+    fn bankruptcy_price_short_single_position() {
+        // Short 1 BTC @ $50k, margin $3k, oracle $54k.
+        // Equity = 3k + (-1)*(54k-50k) = 3k - 4k = -1k.
+        // bp = 54k + (-1k)/1 = 53k.
+        let user_state = UserState {
+            margin: UsdValue::new_int(3_000),
+            positions: BTreeMap::from([(pair_btc(), Position {
+                size: Quantity::new_int(-1),
+                entry_price: UsdPrice::new_int(50_000),
+                entry_funding_per_unit: FundingPerUnit::ZERO,
+            })]),
+            ..Default::default()
+        };
+
+        let oracle_prices = BTreeMap::from([(pair_btc(), UsdPrice::new_int(54_000))]);
+
+        let bp = compute_bankruptcy_price(
+            &user_state,
+            &pair_btc(),
+            Quantity::new_int(1),
+            &oracle_prices,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+        )
+        .unwrap();
+
+        assert_eq!(bp, UsdPrice::new_int(53_000));
+    }
+
+    #[test]
+    fn bankruptcy_price_with_other_positions() {
+        // Long 1 BTC @ $50k + Long 10 ETH @ $3k, margin $5k.
+        // Oracle BTC $46k, ETH $3.2k.
+        // Unrealized BTC = 1*(46k-50k) = -4k.
+        // Unrealized ETH = 10*(3.2k-3k) = 2k.
+        // Equity = 5k + (-4k) + 2k = 3k.
+        // bp = 46k - 3k/1 = 43k.
+        let user_state = UserState {
+            margin: UsdValue::new_int(5_000),
+            positions: BTreeMap::from([
+                (pair_btc(), Position {
+                    size: Quantity::new_int(1),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                }),
+                (pair_eth(), Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(3_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                }),
+            ]),
+            ..Default::default()
+        };
+
+        let oracle_prices = BTreeMap::from([
+            (pair_btc(), UsdPrice::new_int(46_000)),
+            (pair_eth(), UsdPrice::new_int(3_200)),
+        ]);
+
+        let bp = compute_bankruptcy_price(
+            &user_state,
+            &pair_btc(),
+            Quantity::new_int(1),
+            &oracle_prices,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+        )
+        .unwrap();
+
+        assert_eq!(bp, UsdPrice::new_int(43_000));
     }
 }

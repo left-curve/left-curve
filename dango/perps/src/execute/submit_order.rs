@@ -9,6 +9,9 @@ use {
         },
         execute::oracle,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
+        position_index::{
+            PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
+        },
         price::may_invert_price,
     },
     anyhow::ensure,
@@ -52,22 +55,23 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (maker_states, order_mutations, order_to_store, next_order_id) = _submit_order(
-        ctx.storage,
-        ctx.sender,
-        ctx.contract,
-        &param,
-        &pair_param,
-        &mut pair_state,
-        &mut taker_state,
-        &pair_id,
-        oracle_price,
-        size,
-        kind,
-        reduce_only,
-        &mut oracle_querier,
-        &mut events,
-    )?;
+    let (maker_states, order_mutations, order_to_store, next_order_id, index_updates) =
+        _submit_order(
+            ctx.storage,
+            ctx.sender,
+            ctx.contract,
+            &param,
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            &pair_id,
+            oracle_price,
+            size,
+            kind,
+            reduce_only,
+            &mut oracle_querier,
+            &mut events,
+        )?;
 
     // ------------------------ 3. Apply state changes -------------------------
 
@@ -80,6 +84,8 @@ pub fn submit_order(
     for (addr, maker_state) in &maker_states {
         USER_STATES.save(ctx.storage, *addr, maker_state)?;
     }
+
+    apply_position_index_updates(ctx.storage, &index_updates)?;
 
     let (taker_book, maker_book) = if size.is_positive() {
         (BIDS, ASKS)
@@ -195,6 +201,7 @@ fn _submit_order(
     Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
     Option<(UsdPrice, OrderId, Order)>,
     OrderId,
+    Vec<PositionIndexUpdate>,
 )> {
     // -------------- Step 1. Check minimum order size -------------------------
 
@@ -251,6 +258,7 @@ fn _submit_order(
             Vec::new(),
             Some(order_to_store),
             taker_order_id + OrderId::ONE,
+            Vec::new(),
         ));
     }
 
@@ -281,7 +289,7 @@ fn _submit_order(
 
     let mut maker_states = BTreeMap::new();
 
-    let (unfilled, pnls, fees, order_mutations) = match_order(
+    let (unfilled, pnls, fees, order_mutations, index_updates) = match_order(
         storage,
         param,
         pair_id,
@@ -340,7 +348,13 @@ fn _submit_order(
     // Extract taker back.
     *taker_state = maker_states.remove(&taker).unwrap();
 
-    Ok((maker_states, order_mutations, order_to_store, next_order_id))
+    Ok((
+        maker_states,
+        order_mutations,
+        order_to_store,
+        next_order_id,
+        index_updates,
+    ))
 }
 
 /// Mutates:
@@ -360,6 +374,9 @@ fn _submit_order(
 ///   `None` = remove (fully filled / self-trade), `Some` = update (partially
 ///   filled). `pre_fill_abs_size` is the maker order's absolute size *before*
 ///   this match, used for depth bookkeeping.
+/// - Position index updates (`Vec<PositionIndexUpdate>`): deferred LONGS/SHORTS
+///   index changes for each taker and maker fill. The caller must apply these
+///   to storage via `apply_position_index_updates`.
 ///
 /// Self-trade prevention (EXPIRE_MAKER): if a resting order belongs to
 /// the taker, the order is cancelled and the taker continues matching
@@ -383,10 +400,12 @@ pub(crate) fn match_order(
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
     Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
+    Vec<PositionIndexUpdate>,
 )> {
     let mut pnls = BTreeMap::new();
     let mut fees = BTreeMap::new();
     let mut order_mutations = Vec::new();
+    let mut index_updates = Vec::new();
 
     // Create iterator over the maker side of the order book.
     // The iteration follows price-time priority.
@@ -417,7 +436,7 @@ pub(crate) fn match_order(
             break;
         }
 
-        // --------- Self-trade prevention (EXPIRE_MAKER) ----------
+        // ----------------------- Self-trade prevention -----------------------
 
         // If we come across a maker order that was placed by the taker himself,
         // cancel the maker order and move on.
@@ -454,16 +473,9 @@ pub(crate) fn match_order(
 
         let maker_fill_size = taker_fill_size.checked_neg()?;
 
-        // -------------------- Settle PnL and trading fee ---------------------
+        // ------------------------ Settle taker's PnL -------------------------
 
-        // Find the maker's user state.
-        let maker_state = match maker_states.entry(maker_order.user) {
-            Entry::Vacant(e) => {
-                let maybe_maker_state = USER_STATES.may_load(storage, maker_order.user)?;
-                e.insert(maybe_maker_state.unwrap_or_default())
-            },
-            Entry::Occupied(e) => e.into_mut(),
-        };
+        let old_taker_pos = taker_state.positions.get(pair_id).cloned();
 
         settle_fill(
             pair_id,
@@ -478,6 +490,28 @@ pub(crate) fn match_order(
             Some((events, taker_order_id)),
         )?;
 
+        if let Some(diff) = compute_position_diff(
+            pair_id,
+            taker,
+            old_taker_pos.as_ref(),
+            taker_state.positions.get(pair_id),
+        ) {
+            index_updates.push(diff);
+        }
+
+        // ------------------------ Settle maker's PnL -------------------------
+
+        // Find the maker's user state.
+        let maker_state = match maker_states.entry(maker_order.user) {
+            Entry::Vacant(e) => {
+                let maybe_maker_state = USER_STATES.may_load(storage, maker_order.user)?;
+                e.insert(maybe_maker_state.unwrap_or_default())
+            },
+            Entry::Occupied(e) => e.into_mut(),
+        };
+
+        let old_maker_pos = maker_state.positions.get(pair_id).cloned();
+
         settle_fill(
             pair_id,
             pair_state,
@@ -490,6 +524,15 @@ pub(crate) fn match_order(
             maker_order.user,
             Some((events, maker_order_id)),
         )?;
+
+        if let Some(diff) = compute_position_diff(
+            pair_id,
+            maker_order.user,
+            old_maker_pos.as_ref(),
+            maker_state.positions.get(pair_id),
+        ) {
+            index_updates.push(diff);
+        }
 
         // ---------------- Update maker's order and user state ----------------
 
@@ -536,7 +579,7 @@ pub(crate) fn match_order(
         remaining_size.checked_sub_assign(taker_fill_size)?;
     }
 
-    Ok((remaining_size, pnls, fees, order_mutations))
+    Ok((remaining_size, pnls, fees, order_mutations, index_updates))
 }
 
 /// Mutates:
@@ -914,7 +957,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, _) = _submit_order(
+        let (_, order_mutations, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -970,7 +1013,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store, _) = _submit_order(
+        let (_, _, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1063,7 +1106,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store, _) = _submit_order(
+        let (_, _, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1110,7 +1153,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store, _) = _submit_order(
+        let (_, _, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1161,7 +1204,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store, _) = _submit_order(
+        let (_, _, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1218,7 +1261,7 @@ mod tests {
         });
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store, _) = _submit_order(
+        let (_, _, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1309,7 +1352,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, _) = _submit_order(
+        let (_, order_mutations, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1564,7 +1607,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, _) = _submit_order(
+        let (_, order_mutations, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1946,7 +1989,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, _) = _submit_order(
+        let (_, order_mutations, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2079,7 +2122,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, _) = _submit_order(
+        let (_, order_mutations, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2169,7 +2212,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store, _) = _submit_order(
+        let (_, _, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2220,7 +2263,7 @@ mod tests {
         });
         let mut oq = test_oracle_querier();
 
-        let (.., order_to_store, _) = _submit_order(
+        let (_, _, order_to_store, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2662,7 +2705,7 @@ mod tests {
             };
             let mut oq = test_oracle_querier();
 
-            let (_, _, order_to_store, next_order_id) = _submit_order(
+            let (_, _, order_to_store, next_order_id, _) = _submit_order(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
@@ -2720,7 +2763,7 @@ mod tests {
             };
             let mut oq = test_oracle_querier();
 
-            let (_, _, order_to_store, next_order_id) = _submit_order(
+            let (_, _, order_to_store, next_order_id, _) = _submit_order(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,

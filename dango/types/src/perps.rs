@@ -73,9 +73,9 @@ pub struct Param {
     /// and transferred to the vault on every fill.
     pub taker_fee_rate: Dimensionless,
 
-    /// Fee paid to the vault as a fraction of the total notional value of
-    /// positions being liquidated, capped at the user's remaining margin
-    /// after position closure.
+    /// Fee paid to the insurance fund as a fraction of the total notional
+    /// value of positions being liquidated, capped at the user's remaining
+    /// margin after position closure.
     ///
     /// fee = min(
     ///   ceil(|position_size| * oracle_price * liquidation_fee_rate / settlement_currency_price),
@@ -86,9 +86,6 @@ pub struct Param {
     /// Duration between funding collections. The cron job applies funding
     /// only when this period elapses.
     pub funding_period: Duration,
-
-    /// Set of addresses authorized to call `Deleverage`.
-    pub adl_operators: BTreeSet<Addr>,
 
     /// Sum of `vault_liquidity_weight` across all trading pairs.
     /// Precomputed to avoid iterating all pair params when placing
@@ -111,6 +108,11 @@ pub struct State {
 
     /// Total supply of the vault's share token.
     pub vault_share_supply: Uint128,
+
+    /// Insurance fund balance, funded by liquidation fees and used to cover
+    /// bad debt. May go negative when bad debt exceeds the fund; future
+    /// liquidation fees will replenish it.
+    pub insurance_fund: UsdValue,
 }
 
 /// Parameters that apply to an individual trading pair.
@@ -345,14 +347,10 @@ pub enum ExecuteMsg {
 
     /// Forcibly close all of a user's positions, if the user has less collateral
     /// than the maintenance margin required by his positions.
-    Liquidate { user: Addr },
-
-    /// Forcibly close all of a user's positions, even if the user has sufficient
-    /// amount of collateral.
     ///
-    /// This is enabled when the vault cannot fully absorb bad debt from
-    /// liquidations.
-    Deleverage { user: Addr },
+    /// Unfilled positions are ADL'd against counter-parties at the bankruptcy
+    /// price. Any remaining bad debt is absorbed by the insurance fund.
+    Liquidate { user: Addr },
 
     /// Update global and/or per-pair parameters.
     /// Only callable by the chain owner (or GENESIS_SENDER during instantiation).
@@ -474,7 +472,7 @@ pub struct LiquidityDepthResponse {
 // - Vault order lifecycle (`OrderPersisted`, `OrderRemoved(Canceled)`,
 //   `OrderRemoved(Filled)`) is internal churn (every block) — noise for indexers.
 // - Liquidation taker uses `OrderId::ZERO` as sentinel (no user-submitted order).
-// - Backstop fills and ADL closures are off-book — not `OrderFilled` events.
+// - ADL closures are off-book — not `OrderFilled` events.
 //
 // | Event                    | User orders | Vault orders (maker) | Liq. taker            |
 // |--------------------------|-------------|----------------------|-----------------------|
@@ -491,20 +489,18 @@ pub struct LiquidityDepthResponse {
 // | `OrderRemoved(Liq.)`     | Yes         | -                    | -                     |
 // | `OrderRemoved(ADL)`      | Yes         | -                    | -                     |
 // | `Liquidated`             | 1 per pair  | -                    | 1 per pair            |
-// | `Deleveraged`            | Yes         | -                    | -                     |
+// | `Deleveraged`            | 1 per ADL'd counter-party         | -                     |
+// | `BadDebtCovered`         | 1 per liquidation (if bad debt)   | -                     |
 //
 // (*) Off-book fills that realize PnL without emitting `OrderFilled`:
 //
-// - **Liquidation backstop** — both taker (user being liquidated) and vault.
-//   `settle_fill` is called with `None` for events on both sides.
-//   The backstop PnL is reported via `Liquidated::backstop_realized_pnl`.
-// - **ADL** — both taker (user being ADL'd) and vault. The taker's
-//   `settle_fill` passes `None`; the vault has no `settle_fill` at all —
-//   its margin is adjusted directly via the forfeiture logic.
+// - **ADL** — both the liquidated user and counter-parties. `settle_fill` is
+//   called with `None` for events on both sides. The liquidated user's ADL
+//   is reported via `Liquidated::adl_size/adl_price`. Counter-parties are
+//   reported via `Deleveraged` events.
 //
-// For liquidation, the market-order PnL is captured by `OrderFilled` events
-// and the backstop PnL by `Liquidated` events (`backstop_realized_pnl`).
-// For ADL, the total realized PnL is captured by `Deleveraged`.
+// For liquidation, the market-order PnL is captured by `OrderFilled` events,
+// the ADL portion by `Liquidated`, and counter-party impact by `Deleveraged`.
 
 /// Event indicating a user has deposited margin into his perp account.
 #[grug::event("deposited")]
@@ -622,24 +618,45 @@ pub enum ReasonForOrderRemoval {
 /// Event indicating a user has been liquidated in a specific pair.
 ///
 /// Emitted once per pair closed during liquidation. The market-order portion's
-/// PnL is captured by `OrderFilled` events; this event reports only the
-/// backstop (off-book) portion.
+/// PnL is captured by `OrderFilled` events; this event reports the ADL
+/// (off-book) portion.
 #[grug::event("liquidated")]
 #[grug::derive(Serde)]
 pub struct Liquidated {
     pub user: Addr,
     pub pair_id: PairId,
-    pub backstop_realized_pnl: UsdValue,
-    pub backstop_size: Quantity,
-    pub backstop_price: UsdPrice,
+
+    /// Size closed via ADL (zero if fully filled on book).
+    pub adl_size: Quantity,
+
+    /// Bankruptcy price used for ADL fills, or `None` if no ADL happened.
+    pub adl_price: Option<UsdPrice>,
 }
 
-/// Event indicating a user has been hit by auto-deleveraging (ADL).
+/// Event indicating a counter-party's position was reduced during ADL.
+///
+/// Emitted for each counter-party hit during a liquidation's ADL step.
 #[grug::event("deleveraged")]
 #[grug::derive(Serde)]
 pub struct Deleveraged {
     pub user: Addr,
-    pub closing_sizes: BTreeMap<PairId, Quantity>,
+    pub pair_id: PairId,
+
+    /// Size closed (sign matches the reduction to the counter-party's position).
+    pub closing_size: Quantity,
+
+    /// Fill price (the liquidated user's bankruptcy price).
+    pub fill_price: UsdPrice,
+
+    /// PnL realized by the counter-party from this ADL fill.
     pub realized_pnl: UsdValue,
-    pub forfeited_pnl: UsdValue,
+}
+
+/// Event indicating the insurance fund absorbed bad debt from a liquidation.
+#[grug::event("bad_debt_covered")]
+#[grug::derive(Serde)]
+pub struct BadDebtCovered {
+    pub liquidated_user: Addr,
+    pub amount: UsdValue,
+    pub insurance_fund_remaining: UsdValue,
 }
