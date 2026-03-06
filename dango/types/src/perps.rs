@@ -571,6 +571,7 @@ pub struct OrderFilled {
     pub closing_size: Quantity,
     pub opening_size: Quantity,
     pub realized_pnl: UsdValue,
+    pub fee: UsdValue,
 }
 
 /// Event indicating an order have been inserted into the order book.
