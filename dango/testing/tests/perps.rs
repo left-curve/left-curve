@@ -8,8 +8,8 @@ use {
         perps::{self, LiquidityDepthResponse, PairParam, Param, UserState},
     },
     grug::{
-        Addressable, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, NumberConst, QuerierExt,
-        ResultExt, Timestamp, Udec128, Uint128, btree_map, btree_set, concat,
+        Addr, Addressable, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, NumberConst,
+        QuerierExt, ResultExt, Timestamp, Udec128, Uint128, btree_map, btree_set, concat,
     },
     grug_app::CONTRACT_NAMESPACE,
     pyth_types::{Channel, LeEcdsaMessage},
@@ -25,6 +25,8 @@ fn default_param() -> Param {
     Param {
         taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
         maker_fee_rate: Dimensionless::ZERO,
+        protocol_fee_rate: Dimensionless::ZERO,
+        protocol_treasury: Addr::mock(0),
         liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
         vault_cooldown_period: Duration::from_days(1),
         max_unlocks: 10,
