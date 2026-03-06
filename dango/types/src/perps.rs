@@ -54,6 +54,7 @@ impl OrderKind {
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
 #[grug::derive(Serde, Borsh)]
+#[derive(Default)]
 pub struct Param {
     /// Maximum number of unlock requests a single user may have.
     pub max_unlocks: usize,
@@ -75,10 +76,6 @@ pub struct Param {
     /// Fraction of each trading fee routed to the protocol treasury.
     /// The remainder (1 − `protocol_fee_rate`) stays with the vault.
     pub protocol_fee_rate: Dimensionless,
-
-    /// Address that receives the protocol's share of trading fees.
-    /// Its `UserState.margin` is credited on every fill settlement.
-    pub protocol_treasury: Addr,
 
     /// Fee paid to the insurance fund as a fraction of the total notional
     /// value of positions being liquidated, capped at the user's remaining
@@ -106,23 +103,6 @@ pub struct Param {
     pub vault_cooldown_period: Duration,
 }
 
-impl Default for Param {
-    fn default() -> Self {
-        Self {
-            max_unlocks: Default::default(),
-            max_open_orders: Default::default(),
-            maker_fee_rate: Default::default(),
-            taker_fee_rate: Default::default(),
-            protocol_fee_rate: Default::default(),
-            protocol_treasury: Addr::mock(0),
-            liquidation_fee_rate: Default::default(),
-            funding_period: Default::default(),
-            vault_total_weight: Default::default(),
-            vault_cooldown_period: Default::default(),
-        }
-    }
-}
-
 /// Global state that concerns the counterparty vault and all trading pairs.
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
@@ -137,6 +117,10 @@ pub struct State {
     /// bad debt. May go negative when bad debt exceeds the fund; future
     /// liquidation fees will replenish it.
     pub insurance_fund: UsdValue,
+
+    /// Accumulated protocol fees from trading. Incremented on every fill
+    /// settlement by `fee * protocol_fee_rate`.
+    pub treasury: UsdValue,
 }
 
 /// Parameters that apply to an individual trading pair.

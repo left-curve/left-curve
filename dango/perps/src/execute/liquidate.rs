@@ -285,6 +285,7 @@ fn _liquidate(
         user_state,
         param,
         &mut all_maker_states,
+        &mut state.treasury,
     )?;
 
     // Route liquidation fee to insurance fund (not vault margin).

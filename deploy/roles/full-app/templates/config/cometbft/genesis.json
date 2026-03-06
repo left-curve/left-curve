@@ -904,7 +904,6 @@
               "max_open_orders": 100,
               "max_unlocks": 10,
               "protocol_fee_rate": "0",
-              "protocol_treasury": "0x0000000000000000000000000000000000000000",
               "taker_fee_rate": "0.001",
               "vault_cooldown_period": "86400",
               "vault_total_weight": "0"
