@@ -628,6 +628,7 @@ pub(crate) fn settle_fill(
             closing_size: closing,
             opening_size: opening,
             realized_pnl: pnl,
+            fee,
         })?;
     }
 
