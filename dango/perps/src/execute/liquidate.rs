@@ -10,6 +10,7 @@ use {
             oracle,
             submit_order::{match_order, settle_fill, settle_pnls},
         },
+        flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
@@ -94,7 +95,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------------- 5. Business logic ---------------------------
 
-    let (maker_states, order_mutations, index_updates) = _liquidate(
+    let (maker_states, order_mutations, index_updates, volumes) = _liquidate(
         ctx.storage,
         user,
         ctx.contract,
@@ -109,6 +110,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     )?;
 
     // --------------------- 6. Apply state changes ----------------------------
+
+    flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
 
     STATE.save(ctx.storage, &state)?;
 
@@ -214,6 +217,7 @@ fn _liquidate(
     BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
     Vec<PositionIndexUpdate>,
+    BTreeMap<Addr, UsdValue>,
 )> {
     // -------------------- Step 1: Assert liquidatable -------------------------
 
@@ -236,19 +240,25 @@ fn _liquidate(
 
     let mut all_maker_states = BTreeMap::new();
 
-    let (all_pnls, mut all_fees, all_order_mutations, closed_notional, all_index_updates) =
-        execute_close_schedule(
-            storage,
-            &schedule,
-            user,
-            contract,
-            param,
-            pair_states,
-            user_state,
-            &mut all_maker_states,
-            oracle_prices,
-            events,
-        )?;
+    let (
+        all_pnls,
+        mut all_fees,
+        all_order_mutations,
+        closed_notional,
+        all_index_updates,
+        all_volumes,
+    ) = execute_close_schedule(
+        storage,
+        &schedule,
+        user,
+        contract,
+        param,
+        pair_states,
+        user_state,
+        &mut all_maker_states,
+        oracle_prices,
+        events,
+    )?;
 
     // -------------------- Step 4: Liquidation fee → insurance fund -----------
 
@@ -316,7 +326,12 @@ fn _liquidate(
         })?;
     }
 
-    Ok((all_maker_states, all_order_mutations, all_index_updates))
+    Ok((
+        all_maker_states,
+        all_order_mutations,
+        all_index_updates,
+        all_volumes,
+    ))
 }
 
 /// Execute the close schedule against the order book, with ADL for any unfilled
@@ -341,6 +356,7 @@ fn execute_close_schedule(
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
     UsdValue,
     Vec<PositionIndexUpdate>,
+    BTreeMap<Addr, UsdValue>,
 )> {
     // Zero-fee param for liquidation fills.
     let liq_param = Param {
@@ -351,6 +367,7 @@ fn execute_close_schedule(
 
     let mut all_pnls = BTreeMap::<_, UsdValue>::new();
     let mut all_fees = BTreeMap::<_, UsdValue>::new();
+    let mut all_volumes = BTreeMap::<_, UsdValue>::new();
     let mut all_order_mutations = Vec::new();
     let mut closed_notional = UsdValue::ZERO;
     let mut all_index_updates = Vec::new();
@@ -366,7 +383,7 @@ fn execute_close_schedule(
             UsdPrice::ZERO
         };
 
-        let (unfilled, pnls, fees, order_mutations, index_updates) = match_order(
+        let (unfilled, pnls, fees, volumes, order_mutations, index_updates) = match_order(
             storage,
             &liq_param,
             pair_id,
@@ -390,6 +407,14 @@ fn execute_close_schedule(
         // Merge fees.
         for (addr, fee) in fees {
             all_fees.entry(addr).or_default().checked_add_assign(fee)?;
+        }
+
+        // Merge volumes.
+        for (addr, vol) in volumes {
+            all_volumes
+                .entry(addr)
+                .or_default()
+                .checked_add_assign(vol)?;
         }
 
         // Collect order mutations with pair context.
@@ -429,6 +454,7 @@ fn execute_close_schedule(
                 user_fee_snapshot,
                 &mut all_pnls,
                 &mut all_fees,
+                &mut all_volumes,
                 maker_states,
                 &mut all_index_updates,
                 events,
@@ -460,6 +486,7 @@ fn execute_close_schedule(
         all_order_mutations,
         closed_notional,
         all_index_updates,
+        all_volumes,
     ))
 }
 
@@ -477,9 +504,10 @@ fn execute_adl(
     // Snapshot of the user's accumulated PnL/fees before this ADL round.
     user_pnl_snapshot: UsdValue,
     user_fee_snapshot: UsdValue,
-    // Mutable PnL/fee maps to accumulate ADL results.
+    // Mutable PnL/fee/volume maps to accumulate ADL results.
     all_pnls: &mut BTreeMap<Addr, UsdValue>,
     all_fees: &mut BTreeMap<Addr, UsdValue>,
+    all_volumes: &mut BTreeMap<Addr, UsdValue>,
     maker_states: &mut BTreeMap<Addr, UserState>,
     index_updates: &mut Vec<PositionIndexUpdate>,
     events: &mut EventBuilder,
@@ -560,6 +588,7 @@ fn execute_adl(
             Dimensionless::ZERO,
             all_pnls,
             all_fees,
+            all_volumes,
             user,
             None,
         )?;
@@ -583,6 +612,7 @@ fn execute_adl(
             Dimensionless::ZERO,
             all_pnls,
             all_fees,
+            all_volumes,
             counter_user,
             None,
         )?;

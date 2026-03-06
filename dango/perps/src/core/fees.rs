@@ -3,6 +3,11 @@ use {
     grug::MathResult,
 };
 
+/// Compute the USD notional value of a fill.
+pub fn compute_notional(fill_size: Quantity, exec_price: UsdPrice) -> MathResult<UsdValue> {
+    fill_size.checked_abs()?.checked_mul(exec_price)
+}
+
 /// Given the fillable size of an order, the execution price, and the applicable
 /// fee rate (maker or taker), compute the trading fee as a USD value.
 pub fn compute_trading_fee(
@@ -10,10 +15,7 @@ pub fn compute_trading_fee(
     exec_price: UsdPrice,
     fee_rate: Dimensionless,
 ) -> MathResult<UsdValue> {
-    fill_size
-        .checked_abs()?
-        .checked_mul(exec_price)?
-        .checked_mul(fee_rate)
+    compute_notional(fill_size, exec_price)?.checked_mul(fee_rate)
 }
 
 // ----------------------------------- tests -----------------------------------

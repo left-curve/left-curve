@@ -7,8 +7,9 @@ mod price;
 mod querier;
 mod query;
 mod state;
+mod volume;
 
 pub use {
     cron::*, execute::*, liquidity_depth::*, position_index::*, price::*, querier::*, query::*,
-    state::*,
+    state::*, volume::*,
 };

@@ -46,6 +46,10 @@ pub const ASKS: IndexedMap<OrderKey, Order, OrderIndexes> =
 
 pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 
+/// Cumulative trading volume per user, bucketed by day.
+/// Key: (user, day_timestamp). Value: lifetime cumulative USD notional.
+pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
+
 // ----------------------------------- types -----------------------------------
 
 pub type OrderKey = (PairId, UsdPrice, OrderId);
