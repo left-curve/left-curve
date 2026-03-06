@@ -1,4 +1,13 @@
-import { Button, ResizerContainer, Tab, Tabs, createContext } from "@left-curve/applets-kit";
+import {
+  Button,
+  IconFriendshipGroup,
+  IconGift,
+  IconUser,
+  ResizerContainer,
+  Tab,
+  Tabs,
+  createContext,
+} from "@left-curve/applets-kit";
 import type React from "react";
 import { useState } from "react";
 
@@ -147,9 +156,24 @@ const PointsCampaignTabs: React.FC = () => {
         onTabChange={(value) => setActiveTab(value as PointsCampaignTab)}
         fullWidth
       >
-        <Tab title="profile">Profile</Tab>
-        <Tab title="rewards">Rewards</Tab>
-        <Tab title="referral">Referral</Tab>
+        <Tab title="profile">
+          <span className="flex items-center gap-1">
+            <IconUser className="w-4 h-4" />
+            Profile
+          </span>
+        </Tab>
+        <Tab title="rewards">
+          <span className="flex items-center gap-1">
+            <IconGift className="w-4 h-4" />
+            Rewards
+          </span>
+        </Tab>
+        <Tab title="referral">
+          <span className="flex items-center gap-1">
+            <IconFriendshipGroup className="w-6 h-6" />
+            Referral
+          </span>
+        </Tab>
       </Tabs>
       {activeTab === "profile" ? <ProfileSection /> : null}
       {activeTab === "rewards" ? <RewardsSection /> : null}
