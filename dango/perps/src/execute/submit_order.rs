@@ -678,7 +678,7 @@ pub(crate) fn settle_pnls(
         // Protocol collector receives its share.
         if protocol_fee.is_non_zero() {
             user_states
-                .entry(param.protocol_fee_collector)
+                .entry(param.protocol_treasury)
                 .or_default()
                 .margin
                 .checked_add_assign(protocol_fee)?;
@@ -1986,10 +1986,10 @@ mod tests {
 
     #[test]
     fn settle_pnls_protocol_fee_split() {
-        let collector = Addr::mock(99);
+        let treasury = Addr::mock(99);
         let param = Param {
             protocol_fee_rate: Dimensionless::new_percent(20),
-            protocol_fee_collector: collector,
+            protocol_treasury: treasury,
             ..Default::default()
         };
         let mut user_states = BTreeMap::from([
@@ -2003,7 +2003,7 @@ mod tests {
 
         assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(-100));
         assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(80));
-        assert_eq!(user_states[&collector].margin, UsdValue::new_int(20));
+        assert_eq!(user_states[&treasury].margin, UsdValue::new_int(20));
     }
 
     // =================== Post-only order tests ===============================

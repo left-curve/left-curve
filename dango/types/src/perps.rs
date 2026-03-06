@@ -73,12 +73,12 @@ pub struct Param {
     pub taker_fee_rate: Dimensionless,
 
     /// Fraction of each trading fee routed to the protocol treasury.
-    /// The remainder (1 − protocol_fee_rate) stays with the vault.
+    /// The remainder (1 − `protocol_fee_rate`) stays with the vault.
     pub protocol_fee_rate: Dimensionless,
 
     /// Address that receives the protocol's share of trading fees.
     /// Its `UserState.margin` is credited on every fill settlement.
-    pub protocol_fee_collector: Addr,
+    pub protocol_treasury: Addr,
 
     /// Fee paid to the insurance fund as a fraction of the total notional
     /// value of positions being liquidated, capped at the user's remaining
@@ -114,7 +114,7 @@ impl Default for Param {
             maker_fee_rate: Default::default(),
             taker_fee_rate: Default::default(),
             protocol_fee_rate: Default::default(),
-            protocol_fee_collector: Addr::mock(0),
+            protocol_treasury: Addr::mock(0),
             liquidation_fee_rate: Default::default(),
             funding_period: Default::default(),
             vault_total_weight: Default::default(),
