@@ -280,7 +280,7 @@ fn _liquidate(
             .unwrap_or_default()
     });
 
-    settle_pnls(all_pnls, all_fees, contract, &mut all_maker_states)?;
+    settle_pnls(all_pnls, all_fees, contract, param, &mut all_maker_states)?;
 
     // Extract the user back.
     *user_state = all_maker_states.remove(&user).unwrap();

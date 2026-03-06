@@ -344,7 +344,7 @@ fn _submit_order(
 
     // Merge taker into user_states for settlement.
     maker_states.insert(taker, taker_state.clone());
-    settle_pnls(pnls, fees, contract, &mut maker_states)?;
+    settle_pnls(pnls, fees, contract, param, &mut maker_states)?;
     // Extract taker back.
     *taker_state = maker_states.remove(&taker).unwrap();
 
@@ -654,6 +654,7 @@ pub(crate) fn settle_pnls(
     pnls: BTreeMap<Addr, UsdValue>,
     fees: BTreeMap<Addr, UsdValue>,
     contract: Addr,
+    param: &Param,
     user_states: &mut BTreeMap<Addr, UserState>,
 ) -> anyhow::Result<()> {
     // ------------------------------ Settle fees ------------------------------
@@ -663,13 +664,27 @@ pub(crate) fn settle_pnls(
             continue;
         }
 
-        // Non-vault fee → vault margin increases, user pays.
+        // Split the fee between the protocol treasury and the vault.
+        let protocol_fee = fee.checked_mul(param.protocol_fee_rate)?;
+        let vault_fee = fee.checked_sub(protocol_fee)?;
+
+        // Vault receives its share.
         user_states
             .get_mut(&contract)
             .unwrap()
             .margin
-            .checked_add_assign(fee)?;
+            .checked_add_assign(vault_fee)?;
 
+        // Protocol collector receives its share.
+        if protocol_fee.is_non_zero() {
+            user_states
+                .entry(param.protocol_fee_collector)
+                .or_default()
+                .margin
+                .checked_add_assign(protocol_fee)?;
+        }
+
+        // User pays the full fee (unchanged).
         if let Some(us) = user_states.get_mut(&user) {
             us.margin.checked_sub_assign(fee)?;
         }
@@ -1804,7 +1819,7 @@ mod tests {
         ]);
         let fees = BTreeMap::new();
 
-        settle_pnls(pnls, fees, CONTRACT, &mut user_states).unwrap();
+        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
 
         // Positive PnL: user 1 margin += $100.
         assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(100));
@@ -1833,7 +1848,7 @@ mod tests {
         ]);
         let fees = BTreeMap::new();
 
-        settle_pnls(pnls, fees, CONTRACT, &mut user_states).unwrap();
+        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
 
         assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(100));
         assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(50));
@@ -1856,7 +1871,7 @@ mod tests {
         ]);
         let fees = BTreeMap::new();
 
-        settle_pnls(pnls, fees, CONTRACT, &mut user_states).unwrap();
+        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
 
         assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(-100));
         assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(-200));
@@ -1875,7 +1890,7 @@ mod tests {
         let pnls = BTreeMap::new();
         let fees = BTreeMap::new();
 
-        settle_pnls(pnls, fees, CONTRACT, &mut user_states).unwrap();
+        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
 
         assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(500));
     }
@@ -1894,7 +1909,7 @@ mod tests {
             (Addr::mock(2), UsdValue::new_int(100)),
         ]);
 
-        settle_pnls(pnls, fees, CONTRACT, &mut user_states).unwrap();
+        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
 
         // Users' margins decrease by fee amounts.
         assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(-50));
@@ -1915,7 +1930,7 @@ mod tests {
         let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
         let fees = BTreeMap::new();
 
-        settle_pnls(pnls, fees, CONTRACT, &mut user_states).unwrap();
+        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
 
         assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(1_500));
     }
@@ -1931,7 +1946,7 @@ mod tests {
         let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(-500))]);
         let fees = BTreeMap::new();
 
-        settle_pnls(pnls, fees, CONTRACT, &mut user_states).unwrap();
+        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
 
         assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(-400));
     }
@@ -1947,7 +1962,7 @@ mod tests {
         let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
         let fees = BTreeMap::new();
 
-        settle_pnls(pnls, fees, CONTRACT, &mut user_states).unwrap();
+        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
 
         // Vault margin recovers: -300 + 500 = 200.
         assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(200));
@@ -1964,9 +1979,31 @@ mod tests {
         let pnls = BTreeMap::new();
         let fees = BTreeMap::from([(CONTRACT, UsdValue::new_int(100))]);
 
-        settle_pnls(pnls, fees, CONTRACT, &mut user_states).unwrap();
+        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
 
         assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(1_000));
+    }
+
+    #[test]
+    fn settle_pnls_protocol_fee_split() {
+        let collector = Addr::mock(99);
+        let param = Param {
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            protocol_fee_collector: collector,
+            ..Default::default()
+        };
+        let mut user_states = BTreeMap::from([
+            (CONTRACT, UserState::default()),
+            (Addr::mock(1), UserState::default()),
+        ]);
+        let pnls = BTreeMap::new();
+        let fees = BTreeMap::from([(Addr::mock(1), UsdValue::new_int(100))]);
+
+        settle_pnls(pnls, fees, CONTRACT, &param, &mut user_states).unwrap();
+
+        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(-100));
+        assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(80));
+        assert_eq!(user_states[&collector].margin, UsdValue::new_int(20));
     }
 
     // =================== Post-only order tests ===============================
