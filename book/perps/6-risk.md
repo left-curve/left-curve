@@ -131,7 +131,7 @@ For BTC at \$60,000: tick sizes of \$1–\$10 are reasonable.
 
 ## 5. Vault parameters
 
-The vault's market-making policy is controlled by three per-pair parameters and two global parameters (see [Vault](4-vault.md) for mechanics):
+The vault's market-making policy is controlled by three per-pair parameters and two global parameters (see [Vault](5-vault.md) for mechanics):
 
 ### 5.1 Half-spread
 
