@@ -7,6 +7,7 @@
 - [Funding](perps/3-funding.md)
 - [Vault](perps/4-vault.md)
 - [Liquidation & ADL](perps/5-liquidation-and-adl.md)
+- [Risk parameters](perps/6-risk.md)
 
 ---
 
