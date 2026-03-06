@@ -1,6 +1,6 @@
 # Liquidation & Auto-Deleveraging (ADL)
 
-This document describes how the perpetual futures exchange protects itself from under-collateralised accounts and socialises losses that exceed the vault.
+This document describes how the perpetual futures exchange protects itself from under-collateralised accounts and socialises losses via auto-deleveraging and the insurance fund.
 
 ## 1. Liquidation trigger
 
@@ -52,11 +52,27 @@ Each entry in the close schedule is executed in two phases:
 
 The close is submitted as a **market order** against the on-chain order book. It matches resting limit orders at price-time priority. Any filled amount is settled normally (mark-to-market PnL between the entry price and the fill price).
 
-### 3b. Vault backstop
+### 3b. Auto-deleveraging (ADL)
 
-If any quantity remains **unfilled** after the order book is exhausted, the **vault** absorbs it. Both the liquidated user and the vault are settled at the current **oracle price** with the vault taking the opposite side. This guarantees every liquidation completes regardless of order-book depth.
+If any quantity remains **unfilled** after the order book is exhausted, the system automatically deleverages against counter-parties. The unfilled remainder is closed against the **most profitable counter-positions** at the liquidated user's **bankruptcy price**.
 
-Liquidation fills (both order-book and backstop) carry **zero trading fees** for both taker and maker.
+**Counter-party selection:** Positions are indexed by the tuple $(\mathtt{pairId},\; \mathtt{entryPrice},\; \mathtt{user})$. For a long being liquidated (selling), the system finds shorts with the highest entry price (most profitable) first. For a short being liquidated (buying), it finds longs with the lowest entry price first.[^1]
+
+[^1]: This does not perfectly rank by total PnL since it ignores accumulated funding fees, but is a reasonable and efficient approximation.
+
+**Bankruptcy price:** The fill price at which the liquidated user's total equity would be exactly zero:
+
+$$
+\mathtt{bp} = \mathtt{oraclePrice} - \frac{\mathtt{equity}}{\mathtt{closeAmount}} \quad (\text{for longs})
+$$
+
+$$
+\mathtt{bp} = \mathtt{oraclePrice} + \frac{\mathtt{equity}}{\mathtt{closeAmount}} \quad (\text{for shorts})
+$$
+
+Since equity is typically negative for liquidatable users, the bankruptcy price is worse than the oracle price — the counter-party receives a favourable fill. The counter-party's resting limit orders are not affected by ADL; only their position is force-reduced.
+
+Liquidation fills (both order-book and ADL) carry **zero trading fees** for both taker and maker.
 
 ## 4. Liquidation fee
 
@@ -74,15 +90,15 @@ $$
 \mathtt{fee} = \min (\mathtt{rawFee},\; \mathtt{remainingMargin})
 $$
 
-The fee is deducted from the user's PnL and routed to the **vault**. It is capped at the remaining margin so the fee itself never creates bad debt.
+The fee is deducted from the user's margin and routed to the **insurance fund** (not the vault). It is capped at the remaining margin so the fee itself never creates bad debt.
 
 ## 5. PnL settlement
 
-All PnL from the liquidation fills (user, counterparties, vault) is settled atomically as in-place USD margin adjustments — no token transfers occur. Both user and vault PnL are applied via the same settlement logic described in [Order matching §8](2-order-matching.md#8-pnl-settlement).
+All PnL from the liquidation fills (user, book makers, ADL counter-parties) is settled atomically as in-place USD margin adjustments — no token transfers occur. Both user and maker PnL are applied via the same settlement logic described in [Order matching §8](2-order-matching.md#8-pnl-settlement).
 
 ## 6. Bad debt
 
-After PnL and fee settlement, if the user's margin is negative the absolute value is bad debt. The margin is floored to zero and the bad debt is subtracted from vault margin:
+After PnL and fee settlement, if the user's margin is negative the absolute value is bad debt. The margin is floored to zero and the bad debt is subtracted from the **insurance fund**:
 
 $$
 \mathtt{badDebt} = |\min(0,\; \mathtt{margin\ after\ settlement})|
@@ -93,73 +109,24 @@ $$
 $$
 
 $$
-\mathtt{vaultMargin} \mathrel{-}= \mathtt{badDebt}
+\mathtt{insuranceFund} \mathrel{-}= \mathtt{badDebt}
 $$
 
-This can drive $\mathtt{vaultMargin}$ negative. A negative vault margin represents the **ADL deficit** — bad debt not yet recovered — and triggers auto-deleveraging.
+The insurance fund may go negative. A negative insurance fund represents unresolved bad debt — future liquidation fees will replenish it.
 
-## 7. ADL trigger
+Note: when positions are fully ADL'd at the bankruptcy price, the user's equity is zeroed by construction. Bad debt from ADL fills is therefore zero. Bad debt arises only from **book fills** at prices worse than the bankruptcy price (e.g., thin order books with deep bids/asks far from oracle).
 
-Auto-deleveraging activates whenever
+## 7. Insurance fund
 
-$$
-\mathtt{vaultMargin} < 0
-$$
+The insurance fund is a separate pool from the vault that absorbs bad debt and is funded by liquidation fees.
 
-This can only happen when a liquidation produces bad debt that exceeds the vault's available margin. Once active, addresses listed in the `adl_operators` parameter set may call the deleverage action on profitable accounts until $\mathtt{vaultMargin}$ is restored to zero or above.
+**Funding:** Every liquidation fee ([§4](#4-liquidation-fee)) is credited to the insurance fund.
 
-## 8. ADL ranking
+**Usage:** Every bad debt event ([§6](#6-bad-debt)) is debited from the insurance fund.
 
-Each profitable position is scored to determine closure priority:
+**Negative balance:** The insurance fund may go negative when accumulated bad debt exceeds accumulated fees. This is the simplest approach — no special trigger or intervention is needed. Future liquidation fees will naturally replenish the fund.
 
-$$
-\mathtt{pnlPct} = \frac{\mathtt{unrealisedPnl}}{\mathtt{equity}}
-$$
-
-$$
-\mathtt{leverage} = \frac{\mathtt{notional}}{\mathtt{equity}},\; \text{where } \mathtt{notional} = |\mathtt{size}| \times \mathtt{oraclePrice}
-$$
-
-$$
-\mathtt{adlScore} = \mathtt{pnlPct} \times \mathtt{leverage}
-$$
-
-Positions with non-positive PnL or non-positive equity score **zero** and are never selected. Among eligible positions, the **highest score** is closed first. The score naturally favours accounts that are both highly profitable and highly leveraged — those who benefited most from the move that caused the bad debt and who pose the greatest risk if the market reverses.
-
-## 9. ADL closure
-
-All of the target user's profitable positions (score > 0) are closed:
-
-1. Each position is **fully closed** at the **oracle price** with **zero fees**.
-2. The close is settled the same way as a normal fill (mark-to-market PnL between entry price and oracle price).
-
-Because ADL uses the oracle price, the affected user experiences no slippage beyond what the oracle already reflects.
-
-## 10. Forfeiture
-
-After ADL closes are settled the user's total realised PnL is applied to the deficit:
-
-$$
-\mathtt{pnl} = \sum \mathtt{realisedPnlFromAdlCloses}\; (\text{always} > 0 \text{ for selected users})
-$$
-
-$$
-\mathtt{deficit} = |\mathtt{vaultMargin}|
-$$
-
-$$
-\mathtt{forfeited} = \min(\mathtt{pnl},\; \mathtt{deficit})
-$$
-
-$$
-\mathtt{credit} = \mathtt{pnl} - \mathtt{forfeited}
-$$
-
-$$
-\mathtt{vaultMargin} \mathrel{+}= \mathtt{forfeited}
-$$
-
-The user forfeits up to the absolute value of the negative $\mathtt{vaultMargin}$ of their profit to make the exchange whole. The remainder ($\mathtt{credit}$) is added to the user's margin. No collateral beyond the realised PnL is ever seized.
+The vault's margin is never touched for bad debt or liquidation fees. This isolates liquidity providers from liquidation losses.
 
 ## Examples
 
@@ -172,15 +139,15 @@ All examples use:
 | Liquidation-fee rate           | 0.1 %       |
 | Settlement currency            | USDC at \$1 |
 
-### Example 1 — Clean liquidation (no bad debt)
+### Example 1 — Clean liquidation on book (no bad debt)
 
 **Setup**
 
-|             | Alice      | Bob         |
-| ----------- | ---------- | ----------- |
-| Direction   | Long 1 BTC | Short 1 BTC |
-| Entry price | \$50,000   | \$50,000    |
-| Margin      | \$3,000    | \$10,000    |
+|             | Alice      | Bob (maker)          |
+| ----------- | ---------- | -------------------- |
+| Direction   | Long 1 BTC | Bid 1 BTC @ \$47,500 |
+| Entry price | \$50,000   | —                    |
+| Margin      | \$3,000    | \$10,000             |
 
 **BTC drops to \$47,500**
 
@@ -204,7 +171,7 @@ Alice has one position; the full 1 BTC long is scheduled for closure.
 
 _Execution_
 
-The long is closed (sold) at the oracle price of \$47,500 (order book or vault backstop).
+The long is closed (sold) into Bob's resting bid at \$47,500.
 
 $$
 \mathtt{AlicePnL} = 1 \times (\$47{,}500 - \$50{,}000) = -\$2{,}500
@@ -243,19 +210,18 @@ $$
 Final margin is positive — no bad debt.
 
 $$
-\mathtt{vaultMargin} \mathrel{+}= \$47.50 \quad (\text{fee revenue})
+\mathtt{insuranceFund} \mathrel{+}= \$47.50 \quad (\text{fee revenue})
 $$
 
-### Example 2 — Bad debt absorbed by the vault
+### Example 2 — ADL at bankruptcy price (no book liquidity)
 
 **Setup**
 
-|              | Charlie    | Dana        |
-| ------------ | ---------- | ----------- |
-| Direction    | Long 1 BTC | Short 1 BTC |
-| Entry price  | \$50,000   | \$50,000    |
-| Margin       | \$3,000    | \$10,000    |
-| Vault margin | \$5,000    |             |
+|             | Charlie    | Dana        |
+| ----------- | ---------- | ----------- |
+| Direction   | Long 1 BTC | Short 1 BTC |
+| Entry price | \$50,000   | \$55,000    |
+| Margin      | \$3,000    | \$10,000    |
 
 **BTC drops to \$46,000**
 
@@ -277,9 +243,80 @@ _Close schedule_
 
 Charlie's full 1 BTC long is scheduled for closure.
 
-_Execution_
+_Order book matching_
 
-Closed at oracle price \$46,000.
+No bids on the book — the full 1 BTC is unfilled.
+
+_ADL_
+
+Bankruptcy price for Charlie's long:
+
+$$
+\mathtt{bp} = \$46{,}000 - \frac{-\$1{,}000}{1} = \$46{,}000 + \$1{,}000 = \$47{,}000
+$$
+
+Dana holds the most profitable short (entry \$55,000, current oracle \$46,000). Her position is force-closed at \$47,000.
+
+Charlie's PnL at bankruptcy price:
+
+$$
+\mathtt{CharliePnL} = 1 \times (\$47{,}000 - \$50{,}000) = -\$3{,}000
+$$
+
+$$
+\mathtt{margin}: \$3{,}000 + (-\$3{,}000) = \$0 \quad \text{(zeroed by construction)}
+$$
+
+Dana's PnL at bankruptcy price:
+
+$$
+\mathtt{DanaPnL} = -1 \times (\$47{,}000 - \$55{,}000) = \$8{,}000
+$$
+
+$$
+\mathtt{DanaMargin}: \$10{,}000 + \$8{,}000 = \$18{,}000
+$$
+
+_Liquidation fee_
+
+$$
+\mathtt{remainingMargin} = \max(0,\; \$3{,}000 - \$3{,}000) = \$0
+$$
+
+$$
+\mathtt{fee} = \$0 \quad \text{(no margin left)}
+$$
+
+No bad debt, no insurance fund impact. Dana receives the full PnL at the bankruptcy price, which is better than the oracle price for her.
+
+**Final state**
+
+|                | Balance                 |
+| -------------- | ----------------------- |
+| Charlie        | \$0 (fully liquidated)  |
+| Dana           | \$18,000 (profit at bp) |
+| Insurance fund | unchanged               |
+
+### Example 3 — Book fill creates bad debt
+
+**Setup**
+
+|                | Charlie    | Bob (maker)          |
+| -------------- | ---------- | -------------------- |
+| Direction      | Long 1 BTC | Bid 1 BTC @ \$46,000 |
+| Entry price    | \$50,000   | —                    |
+| Margin         | \$3,000    | \$50,000             |
+| Insurance fund | \$500      |                      |
+
+**BTC drops to \$46,000**
+
+_Charlie's liquidation_
+
+Same equity and MM as Example 2. Liquidatable.
+
+_Order book matching_
+
+The bid at \$46,000 fills Charlie's full 1 BTC sell.
 
 $$
 \mathtt{CharliePnL} = 1 \times (\$46{,}000 - \$50{,}000) = -\$4{,}000
@@ -292,126 +329,27 @@ $$
 $$
 
 $$
-\mathtt{fee} = \min(\text{anything},\; \$0) = \$0
+\mathtt{fee} = \$0
 $$
 
-Charlie's equity is already negative so no fee can be collected.
+_Bad debt_
 
-_Settlement and bad debt (margin arithmetic)_
-
-Charlie's margin starts at \$3,000. Fee is \$0 (remaining margin was zero).
+Charlie's margin after PnL: $\$3{,}000 - \$4{,}000 = -\$1{,}000$.
 
 $$
-\mathtt{margin} \mathrel{+}= (-\$4{,}000) \quad (\text{PnL}) \;\Rightarrow\; -\$1{,}000
-$$
-
-Margin is negative, so bad debt arises:
-
-$$
-\mathtt{badDebt} = |-\$1{,}000| = \$1{,}000, \quad \mathtt{margin} \gets \$0
+\mathtt{badDebt} = \$1{,}000, \quad \mathtt{margin} \gets \$0
 $$
 
 $$
-\mathtt{vaultMargin}: \$5{,}000 - \$1{,}000 = \$4{,}000
+\mathtt{insuranceFund}: \$500 - \$1{,}000 = -\$500
 $$
 
-The vault absorbs the full \$1,000 bad debt. No ADL is needed.
-
-### Example 3 — Vault exhausted, ADL triggered
-
-**Setup**
-
-|              | Charlie    | Dana        |
-| ------------ | ---------- | ----------- |
-| Direction    | Long 1 BTC | Short 1 BTC |
-| Entry price  | \$50,000   | \$50,000    |
-| Margin       | \$3,000    | \$10,000    |
-| Vault margin | \$500      |             |
-
-Same positions as Example 2, but the vault is smaller.
-
-**BTC drops to \$46,000**
-
-_Charlie's liquidation_ proceeds identically:
-
-$$
-\mathtt{CharliePnL} = -\$4{,}000
-$$
-
-Charlie's margin after PnL settlement is −\$1,000 (same as Example 2):
-
-$$
-\mathtt{badDebt} = |-\$1{,}000| = \$1{,}000, \quad \mathtt{margin} \gets \$0
-$$
-
-$$
-\mathtt{vaultMargin}: \$500 - \$1{,}000 = -\$500
-$$
-
-The vault margin is negative — \$500 of unresolved bad debt. ADL activates.
-
-_ADL — selecting Dana_
-
-Dana holds a short that is profitable at \$46,000:
-
-$$
-\mathtt{unrealisedPnl} = -1 \times (\$46{,}000 - \$50{,}000) = \$4{,}000 \;\text{(profit)}
-$$
-
-$$
-\mathtt{equity} = \$10{,}000 + \$4{,}000 = \$14{,}000
-$$
-
-$$
-\mathtt{notional} = 1 \times \$46{,}000 = \$46{,}000
-$$
-
-$$
-\mathtt{pnlPct} = \frac{\$4{,}000}{\$14{,}000} \approx 0.286
-$$
-
-$$
-\mathtt{leverage} = \frac{\$46{,}000}{\$14{,}000} \approx 3.286
-$$
-
-$$
-\mathtt{adlScore} = 0.286 \times 3.286 \approx 0.94
-$$
-
-Score is positive, so Dana is eligible for ADL.
-
-_ADL — closing Dana's position_
-
-Dana's short is fully closed at the oracle price of \$46,000 with zero fees.
-
-$$
-\mathtt{DanaRealisedPnl} = \$4{,}000
-$$
-
-_Forfeiture_
-
-$$
-\mathtt{deficit} = |\mathtt{vaultMargin}| = \$500
-$$
-
-$$
-\mathtt{forfeited} = \min(\$4{,}000,\; \$500) = \$500
-$$
-
-$$
-\mathtt{credit} = \$4{,}000 - \$500 = \$3{,}500
-$$
-
-$$
-\mathtt{vaultMargin} \gets -\$500 + \$500 = \$0
-$$
-
-Dana forfeits \$500 of her \$4,000 profit to cover the deficit and receives \$3,500. The vault margin is recovered to \$0.
+The insurance fund goes negative. Future liquidation fees will replenish it.
 
 **Final state**
 
-|              | Balance                                                 |
-| ------------ | ------------------------------------------------------- |
-| Charlie      | \$0 (fully liquidated)                                  |
-| Dana         | \$10,000 + \$3,500 = \$13,500 (profit reduced by \$500) |
-| Vault margin | \$0                                                     |
+|                | Balance                          |
+| -------------- | -------------------------------- |
+| Charlie        | \$0 (fully liquidated)           |
+| Insurance fund | −\$500 (unresolved bad debt)     |
+| Vault          | unchanged (isolated from losses) |

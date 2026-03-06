@@ -643,7 +643,6 @@ impl Preset for PerpsOption {
                 max_unlocks: 10,
                 max_open_orders: 100,
                 funding_period: Duration::from_hours(1),
-                adl_operators: BTreeSet::new(),
                 vault_total_weight: Dimensionless::ZERO,
             },
             pair_params: btree_map! {

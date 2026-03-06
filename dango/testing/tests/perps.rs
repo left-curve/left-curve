@@ -13,7 +13,7 @@ use {
     },
     grug_app::CONTRACT_NAMESPACE,
     pyth_types::{Channel, LeEcdsaMessage},
-    std::{collections::BTreeSet, str::FromStr},
+    std::str::FromStr,
 };
 
 fn pair_id() -> Denom {
@@ -30,7 +30,6 @@ fn default_param() -> Param {
         max_unlocks: 10,
         max_open_orders: 100,
         funding_period: Duration::from_hours(1),
-        adl_operators: BTreeSet::new(),
         vault_total_weight: Dimensionless::ZERO,
     }
 }
@@ -647,7 +646,18 @@ fn liquidation_on_order_book() {
         "trader margin should be ~$2,036.19 after partial liquidation"
     );
 
-    // Vault margin should have increased by the liquidation fee (~$24.50).
+    // Insurance fund should have received the liquidation fee (~$24.50).
+    let global_state = suite
+        .query_wasm_smart(contracts.perps, perps::QueryStateRequest {})
+        .should_succeed();
+
+    assert_eq!(
+        global_state.insurance_fund,
+        UsdValue::new_raw(24_499_997),
+        "insurance fund should receive ~$24.50 liquidation fee"
+    );
+
+    // Vault margin should be unchanged (fee goes to insurance fund, not vault).
     let vault_state_after: Option<UserState> = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
@@ -656,9 +666,8 @@ fn liquidation_on_order_book() {
     let vault_margin_after = vault_state_after.unwrap().margin;
 
     assert_eq!(
-        vault_margin_after - vault_margin_before,
-        UsdValue::new_raw(24_499_997),
-        "vault margin should increase by ~$24.50 liquidation fee"
+        vault_margin_after, vault_margin_before,
+        "vault margin should be unchanged (fee goes to insurance fund)"
     );
 
     // Bidder (user3) should have ~1.689655 ETH long @ $1,450.
@@ -685,7 +694,7 @@ fn liquidation_on_order_book() {
     );
 }
 
-/// Covers: vault backstop liquidation → bad debt → ADL recovery.
+/// Covers: liquidation with ADL and insurance fund.
 ///
 /// | Step | Action                                    | Assert                                              |
 /// | ---- | ----------------------------------------- | --------------------------------------------------- |
@@ -697,12 +706,10 @@ fn liquidation_on_order_book() {
 /// | 6    | Maker places bid: 5 ETH @ $2,000          | —                                                   |
 /// | 7    | Trader B market sells 5 ETH               | fee=$10; margin=$9,990; 5 short @$2,000             |
 /// | 8    | Oracle → $1,450                           | Trader A: PnL=-$2,750, equity=-$1,660               |
-/// | 9    | Liquidate Trader A                        | No bids → vault backstops; bad debt=$1,660          |
-/// | 10   | Verify vault deficit                      | vault margin = -$660                                |
-/// | 11   | Configure: set adl_operators              | —                                                   |
-/// | 12   | ADL Trader B                              | Trader B margin=$12,080; vault margin=$0            |
+/// | 9    | Liquidate Trader A                        | No bids → ADL against Trader B at bankruptcy price  |
+/// | 10   | Verify results                            | Trader B position reduced; insurance fund updated   |
 #[test]
-fn liquidation_bad_debt_then_adl() {
+fn liquidation_with_adl() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
@@ -734,16 +741,6 @@ fn liquidation_bad_debt_then_adl() {
             Coins::new(),
         )
         .should_succeed();
-
-    // Verify vault margin = $1,000.
-    let vault_state = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: contracts.perps,
-        })
-        .should_succeed()
-        .unwrap();
-
-    assert_eq!(vault_state.margin, UsdValue::new_int(1_000));
 
     // -------------------------------------------------------------------------
     // Step 2: Trader A (user1) deposits $1,100 USDC.
@@ -880,19 +877,30 @@ fn liquidation_bad_debt_then_adl() {
 
     // -------------------------------------------------------------------------
     // Step 8: Oracle → $1,450.
-    // Trader A PnL = 5 * ($1,450 - $2,000) = -$2,750; equity = $1,090 - $2,750 = -$1,660.
+    // Trader A: 5 long @$2,000.
+    // PnL = 5 * ($1,450 - $2,000) = -$2,750; equity = $1,090 - $2,750 = -$1,660.
     // -------------------------------------------------------------------------
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
 
     // -------------------------------------------------------------------------
     // Step 9: Liquidate Trader A.
-    // No bids on book → vault backstops at oracle price.
-    // PnL = -$2,750; margin after PnL = $1,090 - $2,750 = -$1,660.
-    // Liq fee capped at remaining = $0 (margin already negative).
-    // Bad debt = $1,660 → user margin floors to $0, vault absorbs.
-    // Vault margin = $1,000 - $1,660 = -$660.
-    // Vault inherits 5 long @ $1,450.
+    //
+    // No bids on book → ADL against Trader B (most profitable short).
+    //
+    // Bankruptcy price for Trader A's long:
+    //   bp = oracle_price - equity / |size|
+    //      = $1,450 - (-$1,660) / 5  (equity is negative)
+    //      = $1,450 + $332 = $1,782
+    //
+    // ADL: close Trader A's 5 long and Trader B's 5 short at $1,782.
+    //
+    // Trader A PnL at bp = 5 * ($1,782 - $2,000) = -$1,090.
+    //   margin after = $1,090 - $1,090 = $0. No bad debt.
+    //   Liq fee = min(0, ...) = $0 (no remaining margin).
+    //
+    // Trader B PnL at bp = -5 * ($1,782 - $2,000) = +$1,090.
+    //   margin after = $9,990 + $1,090 = $11,080.
     // -------------------------------------------------------------------------
 
     suite
@@ -920,76 +928,8 @@ fn liquidation_bad_debt_then_adl() {
     );
 
     // -------------------------------------------------------------------------
-    // Step 10: Verify vault deficit.
-    // Vault received $10 taker fee from each of steps 4 and 7, so
-    // vault margin before liq = $1,000 + $10 + $10 = $1,020.
-    // Bad debt = $1,660 → vault margin = $1,020 - $1,660 = -$640.
+    // Step 10: Verify Trader B's position was ADL'd.
     // -------------------------------------------------------------------------
-    let vault_state = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: contracts.perps,
-        })
-        .should_succeed()
-        .unwrap();
-
-    assert_eq!(
-        vault_state.margin,
-        UsdValue::new_int(-640),
-        "vault margin should be -$640 (bad debt, after $20 taker fees)"
-    );
-
-    // Vault should have 5 long @ $1,450.
-    let vault_pos = vault_state
-        .positions
-        .get(&pair)
-        .expect("vault should have backstop position");
-
-    assert_eq!(vault_pos.size, Quantity::new_int(5));
-    assert_eq!(vault_pos.entry_price, UsdPrice::new_int(1_450));
-
-    // -------------------------------------------------------------------------
-    // Step 11: Configure: add owner as ADL operator.
-    // -------------------------------------------------------------------------
-
-    let owner_addr = accounts.owner.address();
-
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.perps,
-            &perps::ExecuteMsg::Configure {
-                param: Param {
-                    adl_operators: BTreeSet::from([owner_addr]),
-                    ..default_param()
-                },
-                pair_params: btree_map! { pair.clone() => default_pair_param() },
-            },
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // -------------------------------------------------------------------------
-    // Step 12: ADL Trader B.
-    // Trader B: 5 short @ $2,000, margin = $9,990.
-    // PnL = -5 * ($1,450 - $2,000) = +$2,750 (profit).
-    // Deficit = $640; forfeited = min($2,750, $640) = $640.
-    // Credit = $2,750 - $640 = $2,110.
-    // Trader B margin = $9,990 + $2,110 = $12,100.
-    // Vault margin = -$640 + $640 = $0.
-    // -------------------------------------------------------------------------
-
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.perps,
-            &perps::ExecuteMsg::Deleverage {
-                user: accounts.user3.address(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Trader B: no positions, margin = $12,080.
     let state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user3.address(),
@@ -1001,13 +941,16 @@ fn liquidation_bad_debt_then_adl() {
         state.positions.is_empty(),
         "Trader B should have no positions after ADL"
     );
+
+    // Trader B PnL at bankruptcy price: -5 * ($1,782 - $2,000) = +$1,090.
+    // Margin = $9,990 + $1,090 = $11,080.
     assert_eq!(
         state.margin,
-        UsdValue::new_int(12_100),
-        "Trader B margin should be $12,100 after ADL"
+        UsdValue::new_int(11_080),
+        "Trader B margin should be $11,080 after ADL at bankruptcy price"
     );
 
-    // Vault margin = $0.
+    // Vault should be unaffected — no backstop, no bad debt.
     let vault_state = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
@@ -1015,10 +958,12 @@ fn liquidation_bad_debt_then_adl() {
         .should_succeed()
         .unwrap();
 
+    // Vault received $10 taker fee from each of steps 4 and 7 = $20.
+    // Vault margin = $1,000 + $20 = $1,020. No bad debt absorbed.
     assert_eq!(
         vault_state.margin,
-        UsdValue::ZERO,
-        "vault margin should be $0 after ADL"
+        UsdValue::new_int(1_020),
+        "vault margin should be $1,020 (initial + taker fees, no bad debt)"
     );
 }
 
