@@ -269,9 +269,6 @@ fn _liquidate(
 
     // ----------------------- Step 5: Settle PnLs ------------------------------
 
-    // Merge the liquidated user into the maker states for settlement.
-    all_maker_states.insert(user, user_state.clone());
-
     // Ensure the vault's UserState is in the map for fee settlement.
     all_maker_states.entry(contract).or_insert_with(|| {
         USER_STATES
@@ -280,10 +277,16 @@ fn _liquidate(
             .unwrap_or_default()
     });
 
-    settle_pnls(all_pnls, all_fees, contract, param, &mut all_maker_states)?;
-
-    // Extract the user back.
-    *user_state = all_maker_states.remove(&user).unwrap();
+    settle_pnls(
+        all_pnls,
+        all_fees,
+        contract,
+        user,
+        user_state,
+        param,
+        &mut all_maker_states,
+        state,
+    )?;
 
     // Route liquidation fee to insurance fund (not vault margin).
     // settle_pnls added the fee to the vault's margin and subtracted from user.
@@ -736,6 +739,26 @@ mod tests {
         BIDS.save(storage, key, &order).unwrap();
     }
 
+    /// Save an ask order into the book (sell side).
+    fn save_ask(
+        storage: &mut dyn Storage,
+        pair_id: &PairId,
+        order_id: u64,
+        maker: Addr,
+        size: i128,
+        price: i128,
+    ) {
+        let stored_price = UsdPrice::new_int(price);
+        let key: OrderKey = (pair_id.clone(), stored_price, Uint64::new(order_id));
+        let order = Order {
+            user: maker,
+            size: Quantity::new_int(size),
+            reduce_only: false,
+            reserved_margin: UsdValue::ZERO,
+        };
+        ASKS.save(storage, key, &order).unwrap();
+    }
+
     fn mock_oracle_querier(pairs: Vec<(PairId, i128)>) -> OracleQuerier<'static> {
         use {dango_types::oracle::PrecisionedPrice, grug::Udec128};
         let mut map = std::collections::HashMap::new();
@@ -1148,6 +1171,124 @@ mod tests {
         assert!(
             state.insurance_fund < UsdValue::new_int(500),
             "insurance fund should have been reduced by bad debt"
+        );
+    }
+
+    /// Proves the cancel-before-match invariant: when a user is liquidated,
+    /// their resting orders are removed *before* the close schedule matches
+    /// against the book, so self-trades cannot occur.
+    #[test]
+    fn liquidation_cancels_user_orders_before_matching() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = default_param();
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        // USER has long 1 BTC at $50,000. Oracle at $47,500 → deeply underwater.
+        // Equity = $100 + ($47,500-$50,000) = -$2,400.
+        // MM = $47,500 * 5% = $2,375. Equity < MM → liquidatable.
+        // Deficit = $2,375 - (-$2,400) = $4,775 → full close (close_amount ≥ 1).
+        save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
+
+        // USER also has a resting ask (sell) on the book — this must be
+        // cancelled before matching, otherwise it could self-match.
+        save_ask(&mut ctx.storage, &pair_btc(), 10, USER, -1, 48_000);
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(100);
+        user_state.open_order_count = 1;
+        USER_STATES
+            .save(&mut ctx.storage, USER, &user_state)
+            .unwrap();
+
+        // MAKER has a bid to absorb the liquidation close (user sells long).
+        let maker_state = UserState {
+            margin: UsdValue::new_int(100_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+        save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 1, 47_500);
+
+        // Step 1: Cancel all user orders (mirrors the public `liquidate` flow).
+        let mut events = EventBuilder::new();
+        _cancel_all_orders(
+            &mut ctx.storage,
+            USER,
+            &mut user_state,
+            Some(&mut events),
+            ReasonForOrderRemoval::Liquidated,
+        )
+        .unwrap();
+
+        // The user's ask should be gone from the book.
+        let user_asks: Vec<_> = ASKS
+            .idx
+            .user
+            .prefix(USER)
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert!(
+            user_asks.is_empty(),
+            "user's ask should have been cancelled"
+        );
+        assert_eq!(user_state.open_order_count, 0);
+
+        // Step 2: Run _liquidate (same as the public function does next).
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_500));
+
+        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
+        let mut state = STATE.load(&ctx.storage).unwrap();
+
+        let result = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            &param,
+            &mut state,
+            &pair_params,
+            &mut pair_states,
+            &mut user_state,
+            &oracle_prices,
+            &mut oracle_querier,
+            &mut EventBuilder::new(),
+        );
+
+        assert!(result.is_ok(), "liquidation failed: {:?}", result.err());
+
+        let (maker_states, ..) = result.unwrap();
+
+        // User's position should be fully closed against MAKER's bid.
+        assert!(
+            user_state.positions.is_empty(),
+            "user should have no positions after liquidation"
+        );
+
+        // MAKER should now hold a position (absorbed the user's long).
+        assert!(
+            maker_states[&MAKER].positions.contains_key(&pair_btc()),
+            "maker should have a position after absorbing liquidation"
         );
     }
 }

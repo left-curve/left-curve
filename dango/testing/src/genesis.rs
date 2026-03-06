@@ -25,9 +25,9 @@ use {
         taxman,
     },
     grug::{
-        Addr, Addressable, Binary, BlockInfo, Bounded, Coin, Coins, Denom, Duration,
-        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Op,
-        Timestamp, Udec128, Uint128, btree_map, btree_set,
+        Addressable, Binary, BlockInfo, Bounded, Coin, Coins, Denom, Duration, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Op, Timestamp, Udec128, Uint128,
+        btree_map, btree_set,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -639,7 +639,6 @@ impl Preset for PerpsOption {
                 taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
                 maker_fee_rate: Dimensionless::ZERO,
                 protocol_fee_rate: Dimensionless::ZERO,
-                protocol_treasury: Addr::mock(0),
                 liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
                 vault_cooldown_period: Duration::from_days(1),
                 max_unlocks: 10,

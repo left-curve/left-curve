@@ -8,8 +8,8 @@ use {
         perps::{self, LiquidityDepthResponse, PairParam, Param, UserState},
     },
     grug::{
-        Addr, Addressable, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, NumberConst,
-        QuerierExt, ResultExt, Timestamp, Udec128, Uint128, btree_map, btree_set, concat,
+        Addressable, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, NumberConst, QuerierExt,
+        ResultExt, Timestamp, Udec128, Uint128, btree_map, btree_set, concat,
     },
     grug_app::CONTRACT_NAMESPACE,
     pyth_types::{Channel, LeEcdsaMessage},
@@ -26,7 +26,6 @@ fn default_param() -> Param {
         taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
         maker_fee_rate: Dimensionless::ZERO,
         protocol_fee_rate: Dimensionless::ZERO,
-        protocol_treasury: Addr::mock(0),
         liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
         vault_cooldown_period: Duration::from_days(1),
         max_unlocks: 10,
@@ -1775,5 +1774,160 @@ fn liquidity_depth_tracking() {
     assert!(
         depth.asks.is_empty(),
         "asks should be empty after cancel-all"
+    );
+}
+
+/// Covers: protocol treasury fees accumulate across multiple fills.
+///
+/// This is a regression test for a bug where `settle_pnls` used
+/// `maker_states.entry(protocol_treasury).or_default()` — which created a
+/// blank `UserState` every call, losing previously accumulated fees.
+///
+/// After the fix, protocol fees are stored in `State::treasury` (analogous
+/// to `State::insurance_fund`) and accumulate correctly.
+///
+/// | Step | Action                                 | Assert                                                  |
+/// | ---- | -------------------------------------- | ------------------------------------------------------- |
+/// | 1    | Configure: protocol_fee_rate = 20%     | —                                                       |
+/// | 2    | Maker places ask 10 ETH @ $2,000       | —                                                       |
+/// | 3    | Taker market buys 10 ETH               | fee=$20, protocol=$4 → State.treasury == $4             |
+/// | 4    | Maker places another ask 10 ETH @ $2k  | —                                                       |
+/// | 5    | Taker market buys 10 ETH               | another $4 → State.treasury == $8 (accumulated!)        |
+#[test]
+fn protocol_fee_accumulates_across_fills() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Configure: set protocol_fee_rate = 20%.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Configure {
+                param: Param {
+                    protocol_fee_rate: Dimensionless::new_percent(20),
+                    ..default_param()
+                },
+                pair_params: btree_map! {
+                    pair.clone() => default_pair_param(),
+                },
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Deposit for maker (user2) and taker (user1).
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // --- Fill 1: Maker places ask 10 ETH @ $2,000, taker market buys ---
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // fee = 10 * $2,000 * 0.1% = $20
+    // protocol_fee = $20 * 20% = $4
+    let global_state: perps::State = suite
+        .query_wasm_smart(contracts.perps, perps::QueryStateRequest {})
+        .should_succeed();
+
+    assert_eq!(
+        global_state.treasury,
+        UsdValue::new_int(4),
+        "treasury should be $4 after first fill"
+    );
+
+    // --- Fill 2: Maker places another ask 10 ETH @ $2,000, taker buys ---
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // another $4 → total should be $8 (accumulated, not overwritten!)
+    let global_state: perps::State = suite
+        .query_wasm_smart(contracts.perps, perps::QueryStateRequest {})
+        .should_succeed();
+
+    assert_eq!(
+        global_state.treasury,
+        UsdValue::new_int(8),
+        "treasury should be $8 after second fill (accumulated, not overwritten)"
     );
 }

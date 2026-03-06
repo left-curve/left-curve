@@ -1,6 +1,6 @@
 use {
     crate::{
-        ASKS, BIDS, NEXT_ORDER_ID, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM,
+        ASKS, BIDS, NEXT_ORDER_ID, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
         USER_STATES,
         core::{
             check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
@@ -20,7 +20,7 @@ use {
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
             Order, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
-            PairParam, PairState, Param, ReasonForOrderRemoval, UserState,
+            PairParam, PairState, Param, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
@@ -39,6 +39,7 @@ pub fn submit_order(
     // ---------------------------- 1. Preparation -----------------------------
 
     let param = PARAM.load(ctx.storage)?;
+    let mut state = STATE.load(ctx.storage)?;
 
     let pair_param = PAIR_PARAMS.load(ctx.storage, &pair_id)?;
     let mut pair_state = PAIR_STATES.load(ctx.storage, &pair_id)?;
@@ -71,11 +72,14 @@ pub fn submit_order(
             reduce_only,
             &mut oracle_querier,
             &mut events,
+            &mut state,
         )?;
 
     // ------------------------ 3. Apply state changes -------------------------
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
+
+    STATE.save(ctx.storage, &state)?;
 
     PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
 
@@ -196,6 +200,7 @@ fn _submit_order(
     reduce_only: bool,
     oracle_querier: &mut OracleQuerier,
     events: &mut EventBuilder,
+    state: &mut State,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
@@ -342,11 +347,16 @@ fn _submit_order(
             .unwrap_or_default()
     });
 
-    // Merge taker into user_states for settlement.
-    maker_states.insert(taker, taker_state.clone());
-    settle_pnls(pnls, fees, contract, param, &mut maker_states)?;
-    // Extract taker back.
-    *taker_state = maker_states.remove(&taker).unwrap();
+    settle_pnls(
+        pnls,
+        fees,
+        contract,
+        taker,
+        taker_state,
+        param,
+        &mut maker_states,
+        state,
+    )?;
 
     Ok((
         maker_states,
@@ -645,9 +655,13 @@ pub(crate) fn settle_fill(
 /// 2. **PnL loop** (second): each user's (including the vault's) margin is
 ///    adjusted by their PnL.
 ///
+/// The taker is passed separately from `maker_states` because self-trade
+/// prevention guarantees the taker never appears as a maker.
+///
 /// Mutates:
 ///
-/// - `user_states[*].margin` — adjusted by PnL and fees (including the vault's
+/// - `taker_state.margin` — adjusted by the taker's PnL and fees.
+/// - `maker_states[*].margin` — adjusted by PnL and fees (including the vault's
 ///   `UserState`).
 ///
 /// Returns: `()` — all side effects are applied in-place.
@@ -655,9 +669,17 @@ pub(crate) fn settle_pnls(
     pnls: BTreeMap<Addr, UsdValue>,
     fees: BTreeMap<Addr, UsdValue>,
     contract: Addr,
+    taker: Addr,
+    taker_state: &mut UserState,
     param: &Param,
-    user_states: &mut BTreeMap<Addr, UserState>,
+    maker_states: &mut BTreeMap<Addr, UserState>,
+    state: &mut State,
 ) -> anyhow::Result<()> {
+    debug_assert!(
+        !maker_states.contains_key(&taker),
+        "taker must not be in maker_states — self-trade prevention violated"
+    );
+
     // ------------------------------ Settle fees ------------------------------
 
     for (user, fee) in fees {
@@ -669,25 +691,25 @@ pub(crate) fn settle_pnls(
         let protocol_fee = fee.checked_mul(param.protocol_fee_rate)?;
         let vault_fee = fee.checked_sub(protocol_fee)?;
 
+        // Protocol treasury accumulates its share in global state.
+        state.treasury.checked_add_assign(protocol_fee)?;
+
         // Vault receives its share.
-        user_states
+        maker_states
             .get_mut(&contract)
             .unwrap()
             .margin
             .checked_add_assign(vault_fee)?;
 
-        // Protocol collector receives its share.
-        if protocol_fee.is_non_zero() {
-            user_states
-                .entry(param.protocol_treasury)
-                .or_default()
+        // Deduct fee from the paying user.
+        if user == taker {
+            taker_state.margin.checked_sub_assign(fee)?;
+        } else {
+            maker_states
+                .get_mut(&user)
+                .unwrap()
                 .margin
-                .checked_add_assign(protocol_fee)?;
-        }
-
-        // User pays the full fee (unchanged).
-        if let Some(us) = user_states.get_mut(&user) {
-            us.margin.checked_sub_assign(fee)?;
+                .checked_sub_assign(fee)?;
         }
     }
 
@@ -698,8 +720,14 @@ pub(crate) fn settle_pnls(
             continue;
         }
 
-        if let Some(us) = user_states.get_mut(&user) {
-            us.margin.checked_add_assign(pnl)?;
+        if user == taker {
+            taker_state.margin.checked_add_assign(pnl)?;
+        } else {
+            maker_states
+                .get_mut(&user)
+                .unwrap()
+                .margin
+                .checked_add_assign(pnl)?;
         }
     }
 
@@ -990,6 +1018,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1046,6 +1075,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1092,6 +1122,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         );
 
         assert!(err.is_err());
@@ -1140,6 +1171,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1187,6 +1219,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1238,6 +1271,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1294,6 +1328,7 @@ mod tests {
             true,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1338,6 +1373,7 @@ mod tests {
             true,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         );
 
         assert!(err.is_err());
@@ -1385,6 +1421,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1438,6 +1475,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1488,6 +1526,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1547,6 +1586,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         );
 
         assert!(result.is_ok());
@@ -1592,6 +1632,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         );
 
         assert!(err.is_err());
@@ -1640,6 +1681,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1698,6 +1740,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1742,6 +1785,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -1792,6 +1836,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         );
 
         assert!(err.is_err());
@@ -1806,9 +1851,10 @@ mod tests {
 
     #[test]
     fn settle_pnls_mixed() {
-        let mut user_states = BTreeMap::from([
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([
             (CONTRACT, UserState::default()),
-            (Addr::mock(1), UserState::default()),
             (Addr::mock(2), UserState::default()),
             (Addr::mock(3), UserState::default()),
         ]);
@@ -1819,27 +1865,39 @@ mod tests {
             (Addr::mock(3), UsdValue::ZERO),
         ]);
         let fees = BTreeMap::new();
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &Param::default(),
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
-        // Positive PnL: user 1 margin += $100.
-        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(100));
+        // Positive PnL: taker margin += $100.
+        assert_eq!(taker_state.margin, UsdValue::new_int(100));
 
         // Negative PnL: user 2 margin -= $200.
-        assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(-200));
+        assert_eq!(maker_states[&Addr::mock(2)].margin, UsdValue::new_int(-200));
 
         // Zero PnL: user 3 margin unchanged.
-        assert_eq!(user_states[&Addr::mock(3)].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&Addr::mock(3)].margin, UsdValue::ZERO);
 
         // Non-vault PnL does not change vault margin.
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::ZERO);
     }
 
     #[test]
     fn settle_pnls_all_payouts() {
-        let mut user_states = BTreeMap::from([
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([
             (CONTRACT, UserState::default()),
-            (Addr::mock(1), UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
 
@@ -1848,21 +1906,33 @@ mod tests {
             (Addr::mock(2), UsdValue::new_int(50)),
         ]);
         let fees = BTreeMap::new();
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &Param::default(),
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
-        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(100));
-        assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(50));
+        assert_eq!(taker_state.margin, UsdValue::new_int(100));
+        assert_eq!(maker_states[&Addr::mock(2)].margin, UsdValue::new_int(50));
 
         // Non-vault PnL does not change vault margin.
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::ZERO);
     }
 
     #[test]
     fn settle_pnls_all_collections() {
-        let mut user_states = BTreeMap::from([
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([
             (CONTRACT, UserState::default()),
-            (Addr::mock(1), UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
 
@@ -1871,36 +1941,61 @@ mod tests {
             (Addr::mock(2), UsdValue::new_int(-200)),
         ]);
         let fees = BTreeMap::new();
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &Param::default(),
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
-        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(-100));
-        assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(-200));
+        assert_eq!(taker_state.margin, UsdValue::new_int(-100));
+        assert_eq!(maker_states[&Addr::mock(2)].margin, UsdValue::new_int(-200));
 
         // Non-vault PnL does not change vault margin.
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::ZERO);
     }
 
     #[test]
     fn settle_pnls_empty() {
-        let mut user_states = BTreeMap::from([(CONTRACT, UserState {
+        let taker = TAKER;
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([(CONTRACT, UserState {
             margin: UsdValue::new_int(500),
             ..Default::default()
         })]);
 
         let pnls = BTreeMap::new();
         let fees = BTreeMap::new();
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &Param::default(),
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(500));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(500));
     }
 
     #[test]
     fn settle_pnls_fees_increase_vault_margin() {
-        let mut user_states = BTreeMap::from([
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([
             (CONTRACT, UserState::default()),
-            (Addr::mock(1), UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
 
@@ -1909,20 +2004,35 @@ mod tests {
             (Addr::mock(1), UsdValue::new_int(50)),
             (Addr::mock(2), UsdValue::new_int(100)),
         ]);
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &Param::default(),
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
-        // Users' margins decrease by fee amounts.
-        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(-50));
-        assert_eq!(user_states[&Addr::mock(2)].margin, UsdValue::new_int(-100));
+        // Taker's margin decreases by fee amount.
+        assert_eq!(taker_state.margin, UsdValue::new_int(-50));
+
+        // Maker's margin decreases by fee amount.
+        assert_eq!(maker_states[&Addr::mock(2)].margin, UsdValue::new_int(-100));
 
         // Fees go to vault margin: $50 + $100 = $150.
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(150));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(150));
     }
 
     #[test]
     fn settle_pnls_vault_pnl_adjusts_margin() {
-        let mut user_states = BTreeMap::from([(CONTRACT, UserState {
+        let taker = TAKER;
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([(CONTRACT, UserState {
             margin: UsdValue::new_int(1_000),
             ..Default::default()
         })]);
@@ -1930,15 +2040,28 @@ mod tests {
         // Vault profit of $500.
         let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
         let fees = BTreeMap::new();
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &Param::default(),
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(1_500));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(1_500));
     }
 
     #[test]
     fn settle_pnls_vault_loss_creates_bad_debt() {
-        let mut user_states = BTreeMap::from([(CONTRACT, UserState {
+        let taker = TAKER;
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([(CONTRACT, UserState {
             margin: UsdValue::new_int(100),
             ..Default::default()
         })]);
@@ -1946,15 +2069,28 @@ mod tests {
         // Vault loss of $500.
         let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(-500))]);
         let fees = BTreeMap::new();
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &Param::default(),
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(-400));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(-400));
     }
 
     #[test]
     fn settle_pnls_vault_profit_recovers_negative_margin() {
-        let mut user_states = BTreeMap::from([(CONTRACT, UserState {
+        let taker = TAKER;
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([(CONTRACT, UserState {
             margin: UsdValue::new_int(-300),
             ..Default::default()
         })]);
@@ -1962,16 +2098,29 @@ mod tests {
         // Vault profit of $500.
         let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
         let fees = BTreeMap::new();
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &Param::default(),
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
         // Vault margin recovers: -300 + 500 = 200.
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(200));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(200));
     }
 
     #[test]
     fn settle_pnls_vault_fees_skipped() {
-        let mut user_states = BTreeMap::from([(CONTRACT, UserState {
+        let taker = TAKER;
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([(CONTRACT, UserState {
             margin: UsdValue::new_int(1_000),
             ..Default::default()
         })]);
@@ -1979,32 +2128,51 @@ mod tests {
         // Vault's own fees are a no-op (paying yourself).
         let pnls = BTreeMap::new();
         let fees = BTreeMap::from([(CONTRACT, UsdValue::new_int(100))]);
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &Param::default(), &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &Param::default(),
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(1_000));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(1_000));
     }
 
     #[test]
     fn settle_pnls_protocol_fee_split() {
-        let treasury = Addr::mock(99);
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
         let param = Param {
             protocol_fee_rate: Dimensionless::new_percent(20),
-            protocol_treasury: treasury,
             ..Default::default()
         };
-        let mut user_states = BTreeMap::from([
-            (CONTRACT, UserState::default()),
-            (Addr::mock(1), UserState::default()),
-        ]);
+        let mut maker_states = BTreeMap::from([(CONTRACT, UserState::default())]);
         let pnls = BTreeMap::new();
         let fees = BTreeMap::from([(Addr::mock(1), UsdValue::new_int(100))]);
+        let mut state = State::default();
 
-        settle_pnls(pnls, fees, CONTRACT, &param, &mut user_states).unwrap();
+        settle_pnls(
+            pnls,
+            fees,
+            CONTRACT,
+            taker,
+            &mut taker_state,
+            &param,
+            &mut maker_states,
+            &mut state,
+        )
+        .unwrap();
 
-        assert_eq!(user_states[&Addr::mock(1)].margin, UsdValue::new_int(-100));
-        assert_eq!(user_states[&CONTRACT].margin, UsdValue::new_int(80));
-        assert_eq!(user_states[&treasury].margin, UsdValue::new_int(20));
+        assert_eq!(taker_state.margin, UsdValue::new_int(-100));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(80));
+        assert_eq!(state.treasury, UsdValue::new_int(20));
     }
 
     // =================== Post-only order tests ===============================
@@ -2045,6 +2213,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -2094,6 +2263,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         );
 
         assert!(err.is_err());
@@ -2136,6 +2306,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         );
 
         assert!(err.is_err());
@@ -2178,6 +2349,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -2226,6 +2398,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         );
 
         assert!(err.is_err());
@@ -2268,6 +2441,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -2319,6 +2493,7 @@ mod tests {
             true,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -2374,6 +2549,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         );
 
         assert!(err.is_err());
@@ -2431,6 +2607,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -2526,6 +2703,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -2577,6 +2755,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -2699,6 +2878,7 @@ mod tests {
             false,
             &mut oq,
             &mut EventBuilder::new(),
+            &mut State::default(),
         )
         .unwrap();
 
@@ -2760,6 +2940,7 @@ mod tests {
                 false,
                 &mut oq,
                 &mut EventBuilder::new(),
+                &mut State::default(),
             )
             .unwrap();
 
@@ -2819,6 +3000,7 @@ mod tests {
                 false,
                 &mut oq,
                 &mut EventBuilder::new(),
+                &mut State::default(),
             )
             .unwrap();
 
