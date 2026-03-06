@@ -112,6 +112,16 @@ where
     pub async fn suite(&self) -> RwLockReadGuard<'_, TestSuite<DB, VM, PP, ID>> {
         self.suite.read().await
     }
+
+    pub async fn make_empty_block(&self) -> anyhow::Result<()> {
+        next_block(
+            self.txs.lock().await.deref_mut(),
+            self.blocks.lock().await.deref_mut(),
+            self.suite.write().await.deref_mut(),
+            vec![],
+        )
+        .await
+    }
 }
 
 #[async_trait]
