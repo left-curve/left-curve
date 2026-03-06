@@ -1,8 +1,11 @@
 use {
-    crate::{ASKS, BIDS, DEPTHS, OrderKey, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+    crate::{
+        ASKS, BIDS, DEPTHS, OrderKey, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES, VOLUMES,
+        round_to_day,
+    },
     anyhow::ensure,
     dango_types::{
-        UsdPrice,
+        UsdPrice, UsdValue,
         perps::{
             LiquidityDepth, LiquidityDepthResponse, Order, OrderId, PairId, PairParam, PairState,
             QueryMsg, QueryOrderResponse, QueryOrdersByUserResponse, UserState,
@@ -10,7 +13,7 @@ use {
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder,
-        StdResult,
+        StdResult, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -64,6 +67,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             limit,
         } => {
             let res = query_liquidity_depth(ctx, pair_id, bucket_size, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::Volume { user, since } => {
+            let res = query_volume(ctx, user, since)?;
             res.to_json_value()
         },
     }
@@ -221,4 +228,34 @@ fn query_liquidity_depth(
         .collect::<StdResult<_>>()?;
 
     Ok(LiquidityDepthResponse { bids, asks })
+}
+
+fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<UsdValue> {
+    let latest = VOLUMES
+        .prefix(user)
+        .range(ctx.storage, None, None, IterationOrder::Descending)
+        .next()
+        .transpose()?
+        .map(|(_, v)| v)
+        .unwrap_or(UsdValue::ZERO);
+
+    match since {
+        None => Ok(latest),
+        Some(ts) => {
+            let day = round_to_day(ts);
+            let baseline = VOLUMES
+                .prefix(user)
+                .range(
+                    ctx.storage,
+                    None,
+                    Some(Bound::Inclusive(day)),
+                    IterationOrder::Descending,
+                )
+                .next()
+                .transpose()?
+                .map(|(_, v)| v)
+                .unwrap_or(UsdValue::ZERO);
+            Ok(latest.checked_sub(baseline)?)
+        },
+    }
 }

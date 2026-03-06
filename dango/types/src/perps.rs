@@ -432,6 +432,14 @@ pub enum QueryMsg {
         bucket_size: UsdPrice,
         limit: Option<u32>,
     },
+
+    /// Query a user's cumulative trading volume.
+    /// `since: None` -> lifetime volume. `since: Some(ts)` -> volume since ts.
+    #[returns(UsdValue)]
+    Volume {
+        user: Addr,
+        since: Option<Timestamp>,
+    },
 }
 
 #[grug::derive(Serde)]

@@ -4,10 +4,11 @@ use {
         USER_STATES,
         core::{
             check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
-            compute_required_margin, compute_target_price, compute_trading_fee, decompose_fill,
-            execute_fill, is_price_constraint_violated,
+            compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
+            decompose_fill, execute_fill, is_price_constraint_violated,
         },
         execute::oracle,
+        flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
@@ -56,7 +57,7 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (maker_states, order_mutations, order_to_store, next_order_id, index_updates) =
+    let (maker_states, order_mutations, order_to_store, next_order_id, index_updates, volumes) =
         _submit_order(
             ctx.storage,
             ctx.sender,
@@ -76,6 +77,8 @@ pub fn submit_order(
         )?;
 
     // ------------------------ 3. Apply state changes -------------------------
+
+    flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
@@ -207,6 +210,7 @@ fn _submit_order(
     Option<(UsdPrice, OrderId, Order)>,
     OrderId,
     Vec<PositionIndexUpdate>,
+    BTreeMap<Addr, UsdValue>,
 )> {
     // -------------- Step 1. Check minimum order size -------------------------
 
@@ -264,6 +268,7 @@ fn _submit_order(
             Some(order_to_store),
             taker_order_id + OrderId::ONE,
             Vec::new(),
+            BTreeMap::new(),
         ));
     }
 
@@ -294,7 +299,7 @@ fn _submit_order(
 
     let mut maker_states = BTreeMap::new();
 
-    let (unfilled, pnls, fees, order_mutations, index_updates) = match_order(
+    let (unfilled, pnls, fees, volumes, order_mutations, index_updates) = match_order(
         storage,
         param,
         pair_id,
@@ -364,6 +369,7 @@ fn _submit_order(
         order_to_store,
         next_order_id,
         index_updates,
+        volumes,
     ))
 }
 
@@ -409,11 +415,13 @@ pub(crate) fn match_order(
     Quantity,
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, UsdValue>,
     Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
     Vec<PositionIndexUpdate>,
 )> {
     let mut pnls = BTreeMap::new();
     let mut fees = BTreeMap::new();
+    let mut volumes = BTreeMap::new();
     let mut order_mutations = Vec::new();
     let mut index_updates = Vec::new();
 
@@ -496,6 +504,7 @@ pub(crate) fn match_order(
             param.taker_fee_rate,
             &mut pnls,
             &mut fees,
+            &mut volumes,
             taker,
             Some((events, taker_order_id)),
         )?;
@@ -531,6 +540,7 @@ pub(crate) fn match_order(
             param.maker_fee_rate,
             &mut pnls,
             &mut fees,
+            &mut volumes,
             maker_order.user,
             Some((events, maker_order_id)),
         )?;
@@ -589,7 +599,14 @@ pub(crate) fn match_order(
         remaining_size.checked_sub_assign(taker_fill_size)?;
     }
 
-    Ok((remaining_size, pnls, fees, order_mutations, index_updates))
+    Ok((
+        remaining_size,
+        pnls,
+        fees,
+        volumes,
+        order_mutations,
+        index_updates,
+    ))
 }
 
 /// Mutates:
@@ -608,6 +625,7 @@ pub(crate) fn settle_fill(
     fee_rate: Dimensionless,
     pnls: &mut BTreeMap<Addr, UsdValue>,
     fees: &mut BTreeMap<Addr, UsdValue>,
+    volumes: &mut BTreeMap<Addr, UsdValue>,
     user: Addr,
     events: Option<(&mut EventBuilder, OrderId)>,
 ) -> grug::StdResult<UsdValue> {
@@ -625,8 +643,16 @@ pub(crate) fn settle_fill(
 
     let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
 
+    let volume = compute_notional(fill_size, fill_price)?;
+
     pnls.entry(user).or_default().checked_add_assign(pnl)?;
+
     fees.entry(user).or_default().checked_add_assign(fee)?;
+
+    volumes
+        .entry(user)
+        .or_default()
+        .checked_add_assign(volume)?;
 
     if let Some((events, order_id)) = events {
         events.push(OrderFilled {
@@ -2923,7 +2949,7 @@ mod tests {
             };
             let mut oq = test_oracle_querier();
 
-            let (_, _, order_to_store, next_order_id, _) = _submit_order(
+            let (_, _, order_to_store, next_order_id, ..) = _submit_order(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
@@ -2982,7 +3008,7 @@ mod tests {
             };
             let mut oq = test_oracle_querier();
 
-            let (_, _, order_to_store, next_order_id, _) = _submit_order(
+            let (_, _, order_to_store, next_order_id, ..) = _submit_order(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
