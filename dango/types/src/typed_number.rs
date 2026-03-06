@@ -48,6 +48,10 @@ impl<Q, U, D> Number<Q, U, D> {
         Self::new(Dec128_6::raw(Int128::new(raw)))
     }
 
+    pub const fn new_percent(n: i128) -> Self {
+        Self::new(Dec128_6::new_percent(n))
+    }
+
     pub const fn new_permille(n: i128) -> Self {
         Self::new(Dec128_6::new_permille(n))
     }
