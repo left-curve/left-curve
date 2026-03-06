@@ -11,7 +11,10 @@ use {
     },
     grug_vm_rust::RustVm,
     std::{collections::BTreeMap, ops::DerefMut, sync::Arc, thread, time::Duration},
-    tokio::{runtime::Runtime, sync::Mutex},
+    tokio::{
+        runtime::Runtime,
+        sync::{Mutex, RwLock, RwLockReadGuard},
+    },
 };
 
 pub struct MockClient<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
@@ -21,7 +24,7 @@ where
     PP: ProposalPreparer,
     ID: Indexer,
 {
-    suite: Arc<Mutex<TestSuite<DB, VM, PP, ID>>>,
+    suite: Arc<RwLock<TestSuite<DB, VM, PP, ID>>>,
     blocks: Arc<Mutex<BTreeMap<u64, (Block, BlockOutcome)>>>,
     txs: Arc<Mutex<BTreeMap<Hash256, SearchTxOutcome>>>,
     block_mode: BlockModeCache,
@@ -36,12 +39,12 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn new(suite: TestSuite<DB, VM, PP, ID>, block_mode: BlockCreation) -> Self {
-        let suite = Arc::new(Mutex::new(suite));
+        let suite = Arc::new(RwLock::new(suite));
         Self::new_shared(suite, block_mode)
     }
 
     pub fn new_shared(
-        suite: Arc<Mutex<TestSuite<DB, VM, PP, ID>>>,
+        suite: Arc<RwLock<TestSuite<DB, VM, PP, ID>>>,
         block_mode: BlockCreation,
     ) -> Self {
         let blocks = Arc::new(Mutex::new(BTreeMap::new()));
@@ -61,7 +64,7 @@ where
 
                     rt.block_on(async move {
                         loop {
-                            let sleep = th_suite.lock().await.block_time.into_nanos();
+                            let sleep = th_suite.read().await.block_time.into_nanos();
                             tokio::time::sleep(Duration::from_nanos(sleep as u64)).await;
 
                             let txs = {
@@ -72,7 +75,7 @@ where
                             next_block(
                                 th_txs.lock().await.deref_mut(),
                                 th_blocks.lock().await.deref_mut(),
-                                th_suite.lock().await.deref_mut(),
+                                th_suite.write().await.deref_mut(),
                                 txs,
                             )
                             .await
@@ -95,15 +98,19 @@ where
     }
 
     pub async fn set_timestamp(&self, timestamp: Timestamp) {
-        self.suite.lock().await.block.timestamp = timestamp;
+        self.suite.write().await.block.timestamp = timestamp;
     }
 
     pub async fn set_block_time(&self, block_time: grug_types::Duration) {
-        self.suite.lock().await.block_time = block_time;
+        self.suite.write().await.block_time = block_time;
     }
 
     pub async fn chain_id(&self) -> String {
-        self.suite.lock().await.chain_id.clone()
+        self.suite.read().await.chain_id.clone()
+    }
+
+    pub async fn suite(&self) -> RwLockReadGuard<'_, TestSuite<DB, VM, PP, ID>> {
+        self.suite.read().await
     }
 }
 
@@ -126,7 +133,7 @@ where
     ) -> Result<QueryResponse, Self::Error> {
         Ok(self
             .suite
-            .lock()
+            .read()
             .await
             .app
             .do_query_app(query, height, false)?)
@@ -140,7 +147,7 @@ where
     ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error> {
         let (value, proof) = self
             .suite
-            .lock()
+            .read()
             .await
             .app
             .do_query_store(&key, height, prove)?;
@@ -152,7 +159,7 @@ where
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
-        Ok(self.suite.lock().await.app.do_simulate(tx, 0, false)?)
+        Ok(self.suite.read().await.app.do_simulate(tx, 0, false)?)
     }
 }
 
@@ -239,7 +246,7 @@ where
     async fn broadcast_tx(&self, tx: Tx) -> Result<BroadcastTxOutcome, Self::Error> {
         let tx_hash = tx.tx_hash()?;
 
-        let check_tx = self.suite.lock().await.app.do_check_tx(tx.clone())?;
+        let check_tx = self.suite.read().await.app.do_check_tx(tx.clone())?;
         if check_tx.result.is_err() {
             return Ok(BroadcastTxOutcome { tx_hash, check_tx });
         };
@@ -252,7 +259,7 @@ where
                 next_block(
                     self.txs.lock().await.deref_mut(),
                     self.blocks.lock().await.deref_mut(),
-                    self.suite.lock().await.deref_mut(),
+                    self.suite.write().await.deref_mut(),
                     vec![tx],
                 )
                 .await?;

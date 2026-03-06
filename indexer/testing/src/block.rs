@@ -9,7 +9,7 @@ use {
     indexer_hooked::HookedIndexer,
     indexer_httpd::context::Context,
     std::{str::FromStr, sync::Arc},
-    tokio::sync::Mutex,
+    tokio::sync::RwLock,
 };
 
 pub async fn create_block() -> anyhow::Result<(
@@ -39,7 +39,7 @@ pub async fn create_blocks(
 
     let chain_id = suite.app.chain_id().await?;
 
-    let suite = Arc::new(Mutex::new(suite));
+    let suite = Arc::new(RwLock::new(suite));
 
     let mock_client =
         MockClient::new_shared(suite.clone(), grug_testing::BlockCreation::OnBroadcast);
@@ -58,7 +58,7 @@ pub async fn create_blocks(
     }
 
     suite
-        .lock()
+        .read()
         .await
         .app
         .indexer
@@ -68,7 +68,7 @@ pub async fn create_blocks(
 
     let client = Arc::new(mock_client);
 
-    let suite_guard = suite.lock().await;
+    let suite_guard = suite.read().await;
     let httpd_app = suite_guard.app.clone_without_indexer();
     let httpd_context = Context::new(
         indexer_cache_context,
