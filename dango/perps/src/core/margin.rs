@@ -3,8 +3,8 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Quantity, UsdPrice, UsdValue,
-        perps::{PairId, PairParam, PairState, Param, Position, UserState},
+        Dimensionless, Quantity, UsdPrice, UsdValue,
+        perps::{PairId, PairParam, PairState, Position, UserState},
     },
 };
 
@@ -237,7 +237,7 @@ pub fn check_margin(
     perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     taker_state: &UserState,
-    param: &Param,
+    taker_fee_rate: Dimensionless,
     pair_id: &PairId,
     oracle_price: UsdPrice,
     size: Quantity,
@@ -260,7 +260,7 @@ pub fn check_margin(
         projected_size,
     )?;
 
-    let projected_fee = compute_trading_fee(size, oracle_price, param.taker_fee_rate)?;
+    let projected_fee = compute_trading_fee(size, oracle_price, taker_fee_rate)?;
 
     let required_margin = projected_im
         .checked_add(projected_fee)?
@@ -288,7 +288,7 @@ mod tests {
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
-            perps::{PairParam, PairState, Position},
+            perps::{PairParam, PairState, Param, Position},
         },
         grug::{Timestamp, Udec128, btree_map, hash_map},
         std::collections::HashMap,
@@ -1139,7 +1139,7 @@ mod tests {
     fn margin_check_full_fill_fails() {
         let pair_id: PairId = "perp/btcusd".parse().unwrap();
         let param = Param {
-            taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
+            base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
             ..Default::default()
         };
         let taker_state = UserState {
@@ -1171,7 +1171,7 @@ mod tests {
             &perp_querier,
             &mut oracle_querier,
             &taker_state,
-            &param,
+            param.base_taker_fee_rate,
             &pair_id,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),

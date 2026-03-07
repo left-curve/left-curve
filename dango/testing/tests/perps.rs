@@ -13,7 +13,7 @@ use {
     },
     grug_app::CONTRACT_NAMESPACE,
     pyth_types::{Channel, LeEcdsaMessage},
-    std::str::FromStr,
+    std::{collections::BTreeMap, str::FromStr},
 };
 
 fn pair_id() -> Denom {
@@ -23,8 +23,10 @@ fn pair_id() -> Denom {
 /// Return the genesis-default global params (mirrors `PerpsOption::preset_test()`).
 fn default_param() -> Param {
     Param {
-        taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
-        maker_fee_rate: Dimensionless::ZERO,
+        base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
+        base_maker_fee_rate: Dimensionless::ZERO,
+        tiered_taker_fee_rate: BTreeMap::new(),
+        tiered_maker_fee_rate: BTreeMap::new(),
         protocol_fee_rate: Dimensionless::ZERO,
         liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
         vault_cooldown_period: Duration::from_days(1),
