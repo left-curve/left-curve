@@ -898,13 +898,15 @@
               }
             },
             "param": {
+              "base_maker_fee_rate": "0",
+              "base_taker_fee_rate": "0.001",
               "funding_period": "3600",
               "liquidation_fee_rate": "0.01",
-              "base_maker_fee_rate": "0",
               "max_open_orders": 100,
               "max_unlocks": 10,
               "protocol_fee_rate": "0",
-              "base_taker_fee_rate": "0.001",
+              "tiered_maker_fee_rate": {},
+              "tiered_taker_fee_rate": {},
               "vault_cooldown_period": "86400",
               "vault_total_weight": "0"
             }
