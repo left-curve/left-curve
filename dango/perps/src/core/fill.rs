@@ -15,9 +15,9 @@ use {
 /// Positive = user gains, negative = user loses.
 /// Does NOT include trading fees — the caller handles those separately.
 pub fn execute_fill(
+    pair_id: &PairId,
     pair_state: &mut PairState,
     user_state: &mut UserState,
-    pair_id: &PairId,
     fill_price: UsdPrice,
     closing_size: Quantity,
     opening_size: Quantity,
@@ -211,9 +211,9 @@ mod tests {
         let mut user_state = UserState::default();
 
         let pnl = execute_fill(
+            &pair_id(),
             &mut pair_state,
             &mut user_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::ZERO,
             Quantity::new_int(10),
@@ -239,9 +239,9 @@ mod tests {
         let mut user_state = UserState::default();
 
         let pnl = execute_fill(
+            &pair_id(),
             &mut pair_state,
             &mut user_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::ZERO,
             Quantity::new_int(-10),
@@ -267,9 +267,9 @@ mod tests {
         let mut user_state = make_user_state(10, 50_000);
 
         let pnl = execute_fill(
+            &pair_id(),
             &mut pair_state,
             &mut user_state,
-            &pair_id(),
             UsdPrice::new_int(55_000),
             Quantity::new_int(-10), // closing a long with a sell
             Quantity::ZERO,
@@ -293,9 +293,9 @@ mod tests {
         let mut user_state = make_user_state(10, 50_000);
 
         let pnl = execute_fill(
+            &pair_id(),
             &mut pair_state,
             &mut user_state,
-            &pair_id(),
             UsdPrice::new_int(48_000),
             Quantity::new_int(-10),
             Quantity::ZERO,
@@ -313,9 +313,9 @@ mod tests {
         let mut user_state = make_user_state(-10, 50_000);
 
         let pnl = execute_fill(
+            &pair_id(),
             &mut pair_state,
             &mut user_state,
-            &pair_id(),
             UsdPrice::new_int(48_000),
             Quantity::new_int(10), // closing a short with a buy
             Quantity::ZERO,
@@ -335,9 +335,9 @@ mod tests {
         let mut user_state = make_user_state(10, 50_000);
 
         let _pnl = execute_fill(
+            &pair_id(),
             &mut pair_state,
             &mut user_state,
-            &pair_id(),
             UsdPrice::new_int(55_000),
             Quantity::new_int(-4), // close 4 of 10
             Quantity::ZERO,
@@ -359,9 +359,9 @@ mod tests {
         let mut user_state = make_user_state(5, 50_000);
 
         let _pnl = execute_fill(
+            &pair_id(),
             &mut pair_state,
             &mut user_state,
-            &pair_id(),
             UsdPrice::new_int(52_000),
             Quantity::new_int(-5), // close the long
             Quantity::new_int(-3), // open a short
@@ -385,9 +385,9 @@ mod tests {
         let mut user_state = make_user_state(10, 50_000);
 
         let pnl = execute_fill(
+            &pair_id(),
             &mut pair_state,
             &mut user_state,
-            &pair_id(),
             UsdPrice::new_int(60_000),
             Quantity::ZERO,
             Quantity::new_int(10), // double the position
@@ -426,9 +426,9 @@ mod tests {
 
         // Open more — the funding should be settled first.
         let pnl = execute_fill(
+            &pair_id(),
             &mut pair_state,
             &mut user_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::ZERO,
             Quantity::new_int(5),

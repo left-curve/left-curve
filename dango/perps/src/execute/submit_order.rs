@@ -64,19 +64,19 @@ pub fn submit_order(
             ctx.storage,
             ctx.sender,
             ctx.contract,
+            ctx.block.timestamp,
+            &mut oracle_querier,
             &param,
+            &mut state,
+            &pair_id,
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id,
             oracle_price,
             size,
             kind,
             reduce_only,
-            &mut oracle_querier,
             &mut events,
-            &mut state,
-            ctx.block.timestamp,
         )?;
 
     // ------------------------ 3. Apply state changes -------------------------
@@ -195,19 +195,19 @@ fn _submit_order(
     storage: &dyn Storage,
     taker: Addr,
     contract: Addr,
+    current_time: Timestamp,
+    oracle_querier: &mut OracleQuerier,
     param: &Param,
+    state: &mut State,
+    pair_id: &PairId,
     pair_param: &PairParam,
     pair_state: &mut PairState,
     taker_state: &mut UserState,
-    pair_id: &PairId,
     oracle_price: UsdPrice,
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
-    oracle_querier: &mut OracleQuerier,
     events: &mut EventBuilder,
-    state: &mut State,
-    current_time: Timestamp,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
@@ -224,13 +224,14 @@ fn _submit_order(
 
     // ----------------------- Step 2. Decompose order -------------------------
 
-    let current_position = taker_state
-        .positions
-        .get(pair_id)
-        .map(|p| p.size)
-        .unwrap_or_default();
-
-    let (closing_size, mut opening_size) = decompose_fill(size, current_position);
+    let (closing_size, mut opening_size) = {
+        let current_position = taker_state
+            .positions
+            .get(pair_id)
+            .map(|p| p.size)
+            .unwrap_or_default();
+        decompose_fill(size, current_position)
+    };
 
     if reduce_only {
         opening_size = Quantity::ZERO;
@@ -255,14 +256,14 @@ fn _submit_order(
         let order_to_store = store_post_only_limit_order(
             storage,
             taker,
+            oracle_querier,
             param,
+            pair_id,
             pair_param,
             taker_state,
-            pair_id,
             fillable_size,
             limit_price,
             reduce_only,
-            oracle_querier,
             taker_order_id,
         )?;
 
@@ -283,20 +284,22 @@ fn _submit_order(
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-        let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-        let taker_volume = query_volume(storage, taker, volume_since)?;
-        let taker_fee_rate = resolve_fee_rate(
-            param.base_taker_fee_rate,
-            &param.tiered_taker_fee_rate,
-            taker_volume,
-        );
+        let taker_fee_rate = {
+            let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+            let taker_volume = query_volume(storage, taker, volume_since)?;
+            resolve_fee_rate(
+                param.base_taker_fee_rate,
+                &param.tiered_taker_fee_rate,
+                taker_volume,
+            )
+        };
 
         check_margin(
-            &perp_querier,
             oracle_querier,
+            pair_id,
+            &perp_querier,
             taker_state,
             taker_fee_rate,
-            pair_id,
             oracle_price,
             size,
         )?;
@@ -313,19 +316,19 @@ fn _submit_order(
 
     let (unfilled, pnls, fees, volumes, order_mutations, index_updates) = match_order(
         storage,
+        taker,
+        contract,
+        current_time,
         param,
         pair_id,
         pair_state,
-        taker,
-        contract,
         taker_state,
         taker_is_bid,
+        taker_order_id,
+        &mut maker_states,
         target_price,
         fillable_size,
-        &mut maker_states,
         events,
-        taker_order_id,
-        current_time,
     )?;
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
@@ -335,13 +338,13 @@ fn _submit_order(
             OrderKind::Limit { limit_price, .. } => Some(store_limit_order(
                 storage,
                 taker,
+                oracle_querier,
                 param,
                 pair_param,
                 taker_state,
                 unfilled,
                 limit_price,
                 reduce_only,
-                oracle_querier,
                 taker_order_id,
             )?),
             OrderKind::Market { .. } => {
@@ -366,14 +369,14 @@ fn _submit_order(
     });
 
     settle_pnls(
-        pnls,
-        fees,
         contract,
+        param,
+        state,
         taker,
         taker_state,
-        param,
         &mut maker_states,
-        state,
+        pnls,
+        fees,
     )?;
 
     Ok((
@@ -412,19 +415,19 @@ fn _submit_order(
 /// deeper in the book.
 pub(crate) fn match_order(
     storage: &dyn Storage,
+    taker: Addr,
+    contract: Addr,
+    current_time: Timestamp,
     param: &Param,
     pair_id: &PairId,
     pair_state: &mut PairState,
-    taker: Addr,
-    contract: Addr,
     taker_state: &mut UserState,
     taker_is_bid: bool,
+    taker_order_id: OrderId,
+    maker_states: &mut BTreeMap<Addr, UserState>,
     target_price: UsdPrice,
     mut remaining_size: Quantity,
-    maker_states: &mut BTreeMap<Addr, UserState>,
     events: &mut EventBuilder,
-    taker_order_id: OrderId,
-    current_time: Timestamp,
 ) -> anyhow::Result<(
     Quantity,
     BTreeMap<Addr, UsdValue>,
@@ -441,12 +444,14 @@ pub(crate) fn match_order(
 
     // Resolve taker's fee rate based on recent volume.
     let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-    let taker_volume = query_volume(storage, taker, volume_since)?;
-    let taker_fee_rate = resolve_fee_rate(
-        param.base_taker_fee_rate,
-        &param.tiered_taker_fee_rate,
-        taker_volume,
-    );
+    let taker_fee_rate = {
+        let taker_volume = query_volume(storage, taker, volume_since)?;
+        resolve_fee_rate(
+            param.base_taker_fee_rate,
+            &param.tiered_taker_fee_rate,
+            taker_volume,
+        )
+    };
 
     // Create iterator over the maker side of the order book.
     // The iteration follows price-time priority.
@@ -522,13 +527,13 @@ pub(crate) fn match_order(
             pair_id,
             pair_state,
             taker_state,
+            taker,
             taker_fill_size,
             resting_price,
             taker_fee_rate,
             &mut pnls,
             &mut fees,
             &mut volumes,
-            taker,
             Some((events, taker_order_id)),
         )?;
 
@@ -555,24 +560,26 @@ pub(crate) fn match_order(
         let old_maker_pos = maker_state.positions.get(pair_id).cloned();
 
         // Resolve maker's fee rate based on recent volume.
-        let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
-        let maker_fee_rate = resolve_fee_rate(
-            param.base_maker_fee_rate,
-            &param.tiered_maker_fee_rate,
-            maker_volume,
-        );
+        let maker_fee_rate = {
+            let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
+            resolve_fee_rate(
+                param.base_maker_fee_rate,
+                &param.tiered_maker_fee_rate,
+                maker_volume,
+            )
+        };
 
         settle_fill(
             pair_id,
             pair_state,
             maker_state,
+            maker_order.user,
             maker_fill_size,
             resting_price,
             maker_fee_rate,
             &mut pnls,
             &mut fees,
             &mut volumes,
-            maker_order.user,
             Some((events, maker_order_id)),
         )?;
 
@@ -651,25 +658,26 @@ pub(crate) fn settle_fill(
     pair_id: &PairId,
     pair_state: &mut PairState,
     user_state: &mut UserState,
+    user: Addr,
     fill_size: Quantity,
     fill_price: UsdPrice,
     fee_rate: Dimensionless,
     pnls: &mut BTreeMap<Addr, UsdValue>,
     fees: &mut BTreeMap<Addr, UsdValue>,
     volumes: &mut BTreeMap<Addr, UsdValue>,
-    user: Addr,
     events: Option<(&mut EventBuilder, OrderId)>,
 ) -> grug::StdResult<UsdValue> {
-    let current_pos = user_state
-        .positions
-        .get(pair_id)
-        .map(|p| p.size)
-        .unwrap_or_default();
-
-    let (closing, opening) = decompose_fill(fill_size, current_pos);
+    let (closing, opening) = {
+        let current_pos = user_state
+            .positions
+            .get(pair_id)
+            .map(|p| p.size)
+            .unwrap_or_default();
+        decompose_fill(fill_size, current_pos)
+    };
 
     let pnl = execute_fill(
-        pair_state, user_state, pair_id, fill_price, closing, opening,
+        pair_id, pair_state, user_state, fill_price, closing, opening,
     )?;
 
     let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
@@ -723,14 +731,14 @@ pub(crate) fn settle_fill(
 ///
 /// Returns: `()` — all side effects are applied in-place.
 pub(crate) fn settle_pnls(
-    pnls: BTreeMap<Addr, UsdValue>,
-    fees: BTreeMap<Addr, UsdValue>,
     contract: Addr,
+    param: &Param,
+    state: &mut State,
     taker: Addr,
     taker_state: &mut UserState,
-    param: &Param,
     maker_states: &mut BTreeMap<Addr, UserState>,
-    state: &mut State,
+    pnls: BTreeMap<Addr, UsdValue>,
+    fees: BTreeMap<Addr, UsdValue>,
 ) -> anyhow::Result<()> {
     debug_assert!(
         !maker_states.contains_key(&taker),
@@ -806,14 +814,14 @@ pub(crate) fn settle_pnls(
 fn store_post_only_limit_order(
     storage: &dyn Storage,
     taker: Addr,
+    oracle_querier: &mut OracleQuerier,
     param: &Param,
+    pair_id: &PairId,
     pair_param: &PairParam,
     taker_state: &mut UserState,
-    pair_id: &PairId,
     size: Quantity,
     limit_price: UsdPrice,
     reduce_only: bool,
-    oracle_querier: &mut OracleQuerier,
     order_id: OrderId,
 ) -> anyhow::Result<(UsdPrice, OrderId, Order)> {
     let taker_is_bid = size.is_positive();
@@ -849,13 +857,13 @@ fn store_post_only_limit_order(
     store_limit_order(
         storage,
         taker,
+        oracle_querier,
         param,
         pair_param,
         taker_state,
         size,
         limit_price,
         reduce_only,
-        oracle_querier,
         order_id,
     )
 }
@@ -872,13 +880,13 @@ fn store_post_only_limit_order(
 fn store_limit_order(
     storage: &dyn Storage,
     user: Addr,
+    oracle_querier: &mut OracleQuerier,
     param: &Param,
     pair_param: &PairParam,
     user_state: &mut UserState,
     size: Quantity,
     limit_price: UsdPrice,
     reduce_only: bool,
-    oracle_querier: &mut OracleQuerier,
     order_id: OrderId,
 ) -> anyhow::Result<(UsdPrice, OrderId, Order)> {
     ensure!(
@@ -904,7 +912,7 @@ fn store_limit_order(
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-        let available_margin = compute_available_margin(user_state, &perp_querier, oracle_querier)?;
+        let available_margin = compute_available_margin(oracle_querier, &perp_querier, user_state)?;
 
         ensure!(
             available_margin >= margin_to_reserve,
@@ -1062,21 +1070,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100), // 10%
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1120,21 +1128,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1168,21 +1176,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(10),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -1217,11 +1225,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -1229,10 +1240,7 @@ mod tests {
                 post_only: false,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1266,11 +1274,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -1278,10 +1289,7 @@ mod tests {
                 post_only: false,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1319,11 +1327,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -1331,10 +1342,7 @@ mod tests {
                 post_only: false,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1378,21 +1386,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             true,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1424,21 +1432,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(10),
             },
             true,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -1473,21 +1481,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1528,21 +1536,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1580,21 +1588,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1640,11 +1648,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -1652,10 +1663,7 @@ mod tests {
                 post_only: false,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         );
 
         assert!(result.is_ok());
@@ -1687,11 +1695,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -1699,10 +1710,7 @@ mod tests {
                 post_only: false,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -1738,21 +1746,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_100),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1798,21 +1806,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1844,21 +1852,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(4),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1896,21 +1904,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(10), // 1%
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -1942,14 +1950,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &Param::default(),
+            &mut state,
             taker,
             &mut taker_state,
-            &Param::default(),
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -1983,14 +1991,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &Param::default(),
+            &mut state,
             taker,
             &mut taker_state,
-            &Param::default(),
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -2018,14 +2026,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &Param::default(),
+            &mut state,
             taker,
             &mut taker_state,
-            &Param::default(),
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -2050,14 +2058,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &Param::default(),
+            &mut state,
             taker,
             &mut taker_state,
-            &Param::default(),
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -2081,14 +2089,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &Param::default(),
+            &mut state,
             taker,
             &mut taker_state,
-            &Param::default(),
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -2117,14 +2125,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &Param::default(),
+            &mut state,
             taker,
             &mut taker_state,
-            &Param::default(),
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -2146,14 +2154,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &Param::default(),
+            &mut state,
             taker,
             &mut taker_state,
-            &Param::default(),
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -2175,14 +2183,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &Param::default(),
+            &mut state,
             taker,
             &mut taker_state,
-            &Param::default(),
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -2205,14 +2213,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &Param::default(),
+            &mut state,
             taker,
             &mut taker_state,
-            &Param::default(),
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -2233,14 +2241,14 @@ mod tests {
         let mut state = State::default();
 
         settle_pnls(
-            pnls,
-            fees,
             CONTRACT,
+            &param,
+            &mut state,
             taker,
             &mut taker_state,
-            &param,
             &mut maker_states,
-            &mut state,
+            pnls,
+            fees,
         )
         .unwrap();
 
@@ -2273,11 +2281,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -2285,10 +2296,7 @@ mod tests {
                 post_only: true,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2324,11 +2332,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -2336,10 +2347,7 @@ mod tests {
                 post_only: true,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -2368,11 +2376,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -2380,10 +2391,7 @@ mod tests {
                 post_only: true,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -2412,11 +2420,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Limit {
@@ -2424,10 +2435,7 @@ mod tests {
                 post_only: true,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2462,11 +2470,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Limit {
@@ -2474,10 +2485,7 @@ mod tests {
                 post_only: true,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -2506,11 +2514,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -2518,10 +2529,7 @@ mod tests {
                 post_only: true,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2559,11 +2567,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(-5),
             OrderKind::Limit {
@@ -2571,10 +2582,7 @@ mod tests {
                 post_only: true,
             },
             true,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2616,11 +2624,14 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -2628,10 +2639,7 @@ mod tests {
                 post_only: true,
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -2676,21 +2684,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(50_100),
             Quantity::new_int(10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100), // 10%
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2773,21 +2781,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(open_price),
             Quantity::new_int(size),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2826,21 +2834,21 @@ mod tests {
             &ctx.storage,
             TAKER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(close_price),
             Quantity::new_int(-size),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2950,21 +2958,21 @@ mod tests {
             &ctx.storage,
             MAKER_B,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
             &param,
+            &mut State::default(),
+            &pair_id(),
             &pair_param,
             &mut pair_state,
             &mut taker_state,
-            &pair_id(),
             UsdPrice::new_int(51_000),
             Quantity::new_int(-10),
             OrderKind::Market {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            &mut oq,
             &mut EventBuilder::new(),
-            &mut State::default(),
-            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -3013,21 +3021,21 @@ mod tests {
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
+                Timestamp::ZERO,
+                &mut oq,
                 &param,
+                &mut State::default(),
+                &pair_id(),
                 &pair_param,
                 &mut pair_state,
                 &mut taker_state,
-                &pair_id(),
                 UsdPrice::new_int(50_000),
                 Quantity::new_int(10),
                 OrderKind::Market {
                     max_slippage: Dimensionless::new_permille(100),
                 },
                 false,
-                &mut oq,
                 &mut EventBuilder::new(),
-                &mut State::default(),
-                Timestamp::ZERO,
             )
             .unwrap();
 
@@ -3073,11 +3081,14 @@ mod tests {
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
+                Timestamp::ZERO,
+                &mut oq,
                 &param,
+                &mut State::default(),
+                &pair_id(),
                 &pair_param,
                 &mut pair_state,
                 &mut taker_state,
-                &pair_id(),
                 UsdPrice::new_int(50_000),
                 Quantity::new_int(10),
                 OrderKind::Limit {
@@ -3085,10 +3096,7 @@ mod tests {
                     post_only: false,
                 },
                 false,
-                &mut oq,
                 &mut EventBuilder::new(),
-                &mut State::default(),
-                Timestamp::ZERO,
             )
             .unwrap();
 

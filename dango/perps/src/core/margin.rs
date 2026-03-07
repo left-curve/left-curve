@@ -52,9 +52,9 @@ pub(super) fn compute_position_unrealized_funding(
 /// equity = user_state.margin + Σ(unrealized_pnl) - Σ(accrued_funding)
 /// ```
 pub fn compute_user_equity(
-    user_state: &UserState,
-    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
+    perp_querier: &NoCachePerpQuerier,
+    user_state: &UserState,
 ) -> anyhow::Result<UsdValue> {
     let mut total_pnl = UsdValue::ZERO;
     let mut total_funding = UsdValue::ZERO;
@@ -87,9 +87,9 @@ pub fn compute_user_equity(
 /// The maintenance margin acts as the liquidation trigger. If a user's collateral
 /// value falls below the maintenance margin, he becomes eligible for liquidation.
 pub fn compute_maintenance_margin(
-    user_state: &UserState,
-    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
+    perp_querier: &NoCachePerpQuerier,
+    user_state: &UserState,
 ) -> anyhow::Result<UsdValue> {
     let mut total = UsdValue::ZERO;
 
@@ -124,9 +124,9 @@ pub fn compute_maintenance_margin(
 /// When submitting an order, the user must have no less collateral than the
 /// initial margin, otherwise the order is rejected.
 pub(super) fn compute_initial_margin(
-    user_state: &UserState,
-    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
+    perp_querier: &NoCachePerpQuerier,
+    user_state: &UserState,
     projected_pair_id: &PairId,
     projected_size: Quantity,
 ) -> anyhow::Result<UsdValue> {
@@ -200,11 +200,11 @@ pub fn compute_required_margin(
 /// Returns zero when equity falls below the used + reserved requirement
 /// (the user cannot open new positions or withdraw, and may face liquidation).
 pub fn compute_available_margin(
-    user_state: &UserState,
-    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
+    perp_querier: &NoCachePerpQuerier,
+    user_state: &UserState,
 ) -> anyhow::Result<UsdValue> {
-    let equity = compute_user_equity(user_state, perp_querier, oracle_querier)?;
+    let equity = compute_user_equity(oracle_querier, perp_querier, user_state)?;
 
     let mut used_margin = UsdValue::ZERO;
 
@@ -234,28 +234,29 @@ pub fn compute_available_margin(
 /// The 0%-fill scenario (limit-order reservation) is checked separately
 /// inside `store_limit_order`.
 pub fn check_margin(
-    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
+    pair_id: &PairId,
+    perp_querier: &NoCachePerpQuerier,
     taker_state: &UserState,
     taker_fee_rate: Dimensionless,
-    pair_id: &PairId,
     oracle_price: UsdPrice,
     size: Quantity,
 ) -> anyhow::Result<()> {
-    let equity = compute_user_equity(taker_state, perp_querier, oracle_querier)?;
+    let equity = compute_user_equity(oracle_querier, perp_querier, taker_state)?;
 
-    let current_position = taker_state
-        .positions
-        .get(pair_id)
-        .map(|p| p.size)
-        .unwrap_or_default();
-
-    let projected_size = current_position.checked_add(size)?;
+    let projected_size = {
+        let current_position = taker_state
+            .positions
+            .get(pair_id)
+            .map(|p| p.size)
+            .unwrap_or_default();
+        current_position.checked_add(size)?
+    };
 
     let projected_im = compute_initial_margin(
-        taker_state,
-        perp_querier,
         oracle_querier,
+        perp_querier,
+        taker_state,
         pair_id,
         projected_size,
     )?;
@@ -369,7 +370,7 @@ mod tests {
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
-            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
+            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(10_000),
         );
     }
@@ -409,7 +410,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
+            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(15_000),
         );
     }
@@ -450,7 +451,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
+            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(14_980),
         );
     }
@@ -507,7 +508,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
+            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(16_980),
         );
     }
@@ -547,7 +548,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_user_equity(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
+            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(-4900),
         );
     }
@@ -561,7 +562,7 @@ mod tests {
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
-            compute_maintenance_margin(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
+            compute_maintenance_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::ZERO,
         );
     }
@@ -600,7 +601,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_maintenance_margin(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
+            compute_maintenance_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(1000),
         );
     }
@@ -653,7 +654,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_maintenance_margin(&user_state, &perp_querier, &mut oracle_querier).unwrap(),
+            compute_maintenance_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(2500),
         );
     }
@@ -685,9 +686,9 @@ mod tests {
 
         assert_eq!(
             compute_initial_margin(
-                &user_state,
-                &perp_querier,
                 &mut oracle_querier,
+                &perp_querier,
+                &user_state,
                 &eth::DENOM,
                 Quantity::new_int(10),
             )
@@ -730,9 +731,9 @@ mod tests {
 
         assert_eq!(
             compute_initial_margin(
-                &user_state,
-                &perp_querier,
                 &mut oracle_querier,
+                &perp_querier,
+                &user_state,
                 &eth::DENOM,
                 Quantity::new_int(10),
             )
@@ -786,9 +787,9 @@ mod tests {
 
         assert_eq!(
             compute_initial_margin(
-                &user_state,
-                &perp_querier,
                 &mut oracle_querier,
+                &perp_querier,
+                &user_state,
                 &btc::DENOM,
                 Quantity::new_int(1),
             )
@@ -821,9 +822,9 @@ mod tests {
 
         assert_eq!(
             compute_initial_margin(
-                &user_state,
-                &perp_querier,
                 &mut oracle_querier,
+                &perp_querier,
+                &user_state,
                 &eth::DENOM,
                 Quantity::ZERO,
             )
@@ -882,9 +883,9 @@ mod tests {
 
         assert_eq!(
             compute_initial_margin(
-                &user_state,
-                &perp_querier,
                 &mut oracle_querier,
+                &perp_querier,
+                &user_state,
                 &eth::DENOM,
                 Quantity::new_int(20),
             )
@@ -935,7 +936,7 @@ mod tests {
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
-            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
+            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(10_000),
         );
     }
@@ -981,7 +982,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
+            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(12_500),
         );
     }
@@ -1026,7 +1027,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
+            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(10_500),
         );
     }
@@ -1073,7 +1074,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
+            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::ZERO,
         );
     }
@@ -1120,7 +1121,7 @@ mod tests {
         });
 
         assert_eq!(
-            compute_available_margin(&user_state, &perp_querier, &mut oracle_querier,).unwrap(),
+            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(12_480),
         );
     }
@@ -1168,11 +1169,11 @@ mod tests {
         });
 
         let result = check_margin(
-            &perp_querier,
             &mut oracle_querier,
+            &pair_id,
+            &perp_querier,
             &taker_state,
             param.base_taker_fee_rate,
-            &pair_id,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
         );

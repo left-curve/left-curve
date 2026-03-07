@@ -40,13 +40,13 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 
     let (amount, end_time) = _remove_liquidity(
         ctx.block.timestamp,
-        shares_to_burn,
+        &mut oracle_querier,
         &param,
         &mut state.vault_share_supply,
+        &perp_querier,
         &mut user_state,
         &mut vault_user_state,
-        &perp_querier,
-        &mut oracle_querier,
+        shares_to_burn,
     )?;
 
     // ------------------------ 3. Apply state changes -------------------------
@@ -74,13 +74,13 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 /// Returns: `(amount_to_release, end_time)`.
 fn _remove_liquidity(
     current_time: Timestamp,
-    shares_to_burn: Uint128,
+    oracle_querier: &mut OracleQuerier,
     param: &Param,
     vault_share_supply: &mut Uint128,
+    perp_querier: &NoCachePerpQuerier,
     user_state: &mut UserState,
     vault_user_state: &mut UserState,
-    perp_querier: &NoCachePerpQuerier,
-    oracle_querier: &mut OracleQuerier,
+    shares_to_burn: Uint128,
 ) -> anyhow::Result<(UsdValue, Timestamp)> {
     // -------------------- Step 1. Validate shares to burn --------------------
 
@@ -98,7 +98,7 @@ fn _remove_liquidity(
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
-    let vault_equity = compute_user_equity(vault_user_state, perp_querier, oracle_querier)?;
+    let vault_equity = compute_user_equity(oracle_querier, perp_querier, vault_user_state)?;
 
     let effective_supply = vault_share_supply.checked_add(VIRTUAL_SHARES)?;
 
@@ -113,11 +113,12 @@ fn _remove_liquidity(
 
     // Compute the proportional USD value to release.
     // ratio = shares_to_burn / effective_supply
-    let ratio = Dimensionless::new_raw(i128::try_from(shares_to_burn.0)?)
-        .checked_div(Dimensionless::new_raw(i128::try_from(effective_supply.0)?))?;
-
-    // amount_to_release = effective_equity * ratio (floor-rounded for safety)
-    let amount_to_release = effective_equity.checked_mul(ratio)?;
+    let amount_to_release = {
+        let ratio = Dimensionless::new_raw(i128::try_from(shares_to_burn.0)?)
+            .checked_div(Dimensionless::new_raw(i128::try_from(effective_supply.0)?))?;
+        // floor-rounded for safety
+        effective_equity.checked_mul(ratio)?
+    };
 
     ensure!(
         vault_user_state.margin >= amount_to_release,
@@ -195,13 +196,13 @@ mod tests {
 
         _remove_liquidity(
             Timestamp::from_seconds(0),
-            Uint128::new(1_000_000),
+            &mut oracle_querier,
             &param,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            Uint128::new(1_000_000),
         )
         .unwrap();
 
@@ -226,13 +227,13 @@ mod tests {
 
         _remove_liquidity(
             Timestamp::from_seconds(0),
-            Uint128::new(500_000),
+            &mut oracle_querier,
             &param,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            Uint128::new(500_000),
         )
         .unwrap();
 
@@ -254,13 +255,13 @@ mod tests {
 
         let err = _remove_liquidity(
             Timestamp::from_seconds(0),
-            Uint128::new(0),
+            &mut oracle_querier,
             &param,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            Uint128::new(0),
         )
         .unwrap_err();
 
@@ -300,13 +301,13 @@ mod tests {
 
         let err = _remove_liquidity(
             Timestamp::from_seconds(0),
-            Uint128::new(500_000),
+            &mut oracle_querier,
             &param,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            Uint128::new(500_000),
         )
         .unwrap_err();
 
@@ -334,13 +335,13 @@ mod tests {
 
         _remove_liquidity(
             Timestamp::from_seconds(1_000_000),
-            Uint128::new(500_000),
+            &mut oracle_querier,
             &param,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
-            &perp_querier,
-            &mut oracle_querier,
+            Uint128::new(500_000),
         )
         .unwrap();
 
