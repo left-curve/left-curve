@@ -27,6 +27,9 @@ const VIRTUAL_SHARES: Uint128 = Uint128::new(1_000_000);
 /// and prevent share inflation attacks.
 const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 
+/// Lookback window for volume-tiered fee rate resolution.
+const VOLUME_LOOKBACK: grug::Duration = grug::Duration::from_days(14);
+
 /// Returns the oracle contract address.
 ///
 /// In release builds, returns a compile-time constant for zero-cost lookups.

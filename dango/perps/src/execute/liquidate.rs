@@ -29,6 +29,7 @@ use {
     },
     grug::{
         Addr, EventBuilder, MutableCtx, NumberConst, Order as IterationOrder, Response, Storage,
+        Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
@@ -107,6 +108,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         &oracle_prices,
         &mut oracle_querier,
         &mut events,
+        ctx.block.timestamp,
     )?;
 
     // --------------------- 6. Apply state changes ----------------------------
@@ -213,6 +215,7 @@ fn _liquidate(
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     oracle_querier: &mut OracleQuerier,
     events: &mut EventBuilder,
+    current_time: Timestamp,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
@@ -258,6 +261,7 @@ fn _liquidate(
         &mut all_maker_states,
         oracle_prices,
         events,
+        current_time,
     )?;
 
     // -------------------- Step 4: Liquidation fee → insurance fund -----------
@@ -350,6 +354,7 @@ fn execute_close_schedule(
     maker_states: &mut BTreeMap<Addr, UserState>,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     events: &mut EventBuilder,
+    current_time: Timestamp,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
@@ -360,8 +365,10 @@ fn execute_close_schedule(
 )> {
     // Zero-fee param for liquidation fills.
     let liq_param = Param {
-        taker_fee_rate: Dimensionless::ZERO,
-        maker_fee_rate: Dimensionless::ZERO,
+        base_taker_fee_rate: Dimensionless::ZERO,
+        base_maker_fee_rate: Dimensionless::ZERO,
+        tiered_taker_fee_rate: BTreeMap::new(),
+        tiered_maker_fee_rate: BTreeMap::new(),
         ..param.clone()
     };
 
@@ -397,6 +404,7 @@ fn execute_close_schedule(
             maker_states,
             events,
             OrderId::ZERO,
+            current_time,
         )?;
 
         // Merge PnLs.
@@ -685,8 +693,8 @@ mod tests {
 
     fn default_param() -> Param {
         Param {
-            taker_fee_rate: Dimensionless::new_permille(10), // 1%
-            maker_fee_rate: Dimensionless::new_permille(10), // 1%
+            base_taker_fee_rate: Dimensionless::new_permille(10), // 1%
+            base_maker_fee_rate: Dimensionless::new_permille(10), // 1%
             liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
             max_open_orders: 100,
             ..Default::default()
@@ -853,6 +861,7 @@ mod tests {
             &oracle_prices,
             &mut oracle_querier,
             &mut EventBuilder::new(),
+            Timestamp::ZERO,
         );
 
         assert!(result.is_err());
@@ -951,6 +960,7 @@ mod tests {
             &oracle_prices,
             &mut oracle_querier,
             &mut EventBuilder::new(),
+            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "liquidation failed: {:?}", result.err());
@@ -1021,6 +1031,7 @@ mod tests {
             &oracle_prices,
             &mut oracle_querier,
             &mut EventBuilder::new(),
+            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "ADL failed: {:?}", result.err());
@@ -1105,6 +1116,7 @@ mod tests {
             &oracle_prices,
             &mut oracle_querier,
             &mut EventBuilder::new(),
+            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "liq fee test failed: {:?}", result.err());
@@ -1188,6 +1200,7 @@ mod tests {
             &oracle_prices,
             &mut oracle_querier,
             &mut EventBuilder::new(),
+            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "bad debt test failed: {:?}", result.err());
@@ -1303,6 +1316,7 @@ mod tests {
             &oracle_prices,
             &mut oracle_querier,
             &mut EventBuilder::new(),
+            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "liquidation failed: {:?}", result.err());

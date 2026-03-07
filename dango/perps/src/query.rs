@@ -13,7 +13,7 @@ use {
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder,
-        StdResult, Timestamp,
+        StdResult, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -70,7 +70,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::Volume { user, since } => {
-            let res = query_volume(ctx, user, since)?;
+            let res = query_volume(ctx.storage, user, since)?;
             res.to_json_value()
         },
     }
@@ -230,10 +230,14 @@ fn query_liquidity_depth(
     Ok(LiquidityDepthResponse { bids, asks })
 }
 
-fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<UsdValue> {
+pub(crate) fn query_volume(
+    storage: &dyn Storage,
+    user: Addr,
+    since: Option<Timestamp>,
+) -> StdResult<UsdValue> {
     let latest = VOLUMES
         .prefix(user)
-        .range(ctx.storage, None, None, IterationOrder::Descending)
+        .range(storage, None, None, IterationOrder::Descending)
         .next()
         .transpose()?
         .map(|(_, v)| v)
@@ -246,7 +250,7 @@ fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdR
             let baseline = VOLUMES
                 .prefix(user)
                 .range(
-                    ctx.storage,
+                    storage,
                     None,
                     Some(Bound::Inclusive(day)),
                     IterationOrder::Descending,

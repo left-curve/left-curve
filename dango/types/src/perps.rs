@@ -63,15 +63,19 @@ pub struct Param {
     /// trading pairs.
     pub max_open_orders: usize,
 
-    /// Fee charged to makers (limit orders that rest on the book) as a fraction
-    /// of the fill's notional value, deducted from the user's margin and
-    /// transferred to the vault on every fill.
-    pub maker_fee_rate: Dimensionless,
+    /// Base fee charged to makers, used when no volume tier qualifies.
+    pub base_maker_fee_rate: Dimensionless,
 
-    /// Fee charged to takers (market orders and crossing limit orders) as a
-    /// fraction of the fill's notional value, deducted from the user's margin
-    /// and transferred to the vault on every fill.
-    pub taker_fee_rate: Dimensionless,
+    /// Base fee charged to takers, used when no volume tier qualifies.
+    pub base_taker_fee_rate: Dimensionless,
+
+    /// Volume-tiered maker fee rates. Key = minimum recent USD volume
+    /// threshold; value = fee rate. Highest qualifying tier wins.
+    pub tiered_maker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
+
+    /// Volume-tiered taker fee rates. Key = minimum recent USD volume
+    /// threshold; value = fee rate. Highest qualifying tier wins.
+    pub tiered_taker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
 
     /// Fraction of each trading fee routed to the protocol treasury.
     /// The remainder (1 − `protocol_fee_rate`) stays with the vault.

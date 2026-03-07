@@ -5,15 +5,16 @@ use {
         core::{
             check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
             compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
-            decompose_fill, execute_fill, is_price_constraint_violated,
+            decompose_fill, execute_fill, is_price_constraint_violated, resolve_fee_rate,
         },
-        execute::oracle,
+        execute::{VOLUME_LOOKBACK, oracle},
         flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
         price::may_invert_price,
+        query::query_volume,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -25,7 +26,8 @@ use {
         },
     },
     grug::{
-        Addr, EventBuilder, MutableCtx, NumberConst, Order as IterationOrder, Response, Storage,
+        Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder, Response,
+        Storage, Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
@@ -74,6 +76,7 @@ pub fn submit_order(
             &mut oracle_querier,
             &mut events,
             &mut state,
+            ctx.block.timestamp,
         )?;
 
     // ------------------------ 3. Apply state changes -------------------------
@@ -204,6 +207,7 @@ fn _submit_order(
     oracle_querier: &mut OracleQuerier,
     events: &mut EventBuilder,
     state: &mut State,
+    current_time: Timestamp,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
@@ -279,11 +283,19 @@ fn _submit_order(
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
 
+        let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+        let taker_volume = query_volume(storage, taker, volume_since)?;
+        let taker_fee_rate = resolve_fee_rate(
+            param.base_taker_fee_rate,
+            &param.tiered_taker_fee_rate,
+            taker_volume,
+        );
+
         check_margin(
             &perp_querier,
             oracle_querier,
             taker_state,
-            param,
+            taker_fee_rate,
             pair_id,
             oracle_price,
             size,
@@ -313,6 +325,7 @@ fn _submit_order(
         &mut maker_states,
         events,
         taker_order_id,
+        current_time,
     )?;
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
@@ -411,6 +424,7 @@ pub(crate) fn match_order(
     maker_states: &mut BTreeMap<Addr, UserState>,
     events: &mut EventBuilder,
     taker_order_id: OrderId,
+    current_time: Timestamp,
 ) -> anyhow::Result<(
     Quantity,
     BTreeMap<Addr, UsdValue>,
@@ -424,6 +438,15 @@ pub(crate) fn match_order(
     let mut volumes = BTreeMap::new();
     let mut order_mutations = Vec::new();
     let mut index_updates = Vec::new();
+
+    // Resolve taker's fee rate based on recent volume.
+    let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+    let taker_volume = query_volume(storage, taker, volume_since)?;
+    let taker_fee_rate = resolve_fee_rate(
+        param.base_taker_fee_rate,
+        &param.tiered_taker_fee_rate,
+        taker_volume,
+    );
 
     // Create iterator over the maker side of the order book.
     // The iteration follows price-time priority.
@@ -501,7 +524,7 @@ pub(crate) fn match_order(
             taker_state,
             taker_fill_size,
             resting_price,
-            param.taker_fee_rate,
+            taker_fee_rate,
             &mut pnls,
             &mut fees,
             &mut volumes,
@@ -531,13 +554,21 @@ pub(crate) fn match_order(
 
         let old_maker_pos = maker_state.positions.get(pair_id).cloned();
 
+        // Resolve maker's fee rate based on recent volume.
+        let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
+        let maker_fee_rate = resolve_fee_rate(
+            param.base_maker_fee_rate,
+            &param.tiered_maker_fee_rate,
+            maker_volume,
+        );
+
         settle_fill(
             pair_id,
             pair_state,
             maker_state,
             maker_fill_size,
             resting_price,
-            param.maker_fee_rate,
+            maker_fee_rate,
             &mut pnls,
             &mut fees,
             &mut volumes,
@@ -933,8 +964,8 @@ mod tests {
     fn test_param() -> Param {
         Param {
             max_open_orders: 10,
-            taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
-            maker_fee_rate: Dimensionless::ZERO,
+            base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
+            base_maker_fee_rate: Dimensionless::ZERO,
             ..Default::default()
         }
     }
@@ -1045,6 +1076,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1102,6 +1134,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1149,6 +1182,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -1198,6 +1232,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1246,6 +1281,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1298,6 +1334,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1355,6 +1392,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1400,6 +1438,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -1448,6 +1487,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1502,6 +1542,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1553,6 +1594,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1613,6 +1655,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         );
 
         assert!(result.is_ok());
@@ -1659,6 +1702,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -1708,6 +1752,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1767,6 +1812,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1812,6 +1858,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -1863,6 +1910,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -2240,6 +2288,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2290,6 +2339,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -2333,6 +2383,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -2376,6 +2427,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2425,6 +2477,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -2468,6 +2521,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2520,6 +2574,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2576,6 +2631,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         );
 
         assert!(err.is_err());
@@ -2634,6 +2690,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2730,6 +2787,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2782,6 +2840,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2905,6 +2964,7 @@ mod tests {
             &mut oq,
             &mut EventBuilder::new(),
             &mut State::default(),
+            Timestamp::ZERO,
         )
         .unwrap();
 
@@ -2967,6 +3027,7 @@ mod tests {
                 &mut oq,
                 &mut EventBuilder::new(),
                 &mut State::default(),
+                Timestamp::ZERO,
             )
             .unwrap();
 
@@ -3027,6 +3088,7 @@ mod tests {
                 &mut oq,
                 &mut EventBuilder::new(),
                 &mut State::default(),
+                Timestamp::ZERO,
             )
             .unwrap();
 
