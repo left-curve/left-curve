@@ -69,11 +69,11 @@ pub struct Param {
     /// Base fee charged to takers, used when no volume tier qualifies.
     pub base_taker_fee_rate: Dimensionless,
 
-    /// Volume-tiered maker fee rates. Key = minimum 14-day USD volume
+    /// Volume-tiered maker fee rates. Key = minimum recent USD volume
     /// threshold; value = fee rate. Highest qualifying tier wins.
     pub tiered_maker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
 
-    /// Volume-tiered taker fee rates. Key = minimum 14-day USD volume
+    /// Volume-tiered taker fee rates. Key = minimum recent USD volume
     /// threshold; value = fee rate. Highest qualifying tier wins.
     pub tiered_taker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
 

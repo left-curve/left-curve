@@ -4,18 +4,18 @@ use {
     std::collections::BTreeMap,
 };
 
-/// Given a base fee rate, a tiered fee schedule, and the user's 14-day
+/// Given a base fee rate, a tiered fee schedule, and the user's recent
 /// volume, return the applicable fee rate. The highest qualifying tier
 /// wins; if no tier is met, the base rate applies.
 pub fn resolve_fee_rate(
     base_rate: Dimensionless,
     tiers: &BTreeMap<UsdValue, Dimensionless>,
-    volume_14d: UsdValue,
+    recent_volume: UsdValue,
 ) -> Dimensionless {
     tiers
         .iter()
         .rev()
-        .find(|&(&threshold, _)| volume_14d >= threshold)
+        .find(|&(&threshold, _)| recent_volume >= threshold)
         .map(|(_, rate)| *rate)
         .unwrap_or(base_rate)
 }

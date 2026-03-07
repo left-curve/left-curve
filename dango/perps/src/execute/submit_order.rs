@@ -1,7 +1,7 @@
 use {
     crate::{
         ASKS, BIDS, NEXT_ORDER_ID, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-        USER_STATES,
+        USER_STATES, VOLUME_LOOKBACK,
         core::{
             check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
             compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
@@ -26,8 +26,8 @@ use {
         },
     },
     grug::{
-        Addr, Duration, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder,
-        Response, Storage, Timestamp,
+        Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder, Response,
+        Storage, Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
@@ -283,8 +283,8 @@ fn _submit_order(
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-        let since_14d = Some(current_time.saturating_sub(Duration::from_days(14)));
-        let taker_volume = query_volume(storage, taker, since_14d)?;
+        let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+        let taker_volume = query_volume(storage, taker, volume_since)?;
         let taker_fee_rate = resolve_fee_rate(
             param.base_taker_fee_rate,
             &param.tiered_taker_fee_rate,
@@ -439,9 +439,9 @@ pub(crate) fn match_order(
     let mut order_mutations = Vec::new();
     let mut index_updates = Vec::new();
 
-    // Resolve taker's fee rate based on 14-day volume.
-    let since_14d = Some(current_time.saturating_sub(Duration::from_days(14)));
-    let taker_volume = query_volume(storage, taker, since_14d)?;
+    // Resolve taker's fee rate based on recent volume.
+    let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+    let taker_volume = query_volume(storage, taker, volume_since)?;
     let taker_fee_rate = resolve_fee_rate(
         param.base_taker_fee_rate,
         &param.tiered_taker_fee_rate,
@@ -554,8 +554,8 @@ pub(crate) fn match_order(
 
         let old_maker_pos = maker_state.positions.get(pair_id).cloned();
 
-        // Resolve maker's fee rate based on 14-day volume.
-        let maker_volume = query_volume(storage, maker_order.user, since_14d)?;
+        // Resolve maker's fee rate based on recent volume.
+        let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
         let maker_fee_rate = resolve_fee_rate(
             param.base_maker_fee_rate,
             &param.tiered_maker_fee_rate,
