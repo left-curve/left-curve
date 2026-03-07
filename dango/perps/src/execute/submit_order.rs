@@ -1,13 +1,13 @@
 use {
     crate::{
         ASKS, BIDS, NEXT_ORDER_ID, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-        USER_STATES, VOLUME_LOOKBACK,
+        USER_STATES,
         core::{
             check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
             compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
             decompose_fill, execute_fill, is_price_constraint_violated, resolve_fee_rate,
         },
-        execute::oracle,
+        execute::{VOLUME_LOOKBACK, oracle},
         flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::{
