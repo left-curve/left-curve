@@ -54,10 +54,21 @@ impl ProposalPreparer<PythClient> {
         } else if endpoints.length() == 0 {
             warn!("Pyth Lazer endpoints not provided! Oracle feeding is disabled");
         } else {
-            client = Some(Mutex::new(PythHandler::new(
-                NonEmpty::new(endpoints).unwrap(),
-                access_token,
-            )));
+            match NonEmpty::new(endpoints) {
+                Ok(non_empty_endpoints) => {
+                    match PythHandler::new(non_empty_endpoints, access_token) {
+                        Ok(handler) => {
+                            client = Some(Mutex::new(handler));
+                        },
+                        Err(err) => {
+                            warn!(error = %err, "failed to initialize Pyth handler, oracle feeding is disabled");
+                        },
+                    }
+                },
+                Err(err) => {
+                    warn!(error = %err, "invalid Pyth Lazer endpoints, oracle feeding is disabled");
+                },
+            };
         }
 
         Self {
@@ -71,13 +82,22 @@ impl ProposalPreparer<PythClientCache> {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new_with_cache(
-            NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
-            "lazer_token",
-        );
+        let maybe_client = match NonEmpty::new(LAZER_ENDPOINTS_TEST) {
+            Ok(endpoints) => match PythHandler::new_with_cache(endpoints, "lazer_token") {
+                Ok(handler) => Some(Mutex::new(handler)),
+                Err(err) => {
+                    warn!(error = %err, "failed to initialize cached Pyth handler, oracle feeding is disabled");
+                    None
+                },
+            },
+            Err(err) => {
+                warn!(error = %err, "invalid cached Pyth endpoints, oracle feeding is disabled");
+                None
+            },
+        };
 
         Self {
-            pyth_handler: Some(Mutex::new(client)),
+            pyth_handler: maybe_client,
         }
     }
 }
@@ -115,13 +135,19 @@ where
         let cfg: AppConfig = querier.query_app_config()?;
 
         // Check if the PythHandler is initialized.
-        if self.pyth_handler.is_none() {
+        let Some(handler) = self.pyth_handler.as_ref() else {
             return Ok(txs);
-        }
+        };
 
         // Should we find a way to start and connect the PythClientPPHandler at startup?
         // How to know which ids should be used?
-        let mut pyth_handler = self.pyth_handler.as_ref().unwrap().lock().unwrap();
+        let mut pyth_handler = match handler.lock() {
+            Ok(handler) => handler,
+            Err(err) => {
+                error!(error = %err, "failed to lock Pyth handler");
+                return Ok(txs);
+            },
+        };
 
         // Update the Pyth stream if the PythIds in the oracle have changed.
         if let Err(err) = pyth_handler.update_stream(querier, cfg.addresses.oracle) {

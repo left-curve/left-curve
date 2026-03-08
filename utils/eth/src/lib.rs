@@ -19,16 +19,18 @@ pub type Signature = [u8; 65];
 pub fn derive_address(vk: &k256::ecdsa::VerifyingKey) -> Address {
     let vk_raw = vk.to_encoded_point(false);
     let vk_hash = keccak256(&vk_raw.as_bytes()[1..]);
-    let address = &vk_hash[12..];
-    address.try_into().unwrap()
+    let mut address = [0_u8; 20];
+    address.copy_from_slice(&vk_hash[12..]);
+    address
 }
 
 /// Sign the given _hashed_ message with the given private key, and pack the
 /// signature into the format expected by Ethereum.
 pub fn sign_digest(msg_hash: [u8; 32], sk: &k256::ecdsa::SigningKey) -> Signature {
-    let (signature, recovery_id) = sk
-        .sign_digest_recoverable(Identity256::from(msg_hash))
-        .unwrap();
+    let (signature, recovery_id) = match sk.sign_digest_recoverable(Identity256::from(msg_hash)) {
+        Ok(signature) => signature,
+        Err(err) => panic!("failed to sign digest with secp256k1 key: {err}"),
+    };
     pack_signature(signature, recovery_id)
 }
 

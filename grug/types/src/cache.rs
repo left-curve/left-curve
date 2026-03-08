@@ -1,6 +1,9 @@
 use {
     crate::StdError,
-    std::{collections::HashMap, hash::Hash},
+    std::{
+        collections::{HashMap, hash_map::Entry},
+        hash::Hash,
+    },
 };
 
 pub struct Cache<'a, K, V, Err = StdError, Aux = ()>
@@ -26,11 +29,12 @@ where
     }
 
     pub fn get_or_fetch(&mut self, k: &K, aux: Option<Aux>) -> Result<&V, Err> {
-        if !self.data.contains_key(k) {
-            let v = (self.fetcher)(k, aux)?;
-            self.data.insert(k.clone(), v);
+        match self.data.entry(k.clone()) {
+            Entry::Occupied(entry) => Ok(entry.into_mut()),
+            Entry::Vacant(entry) => {
+                let v = (self.fetcher)(k, aux)?;
+                Ok(entry.insert(v))
+            },
         }
-
-        Ok(self.data.get(k).unwrap())
     }
 }

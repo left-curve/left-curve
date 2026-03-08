@@ -38,7 +38,10 @@ async fn main() -> anyhow::Result<()> {
 
     let (dango_client, ..) = setup::setup_dango(&config.dango).await?;
 
-    let evm_config = config.evm.get_mut(EVM_NETWORK).unwrap();
+    let evm_config = config
+        .evm
+        .get_mut(EVM_NETWORK)
+        .ok_or_else(|| anyhow::anyhow!("missing EVM config for network `{EVM_NETWORK}`"))?;
     let (provider, owner) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
     let maybe_deployment = deployments.evm.get(EVM_NETWORK);

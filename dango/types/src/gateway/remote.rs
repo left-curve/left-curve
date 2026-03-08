@@ -56,10 +56,12 @@ impl PrimaryKey for Remote {
                     ));
                 }
 
-                let origin_domain_raw = bytes[0..4].try_into().unwrap();
+                let mut origin_domain_raw = [0_u8; 4];
+                origin_domain_raw.copy_from_slice(&bytes[0..4]);
                 let origin_domain = Domain::from_be_bytes(origin_domain_raw);
 
-                let sender_raw = bytes[4..36].try_into().unwrap();
+                let mut sender_raw = [0_u8; 32];
+                sender_raw.copy_from_slice(&bytes[4..36]);
                 let sender = Addr32::from_inner(sender_raw);
 
                 Ok(Remote::Warp {

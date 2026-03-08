@@ -1,5 +1,5 @@
 #[cfg(feature = "tendermint")]
-use crate::{StdResult, serializers::JsonDeExt};
+use crate::{StdError, StdResult, serializers::JsonDeExt};
 use {
     crate::{
         CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
@@ -88,12 +88,13 @@ impl CronOutcome {
 #[cfg(feature = "tendermint")]
 impl CronOutcome {
     pub fn from_tm_event(tm_event: tendermint::abci::Event) -> StdResult<Self> {
-        tm_event
-            .attributes
-            .first()
-            .unwrap()
-            .value_bytes()
-            .deserialize_json()
+        let Some(attribute) = tm_event.attributes.first() else {
+            return Err(StdError::host(
+                "missing tendermint cron event attribute".to_string(),
+            ));
+        };
+
+        attribute.value_bytes().deserialize_json()
     }
 }
 

@@ -2,7 +2,7 @@ use {
     proc_macro::TokenStream,
     quote::quote,
     syn::{
-        Expr, ItemStruct,
+        Expr, Fields, ItemStruct,
         parse::{Parse, ParseStream},
         parse_macro_input,
         token::Comma,
@@ -31,16 +31,28 @@ pub fn process(attrs: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
 
     let struct_ty = input.ident.clone();
-
-    let names = input
-        .fields
-        .clone()
-        .into_iter()
-        .map(|e| {
-            let name = e.ident.unwrap();
-            quote! { &self.#name }
-        })
-        .collect::<Vec<_>>();
+    let names = match input.fields.clone() {
+        Fields::Named(named) => {
+            let mut names = Vec::new();
+            for field in named.named {
+                let Some(name) = field.ident else {
+                    return syn::Error::new_spanned(field, "index field must be named")
+                        .to_compile_error()
+                        .into();
+                };
+                names.push(quote! { &self.#name });
+            }
+            names
+        },
+        _ => {
+            return syn::Error::new_spanned(
+                &input,
+                "`index_list` requires a struct with named fields",
+            )
+            .to_compile_error()
+            .into();
+        },
+    };
 
     quote! {
         #input

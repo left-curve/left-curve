@@ -148,11 +148,19 @@ macro_rules! impl_bytable_bnum {
     ($t:ty, $rot:literal) => {
         impl Bytable<$rot> for $t {
             fn from_be_bytes(bytes: [u8; $rot]) -> Self {
-                Self::from_be_slice(&bytes).unwrap()
+                if let Some(value) = Self::from_be_slice(&bytes) {
+                    value
+                } else {
+                    unreachable!("invalid fixed-size big-endian byte representation")
+                }
             }
 
             fn from_le_bytes(bytes: [u8; $rot]) -> Self {
-                Self::from_le_slice(&bytes).unwrap()
+                if let Some(value) = Self::from_le_slice(&bytes) {
+                    value
+                } else {
+                    unreachable!("invalid fixed-size little-endian byte representation")
+                }
             }
 
             fn to_be_bytes(self) -> [u8; $rot] {
@@ -190,11 +198,19 @@ macro_rules! impl_bytable_signed_bnum {
     ($t:ty, $rot:literal) => {
         impl Bytable<$rot> for $t {
             fn from_be_bytes(bytes: [u8; $rot]) -> Self {
-                Self::from_be_slice(&bytes).unwrap()
+                if let Some(value) = Self::from_be_slice(&bytes) {
+                    value
+                } else {
+                    unreachable!("invalid fixed-size signed big-endian byte representation")
+                }
             }
 
             fn from_le_bytes(bytes: [u8; $rot]) -> Self {
-                Self::from_le_slice(&bytes).unwrap()
+                if let Some(value) = Self::from_le_slice(&bytes) {
+                    value
+                } else {
+                    unreachable!("invalid fixed-size signed little-endian byte representation")
+                }
             }
 
             fn to_be_bytes(self) -> [u8; $rot] {

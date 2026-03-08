@@ -56,6 +56,11 @@ impl MerkleTree {
         let mut iter = bitarray.range(None, None, Order::Ascending);
         let mut node = NODES.load(storage, (version, &bits))?;
         let mut path = vec![];
+        let inner_hash = if let Some(inner_spec) = ICS23_PROOF_SPEC.inner_spec.as_ref() {
+            inner_spec.hash
+        } else {
+            unreachable!("ICS23 proof spec is missing inner spec")
+        };
 
         loop {
             match node {
@@ -73,7 +78,7 @@ impl MerkleTree {
                         path.push(InnerOp {
                             // Not sure why we have to include the `HashOp` here
                             // when it's already in the `ProofSpec`.
-                            hash: ICS23_PROOF_SPEC.inner_spec.as_ref().unwrap().hash,
+                            hash: inner_hash,
                             prefix: INTERNAL_NODE_HASH_PREFIX.to_vec(),
                             suffix: sibling.map(|c| c.hash).unwrap_or(Hash256::ZERO).to_vec(),
                         });
@@ -82,7 +87,7 @@ impl MerkleTree {
                         bits.push(1);
                         node = NODES.load(storage, (child.version, &bits))?;
                         path.push(InnerOp {
-                            hash: ICS23_PROOF_SPEC.inner_spec.as_ref().unwrap().hash,
+                            hash: inner_hash,
                             prefix: [
                                 INTERNAL_NODE_HASH_PREFIX,
                                 sibling.map(|c| c.hash).unwrap_or(Hash256::ZERO).as_ref(),

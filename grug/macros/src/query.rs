@@ -1,5 +1,4 @@
 use {
-    core::panic,
     proc_macro::TokenStream,
     quote::{ToTokens, quote},
     syn::{Data, DeriveInput, Fields, Ident, Type, parse_macro_input},
@@ -23,10 +22,15 @@ pub fn process(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     // E.g. `QueryMsg`
-    let name = input.ident;
+    let name = input.ident.clone();
 
-    let Data::Enum(data) = input.data else {
-        panic!("query message must be an enum")
+    let data = match input.data {
+        Data::Enum(data) => data,
+        _ => {
+            return syn::Error::new_spanned(name, "query message must be an enum")
+                .to_compile_error()
+                .into();
+        },
     };
 
     let mut generated_structs = Vec::new();
@@ -44,13 +48,23 @@ pub fn process(input: TokenStream) -> TokenStream {
 
         // Return type for this variant specified in the `#[return]` attribute.
         // E.g. for `Foo`, this would be `String`.
-        let return_type: Type = variant
+        let Some(return_attr) = variant
             .attrs
             .iter()
-            .find(|attr| attr.path().get_ident().unwrap() == "returns")
-            .expect("returns attribute missing")
-            .parse_args()
-            .expect("only one type supported");
+            .find(|attr| attr.path().is_ident("returns"))
+        else {
+            return syn::Error::new_spanned(variant_name, "returns attribute missing")
+                .to_compile_error()
+                .into();
+        };
+        let return_type: Type = match return_attr.parse_args() {
+            Ok(return_type) => return_type,
+            Err(_) => {
+                return syn::Error::new_spanned(return_attr, "only one type supported")
+                    .to_compile_error()
+                    .into();
+            },
+        };
 
         // Iterate through fields in the query message variant.
         match variant.fields {
