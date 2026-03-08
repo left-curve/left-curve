@@ -19,16 +19,16 @@ use {
 ///
 /// A user with no open positions is never liquidatable.
 pub fn is_liquidatable(
-    user_state: &UserState,
-    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
+    perp_querier: &NoCachePerpQuerier,
+    user_state: &UserState,
 ) -> anyhow::Result<bool> {
     if user_state.positions.is_empty() {
         return Ok(false);
     }
 
-    let equity = compute_user_equity(user_state, perp_querier, oracle_querier)?;
-    let maintenance_margin = compute_maintenance_margin(user_state, perp_querier, oracle_querier)?;
+    let equity = compute_user_equity(oracle_querier, perp_querier, user_state)?;
+    let maintenance_margin = compute_maintenance_margin(oracle_querier, perp_querier, user_state)?;
 
     Ok(equity < maintenance_margin)
 }
@@ -81,8 +81,10 @@ pub fn compute_close_schedule(
         let abs_size = position.size.checked_abs()?;
 
         // close_amount = min(ceil(deficit / (P × mmr)), |size|)
-        let denom = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
-        let close_amount = deficit.checked_div(denom)?.min(abs_size);
+        let close_amount = {
+            let denom = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
+            deficit.checked_div(denom)?.min(abs_size)
+        };
 
         // close_size = -sign(size) × close_amount (opposite direction to close)
         let close_size = if position.size.is_positive() {
@@ -91,11 +93,12 @@ pub fn compute_close_schedule(
             close_amount
         };
 
-        let mm_to_remove = close_amount
-            .checked_mul(oracle_price)?
-            .checked_mul(pair_param.maintenance_margin_ratio)?;
-
-        deficit = deficit.checked_sub(mm_to_remove)?.max(UsdValue::ZERO);
+        deficit = {
+            let mm_to_remove = close_amount
+                .checked_mul(oracle_price)?
+                .checked_mul(pair_param.maintenance_margin_ratio)?;
+            deficit.checked_sub(mm_to_remove)?.max(UsdValue::ZERO)
+        };
 
         if close_size.is_non_zero() {
             schedule.push((pair_id.clone(), close_size));
@@ -199,7 +202,7 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
-        assert!(!is_liquidatable(&user_state, &perp_querier, &mut oracle_querier,).unwrap());
+        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
     }
 
     // collateral=10000, ETH long 10 @ entry=2000, oracle=2500, mmr=5%
@@ -242,7 +245,7 @@ mod tests {
             ),
         });
 
-        assert!(!is_liquidatable(&user_state, &perp_querier, &mut oracle_querier,).unwrap());
+        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
     }
 
     // equity exactly equals maintenance margin → not liquidatable (strict <)
@@ -285,7 +288,7 @@ mod tests {
             ),
         });
 
-        assert!(!is_liquidatable(&user_state, &perp_querier, &mut oracle_querier,).unwrap());
+        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
     }
 
     // collateral=100, ETH long 10 @ entry=2000, oracle=1500, mmr=5%
@@ -328,7 +331,7 @@ mod tests {
             ),
         });
 
-        assert!(is_liquidatable(&user_state, &perp_querier, &mut oracle_querier,).unwrap());
+        assert!(is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
     }
 
     // Funding can push a user into liquidation territory.
@@ -383,11 +386,11 @@ mod tests {
 
         // Case 1: healthy despite funding
         let (us, pq, mut oq) = make_fixtures(10_000);
-        assert!(!is_liquidatable(&us, &pq, &mut oq).unwrap());
+        assert!(!is_liquidatable(&mut oq, &pq, &us).unwrap());
 
         // Case 2: funding pushes equity below maintenance margin
         let (us, pq, mut oq) = make_fixtures(900);
-        assert!(is_liquidatable(&us, &pq, &mut oq).unwrap());
+        assert!(is_liquidatable(&mut oq, &pq, &us).unwrap());
     }
 
     // -------------------- `compute_close_schedule` tests ---------------------

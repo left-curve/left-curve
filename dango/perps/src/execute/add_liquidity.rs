@@ -44,9 +44,9 @@ pub fn add_liquidity(
     // --------------------------- 2. Business logic ---------------------------
 
     let shares_minted = _add_liquidity(
-        &perp_querier,
         &mut oracle_querier,
         &mut state.vault_share_supply,
+        &perp_querier,
         &mut user_state,
         &mut vault_user_state,
         amount,
@@ -75,9 +75,9 @@ pub fn add_liquidity(
 ///
 /// Returns: the number of shares minted.
 fn _add_liquidity(
-    perp_querier: &NoCachePerpQuerier,
     oracle_querier: &mut OracleQuerier,
     vault_share_supply: &mut Uint128,
+    perp_querier: &NoCachePerpQuerier,
     user_state: &mut UserState,
     vault_user_state: &mut UserState,
     amount: UsdValue,
@@ -91,7 +91,7 @@ fn _add_liquidity(
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
-    let vault_equity = compute_user_equity(vault_user_state, perp_querier, oracle_querier)?;
+    let vault_equity = compute_user_equity(oracle_querier, perp_querier, vault_user_state)?;
 
     // Add virtual shares to the current vault share supply to arrive at the
     // effective supply.
@@ -159,9 +159,9 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            &perp_querier,
             &mut oracle_querier,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
             UsdValue::new_int(1),
@@ -191,9 +191,9 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            &perp_querier,
             &mut oracle_querier,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
             UsdValue::new_int(1),
@@ -217,9 +217,9 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _add_liquidity(
-            &perp_querier,
             &mut oracle_querier,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
             UsdValue::ZERO,
@@ -245,9 +245,9 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _add_liquidity(
-            &perp_querier,
             &mut oracle_querier,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
             UsdValue::new_int(1),
@@ -273,9 +273,9 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            &perp_querier,
             &mut oracle_querier,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
             UsdValue::new_int(1),
@@ -301,9 +301,9 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         let err = _add_liquidity(
-            &perp_querier,
             &mut oracle_querier,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
             UsdValue::new_int(1),
@@ -335,9 +335,9 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            &perp_querier,
             &mut oracle_querier,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
             UsdValue::new_int(one_billion as i128),
@@ -368,9 +368,9 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         _add_liquidity(
-            &perp_querier,
             &mut oracle_querier,
             &mut vault_share_supply,
+            &perp_querier,
             &mut user_state,
             &mut vault_user_state,
             UsdValue::new_int(1),

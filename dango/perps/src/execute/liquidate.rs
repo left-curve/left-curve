@@ -100,15 +100,15 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         ctx.storage,
         user,
         ctx.contract,
+        ctx.block.timestamp,
+        &mut oracle_querier,
         &param,
         &mut state,
         &pair_params,
         &mut pair_states,
         &mut user_state,
         &oracle_prices,
-        &mut oracle_querier,
         &mut events,
-        ctx.block.timestamp,
     )?;
 
     // --------------------- 6. Apply state changes ----------------------------
@@ -207,15 +207,15 @@ fn _liquidate(
     storage: &dyn Storage,
     user: Addr,
     contract: Addr,
+    current_time: Timestamp,
+    oracle_querier: &mut OracleQuerier,
     param: &Param,
     state: &mut State,
     pair_params: &BTreeMap<PairId, PairParam>,
     pair_states: &mut BTreeMap<PairId, PairState>,
     user_state: &mut UserState,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
-    oracle_querier: &mut OracleQuerier,
     events: &mut EventBuilder,
-    current_time: Timestamp,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
     Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
@@ -227,14 +227,14 @@ fn _liquidate(
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
     ensure!(
-        is_liquidatable(user_state, &perp_querier, oracle_querier)?,
+        is_liquidatable(oracle_querier, &perp_querier, user_state)?,
         "user is not liquidatable"
     );
 
     // ------------- Step 2: Compute close schedule (largest-MM-first) ----------
 
-    let equity = compute_user_equity(user_state, &perp_querier, oracle_querier)?;
-    let total_mm = compute_maintenance_margin(user_state, &perp_querier, oracle_querier)?;
+    let equity = compute_user_equity(oracle_querier, &perp_querier, user_state)?;
+    let total_mm = compute_maintenance_margin(oracle_querier, &perp_querier, user_state)?;
     let deficit = total_mm.checked_sub(equity)?;
 
     let schedule = compute_close_schedule(user_state, pair_params, oracle_prices, deficit)?;
@@ -252,16 +252,16 @@ fn _liquidate(
         all_volumes,
     ) = execute_close_schedule(
         storage,
-        &schedule,
         user,
         contract,
+        current_time,
         param,
         pair_states,
         user_state,
         &mut all_maker_states,
+        &schedule,
         oracle_prices,
         events,
-        current_time,
     )?;
 
     // -------------------- Step 4: Liquidation fee → insurance fund -----------
@@ -292,14 +292,14 @@ fn _liquidate(
     });
 
     settle_pnls(
-        all_pnls,
-        all_fees,
         contract,
+        param,
+        state,
         user,
         user_state,
-        param,
         &mut all_maker_states,
-        state,
+        all_pnls,
+        all_fees,
     )?;
 
     // Route liquidation fee to insurance fund (not vault margin).
@@ -345,16 +345,16 @@ fn _liquidate(
 /// `match_order` calls.
 fn execute_close_schedule(
     storage: &dyn Storage,
-    schedule: &[(PairId, Quantity)],
     user: Addr,
     contract: Addr,
+    current_time: Timestamp,
     param: &Param,
     pair_states: &mut BTreeMap<PairId, PairState>,
     user_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
+    schedule: &[(PairId, Quantity)],
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     events: &mut EventBuilder,
-    current_time: Timestamp,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
@@ -392,19 +392,19 @@ fn execute_close_schedule(
 
         let (unfilled, pnls, fees, volumes, order_mutations, index_updates) = match_order(
             storage,
+            user,
+            contract,
+            current_time,
             &liq_param,
             pair_id,
             pair_state,
-            user,
-            contract,
             user_state,
             taker_is_bid,
+            OrderId::ZERO,
+            maker_states,
             target_price,
             *close_size,
-            maker_states,
             events,
-            OrderId::ZERO,
-            current_time,
         )?;
 
         // Merge PnLs.
@@ -452,10 +452,11 @@ fn execute_close_schedule(
 
             let (adl_size, adl_price) = execute_adl(
                 storage,
+                user,
                 pair_id,
                 pair_state,
-                user,
                 user_state,
+                maker_states,
                 unfilled,
                 oracle_prices,
                 user_pnl_snapshot,
@@ -463,7 +464,6 @@ fn execute_close_schedule(
                 &mut all_pnls,
                 &mut all_fees,
                 &mut all_volumes,
-                maker_states,
                 &mut all_index_updates,
                 events,
             )?;
@@ -503,10 +503,11 @@ fn execute_close_schedule(
 /// Returns: (total ADL size, bankruptcy price used).
 fn execute_adl(
     storage: &dyn Storage,
+    user: Addr,
     pair_id: &PairId,
     pair_state: &mut PairState,
-    user: Addr,
     user_state: &mut UserState,
+    maker_states: &mut BTreeMap<Addr, UserState>,
     unfilled: Quantity,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     // Snapshot of the user's accumulated PnL/fees before this ADL round.
@@ -516,7 +517,6 @@ fn execute_adl(
     all_pnls: &mut BTreeMap<Addr, UsdValue>,
     all_fees: &mut BTreeMap<Addr, UsdValue>,
     all_volumes: &mut BTreeMap<Addr, UsdValue>,
-    maker_states: &mut BTreeMap<Addr, UserState>,
     index_updates: &mut Vec<PositionIndexUpdate>,
     events: &mut EventBuilder,
 ) -> anyhow::Result<(Quantity, UsdPrice)> {
@@ -575,14 +575,14 @@ fn execute_adl(
             _ => continue,
         };
 
-        let counter_size = counter_position.size.checked_abs()?;
-        let fill_amount = remaining.checked_abs()?.min(counter_size);
-
-        // Close both sides at bankruptcy_price.
-        let user_close = if taker_is_selling {
-            fill_amount.checked_neg()?
-        } else {
-            fill_amount
+        let user_close = {
+            let counter_size = counter_position.size.checked_abs()?;
+            let fill_amount = remaining.checked_abs()?.min(counter_size);
+            if taker_is_selling {
+                fill_amount.checked_neg()?
+            } else {
+                fill_amount
+            }
         };
 
         // User side:
@@ -591,13 +591,13 @@ fn execute_adl(
             pair_id,
             pair_state,
             user_state,
+            user,
             user_close,
             bankruptcy_price,
             Dimensionless::ZERO,
             all_pnls,
             all_fees,
             all_volumes,
-            user,
             None,
         )?;
         if let Some(diff) = compute_position_diff(
@@ -615,13 +615,13 @@ fn execute_adl(
             pair_id,
             pair_state,
             counter_state,
+            counter_user,
             user_close.checked_neg()?,
             bankruptcy_price,
             Dimensionless::ZERO,
             all_pnls,
             all_fees,
             all_volumes,
-            counter_user,
             None,
         )?;
         if let Some(diff) = compute_position_diff(
@@ -853,15 +853,15 @@ mod tests {
             &ctx.storage,
             USER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
             &param,
             &mut state,
             &pair_params,
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            &mut oracle_querier,
             &mut EventBuilder::new(),
-            Timestamp::ZERO,
         );
 
         assert!(result.is_err());
@@ -952,15 +952,15 @@ mod tests {
             &ctx.storage,
             USER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
             &param,
             &mut state,
             &pair_params,
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            &mut oracle_querier,
             &mut EventBuilder::new(),
-            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "liquidation failed: {:?}", result.err());
@@ -1023,15 +1023,15 @@ mod tests {
             &ctx.storage,
             USER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
             &param,
             &mut state,
             &pair_params,
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            &mut oracle_querier,
             &mut EventBuilder::new(),
-            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "ADL failed: {:?}", result.err());
@@ -1108,15 +1108,15 @@ mod tests {
             &ctx.storage,
             USER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
             &param,
             &mut state,
             &pair_params,
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            &mut oracle_querier,
             &mut EventBuilder::new(),
-            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "liq fee test failed: {:?}", result.err());
@@ -1192,15 +1192,15 @@ mod tests {
             &ctx.storage,
             USER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
             &param,
             &mut state,
             &pair_params,
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            &mut oracle_querier,
             &mut EventBuilder::new(),
-            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "bad debt test failed: {:?}", result.err());
@@ -1308,15 +1308,15 @@ mod tests {
             &ctx.storage,
             USER,
             CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
             &param,
             &mut state,
             &pair_params,
             &mut pair_states,
             &mut user_state,
             &oracle_prices,
-            &mut oracle_querier,
             &mut EventBuilder::new(),
-            Timestamp::ZERO,
         );
 
         assert!(result.is_ok(), "liquidation failed: {:?}", result.err());
