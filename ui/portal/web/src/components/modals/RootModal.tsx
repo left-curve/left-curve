@@ -2,7 +2,7 @@ import { AnimatePresence } from "framer-motion";
 import { motion } from "framer-motion";
 import { Suspense, lazy, useMemo, useRef } from "react";
 
-import { Button, Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import { Button, Modals, twMerge, useApp, useMediaQuery } from "@left-curve/applets-kit";
 import type React from "react";
 import { Sheet, type SheetRef } from "react-modal-sheet";
 
@@ -169,6 +169,9 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
         default: Authenticate,
       })),
     ),
+    options: {
+      fullScreen: true,
+    },
   },
   [Modals.EditUsername]: {
     component: lazy(() =>
@@ -214,6 +217,7 @@ type ModalDefinition = {
   options?: {
     header?: string;
     disableClosing?: boolean;
+    fullScreen?: boolean;
   };
 };
 
@@ -245,10 +249,15 @@ export const RootModal: React.FC = () => {
         ref={sheetRef}
         isOpen={!!activeModal}
         onClose={closeModal}
-        detent="content-height"
+        detent={options.fullScreen ? "full-height" : "content-height"}
         rootId="root"
       >
-        <Sheet.Container className="!bg-surface-primary-rice !rounded-t-2xl !shadow-none !max-h-[90vh]">
+        <Sheet.Container
+          className={twMerge(
+            "!bg-surface-primary-rice !shadow-none",
+            options.fullScreen ? "!rounded-none" : "!rounded-t-2xl !max-h-[90vh]",
+          )}
+        >
           <Sheet.Header>
             {options.header ? (
               <div className="flex items-center justify-between w-full">
