@@ -11,20 +11,21 @@ mod trade;
 mod vault;
 mod volume;
 
-pub use {
-    liquidity_depth::*, position_index::*, price::*, querier::*, query::*, state::*, volume::*,
-};
+pub use {liquidity_depth::*, position_index::*, price::*, querier::*, state::*, volume::*};
 
 use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, UsdValue,
         perps::{
-            CancelOrderRequest, ExecuteMsg, InstantiateMsg, MaintainerMsg, OrderId, State,
-            TraderMsg, VaultMsg,
+            CancelOrderRequest, ExecuteMsg, InstantiateMsg, MaintainerMsg, OrderId, QueryMsg,
+            State, TraderMsg, VaultMsg,
         },
     },
-    grug::{Addr, EventBuilder, MutableCtx, NumberConst, Response, SudoCtx, Uint128},
+    grug::{
+        Addr, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst, Response,
+        SudoCtx, Uint128,
+    },
 };
 
 /// Virtual shares added to total supply in share price calculations.
@@ -118,4 +119,39 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             VaultMsg::Refresh {} => vault::refresh_orders(ctx),
         },
     }
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
+    match msg {
+        QueryMsg::Param {} => PARAM.load(ctx.storage)?.to_json_value(),
+        QueryMsg::PairParam { pair_id } => {
+            PAIR_PARAMS.may_load(ctx.storage, &pair_id)?.to_json_value()
+        },
+        QueryMsg::PairParams { start_after, limit } => {
+            query::query_pair_params(ctx, start_after, limit)?.to_json_value()
+        },
+        QueryMsg::State {} => STATE.load(ctx.storage)?.to_json_value(),
+        QueryMsg::PairState { pair_id } => {
+            PAIR_STATES.may_load(ctx.storage, &pair_id)?.to_json_value()
+        },
+        QueryMsg::PairStates { start_after, limit } => {
+            query::query_pair_states(ctx, start_after, limit)?.to_json_value()
+        },
+        QueryMsg::UserState { user } => USER_STATES.may_load(ctx.storage, user)?.to_json_value(),
+        QueryMsg::UserStates { start_after, limit } => {
+            query::query_user_states(ctx, start_after, limit)?.to_json_value()
+        },
+        QueryMsg::Order { order_id } => query::query_order(ctx, order_id)?.to_json_value(),
+        QueryMsg::OrdersByUser { user } => query::query_orders_by_user(ctx, user)?.to_json_value(),
+        QueryMsg::LiquidityDepth {
+            pair_id,
+            bucket_size,
+            limit,
+        } => query::query_liquidity_depth(ctx, pair_id, bucket_size, limit)?.to_json_value(),
+        QueryMsg::Volume { user, since } => {
+            query::query_volume(ctx.storage, user, since)?.to_json_value()
+        },
+    }
+    .map_err(Into::into)
 }
