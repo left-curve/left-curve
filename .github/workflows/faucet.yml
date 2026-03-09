@@ -32,6 +32,7 @@ jobs:
 
   deploy-faucet:
     needs: [zizmor]
+    environment: deploy
     permissions:
       packages: read
     runs-on: [self-hosted]
