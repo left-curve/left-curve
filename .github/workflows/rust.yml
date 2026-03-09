@@ -186,10 +186,7 @@ jobs:
 
       - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
-        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
-        with:
-          toolchain: nightly
-          components: rustfmt
+        run: rustup toolchain install nightly --component rustfmt
 
       # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
       # - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -210,6 +207,7 @@ jobs:
     needs: [backend-test, changes]
     name: Check compiling without features
     runs-on: self-hosted
+    environment: ci
     permissions:
       contents: read
     env:
@@ -267,10 +265,9 @@ jobs:
             echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_SECRET"
           } >> $GITHUB_ENV
 
-      - uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
+      - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
-        with:
-          toolchain: stable
+        run: rustup default stable
 
       - name: Install cargo-hack
         if: env.BACKEND_CHANGED == 'true'
@@ -289,6 +286,7 @@ jobs:
     name: Lint + Test
     runs-on: self-hosted
     timeout-minutes: 20
+    environment: ci
     permissions:
       id-token: write
       contents: read
@@ -429,11 +427,7 @@ jobs:
 
       - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
-        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
-        with:
-          # Commenting this out so we always use the latest toolchain.
-          # toolchain: 1.91
-          components: clippy, llvm-tools-preview
+        run: rustup component add clippy llvm-tools-preview
 
       # - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       #   with:
@@ -501,6 +495,7 @@ jobs:
 
   backend-build:
     needs: [backend-test, changes]
+    environment: ci
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -619,9 +614,7 @@ jobs:
 
       - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
-        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
-        with:
-          toolchain: stable
+        run: rustup default stable
 
       - name: Install cross
         if: env.BACKEND_CHANGED == 'true'
@@ -724,6 +717,7 @@ jobs:
           docker run --rm ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-$BUILD_SUFFIX dango || true
 
   backend-push-manifest:
+    environment: ci
     permissions:
       packages: write
       id-token: write
@@ -872,6 +866,7 @@ jobs:
 
   frontend-build:
     needs: [changes, zizmor]
+    environment: ci
     permissions:
       packages: write
       contents: read
@@ -1301,6 +1296,7 @@ jobs:
           echo "- Vulnerability scan performed with Grype v0.81.0 (fail-on=HIGH, only-fixed)" >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
+    environment: deploy
     permissions:
       packages: read
       deployments: write
@@ -1393,6 +1389,7 @@ jobs:
     timeout-minutes: 5
     name: Testing localdango
     runs-on: [self-hosted]
+    environment: ci
     needs: [set-image-tags, changes]
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
