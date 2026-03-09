@@ -183,7 +183,11 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
         // the oracle update itself isn't reverted.
         let perps = ctx.querier.query_perps()?;
         SubMessage::reply_on_error(
-            Message::execute(perps, &perps::ExecuteMsg::OnOracleUpdate {}, Coins::new())?,
+            Message::execute(
+                perps,
+                &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+                Coins::new(),
+            )?,
             &ReplyMsg::AfterOnOracleUpdate {},
         )?
     }))

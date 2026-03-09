@@ -1,71 +1,20 @@
+#[cfg(test)]
+use std::collections::HashMap;
 use {
-    crate::{NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES},
-    anyhow::anyhow,
-    dango_types::perps::{OrderId, PairId, PairParam, PairState},
-    grug::{Addr, Cache, QuerierWrapper, Storage, StorageQuerier},
-    std::{collections::HashMap, rc::Rc},
+    crate::{PAIR_PARAMS, PAIR_STATES},
+    dango_types::perps::{PairId, PairParam, PairState},
+    grug::Storage,
 };
-
-/// An abstraction for querying perps contract state with in-memory caching.
-pub struct PerpQuerier<'a> {
-    param_cache: Cache<'a, PairId, PairParam, anyhow::Error, ()>,
-    state_cache: Cache<'a, PairId, PairState, anyhow::Error, ()>,
-}
-
-impl<'a> PerpQuerier<'a> {
-    fn new(no_cache_querier: NoCachePerpQuerier<'a>) -> Self {
-        let q1 = Rc::new(no_cache_querier);
-        let q2 = Rc::clone(&q1);
-
-        Self {
-            param_cache: Cache::new(move |pair_id, _| q1.query_pair_param(pair_id)),
-            state_cache: Cache::new(move |pair_id, _| q2.query_pair_state(pair_id)),
-        }
-    }
-
-    pub fn new_local(storage: &'a dyn Storage) -> Self {
-        Self::new(NoCachePerpQuerier::new_local(storage))
-    }
-
-    pub fn new_remote(address: Addr, querier: QuerierWrapper<'a>) -> Self {
-        Self::new(NoCachePerpQuerier::new_remote(address, querier))
-    }
-
-    pub fn new_mock(
-        pair_params: HashMap<PairId, PairParam>,
-        pair_states: HashMap<PairId, PairState>,
-        next_order_id: Option<OrderId>,
-    ) -> Self {
-        Self::new(NoCachePerpQuerier::new_mock(
-            pair_params,
-            pair_states,
-            next_order_id,
-        ))
-    }
-
-    pub fn query_pair_param(&mut self, pair_id: &PairId) -> anyhow::Result<&PairParam> {
-        self.param_cache.get_or_fetch(pair_id, None)
-    }
-
-    pub fn query_pair_state(&mut self, pair_id: &PairId) -> anyhow::Result<&PairState> {
-        self.state_cache.get_or_fetch(pair_id, None)
-    }
-}
 
 /// An abstraction for querying perps contract state.
 pub enum NoCachePerpQuerier<'a> {
     /// Used when perps contract is the current contract.
     Local { storage: &'a dyn Storage },
-    /// Used when perps contract is another contract.
-    Remote {
-        address: Addr,
-        querier: QuerierWrapper<'a>,
-    },
     /// For testing purpose.
+    #[cfg(test)]
     Mock {
         pair_params: HashMap<PairId, PairParam>,
         pair_states: HashMap<PairId, PairState>,
-        next_order_id: Option<OrderId>,
     },
 }
 
@@ -75,16 +24,12 @@ impl<'a> NoCachePerpQuerier<'a> {
         Self::Local { storage }
     }
 
-    pub fn new_remote(address: Addr, querier: QuerierWrapper<'a>) -> Self {
-        Self::Remote { address, querier }
-    }
-
+    #[cfg(test)]
     pub fn new_mock(
         pair_params: HashMap<PairId, PairParam>,
         pair_states: HashMap<PairId, PairState>,
-        next_order_id: Option<OrderId>,
     ) -> Self {
-        Self::Mock { pair_params, pair_states, next_order_id }
+        Self::Mock { pair_params, pair_states }
     }
 
     pub fn query_pair_param(&self, pair_id: &PairId) -> anyhow::Result<PairParam> {
@@ -92,15 +37,13 @@ impl<'a> NoCachePerpQuerier<'a> {
             Self::Local { storage } => {
                 Ok(PAIR_PARAMS.load(*storage, pair_id)?)
             },
-            Self::Remote { address, querier } => {
-                Ok(querier.query_wasm_path(*address, &PAIR_PARAMS.path(pair_id))?)
-            },
+            #[cfg(test)]
             Self::Mock { pair_params, .. } => {
                 pair_params
                     .get(pair_id)
                     .cloned()
-                    .ok_or_else(|| anyhow!("[mock]: pair params not found for pair ID `{pair_id}`"))
-            }
+                    .ok_or_else(|| anyhow::anyhow!("[mock]: pair params not found for pair ID `{pair_id}`"))
+            },
         }
     }
 
@@ -109,29 +52,13 @@ impl<'a> NoCachePerpQuerier<'a> {
             Self::Local { storage } => {
                 Ok(PAIR_STATES.load(*storage, pair_id)?)
             },
-            Self::Remote { address, querier } => {
-                Ok(querier.query_wasm_path(*address, &PAIR_STATES.path(pair_id))?)
-            },
+            #[cfg(test)]
             Self::Mock { pair_states, .. } => {
                 pair_states
                     .get(pair_id)
                     .cloned()
-                    .ok_or_else(|| anyhow!("[mock]: pair state not found for pair ID `{pair_id}`"))
-            }
+                    .ok_or_else(|| anyhow::anyhow!("[mock]: pair state not found for pair ID `{pair_id}`"))
+            },
         }
-    }
-
-    pub fn query_next_order_id(&self) -> anyhow::Result<OrderId> {
-        let maybe_order_id = match self {
-            Self::Local { storage } => {
-                Some(NEXT_ORDER_ID.load(*storage)?)
-            },
-            Self::Remote { address, querier } => {
-                querier.may_query_wasm_path(*address, NEXT_ORDER_ID.path())?
-            },
-            Self::Mock { next_order_id, .. } => *next_order_id,
-        };
-
-        Ok(maybe_order_id.unwrap())
     }
 }
