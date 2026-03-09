@@ -42,6 +42,7 @@ jobs:
 
   deploy:
     needs: [zizmor]
+    environment: cloudflare
     permissions:
       contents: read
       packages: read
@@ -109,6 +110,7 @@ jobs:
 
   docker-build:
     needs: [zizmor]
+    environment: ci
     permissions:
       contents: read
       packages: write
