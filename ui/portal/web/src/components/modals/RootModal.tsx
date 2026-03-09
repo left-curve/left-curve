@@ -221,7 +221,7 @@ export const RootModal: React.FC = () => {
   const { modal, hideModal } = useApp();
   const { isMd } = useMediaQuery();
 
-  const sheetRef = useRef<SheetRef>();
+  const sheetRef = useRef<SheetRef>(null);
   const outlineRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<{ triggerOnClose: () => void } | null>(null);
 
@@ -248,7 +248,7 @@ export const RootModal: React.FC = () => {
         detent="content-height"
         rootId="root"
       >
-        <Sheet.Container className="!bg-surface-primary-rice !rounded-t-2xl !shadow-none">
+        <Sheet.Container className="!bg-surface-primary-rice !rounded-t-2xl !shadow-none !max-h-[90vh]">
           <Sheet.Header>
             {options.header ? (
               <div className="flex items-center justify-between w-full">
@@ -260,10 +260,14 @@ export const RootModal: React.FC = () => {
               </div>
             ) : null}
           </Sheet.Header>
-          <Sheet.Content>
-            <Suspense>
-              <Modal ref={modalRef} {...modalProps} />
-            </Suspense>
+          <Sheet.Content className="!overflow-y-auto">
+            <Sheet.Scroller>
+              <Suspense>
+                <div className="pb-[env(safe-area-inset-bottom,20px)]">
+                  <Modal ref={modalRef} {...modalProps} />
+                </div>
+              </Suspense>
+            </Sheet.Scroller>
           </Sheet.Content>
         </Sheet.Container>
         <Sheet.Backdrop onTap={() => !options.disableClosing && closeModal()} />
