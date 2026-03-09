@@ -129,7 +129,7 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 ///
 /// Writes to `BIDS` / `ASKS` in storage but does **not** persist `user_state`
 /// — the caller is responsible for saving or removing it.
-pub(crate) fn _cancel_all_orders(
+pub fn _cancel_all_orders(
     storage: &mut dyn Storage,
     user: Addr,
     user_state: &mut UserState,

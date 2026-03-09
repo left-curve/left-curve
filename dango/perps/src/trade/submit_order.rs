@@ -413,7 +413,7 @@ fn _submit_order(
 /// Self-trade prevention (EXPIRE_MAKER): if a resting order belongs to
 /// the taker, the order is cancelled and the taker continues matching
 /// deeper in the book.
-pub(crate) fn match_order(
+pub fn match_order(
     storage: &dyn Storage,
     taker: Addr,
     contract: Addr,
@@ -654,7 +654,7 @@ pub(crate) fn match_order(
 /// - `pnls` — position PnL added for `user`.
 /// - `fees` — trading fee added for `user`.
 /// - `events` — `OrderFilled` event pushed (if `Some`).
-pub(crate) fn settle_fill(
+pub fn settle_fill(
     pair_id: &PairId,
     pair_state: &mut PairState,
     user_state: &mut UserState,
@@ -730,7 +730,7 @@ pub(crate) fn settle_fill(
 ///   `UserState`).
 ///
 /// Returns: `()` — all side effects are applied in-place.
-pub(crate) fn settle_pnls(
+pub fn settle_pnls(
     contract: Addr,
     param: &Param,
     state: &mut State,

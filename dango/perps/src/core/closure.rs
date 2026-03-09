@@ -199,7 +199,7 @@ mod tests {
             margin: UsdValue::new_int(10_000),
             ..Default::default()
         };
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new(), None);
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
@@ -235,7 +235,6 @@ mod tests {
                     ..Default::default()
                 },
             },
-            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -278,7 +277,6 @@ mod tests {
                     ..Default::default()
                 },
             },
-            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -321,7 +319,6 @@ mod tests {
                     ..Default::default()
                 },
             },
-            None,
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
@@ -372,7 +369,6 @@ mod tests {
                         ..Default::default()
                     },
                 },
-                None,
             );
             let oracle_querier = OracleQuerier::new_mock(hash_map! {
                 eth::DENOM.clone() => PrecisionedPrice::new(

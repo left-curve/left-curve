@@ -1,4 +1,4 @@
-pub mod core;
+mod core;
 mod cron;
 mod liquidity_depth;
 mod maintain;
@@ -11,7 +11,7 @@ mod trade;
 mod vault;
 mod volume;
 
-pub use {liquidity_depth::*, position_index::*, price::*, querier::*, state::*, volume::*};
+pub(crate) use {querier::*, state::*, volume::*};
 
 use {
     dango_oracle::OracleQuerier,

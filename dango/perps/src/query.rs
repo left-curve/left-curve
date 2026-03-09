@@ -17,7 +17,7 @@ use {
     std::collections::BTreeMap,
 };
 
-pub(crate) fn query_pair_params(
+pub fn query_pair_params(
     ctx: ImmutableCtx,
     start_after: Option<PairId>,
     limit: Option<u32>,
@@ -31,7 +31,7 @@ pub(crate) fn query_pair_params(
         .collect()
 }
 
-pub(crate) fn query_pair_states(
+pub fn query_pair_states(
     ctx: ImmutableCtx,
     start_after: Option<PairId>,
     limit: Option<u32>,
@@ -45,7 +45,7 @@ pub(crate) fn query_pair_states(
         .collect()
 }
 
-pub(crate) fn query_user_states(
+pub fn query_user_states(
     ctx: ImmutableCtx,
     start_after: Option<Addr>,
     limit: Option<u32>,
@@ -62,10 +62,7 @@ pub(crate) fn query_user_states(
 /// We don't know if the order is a buy or a sell.
 /// First we look for it in the `BIDS` map. If non-exists, we look for it in the
 /// `ASKS` map. If still non-exists, return `None.`
-pub(crate) fn query_order(
-    ctx: ImmutableCtx,
-    order_id: OrderId,
-) -> StdResult<Option<QueryOrderResponse>> {
+pub fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<Option<QueryOrderResponse>> {
     if let Some(record) = BIDS.idx.order_id.may_load(ctx.storage, order_id)? {
         return Ok(Some(into_query_order_response_with_inverted_price(record)));
     }
@@ -77,10 +74,7 @@ pub(crate) fn query_order(
     Ok(None)
 }
 
-pub(crate) fn query_orders_by_user(
-    ctx: ImmutableCtx,
-    user: Addr,
-) -> StdResult<QueryOrdersByUserResponse> {
+pub fn query_orders_by_user(ctx: ImmutableCtx, user: Addr) -> StdResult<QueryOrdersByUserResponse> {
     let bids = BIDS
         .idx
         .user
@@ -135,7 +129,7 @@ fn try_into_query_order_response_with_inverted_price(
     res.map(into_query_order_response_with_inverted_price)
 }
 
-pub(crate) fn query_liquidity_depth(
+pub fn query_liquidity_depth(
     ctx: ImmutableCtx,
     pair_id: PairId,
     bucket_size: UsdPrice,
@@ -176,7 +170,7 @@ pub(crate) fn query_liquidity_depth(
     Ok(LiquidityDepthResponse { bids, asks })
 }
 
-pub(crate) fn query_volume(
+pub fn query_volume(
     storage: &dyn Storage,
     user: Addr,
     since: Option<Timestamp>,
