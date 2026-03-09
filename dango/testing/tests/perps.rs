@@ -103,7 +103,7 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -126,7 +126,7 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -135,7 +135,7 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10), // sell / ask
                 kind: perps::OrderKind::Limit {
@@ -143,7 +143,7 @@ fn trading_lifecycle() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -166,14 +166,14 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -219,9 +219,9 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Withdraw {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Withdraw {
                 amount: UsdValue::new_int(7_000),
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -245,9 +245,9 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Withdraw {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Withdraw {
                 amount: UsdValue::new_int(2_000),
-            },
+            }),
             Coins::new(),
         )
         .should_fail_with_error("exceeds available margin");
@@ -278,7 +278,7 @@ fn limit_order_partial_fill_and_cancel() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -291,7 +291,7 @@ fn limit_order_partial_fill_and_cancel() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -300,7 +300,7 @@ fn limit_order_partial_fill_and_cancel() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // sell / ask 5 ETH
                 kind: perps::OrderKind::Limit {
@@ -308,7 +308,7 @@ fn limit_order_partial_fill_and_cancel() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -323,7 +323,7 @@ fn limit_order_partial_fill_and_cancel() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy 10 ETH
                 kind: perps::OrderKind::Limit {
@@ -331,7 +331,7 @@ fn limit_order_partial_fill_and_cancel() {
                     post_only: false,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -385,7 +385,9 @@ fn limit_order_partial_fill_and_cancel() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::CancelOrder(perps::CancelOrderRequest::One(order_id)),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::CancelOrder(
+                perps::CancelOrderRequest::One(order_id),
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -456,7 +458,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user4,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -465,10 +467,10 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user4,
             contracts.perps,
-            &perps::ExecuteMsg::AddLiquidity {
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::AddLiquidity {
                 amount: UsdValue::new_int(100_000),
                 min_shares_to_mint: None,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -477,7 +479,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(3_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -490,7 +492,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -499,7 +501,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // sell / ask
                 kind: perps::OrderKind::Limit {
@@ -507,7 +509,7 @@ fn liquidation_on_order_book() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -521,14 +523,14 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -568,7 +570,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -577,7 +579,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy / bid
                 kind: perps::OrderKind::Limit {
@@ -585,7 +587,7 @@ fn liquidation_on_order_book() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -616,9 +618,9 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Liquidate {
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Liquidate {
                 user: accounts.user1.address(),
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -728,7 +730,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user4,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(1_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -737,10 +739,10 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user4,
             contracts.perps,
-            &perps::ExecuteMsg::AddLiquidity {
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::AddLiquidity {
                 amount: UsdValue::new_int(1_000),
                 min_shares_to_mint: None,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -753,7 +755,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(1_100_000_000)).unwrap(),
         )
         .should_succeed();
@@ -766,7 +768,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -775,7 +777,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
@@ -783,7 +785,7 @@ fn liquidation_with_adl() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -797,14 +799,14 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -824,7 +826,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -836,7 +838,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
@@ -844,7 +846,7 @@ fn liquidation_with_adl() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -857,14 +859,14 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -910,9 +912,9 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Liquidate {
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Liquidate {
                 user: accounts.user1.address(),
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1003,7 +1005,7 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1012,10 +1014,10 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::AddLiquidity {
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::AddLiquidity {
                 amount: UsdValue::new_int(5_000),
                 min_shares_to_mint: None,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1058,7 +1060,7 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Configure {
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
                 param: Param {
                     vault_total_weight: Dimensionless::new_int(1),
                     ..default_param()
@@ -1071,7 +1073,7 @@ fn vault_lp_lifecycle() {
                         ..default_pair_param()
                     },
                 },
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1086,7 +1088,7 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::OnOracleUpdate {},
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
             Coins::new(),
         )
         .should_succeed();
@@ -1119,7 +1121,7 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1128,14 +1130,14 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: vault_bid_size.checked_neg().unwrap(), // sell
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1173,7 +1175,7 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::OnOracleUpdate {},
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
             Coins::new(),
         )
         .should_succeed();
@@ -1187,14 +1189,14 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: vault_long_size, // buy same amount (closes taker's short)
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1222,9 +1224,9 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::RemoveLiquidity {
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::RemoveLiquidity {
                 shares_to_burn: half_shares,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1254,9 +1256,9 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::RemoveLiquidity {
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::RemoveLiquidity {
                 shares_to_burn: remaining_shares,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1360,7 +1362,7 @@ fn oracle_triggers_on_oracle_update() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1369,10 +1371,10 @@ fn oracle_triggers_on_oracle_update() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::AddLiquidity {
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::AddLiquidity {
                 amount: UsdValue::new_int(5_000),
                 min_shares_to_mint: None,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1385,7 +1387,7 @@ fn oracle_triggers_on_oracle_update() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Configure {
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
                 param: Param {
                     vault_total_weight: Dimensionless::new_int(1),
                     ..default_param()
@@ -1398,7 +1400,7 @@ fn oracle_triggers_on_oracle_update() {
                         ..default_pair_param()
                     },
                 },
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1589,7 +1591,7 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Configure {
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
                 param: default_param(),
                 pair_params: btree_map! {
                     pair.clone() => PairParam {
@@ -1597,7 +1599,7 @@ fn liquidity_depth_tracking() {
                         ..default_pair_param()
                     },
                 },
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1607,7 +1609,7 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1616,7 +1618,7 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1648,7 +1650,7 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-3),
                 kind: perps::OrderKind::Limit {
@@ -1656,7 +1658,7 @@ fn liquidity_depth_tracking() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1684,7 +1686,7 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
@@ -1692,7 +1694,7 @@ fn liquidity_depth_tracking() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1724,7 +1726,7 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
@@ -1732,7 +1734,7 @@ fn liquidity_depth_tracking() {
                     post_only: false,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1762,7 +1764,9 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::CancelOrder(perps::CancelOrderRequest::All),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::CancelOrder(
+                perps::CancelOrderRequest::All,
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -1808,7 +1812,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Configure {
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
                 param: Param {
                     protocol_fee_rate: Dimensionless::new_percent(20),
                     ..default_param()
@@ -1816,7 +1820,7 @@ fn protocol_fee_accumulates_across_fills() {
                 pair_params: btree_map! {
                     pair.clone() => default_pair_param(),
                 },
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1826,7 +1830,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1835,7 +1839,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Deposit {},
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1846,7 +1850,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
@@ -1854,7 +1858,7 @@ fn protocol_fee_accumulates_across_fills() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1863,14 +1867,14 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1893,7 +1897,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
@@ -1901,7 +1905,7 @@ fn protocol_fee_accumulates_across_fills() {
                     post_only: true,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();
@@ -1910,14 +1914,14 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
-            },
+            }),
             Coins::new(),
         )
         .should_succeed();

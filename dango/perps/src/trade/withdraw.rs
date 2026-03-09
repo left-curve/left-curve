@@ -1,5 +1,5 @@
 use {
-    crate::{NoCachePerpQuerier, USER_STATES, core::compute_available_margin, execute::oracle},
+    crate::{NoCachePerpQuerier, USER_STATES, core::compute_available_margin, oracle},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
