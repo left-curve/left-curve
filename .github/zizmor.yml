@@ -15,3 +15,9 @@ rules:
       - faucet.yml
       - portal-deployment.yaml
       - cleanup-pr.yaml
+  superfluous-actions:
+    ignore:
+      # Self-hosted runners may not have Rust pre-installed;
+      # dtolnay/rust-toolchain is needed to guarantee the toolchain.
+      - rust.yml
+      - book.yaml

@@ -35,6 +35,7 @@ jobs:
     permissions:
       packages: read
     runs-on: [self-hosted]
+    environment: deploy-infra
     # Still using this as ENV for the ansible playbook to login properly
     env:
       GITHUB_USER: ${{ github.actor }}

@@ -17,6 +17,7 @@ jobs:
   cleanup-deployment:
     needs: [zizmor]
     runs-on: [self-hosted]
+    environment: deploy-infra
     env:
       ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
       ANSIBLE_DEBIAN_PASSWORD: ${{ secrets.ANSIBLE_DEBIAN_PASSWORD }}

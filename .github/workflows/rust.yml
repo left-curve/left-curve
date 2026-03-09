@@ -210,6 +210,7 @@ jobs:
     needs: [backend-test, changes]
     name: Check compiling without features
     runs-on: self-hosted
+    environment: build
     permissions:
       contents: read
     env:
@@ -289,6 +290,7 @@ jobs:
     name: Lint + Test
     runs-on: self-hosted
     timeout-minutes: 20
+    environment: build
     permissions:
       id-token: write
       contents: read
@@ -502,6 +504,7 @@ jobs:
   backend-build:
     needs: [backend-test, changes]
     timeout-minutes: 20
+    environment: build
     strategy:
       fail-fast: false
       matrix:
@@ -1307,6 +1310,7 @@ jobs:
       contents: read
     needs: [security-artifacts, set-image-tags, localdango, changes]
     runs-on: [self-hosted]
+    environment: deploy-infra
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_BRANCH: ${{ github.event.pull_request.head.ref }}
@@ -1394,6 +1398,7 @@ jobs:
     name: Testing localdango
     runs-on: [self-hosted]
     needs: [set-image-tags, changes]
+    environment: build
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
       FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
