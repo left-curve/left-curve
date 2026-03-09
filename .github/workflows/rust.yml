@@ -1389,6 +1389,7 @@ jobs:
     timeout-minutes: 5
     name: Testing localdango
     runs-on: [self-hosted]
+    environment: ci
     needs: [set-image-tags, changes]
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
