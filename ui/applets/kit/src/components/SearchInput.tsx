@@ -74,7 +74,9 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               className="w-full p-3 hover:bg-surface-tertiary-rice rounded-md text-left"
               key={key}
             >
-              {cloneElement(OptionComponent as ReactElement, { children: key })}
+              {cloneElement(OptionComponent as ReactElement<{ children?: React.ReactNode }>, {
+                children: key,
+              })}
             </button>
           ))}
         </div>

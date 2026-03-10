@@ -219,6 +219,18 @@ generate_types! {
         path: "src/schemas/queries/trades.graphql",
     },
     {
+        name: PairStats,
+        path: "src/schemas/queries/pairStats.graphql",
+    },
+    {
+        name: PairStatsPartial,
+        path: "src/schemas/queries/pairStatsPartial.graphql",
+    },
+    {
+        name: AllPairStats,
+        path: "src/schemas/queries/allPairStats.graphql",
+    },
+    {
         name: QueryStatus,
         path: "src/schemas/queries/queryStatus.graphql",
     }

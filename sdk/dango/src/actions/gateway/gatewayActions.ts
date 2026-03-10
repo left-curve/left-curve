@@ -1,5 +1,6 @@
 import type { Client, Transport } from "@left-curve/sdk/types";
-import type { DangoClient, Signer } from "../../types/index.js";
+import type { DangoClient } from "../../types/clients.js";
+import type { Signer } from "../../types/signer.js";
 
 import {
   transferRemote,

@@ -1,2 +1,2 @@
 ---
-minio_dir: "{{ ansible_facts['env']['HOME'] }}/minio"
+minio_dir: "{{ deploy_home }}/minio"

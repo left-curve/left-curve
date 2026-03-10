@@ -2,7 +2,7 @@ import type { Address, Message, Transport } from "@left-curve/sdk/types";
 
 import { composeTxTypedData } from "../../../utils/typedData.js";
 import { getAccountSeenNonces } from "../../account-factory/queries/getAccountSeenNonces.js";
-import { getAccountInfo } from "../../account-factory/index.js";
+import { getAccountInfo } from "../../account-factory/queries/getAccountInfo.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
 import type {

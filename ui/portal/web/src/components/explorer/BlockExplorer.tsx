@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-import { usePublicClient } from "@left-curve/store";
-import { useQuery } from "@tanstack/react-query";
+import { useExplorerBlock } from "@left-curve/store";
 
 import {
   JsonVisualizer,
@@ -48,24 +47,7 @@ const BlockContainer: React.FC<PropsWithChildren<BlockExplorerProps>> = ({
   children,
   className,
 }) => {
-  const client = usePublicClient();
-
-  const query = useQuery({
-    queryKey: ["block", height],
-    queryFn: async () => {
-      const isLatest = height === "latest";
-      const parsedHeight = Number(height);
-      const [searchBlock, currentBlock] = await Promise.all([
-        Number.isNaN(parsedHeight) && !isLatest
-          ? null
-          : client.queryBlock(isLatest ? undefined : { height: parsedHeight }),
-        client.queryBlock(),
-      ]);
-      const isFutureBlock = parsedHeight > 0 && parsedHeight > currentBlock?.blockHeight;
-      const isInvalidBlock = (!isLatest && Number.isNaN(parsedHeight)) || parsedHeight < 0;
-      return { searchBlock, currentBlock, height: parsedHeight, isFutureBlock, isInvalidBlock };
-    },
-  });
+  const query = useExplorerBlock(height);
 
   return (
     <BlockExplorerContext.Provider value={query}>

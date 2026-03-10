@@ -1,18 +1,19 @@
+#[cfg(feature = "async-graphql")]
 use {
-    super::pair_price::dec,
+    crate::entities::graphql_decimal::GraphqlBigDecimal,
+    async_graphql::{ComplexObject, SimpleObject},
+    bigdecimal::{BigDecimal, num_bigint::BigInt},
+    grug::Inner,
+    grug_types::Timestamp,
+};
+use {
+    crate::entities::pair_price::dec,
     chrono::{DateTime, Utc},
     clickhouse::Row,
     dango_types::dex::{Direction, PairId, TimeInForce},
     grug::{Denom, StdError, Udec128_6, Udec128_24},
     serde::{Deserialize, Serialize},
     std::str::FromStr,
-};
-#[cfg(feature = "async-graphql")]
-use {
-    async_graphql::{ComplexObject, SimpleObject},
-    bigdecimal::{BigDecimal, num_bigint::BigInt},
-    grug::Inner,
-    grug_types::Timestamp,
 };
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -94,46 +95,46 @@ impl Trade {
         Timestamp::from(self.created_at.naive_utc()).to_rfc3339_string()
     }
 
-    async fn filled_base(&self) -> BigDecimal {
+    async fn filled_base(&self) -> GraphqlBigDecimal {
         let inner_value = self.filled_base.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 6).normalized()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
-    async fn filled_quote(&self) -> BigDecimal {
+    async fn filled_quote(&self) -> GraphqlBigDecimal {
         let inner_value = self.filled_quote.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 6).normalized()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
-    async fn refund_base(&self) -> BigDecimal {
+    async fn refund_base(&self) -> GraphqlBigDecimal {
         let inner_value = self.refund_base.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 6).normalized()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
-    async fn refund_quote(&self) -> BigDecimal {
+    async fn refund_quote(&self) -> GraphqlBigDecimal {
         let inner_value = self.refund_quote.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 6).normalized()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
-    async fn fee_base(&self) -> BigDecimal {
+    async fn fee_base(&self) -> GraphqlBigDecimal {
         let inner_value = self.fee_base.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 6).normalized()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
-    async fn fee_quote(&self) -> BigDecimal {
+    async fn fee_quote(&self) -> GraphqlBigDecimal {
         let inner_value = self.fee_quote.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 6).normalized()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
-    async fn clearing_price(&self) -> BigDecimal {
+    async fn clearing_price(&self) -> GraphqlBigDecimal {
         let inner_value = self.clearing_price.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 24).normalized()
+        BigDecimal::new(bigint, 24).normalized().into()
     }
 }
 

@@ -4,7 +4,7 @@ use {
         account_factory, bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         constants::dango,
-        dex, gateway, oracle, taxman, vesting, warp,
+        dex, gateway, oracle, perps, taxman, vesting, warp,
     },
     grug::{
         Addr, Binary, Coins, Config, Duration, GENESIS_SENDER, GenesisState, Hash256, HashExt,
@@ -35,6 +35,7 @@ where
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
+    let perps_code_hash = upload(&mut msgs, codes.perps);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
     let warp_code_hash = upload(&mut msgs, codes.warp);
@@ -231,6 +232,19 @@ where
         owner,
     )?;
 
+    // Instantiate the perps contract.
+    let perps = instantiate(
+        &mut msgs,
+        perps_code_hash,
+        &perps::InstantiateMsg {
+            param: opt.perps.param,
+            pair_params: opt.perps.pair_params,
+        },
+        "dango/perps",
+        "dango/perps",
+        owner,
+    )?;
+
     // Instantiate the vesting contract.
     let vesting = instantiate(
         &mut msgs,
@@ -251,6 +265,7 @@ where
         gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         oracle,
+        perps,
         taxman,
         vesting,
         warp,
@@ -263,6 +278,7 @@ where
         cronjobs: btree_map! {
             dex => Duration::ZERO, // Important: DEX cronjob is to be invoked at end of every block.
             gateway => opt.gateway.rate_limit_refresh_period,
+            perps => Duration::from_minutes(1),
         },
         permissions: Permissions {
             upload: Permission::Nobody,
@@ -278,6 +294,7 @@ where
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,
+            perps,
             taxman,
             warp,
         },

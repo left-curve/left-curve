@@ -54,5 +54,6 @@
     "dotenv": false
   },
   "markdown.extension.toc.updateOnSave": false,
-  "rust-analyzer.rustfmt.extraArgs": ["+nightly"]
+  "rust-analyzer.rustfmt.extraArgs": ["+nightly"],
+  "typescript.tsdk": "node_modules/typescript/lib"
 }

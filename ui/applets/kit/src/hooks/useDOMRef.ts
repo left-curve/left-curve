@@ -7,7 +7,7 @@ export function useDOMRef<T extends HTMLElement = HTMLElement>(
 ) {
   const domRef = useRef<T>(null);
 
-  useImperativeHandle(ref, () => domRef.current);
+  useImperativeHandle(ref, () => domRef.current as T);
 
   return domRef;
 }

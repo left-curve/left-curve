@@ -60,18 +60,18 @@
     "@left-curve/config": "workspace:^",
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-react": "catalog:",
-    "@storybook/addon-a11y": "^8.6.12",
-    "@storybook/addon-essentials": "^8.6.12",
-    "@storybook/addon-links": "^8.6.12",
-    "@storybook/blocks": "^8.6.12",
-    "@storybook/react": "^8.6.12",
+    "@storybook/addon-a11y": "^8.6.14",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/addon-links": "^8.6.14",
+    "@storybook/blocks": "^8.6.14",
+    "@storybook/react": "^8.6.14",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "autoprefixer": "catalog:",
     "postcss": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "storybook": "^8.6.12",
+    "storybook": "^8.6.14",
     "storybook-react-rsbuild": "^1.0.1",
     "tailwindcss": "catalog:"
   },
@@ -79,7 +79,7 @@
     "@tanstack/react-query": ">=5.0.0",
     "@tanstack/react-table": ">=8.0.0",
     "date-fns": ">=4.0.0",
-    "react": "^18",
-    "react-dom": "^18"
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
   }
 }

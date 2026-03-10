@@ -236,7 +236,7 @@ export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
     }, [activeStep, reactChildren]);
 
     const enhancedActiveStepContent = useMemo(
-      () => (Wrapper ? cloneElement(Wrapper, { children: activeStepContent }) : activeStepContent),
+      () => (Wrapper ? cloneElement(Wrapper, {}, activeStepContent) : activeStepContent),
       [Wrapper, activeStepContent],
     );
 

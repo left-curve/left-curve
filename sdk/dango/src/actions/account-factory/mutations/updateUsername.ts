@@ -3,7 +3,10 @@ import type { Address, Transport } from "@left-curve/sdk/types";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
 import { getAction } from "@left-curve/sdk/actions";
-import type { AppConfig, DangoClient, Signer, Username } from "../../../types/index.js";
+import type { AppConfig } from "../../../types/app.js";
+import type { DangoClient } from "../../../types/clients.js";
+import type { Signer } from "../../../types/signer.js";
+import type { Username } from "../../../types/account.js";
 
 export type UpdateUsernameParameters = {
   sender: Address;

@@ -48,4 +48,4 @@ services:
 
 networks:
   postgres:
-    external: true
+    name: postgres

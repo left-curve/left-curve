@@ -7,7 +7,8 @@ import {
 import type { Chain, Prettify, Transport, Tx, TxData, UnsignedTx } from "@left-curve/sdk/types";
 
 import { withRetry } from "@left-curve/sdk/utils";
-import type { DangoClient, Signer } from "../../../types/index.js";
+import type { DangoClient } from "../../../types/clients.js";
+import type { Signer } from "../../../types/signer.js";
 import { queryIndexer } from "../../indexer/queryIndexer.js";
 import { queryTx } from "../queries/queryTx.js";
 

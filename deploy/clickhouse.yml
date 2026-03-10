@@ -7,10 +7,25 @@
     - clickhouse
 
 - hosts: clickhouse
-  remote_user: "debian"
+  remote_user: debian
+  become: true
   vars_files:
     - vaults/debian/root_vault.yml
+    - roles/clickhouse/defaults/main.yml
   tasks:
+    - name: Install systemd unit for clickhouse compose
+      template:
+        src: roles/clickhouse/templates/clickhouse-compose.service.j2
+        dest: /etc/systemd/system/clickhouse-compose.service
+        mode: '0644'
+      notify: Reload systemd
+
+    - name: Enable and start clickhouse-compose service
+      systemd:
+        name: clickhouse-compose.service
+        enabled: true
+        state: started
+
     - name: Configure kernel parameters for memory optimization
       sysctl:
         name: "{{ item.key }}"
@@ -20,5 +35,8 @@
       loop:
         - { key: 'vm.swappiness', value: '1' }
         - { key: 'vm.vfs_cache_pressure', value: '50' }
-      become: true
-      become_user: root
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true

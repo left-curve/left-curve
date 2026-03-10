@@ -1,6 +1,5 @@
 import { useFavApplets } from "@left-curve/store";
 
-import { MotiView } from "moti";
 import { View, Pressable } from "react-native";
 import { AddressVisualizer } from "../foundation/AddressVisualizer";
 import { GlobalText, IconEmptyStar, IconStar, TruncateText } from "../foundation";
@@ -30,7 +29,7 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
   };
 
   return (
-    <MotiView key={title} className="w-full p-2 rounded-xs">
+    <View className="w-full p-2 rounded-xs">
       <View className="flex flex-row items-center justify-between gap-4">
         <View className="flex-row items-center gap-4 flex-1 basis-0">
           <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
@@ -62,7 +61,7 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
           )}
         </Pressable>
       </View>
-    </MotiView>
+    </View>
   );
 };
 
@@ -70,7 +69,7 @@ type SearchAssetProps = WithPrice<AnyCoin>;
 
 const AssetItem: React.FC<SearchAssetProps> = ({ symbol, price }) => {
   return (
-    <MotiView key={symbol} className="w-full p-2 min-h-[74px] rounded-xs">
+    <View className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-start justify-between">
         <View className="flex-row items-start gap-4">
           {/* <Image source={{ uri: logoURI }} style={{ width: 32, height: 32 }} /> */}
@@ -83,7 +82,7 @@ const AssetItem: React.FC<SearchAssetProps> = ({ symbol, price }) => {
           <GlobalText className="diatype-sm-bold">${price}</GlobalText>
         </View>
       </View>
-    </MotiView>
+    </View>
   );
 };
 
@@ -91,7 +90,7 @@ type SearchBlockItemProps = { height: number; hash: string };
 
 const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
   return (
-    <MotiView key={height} className="w-full p-2 min-h-[74px] rounded-xs">
+    <View className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex flex-row items-center gap-4">
         <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiBlocks width={48} height={48} />
@@ -101,7 +100,7 @@ const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
           <TruncateText className="diatype-sm-regular text-ink-tertiary-500" text={hash} end={20} />
         </View>
       </View>
-    </MotiView>
+    </View>
   );
 };
 
@@ -109,7 +108,7 @@ type SearchTransactionItemProps = { height: number; hash: string };
 
 const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash }) => {
   return (
-    <MotiView key={height} className="w-full p-2 min-h-[74px] rounded-xs">
+    <View className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-center gap-4">
         <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiTxs width={48} height={48} />
@@ -121,7 +120,7 @@ const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash })
           </GlobalText>
         </View>
       </View>
-    </MotiView>
+    </View>
   );
 };
 
@@ -131,7 +130,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
   const { address } = contract;
 
   return (
-    <MotiView key={address} className="w-full p-2 min-h-[74px] rounded-xs">
+    <View className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-center gap-4">
         <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiFactory width={48} height={48} />
@@ -145,7 +144,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
           />
         </View>
       </View>
-    </MotiView>
+    </View>
   );
 };
 
@@ -156,7 +155,7 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
   const name = `${username} - ${type} #${index}`;
 
   return (
-    <MotiView key={address} className="w-full p-2 min-h-[74px] rounded-xs">
+    <View className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-center gap-4">
         <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiFactory width={48} height={48} />
@@ -170,7 +169,7 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
           />
         </View>
       </View>
-    </MotiView>
+    </View>
   );
 };
 

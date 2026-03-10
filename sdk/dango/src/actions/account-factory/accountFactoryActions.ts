@@ -80,7 +80,8 @@ import {
   createSession,
 } from "./mutations/createSession.js";
 
-import type { DangoClient, Signer } from "../../types/index.js";
+import type { DangoClient } from "../../types/clients.js";
+import type { Signer } from "../../types/signer.js";
 import {
   forgotUsername,
   type ForgotUsernameParameters,

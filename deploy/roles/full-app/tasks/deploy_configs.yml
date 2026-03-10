@@ -37,6 +37,7 @@
         - { src: "docker-compose.yml", dest: "{{ deployment_dir }}/docker-compose.yml" }
         - { src: "env.j2", dest: "{{ deployment_dir }}/.env" }
         - { src: "envrc.j2", dest: "{{ deployment_dir }}/.envrc" }
+        - { src: "Makefile", dest: "{{ deployment_dir }}/Makefile", mode: "0644" }
 
 - name: Check if network-specific genesis exists
   stat:

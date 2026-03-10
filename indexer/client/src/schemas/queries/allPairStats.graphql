@@ -1,0 +1,10 @@
+query AllPairStats {
+  allPairStats {
+    baseDenom
+    quoteDenom
+    currentPrice
+    price24HAgo
+    volume24H
+    priceChange24H
+  }
+}

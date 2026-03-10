@@ -6,10 +6,25 @@
     - postgres
 
 - hosts: db
-  remote_user: "debian"
+  remote_user: debian
+  become: true
   vars_files:
     - vaults/debian/root_vault.yml
+    - roles/postgres/defaults/main.yml
   tasks:
+    - name: Install systemd unit for postgres compose
+      template:
+        src: roles/postgres/templates/postgres-compose.service.j2
+        dest: /etc/systemd/system/postgres-compose.service
+        mode: '0644'
+      notify: Reload systemd
+
+    - name: Enable and start postgres-compose service
+      systemd:
+        name: postgres-compose.service
+        enabled: true
+        state: started
+
     - name: Configure kernel parameters for memory optimization
       sysctl:
         name: "{{ item.key }}"
@@ -21,3 +36,8 @@
         - { key: 'vm.vfs_cache_pressure', value: '50' }
       become: true
       become_user: root
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true

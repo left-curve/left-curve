@@ -28,6 +28,11 @@ pub trait DangoQuerier {
             .map(|app_cfg| app_cfg.addresses.oracle)
     }
 
+    fn query_perps(&self) -> StdResult<Addr> {
+        self.query_dango_config()
+            .map(|app_cfg| app_cfg.addresses.perps)
+    }
+
     fn query_warp(&self) -> StdResult<Addr> {
         self.query_dango_config()
             .map(|app_cfg| app_cfg.addresses.warp)

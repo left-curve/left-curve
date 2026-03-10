@@ -15,3 +15,20 @@
     pull: missing
     state: present
     recreate: always
+
+- name: Install systemd unit for Dozzle compose
+  become: true
+  become_user: root
+  template:
+    src: dozzle-compose.service.j2
+    dest: /etc/systemd/system/dozzle-compose.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start dozzle-compose service
+  become: true
+  become_user: root
+  systemd:
+    name: dozzle-compose.service
+    enabled: true
+    state: started

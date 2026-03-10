@@ -27,6 +27,11 @@ pub enum ExecuteMsg {
     FeedPrices(PriceUpdate),
 }
 
+#[grug::derive(Serde)]
+pub enum ReplyMsg {
+    AfterOnOracleUpdate {},
+}
+
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query Pyth Lazer trusted signers and their expiration times.

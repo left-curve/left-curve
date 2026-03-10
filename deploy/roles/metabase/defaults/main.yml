@@ -1,5 +1,5 @@
 ---
-metabase_dir: "{{ ansible_facts['env']['HOME'] }}/metabase"
+metabase_dir: "{{ deploy_home }}/metabase"
 metabase_use_postgres: true
 metabase_db_name: "metabase"
 metabase_db_user: "metabase"

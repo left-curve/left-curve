@@ -1,4 +1,4 @@
-traefik_dir: "{{ ansible_facts['env']['HOME'] }}/traefik"
+traefik_dir: "{{ deploy_home }}/traefik"
 discord_username: "Deploy"
 discord_avatar_url: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ansible-light.svg"
 github_repo: "left-curve/left-curve"

@@ -76,7 +76,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       },
       async createNewKey(challenge = "Please sign this message to confirm your identity.") {
         const { id, getPublicKey } = await createWebAuthnCredential({
-          challenge: encodeUtf8(challenge),
+          challenge: encodeUtf8(challenge) as Uint8Array<ArrayBuffer>,
           user: {
             name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
           },

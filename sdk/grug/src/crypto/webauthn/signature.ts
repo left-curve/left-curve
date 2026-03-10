@@ -98,13 +98,13 @@ export function getCredentialSignRequestOptions(
         ? {
             allowCredentials: [
               {
-                id: decodeBase64Url(credentialId),
+                id: decodeBase64Url(credentialId) as Uint8Array<ArrayBuffer>,
                 type: "public-key",
               },
             ],
           }
         : {}),
-      challenge,
+      challenge: challenge as Uint8Array<ArrayBuffer>,
       rpId,
       userVerification,
     },

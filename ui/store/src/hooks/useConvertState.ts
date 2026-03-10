@@ -1,7 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { startTransition, useMemo, useState } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
+import { usePairStats } from "./usePairStats.js";
 import { usePrices } from "./usePrices.js";
 import { usePublicClient } from "./usePublicClient.js";
 
@@ -34,6 +35,15 @@ export type ConvertInfo = {
   pair: PairUpdate;
   priceImpact: number;
   fee: number;
+};
+
+type PairStatistics = {
+  tvl: string;
+  apy: string;
+  volume: string;
+  currentPrice: string | null;
+  price24HAgo: string | null;
+  priceChange24H: string | null;
 };
 
 export function useConvertState(parameters: UseConvertStateParameters) {
@@ -80,13 +90,25 @@ export function useConvertState(parameters: UseConvertStateParameters) {
   const fromCoin = coins.bySymbol[from];
   const toCoin = coins.bySymbol[to];
 
-  const statistics = useQuery({
-    queryKey: ["pair_statistics"],
-    initialData: { tvl: "-", apy: "-", volume: "-" },
-    queryFn: () => {
-      return { tvl: "-", apy: "-", volume: "-" };
-    },
+  const pairStats = usePairStats({
+    baseDenom: pairId.base.denom,
+    quoteDenom: pairId.quote.denom,
   });
+
+  const statistics = useMemo(
+    () => ({
+      ...pairStats,
+      data: {
+        tvl: "-",
+        apy: "-",
+        volume: pairStats.data?.volume24H ?? "-",
+        currentPrice: pairStats.data?.currentPrice ?? null,
+        price24HAgo: pairStats.data?.price24HAgo ?? null,
+        priceChange24H: pairStats.data?.priceChange24H ?? null,
+      } satisfies PairStatistics,
+    }),
+    [pairStats],
+  );
 
   const simulation = useMutation({
     onError: (e, direction) => {

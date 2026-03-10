@@ -1,0 +1,17 @@
+---
+- name: Install systemd unit for Vaultwarden compose
+  become: true
+  become_user: root
+  template:
+    src: vaultwarden-compose.service.j2
+    dest: /etc/systemd/system/vaultwarden-compose.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start vaultwarden-compose service
+  become: true
+  become_user: root
+  systemd:
+    name: vaultwarden-compose.service
+    enabled: true
+    state: started

@@ -7,6 +7,15 @@
   vars:
     loki_url: "http://loki:3100"
   pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+
     - name: Create monitoring network
       community.docker.docker_network:
         name: monitoring

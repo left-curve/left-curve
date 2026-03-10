@@ -33,9 +33,10 @@
     "react-error-boundary": "^6.0.0",
     "react-modal-sheet": "^4.0.1",
     "react-scan": "^0.4.3",
+    "recharts": "^3.6.0",
     "workbox-webpack-plugin": "^7.3.0",
     "workbox-window": "^7.3.0",
-    "cmdk": "^1.0.4",
+    "cmdk": "^1.1.1",
     "zod": "catalog:"
   },
   "optionalDependencies": {

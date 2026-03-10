@@ -1,5 +1,5 @@
-import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
-import { Cell, SortHeader, Table, useApp } from "@left-curve/applets-kit";
+import { useAllPairStats, useConfig, useFavPairs, usePrices } from "@left-curve/store";
+import { Cell, PairStatValue, SortHeader, Table, useApp } from "@left-curve/applets-kit";
 
 import type { TableHeaderContext, TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { PairId, PairUpdate } from "@left-curve/dango/types";
@@ -29,8 +29,10 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   const { coins } = useConfig();
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const { favPairs } = useFavPairs();
+  const { statsByPair } = useAllPairStats();
 
   const data = useMemo(() => [...pairs], [pairs, favPairs]);
+  const getPairStats = (row: PairUpdate) => statsByPair[`${row.baseDenom}:${row.quoteDenom}`];
 
   const columns: TableColumn<PairUpdate> = [
     {
@@ -88,7 +90,24 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
           toggleSort={ctx.column.toggleSorting}
         />
       ),
-      cell: () => <Cell.Text text="-" />,
+      cell: ({ row }) => {
+        const stats = getPairStats(row.original);
+        return (
+          <div className="flex flex-col gap-1">
+            <PairStatValue
+              kind="priceChange24h"
+              value={stats?.priceChange24H}
+              formatOptions={{ ...formatNumberOptions, maximumTotalDigits: 6 }}
+              className="diatype-xs-medium"
+              as="span"
+            />
+          </div>
+        );
+      },
+      accessorFn: (row) => {
+        const value = getPairStats(row)?.priceChange24H;
+        return value === null || value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
+      },
     },
     {
       id: "volume",
@@ -97,9 +116,28 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
           label={m["dex.protrade.searchPairTable.volume"]()}
           sorted={ctx.column.getIsSorted()}
           toggleSort={ctx.column.toggleSorting}
+          className="ml-auto w-full justify-end"
         />
       ),
-      cell: () => <Cell.Text text="-" />,
+      cell: ({ row }) => {
+        const value = getPairStats(row.original)?.volume24H;
+        return (
+          <div className="flex flex-col gap-1">
+            <PairStatValue
+              kind="volume24h"
+              value={value}
+              formatOptions={{ ...formatNumberOptions, maximumTotalDigits: 5 }}
+              className="diatype-xs-medium"
+              align="end"
+              as="span"
+            />
+          </div>
+        );
+      },
+      accessorFn: (row) => {
+        const value = getPairStats(row)?.volume24H;
+        return value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
+      },
     },
   ];
 

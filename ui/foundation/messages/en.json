@@ -413,11 +413,13 @@
     "termsOfUse": "Terms of Use"
   },
   "auth": {
+    "email": "Email",
     "emailPlaceholder": "email",
     "passkey": "Passkey",
     "wallets": "Wallets",
     "didntReceiveCode": "Didn't receive the code?",
     "enterYou": "Enter your",
+    "enterYourEmail": "Enter your email",
     "requetFromFaucet": "Request Funds from Faucet",
     "errors": {
       "invalidVerificationCode": "Invalid verification code",
@@ -842,13 +844,26 @@
       "management": {
         "add": {
           "title": "Add new credential",
-          "description": "Choose a credential. You can add or remove credentials later."
+          "description": "Choose a credential. You can add or remove credentials later.",
+          "success": {
+            "title": "Credential added",
+            "description": "Your new credential has been successfully linked to your account."
+          },
+          "error": {
+            "title": "Failed to add credential",
+            "alreadyExists": "This credential is already linked to your account."
+          }
         },
         "delete": {
           "title": "Delete credential",
           "description": "Are you sure you want to delete this credential?",
           "warning": "This action cannot be undone."
         }
+      },
+      "email": {
+        "title": "Link Email",
+        "description": "We'll send a verification code to your email",
+        "alreadyLinked": "This email is already linked to your account"
       }
     }
   },
@@ -980,6 +995,17 @@
   },
   "points": {
     "campaign": "Campaign",
+    "referral": {
+      "faqs": {
+        "title": "FAQs",
+        "question1": "How do I unlock a referral link?",
+        "answer1": "You must first achieve $10,000 in traded volume.",
+        "question2": "Can I earn points by referring users?",
+        "answer2": "Yes. You will get 1 point for every 5 points earned by your direct referrals, and 1 point for every 20 points earned by your indirect referrals.",
+        "question3": "Is there a limit to how much of my commission I can share with my referees?",
+        "answer3": "Yes. Referrers cannot share more than 50% of their total commission with their referees."
+      }
+    },
     "leagues": {
       "title": "Leagues",
       "subtitle": "Earn points to climb your way up!",
@@ -1020,11 +1046,15 @@
     }
   },
   "accountCard": {
-    "copyWarning": {
-      "title": "THIS IS NOT AN ETHEREUM ADDRESS",
-      "descriptionPre": "Do NOT withdrawal directly from a centralized exchange (CEX) to this address, or send funds directly to this address from Ethereum or other EVM chains. Use the",
-      "descriptionLink": "deposit",
-      "descriptionPost": "app instead."
+    "addressWarning": {
+      "title": "This Is Not an Ethereum Address",
+      "doNot": "Do not",
+      "bullet1": "withdraw directly from a Centralized Exchange (CEX) to this address.",
+      "bullet2": "send funds from Ethereum or other EVM chains to this address.",
+      "descriptionPre": "To fund your Dango account, use the",
+      "descriptionLink": "Deposit app",
+      "descriptionPost": "instead.",
+      "button": "I understand"
     }
   }
 }

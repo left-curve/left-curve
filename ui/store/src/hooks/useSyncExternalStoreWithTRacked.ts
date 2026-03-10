@@ -1,7 +1,7 @@
 /** Forked from https://github.com/wevm/wagmi/blob/main/packages/react/src/hooks/useSyncExternalStoreWithTracked.ts */
 import { assertDeepEqual } from "@left-curve/dango/utils";
 import { useRef } from "react";
-import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector.js";
+import { useSyncExternalStoreWithSelector } from "use-sync-external-store/with-selector.js";
 
 const isPlainObject = (obj: unknown) => typeof obj === "object" && !Array.isArray(obj);
 // biome-ignore lint/complexity/noBannedTypes: Is necessary all functions types

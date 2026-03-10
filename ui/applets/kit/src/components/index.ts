@@ -47,6 +47,7 @@ export { PairAssets } from "./PairAssets";
 export { Marquee } from "./Marquee";
 export { SortHeader } from "./SortHeader";
 export { FormattedNumber } from "./FormattedNumber";
+export { PairStatValue, type PairStatKind, type PairStatTone } from "./PairStatValue";
 export { Dot } from "./Dot";
 export { CurrentBlock } from "./CurrentBlock";
 export { QRCodeReader } from "./QRCodeReader";
@@ -56,6 +57,7 @@ export { ConnectWalletWithModal } from "./ConnectWalletWithModal";
 export { TruncateResponsive } from "./TruncateResponsive";
 export { WarningContainer } from "./WarningContainer";
 export { AuthenticatedButton } from "./AuthenticatedButton";
+export { ProgressBar } from "./ProgressBar";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -135,3 +137,5 @@ export { IconSwapMoney } from "./icons/IconSwapMoney";
 export { IconSprout } from "./icons/IconSprout";
 export { IconFriendshipGroup } from "./icons/IconFriendshipGroup";
 export { IconLock } from "./icons/IconLock";
+export { IconWarningTriangle } from "./icons/IconWarningTriangle";
+export { IconFlash } from "./icons/IconFlash";

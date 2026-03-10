@@ -1,7 +1,7 @@
 import { type GetPublicClientReturnType, getPublicClient } from "../actions/getPublicClient.js";
 import { watchPublicClient } from "../actions/watchPublicClient.js";
 
-import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector.js";
+import { useSyncExternalStoreWithSelector } from "use-sync-external-store/with-selector.js";
 import { useConfig } from "./useConfig.js";
 
 import type { Prettify } from "@left-curve/dango/types";

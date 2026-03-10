@@ -34,7 +34,7 @@ export class WebCryptoECDH {
     const encryptedData = await WebCryptoECDH.#subtle.encrypt(
       { name: "AES-GCM", iv: iv },
       secretKey,
-      encodeUtf8(message),
+      encodeUtf8(message) as Uint8Array<ArrayBuffer>,
     );
 
     return `${encodeBase64(iv)}:${encodeBase64(new Uint8Array(encryptedData))}`;
@@ -45,9 +45,9 @@ export class WebCryptoECDH {
     if (!iv || !encryptedData) throw new Error("Invalid payload format");
 
     const decryptedBuffer = await WebCryptoECDH.#subtle.decrypt(
-      { name: "AES-GCM", iv: decodeBase64(iv) },
+      { name: "AES-GCM", iv: decodeBase64(iv) as Uint8Array<ArrayBuffer> },
       secretKey,
-      decodeBase64(encryptedData),
+      decodeBase64(encryptedData) as Uint8Array<ArrayBuffer>,
     );
 
     return decodeUtf8(decryptedBuffer);

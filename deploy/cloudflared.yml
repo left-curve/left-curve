@@ -1,11 +1,22 @@
 - hosts: cloudflared
-  remote_user: "{{ deploy_user }}"
+  become: true
+  become_user: "{{ deploy_user }}"
+  remote_user: debian
+  vars_files:
+    - vaults/debian/root_vault.yml
   vars:
     monitor_defs:
-      # Removing graphiql because it takes spaces
-      # - { name: "graphiql",    path: "/",       expect: "200" }
       - { name: "www",         path: "/",       expect: "200" }
       - { name: "api",         path: "/up",     expect: "200" }
       - { name: "faucet",      path: "/health", expect: "200" }
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
   roles:
     - cloudflared

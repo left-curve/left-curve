@@ -5,7 +5,6 @@ import { useActivities } from "@left-curve/store";
 import { isToday } from "date-fns";
 import { twMerge, formatDate, useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { MotiView } from "moti";
 import HamsterEmoji from "@left-curve/foundation/images/emojis/detailed/hamster.svg";
 
 import { Activity } from "./Activity";
@@ -68,14 +67,9 @@ export const Activities: React.FC<ActivitiesProps> = ({ className, activitiesPer
   }
 
   const renderItem = ({ item }: ListRenderItemInfo<ActivityRecord>) => (
-    <MotiView
-      from={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ type: "timing", duration: 200 }}
-      className="mb-2"
-    >
+    <View className="mb-2">
       <Activity activity={item} />
-    </MotiView>
+    </View>
   );
 
   const renderSectionHeader = ({ section }: { section: Section }) => (

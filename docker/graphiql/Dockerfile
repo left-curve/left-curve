@@ -13,7 +13,10 @@ COPY --link *.ts *.json index.html ./
 RUN --mount=type=cache,target=/root/.npm \
     npm run build
 
-FROM nginx:alpine
+FROM nginx:1.28.2-alpine
+
+# Fix CVE-2025-58050 in pcre2 (require >=10.46)
+RUN apk add --no-cache 'pcre2>=10.46-r0'
 
 LABEL org.opencontainers.image.description="GraphiQL image"
 LABEL org.opencontainers.image.source=https://github.com/left-curve/left-curve

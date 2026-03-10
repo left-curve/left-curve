@@ -1,6 +1,15 @@
 - hosts: all
   remote_user: "{{ deploy_user }}"
   pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+
     - name: Create monitoring network
       community.docker.docker_network:
         name: monitoring
@@ -16,6 +25,15 @@
     - vaults/debian/root_vault.yml
     - roles/node-exporter/defaults/main.yml
     - roles/promtail/defaults/main.yml
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
   tasks:
     - name: Install systemd unit for node-exporter compose
       template:

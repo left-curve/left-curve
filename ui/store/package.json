@@ -59,7 +59,7 @@
   "peerDependencies": {
     "@tanstack/query-core": ">=5.0.0",
     "@tanstack/react-query": ">=5.0.0",
-    "react": "^18"
+    "react": "^18 || ^19"
   },
   "peerDependenciesMeta": {
     "@tanstack/query-core": {

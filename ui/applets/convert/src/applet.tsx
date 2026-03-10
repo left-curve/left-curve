@@ -3,10 +3,10 @@ import { useState } from "react";
 
 import {
   AssetInputWithRange,
-  Badge,
   Button,
   IconArrowDown,
   Modals,
+  PairStatValue,
   Skeleton,
   useApp,
   useDebounceFn,
@@ -87,9 +87,10 @@ const ConvertContainer: React.FC<PropsWithChildren<ConvertProps>> = ({
 const ConvertHeader: React.FC = () => {
   const { state } = useConvert();
   const { pairId, statistics } = state;
-  const { tvl, apy, volume } = statistics.data;
+  const { volume, apy, priceChange24H } = statistics.data;
 
   const { base } = pairId;
+
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-surface-tertiary-rice shadow-account-card p-4 relative overflow-hidden mb-4">
       <div className="flex gap-2 items-center relative z-10">
@@ -103,11 +104,26 @@ const ConvertHeader: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <p className="text-ink-tertiary-500 diatype-xs-medium">{m["dex.24h"]()}</p>
-          <p className="text-ink-secondary-700 diatype-xs-bold">{volume}</p>
+          <PairStatValue
+            kind="priceChange24h"
+            value={priceChange24H}
+            formatOptions={{ maximumTotalDigits: 6 }}
+            className="diatype-xs-bold"
+            as="span"
+          />
         </div>
         <div className="flex items-center gap-2">
-          <p className="text-ink-tertiary-500 diatype-xs-medium">{m["dex.tvl"]()}</p>
-          <p className="text-ink-secondary-700 diatype-xs-bold">{tvl}</p>
+          <p className="text-ink-tertiary-500 diatype-xs-medium">
+            {m["dex.protrade.spot.volume"]()}
+          </p>
+          <PairStatValue
+            kind="volume24h"
+            value={volume}
+            currency={null}
+            formatOptions={{ maximumTotalDigits: 10 }}
+            className="diatype-xs-bold"
+            as="span"
+          />
         </div>
       </div>
       <img

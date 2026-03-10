@@ -11,7 +11,7 @@ export const AuthenticatedButton: React.FC<PropsWithChildren> = ({ children }) =
   if (isConnected) return children;
 
   const Button = cloneElement(
-    children as ReactElement,
+    children as ReactElement<{ type?: string; onClick?: () => void }>,
     {
       type: "button",
       onClick: () => showModal(Modals.Authenticate),
