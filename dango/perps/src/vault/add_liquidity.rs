@@ -1,8 +1,7 @@
 use {
     crate::{
-        NoCachePerpQuerier, STATE, USER_STATES,
-        core::compute_user_equity,
-        execute::{VIRTUAL_ASSETS, VIRTUAL_SHARES, oracle},
+        NoCachePerpQuerier, STATE, USER_STATES, VIRTUAL_ASSETS, VIRTUAL_SHARES,
+        core::compute_user_equity, oracle,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,

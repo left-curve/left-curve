@@ -1,5 +1,5 @@
 use {
-    crate::{USER_STATES, execute::oracle},
+    crate::{USER_STATES, oracle},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{

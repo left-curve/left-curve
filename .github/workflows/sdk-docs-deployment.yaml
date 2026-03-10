@@ -12,6 +12,7 @@ on:
 
 jobs:
   deploy:
+    environment: cloudflare
     permissions:
       contents: read
       packages: read

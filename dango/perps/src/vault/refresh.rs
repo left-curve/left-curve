@@ -1,11 +1,8 @@
 use {
     crate::{
         ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
-        USER_STATES,
-        core::compute_vault_quotes,
-        execute::{cancel_order::_cancel_all_orders, oracle},
-        liquidity_depth::increase_liquidity_depths,
-        price::may_invert_price,
+        USER_STATES, core::compute_vault_quotes, liquidity_depth::increase_liquidity_depths,
+        oracle, price::may_invert_price, trade::_cancel_all_orders,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -27,7 +24,7 @@ use {
 /// Mutates: `USER_STATES[contract]`, `BIDS`, `ASKS`, `NEXT_ORDER_ID`.
 ///
 /// Returns: empty `Response` (no token transfers).
-pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
+pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
 
@@ -204,7 +201,7 @@ mod tests {
     const CONTRACT: Addr = Addr::mock(0);
 
     #[test]
-    fn on_oracle_update_once_per_block() {
+    fn refresh_orders_once_per_block() {
         let mut ctx = MockContext::new()
             .with_contract(CONTRACT)
             .with_sender(Addr::mock(99))
@@ -217,7 +214,7 @@ mod tests {
             .unwrap();
 
         // Second call at the same block height should fail.
-        let result = on_oracle_update(ctx.as_mutable());
+        let result = refresh_orders(ctx.as_mutable());
 
         assert!(result.is_err());
         assert!(

@@ -1,83 +1,23 @@
 use {
     crate::{
-        ASKS, BIDS, DEPTHS, OrderKey, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES, VOLUMES,
-        round_to_day,
+        ASKS, BIDS, DEPTHS, OrderKey, PAIR_PARAMS, PAIR_STATES, USER_STATES, VOLUMES, round_to_day,
     },
     anyhow::ensure,
     dango_types::{
         UsdPrice, UsdValue,
         perps::{
             LiquidityDepth, LiquidityDepthResponse, Order, OrderId, PairId, PairParam, PairState,
-            QueryMsg, QueryOrderResponse, QueryOrdersByUserResponse, UserState,
+            QueryOrderResponse, QueryOrdersByUserResponse, UserState,
         },
     },
     grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder,
-        StdResult, Storage, Timestamp,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, StdResult, Storage,
+        Timestamp,
     },
     std::collections::BTreeMap,
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
-    match msg {
-        QueryMsg::Param {} => {
-            let res = PARAM.load(ctx.storage)?;
-            res.to_json_value()
-        },
-        QueryMsg::PairParam { pair_id } => {
-            let res = PAIR_PARAMS.may_load(ctx.storage, &pair_id)?;
-            res.to_json_value()
-        },
-        QueryMsg::PairParams { start_after, limit } => {
-            let res = query_pair_params(ctx, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::State {} => {
-            let res = STATE.load(ctx.storage)?;
-            res.to_json_value()
-        },
-        QueryMsg::PairState { pair_id } => {
-            let res = PAIR_STATES.may_load(ctx.storage, &pair_id)?;
-            res.to_json_value()
-        },
-        QueryMsg::PairStates { start_after, limit } => {
-            let res = query_pair_states(ctx, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::UserState { user } => {
-            let res = USER_STATES.may_load(ctx.storage, user)?;
-            res.to_json_value()
-        },
-        QueryMsg::UserStates { start_after, limit } => {
-            let res = query_user_states(ctx, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::Order { order_id } => {
-            let res = query_order(ctx, order_id)?;
-            res.to_json_value()
-        },
-        QueryMsg::OrdersByUser { user } => {
-            let res = query_orders_by_user(ctx, user)?;
-            res.to_json_value()
-        },
-        QueryMsg::LiquidityDepth {
-            pair_id,
-            bucket_size,
-            limit,
-        } => {
-            let res = query_liquidity_depth(ctx, pair_id, bucket_size, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::Volume { user, since } => {
-            let res = query_volume(ctx.storage, user, since)?;
-            res.to_json_value()
-        },
-    }
-    .map_err(Into::into)
-}
-
-fn query_pair_params(
+pub fn query_pair_params(
     ctx: ImmutableCtx,
     start_after: Option<PairId>,
     limit: Option<u32>,
@@ -91,7 +31,7 @@ fn query_pair_params(
         .collect()
 }
 
-fn query_pair_states(
+pub fn query_pair_states(
     ctx: ImmutableCtx,
     start_after: Option<PairId>,
     limit: Option<u32>,
@@ -105,7 +45,7 @@ fn query_pair_states(
         .collect()
 }
 
-fn query_user_states(
+pub fn query_user_states(
     ctx: ImmutableCtx,
     start_after: Option<Addr>,
     limit: Option<u32>,
@@ -122,7 +62,7 @@ fn query_user_states(
 /// We don't know if the order is a buy or a sell.
 /// First we look for it in the `BIDS` map. If non-exists, we look for it in the
 /// `ASKS` map. If still non-exists, return `None.`
-fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<Option<QueryOrderResponse>> {
+pub fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<Option<QueryOrderResponse>> {
     if let Some(record) = BIDS.idx.order_id.may_load(ctx.storage, order_id)? {
         return Ok(Some(into_query_order_response_with_inverted_price(record)));
     }
@@ -134,7 +74,7 @@ fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<Option<QueryOr
     Ok(None)
 }
 
-fn query_orders_by_user(ctx: ImmutableCtx, user: Addr) -> StdResult<QueryOrdersByUserResponse> {
+pub fn query_orders_by_user(ctx: ImmutableCtx, user: Addr) -> StdResult<QueryOrdersByUserResponse> {
     let bids = BIDS
         .idx
         .user
@@ -189,7 +129,7 @@ fn try_into_query_order_response_with_inverted_price(
     res.map(into_query_order_response_with_inverted_price)
 }
 
-fn query_liquidity_depth(
+pub fn query_liquidity_depth(
     ctx: ImmutableCtx,
     pair_id: PairId,
     bucket_size: UsdPrice,
@@ -230,7 +170,7 @@ fn query_liquidity_depth(
     Ok(LiquidityDepthResponse { bids, asks })
 }
 
-pub(crate) fn query_volume(
+pub fn query_volume(
     storage: &dyn Storage,
     user: Addr,
     since: Option<Timestamp>,

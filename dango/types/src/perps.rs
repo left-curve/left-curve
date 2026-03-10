@@ -312,6 +312,35 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
+    /// Messages for contract maintenance (owner/admin).
+    Maintain(MaintainerMsg),
+
+    /// Messages related to trading.
+    Trade(TraderMsg),
+
+    /// Messages related to the market making vault.
+    Vault(VaultMsg),
+}
+
+#[grug::derive(Serde)]
+pub enum MaintainerMsg {
+    /// Update global and/or per-pair parameters.
+    /// Only callable by the chain owner (or GENESIS_SENDER during instantiation).
+    Configure {
+        param: Param,
+        pair_params: BTreeMap<PairId, PairParam>,
+    },
+
+    /// Forcibly close all of a user's positions, if the user has less collateral
+    /// than the maintenance margin required by his positions.
+    ///
+    /// Unfilled positions are ADL'd against counter-parties at the bankruptcy
+    /// price. Any remaining bad debt is absorbed by the insurance fund.
+    Liquidate { user: Addr },
+}
+
+#[grug::derive(Serde)]
+pub enum TraderMsg {
     /// Deposit settlement currency into the trader's margin account.
     /// The deposited tokens are converted to USD at the current oracle price
     /// and credited to `user_state.margin`.
@@ -344,7 +373,10 @@ pub enum ExecuteMsg {
 
     /// Cancel a resting limit order.
     CancelOrder(CancelOrderRequest),
+}
 
+#[grug::derive(Serde)]
+pub enum VaultMsg {
     /// Add liquidity to the counterparty vault by transferring margin to the vault.
     AddLiquidity {
         /// USD margin amount to transfer from the user's trading margin to the vault.
@@ -357,25 +389,12 @@ pub enum ExecuteMsg {
     /// Request to withdraw liquidity from the counterparty vault.
     RemoveLiquidity { shares_to_burn: Uint128 },
 
-    /// Forcibly close all of a user's positions, if the user has less collateral
-    /// than the maintenance margin required by his positions.
-    ///
-    /// Unfilled positions are ADL'd against counter-parties at the bankruptcy
-    /// price. Any remaining bad debt is absorbed by the insurance fund.
-    Liquidate { user: Addr },
-
-    /// Update global and/or per-pair parameters.
-    /// Only callable by the chain owner (or GENESIS_SENDER during instantiation).
-    Configure {
-        param: Param,
-        pair_params: BTreeMap<PairId, PairParam>,
-    },
-
-    /// Triggered at the beginning of each block, right after the oracle update.
+    /// Refresh vault market-making orders. Triggered at the beginning of each
+    /// block, right after the oracle update.
     ///
     /// The vault places new orders based on the oracle price, the state of the
     /// order book at the time, and its policy for market making.
-    OnOracleUpdate {},
+    Refresh {},
 }
 
 #[grug::derive(Serde, QueryRequest)]

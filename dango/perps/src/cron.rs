@@ -2,7 +2,6 @@ use {
     crate::{
         ASKS, BIDS, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{compute_funding_delta, compute_impact_price, compute_premium},
-        execute::oracle,
         price::may_invert_price,
     },
     dango_oracle::OracleQuerier,
@@ -11,58 +10,13 @@ use {
         perps::{LiquidityReleased, PairId, UserState},
     },
     grug::{
-        Addr, EventBuilder, Order as IterationOrder, PrefixBound, Response, StdResult, Storage,
-        SudoCtx, Timestamp,
+        Addr, EventBuilder, Order as IterationOrder, PrefixBound, StdResult, Storage, Timestamp,
     },
 };
 
-#[cfg(feature = "metrics")]
-use std::time::Instant;
-
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
-    #[cfg(feature = "metrics")]
-    let start = Instant::now();
-
-    let mut events = EventBuilder::new();
-
-    process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
-
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
-
-    process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
-
-    #[cfg(feature = "metrics")]
-    {
-        let state = STATE.load(ctx.storage)?;
-        let vault_user_state = USER_STATES
-            .may_load(ctx.storage, ctx.contract)?
-            .unwrap_or_default();
-
-        let perp_querier = crate::NoCachePerpQuerier::new_local(ctx.storage);
-        if let Ok(vault_equity) =
-            crate::core::compute_user_equity(&mut oracle_querier, &perp_querier, &vault_user_state)
-        {
-            metrics::gauge!(crate::metrics::LABEL_VAULT_EQUITY)
-                .set(crate::metrics::to_float(vault_equity));
-        }
-
-        metrics::gauge!(crate::metrics::LABEL_INSURANCE_FUND)
-            .set(crate::metrics::to_float(state.insurance_fund));
-
-        metrics::gauge!(crate::metrics::LABEL_TREASURY)
-            .set(crate::metrics::to_float(state.treasury));
-
-        metrics::histogram!(crate::metrics::LABEL_DURATION_CRON)
-            .record(start.elapsed().as_secs_f64());
-    }
-
-    Ok(Response::new().add_events(events)?)
-}
-
 /// Pop matured unlocks from each user and credit the released USD value back
 /// to their trading margin.
-fn process_unlocks(
+pub fn process_unlocks(
     storage: &mut dyn Storage,
     current_time: Timestamp,
     events: &mut EventBuilder,
@@ -132,7 +86,7 @@ fn process_unlock_for_user(
 
 /// Compute and apply funding deltas for each trading pair using a point-in-time
 /// premium snapshot from the order book.
-fn process_funding(
+pub fn process_funding(
     storage: &mut dyn Storage,
     current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
