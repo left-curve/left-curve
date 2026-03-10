@@ -205,13 +205,13 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
             crate::metrics::LABEL_OPEN_INTEREST_LONG,
             "pair_id" => pair_label.clone()
         )
-        .set(crate::metrics::to_float(pair_state.long_oi).abs());
+        .set(crate::metrics::to_float(pair_state.long_oi));
 
         metrics::gauge!(
             crate::metrics::LABEL_OPEN_INTEREST_SHORT,
             "pair_id" => pair_label
         )
-        .set(crate::metrics::to_float(pair_state.short_oi).abs());
+        .set(crate::metrics::to_float(pair_state.short_oi));
     }
 
     Ok(Response::new().add_events(events)?)
