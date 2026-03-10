@@ -1,89 +1,97 @@
 use {
-    dango_taxman::VOLUME_TIME_GRANULARITY,
     grug::{Addr, BlockInfo, Inner, Order, StdResult, Storage, addr},
     grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
-    std::collections::BTreeMap,
 };
 
-/// Address of the DEX contract.
-const DEX: Addr = addr!("da32476efe31e535207f0ad690d337a4ebf54a22");
+/// Address of the account factory contract.
+const ACCOUNT_FACTORY: Addr = addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b");
 
-/// Address of the taxman contract.
-const TAXMAN: Addr = addr!("da70a9c1417aee00f960fe896add9d571f9c365b");
-
-/// Storage layout of the DEX contract prior to this PR.
-mod legacy_dex {
+/// Storage layout of the account factory contract prior to this upgrade.
+///
+/// Before this upgrade, `CODE_HASHES` was a `Map<AccountType, Hash256>` keyed
+/// by account type (Single = 0, Multi = 1). The `PrimaryKey` impl for
+/// `AccountType` produces `RawKey::Fixed8([index])`, which is identical to the
+/// `PrimaryKey` impl for `u8`. We can therefore use `Map<u8, Hash256>` to read
+/// the old entries.
+///
+/// Similarly, `Account` previously had an `AccountParams` enum wrapper around
+/// the owner field. We define a legacy Borsh-compatible struct to deserialize
+/// the old layout.
+mod legacy_account_factory {
     use {
-        dango_types::account_factory::UserIndex,
-        grug::{Addr, Map, Timestamp, Udec128_6},
+        borsh::{BorshDeserialize, BorshSerialize},
+        dango_types::account_factory::AccountIndex,
+        grug::{Addr, Hash256, Map},
     };
 
-    pub const VOLUMES: Map<(&Addr, Timestamp), Udec128_6> = Map::new("volume");
+    pub const CODE_HASHES: Map<u8, Hash256> = Map::new("hash");
 
-    pub const VOLUMES_BY_USER: Map<(UserIndex, Timestamp), Udec128_6> = Map::new("volume_by_user");
-}
+    pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
 
-pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, block: BlockInfo) -> AppResult<()> {
-    // Create storage object for the DEX contract.
-    let mut dex_storage = StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, DEX.inner()]);
-
-    // Create storage object for the taxman contract.
-    let mut taxman_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, TAXMAN.inner()]);
-
-    // Load all records in DEX contract `VOLUMES_BY_USER`.
-    let old_volumes = legacy_dex::VOLUMES_BY_USER
-        .range(&dex_storage, None, None, Order::Ascending)
-        .collect::<StdResult<BTreeMap<_, _>>>()?;
-
-    tracing::info!(
-        num_records = old_volumes.len(),
-        "Loaded records from DEX contract VOLUMES_BY_USER"
-    );
-
-    // Delete all records in DEX contract `VOLUMES`..
-    legacy_dex::VOLUMES.clear(&mut dex_storage, None, None);
-
-    tracing::info!("Deleted records in DEX contract VOLUMES");
-
-    // Delete all records in DEX contract `VOLUMES_BY_USER`.
-    legacy_dex::VOLUMES_BY_USER.clear(&mut dex_storage, None, None);
-
-    tracing::info!("Deleted records in DEX contract VOLUMES_BY_USER");
-
-    // Convert the volumes records to the new format expected by taxman.
-    // This involves two changes:
-    // 1. For each user, we only need to keep the most recent record.
-    //    We will only start to utilize volume data by late Q1, so older data aren't necessary.
-    //    To achieve this, we utilize the fact BTreeMap is sorted ascendingly.
-    //    This means we can simply iterate through the record descendingly, and
-    //    for each user, only take the first record (the one with the biggest timestamp).
-    // 2. The one most recent record we want to keep, round it down to the nearest day.
-    let new_volumes = old_volumes
-        .into_iter()
-        .rev() // reverse so we visit the most recent record first
-        .fold(BTreeMap::new(), |mut acc, ((user_index, _timestamp), volume)| {
-            acc.entry(user_index).or_insert(volume);
-            acc
-        });
-
-    tracing::info!(
-        num_records = new_volumes.len(),
-        "Converted volume data to the new format"
-    );
-
-    // Find the current timestamp and round it down to the nearest day.
-    let timestamp = block.timestamp - block.timestamp % VOLUME_TIME_GRANULARITY;
-
-    // Save the records to taxman contract's storage.
-    for (user_index, volume) in new_volumes {
-        dango_taxman::VOLUMES_BY_USER.save(
-            &mut taxman_storage,
-            (user_index, timestamp),
-            &volume,
-        )?;
+    /// Old `Account` Borsh layout: `u32` index + `u8` enum discriminant + `u32` owner.
+    #[derive(BorshSerialize, BorshDeserialize)]
+    pub struct Account {
+        pub index: AccountIndex,
+        pub params: AccountParams,
     }
 
-    tracing::info!("Migration completed");
+    #[derive(BorshSerialize, BorshDeserialize)]
+    pub enum AccountParams {
+        Single { owner: u32 },
+    }
+}
+
+pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
+    let mut factory_storage =
+        StorageProvider::new(storage, &[CONTRACT_NAMESPACE, ACCOUNT_FACTORY.inner()]);
+
+    // ------------------------ CODE_HASHES → CODE_HASH ------------------------
+
+    // Load the Single account code hash from the old map (key 0 = AccountType::Single).
+    let code_hash = legacy_account_factory::CODE_HASHES.load(&factory_storage, 0u8)?;
+
+    tracing::info!(%code_hash, "Loaded Single code hash from legacy CODE_HASHES");
+
+    // Clear the old map entries.
+    legacy_account_factory::CODE_HASHES.clear(&mut factory_storage, None, None);
+
+    tracing::info!("Cleared legacy CODE_HASHES map");
+
+    // Save to the new Item-based storage.
+    dango_account_factory::CODE_HASH.save(&mut factory_storage, &code_hash)?;
+
+    tracing::info!("Saved code hash to new CODE_HASH item");
+
+    // -------------------------- ACCOUNTS migration ---------------------------
+
+    // Load all accounts with the old Borsh layout.
+    let old_accounts = legacy_account_factory::ACCOUNTS
+        .range(&factory_storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    tracing::info!(
+        num_accounts = old_accounts.len(),
+        "Loaded accounts with legacy layout"
+    );
+
+    // Re-save each account with the new layout (no enum wrapper).
+    for (addr, old_account) in &old_accounts {
+        let legacy_account_factory::AccountParams::Single { owner } = old_account.params;
+
+        let new_account = dango_types::account_factory::Account {
+            index: old_account.index,
+            owner,
+        };
+
+        dango_account_factory::ACCOUNTS.save(&mut factory_storage, *addr, &new_account)?;
+    }
+
+    tracing::info!(
+        num_accounts = old_accounts.len(),
+        "Migrated accounts to new layout"
+    );
+
+    tracing::info!("Account factory migration completed");
 
     Ok(())
 }
