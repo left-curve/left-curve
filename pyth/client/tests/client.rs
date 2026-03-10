@@ -11,7 +11,7 @@ use {
         response::IntoResponse,
         routing::get,
     },
-    grug::NonEmpty,
+    grug::{NonEmpty, setup_tracing_subscriber},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
@@ -31,7 +31,7 @@ use {
     },
     tokio::{select, sync::Mutex, time::sleep},
     tokio_stream::StreamExt,
-    tracing::{error, info},
+    tracing::{Level, error, info},
 };
 
 const TOKEN: &str = "inser_lazer_token_here";
@@ -323,6 +323,8 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 async fn test_performance() {
     // Load the .env file
     dotenvy::dotenv().ok();
+
+    setup_tracing_subscriber(Level::INFO);
 
     let key = std::env::var("PYTH__ACCESS_TOKEN").expect("env var not set");
 
