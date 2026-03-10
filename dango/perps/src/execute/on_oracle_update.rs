@@ -28,6 +28,9 @@ use {
 ///
 /// Returns: empty `Response` (no token transfers).
 pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let start = std::time::Instant::now();
+
     let last_update = LAST_VAULT_ORDERS_UPDATE.may_load(ctx.storage)?.unwrap_or(0);
 
     ensure!(
@@ -181,6 +184,10 @@ pub fn on_oracle_update(ctx: MutableCtx) -> anyhow::Result<Response> {
     } else {
         USER_STATES.save(ctx.storage, ctx.contract, &vault_state)?;
     }
+
+    #[cfg(feature = "metrics")]
+    metrics::histogram!(crate::metrics::LABEL_DURATION_VAULT_REFRESH)
+        .record(start.elapsed().as_secs_f64());
 
     Ok(Response::new())
 }

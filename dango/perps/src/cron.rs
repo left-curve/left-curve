@@ -16,8 +16,14 @@ use {
     },
 };
 
+#[cfg(feature = "metrics")]
+use std::time::Instant;
+
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let start = Instant::now();
+
     let mut events = EventBuilder::new();
 
     process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
@@ -25,6 +31,31 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
     process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
+
+    #[cfg(feature = "metrics")]
+    {
+        let state = STATE.load(ctx.storage)?;
+        let vault_user_state = USER_STATES
+            .may_load(ctx.storage, ctx.contract)?
+            .unwrap_or_default();
+
+        let perp_querier = crate::NoCachePerpQuerier::new_local(ctx.storage);
+        if let Ok(vault_equity) =
+            crate::core::compute_user_equity(&mut oracle_querier, &perp_querier, &vault_user_state)
+        {
+            metrics::gauge!(crate::metrics::LABEL_VAULT_EQUITY)
+                .set(crate::metrics::to_float(vault_equity));
+        }
+
+        metrics::gauge!(crate::metrics::LABEL_INSURANCE_FUND)
+            .set(crate::metrics::to_float(state.insurance_fund));
+
+        metrics::gauge!(crate::metrics::LABEL_TREASURY)
+            .set(crate::metrics::to_float(state.treasury));
+
+        metrics::histogram!(crate::metrics::LABEL_DURATION_CRON)
+            .record(start.elapsed().as_secs_f64());
+    }
 
     Ok(Response::new().add_events(events)?)
 }
@@ -175,6 +206,13 @@ fn process_funding_for_pair(
     )?;
 
     (pair_state.funding_per_unit).checked_add_assign(funding_delta)?;
+
+    #[cfg(feature = "metrics")]
+    metrics::gauge!(
+        crate::metrics::LABEL_FUNDING_RATE,
+        "pair_id" => pair_id.to_string()
+    )
+    .set(crate::metrics::to_float(pair_state.funding_per_unit));
 
     PAIR_STATES.save(storage, &pair_id, &pair_state)?;
 
