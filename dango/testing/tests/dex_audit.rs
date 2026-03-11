@@ -5,7 +5,8 @@ use {
     dango_dex::liquidity_depth::get_bucket,
     dango_genesis::{DexOption, GenesisOption, OracleOption},
     dango_testing::{
-        BridgeOp, Preset, TestOption, setup_test_naive, setup_test_naive_with_custom_genesis,
+        BridgeOp, Preset, TestOption, constants::mock_ethereum, setup_test_naive,
+        setup_test_naive_with_custom_genesis,
     },
     dango_types::{
         constants::{
@@ -28,7 +29,6 @@ use {
         btree_map, btree_set, coins,
     },
     grug_types::Addressable,
-    hyperlane_types::constants::ethereum,
     rand::Rng,
     std::{
         collections::{BTreeSet, HashMap},
@@ -404,16 +404,16 @@ fn issue_156_depth_quote_rounding_error() {
             vec![
                 BridgeOp {
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::USDC_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::USDC_WARP,
                     },
                     amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::ETH_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::ETH_WARP,
                     },
                     amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),
