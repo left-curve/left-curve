@@ -31,9 +31,7 @@
       "owner": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
       "permissions": {
         "instantiate": {
-          "somebodies": [
-            "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"
-          ]
+          "somebodies": ["0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"]
         },
         "upload": "nobody"
       },
@@ -372,12 +370,7 @@
               {
                 "base_denom": "bridge/sol",
                 "params": {
-                  "bucket_sizes": [
-                    "0.00001",
-                    "0.0001",
-                    "0.001",
-                    "0.01"
-                  ],
+                  "bucket_sizes": ["0.00001", "0.0001", "0.001", "0.01"],
                   "lp_denom": "dex/pool/sol/usdc",
                   "min_order_size_base": "0",
                   "min_order_size_quote": "0",
@@ -872,7 +865,7 @@
           "msg": {
             "pair_params": {
               "perp/ethusd": {
-                "bucket_sizes": [],
+                "bucket_sizes": ["1", "10", "100"],
                 "impact_size": "10000",
                 "initial_margin_ratio": "0.1",
                 "maintenance_margin_ratio": "0.05",
