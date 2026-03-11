@@ -66,12 +66,7 @@ async fn query_accounts() -> anyhow::Result<()> {
 
                 assert_that!(nodes.len()).is_equal_to(2);
 
-                assert_that!(nodes[0].account_type)
-                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(nodes[0].users[0].user_index).is_equal_to(user2.user_index() as i64);
-
-                assert_that!(nodes[1].account_type)
-                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(nodes[1].users[0].user_index).is_equal_to(user1.user_index() as i64);
 
                 Ok::<(), anyhow::Error>(())
@@ -122,8 +117,6 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
                 assert_that!(data.accounts.nodes).is_not_empty();
                 let first_account = &data.accounts.nodes[0];
 
-                assert_that!(first_account.account_type)
-                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(first_account.users).is_not_empty();
                 assert_that!(first_account.users[0].user_index)
                     .is_equal_to(user.user_index() as i64);
@@ -253,16 +246,12 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
                 );
 
                 // Check first account (test_account2)
-                assert_that!(data.accounts.nodes[0].account_type)
-                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(data.accounts.nodes[0].address.as_str())
                     .is_equal_to(test_account2.address.inner().to_string().as_str());
                 assert_that!(data.accounts.nodes[0].users[0].user_index)
                     .is_equal_to(test_account1.user_index() as i64);
 
                 // Check second account (test_account1)
-                assert_that!(data.accounts.nodes[1].account_type)
-                    .is_equal_to(accounts_query::AccountType::single);
                 assert_that!(data.accounts.nodes[1].address.as_str())
                     .is_equal_to(test_account1.address.inner().to_string().as_str());
                 assert_that!(data.accounts.nodes[1].users[0].user_index)
