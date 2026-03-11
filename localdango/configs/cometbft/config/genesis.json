@@ -872,7 +872,11 @@
           "msg": {
             "pair_params": {
               "perp/ethusd": {
-                "bucket_sizes": [],
+                "bucket_sizes": [
+                  "1",
+                  "10",
+                  "100"
+                ],
                 "impact_size": "10000",
                 "initial_margin_ratio": "0.1",
                 "maintenance_margin_ratio": "0.05",
