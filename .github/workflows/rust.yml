@@ -1382,7 +1382,7 @@ jobs:
           # This deletes the existing deployment, but instead use `ansible-playbook delete-full-app.yml -e deployment_name=pr-<ID>` if you need
           # ansible-playbook delete-existing-app.yml -e deployment_name=pr-${PR_NUMBER}
 
-          ansible-playbook full-app.yml -e dango_network=pr-${PR_NUMBER} -e deployment_name=pr-${PR_NUMBER} -e github_pr_number=${PR_NUMBER} -e github_sha=${PR_HEAD_SHA} -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e dango_image_digest=$DEPLOY_BACKEND_DIGEST -e frontend_image_digest=$DEPLOY_FRONTEND_DIGEST -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR '"${PR_NUMBER}"'", "chain_id": "pr-'"${PR_NUMBER}"'", "cloudflare_tunnel_enabled": true, "s3_enabled": false'"$VERIFY_SIGS_JSON"'}' -e deploy_env=preview -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71
+          ansible-playbook full-app.yml -e dango_network=pr-${PR_NUMBER} -e deployment_name=pr-${PR_NUMBER} -e github_pr_number=${PR_NUMBER} -e github_sha=${PR_HEAD_SHA} -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e dango_image_digest=$DEPLOY_BACKEND_DIGEST -e frontend_image_digest=$DEPLOY_FRONTEND_DIGEST -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR '"${PR_NUMBER}"'", "chain_id": "pr-'"${PR_NUMBER}"'", "cloudflare_tunnel_enabled": true, "s3_enabled": false'"$VERIFY_SIGS_JSON"'}' -e deploy_env=preview -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71,100.122.37.57
           fi
 
   localdango:
@@ -1447,6 +1447,7 @@ jobs:
             # Use this if other services fail
             # docker compose logs
             docker compose logs faucet --tail=10
+            docker compose logs dex-bot-init --tail=10
             docker compose logs dex-bot --tail=10
             docker compose logs cometbft --tail=100
             docker compose logs dango --tail=100
