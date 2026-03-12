@@ -303,10 +303,13 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
             user.keys.insert(key_hash, key);
         },
         Op::Delete => {
-            // Ensure the user either doesn't have such a key, or if he does,
-            // he still has at least one key after its removal.
             ensure!(
-                !user.keys.contains_key(&key_hash) || user.keys.len() > 1,
+                user.keys.contains_key(&key_hash),
+                "user {user_index} doesn't have a key with hash {key_hash}"
+            );
+
+            ensure!(
+                user.keys.len() > 1,
                 "can't delete the last key associated with user index {user_index}"
             );
 
