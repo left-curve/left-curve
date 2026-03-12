@@ -7,6 +7,8 @@ import TruncateText from "../foundation/TruncateText";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { twMerge } from "@left-curve/foundation";
+import { usePublicClient } from "@left-curve/store";
+import { useQuery } from "@tanstack/react-query";
 
 import type React from "react";
 import type { Account } from "@left-curve/dango/types";
@@ -61,15 +63,19 @@ type AccountCardProps = {
   onTriggerAction?: () => void;
 };
 
-export const AccountCard: React.FC<AccountCardProps> = ({
-  account,
-  balance,
-  balanceChange,
-}) => {
+export const AccountCard: React.FC<AccountCardProps> = ({ account, balance, balanceChange }) => {
   const { address, index } = account;
   const name = `Account #${index}`;
+  const client = usePublicClient();
 
-  const { badge, Image, imageClassName } = accountCardStyle;
+  const { data: status } = useQuery({
+    queryKey: ["accountStatus", address],
+    queryFn: () => client.getAccountStatus({ address }),
+  });
+
+  const isActive = status === "active";
+
+  const { Image, imageClassName } = accountCardStyle;
 
   return (
     <AccountCardContainer>
@@ -78,7 +84,11 @@ export const AccountCard: React.FC<AccountCardProps> = ({
       <View className="flex flex-col relative z-10">
         <View className="flex-row gap-1 items-center">
           <GlobalText className="exposure-l-italic capitalize">{name}</GlobalText>
-          <Badge text="Active" color={badge} size="s" />
+          <Badge
+            text={isActive ? "Active" : "Inactive"}
+            color={isActive ? "blue" : "red"}
+            size="s"
+          />
         </View>
 
         <View className="flex-row gap-1 items-center">
