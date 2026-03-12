@@ -1,8 +1,8 @@
 import { compile } from "@inlang/paraglide-js";
 
-(() => {
+(async () => {
   console.log("Compiling Paraglide project...");
-  compile({
+  await compile({
     project: "./project.inlang",
     outdir: "paraglide",
     emitGitIgnore: false,
