@@ -1,9 +1,9 @@
+use sea_orm::entity::prelude::*;
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{ComplexObject, Context, Result, SimpleObject},
     grug_types::Timestamp,
 };
-use {dango_types::account_factory, sea_orm::entity::prelude::*};
 
 #[derive(
     Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, serde::Serialize, serde::Deserialize,
@@ -23,7 +23,6 @@ pub struct Model {
     pub account_index: i32,
     #[sea_orm(unique)]
     pub address: String,
-    pub account_type: account_factory::AccountType,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "indexer_sql::serde_iso8601")]
     pub created_at: DateTime,

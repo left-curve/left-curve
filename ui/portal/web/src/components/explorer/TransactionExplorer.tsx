@@ -1,5 +1,4 @@
-import { usePublicClient } from "@left-curve/store";
-import { useQuery } from "@tanstack/react-query";
+import { parseExplorerErrorMessage, useExplorerTransaction } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 
 import { AccordionItem, IconLink, twMerge } from "@left-curve/applets-kit";
@@ -36,15 +35,7 @@ const Container: React.FC<PropsWithChildren<TransactionProps>> = ({
   children,
   className,
 }) => {
-  const client = usePublicClient();
-  const value = useQuery({
-    queryKey: ["tx", txHash],
-    queryFn: async () => {
-      const txs = await client.searchTxs({ hash: txHash });
-      if (!txs.nodes.length) return null;
-      return txs.nodes[0];
-    },
-  });
+  const value = useExplorerTransaction(txHash);
 
   return (
     <TransactionExplorerProvider value={{ ...value, txHash }}>
@@ -160,24 +151,17 @@ const Messages: React.FC = () => {
 
   const { nestedEvents, messages, errorMessage } = tx;
 
-  const { error, backtrace } = (() => {
-    if (!errorMessage) return { error: undefined, backtrace: undefined };
-    try {
-      const parsed = JSON.parse(errorMessage);
-      return { error: parsed.error, backtrace: parsed.backtrace };
-    } catch {
-      return { error: undefined, backtrace: undefined };
-    }
-  })();
+  const { error, backtrace } = parseExplorerErrorMessage(errorMessage);
+  const hasError = error !== undefined;
 
-  const shouldShowErrorAccordion = errorMessage && (error || backtrace);
+  const shouldShowErrorAccordion = Boolean(errorMessage && (hasError || backtrace));
 
   return (
     <div className="flex flex-col w-full gap-6">
       {shouldShowErrorAccordion && (
         <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
           <p className="h4-bold text-ink-primary-900">{m["explorer.txs.error"]()}</p>
-          {error && (
+          {hasError ? (
             <AccordionItem
               key={"error-message"}
               text={m["explorer.txs.message"]()}
@@ -185,10 +169,10 @@ const Messages: React.FC = () => {
               defaultExpanded={false}
             >
               <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
-                <JsonVisualizer json={{ error }} collapsed={1} />
+                <JsonVisualizer json={{ error } as never} collapsed={1} />
               </div>
             </AccordionItem>
-          )}
+          ) : null}
           {backtrace && (
             <AccordionItem
               key={"error-backtrace"}

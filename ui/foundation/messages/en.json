@@ -995,6 +995,17 @@
   },
   "points": {
     "campaign": "Campaign",
+    "referral": {
+      "faqs": {
+        "title": "FAQs",
+        "question1": "How do I unlock a referral link?",
+        "answer1": "You must first achieve $10,000 in traded volume.",
+        "question2": "Can I earn points by referring users?",
+        "answer2": "Yes. You will get 1 point for every 5 points earned by your direct referrals, and 1 point for every 20 points earned by your indirect referrals.",
+        "question3": "Is there a limit to how much of my commission I can share with my referees?",
+        "answer3": "Yes. Referrers cannot share more than 50% of their total commission with their referees."
+      }
+    },
     "leagues": {
       "title": "Leagues",
       "subtitle": "Earn points to climb your way up!",

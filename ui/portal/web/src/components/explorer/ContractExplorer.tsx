@@ -1,5 +1,8 @@
-import { useConfig, usePrices, usePublicClient, useQueryWithPagination } from "@left-curve/store";
-import { useQuery } from "@tanstack/react-query";
+import {
+  useExplorerContract,
+  useExplorerTransactionsBySender,
+  usePrices,
+} from "@left-curve/store";
 import { createContext, useContext } from "react";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -35,31 +38,7 @@ type ContractExplorerProps = {
 };
 
 const Root: React.FC<PropsWithChildren<ContractExplorerProps>> = ({ address, children }) => {
-  const client = usePublicClient();
-  const { getAppConfig } = useConfig();
-
-  const query = useQuery({
-    queryKey: ["contract_explorer", address],
-    queryFn: async () => {
-      const [appConfig, contractInfo, balances] = await Promise.all([
-        getAppConfig(),
-        client.getContractInfo({ address }),
-        client.getBalances({ address }),
-      ]);
-
-      const isAccount = Object.values(appConfig.accountFactory.codeHashes).includes(
-        contractInfo.codeHash,
-      );
-
-      if (isAccount) return null;
-
-      return {
-        ...contractInfo,
-        address,
-        balances,
-      };
-    },
-  });
+  const query = useExplorerContract(address);
 
   return (
     <ContractExplorerContext.Provider value={{ address, ...query }}>
@@ -150,13 +129,10 @@ const Assets: React.FC = () => {
 
 const Transactions: React.FC = () => {
   const { isLoading, data: contract, address } = useContractExplorer();
-  const client = usePublicClient();
-
-  const { data, pagination, ...transactions } = useQueryWithPagination({
-    enabled: !!contract,
-    queryKey: ["contract_transactions", address],
-    queryFn: async ({ pageParam }) => client.searchTxs({ senderAddress: address, ...pageParam }),
-  });
+  const { data, pagination, ...transactions } = useExplorerTransactionsBySender(
+    address,
+    !!contract,
+  );
 
   if (isLoading || !contract) return null;
 

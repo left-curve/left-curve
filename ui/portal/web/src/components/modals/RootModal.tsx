@@ -14,7 +14,9 @@ export type ModalRef = {
 
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   [Modals.AddKey]: {
-    component: lazy(() => import("./AddKeyModal").then(({ AddKeyModal }) => ({ default: AddKeyModal }))),
+    component: lazy(() =>
+      import("./AddKeyModal").then(({ AddKeyModal }) => ({ default: AddKeyModal })),
+    ),
   },
   [Modals.RemoveKey]: {
     component: lazy(() => import("./RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey }))),
@@ -255,7 +257,7 @@ export const RootModal: React.FC = () => {
         detent="content-height"
         rootId="root"
       >
-        <Sheet.Container className="!bg-surface-primary-rice !rounded-t-2xl !shadow-none">
+        <Sheet.Container className="!bg-surface-primary-rice !rounded-t-2xl !shadow-none !max-h-[90vh]">
           <Sheet.Header>
             {options.header ? (
               <div className="flex items-center justify-between w-full">
@@ -267,10 +269,14 @@ export const RootModal: React.FC = () => {
               </div>
             ) : null}
           </Sheet.Header>
-          <Sheet.Content>
-            <Suspense>
-              <Modal ref={modalRef} {...modalProps} />
-            </Suspense>
+          <Sheet.Content className="!overflow-y-auto">
+            <Sheet.Scroller>
+              <Suspense>
+                <div className="pb-[env(safe-area-inset-bottom,20px)]">
+                  <Modal ref={modalRef} {...modalProps} />
+                </div>
+              </Suspense>
+            </Sheet.Scroller>
           </Sheet.Content>
         </Sheet.Container>
         <Sheet.Backdrop onTap={() => !options.disableClosing && closeModal()} />

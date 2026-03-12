@@ -1,6 +1,10 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::{BridgeOp, TestAccounts, TestOption, TestSuite, setup_test_naive},
+    dango_testing::{
+        BridgeOp, TestAccounts, TestOption, TestSuite,
+        constants::{mock_ethereum, mock_solana},
+        setup_test_naive,
+    },
     dango_types::{
         constants::{dango, dango_usdc, eth, eth_usdc, sol, sol_usdc, usdc},
         dex::{
@@ -16,7 +20,6 @@ use {
         ZeroInclusiveOneExclusive, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
-    hyperlane_types::constants::{ethereum, solana},
     proptest::{prelude::*, proptest, sample::select},
     std::{
         collections::{BTreeMap, BTreeSet, HashMap, hash_map},
@@ -551,8 +554,8 @@ impl DexAction {
                             [
                                 "insufficient liquidity",
                                 "output amount after fee must be positive", // this refers to the output after _liquidity fee_
-                                "output amount is zero",                    // this refers to the output after _protocol fee_
-                                "not enough liquidity to fulfill the swap!"
+                                "output amount is zero", // this refers to the output after _protocol fee_
+                                "not enough liquidity to fulfill the swap!",
                             ]
                             .iter()
                             .any(|reason| err.error.contains(reason))
@@ -1026,24 +1029,24 @@ fn test_dex_actions(
             vec![
                 BridgeOp {
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::USDC_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::USDC_WARP,
                     },
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::ETH_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::ETH_WARP,
                     },
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
                     remote: Remote::Warp {
-                        domain: solana::DOMAIN,
-                        contract: solana::SOL_WARP,
+                        domain: mock_solana::DOMAIN,
+                        contract: mock_solana::SOL_WARP,
                     },
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),

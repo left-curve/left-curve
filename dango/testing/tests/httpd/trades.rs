@@ -18,7 +18,7 @@ use {
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
-    std::sync::Arc,
+    std::{str::FromStr, sync::Arc},
     tokio::sync::{Mutex, mpsc},
 };
 
@@ -341,6 +341,55 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn query_trades_formats_small_prices_without_scientific_notation() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
+
+    create_pair_prices_with_tiny_price(&mut suite, &mut accounts, &contracts).await?;
+
+    suite.app.indexer.wait_for_finish().await?;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let response = call_graphql_query::<_, trades::ResponseData>(
+                    dango_httpd_context,
+                    Trades::build_query(trades::Variables::default()),
+                )
+                .await?;
+
+                let data = response.data.expect("Expected trades response data");
+                let nodes = data.trades.nodes;
+
+                assert!(!nodes.is_empty(), "Expected at least one trade");
+
+                for node in &nodes {
+                    assert!(
+                        !node.clearing_price.contains('e') && !node.clearing_price.contains('E'),
+                        "clearingPrice should use plain decimal notation, got: {}",
+                        node.clearing_price
+                    );
+                }
+
+                let tiny_price_trade = nodes
+                    .into_iter()
+                    .find(|trade| trade.clearing_price == "0.000000003836916198");
+
+                assert!(
+                    tiny_price_trade.is_some(),
+                    "Expected to find trade with tiny clearingPrice in plain notation"
+                );
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
 async fn create_pair_prices(
     suite: &mut TestSuiteWithIndexer,
     accounts: &mut TestAccounts,
@@ -408,6 +457,79 @@ async fn create_pair_prices(
 
     // Make a block with the order submissions. Ensure all transactions were
     // successful.
+    suite
+        .make_block(txs)
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    Ok(())
+}
+
+async fn create_pair_prices_with_tiny_price(
+    suite: &mut TestSuiteWithIndexer,
+    accounts: &mut TestAccounts,
+    contracts: &Contracts,
+) -> anyhow::Result<()> {
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let tiny_price =
+        Udec128_24::from_str("0.000000003836916198").expect("tiny fixed-point price should parse");
+    let amount = Uint128::new(20_000_000_000_000);
+
+    let orders_to_submit: Vec<(Direction, Udec128_24, Uint128)> = vec![
+        (Direction::Bid, tiny_price, amount),
+        (Direction::Ask, tiny_price, amount),
+    ];
+
+    let txs = orders_to_submit
+        .into_iter()
+        .zip(accounts.users_mut())
+        .map(|((direction, price, amount), signer)| {
+            let fund = match direction {
+                Direction::Bid => {
+                    let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
+                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
+                },
+                Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
+            };
+
+            let msg = Message::execute(
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates: vec![CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        direction,
+                        NonZero::new_unchecked(price),
+                        NonZero::new_unchecked(fund.amount),
+                    )],
+                    cancels: None,
+                },
+                Coins::from(fund),
+            )?;
+
+            signer.sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
+        })
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
     suite
         .make_block(txs)
         .block_outcome

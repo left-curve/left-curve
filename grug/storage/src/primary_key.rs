@@ -126,6 +126,33 @@ impl PrimaryKey for () {
     }
 }
 
+impl PrimaryKey for bool {
+    type Output = bool;
+    type Prefix = ();
+    type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
+
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
+        vec![RawKey::Fixed8([*self as u8])]
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        match bytes {
+            [0] => Ok(false),
+            [1] => Ok(true),
+            _ => Err(StdError::deserialize::<Self::Output, _, Binary>(
+                "key",
+                format!(
+                    "invalid bool: expecting a single byte (0 or 1), got {} bytes",
+                    bytes.len(),
+                ),
+                bytes.into(),
+            )),
+        }
+    }
+}
+
 impl PrimaryKey for &[u8] {
     type Output = Vec<u8>;
     type Prefix = ();

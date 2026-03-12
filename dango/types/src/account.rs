@@ -1,13 +1,22 @@
-/// Types relevant for multi-signature accounts.
-pub mod multi;
+use {
+    crate::auth::{AccountStatus, Nonce},
+    std::collections::BTreeSet,
+};
 
-/// Types relevant for single-signature accounts.
-pub mod single;
-
-/// Single- and multi-signature accounts share the same instantiate message.
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     /// Whether this account is to be activated upon instantiation.
     /// If not, a minimum deposit is required to activate the account.
     pub activate: bool,
+}
+
+/// Query messages for the single-signature account
+#[grug::derive(Serde, QueryRequest)]
+pub enum QueryMsg {
+    /// Query the account's status.
+    #[returns(AccountStatus)]
+    Status {},
+    /// Query the most recent transaction nonces that have been recorded.
+    #[returns(BTreeSet<Nonce>)]
+    SeenNonces {},
 }

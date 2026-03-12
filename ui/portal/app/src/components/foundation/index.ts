@@ -19,6 +19,7 @@ export { PairAssets } from "./PairAssets";
 export { ShadowContainer } from "./ShadowContainer";
 export { Input } from "./Input";
 export { OtpInput } from "./OtpInput";
+export { MobileTitle } from "./MobileTitle";
 
 /* ---------------------------------- Icons --------------------------------- */
 

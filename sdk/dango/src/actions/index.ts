@@ -237,6 +237,17 @@ export {
 } from "./dex/queries/getPair.js";
 
 export {
+  type GetPairStatsParameters,
+  type GetPairStatsReturnType,
+  getPairStats,
+} from "./dex/queries/getPairStats.js";
+
+export {
+  type GetAllPairStatsReturnType,
+  getAllPairStats,
+} from "./dex/queries/getAllPairStats.js";
+
+export {
   type SimulateSwapExactAmountOutParameters,
   type SimulateSwapExactAmountOutReturnType,
   simulateSwapExactAmountOut,

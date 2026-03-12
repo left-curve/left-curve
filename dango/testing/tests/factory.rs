@@ -2,12 +2,12 @@ use {
     dango_account_factory::{ACCOUNT_COUNT_BY_USER, MAX_ACCOUNTS_PER_USER},
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
-        Factory, HyperlaneTestSuite, Preset, TestAccount, setup_test_naive,
+        Factory, HyperlaneTestSuite, Preset, TestAccount, constants::mock_solana, setup_test_naive,
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
-        account::single,
-        account_factory::{self, Account, AccountParams, RegisterUserData, UserIndexOrName},
+        account,
+        account_factory::{self, Account, RegisterUserData, UserIndexOrName},
         auth::AccountStatus,
         bank,
         constants::usdc,
@@ -16,7 +16,6 @@ use {
         Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
         Signer, StorageQuerier, Uint128, btree_map, coins,
     },
-    hyperlane_types::constants::solana,
 };
 
 /// Prior to PR [#1460](https://github.com/left-curve/left-curve/pull/1460),
@@ -50,7 +49,7 @@ fn onboarding_without_deposit() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -76,7 +75,7 @@ fn onboarding_without_deposit() {
 
     // The account should have been created in the `Inactive` state.
     suite
-        .query_wasm_smart(user.address(), single::QueryStatusRequest {})
+        .query_wasm_smart(user.address(), account::QueryStatusRequest {})
         .should_succeed_and_equal(AccountStatus::Inactive);
 
     // Attempting to send a transaction at this time. `CheckTx` should fail.
@@ -99,8 +98,8 @@ fn onboarding_without_deposit() {
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
             &user,
             10_000_000, // Minimum deposit is 10_000_000. Need to send at this that amount.
         )
@@ -108,7 +107,7 @@ fn onboarding_without_deposit() {
 
     // Account should have been activated.
     suite
-        .query_wasm_smart(user.address(), single::QueryStatusRequest {})
+        .query_wasm_smart(user.address(), account::QueryStatusRequest {})
         .should_succeed_and_equal(AccountStatus::Active);
 
     // Try again, should succeed.
@@ -121,9 +120,7 @@ fn onboarding_without_deposit() {
         .execute(
             &mut user,
             contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Single(single::Params::new(user_index)),
-            },
+            &account_factory::ExecuteMsg::RegisterAccount {},
             Coins::new(),
         )
         .should_succeed();
@@ -159,7 +156,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -205,13 +202,13 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
                 // We have 10 genesis accounts (owner + users 1-9), indexed from
                 // zero, so this one should have the index of 10.
                 index: 10,
-                params: AccountParams::Single(single::Params::new(user.user_index())),
+                owner: user.user_index(),
             },
         });
 
     // The newly created account should be active.
     suite
-        .query_wasm_smart(user.address(), single::QueryStatusRequest {})
+        .query_wasm_smart(user.address(), account::QueryStatusRequest {})
         .should_succeed_and_equal(AccountStatus::Active);
 
     // The newly created account should have zero balance.
@@ -236,7 +233,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -245,8 +242,8 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
             &user,
             10_000_000,
         )
@@ -308,7 +305,7 @@ fn update_key() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         0,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -444,9 +441,7 @@ fn single_signature_account_count_limit() {
             .execute(
                 &mut accounts.user1,
                 contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Single(single::Params::new(user_index)),
-                },
+                &account_factory::ExecuteMsg::RegisterAccount {},
                 Coins::new(),
             )
             .should_succeed();
@@ -465,9 +460,7 @@ fn single_signature_account_count_limit() {
         .execute(
             &mut accounts.user1,
             contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Single(single::Params::new(user_index)),
-            },
+            &account_factory::ExecuteMsg::RegisterAccount {},
             Coins::new(),
         )
         .should_fail_with_error(format!("user {user_index} has reached max account count"));

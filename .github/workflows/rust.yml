@@ -186,10 +186,7 @@ jobs:
 
       - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
-        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
-        with:
-          toolchain: nightly
-          components: rustfmt
+        run: rustup toolchain install nightly --component rustfmt
 
       # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
       # - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -210,6 +207,7 @@ jobs:
     needs: [backend-test, changes]
     name: Check compiling without features
     runs-on: self-hosted
+    environment: ci
     permissions:
       contents: read
     env:
@@ -267,10 +265,9 @@ jobs:
             echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_SECRET"
           } >> $GITHUB_ENV
 
-      - uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
+      - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
-        with:
-          toolchain: stable
+        run: rustup default stable
 
       - name: Install cargo-hack
         if: env.BACKEND_CHANGED == 'true'
@@ -289,6 +286,7 @@ jobs:
     name: Lint + Test
     runs-on: self-hosted
     timeout-minutes: 20
+    environment: ci
     permissions:
       id-token: write
       contents: read
@@ -429,11 +427,7 @@ jobs:
 
       - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
-        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
-        with:
-          # Commenting this out so we always use the latest toolchain.
-          # toolchain: 1.91
-          components: clippy, llvm-tools-preview
+        run: rustup component add clippy llvm-tools-preview
 
       # - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       #   with:
@@ -501,6 +495,7 @@ jobs:
 
   backend-build:
     needs: [backend-test, changes]
+    environment: ci
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -619,9 +614,7 @@ jobs:
 
       - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
-        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
-        with:
-          toolchain: stable
+        run: rustup default stable
 
       - name: Install cross
         if: env.BACKEND_CHANGED == 'true'
@@ -724,6 +717,7 @@ jobs:
           docker run --rm ghcr.io/left-curve/left-curve/dango:$GIT_COMMIT-$BUILD_SUFFIX dango || true
 
   backend-push-manifest:
+    environment: ci
     permissions:
       packages: write
       id-token: write
@@ -872,6 +866,7 @@ jobs:
 
   frontend-build:
     needs: [changes, zizmor]
+    environment: ci
     permissions:
       packages: write
       contents: read
@@ -1301,6 +1296,7 @@ jobs:
           echo "- Vulnerability scan performed with Grype v0.81.0 (fail-on=HIGH, only-fixed)" >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
+    environment: deploy
     permissions:
       packages: read
       deployments: write
@@ -1358,8 +1354,13 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTEND_ENABLED_FEATURES_DEV: ${{ vars.FRONTEND_ENABLED_FEATURES_DEV }}
         run: |
           cd deploy
+
+          # Allow configuring devnet frontend feature flags from GitHub vars.
+          # If the var is not set, default to enabling points.
+          FRONTEND_ENABLED_FEATURES_DEV="${FRONTEND_ENABLED_FEATURES_DEV:-points}"
 
           # Skip signature verification for images that weren't built in this workflow run
           # Ansible needs boolean false, not string "false", so we include it in the JSON
@@ -1374,20 +1375,21 @@ jobs:
           fi
 
           if [ "$GIT_REF" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true'"$VERIFY_SIGS_JSON"'}' -e github_sha=$GIT_COMMIT -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e dango_image_digest=$DEPLOY_BACKEND_DIGEST -e frontend_image_digest=$DEPLOY_FRONTEND_DIGEST -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet", "system_wide_directories": true'"$VERIFY_SIGS_JSON"'}' -e frontend_enabled_features="$FRONTEND_ENABLED_FEATURES_DEV" -e github_sha=$GIT_COMMIT -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e dango_image_digest=$DEPLOY_BACKEND_DIGEST -e frontend_image_digest=$DEPLOY_FRONTEND_DIGEST -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71
           fi
 
           if [ "$EVENT_NAME" == "pull_request" ]; then
           # This deletes the existing deployment, but instead use `ansible-playbook delete-full-app.yml -e deployment_name=pr-<ID>` if you need
           # ansible-playbook delete-existing-app.yml -e deployment_name=pr-${PR_NUMBER}
 
-          ansible-playbook full-app.yml -e dango_network=pr-${PR_NUMBER} -e deployment_name=pr-${PR_NUMBER} -e github_pr_number=${PR_NUMBER} -e github_sha=${PR_HEAD_SHA} -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e dango_image_digest=$DEPLOY_BACKEND_DIGEST -e frontend_image_digest=$DEPLOY_FRONTEND_DIGEST -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR '"${PR_NUMBER}"'", "chain_id": "pr-'"${PR_NUMBER}"'", "cloudflare_tunnel_enabled": true, "s3_enabled": false'"$VERIFY_SIGS_JSON"'}' -e deploy_env=preview -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71
+          ansible-playbook full-app.yml -e dango_network=pr-${PR_NUMBER} -e deployment_name=pr-${PR_NUMBER} -e github_pr_number=${PR_NUMBER} -e github_sha=${PR_HEAD_SHA} -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e frontend_image_tag=$DEPLOY_FRONTEND_IMAGE_TAG -e dango_image_digest=$DEPLOY_BACKEND_DIGEST -e frontend_image_digest=$DEPLOY_FRONTEND_DIGEST -e '{"delete_s3_backup_at_merge": true, "expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR '"${PR_NUMBER}"'", "chain_id": "pr-'"${PR_NUMBER}"'", "cloudflare_tunnel_enabled": true, "s3_enabled": false'"$VERIFY_SIGS_JSON"'}' -e deploy_env=preview -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71,100.122.37.57
           fi
 
   localdango:
     timeout-minutes: 5
     name: Testing localdango
     runs-on: [self-hosted]
+    environment: ci
     needs: [set-image-tags, changes]
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}

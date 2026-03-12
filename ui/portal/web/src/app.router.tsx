@@ -5,6 +5,7 @@ import { useAccount, useConfig, usePublicClient } from "@left-curve/store";
 import { Spinner, useTheme, type UseThemeReturnType } from "@left-curve/applets-kit";
 
 import { routeTree } from "./app.pages";
+import { ErrorPage } from "./components/foundation/ErrorPage";
 
 import type {
   UseAccountReturnType,
@@ -23,6 +24,7 @@ export const router = createRouter({
       <Spinner size="lg" color="pink" />
     </div>
   ),
+  defaultErrorComponent: ErrorPage,
 });
 
 declare module "@tanstack/react-router" {

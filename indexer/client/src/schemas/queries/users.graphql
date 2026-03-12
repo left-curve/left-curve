@@ -21,7 +21,6 @@ query Users($after: String, $before: String, $first: Int, $last: Int, $blockHeig
       accounts {
         accountIndex
         address
-        accountType
         createdBlockHeight
         createdTxHash
         createdAt

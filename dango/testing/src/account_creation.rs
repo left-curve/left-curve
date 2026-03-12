@@ -1,18 +1,12 @@
 use {
     super::HyperlaneTestSuite,
-    crate::{TestAccount, TestAccounts},
+    crate::{TestAccount, TestAccounts, constants::mock_solana},
     dango_genesis::{Codes, Contracts},
     dango_proposal_preparer::ProposalPreparer,
-    dango_types::{
-        account::single::Params,
-        account_factory::{self, AccountParams},
-        auth::Key,
-        constants::usdc,
-    },
+    dango_types::{account_factory, auth::Key, constants::usdc},
     grug::{Coins, ContractWrapper, Hash256, HashExt, JsonSerExt, Op, ResultExt},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
-    hyperlane_types::constants::solana,
     indexer_hooked::HookedIndexer,
     pyth_client::PythClientCache,
     std::ops::DerefMut,
@@ -49,7 +43,6 @@ pub fn add_account_with_existing_user(
         .register_new_account(
             suite.deref_mut(),
             contracts.account_factory,
-            AccountParams::Single(Params::new(test_account.user_index())),
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(), // Make sure this is bigger than the minimum deposit.
         )
         .unwrap()
@@ -64,7 +57,7 @@ pub fn create_user_and_account(
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         0,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -75,8 +68,8 @@ pub fn create_user_and_account(
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
             &user,
             150_000_000, // Make sure this is bigger than the minimum deposit.
         )

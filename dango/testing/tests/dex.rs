@@ -4,12 +4,10 @@ use {
     dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
     dango_taxman::VOLUMES_BY_USER,
     dango_testing::{
-        BridgeOp, Preset, TestAccount, TestOption, TestSuite, setup_test_naive,
-        setup_test_naive_with_custom_genesis,
+        BridgeOp, Preset, TestAccount, TestOption, TestSuite, constants::mock_ethereum,
+        setup_test_naive, setup_test_naive_with_custom_genesis,
     },
     dango_types::{
-        account::single::Params,
-        account_factory::AccountParams,
         config::AppConfig,
         constants::{atom, dango, eth, usdc, xrp},
         dex::{
@@ -29,7 +27,6 @@ use {
         Uint128, UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
     grug_app::NaiveProposalPreparer,
-    hyperlane_types::constants::ethereum,
     pyth_types::constants::USDC_USD_ID,
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -1068,16 +1065,16 @@ fn query_orders_by_pair(
             vec![
                 BridgeOp {
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::USDC_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::USDC_WARP,
                     },
                     amount: Uint128::new(100_000_000_000),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::ETH_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::ETH_WARP,
                     },
                     amount: Uint128::new(100_000_000_000),
                     recipient: accounts.user1.address(),
@@ -3153,7 +3150,6 @@ fn volume_tracking_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Single(Params::new(user1_addr_1.user_index())),
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap();
@@ -3163,7 +3159,6 @@ fn volume_tracking_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Single(Params::new(user2_addr_1.user_index())),
             Coins::one(dango::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap();

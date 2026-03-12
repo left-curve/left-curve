@@ -41,6 +41,7 @@
         deployment_name: "{{ hostvars[ansible_play_hosts[0]]['timestamp'] }}"
         timestamp: "{{ hostvars[ansible_play_hosts[0]]['timestamp'] }}"
         s3_bucket: "dango-{{ dango_network }}-{{ timestamp }}"
+        deployed_hosts: "{{ ansible_play_hosts }}"
 
     - name: Fetch PR title from GitHub API (once)
       when:
@@ -564,6 +565,18 @@
   tags: monitoring
   vars_files:
     - roles/full-app/vars/main.yml
+  vars:
+    target_hosts: >-
+      {{ hostvars[groups['full-app'][0]]['deployed_hosts'] | default(groups['full-app']) }}
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
   tasks:
     - block:
         - name: Load prometheus vars
@@ -581,7 +594,7 @@
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-dango.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
-          loop: "{{ ansible_play_hosts }}"
+          loop: "{{ target_hosts }}"
         - name: Create Cometbft prometheus targets
           copy:
             content: |
@@ -595,7 +608,7 @@
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-cometbft.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
-          loop: "{{ ansible_play_hosts }}"
+          loop: "{{ target_hosts }}"
         - name: Create Postgres prometheus targets
           when: deploy_includes_postgres
           copy:
@@ -610,7 +623,7 @@
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-postgres.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
-          loop: "{{ ansible_play_hosts }}"
+          loop: "{{ target_hosts }}"
         - name: Create Clickhouse prometheus targets
           when: deploy_includes_clickhouse
           copy:
@@ -625,6 +638,6 @@
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-clickhouse.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
-          loop: "{{ ansible_play_hosts }}"
+          loop: "{{ target_hosts }}"
       when:
-        - hostvars[ansible_play_hosts[0]]['expose_ports'] == true
+        - hostvars[target_hosts[0]]['expose_ports'] == true

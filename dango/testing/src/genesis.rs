@@ -2,15 +2,17 @@ use {
     crate::{
         BridgeOp, TestOption,
         constants::{
-            DEFAULT_GAS_LIMIT, MOCK_BLOCK_TIME, MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner,
-            user1, user2, user3, user4, user5, user6, user7, user8, user9,
+            DEFAULT_GAS_LIMIT, MOCK_BLOCK_TIME, MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP,
+            mock_arbitrum, mock_base, mock_ethereum, mock_optimism, mock_solana, owner, user1,
+            user2, user3, user4, user5, user6, user7, user8, user9,
         },
     },
     dango_genesis::{
         AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
-        GrugOption, HyperlaneOption, OracleOption, VestingOption,
+        GrugOption, HyperlaneOption, OracleOption, PerpsOption, VestingOption,
     },
     dango_types::{
+        Dimensionless, Quantity, UsdPrice,
         account_factory::NewUserSalt,
         auth::Key,
         bank::Metadata,
@@ -20,6 +22,7 @@ use {
         },
         dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
         gateway::{Origin, Remote, WithdrawalFee},
+        perps::{self, PairParam},
         taxman::{self, CommissionRebound, ReferralConfig, ShareRatio},
     },
     grug::{
@@ -30,12 +33,12 @@ use {
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
     },
-    hyperlane_types::{
-        constants::{arbitrum, base, ethereum, ethereum_testnet, optimism, solana},
-        isms::multisig::ValidatorSet,
-    },
+    hyperlane_types::isms::multisig::ValidatorSet,
     pyth_types::constants::LAZER_TRUSTED_SIGNER,
-    std::{collections::BTreeSet, str::FromStr},
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        str::FromStr,
+    },
 };
 
 /// Describing a data that has a preset value for testing purposes.
@@ -60,104 +63,104 @@ impl Preset for TestOption {
                 vec![
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.owner.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::ETH_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::ETH_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.owner.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user1.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::ETH_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::ETH_WARP,
                         },
                         amount: Uint128::new(20_000_000_000_000_000_000), // 20 ETH
                         recipient: accounts.user1.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user2.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::ETH_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::ETH_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user2.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user3.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user4.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user5.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user6.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user7.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user8.address(),
                     },
                     BridgeOp {
                         remote: Remote::Warp {
-                            domain: ethereum::DOMAIN,
-                            contract: ethereum::USDC_WARP,
+                            domain: mock_ethereum::DOMAIN,
+                            contract: mock_ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user9.address(),
@@ -178,6 +181,7 @@ impl Preset for GenesisOption {
             gateway: Preset::preset_test(),
             hyperlane: Preset::preset_test(),
             oracle: Preset::preset_test(),
+            perps: Preset::preset_test(),
             vesting: Preset::preset_test(),
         }
     }
@@ -471,124 +475,124 @@ impl Preset for GatewayOption {
         GatewayOption {
             warp_routes: btree_set! {
                 (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
-                    domain: arbitrum::DOMAIN,
-                    contract: arbitrum::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 }),
                 (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
-                    domain: base::DOMAIN,
-                    contract: base::USDC_WARP,
+                    domain: mock_base::DOMAIN,
+                    contract: mock_base::USDC_WARP,
                 }),
                 (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
-                    domain: ethereum::DOMAIN,
-                    contract: ethereum::USDC_WARP,
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::USDC_WARP,
                 }),
                 (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
-                    domain: optimism::DOMAIN,
-                    contract: optimism::USDC_WARP,
+                    domain: mock_optimism::DOMAIN,
+                    contract: mock_optimism::USDC_WARP,
                 }),
                 (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
-                    domain: solana::DOMAIN,
-                    contract: solana::USDC_WARP,
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
-                    domain: arbitrum::DOMAIN,
-                    contract: arbitrum::ETH_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::ETH_WARP,
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
-                    domain: base::DOMAIN,
-                    contract: base::ETH_WARP,
+                    domain: mock_base::DOMAIN,
+                    contract: mock_base::ETH_WARP,
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
-                    domain: ethereum::DOMAIN,
-                    contract: ethereum::ETH_WARP,
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::ETH_WARP,
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
-                    domain: optimism::DOMAIN,
-                    contract: optimism::ETH_WARP,
+                    domain: mock_optimism::DOMAIN,
+                    contract: mock_optimism::ETH_WARP,
                 }),
                 (Origin::Remote(sol::SUBDENOM.clone()), Remote::Warp {
-                    domain: solana::DOMAIN,
-                    contract: solana::SOL_WARP,
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::SOL_WARP,
                 }),
             },
             withdrawal_fees: vec![
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: arbitrum::DOMAIN,
-                        contract: arbitrum::USDC_WARP,
+                        domain: mock_arbitrum::DOMAIN,
+                        contract: mock_arbitrum::USDC_WARP,
                     },
                     fee: Op::Insert(Uint128::new(100_000)),
                 },
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: base::DOMAIN,
-                        contract: base::USDC_WARP,
+                        domain: mock_base::DOMAIN,
+                        contract: mock_base::USDC_WARP,
                     },
                     fee: Op::Insert(Uint128::new(100_000)),
                 },
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::USDC_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::USDC_WARP,
                     },
                     fee: Op::Insert(Uint128::new(1_000_000)),
                 },
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: optimism::DOMAIN,
-                        contract: optimism::USDC_WARP,
+                        domain: mock_optimism::DOMAIN,
+                        contract: mock_optimism::USDC_WARP,
                     },
                     fee: Op::Insert(Uint128::new(100_000)),
                 },
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: solana::DOMAIN,
-                        contract: solana::USDC_WARP,
+                        domain: mock_solana::DOMAIN,
+                        contract: mock_solana::USDC_WARP,
                     },
                     fee: Op::Insert(Uint128::new(10_000)),
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: arbitrum::DOMAIN,
-                        contract: arbitrum::ETH_WARP,
+                        domain: mock_arbitrum::DOMAIN,
+                        contract: mock_arbitrum::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(50_000_000_000_000)),
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: base::DOMAIN,
-                        contract: base::ETH_WARP,
+                        domain: mock_base::DOMAIN,
+                        contract: mock_base::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(50_000_000_000_000)),
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::ETH_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(500_000_000_000_000)),
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: optimism::DOMAIN,
-                        contract: optimism::ETH_WARP,
+                        domain: mock_optimism::DOMAIN,
+                        contract: mock_optimism::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(50_000_000_000_000)),
                 },
                 WithdrawalFee {
                     denom: sol::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: solana::DOMAIN,
-                        contract: solana::SOL_WARP,
+                        domain: mock_solana::DOMAIN,
+                        contract: mock_solana::SOL_WARP,
                     },
                     fee: Op::Insert(Uint128::new(66_667)), // ~$0.01, assume SOL is $150
                 },
@@ -614,12 +618,11 @@ impl Preset for HyperlaneOption {
         HyperlaneOption {
             local_domain: MOCK_HYPERLANE_LOCAL_DOMAIN,
             ism_validator_sets: btree_map! {
-                arbitrum::DOMAIN         => mock_validator_set.clone(),
-                base::DOMAIN             => mock_validator_set.clone(),
-                ethereum::DOMAIN         => mock_validator_set.clone(),
-                ethereum_testnet::DOMAIN => mock_validator_set.clone(),
-                optimism::DOMAIN         => mock_validator_set.clone(),
-                solana::DOMAIN           => mock_validator_set,
+                mock_arbitrum::DOMAIN         => mock_validator_set.clone(),
+                mock_base::DOMAIN             => mock_validator_set.clone(),
+                mock_ethereum::DOMAIN         => mock_validator_set.clone(),
+                mock_optimism::DOMAIN         => mock_validator_set.clone(),
+                mock_solana::DOMAIN           => mock_validator_set,
             },
             va_announce_fee_per_byte: Coin {
                 denom: usdc::DENOM.clone(),
@@ -636,6 +639,36 @@ impl Preset for OracleOption {
             pyth_trusted_signers: {
                 let trused_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
                 btree_map! { trused_signer => Timestamp::from_nanos(u128::MAX) } // FIXME: what's the appropriate expiration time for this?
+            },
+        }
+    }
+}
+
+impl Preset for PerpsOption {
+    fn preset_test() -> Self {
+        let pair_id: Denom = "perp/ethusd".parse().unwrap();
+        PerpsOption {
+            param: perps::Param {
+                base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
+                base_maker_fee_rate: Dimensionless::ZERO,
+                tiered_taker_fee_rate: BTreeMap::new(),
+                tiered_maker_fee_rate: BTreeMap::new(),
+                protocol_fee_rate: Dimensionless::ZERO,
+                liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
+                vault_cooldown_period: Duration::from_days(1),
+                max_unlocks: 10,
+                max_open_orders: 100,
+                funding_period: Duration::from_hours(1),
+                vault_total_weight: Dimensionless::ZERO,
+            },
+            pair_params: btree_map! {
+                pair_id => PairParam {
+                    initial_margin_ratio: Dimensionless::new_permille(100), // 10%
+                    maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
+                    tick_size: UsdPrice::new_int(1),
+                    max_abs_oi: Quantity::new_int(1_000_000),
+                    ..PairParam::new_mock()
+                },
             },
         }
     }

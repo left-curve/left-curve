@@ -7,11 +7,7 @@ use {
     dango_testing::{
         HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
     },
-    dango_types::{
-        account::single,
-        account_factory::{self, AccountParams},
-        constants::usdc,
-    },
+    dango_types::{account_factory, constants::usdc},
     graphql_client::GraphQLQuery,
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
@@ -31,9 +27,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
         contracts.account_factory,
-        &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
-        },
+        &account_factory::ExecuteMsg::RegisterAccount {},
         Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
@@ -385,9 +379,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
         contracts.account_factory,
-        &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
-        },
+        &account_factory::ExecuteMsg::RegisterAccount {},
         Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
@@ -501,9 +493,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
         contracts.account_factory,
-        &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
-        },
+        &account_factory::ExecuteMsg::RegisterAccount {},
         Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
@@ -533,9 +523,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
             // Copied from benchmarks.rs
             let msgs = vec![Message::execute(
                 contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Single(single::Params::new(accounts.user1.user_index())),
-                },
+                &account_factory::ExecuteMsg::RegisterAccount {},
                 Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
             )?];
 

@@ -1,10 +1,8 @@
 use {
     crate::constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
-    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared, hash_map},
+    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared},
     hyperlane_types::{
-        Addr32, IncrementalMerkleTree,
-        constants::{arbitrum, base, ethereum, optimism, solana},
-        domain_hash, eip191_hash,
+        Addr32, IncrementalMerkleTree, domain_hash, eip191_hash,
         isms::{HYPERLANE_DOMAIN_KEY, multisig::Metadata},
         mailbox::{self, Domain, MAILBOX_VERSION},
         multisig_hash,
@@ -17,14 +15,13 @@ use {
 pub struct MockValidatorSets(HashMap<Domain, MockValidatorSet>);
 
 impl MockValidatorSets {
-    pub fn new_preset(random_nonce: bool) -> Self {
-        Self(hash_map! {
-            arbitrum::DOMAIN => MockValidatorSet::new_preset(arbitrum::DOMAIN, random_nonce),
-            base::DOMAIN     => MockValidatorSet::new_preset(base::DOMAIN, random_nonce),
-            ethereum::DOMAIN => MockValidatorSet::new_preset(ethereum::DOMAIN, random_nonce),
-            optimism::DOMAIN => MockValidatorSet::new_preset(optimism::DOMAIN, random_nonce),
-            solana::DOMAIN   => MockValidatorSet::new_preset(solana::DOMAIN, random_nonce),
-        })
+    pub fn new_preset(domains: &[Domain], random_nonce: bool) -> Self {
+        Self(
+            domains
+                .iter()
+                .map(|&d| (d, MockValidatorSet::new_preset(d, random_nonce)))
+                .collect(),
+        )
     }
 
     pub fn get(&self, domain: Domain) -> Option<&MockValidatorSet> {

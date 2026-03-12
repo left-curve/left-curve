@@ -12,7 +12,8 @@ use {
         iter::Sum,
         marker::PhantomData,
         ops::{
-            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Rem, RemAssign, Sub,
+            SubAssign,
         },
         str::FromStr,
     },
@@ -145,6 +146,17 @@ where
 
     fn neg(self) -> Self::Output {
         Self(-self.0)
+    }
+}
+
+impl<U, const S: u32> Not for Dec<U, S>
+where
+    U: Not<Output = U>,
+{
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self(!self.0)
     }
 }
 

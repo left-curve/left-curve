@@ -9,10 +9,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        account_factory::{
-            AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, UserIndex,
-            UserIndexOrName,
-        },
+        account_factory::UserIndex,
         bank,
         taxman::{
             CommissionRebound, Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee, Referee,
@@ -128,16 +125,11 @@ fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow
             continue;
         };
 
-        // Get the user's user index. If the user is a multisig, skip.
-        let AccountParams::Single(params) = &account.params else {
-            continue;
-        };
-
         increment_cumulative_volume(
             VOLUMES_BY_USER,
             ctx.storage,
-            params.owner,
-            day_timestamp,
+            account.owner,
+            timestamp,
             volume,
         )?;
 

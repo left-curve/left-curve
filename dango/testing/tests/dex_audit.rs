@@ -5,7 +5,8 @@ use {
     dango_dex::liquidity_depth::get_bucket,
     dango_genesis::{DexOption, GenesisOption, OracleOption},
     dango_testing::{
-        BridgeOp, Preset, TestOption, setup_test_naive, setup_test_naive_with_custom_genesis,
+        BridgeOp, Preset, TestOption, constants::mock_ethereum, setup_test_naive,
+        setup_test_naive_with_custom_genesis,
     },
     dango_types::{
         constants::{
@@ -28,7 +29,6 @@ use {
         btree_map, btree_set, coins,
     },
     grug_types::Addressable,
-    hyperlane_types::constants::ethereum,
     rand::Rng,
     std::{
         collections::{BTreeSet, HashMap},
@@ -114,12 +114,15 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
     // order on each side of the oracle price (200 +/- 0.3%) with 100% of the
     // liquidity.
     suite
-        .query_wasm_smart(contracts.dex, dex::QueryLiquidityDepthRequest {
-            base_denom: dango::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
-            bucket_size: ONE_TENTH,
-            limit: Some(10),
-        })
+        .query_wasm_smart(
+            contracts.dex,
+            dex::QueryLiquidityDepthRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                bucket_size: ONE_TENTH,
+                limit: Some(10),
+            },
+        )
         .should_succeed_and_equal(dex::LiquidityDepthResponse {
             bid_depth: Some(vec![(
                 Price::new(199_400_000), // 200 * (1 - 0.3%), considering 6 decimal difference between dango and usdc
@@ -401,16 +404,16 @@ fn issue_156_depth_quote_rounding_error() {
             vec![
                 BridgeOp {
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::USDC_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::USDC_WARP,
                     },
                     amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
                     remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::ETH_WARP,
+                        domain: mock_ethereum::DOMAIN,
+                        contract: mock_ethereum::ETH_WARP,
                     },
                     amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),

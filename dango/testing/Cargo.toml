@@ -64,6 +64,7 @@ dango-gateway               = { workspace = true, features = ["library"] }
 dango-httpd                 = { workspace = true, features = ["metrics"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
+dango-perps                 = { workspace = true, features = ["library"] }
 dango-taxman                = { workspace = true, features = ["library"] }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }

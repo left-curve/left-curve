@@ -15,7 +15,7 @@ use {
         sync::{Arc, LazyLock, Mutex as StdMutex, mpsc},
         time::Duration,
     },
-    tokio::{net::TcpStream, sync::Mutex},
+    tokio::{net::TcpStream, sync::RwLock},
 };
 pub use {
     dango_genesis::GenesisOption,
@@ -145,11 +145,11 @@ where
         indexer_context_callback,
     );
 
-    let suite = Arc::new(Mutex::new(suite));
+    let suite = Arc::new(RwLock::new(suite));
 
     let mock_client = MockClient::new_shared(suite.clone(), block_creation);
 
-    let app = suite.lock().await.app.clone_without_indexer();
+    let app = suite.read().await.app.clone_without_indexer();
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_cache_context,
