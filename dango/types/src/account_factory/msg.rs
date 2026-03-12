@@ -17,7 +17,6 @@ pub enum UserIndexOrName {
 #[grug::derive(Serde)]
 pub struct UserIndexAndName {
     pub index: UserIndex,
-
     /// `None` if the user hasn't chosen a username yet.
     pub name: Option<Username>,
 }
@@ -70,7 +69,6 @@ impl SignData for RegisterUserData {
 pub struct InstantiateMsg {
     /// Code hash to be associated with the Dango account contract.
     pub account_code_hash: Hash256,
-
     /// Users with associated key to set up during genesis.
     /// Each genesis user is to be associated with exactly one key.
     /// A single-signature account will be created for each genesis user.
@@ -90,13 +88,10 @@ pub enum ExecuteMsg {
         /// A signature over the `RegisterUserData`.
         signature: Signature,
     },
-
     /// Register a new account for an existing user.
     RegisterAccount {},
-
     /// Associate a new or disassociate an existing key with a username.
     UpdateKey { key_hash: Hash256, key: Op<Key> },
-
     /// Update the username.
     ///
     /// For now, we only support setting the username once when it's unset.
@@ -109,37 +104,30 @@ pub enum QueryMsg {
     /// Query the code hash associated with the Dango account contract.
     #[returns(Hash256)]
     CodeHash {},
-
     /// Query the next user index.
     #[returns(UserIndex)]
     NextUserIndex {},
-
     /// Query the next account index.
     #[returns(AccountIndex)]
     NextAccountIndex {},
-
     /// Query a single user by index.
     #[returns(User)]
     User { index: UserIndex },
-
     /// Enumerate all users by indexes.
     #[returns(BTreeMap<UserIndex, User>)]
     Users {
         start_after: Option<UserIndex>,
         limit: Option<u32>,
     },
-
     /// Query parameters of an account by address.
     #[returns(Account)]
     Account { address: Addr },
-
     /// Enumerate all accounts and addresses.
     #[returns(BTreeMap<Addr, Account>)]
     Accounts {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
-
     /// Query users associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
     #[returns(Vec<UserIndexAndName>)]
