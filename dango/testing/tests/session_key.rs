@@ -1,6 +1,6 @@
 use {
     dango_testing::setup_test_naive,
-    dango_types::{account::single::Params, account_factory::AccountParams, constants::usdc},
+    dango_types::constants::usdc,
     grug::{Addressable, Coin, Coins, Duration, ResultExt},
     session_account::SessionAccount,
 };
@@ -189,7 +189,6 @@ fn session_key() {
     let mut owner = SessionAccount::new(accounts.owner)
         .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
         .unwrap();
-    let owner_index = owner.user_index();
 
     // Ok transfer
     {
@@ -238,12 +237,7 @@ fn session_key() {
     // which will use the same session key signature generated with owner1.
     {
         let owner2 = owner
-            .register_new_account(
-                &mut suite,
-                contracts.account_factory,
-                AccountParams::Single(Params::new(owner_index)),
-                Coins::default(),
-            )
+            .register_new_account(&mut suite, contracts.account_factory, Coins::default())
             .unwrap();
 
         // Refresh the session key signature

@@ -1,11 +1,10 @@
 use {
     crate::{TestSuite, create_signature},
     dango_types::{
-        DangoQuerier,
-        account::single,
+        DangoQuerier, account,
         account_factory::{
-            self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
-            QueryNextAccountIndexRequest, RegisterUserData, Salt, UserIndex,
+            self, NewUserSalt, QueryCodeHashRequest, QueryNextAccountIndexRequest,
+            RegisterUserData, Salt, UserIndex,
         },
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
         signer::SequencedSigner,
@@ -159,14 +158,7 @@ impl TestAccount<Undefined<UserIndex>, Defined<Addr>> {
                 address: self.address.into_inner(),
             })
             .unwrap()
-            .params
-            .owner()
-            .unwrap_or_else(|| {
-                panic!(
-                    "address {} is not a single-signature account",
-                    self.address.into_inner()
-                );
-            });
+            .owner;
 
         self.set_user_index(user_index)
     }
@@ -356,7 +348,6 @@ where
         &mut self,
         test_suite: &mut TestSuite<PP, DB, VM, ID>,
         factory: Addr,
-        params: AccountParams,
         funds: Coins,
     ) -> StdResult<TestAccount>
     where
@@ -366,22 +357,13 @@ where
         ID: Indexer,
         AppError: From<PP::Error> + From<DB::Error> + From<VM::Error>,
     {
-        // If registering a single account, ensure the supplied username matches this account's username.
-        let account_type = match &params {
-            AccountParams::Single(single::Params { owner, .. }) => {
-                assert_eq!(owner, self.user_index.inner());
-                AccountType::Single
-            },
-            AccountParams::Multi(_) => AccountType::Multi,
-        };
-
         // Derive the new accounts address.
         let index = test_suite
             .query_wasm_smart(factory, QueryNextAccountIndexRequest {})
             .unwrap();
 
         let code_hash = test_suite
-            .query_wasm_smart(factory, QueryCodeHashRequest { account_type })
+            .query_wasm_smart(factory, QueryCodeHashRequest {})
             .should_succeed();
 
         let address = Addr::derive(factory, code_hash, Salt { index }.into_bytes().as_slice());
@@ -391,7 +373,7 @@ where
             .execute(
                 &mut *self,
                 factory,
-                &account_factory::ExecuteMsg::RegisterAccount { params },
+                &account_factory::ExecuteMsg::RegisterAccount {},
                 funds,
             )
             .should_succeed();
@@ -468,7 +450,7 @@ impl SequencedSigner for TestAccount {
         let nonce = client
             .query_wasm_smart(
                 self.address.into_inner(),
-                single::QuerySeenNoncesRequest {},
+                account::QuerySeenNoncesRequest {},
                 None,
             )
             .await?

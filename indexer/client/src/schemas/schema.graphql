@@ -1,7 +1,6 @@
 type Account {
 	accountIndex: Int!
 	address: String!
-	accountType: AccountType!
 	createdBlockHeight: Int!
 	createdTxHash: String!
 	"""
@@ -43,20 +42,6 @@ type AccountEdge {
 enum AccountSortBy {
 	BLOCK_HEIGHT_ASC
 	BLOCK_HEIGHT_DESC
-}
-
-"""
-Types of accounts the protocol supports.
-"""
-enum AccountType {
-	"""
-	A single-signature account.
-	"""
-	single
-	"""
-	A multi-signature account.
-	"""
-	multi
 }
 
 scalar BigDecimal

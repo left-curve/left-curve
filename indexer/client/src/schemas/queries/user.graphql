@@ -14,7 +14,6 @@ query User($userIndex: Int!) {
     accounts {
       accountIndex
       address
-      accountType
       createdBlockHeight
       createdTxHash
       createdAt

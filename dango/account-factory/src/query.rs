@@ -1,12 +1,12 @@
 use {
     crate::{
-        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
+        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASH, KEYS, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
         USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX, USERS_BY_KEY,
     },
     dango_types::{
         account_factory::{
-            Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
-            QueryMsg, User, UserIndex, UserIndexAndName, UserIndexOrName, Username,
+            Account, AccountIndex, QueryKeyPaginateParam, QueryKeyResponseItem, QueryMsg, User,
+            UserIndex, UserIndexAndName, UserIndexOrName, Username,
         },
         auth::Key,
     },
@@ -20,20 +20,16 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
+        QueryMsg::CodeHash {} => {
+            let res = query_code_hash(ctx.storage)?;
+            res.to_json_value()
+        },
         QueryMsg::NextUserIndex {} => {
             let res = query_next_user_index(ctx.storage)?;
             res.to_json_value()
         },
         QueryMsg::NextAccountIndex {} => {
             let res = query_next_account_index(ctx.storage)?;
-            res.to_json_value()
-        },
-        QueryMsg::CodeHash { account_type } => {
-            let res = query_code_hash(ctx.storage, account_type)?;
-            res.to_json_value()
-        },
-        QueryMsg::CodeHashes { start_after, limit } => {
-            let res = query_code_hashes(ctx.storage, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::Key { hash, user } => {
@@ -84,30 +80,16 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     .map_err(Into::into)
 }
 
+fn query_code_hash(storage: &dyn Storage) -> StdResult<Hash256> {
+    CODE_HASH.load(storage)
+}
+
 fn query_next_user_index(storage: &dyn Storage) -> StdResult<UserIndex> {
     NEXT_USER_INDEX.current(storage)
 }
 
 fn query_next_account_index(storage: &dyn Storage) -> StdResult<AccountIndex> {
     NEXT_ACCOUNT_INDEX.current(storage)
-}
-
-fn query_code_hash(storage: &dyn Storage, account_type: AccountType) -> StdResult<Hash256> {
-    CODE_HASHES.load(storage, account_type)
-}
-
-fn query_code_hashes(
-    storage: &dyn Storage,
-    start_after: Option<AccountType>,
-    limit: Option<u32>,
-) -> StdResult<BTreeMap<AccountType, Hash256>> {
-    let start = start_after.map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    CODE_HASHES
-        .range(storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect()
 }
 
 fn query_key(storage: &dyn Storage, hash: Hash256, user: UserIndexOrName) -> StdResult<Key> {

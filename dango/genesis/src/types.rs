@@ -30,9 +30,8 @@ pub struct Contracts {
 
 #[derive(Clone, Copy)]
 pub struct Codes<T> {
+    pub account: T,
     pub account_factory: T,
-    pub account_multi: T,
-    pub account_single: T,
     pub bank: T,
     pub dex: T,
     pub gateway: T,
@@ -43,6 +42,7 @@ pub struct Codes<T> {
     pub vesting: T,
     pub warp: T,
 }
+
 pub struct GenesisUser {
     pub salt: NewUserSalt,
     pub dango_balance: Uint128,

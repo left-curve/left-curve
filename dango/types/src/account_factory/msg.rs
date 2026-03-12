@@ -1,9 +1,6 @@
 use {
     crate::{
-        account_factory::{
-            Account, AccountIndex, AccountParamUpdates, AccountParams, AccountType, NewUserSalt,
-            UserIndex, Username,
-        },
+        account_factory::{Account, AccountIndex, NewUserSalt, UserIndex, Username},
         auth::{Key, Signature},
     },
     grug::{Addr, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
@@ -51,8 +48,8 @@ impl SignData for RegisterUserData {
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    /// Code hash to be associated with each account type.
-    pub code_hashes: BTreeMap<AccountType, Hash256>,
+    /// Code hash to be associated with the Dango account contract.
+    pub account_code_hash: Hash256,
     /// Users with associated key to set up during genesis.
     /// Each genesis user is to be associated with exactly one key.
     /// A single-signature account will be created for each genesis user.
@@ -73,11 +70,9 @@ pub enum ExecuteMsg {
         signature: Signature,
     },
     /// Register a new account for an existing user.
-    RegisterAccount { params: AccountParams },
+    RegisterAccount {},
     /// Associate a new or disassociate an existing key with a username.
     UpdateKey { key_hash: Hash256, key: Op<Key> },
-    /// Update an account's parameters.
-    UpdateAccount(AccountParamUpdates),
     /// Update the username.
     ///
     /// For now, we only support setting the username once when it's unset.
@@ -87,21 +82,15 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query the code hash associated with the Dango account contract.
+    #[returns(Hash256)]
+    CodeHash {},
     /// Query the next user index.
     #[returns(UserIndex)]
     NextUserIndex {},
     /// Query the next account index.
     #[returns(AccountIndex)]
     NextAccountIndex {},
-    /// Query the code hash associated with the an account type.
-    #[returns(Hash256)]
-    CodeHash { account_type: AccountType },
-    /// Enumerate all code hashes associated with account types.
-    #[returns(BTreeMap<AccountType, Hash256>)]
-    CodeHashes {
-        start_after: Option<AccountType>,
-        limit: Option<u32>,
-    },
     /// Query a key by its hash and the user it is associated with.
     #[returns(Key)]
     Key {
