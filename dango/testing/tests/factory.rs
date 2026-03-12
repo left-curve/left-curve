@@ -1,5 +1,5 @@
 use {
-    dango_account_factory::{ACCOUNT_COUNT_BY_USER, MAX_ACCOUNTS_PER_USER},
+    dango_account_factory::{MAX_ACCOUNTS_PER_USER, USERS},
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
         Factory, HyperlaneTestSuite, Preset, TestAccount, constants::mock_solana, setup_test_naive,
@@ -7,7 +7,7 @@ use {
     },
     dango_types::{
         account,
-        account_factory::{self, Account, RegisterUserData, UserIndexOrName},
+        account_factory::{self, Account, RegisterUserData},
         auth::AccountStatus,
         bank,
         constants::usdc,
@@ -128,13 +128,11 @@ fn onboarding_without_deposit() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryAccountsByUserRequest {
-                user: UserIndexOrName::Index(user_index),
-            },
+            account_factory::QueryUserRequest { index: user_index },
         )
-        .should_succeed_and(|accounts| {
-            accounts.len() == 2
-                && accounts.iter().all(|(address, _)| {
+        .should_succeed_and(|res| {
+            res.accounts.len() == 2
+                && res.accounts.iter().all(|address| {
                     suite
                         .query_wasm_path(*address, dango_auth::account::STATUS.path())
                         .unwrap()
@@ -181,27 +179,36 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryKeysByUserRequest {
-                user: UserIndexOrName::Index(user.user_index()),
+            account_factory::QueryUserRequest {
+                index: user.user_index(),
             },
         )
-        .should_succeed_and_equal(btree_map! { user.first_key_hash() => user.first_key() });
+        .should_succeed_and(|res| {
+            res.keys == btree_map! { user.first_key_hash() => user.first_key() }
+        });
 
     // The user's account info should have been recorded in account factory.
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryAccountsByUserRequest {
-                user: UserIndexOrName::Index(user.user_index()),
+            account_factory::QueryUserRequest {
+                index: user.user_index(),
             },
         )
-        .should_succeed_and_equal(btree_map! {
-            user.address() => Account {
-                // We have 10 genesis accounts (owner + users 1-9), indexed from
-                // zero, so this one should have the index of 10.
-                index: 10,
-                owner: user.user_index(),
+        .map(|res| res.accounts)
+        .should_succeed_and_equal(vec![user.address()]);
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryAccountRequest {
+                address: user.address(),
             },
+        )
+        .should_succeed_and_equal(Account {
+            // We have 10 genesis accounts (owner + users 1-9), indexed from
+            // zero, so this one should have the index of 10.
+            index: 10,
+            owner: user.user_index(),
         });
 
     // The newly created account should be active.
@@ -351,10 +358,11 @@ fn update_key() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryKeysByUserRequest {
-                user: UserIndexOrName::Index(user.user_index()),
+            account_factory::QueryUserRequest {
+                index: user.user_index(),
             },
         )
+        .map(|res| res.keys)
         .should_succeed_and_equal(btree_map! { user.first_key_hash() => user.first_key() });
 
     // Add a new key to the user's account.
@@ -376,10 +384,11 @@ fn update_key() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryKeysByUserRequest {
-                user: UserIndexOrName::Index(user.user_index()),
+            account_factory::QueryUserRequest {
+                index: user.user_index(),
             },
         )
+        .map(|res| res.keys)
         .should_succeed_and_equal(btree_map! {
             user.first_key_hash() => user.first_key(),
             key_hash => pk,
@@ -418,10 +427,11 @@ fn update_key() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryKeysByUserRequest {
-                user: UserIndexOrName::Index(user.user_index()),
+            account_factory::QueryUserRequest {
+                index: user.user_index(),
             },
         )
+        .map(|res| res.keys)
         .should_succeed_and_equal(btree_map! { key_hash => pk });
 }
 
@@ -445,10 +455,8 @@ fn single_signature_account_count_limit() {
 
     // Query user 1's account count that is stored in factory. Should be 5.
     suite
-        .query_wasm_path(
-            contracts.account_factory,
-            &ACCOUNT_COUNT_BY_USER.path(user_index),
-        )
+        .query_wasm_path(contracts.account_factory, &USERS.path(user_index))
+        .map(|res| res.accounts.len())
         .should_succeed_and_equal(MAX_ACCOUNTS_PER_USER);
 
     // Attempt to open one more account. Should fail.

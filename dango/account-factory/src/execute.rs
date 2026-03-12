@@ -1,8 +1,7 @@
 use {
     crate::{
-        ACCOUNT_COUNT_BY_USER, ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASH, KEYS, MAX_ACCOUNTS_PER_USER,
-        NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USER_INDEXES_BY_NAME, USER_NAMES_BY_INDEX,
-        USERS_BY_KEY,
+        ACCOUNTS, CODE_HASH, MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
+        USER_INDEXES_BY_NAME, USERS, USERS_BY_KEY,
     },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
@@ -10,13 +9,13 @@ use {
         account,
         account_factory::{
             Account, AccountOwned, AccountRegistered, ExecuteMsg, InstantiateMsg, KeyDisowned,
-            KeyOwned, NewUserSalt, RegisterUserData, Salt, UserRegistered, Username,
+            KeyOwned, NewUserSalt, RegisterUserData, Salt, User, UserRegistered, Username,
         },
         auth::{Key, Signature},
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
+        MsgExecute, MutableCtx, Op, Response, StdResult, Storage, Tx, btree_map,
     },
 };
 
@@ -41,11 +40,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
                 user.seed,
                 Coins::default(),
             )?;
-
-            let user_index = user_registered.user_index;
-
-            KEYS.save(ctx.storage, (user_index, user.key_hash), &user.key)?;
-            USERS_BY_KEY.insert(ctx.storage, (user.key_hash, user_index))?;
 
             Ok((msg, (user_registered, account_registered)))
         })
@@ -151,10 +145,6 @@ fn register_user(
     let (msg, user_registered, account_registered) =
         onboard_new_user(ctx.storage, ctx.contract, key, key_hash, seed, ctx.funds)?;
 
-    // Save the key.
-    KEYS.save(ctx.storage, (user_registered.user_index, key_hash), &key)?;
-    USERS_BY_KEY.insert(ctx.storage, (key_hash, user_registered.user_index))?;
-
     Ok(Response::new()
         .add_message(msg)
         .add_event(user_registered)?
@@ -194,13 +184,22 @@ fn onboard_new_user(
     };
     let address = Addr::derive(factory, code_hash, &salt.to_bytes());
 
+    let user = User {
+        name: None,
+        accounts: vec![address],
+        keys: btree_map! { key_hash => key },
+    };
+
     let account = Account {
         index: account_index,
         owner: user_index,
     };
 
+    USERS.save(storage, user_index, &user)?;
+
+    USERS_BY_KEY.insert(storage, (key_hash, user_index))?;
+
     ACCOUNTS.save(storage, address, &account)?;
-    ACCOUNTS_BY_USER.insert(storage, (user_index, address))?;
 
     Ok((
         Message::instantiate(
@@ -232,12 +231,12 @@ fn register_account(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Load the sender's user index.
     let user_index = ACCOUNTS.load(ctx.storage, ctx.sender)?.owner;
 
+    // Load the user's profile.
+    let mut user = USERS.load(ctx.storage, user_index)?;
+
     // Ensure the sender has not already reached the maximum account count limit.
     ensure!(
-        {
-            let (_, count) = ACCOUNT_COUNT_BY_USER.increment(ctx.storage, user_index)?;
-            count <= MAX_ACCOUNTS_PER_USER
-        },
+        user.accounts.len() < MAX_ACCOUNTS_PER_USER,
         "user {user_index} has reached max account count",
     );
 
@@ -252,14 +251,17 @@ fn register_account(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Derive the account address.
     let address = Addr::derive(ctx.contract, code_hash, &salt);
 
+    // Insert the account to the user's profile.
+    user.accounts.push(address);
+
     // Save the account info.
     ACCOUNTS.save(ctx.storage, address, &Account {
         index,
         owner: user_index,
     })?;
 
-    // Save the account ownership info.
-    ACCOUNTS_BY_USER.insert(ctx.storage, (user_index, address))?;
+    // Save the updated user profile.
+    USERS.save(ctx.storage, user_index, &user)?;
 
     Ok(Response::new()
         .add_message(Message::instantiate(
@@ -288,36 +290,31 @@ fn register_account(ctx: MutableCtx) -> anyhow::Result<Response> {
 
 fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
     let user_index = ACCOUNTS.load(ctx.storage, ctx.sender)?.owner;
+    let mut user = USERS.load(ctx.storage, user_index)?;
 
     match key {
         Op::Insert(key) => {
             // Ensure the key isn't already associated with the user index.
             ensure!(
-                !KEYS
-                    .prefix(user_index)
-                    .values(ctx.storage, None, None, Order::Ascending)
-                    .any(|v| v.is_ok_and(|k| k == key)),
+                user.keys.values().all(|k| *k != key),
                 "key is already associated with user index {user_index}"
             );
 
-            KEYS.save(ctx.storage, (user_index, key_hash), &key)?;
-            USERS_BY_KEY.insert(ctx.storage, (key_hash, user_index))?;
+            user.keys.insert(key_hash, key);
         },
         Op::Delete => {
-            KEYS.remove(ctx.storage, (user_index, key_hash));
-            USERS_BY_KEY.remove(ctx.storage, (key_hash, user_index));
-
-            // Ensure the user hasn't removed every single key associated with
-            // their username. There must be at least one remaining.
+            // Ensure the user either doesn't have such a key, or if he does,
+            // he still has at least one key after its removal.
             ensure!(
-                KEYS.prefix(user_index)
-                    .range(ctx.storage, None, None, Order::Ascending)
-                    .next()
-                    .is_some(),
+                !user.keys.contains_key(&key_hash) || user.keys.len() > 1,
                 "can't delete the last key associated with user index {user_index}"
             );
+
+            user.keys.remove(&key_hash);
         },
     }
+
+    USERS.save(ctx.storage, user_index, &user)?;
 
     Ok(Response::new()
         .may_add_event(if let Op::Insert(key) = key {
@@ -341,9 +338,10 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
 
 fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Response> {
     let user_index = ACCOUNTS.load(ctx.storage, ctx.sender)?.owner;
+    let mut user = USERS.load(ctx.storage, user_index)?;
 
     ensure!(
-        !USER_NAMES_BY_INDEX.has(ctx.storage, user_index),
+        user.name.is_none(),
         "a username is already associated with user index {user_index}",
     );
 
@@ -352,7 +350,9 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
         "the username `{username}` is already associated with a user index"
     );
 
-    USER_NAMES_BY_INDEX.save(ctx.storage, user_index, &username)?;
+    user.name = Some(username.clone());
+
+    USERS.save(ctx.storage, user_index, &user)?;
     USER_INDEXES_BY_NAME.save(ctx.storage, &username, &user_index)?;
 
     Ok(Response::new())

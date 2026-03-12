@@ -3,10 +3,10 @@ use {
         dyn_abi::{Eip712Domain, TypedData},
         primitives::{U160, U256, address, uint},
     },
-    anyhow::{bail, ensure},
+    anyhow::{anyhow, bail, ensure},
     dango_types::{
         DangoQuerier,
-        account_factory::RegisterUserData,
+        account_factory::{RegisterUserData, User},
         auth::{
             AccountStatus, ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc,
             Signature, StandardCredential,
@@ -14,8 +14,8 @@ use {
     },
     data_encoding::BASE64URL_NOPAD,
     grug::{
-        Addr, Api, AuthCtx, AuthMode, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt, JsonSerExt,
-        MutableCtx, QuerierExt, SignData, StdError, StdResult, Storage, StorageQuerier, Tx,
+        Api, AuthCtx, AuthMode, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt, JsonSerExt,
+        MutableCtx, SignData, StdError, StdResult, Storage, StorageQuerier, Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -24,13 +24,11 @@ use {
 /// The expected storage layout of the account factory contract.
 pub mod account_factory {
     use {
-        dango_types::{account_factory::UserIndex, auth::Key},
-        grug::{Addr, Hash256, Map, Set},
+        dango_types::account_factory::{User, UserIndex},
+        grug::Map,
     };
 
-    pub const KEYS: Map<(UserIndex, Hash256), Key> = Map::new("key");
-
-    pub const ACCOUNTS_BY_USER: Set<(UserIndex, Addr)> = Set::new("account__user");
+    pub const USERS: Map<UserIndex, User> = Map::new("user");
 }
 
 /// The expected storage layout of the account contract.
@@ -190,16 +188,14 @@ pub fn authenticate_tx(
         tx.data.clone().deserialize_json()?
     };
 
-    // If the sender account is associated with the user index, then an entry
-    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be empty
-    // because we Borsh for encoding.
+    // Query the user's profile.
+    let user = ctx
+        .querier
+        .query_wasm_path::<User, _>(factory, &account_factory::USERS.path(metadata.user_index))?;
+
+    // The sender's address and the user profile declared in metadata must match.
     ensure!(
-        ctx.querier
-            .query_wasm_raw(
-                factory,
-                account_factory::ACCOUNTS_BY_USER.path((metadata.user_index, tx.sender)),
-            )?
-            .is_some_and(|bytes| bytes.is_empty()),
+        user.accounts.contains(&tx.sender),
         "account {} isn't associated with user {}",
         tx.sender,
         metadata.user_index,
@@ -212,7 +208,7 @@ pub fn authenticate_tx(
         tx.sender
     );
 
-    verify_nonce_and_signature(ctx, tx, Some(factory), Some(metadata))
+    verify_nonce_and_signature(ctx, tx, &user, Some(metadata))
 }
 
 /// Ensure the nonce is acceptable and the signature is authentic.
@@ -226,16 +222,9 @@ pub fn authenticate_tx(
 pub fn verify_nonce_and_signature(
     ctx: AuthCtx,
     tx: Tx,
-    maybe_factory: Option<Addr>,
+    user: &User,
     maybe_metadata: Option<Metadata>,
 ) -> anyhow::Result<()> {
-    // Query the chain for account factory's address, if it's not already done.
-    let factory = if let Some(factory) = maybe_factory {
-        factory
-    } else {
-        ctx.querier.query_account_factory()?
-    };
-
     // Deserialize the transaction metadata, if it's not already done.
     let metadata = if let Some(metadata) = maybe_metadata {
         metadata
@@ -334,10 +323,11 @@ pub fn verify_nonce_and_signature(
             };
 
             // Query the key by key hash and user index.
-            let key = ctx.querier.query_wasm_path(
-                factory,
-                &account_factory::KEYS.path((metadata.user_index, key_hash)),
-            )?;
+            let key = user
+                .keys
+                .get(&key_hash)
+                .copied()
+                .ok_or_else(|| anyhow!("user does not have a key with hash {key_hash}"))?;
 
             if let Some(session) = session_credential {
                 ensure!(
@@ -526,9 +516,11 @@ impl SignData for VerifyData {
 mod tests {
     use {
         super::*,
+        crate::account_factory::USERS,
         dango_types::config::{AppAddresses, AppConfig},
         grug::{
-            Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr, hash,
+            Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr,
+            btree_map, hash,
         },
         hex_literal::hex,
         std::str::FromStr,
@@ -599,12 +591,12 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, user_address))
-                    .unwrap();
-                account_factory::KEYS
-                    .save(storage, (user_index, user_keyhash), &user_key)
-                    .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: vec![user_address],
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             });
 
         let mut ctx = MockContext::new()
@@ -643,12 +635,12 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, user_address))
-                    .unwrap();
-                account_factory::KEYS
-                    .save(storage, (user_index, user_keyhash), &user_key)
-                    .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: vec![user_address],
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             });
 
         let mut ctx = MockContext::new()
@@ -745,12 +737,12 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, user_address))
-                    .unwrap();
-                account_factory::KEYS
-                    .save(storage, (user_index, user_keyhash), &user_key)
-                    .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: vec![user_address],
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             });
 
         // With account in the `Inactive` state. Should fail.
@@ -817,12 +809,12 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, user_address))
-                    .unwrap();
-                account_factory::KEYS
-                    .save(storage, (user_index, user_keyhash), &user_key)
-                    .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: vec![user_address],
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             });
 
         let mut ctx = MockContext::new()
@@ -899,12 +891,12 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, user_address))
-                    .unwrap();
-                account_factory::KEYS
-                    .save(storage, (user_index, user_keyhash), &user_key)
-                    .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: vec![user_address],
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             });
 
         let mut ctx = MockContext::new()
@@ -980,12 +972,12 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                account_factory::ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, user_address))
-                    .unwrap();
-                account_factory::KEYS
-                    .save(storage, (user_index, user_keyhash), &user_key)
-                    .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: vec![user_address],
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             });
 
         let mut ctx = MockContext::new()
