@@ -2,7 +2,7 @@ use {
     dango_account_factory::{ACCOUNT_COUNT_BY_USER, MAX_ACCOUNTS_PER_USER},
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
-        Factory, HyperlaneTestSuite, Preset, TestAccount, setup_test_naive,
+        Factory, HyperlaneTestSuite, Preset, TestAccount, constants::mock_solana, setup_test_naive,
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
@@ -16,7 +16,6 @@ use {
         Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
         Signer, StorageQuerier, Uint128, btree_map, coins,
     },
-    hyperlane_types::constants::solana,
 };
 
 /// Prior to PR [#1460](https://github.com/left-curve/left-curve/pull/1460),
@@ -98,8 +97,8 @@ fn onboarding_without_deposit() {
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
             &user,
             10_000_000, // Minimum deposit is 10_000_000. Need to send at this that amount.
         )
@@ -241,8 +240,8 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
             &user,
             10_000_000,
         )

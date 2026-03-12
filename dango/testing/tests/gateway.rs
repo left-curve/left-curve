@@ -1,5 +1,9 @@
 use {
-    dango_testing::{HyperlaneTestSuite, TestOption, TestSuite, setup_test},
+    dango_testing::{
+        HyperlaneTestSuite, TestOption, TestSuite,
+        constants::{mock_ethereum, mock_solana},
+        setup_test,
+    },
     dango_types::{
         constants::{dango, usdc},
         gateway::{self, Origin, RateLimit, Remote},
@@ -9,11 +13,7 @@ use {
         btree_map, btree_set, coins,
     },
     hyperlane_testing::MockValidatorSet,
-    hyperlane_types::{
-        Addr32,
-        constants::{ethereum, solana},
-        isms,
-    },
+    hyperlane_types::{Addr32, isms},
 };
 
 #[test]
@@ -44,8 +44,8 @@ fn rate_limit() {
     // sol_usdc => 200
     {
         for (domain, origin_warp, amount) in [
-            (ethereum::DOMAIN, ethereum::USDC_WARP, 100_000_000),
-            (solana::DOMAIN, solana::USDC_WARP, 200_000_000),
+            (mock_ethereum::DOMAIN, mock_ethereum::USDC_WARP, 100_000_000),
+            (mock_solana::DOMAIN, mock_solana::USDC_WARP, 200_000_000),
         ] {
             suite
                 .receive_warp_transfer(relayer, domain, origin_warp, receiver, amount)
@@ -90,8 +90,8 @@ fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: solana::DOMAIN,
-                    contract: solana::USDC_WARP,
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
             },
@@ -106,8 +106,8 @@ fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: solana::DOMAIN,
-                    contract: solana::USDC_WARP,
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
             },
@@ -119,8 +119,8 @@ fn rate_limit() {
     suite
         .receive_warp_transfer(
             relayer,
-            ethereum::DOMAIN,
-            ethereum::USDC_WARP,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -146,8 +146,8 @@ fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: ethereum::DOMAIN,
-                    contract: ethereum::USDC_WARP,
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::USDC_WARP,
                 },
                 recipient: mock_eth_recipient,
             },
@@ -162,8 +162,8 @@ fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: ethereum::DOMAIN,
-                    contract: ethereum::USDC_WARP,
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::USDC_WARP,
                 },
                 recipient: mock_eth_recipient,
             },
@@ -183,15 +183,15 @@ fn rate_limit() {
     for (remote, amount) in [
         (
             Remote::Warp {
-                domain: ethereum::DOMAIN,
-                contract: ethereum::USDC_WARP,
+                domain: mock_ethereum::DOMAIN,
+                contract: mock_ethereum::USDC_WARP,
             },
             100_000_000,
         ),
         (
             Remote::Warp {
-                domain: solana::DOMAIN,
-                contract: solana::USDC_WARP,
+                domain: mock_solana::DOMAIN,
+                contract: mock_solana::USDC_WARP,
             },
             170_000_000,
         ),
@@ -211,8 +211,8 @@ fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: solana::DOMAIN,
-                    contract: solana::USDC_WARP,
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
             },
@@ -227,8 +227,8 @@ fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: solana::DOMAIN,
-                    contract: solana::USDC_WARP,
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
             },
@@ -263,8 +263,8 @@ fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: solana::DOMAIN,
-                    contract: solana::USDC_WARP,
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
             },
@@ -280,8 +280,8 @@ fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: solana::DOMAIN,
-                    contract: solana::USDC_WARP,
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
             },

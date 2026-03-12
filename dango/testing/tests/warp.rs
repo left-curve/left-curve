@@ -1,7 +1,11 @@
 use {
     assertor::*,
     dango_gateway::REVERSE_ROUTES,
-    dango_testing::{HyperlaneTestSuite, TestOption, setup_test, setup_test_with_indexer},
+    dango_testing::{
+        HyperlaneTestSuite, TestOption,
+        constants::{mock_ethereum, mock_solana},
+        setup_test, setup_test_with_indexer,
+    },
     dango_types::{
         constants::{sol, usdc},
         gateway::{self, Remote},
@@ -15,7 +19,6 @@ use {
     hyperlane_testing::constants::MOCK_HYPERLANE_LOCAL_DOMAIN,
     hyperlane_types::{
         Addr32, IncrementalMerkleTree, addr32,
-        constants::{ethereum, solana},
         mailbox::{self, MAILBOX_VERSION, Message},
     },
     sea_orm::EntityTrait,
@@ -31,8 +34,8 @@ fn receiving_remote() {
     let message_id = suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            solana::DOMAIN,
-            solana::SOL_WARP,
+            mock_solana::DOMAIN,
+            mock_solana::SOL_WARP,
             &accounts.user1,
             Uint128::new(MOCK_RECEIVE_AMOUNT),
         )
@@ -77,8 +80,8 @@ async fn sending_remote() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: ethereum::DOMAIN,
-                    contract: ethereum::USDC_WARP,
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::USDC_WARP,
                 },
                 recipient: RECIPIENT,
             },
@@ -100,8 +103,8 @@ async fn sending_remote() {
                 nonce: 0,
                 origin_domain: MOCK_HYPERLANE_LOCAL_DOMAIN,
                 sender: contracts.warp.into(),
-                destination_domain: ethereum::DOMAIN,
-                recipient: ethereum::USDC_WARP,
+                destination_domain: mock_ethereum::DOMAIN,
+                recipient: mock_ethereum::USDC_WARP,
                 body: token_msg.encode(),
             };
 
@@ -175,8 +178,8 @@ fn sending_remote_incorrect_route() {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     const ETHEREUM_WETH_REMOTE: Remote = Remote::Warp {
-        domain: ethereum::DOMAIN,
-        contract: ethereum::ETH_WARP, // Wrong!!
+        domain: mock_ethereum::DOMAIN,
+        contract: mock_ethereum::ETH_WARP, // Wrong!!
     };
 
     const SEND_AMOUNT: u128 = 888_000_000;
@@ -209,8 +212,8 @@ fn sending_remote_insufficient_reserve() {
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     const SOLANA_USDC_REMOTE: Remote = Remote::Warp {
-        domain: solana::DOMAIN,
-        contract: solana::USDC_WARP,
+        domain: mock_solana::DOMAIN,
+        contract: mock_solana::USDC_WARP,
     };
 
     const SEND_AMOUNT: u128 = 888_000_000;
@@ -240,8 +243,8 @@ fn sending_remote_insufficient_reserve() {
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
             &accounts.user2,
             Uint128::new(SEND_AMOUNT + 100), // A little more than sufficient amount.
         )
