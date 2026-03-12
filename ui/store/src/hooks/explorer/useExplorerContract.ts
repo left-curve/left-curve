@@ -19,9 +19,7 @@ export function useExplorerContract(address: Address) {
         client.getBalances({ address }),
       ]);
 
-      const isAccount = Object.values(appConfig.accountFactory.codeHashes).includes(
-        contractInfo.codeHash,
-      );
+      const isAccount = appConfig.accountFactory.codeHash === contractInfo.codeHash;
 
       if (isAccount) return null;
 

@@ -4,7 +4,6 @@ import { refreshUserStatus as refreshUserStatusAction } from "./refreshUserStatu
 
 import type {
   Account,
-  AccountTypes,
   Address,
   KeyHash,
   Username,
@@ -15,12 +14,12 @@ import type { Chain, ChainId } from "@left-curve/dango/types";
 import type { Connector } from "../types/connector.js";
 import type { Config } from "../types/store.js";
 
-export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes> =
+export type GetAccountReturnType =
   | {
       username: Username;
       userIndex: number;
       keyHash: KeyHash;
-      account: Account<accounType>;
+      account: Account;
       accounts: readonly Account[];
       chain: Chain | undefined;
       chainId: ChainId;
@@ -40,7 +39,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       username: Username | undefined;
       userIndex: number | undefined;
       keyHash: KeyHash | undefined;
-      account: Account<accounType> | undefined;
+      account: Account | undefined;
       accounts: readonly Account[] | undefined;
       chain: Chain | undefined;
       chainId: ChainId | undefined;
@@ -60,7 +59,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       username: Username | undefined;
       userIndex: number | undefined;
       keyHash: KeyHash | undefined;
-      account: Account<accounType> | undefined;
+      account: Account | undefined;
       accounts: readonly Account[] | undefined;
       chain: Chain | undefined;
       chainId: ChainId | undefined;
@@ -118,10 +117,9 @@ const disconnected = {
   refreshUserStatus: undefined,
 } as const;
 
-export function getAccount<
-  accountType extends AccountTypes = AccountTypes,
-  config extends Config = Config,
->(config: config): GetAccountReturnType<accountType> {
+export function getAccount<config extends Config = Config>(
+  config: config,
+): GetAccountReturnType {
   const { chainId, connectors, status, userStatus } = config.state;
   const connectorUId = config.state.current!;
   const connection = connectors.get(connectorUId);
@@ -153,7 +151,7 @@ export function getAccount<
   const userIndex = config.state.userIndexAndName?.index;
   const isUserActive = userStatus === "active";
 
-  const account = acc as Account<accountType>;
+  const account = acc as Account;
   switch (status) {
     case "connected":
       return {

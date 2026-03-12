@@ -32,13 +32,6 @@ export {
 } from "./account-factory/index.js";
 
 export {
-  type SafeMutationActions,
-  safeMutationActions,
-  type SafeQueryActions,
-  safeQueryActions,
-} from "./safe/index.js";
-
-export {
   type GatewayMutationActions,
   gatewayMutationActions,
 } from "./gateway/gatewayActions.js";
@@ -104,12 +97,9 @@ export {
   type GetAccountSeenNoncesParameters,
   type GetAccountSeenNoncesReturnType,
   getAccountSeenNonces,
-  type GetAccountTypeCodeHashParameters,
-  type GetAccountTypeCodeHashReturnType,
-  getAccountTypeCodeHash,
-  type GetAccountTypeCodeHashesParameters,
-  type GetAccountTypeCodeHashesReturnType,
-  getAccountTypeCodeHashes,
+  type GetCodeHashParameters,
+  type GetCodeHashReturnType,
+  getCodeHash,
   type GetAccountsByUsernameParameters,
   type GetAccountsByUsernameReturnType,
   getAccountsByUsername,
@@ -174,36 +164,6 @@ export {
   type TransferRemoteReturnType,
   transferRemote,
 } from "./gateway/mutations/transferRemote.js";
-
-/* -------------------------------------------------------------------------- */
-/*                                Safe Actions                                */
-/* -------------------------------------------------------------------------- */
-
-export {
-  // queries
-  type SafeAccountGetProposalParameters,
-  type SafeAccountGetProposalReturnType,
-  safeAccountGetProposal,
-  type SafeAccountGetProposalsParameters,
-  type SafeAccountGetProposalsReturnType,
-  safeAccountGetProposals,
-  type SafeAccountGetVoteParameters,
-  type SafeAccountGetVoteReturnType,
-  safeAccountGetVote,
-  type SafeAccountGetVotesParameters,
-  type SafeAccountGetVotesReturnType,
-  safeAccountGetVotes,
-  // mutations
-  type SafeAccountExecuteParameters,
-  type SafeAccountExecuteReturnType,
-  safeAccountExecute,
-  type SafeAccountProposeParameters,
-  type SafeAccountProposeReturnType,
-  safeAccountPropose,
-  type SafeAccountVoteParameters,
-  type SafeAccountVoteReturnType,
-  safeAccountVote,
-} from "./safe/index.js";
 
 /* -------------------------------------------------------------------------- */
 /*                               Indexer Actions                              */

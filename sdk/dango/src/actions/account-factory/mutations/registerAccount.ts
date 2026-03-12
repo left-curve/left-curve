@@ -1,11 +1,9 @@
 import { getAppConfig } from "@left-curve/sdk";
-import { getMembersTypedData } from "../../../utils/typedData.js";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
 import { getAction } from "@left-curve/sdk/actions";
 import type { Address, Funds, Transport, TxParameters } from "@left-curve/sdk/types";
 import type {
-  AccountConfig,
   AppConfig,
   DangoClient,
   Signer,
@@ -14,7 +12,6 @@ import type {
 
 export type RegisterAccountParameters = {
   sender: Address;
-  config: AccountConfig;
   funds?: Funds;
 };
 
@@ -25,9 +22,9 @@ export async function registerAccount<transport extends Transport>(
   parameters: RegisterAccountParameters,
   txParameters: TxParameters = {},
 ): RegisterAccountReturnType {
-  const { sender, config, funds = {} } = parameters;
+  const { sender, funds = {} } = parameters;
   const { gasLimit } = txParameters;
-  const msg = { registerAccount: { params: config } };
+  const msg = { registerAccount: {} };
 
   const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
 
@@ -36,31 +33,7 @@ export async function registerAccount<transport extends Transport>(
   const typedData: TypedDataParameter = {
     type: [{ name: "register_account", type: "RegisterAccount" }],
     extraTypes: {
-      RegisterAccount: [{ name: "params", type: "AccountParams" }],
-      ...("single" in config
-        ? {
-            AccountParams: [{ name: "single", type: "SingleParams" }],
-            SingleParams: [{ name: "owner", type: "string" }],
-          }
-        : {}),
-      ...("multi" in config
-        ? {
-            AccountParams: [{ name: "multi", type: "SafeParams" }],
-            SafeParams: [
-              { name: "threshold", type: "uint32" },
-              { name: "votingPeriod", type: "uint256" },
-              { name: "timelock", type: "uint256" },
-              { name: "members", type: "Member" },
-            ],
-            Member: [...getMembersTypedData(config.multi.members)],
-          }
-        : {}),
-      ...("margin" in config
-        ? {
-            AccountParams: [{ name: "margin", type: "MarginParams" }],
-            MarginParams: [{ name: "owner", type: "string" }],
-          }
-        : {}),
+      RegisterAccount: [],
     },
   };
 

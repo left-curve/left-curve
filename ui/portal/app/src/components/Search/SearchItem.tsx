@@ -151,8 +151,8 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
 type SearchAccountItemProps = { account: Account };
 
 const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
-  const { username, address, type, index } = account;
-  const name = `${username} - ${type} #${index}`;
+  const { username, address, index } = account;
+  const name = `${username ? username : "Account"} #${index}`;
 
   return (
     <View className="w-full p-2 min-h-[74px] rounded-xs">

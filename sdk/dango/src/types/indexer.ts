@@ -1,5 +1,4 @@
 import type { Address, Hex, Json, JsonString, UID } from "@left-curve/sdk/types";
-import type { AccountTypes } from "./account.js";
 
 export type IndexedBlock = {
   blockHeight: number;
@@ -60,7 +59,6 @@ export type IndexedAccountEvent = {
   id: UID;
   accountIndex: number;
   address: Address;
-  accountType: AccountTypes;
   createdAt: string;
   createdBlockHeight: number;
 };
