@@ -101,7 +101,6 @@ export const Deposit: React.FC = () => {
 
         await signingClient.registerAccount({
           sender: account!.address,
-          config: { single: { owner: userIndex as number } },
           ...(Decimal(funds).gt(0) ? { funds: { "bridge/usdc": parsedAmount.toString() } } : {}),
         });
       },
@@ -120,7 +119,6 @@ export const Deposit: React.FC = () => {
           navigate,
           amount: parsedAmount,
           accountAddress: account.address,
-          accountType: account.accountType,
           accountName: `Account #${account.accountIndex}`,
           denom: "bridge/usdc",
         });

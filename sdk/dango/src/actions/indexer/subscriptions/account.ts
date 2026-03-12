@@ -38,7 +38,6 @@ export function accountSubscription<
       accounts(userIndex: $userIndex, sinceBlockHeight: $sinceBlockHeight) {
         accountIndex
         address
-        accountType
         createdAt
         createdBlockHeight
       }

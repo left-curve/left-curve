@@ -17,14 +17,8 @@ export type {
 
 export type {
   Account,
-  AccountConfig,
-  AccountConfigs,
   AccountIndex,
   AccountInfo,
-  AccountMultiConfig,
-  AccountParams,
-  AccountSingleConfig,
-  AccountTypes,
   User,
   Username,
   UserIndexAndName,
@@ -72,18 +66,6 @@ export type {
   XykParams,
   XykPool,
 } from "./pool.js";
-
-export type {
-  ExecutedStatus,
-  FailedStatus,
-  PassedStatus,
-  Power,
-  Proposal,
-  ProposalStatus,
-  ProposalId,
-  Safe,
-  VotingStatus,
-} from "./safe.js";
 
 export type {
   IndexedEvent,
@@ -175,11 +157,7 @@ export type { DataChannelConfig, DataChannelMessage } from "./webrtrc.js";
 
 export type { Price } from "./oracle.js";
 
-export { AccountType } from "./account.js";
-
 export { PoolType } from "./pool.js";
-
-export { Vote } from "./safe.js";
 
 export { Direction, CandleInterval, TimeInForceOption, OrderType } from "./dex.js";
 

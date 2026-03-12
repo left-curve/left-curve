@@ -2,7 +2,7 @@ import { useBalances, usePrices } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { type Account, AccountType, type AccountTypes } from "@left-curve/dango/types";
+import type { Account } from "@left-curve/dango/types";
 
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -18,21 +18,11 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-export const AccountCardOptions = {
-  [AccountType.Single]: {
-    text: "Single",
-    badge: "blue",
-    bgColor: "bg-account-card-red",
-    img: "/images/characters/dog.svg",
-    imgClassName: "opacity-60 right-[-2.9rem] bottom-[-4.3rem] scale-x-[-1] w-[14rem]",
-  },
-  [AccountType.Multi]: {
-    text: "Multisig",
-    badge: "green",
-    bgColor: "bg-account-card-blue",
-    img: "/images/characters/puppy.svg",
-    imgClassName: "opacity-50 right-[-1rem] bottom-[-4.3rem] w-[15.4rem]",
-  },
+const accountCardStyle = {
+  badge: "blue",
+  bgColor: "bg-account-card-red",
+  img: "/images/characters/dog.svg",
+  imgClassName: "opacity-60 right-[-2.9rem] bottom-[-4.3rem] scale-x-[-1] w-[14rem]",
 } as const;
 
 type AccountCardProps = {
@@ -52,11 +42,11 @@ const AccountCard: React.FC<AccountCardProps> = ({
   isSelectorActive,
   isUserActive,
 }) => {
-  const { address, type } = account;
+  const { address } = account;
   const name = `${m["common.account"]()} #${account?.index}`;
   const { showModal } = useApp();
 
-  const { bgColor, badge, img, imgClassName, text } = AccountCardOptions[type];
+  const { bgColor, badge, img, imgClassName } = accountCardStyle;
 
   return (
     <div
@@ -99,7 +89,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
         <div className="flex gap-1 items-center justify-between">
           <p className="exposure-m-italic capitalize">{name}</p>
           <Badge
-            text={isUserActive ? text : "Inactive"}
+            text={isUserActive ? "Active" : "Inactive"}
             color={isUserActive ? badge : "gray"}
             className="h-fit capitalize"
             size="s"
@@ -135,10 +125,9 @@ type AccountCardPreviewProps = {
 const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }) => {
   const { address } = account;
 
-  const type = account?.type as AccountTypes;
   const name = `${m["common.account"]()} #${account?.index}`;
 
-  const { bgColor, badge, text } = AccountCardOptions[type];
+  const { bgColor, badge } = accountCardStyle;
 
   const { data: balances = {} } = useBalances({ address });
   const { calculateBalance } = usePrices();
@@ -179,7 +168,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
         </div>
         <div className="flex flex-col gap-1 items-end">
           <p className="diatype-m-bold text-ink-tertiary-500">{totalBalance}</p>
-          <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
+          <Badge text="Active" color={badge} className="h-fit capitalize" size="s" />
         </div>
       </div>
     </div>

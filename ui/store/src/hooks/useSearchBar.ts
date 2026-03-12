@@ -106,9 +106,7 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
         promises.push(
           (async () => {
             const contractInfo = await client.getContractInfo({ address: searchText as Address });
-            const isAccount = Object.values(accountFactory.codeHashes).includes(
-              contractInfo.codeHash,
-            );
+            const isAccount = accountFactory.codeHash === contractInfo.codeHash;
 
             if (isAccount) {
               const account = await client.getAccountInfo({ address: searchText as Address });
