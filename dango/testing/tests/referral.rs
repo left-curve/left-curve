@@ -40,7 +40,7 @@ fn referral_during_user_register() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account_single.to_bytes().hash256(),
+        codes.account.to_bytes().hash256(),
         true,
     );
 
@@ -71,8 +71,6 @@ fn referral_during_user_register() {
             address: user.address(),
         })
         .should_succeed()
-        .params
-        .into_single()
         .owner;
 
     // Ensure the new user's referrer is User1.

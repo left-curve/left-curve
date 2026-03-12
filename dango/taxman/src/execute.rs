@@ -9,7 +9,9 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        account_factory::UserIndex,
+        account_factory::{
+            QueryAccountRequest, QueryAccountsByUserRequest, UserIndex, UserIndexOrName,
+        },
         bank,
         taxman::{
             CommissionRebound, Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee, Referee,
@@ -129,21 +131,21 @@ fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow
             VOLUMES_BY_USER,
             ctx.storage,
             account.owner,
-            timestamp,
+            day_timestamp,
             volume,
         )?;
 
         // Store the volume for the referral program if the user has a s referrer.
-        let Some(referrer) = REFEREE_TO_REFERRER.may_load(ctx.storage, params.owner)? else {
+        let Some(referrer) = REFEREE_TO_REFERRER.may_load(ctx.storage, account.owner)? else {
             continue;
         };
 
         // Update the cumulative volume for the referee.
         // NOTE: This is not the total volume the user has traded, but only the volume
         // the user traded since he has a referrer.
-        let mut referee_data = last_user_referral_data(ctx.storage, params.owner)?;
+        let mut referee_data = last_user_referral_data(ctx.storage, account.owner)?;
         referee_data.volume.checked_add_assign(volume)?;
-        USER_REFERRAL_DATA.save(ctx.storage, (params.owner, day_timestamp), &referee_data)?;
+        USER_REFERRAL_DATA.save(ctx.storage, (account.owner, day_timestamp), &referee_data)?;
 
         // Update the referees volumes by day for the referrer.
         let mut referrer_data = last_user_referral_data(ctx.storage, referrer)?;
@@ -153,7 +155,7 @@ fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow
         // Update the total volume the referee has traded for the referrer.
         REFERRER_TO_REFEREE_STATISTICS.update(
             ctx.storage,
-            (referrer, params.owner),
+            (referrer, account.owner),
             |mut data| {
                 data.volume.checked_add_assign(volume)?;
                 Ok::<_, StdError>(data)
@@ -194,13 +196,7 @@ fn set_referral(ctx: MutableCtx, referrer: Referrer, referee: Referee) -> anyhow
                 .query_wasm_smart(account_factory, QueryAccountRequest {
                     address: ctx.sender,
                 }) {
-                Ok(account) => {
-                    let AccountParams::Single(account_params) = account.params else {
-                        bail!("only single accounts can set referral");
-                    };
-
-                    account_params.owner
-                },
+                Ok(account) => account.index,
                 Err(_) => {
                     bail!("unable to retrieve account info for address {}", ctx.sender);
                 },
@@ -239,21 +235,17 @@ fn set_referral(ctx: MutableCtx, referrer: Referrer, referee: Referee) -> anyhow
 }
 
 fn set_share_ratio(ctx: MutableCtx, rate: ShareRatio) -> anyhow::Result<Response> {
-    let account_params = ctx
-        .querier
-        .query_wasm_smart(ctx.querier.query_account_factory()?, QueryAccountRequest {
+    let account = ctx.querier.query_wasm_smart(
+        ctx.querier.query_account_factory()?,
+        QueryAccountRequest {
             address: ctx.sender,
-        })?
-        .params;
-
-    let AccountParams::Single(params) = account_params else {
-        bail!("only single accounts can set fee share ratio");
-    };
+        },
+    )?;
 
     // In order to set the share ratio and be a referrer, the user must have
     // traded at least 10k.
     let traded_volume = VOLUMES_BY_USER
-        .prefix(params.owner)
+        .prefix(account.owner)
         .values(ctx.storage, None, None, Order::Descending)
         .next()
         .transpose()?
@@ -268,7 +260,7 @@ fn set_share_ratio(ctx: MutableCtx, rate: ShareRatio) -> anyhow::Result<Response
         traded_volume.into_int()
     );
 
-    FEE_SHARE_RATIO.may_update(ctx.storage, params.owner, |maybe_rate| {
+    FEE_SHARE_RATIO.may_update(ctx.storage, account.owner, |maybe_rate| {
         if let Some(existing_rate) = maybe_rate {
             ensure!(
                 rate.inner() >= existing_rate.inner(),
@@ -434,12 +426,7 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
     let mut referral_settings_cache = BTreeMap::new();
 
     for (address, coins) in payments {
-        let Some(account) = account_querier.query_account(address)? else {
-            continue;
-        };
-
-        // The rebate only applies to single accounts.
-        let AccountParams::Single(payer_account_params) = account.params.clone() else {
+        let Some(payer_account) = account_querier.query_account(address)? else {
             continue;
         };
 
@@ -461,7 +448,7 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
         // If the payer doesn't have a referrer, skip rebounding.
         let Some((first_referrer, first_referrer_settings)) = referrer_settings(
             ctx.storage,
-            payer_account_params.owner,
+            payer_account.owner,
             ctx.block,
             &mut referral_settings_cache,
         )?
@@ -499,13 +486,13 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
             &coins,
             CommissionRebound::new(payer_commission_rebound)?,
             &mut oracle_querier,
-            get_main_account(&ctx, account_factory, payer_account_params.owner)?,
+            get_main_account(&ctx, account_factory, payer_account.owner)?,
             &mut msgs,
         )?;
 
         if commission_rebound_value.is_non_zero() {
             // Retrieve the most recent record of the user's cumulative data.
-            let mut payer_data = last_user_referral_data(ctx.storage, payer_account_params.owner)?;
+            let mut payer_data = last_user_referral_data(ctx.storage, payer_account.owner)?;
 
             // Increase the commission rebounded value.
             payer_data
@@ -514,7 +501,7 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
 
             USER_REFERRAL_DATA.save(
                 ctx.storage,
-                (payer_account_params.owner, day_timestamp),
+                (payer_account.owner, day_timestamp),
                 &payer_data,
             )?;
         }
@@ -534,7 +521,7 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
 
         // Load the referrer to referee statistics.
         let mut referrer_to_referee_stats = REFERRER_TO_REFEREE_STATISTICS
-            .load(ctx.storage, (first_referrer, payer_account_params.owner))?;
+            .load(ctx.storage, (first_referrer, payer_account.owner))?;
 
         if commission_rebound_value.is_non_zero() {
             // Store the referee commission rebounded value.
@@ -568,7 +555,7 @@ fn fee_rebound(ctx: MutableCtx, payments: BTreeMap<Addr, Coins>) -> anyhow::Resu
 
         REFERRER_TO_REFEREE_STATISTICS.save(
             ctx.storage,
-            (first_referrer, payer_account_params.owner),
+            (first_referrer, payer_account.owner),
             &referrer_to_referee_stats,
         )?;
 
