@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { AddressVisualizer, Badge, IconNewAccount } from "@left-curve/applets-kit";
+import { AddressVisualizer, IconNewAccount } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -15,7 +15,7 @@ type ActivityAccountProps = {
 export const ActivityNewAccount = forwardRef<ActivityRef, ActivityAccountProps>(
   ({ activity }, _) => {
     const navigate = useNavigate();
-    const { address, accountType } = activity.data;
+    const { address } = activity.data;
 
     const onNavigate = (url: string) => {
       navigate({ to: url });
@@ -29,7 +29,6 @@ export const ActivityNewAccount = forwardRef<ActivityRef, ActivityAccountProps>(
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
           <div className="flex justify-start items-center gap-2 diatype-m-medium text-ink-secondary-700 capitalize">
             <p>{m["activities.activity.account.title"]()}</p>
-            <Badge className="capitalize" text={accountType} />
           </div>
           <AddressVisualizer address={address} withIcon onClick={onNavigate} />
         </div>

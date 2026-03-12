@@ -19,16 +19,10 @@ import {
 } from "./queries/getAccountSeenNonces.js";
 
 import {
-  type GetAccountTypeCodeHashParameters,
-  type GetAccountTypeCodeHashReturnType,
-  getAccountTypeCodeHash,
-} from "./queries/getAccountTypeCodeHash.js";
-
-import {
-  type GetAccountTypeCodeHashesParameters,
-  type GetAccountTypeCodeHashesReturnType,
-  getAccountTypeCodeHashes,
-} from "./queries/getAccountTypeCodeHashes.js";
+  type GetCodeHashParameters,
+  type GetCodeHashReturnType,
+  getCodeHash,
+} from "./queries/getCodeHash.js";
 
 import {
   type GetAccountsByUsernameParameters,
@@ -117,12 +111,7 @@ export type AccountFactoryQueryActions = {
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
   getAccountsByUsername: (args: GetAccountsByUsernameParameters) => GetAccountsByUsernameReturnType;
   getAccountSeenNonces: (args: GetAccountSeenNoncesParameters) => GetAccountSeenNoncesReturnType;
-  getAccountTypeCodeHash: (
-    args: GetAccountTypeCodeHashParameters,
-  ) => GetAccountTypeCodeHashReturnType;
-  getAccountTypeCodeHashes: (
-    args?: GetAccountTypeCodeHashesParameters,
-  ) => GetAccountTypeCodeHashesReturnType;
+  getCodeHash: (args?: GetCodeHashParameters) => GetCodeHashReturnType;
   getAllAccountInfo: (args: GetAllAccountInfoParameters) => GetAllAccountInfoReturnType;
   getKey: (args: GetKeyParameters) => GetKeyReturnType;
   getKeys: (args: GetKeysParameters) => GetKeysReturnType;
@@ -154,8 +143,7 @@ export function accountFactoryQueryActions<transport extends Transport = Transpo
     getAccountInfo: (args) => getAccountInfo(client, args),
     getAccountsByUsername: (args) => getAccountsByUsername(client, args),
     getAccountSeenNonces: (args) => getAccountSeenNonces(client, args),
-    getAccountTypeCodeHash: (args) => getAccountTypeCodeHash(client, args),
-    getAccountTypeCodeHashes: (args) => getAccountTypeCodeHashes(client, args),
+    getCodeHash: (args) => getCodeHash(client, args),
     getAllAccountInfo: (args) => getAllAccountInfo(client, args),
     getKey: (args) => getKey(client, args),
     getKeys: (args) => getKeys(client, args),

@@ -171,7 +171,7 @@ type SearchAccountItemProps = {
 
 const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
   const { isMd } = useMediaQuery();
-  const { username, address, type } = account;
+  const { username, address } = account;
 
   const name = `${username ? username : "Account"} #${account?.index}`;
 
@@ -183,7 +183,7 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src={`/images/emojis/simple/${type}.svg`} alt={type} className="w-12 h-12" />
+          <img src="/images/emojis/simple/hamster.svg" alt="account" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <p className="flex gap-2 diatype-m-medium">{name}</p>

@@ -6,7 +6,7 @@ import { forwardRef, useState } from "react";
 import { useDOMRef } from "../hooks/useDOMRef.js";
 import { useClickAway } from "../hooks/useClickAway.js";
 
-import { capitalize, wait } from "@left-curve/dango/utils";
+import { wait } from "@left-curve/dango/utils";
 import { twMerge } from "@left-curve/foundation";
 
 import { Input, type InputProps } from "./Input";
@@ -43,7 +43,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
 
         const options = Object.entries(accounts).map(([address, account]) => ({
           address,
-          accountName: `${capitalize(Object.keys(account.params).at(0) as string)} Account #${account.index}`,
+          accountName: `Account #${account.index}`,
         }));
 
         if (!options) return [];

@@ -9,20 +9,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
-import type { Account, AccountTypes } from "@left-curve/dango/types";
+import type { Account } from "@left-curve/dango/types";
 import type { PropsWithChildren } from "react";
 import { TextCopy } from "../foundation/TextCopy";
-import { AccountType } from "@left-curve/dango/types";
 
-const CARD_GRADIENTS = {
-  [AccountType.Multi]: {
-    light: ["#F6F6FB", "#DDDCEE", "#F6F6FB"],
-    dark: ["#373634", "#6E6D77", "#373634"],
-  },
-  [AccountType.Single]: {
-    light: ["#FFFBF5", "#F9E2E2", "#FFFBF4"],
-    dark: ["#494443", "#584D4E", "#322F2F"],
-  },
+const CARD_GRADIENT = {
+  light: ["#FFFBF5", "#F9E2E2", "#FFFBF4"],
+  dark: ["#494443", "#584D4E", "#322F2F"],
 } as const;
 
 export const CARD_IMAGES = {
@@ -31,31 +24,15 @@ export const CARD_IMAGES = {
   froggo: require("@left-curve/foundation/images/characters/froggo.svg"),
 };
 
-export const AccountCardOptions = {
-  [AccountType.Single]: {
-    text: "Single",
-    badge: "blue" as const,
-    Image: CARD_IMAGES.dog.default,
-    imageClassName: "opacity-60 right-[-6rem] bottom-[-20rem] scale-x-[-1] w-[17rem]",
-  },
-  [AccountType.Multi]: {
-    text: "Multisig",
-    badge: "green" as const,
-    Image: CARD_IMAGES.puppy.default,
-    imageClassName: "opacity-50 right-[-3rem] bottom-[-25rem] w-[21rem]",
-  },
+const accountCardStyle = {
+  badge: "blue" as const,
+  Image: CARD_IMAGES.dog.default,
+  imageClassName: "opacity-60 right-[-6rem] bottom-[-20rem] scale-x-[-1] w-[17rem]",
 } as const;
 
-type AccountCardContainerProps = {
-  variant: AccountTypes;
-};
-
-export const AccountCardContainer: React.FC<PropsWithChildren<AccountCardContainerProps>> = ({
-  variant,
-  children,
-}) => {
+export const AccountCardContainer: React.FC<PropsWithChildren> = ({ children }) => {
   const { theme } = useTheme();
-  const colors = CARD_GRADIENTS[variant][theme];
+  const colors = CARD_GRADIENT[theme];
 
   return (
     <View className="shadow relative overflow-hidden rounded-xl">
@@ -88,22 +65,20 @@ export const AccountCard: React.FC<AccountCardProps> = ({
   account,
   balance,
   balanceChange,
-  onTriggerAction,
-  isSelectorActive,
 }) => {
-  const { address, type, index } = account;
-  const name = `${type} #${index}`;
+  const { address, index } = account;
+  const name = `Account #${index}`;
 
-  const { badge, Image, imageClassName, text } = AccountCardOptions[type];
+  const { badge, Image, imageClassName } = accountCardStyle;
 
   return (
-    <AccountCardContainer variant={type}>
+    <AccountCardContainer>
       <Image className={twMerge("absolute", imageClassName)} />
 
       <View className="flex flex-col relative z-10">
         <View className="flex-row gap-1 items-center">
           <GlobalText className="exposure-l-italic capitalize">{name}</GlobalText>
-          <Badge text={text} color={badge} size="s" />
+          <Badge text="Active" color={badge} size="s" />
         </View>
 
         <View className="flex-row gap-1 items-center">
@@ -134,10 +109,9 @@ type AccountCardPreviewProps = {
 
 const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }) => {
   const { address, index } = account;
-  const type = account.type as AccountTypes;
-  const name = `${type} #${index}`;
+  const name = `Account #${index}`;
 
-  const { badge, text } = AccountCardOptions[type];
+  const { badge } = accountCardStyle;
 
   const totalBalance = 120;
 
@@ -170,7 +144,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
 
         <View className="flex-col gap-1 items-end">
           <GlobalText className="diatype-m-bold text-ink-tertiary-500">{totalBalance}</GlobalText>
-          <Badge text={text} color={badge} size="s" />
+          <Badge text="Active" color={badge} size="s" />
         </View>
       </View>
     </Pressable>

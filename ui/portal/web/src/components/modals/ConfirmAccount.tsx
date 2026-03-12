@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 
 import { Badge, Button, IconButton, IconChecked, IconClose, useApp } from "@left-curve/applets-kit";
 
-import { capitalize, formatUnits, wait } from "@left-curve/dango/utils";
+import { formatUnits, wait } from "@left-curve/dango/utils";
 import { useAccount, useConfig, usePrices } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -11,7 +11,6 @@ import type { useNavigate } from "@tanstack/react-router";
 
 type ConfirmAccountProps = {
   amount: string;
-  accountType: string;
   accountAddress: Address;
   accountName: string;
   navigate: ReturnType<typeof useNavigate>;
@@ -19,7 +18,7 @@ type ConfirmAccountProps = {
 };
 
 export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
-  ({ amount, accountName, accountType, accountAddress, denom, navigate }, _ref) => {
+  ({ amount, accountName, accountAddress, denom, navigate }, _ref) => {
     const { hideModal, settings } = useApp();
     const { refreshAccounts, changeAccount } = useAccount();
     const { formatNumberOptions } = settings;
@@ -57,7 +56,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
             </p>
             <div className="flex gap-1 items-center ">
               <p className=" text-ink-secondary-700 h3-bold">{accountName}</p>
-              <Badge text={capitalize(accountType)} color="blue" />
+              <Badge text="Active" color="blue" />
             </div>
           </div>
           <div className="flex flex-col gap-1 w-full">

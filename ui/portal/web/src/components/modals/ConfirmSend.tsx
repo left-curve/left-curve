@@ -36,9 +36,7 @@ export const ConfirmSend = forwardRef(
       queryFn: async () => {
         const response = await client.getAccountInfo({ address: to });
         if (!response) throw new Error("unexpected error: account not found");
-        const { index, params } = response;
-        const [type, config] = Object.entries(params)[0];
-        return `${type === "multi" ? "Multisig" : config.owner} #${index}`;
+        return `${response.username} #${response.index}`;
       },
     });
 
