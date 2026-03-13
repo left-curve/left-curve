@@ -10,13 +10,14 @@ use {
         account,
         account_factory::{
             Account, AccountOwned, AccountRegistered, ExecuteMsg, InstantiateMsg, KeyDisowned,
-            KeyOwned, NewUserSalt, RegisterUserData, Salt, UserRegistered, Username,
+            KeyOwned, NewUserSalt, RegisterUserData, Salt, UserIndex, UserRegistered, Username,
         },
         auth::{Key, Signature},
+        taxman,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
+        MsgExecute, MutableCtx, Op, Order, QuerierExt, Response, StdResult, Storage, Tx,
     },
 };
 
@@ -124,7 +125,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
             seed,
             signature,
-        } => register_user(ctx, key, key_hash, seed, signature),
+            referrer,
+        } => register_user(ctx, key, key_hash, seed, signature, referrer),
         ExecuteMsg::RegisterAccount {} => register_account(ctx),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
@@ -137,6 +139,7 @@ fn register_user(
     key_hash: Hash256,
     seed: u32,
     signature: Signature,
+    referrer: Option<UserIndex>,
 ) -> anyhow::Result<Response> {
     // Verify the signature is valid.
     verify_signature(
@@ -155,8 +158,23 @@ fn register_user(
     KEYS.save(ctx.storage, (user_registered.user_index, key_hash), &key)?;
     USERS_BY_KEY.insert(ctx.storage, (key_hash, user_registered.user_index))?;
 
+    // If a referrer index is provided, register the referral relationship.
+    let maybe_referral_msg = if let Some(referrer) = referrer {
+        Some(Message::execute(
+            ctx.querier.query_taxman()?,
+            &taxman::ExecuteMsg::SetReferral {
+                referrer,
+                referee: user_registered.user_index,
+            },
+            Coins::default(),
+        )?)
+    } else {
+        None
+    };
+
     Ok(Response::new()
         .add_message(msg)
+        .may_add_message(maybe_referral_msg)
         .add_event(user_registered)?
         .add_event(account_registered)?)
 }

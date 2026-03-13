@@ -11,6 +11,7 @@ rust-version  = { workspace = true }
 [dependencies]
 borsh                 = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
+dango-taxman          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
 grug-app              = { workspace = true }
