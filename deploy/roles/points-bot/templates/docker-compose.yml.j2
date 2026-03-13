@@ -1,0 +1,18 @@
+services:
+  points:
+    image: {{ points_bot_image }}:{{ points_bot_tag }}
+    pull_policy: always
+    container_name: points-bot-{{ network }}
+    restart: always
+    command: ["points", "start"]
+    environment:
+      - alchemy_api_key={{ points_bot_alchemy_keys[network] }}
+    volumes:
+      - ./config.json:/root/.dango-points/config.json
+      - ./db:/root/.dango-points/db
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true

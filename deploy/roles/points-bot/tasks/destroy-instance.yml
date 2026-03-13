@@ -1,0 +1,17 @@
+---
+- name: "{{ network }} - Stop and remove stack"
+  community.docker.docker_compose_v2:
+    project_src: "{{ points_bot_dir }}/{{ network }}"
+    state: absent
+    remove_orphans: true
+  ignore_errors: true
+
+- name: "{{ network }} - Remove directory"
+  file:
+    path: "{{ points_bot_dir }}/{{ network }}"
+    state: absent
+
+- name: "{{ network }} - Remove Traefik route"
+  file:
+    path: "{{ traefik_dir }}/config/points-{{ network }}.yml"
+    state: absent

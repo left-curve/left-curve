@@ -10,6 +10,9 @@ edit-secrets:
 edit-hyperlane-secrets:
   ansible-vault edit group_vars/hyperlane/vault.yml
 
+edit-points-bot-secrets:
+  EDITOR="cursor --wait" ansible-vault edit group_vars/points-bot/vault.yml
+
 # Print validator address from AWS KMS (cast)
 # Usage: just hyperlane-kms-address testnet 1
 hyperlane-kms-address network index:
@@ -96,6 +99,12 @@ deploy-preview-latest:
 
 delete-pr number:
   ansible-playbook delete-full-app.yml -e deployment_name=pr-{{number}}
+
+deploy-points-bot-devnet:
+  ansible-playbook points-bot.yml -e '{"points_bot_networks": ["devnet"]}' --limit 100.107.248.71
+
+delete-points-bot-devnet:
+  ansible-playbook delete-points-bot.yml -e '{"points_bot_networks": ["devnet"]}' --limit 100.107.248.71
 
 deploy-dozzle:
   ansible-playbook dozzle.yml
