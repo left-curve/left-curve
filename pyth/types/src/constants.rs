@@ -3,7 +3,11 @@ use {
     pyth_lazer_protocol::{api::Channel, time::FixedRate},
 };
 
-pub const LAZER_ENDPOINTS_TEST: [&str; 1] = ["wss://pyth-lazer-0.dourolabs.app/v1/stream"];
+pub const LAZER_ENDPOINTS_TEST: [&str; 3] = [
+    "wss://pyth-lazer-0.dourolabs.app/v1/stream",
+    "wss://pyth-lazer-1.dourolabs.app/v1/stream",
+    "wss://pyth-lazer-2.dourolabs.app/v1/stream",
+];
 
 pub const LAZER_TRUSTED_SIGNER: &str = "A6Q4DwETbrJkD5DBfh4xngK7r77vLm5n3EivU/mCfhVb";
 
