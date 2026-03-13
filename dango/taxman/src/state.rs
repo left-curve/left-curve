@@ -1,7 +1,10 @@
 use {
     dango_types::{
         account_factory::UserIndex,
-        taxman::{Config, Referee, RefereeStats, Referrer, ShareRatio, UserReferralData},
+        taxman::{
+            CommissionRebound, Config, Referee, RefereeStats, Referrer, ShareRatio,
+            UserReferralData,
+        },
     },
     grug::{IndexedMap, Item, Map, MultiIndex, Timestamp, Udec128, Udec128_6, Uint128},
 };
@@ -32,6 +35,11 @@ pub const FEE_SHARE_RATIO: Map<Referrer, ShareRatio> = Map::new("fee_share_ratio
 /// Stores the total (cumulative) data for an user related to the referral program by day.
 pub const USER_REFERRAL_DATA: Map<(UserIndex, Timestamp), UserReferralData> =
     Map::new("user_referral_data");
+
+/// Per-user commission rebound override. If a user is in this map,
+/// this value is used instead of the volume-based tier calculation.
+pub const COMMISSION_REBOUND_OVERRIDES: Map<UserIndex, CommissionRebound> =
+    Map::new("commission_rebound_overrides");
 
 /// Stores the statistics of referees for each referrer.
 pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<

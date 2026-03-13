@@ -175,6 +175,13 @@ pub enum ExecuteMsg {
     /// Callable by referrers.
     /// NOTE: Can only increase, not decrease. Prevent referrers from rugging referees.
     SetFeeShareRatio(ShareRatio),
+    /// Set or remove a per-user commission rebound override.
+    /// Can only be called by the chain's owner.
+    SetCommissionReboundOverride {
+        user: UserIndex,
+        /// `Some` to set an override, `None` to remove it.
+        commission_rebound: Option<CommissionRebound>,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]

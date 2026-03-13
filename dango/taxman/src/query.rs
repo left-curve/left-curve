@@ -1,7 +1,7 @@
 use {
     crate::{
-        CONFIG, FEE_SHARE_RATIO, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS,
-        USER_REFERRAL_DATA, VOLUMES_BY_USER,
+        COMMISSION_REBOUND_OVERRIDES, CONFIG, FEE_SHARE_RATIO, REFEREE_TO_REFERRER,
+        REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, VOLUMES_BY_USER,
     },
     dango_types::{
         account_factory::UserIndex,
@@ -246,6 +246,11 @@ fn calculate_commission_rebound(
     referrer: Referrer,
     block_info: BlockInfo,
 ) -> anyhow::Result<CommissionRebound> {
+    // If the referrer has a custom override, use it directly.
+    if let Some(override_rebound) = COMMISSION_REBOUND_OVERRIDES.may_load(storage, referrer)? {
+        return Ok(override_rebound);
+    }
+
     // Retrieve the last user data for the referrer.
     let data_last = last_user_referral_data(storage, referrer)?;
 

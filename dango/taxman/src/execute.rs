@@ -1,8 +1,8 @@
 use {
     crate::{
-        CONFIG, FEE_SHARE_RATIO, MAX_REFERRER_CHAIN_DEPTH, REFEREE_TO_REFERRER,
-        REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, VOLUMES_BY_USER, WITHHELD_FEE,
-        last_user_referral_data, referral_settings,
+        COMMISSION_REBOUND_OVERRIDES, CONFIG, FEE_SHARE_RATIO, MAX_REFERRER_CHAIN_DEPTH,
+        REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, VOLUMES_BY_USER,
+        WITHHELD_FEE, last_user_referral_data, referral_settings,
     },
     anyhow::{bail, ensure},
     dango_account_factory::AccountQuerier,
@@ -42,6 +42,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::ReportVolumes(volumes) => report_volumes(ctx, volumes),
         ExecuteMsg::SetReferral { referrer, referee } => set_referral(ctx, referrer, referee),
         ExecuteMsg::SetFeeShareRatio(bounded) => set_share_ratio(ctx, bounded),
+        ExecuteMsg::SetCommissionReboundOverride {
+            user,
+            commission_rebound,
+        } => set_commission_rebound_override(ctx, user, commission_rebound),
     }
 }
 
@@ -232,6 +236,24 @@ fn set_referral(ctx: MutableCtx, referrer: Referrer, referee: Referee) -> anyhow
     USER_REFERRAL_DATA.save(ctx.storage, (referrer, day_timestamp), &referrer_data)?;
 
     Ok(Response::new().add_event(Referral { referrer, referee })?)
+}
+
+fn set_commission_rebound_override(
+    ctx: MutableCtx,
+    user: UserIndex,
+    commission_rebound: Option<CommissionRebound>,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    match commission_rebound {
+        Some(rebound) => COMMISSION_REBOUND_OVERRIDES.save(ctx.storage, user, &rebound)?,
+        None => COMMISSION_REBOUND_OVERRIDES.remove(ctx.storage, user),
+    }
+
+    Ok(Response::new())
 }
 
 fn set_share_ratio(ctx: MutableCtx, rate: ShareRatio) -> anyhow::Result<Response> {
