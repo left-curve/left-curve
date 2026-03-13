@@ -4319,6 +4319,7 @@ version = "0.0.0"
 dependencies = [
  "borsh",
  "dango-account-factory",
+ "dango-taxman",
  "dango-types",
  "grug",
  "grug-app",
