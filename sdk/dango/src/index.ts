@@ -52,8 +52,4 @@ export {
   type AccountFactoryQueryActions,
   accountFactoryMutationActions,
   accountFactoryQueryActions,
-  type SafeMutationActions,
-  safeMutationActions,
-  type SafeQueryActions,
-  safeQueryActions,
 } from "./actions/index.js";

@@ -8,7 +8,6 @@ export {
 
 export {
   getCoinsTypedData,
-  getMembersTypedData,
   composeTxTypedData,
   composeArbitraryTypedData,
 } from "./typedData.js";

@@ -11,7 +11,6 @@ import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
 import type {
-  AccountTypes,
   Address,
   AppConfig,
   Client,
@@ -139,7 +138,7 @@ export function createConfig<
   let _appConfig:
     | ({
         addresses: Flatten<AppConfig["addresses"]> & Record<Address, string>;
-        accountFactory: { codeHashes: Record<AccountTypes, Hex> };
+        accountFactory: { codeHash: Hex };
         pairs: Record<Denom, PairUpdate>;
       } & Omit<AppConfig, "addresses">)
     | undefined;
@@ -147,9 +146,9 @@ export function createConfig<
   async function getAppConfig() {
     if (_appConfig) return _appConfig;
     const client = getClient() as PublicClient;
-    const [appConfig, codeHashes, pairs] = await Promise.all([
+    const [appConfig, codeHash, pairs] = await Promise.all([
       client.getAppConfig(),
-      client.getAccountTypeCodeHashes(),
+      client.getCodeHash(),
       client.getPairs(),
     ]);
 
@@ -161,7 +160,7 @@ export function createConfig<
         ...addresses,
         ...invertObject(addresses),
       },
-      accountFactory: { codeHashes },
+      accountFactory: { codeHash },
       pairs: pairs.reduce((acc, pair) => {
         acc[pair.baseDenom] = pair;
         return acc;

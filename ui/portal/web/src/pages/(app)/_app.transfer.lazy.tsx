@@ -34,7 +34,7 @@ import { WarningTransferAccounts } from "~/components/transfer/WarningTransferAc
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { isValidAddress } from "@left-curve/dango";
-import { capitalize, parseUnits, wait, withResolvers } from "@left-curve/dango/utils";
+import { parseUnits, wait, withResolvers } from "@left-curve/dango/utils";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
   component: TransferApplet,
@@ -218,7 +218,7 @@ function TransferApplet() {
               <div className="flex flex-col w-full gap-4">
                 <div className="flex flex-col w-full gap-6 items-center justify-center text-center ">
                   <div className="flex flex-col gap-1 items-center">
-                    <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
+                    <p className="exposure-h3-italic">{`Account #${account?.index}`}</p>
                     <div className="flex gap-1">
                       <TruncateText
                         className="diatype-sm-medium text-ink-tertiary-500"

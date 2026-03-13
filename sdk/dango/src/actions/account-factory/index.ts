@@ -21,16 +21,10 @@ export {
 } from "./queries/getAccountSeenNonces.js";
 
 export {
-  type GetAccountTypeCodeHashParameters,
-  type GetAccountTypeCodeHashReturnType,
-  getAccountTypeCodeHash,
-} from "./queries/getAccountTypeCodeHash.js";
-
-export {
-  type GetAccountTypeCodeHashesParameters,
-  type GetAccountTypeCodeHashesReturnType,
-  getAccountTypeCodeHashes,
-} from "./queries/getAccountTypeCodeHashes.js";
+  type GetCodeHashParameters,
+  type GetCodeHashReturnType,
+  getCodeHash,
+} from "./queries/getCodeHash.js";
 
 export {
   type GetAllAccountInfoParameters,

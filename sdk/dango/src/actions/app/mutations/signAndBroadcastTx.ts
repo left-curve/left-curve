@@ -6,7 +6,6 @@ import { getAccountInfo } from "../../account-factory/queries/getAccountInfo.js"
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
 import type {
-  AccountSingleConfig,
   DangoClient,
   Signer,
   TxMessageType,
@@ -44,13 +43,9 @@ export async function signAndBroadcastTx<transport extends Transport>(
 
   if (!account) throw new Error("account not found");
 
-  const { owner } = account.params[
-    account.type as keyof typeof account.params
-  ] as AccountSingleConfig;
-
   const metadata = {
     chainId,
-    userIndex: owner,
+    userIndex: account.owner,
     nonce,
   };
 

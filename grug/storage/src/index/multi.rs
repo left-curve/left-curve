@@ -1,4 +1,5 @@
 use {
+    super::Indexer,
     crate::{
         Borsh, Codec, Index, Map, Prefix, PrefixBound, Prefixer, PrimaryKey, Set, split_first_key,
     },
@@ -16,7 +17,7 @@ where
     IK: PrimaryKey + Prefixer,
     C: Codec<T>,
 {
-    indexer: fn(&PK, &T) -> IK,
+    indexer: Indexer<PK, IK, T>,
     // The index set uses Borsh regardless of which codec the primary map uses.
     index_set: Set<'a, (IK, PK)>,
     primary_map: Map<'a, PK, T, C>,
@@ -34,7 +35,21 @@ where
         idx_namespace: &'static str,
     ) -> Self {
         MultiIndex {
-            indexer,
+            indexer: Indexer::Single(indexer),
+            index_set: Set::new(idx_namespace),
+            primary_map: Map::new(pk_namespace),
+        }
+    }
+
+    /// Create a `MultiIndex` with an indexer that returns multiple index keys
+    /// per record.
+    pub const fn new2(
+        indexer: fn(&PK, &T) -> Vec<IK>,
+        pk_namespace: &'a str,
+        idx_namespace: &'static str,
+    ) -> Self {
+        MultiIndex {
+            indexer: Indexer::Multi(indexer),
             index_set: Set::new(idx_namespace),
             primary_map: Map::new(pk_namespace),
         }
@@ -296,18 +311,37 @@ where
 
 impl<PK, IK, T, C> Index<PK, T> for MultiIndex<'_, PK, IK, T, C>
 where
-    PK: PrimaryKey,
+    PK: PrimaryKey + Clone,
     IK: PrimaryKey + Prefixer,
     C: Codec<T>,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
-        let idx = (self.indexer)(&pk, data);
-        self.index_set.insert(storage, (idx, pk))
+        match &self.indexer {
+            Indexer::Single(f) => {
+                let idx = f(&pk, data);
+                self.index_set.insert(storage, (idx, pk))
+            },
+            Indexer::Multi(f) => {
+                for idx in f(&pk, data) {
+                    self.index_set.insert(storage, (idx, pk.clone()))?;
+                }
+                Ok(())
+            },
+        }
     }
 
     fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
-        let idx = (self.indexer)(&pk, old_data);
-        self.index_set.remove(storage, (idx, pk))
+        match &self.indexer {
+            Indexer::Single(f) => {
+                let idx = f(&pk, old_data);
+                self.index_set.remove(storage, (idx, pk));
+            },
+            Indexer::Multi(f) => {
+                for idx in f(&pk, old_data) {
+                    self.index_set.remove(storage, (idx, pk.clone()));
+                }
+            },
+        }
     }
 
     fn clear_all(&self, storage: &mut dyn Storage) {
