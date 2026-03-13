@@ -1,4 +1,5 @@
 use {
+    super::Indexer,
     crate::{Borsh, Codec, Index, Map, PrimaryKey, Raw},
     grug_types::{Bound, Order, StdError, StdResult, Storage},
 };
@@ -18,9 +19,9 @@ where
     IK: PrimaryKey + Clone,
     C: Codec<T>,
 {
-    /// A function that takes a key-value pair, and return the index key it
+    /// A function that takes a key-value pair, and returns the index key(s) it
     /// should be indexed at.
-    indexer: fn(&PK, &T) -> IK,
+    indexer: Indexer<PK, IK, T>,
     // Index => _raw_ primary key
     index_map: Map<'a, IK, Vec<u8>, Raw>,
     // Primary key => data
@@ -41,7 +42,21 @@ where
         idx_namespace: &'static str,
     ) -> Self {
         UniqueIndex {
-            indexer,
+            indexer: Indexer::Single(indexer),
+            index_map: Map::new(idx_namespace),
+            primary_map: Map::new(pk_namespace),
+        }
+    }
+
+    /// Create a `UniqueIndex` with an indexer that returns multiple index keys
+    /// per record.
+    pub const fn new2(
+        indexer: fn(&PK, &T) -> Vec<IK>,
+        pk_namespace: &'static str,
+        idx_namespace: &'static str,
+    ) -> Self {
+        UniqueIndex {
+            indexer: Indexer::Multi(indexer),
             index_map: Map::new(idx_namespace),
             primary_map: Map::new(pk_namespace),
         }
@@ -252,20 +267,38 @@ where
     C: Codec<T>,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
-        let idx = (self.indexer)(&pk, data);
-
-        // Ensure that indexes are unique.
-        if self.index_map.has(storage, idx.clone()) {
-            return Err(StdError::duplicate_data::<IK>());
+        let raw_pk = pk.joined_key();
+        match &self.indexer {
+            Indexer::Single(f) => {
+                let idx = f(&pk, data);
+                if self.index_map.has(storage, idx.clone()) {
+                    return Err(StdError::duplicate_data::<IK>());
+                }
+                self.index_map.save(storage, idx, &raw_pk)
+            },
+            Indexer::Multi(f) => {
+                for idx in f(&pk, data) {
+                    if self.index_map.has(storage, idx.clone()) {
+                        return Err(StdError::duplicate_data::<IK>());
+                    }
+                    self.index_map.save(storage, idx, &raw_pk)?;
+                }
+                Ok(())
+            },
         }
-
-        self.index_map.save(storage, idx, &pk.joined_key())
     }
 
     fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
-        let idx = (self.indexer)(&pk, old_data);
-
-        self.index_map.remove(storage, idx)
+        match &self.indexer {
+            Indexer::Single(f) => {
+                self.index_map.remove(storage, f(&pk, old_data));
+            },
+            Indexer::Multi(f) => {
+                for idx in f(&pk, old_data) {
+                    self.index_map.remove(storage, idx);
+                }
+            },
+        }
     }
 
     fn clear_all(&self, storage: &mut dyn Storage) {
