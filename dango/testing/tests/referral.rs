@@ -543,6 +543,175 @@ fn commission_rebound_tier() {
 }
 
 #[test]
+fn commission_rebound_override() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test(TestOption::preset_test());
+
+    let mut taxman_config = suite
+        .query_wasm_smart(contracts.taxman, QueryConfigRequest {})
+        .should_succeed();
+
+    // Set the commission rebound config.
+    taxman_config.referral.commission_rebound_default =
+        CommissionRebound::new_unchecked(Udec128::new_percent(10));
+
+    taxman_config.referral.commission_rebound_by_volume = btree_map! {
+        Udec128::new(100  * 10_u128.pow(usdc::DECIMAL)) => CommissionRebound::new_unchecked(Udec128::new_percent(20)),
+    };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.taxman,
+            &taxman::ExecuteMsg::Configure {
+                new_cfg: taxman_config.clone(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Setup: oracle feed price, set share ratio for user1, create ask limit order, set referral.
+    let user1_fee_share = Udec128::checked_from_ratio(2, 10).unwrap();
+    let eth_human_price = 1000;
+
+    {
+        // Feed price to oracle.
+        suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                eth::DENOM.clone() => oracle::PriceSource::Fixed { humanized_price: Udec128::new(eth_human_price), precision: 18, timestamp: Duration::from_weeks(1) },
+                usdc::DENOM.clone() => oracle::PriceSource::Fixed { humanized_price: Udec128::new(1), precision: 6, timestamp: Duration::from_weeks(1) },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+        // Set share ratio for User1 to 20%.
+        set_share_ratio(
+            &mut suite,
+            contracts.taxman,
+            &mut accounts.user1,
+            user1_fee_share,
+        )
+        .should_succeed();
+
+        // Create a ask limit order with user1.
+        let amount = Uint128::new(10 * 10_u128.pow(eth::DECIMAL)); // 10 ETH
+        let order = CreateOrderRequest::new_limit(
+            eth::DENOM.clone(),
+            usdc::DENOM.clone(),
+            dex::Direction::Ask,
+            NonZero::new(
+                Price::checked_from_ratio(1000, 10_u128.pow(eth::DECIMAL - usdc::DECIMAL)).unwrap(),
+            )
+            .unwrap(),
+            NonZero::new(amount).unwrap(),
+        );
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates: vec![order],
+                    cancels: None,
+                },
+                Coin::new(eth::DENOM.clone(), amount).unwrap(),
+            )
+            .should_succeed();
+
+        // user1 -> user2
+        suite
+            .execute(
+                &mut accounts.user2,
+                contracts.taxman,
+                &taxman::ExecuteMsg::SetReferral {
+                    referrer: 1,
+                    referee: 2,
+                },
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Verify baseline: commission rebound should be 10% (default, no volume yet).
+    let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
+    assert_eq!(
+        referral_settings.commission_rebound.into_inner(),
+        Udec128::new_percent(10)
+    );
+
+    // Non-owner cannot set override.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.taxman,
+            &taxman::ExecuteMsg::SetCommissionReboundOverride {
+                user: 1,
+                commission_rebound: Some(CommissionRebound::new_unchecked(Udec128::new_percent(
+                    50,
+                ))),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("you don't have the right");
+
+    // Owner sets override to 50%.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.taxman,
+            &taxman::ExecuteMsg::SetCommissionReboundOverride {
+                user: 1,
+                commission_rebound: Some(CommissionRebound::new_unchecked(Udec128::new_percent(
+                    50,
+                ))),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify override takes effect: commission rebound should now be 50%.
+    let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
+    assert_eq!(
+        referral_settings.commission_rebound.into_inner(),
+        Udec128::new_percent(50)
+    );
+
+    // Generate volume that would normally change tier to 20% (100 USDC).
+    let usdc_amount = Uint128::new(100 * 10_u128.pow(usdc::DECIMAL));
+    create_bid_order(&mut suite, contracts.dex, &mut accounts.user2, usdc_amount);
+
+    // Override should still take precedence: commission rebound should remain 50%.
+    let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
+    assert_eq!(
+        referral_settings.commission_rebound.into_inner(),
+        Udec128::new_percent(50)
+    );
+
+    // Owner removes override.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.taxman,
+            &taxman::ExecuteMsg::SetCommissionReboundOverride {
+                user: 1,
+                commission_rebound: None,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Volume-based calculation resumes: should now be 20% (100+ USDC traded).
+    let referral_settings = query_referral_settings(&suite, contracts.taxman, 1).unwrap();
+    assert_eq!(
+        referral_settings.commission_rebound.into_inner(),
+        Udec128::new_percent(20)
+    );
+}
+
+#[test]
 fn commission_rebound_coins() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test(TestOption::preset_test());
 
