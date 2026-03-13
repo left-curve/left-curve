@@ -8,6 +8,7 @@ declare global {
         faucetUrl: string;
         questUrl: string;
         upUrl: string;
+        pointsUrl: string;
       };
       banner?: string;
       enabledFeatures?: string[];

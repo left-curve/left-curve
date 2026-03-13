@@ -18,7 +18,6 @@ const VariantConfig: Record<
     badgeColor: "red" | "green" | "rice" | "blue";
     tooltip: string;
     imageShadow: string;
-    threshold: number;
   }
 > = {
   bronze: {
@@ -27,7 +26,6 @@ const VariantConfig: Record<
     tooltip: "Receive a Bronze chest for every $25k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#C96A1D66)_drop-shadow(0px_1px_24px_#FFA72C4D)]",
-    threshold: 25_000,
   },
   silver: {
     label: "Silver",
@@ -35,7 +33,6 @@ const VariantConfig: Record<
     tooltip: "Receive a Silver chest for every $100k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#80850680)_drop-shadow(0px_1px_24px_#B8BE0833)]",
-    threshold: 100_000,
   },
   gold: {
     label: "Gold",
@@ -43,7 +40,6 @@ const VariantConfig: Record<
     tooltip: "Receive a Gold chest for every $250k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#E3BD6666)_drop-shadow(0px_1px_24px_#DCA54333)]",
-    threshold: 250_000,
   },
   crystal: {
     label: "Crystal",
@@ -51,13 +47,12 @@ const VariantConfig: Record<
     tooltip: "Receive a Crystal chest for every $500k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#BCB8EB80)_drop-shadow(0px_1px_24px_#FFFFFF4D)]",
-    threshold: 500_000,
   },
 };
 
 type BoxCardProps = {
   variant: BoxVariant;
-  volume: number;
+  quantity: number;
   className?: string;
   onClick?: () => void;
 };
@@ -65,23 +60,17 @@ type BoxCardProps = {
 export const BoxCard: React.FC<BoxCardProps> = ({
   className,
   onClick,
-  volume,
+  quantity,
   variant,
 }) => {
   const { isLg } = useMediaQuery();
-  const { badgeColor, imageShadow, label, threshold } = VariantConfig[variant];
+  const { badgeColor, imageShadow, label } = VariantConfig[variant];
 
-  const quantity = Math.max(Math.floor(volume / threshold), 0);
   const isLocked = quantity < 1;
 
   const handleClick = () => {
     if (isLocked) return;
     onClick?.();
-    if (!onClick) {
-      // Temporary action until a real handler is provided.
-      // eslint-disable-next-line no-console
-      console.log(`BoxCard clicked: ${variant}`);
-    }
   };
 
   return (

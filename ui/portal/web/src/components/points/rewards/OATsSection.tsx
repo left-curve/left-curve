@@ -1,19 +1,29 @@
 import { Button, IconFlash, IconTimer, useMediaQuery } from "@left-curve/applets-kit";
 import type React from "react";
-import { OATCard } from "./OATCard";
+import { OATCard, type OATType } from "./OATCard";
+
+type OATStatus = {
+  type: OATType;
+  isLocked: boolean;
+};
 
 type OATsSectionProps = {
-  pointsBoost?: number;
+  oatStatuses: OATStatus[];
+  oatCount: number;
   endsIn?: string;
   onLinkWallet?: () => void;
 };
 
+const POINTS_BOOST_PER_OAT = 25;
+
 export const OATsSection: React.FC<OATsSectionProps> = ({
-  pointsBoost = 100,
+  oatStatuses,
+  oatCount,
   endsIn = "2 days 21:24:32",
   onLinkWallet,
 }) => {
   const { isLg } = useMediaQuery();
+  const pointsBoost = oatCount * POINTS_BOOST_PER_OAT;
 
   return (
     <div className="flex flex-col gap-4">
@@ -35,10 +45,9 @@ export const OATsSection: React.FC<OATsSectionProps> = ({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
-        <OATCard type="hurrah" isLocked={false} />
-        <OATCard type="trader" isLocked={false} />
-        <OATCard type="wizard" isLocked={true} />
-        <OATCard type="supporter" isLocked={true} />
+        {oatStatuses.map((oat) => (
+          <OATCard key={oat.type} type={oat.type} isLocked={oat.isLocked} />
+        ))}
       </div>
 
       <Button

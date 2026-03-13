@@ -85,21 +85,25 @@ const urls = {
     faucetUrl: "http://localhost:8082/mint",
     questUrl: "http://localhost:8081/check_username",
     upUrl: "http://localhost:8080/up",
+    pointsUrl: "http://localhost:8083",
   },
   dev: {
     faucetUrl: "https://faucet-devnet-ovh2.dango.zone/mint",
     questUrl: "https://quest-bot-devnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
+    pointsUrl: "https://points-bot-devnet.dango.zone",
   },
   test: {
     faucetUrl: "https://faucet-testnet-ovh2.dango.zone/mint",
     questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
+    pointsUrl: "https://points-bot-testnet.dango.zone",
   },
   prod: {
     faucetUrl: "/faucet",
     questUrl: "/quest",
     upUrl: `${chain.urls.indexer}/up`,
+    pointsUrl: "/points",
   },
 }[environment]!;
 
@@ -121,6 +125,7 @@ const envConfig = `window.dango = ${JSON.stringify(
           faucetUrl: `http://localhost:${PORT}/faucet`,
           questUrl: `http://localhost:${PORT}/quest`,
           upUrl: `http://localhost:${PORT}/up`,
+          pointsUrl: `http://localhost:${PORT}/points`,
         }
       : urls,
     banner,
@@ -187,6 +192,11 @@ export default defineConfig({
         target: `${chain.urls.indexer}/up`,
         changeOrigin: true,
         pathRewrite: { "^/up": "" },
+      },
+      "/points": {
+        target: urls.pointsUrl,
+        changeOrigin: true,
+        pathRewrite: { "^/points": "" },
       },
     },
   },
