@@ -1,7 +1,6 @@
 use {
     crate::{
-        ACCOUNTS, CODE_HASH, MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX,
-        USER_INDEXES_BY_NAME, USERS, USERS_BY_KEY,
+        ACCOUNTS, CODE_HASH, MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS,
     },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
@@ -197,8 +196,6 @@ fn onboard_new_user(
 
     USERS.save(storage, user_index, &user)?;
 
-    USERS_BY_KEY.insert(storage, (key_hash, user_index))?;
-
     ACCOUNTS.save(storage, address, &account)?;
 
     Ok((
@@ -349,14 +346,17 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
     );
 
     ensure!(
-        !USER_INDEXES_BY_NAME.has(ctx.storage, &username),
+        USERS
+            .idx
+            .by_name
+            .may_load_key(ctx.storage, username.clone())?
+            .is_none(),
         "the username `{username}` is already associated with a user index"
     );
 
     user.name = Some(username.clone());
 
     USERS.save(ctx.storage, user_index, &user)?;
-    USER_INDEXES_BY_NAME.save(ctx.storage, &username, &user_index)?;
 
     Ok(Response::new())
 }

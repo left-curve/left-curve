@@ -1,6 +1,6 @@
 use {
     dango_types::account_factory::{Account, AccountIndex, User, UserIndex, Username},
-    grug::{Addr, Counter, Hash256, Item, Map, Set},
+    grug::{Addr, Counter, Hash256, IndexedMap, Item, Map, MultiIndex, UniqueIndex},
 };
 
 pub const CODE_HASH: Item<Hash256> = Item::new("hash");
@@ -9,15 +9,23 @@ pub const NEXT_USER_INDEX: Counter<UserIndex> = Counter::new("user_index", 0, 1)
 
 pub const NEXT_ACCOUNT_INDEX: Counter<AccountIndex> = Counter::new("account_index", 0, 1);
 
-// TODO: Convert this to an `IndexedMap` that supports looking up user profiles
-// by username or key hash. (The `USERS_BY_KEY`, `USERS_BY_NAME` maps can then be deleted.)
-// Current available index types don't support this, because a user may have
-// multiple keys, or no username. Both `UniqueIndex` and `MultiIndex` expects
-// exactly one value to be indexed.
-pub const USERS: Map<UserIndex, User> = dango_auth::account_factory::USERS;
-
-pub const USERS_BY_KEY: Set<(Hash256, UserIndex)> = Set::new("user__key");
-
-pub const USER_INDEXES_BY_NAME: Map<&Username, UserIndex> = Map::new("user_indexes__name");
-
 pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
+
+pub const USERS: IndexedMap<UserIndex, User, UserIndexes> = IndexedMap::new("user", UserIndexes {
+    by_key: MultiIndex::new2(
+        |_, user| user.keys.keys().copied().collect(),
+        "user",
+        "user__key",
+    ),
+    by_name: UniqueIndex::new2(
+        |_, user| user.name.clone().into_iter().collect(),
+        "user",
+        "user__name",
+    ),
+});
+
+#[grug::index_list(UserIndex, User)]
+pub struct UserIndexes<'a> {
+    pub by_key: MultiIndex<'a, UserIndex, Hash256, User>,
+    pub by_name: UniqueIndex<'a, UserIndex, Username, User>,
+}

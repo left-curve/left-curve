@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, CODE_HASH, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS, USERS_BY_KEY},
+    crate::{ACCOUNTS, CODE_HASH, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS},
     dango_types::account_factory::{
         Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexAndName,
     },
@@ -110,12 +110,13 @@ fn forgot_username(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    USERS_BY_KEY
+    USERS
+        .idx
+        .by_key
         .prefix(key_hash)
-        .keys(storage, start, None, Order::Ascending)
+        .range(storage, start, None, Order::Ascending)
         .map(|res| {
-            let index = res?;
-            let user = USERS.load(storage, index)?;
+            let (index, user) = res?;
             Ok(UserIndexAndName {
                 index,
                 name: user.name,
