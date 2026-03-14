@@ -132,7 +132,7 @@ fn onboarding_without_deposit() {
         )
         .should_succeed_and(|res| {
             res.accounts.len() == 2
-                && res.accounts.iter().all(|address| {
+                && res.accounts.values().all(|address| {
                     suite
                         .query_wasm_path(*address, dango_auth::account::STATUS.path())
                         .unwrap()
@@ -192,7 +192,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
             account_factory::QueryUserRequest(UserIndexOrName::Index(user.user_index())),
         )
         .map(|res| res.accounts)
-        .should_succeed_and_equal(vec![user.address()]);
+        .should_succeed_and_equal(btree_map! { 10u32 => user.address() });
     suite
         .query_wasm_smart(
             contracts.account_factory,
