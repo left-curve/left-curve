@@ -16,8 +16,7 @@ library = []
 metrics = ["dep:metrics"]
 
 [dependencies]
-anyhow                = { workspace = true }
-dango-account-factory = { workspace = true }
-dango-types           = { workspace = true }
-grug                  = { workspace = true }
-metrics               = { workspace = true, optional = true }
+anyhow      = { workspace = true }
+dango-types = { workspace = true }
+grug        = { workspace = true }
+metrics     = { workspace = true, optional = true }

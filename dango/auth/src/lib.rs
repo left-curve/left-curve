@@ -195,7 +195,7 @@ pub fn authenticate_tx(
 
     // The sender's address and the user profile declared in metadata must match.
     ensure!(
-        user.accounts.contains(&tx.sender),
+        user.accounts.values().any(|a| *a == tx.sender),
         "account {} isn't associated with user {}",
         tx.sender,
         metadata.user_index,
@@ -593,7 +593,7 @@ mod tests {
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
                     name: None,
-                    accounts: vec![user_address],
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -637,7 +637,7 @@ mod tests {
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
                     name: None,
-                    accounts: vec![user_address],
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -739,7 +739,7 @@ mod tests {
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
                     name: None,
-                    accounts: vec![user_address],
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -811,7 +811,7 @@ mod tests {
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
                     name: None,
-                    accounts: vec![user_address],
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -893,7 +893,7 @@ mod tests {
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
                     name: None,
-                    accounts: vec![user_address],
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -974,7 +974,7 @@ mod tests {
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
                     name: None,
-                    accounts: vec![user_address],
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();

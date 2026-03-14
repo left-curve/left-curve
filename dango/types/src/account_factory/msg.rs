@@ -27,9 +27,9 @@ pub struct User {
     /// The user's username, if he has chosen one.
     pub name: Option<Username>,
 
-    /// Accounts associated with this user, in chronological order that they
-    /// were created.
-    pub accounts: Vec<Addr>,
+    /// Accounts associated with this user, keyed by account index.
+    /// A BTreeMap preserves creation-time ordering via key sort.
+    pub accounts: BTreeMap<AccountIndex, Addr>,
 
     /// Keys associated with this user, indexes by hashes.
     pub keys: BTreeMap<Hash256, Key>,
@@ -39,12 +39,12 @@ impl User {
     /// Return the user's master account, i.e. the first account created for
     /// this user.
     ///
-    /// Since `User::accounts` contains all the accounts in order of creation,
-    /// it is simply the vector's first element.
+    /// Since `User::accounts` is a BTreeMap sorted by AccountIndex,
+    /// the first entry is the earliest created account.
     pub fn master_account(&self) -> Addr {
         self.accounts
-            .first()
-            .copied()
+            .first_key_value()
+            .map(|(_, addr)| *addr)
             .expect("the user to have at least one account")
     }
 }
