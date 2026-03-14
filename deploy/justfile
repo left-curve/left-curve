@@ -163,7 +163,7 @@ list-b2-buckets:
 
 # Delete empty B2 buckets (requires B2 credentials in env or vault)
 cleanup-b2-buckets:
-  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags cleanup
 
 add-passwords:
   #!/bin/bash

@@ -33,10 +33,12 @@ if [ -z "$all_buckets" ]; then
   exit 0
 fi
 
-# Build a set of "latest bucket per network prefix" to protect.
+# Build a set of "latest bucket per persistent env prefix" to protect.
+# Only protect the latest for non-PR prefixes (devnet, testnet, etc.)
+# since PR buckets should all be cleaned up once empty.
+#
 # Network prefix = everything before the last -YYYYMMDDHHMMSS timestamp.
-# e.g. dango-pr-1414-20251205133239 → prefix: dango-pr-1414
-#      dango-devnet-20251203112135   → prefix: dango-devnet
+# e.g. dango-devnet-20251203112135 → prefix: dango-devnet
 #
 # Since buckets are sorted, the last one per prefix is the most recent.
 protected=""
@@ -46,29 +48,40 @@ for b in $all_buckets; do
   # Strip trailing -YYYYMMDDHHMMSS (14 digits)
   prefix=$(echo "$b" | sed 's/-[0-9]\{14\}$//')
   if [ "$prefix" != "$prev_prefix" ] && [ -n "$prev_bucket" ]; then
-    protected="$protected $prev_bucket"
+    # Only protect non-PR prefixes
+    case "$prev_prefix" in
+      dango-pr-*) ;;
+      *) protected="$protected $prev_bucket" ;;
+    esac
   fi
   prev_prefix="$prefix"
   prev_bucket="$b"
 done
 # Don't forget the last group
 if [ -n "$prev_bucket" ]; then
-  protected="$protected $prev_bucket"
+  case "$prev_prefix" in
+    dango-pr-*) ;;
+    *) protected="$protected $prev_bucket" ;;
+  esac
 fi
 
-echo "=== Protected (latest per network) ==="
-for p in $protected; do
-  echo "  PROTECTED: $p"
-done
+echo "=== Protected (latest per persistent env) ==="
+if [ -z "$protected" ]; then
+  echo "  (none)"
+else
+  for p in $protected; do
+    echo "  PROTECTED: $p"
+  done
+fi
 echo ""
 
 echo "=== Bucket analysis ==="
 for b in $all_buckets; do
   echo "Checking $b..."
 
-  # Never delete the latest bucket per network prefix
+  # Never delete the latest bucket for persistent environments
   case " $protected " in
-    *" $b "*) echo "  SKIP (latest for its network — protected)"
+    *" $b "*) echo "  SKIP (latest for its environment — protected)"
               continue ;;
   esac
 
