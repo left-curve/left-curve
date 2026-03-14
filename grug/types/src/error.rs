@@ -88,9 +88,6 @@ pub enum StdError {
     #[backtrace(private_constructor)]
     ZeroValue { ty: &'static str },
 
-    #[error("invalid change set: the add and remove sets must be disjoint")]
-    InvalidChangeSet,
-
     #[error("value out of range: {value} {comparator} {bound}")]
     #[backtrace(private_constructor)]
     OutOfRange {
