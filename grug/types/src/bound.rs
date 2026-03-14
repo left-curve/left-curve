@@ -1,8 +1,6 @@
 use {
-    crate::{Checker, Predicate, StdError, StdResult},
+    crate::Predicate,
     grug_math::{NumberConst, Udec128},
-    serde::{Deserialize, Serialize},
-    std::marker::PhantomData,
 };
 
 /// A limit for a value.
@@ -12,96 +10,107 @@ pub enum Bound<T> {
     Exclusive(T),
 }
 
-/// Describess a set of minimum and maximum bounds for a value.
-pub trait Bounds<T> {
-    const MIN: Option<Bound<T>>;
-    const MAX: Option<Bound<T>>;
-}
-
-/// Checker wrapper that validates a value against a `Bounds<T>` implementation.
-pub struct BoundsCheck<B>(PhantomData<B>);
-
-impl<T, B> Checker<T> for BoundsCheck<B>
-where
-    T: PartialOrd + ToString,
-    B: Bounds<T>,
-{
-    fn check(value: &T) -> StdResult<()> {
-        match &B::MIN {
-            Some(Bound::Inclusive(bound)) if value < bound => {
-                return Err(StdError::out_of_range(
-                    value.to_string(),
-                    "<",
-                    bound.to_string(),
-                ));
-            },
-            Some(Bound::Exclusive(bound)) if value <= bound => {
-                return Err(StdError::out_of_range(
-                    value.to_string(),
-                    "<=",
-                    bound.to_string(),
-                ));
-            },
-            _ => (),
-        }
-
-        match &B::MAX {
-            Some(Bound::Inclusive(bound)) if value > bound => {
-                return Err(StdError::out_of_range(
-                    value.to_string(),
-                    ">",
-                    bound.to_string(),
-                ));
-            },
-            Some(Bound::Exclusive(bound)) if value >= bound => {
-                return Err(StdError::out_of_range(
-                    value.to_string(),
-                    ">=",
-                    bound.to_string(),
-                ));
-            },
-            _ => (),
-        }
-
-        Ok(())
-    }
-}
-
 /// A wrapper that enforces the value to be within the specified bounds.
-pub type Bounded<T, B> = Predicate<T, BoundsCheck<B>>;
+pub type Bounded<T, B> = Predicate<T, B>;
 
-// ------------------------------ Standard bounds ------------------------------
+/// Define a bounds checker type that implements `Checker<T>` with the given
+/// min/max bounds. Use this instead of manually implementing `Checker`.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// define_bounds! {
+///     MyBounds,
+///     Udec128,
+///     min = Some(Bound::Inclusive(Udec128::ZERO)),
+///     max = Some(Bound::Exclusive(Udec128::ONE)),
+/// }
+///
+/// type MyBounded = Bounded<Udec128, MyBounds>;
+/// ```
+macro_rules! define_bounds {
+    (
+        $name:ident,
+        $t:ty,
+        min = $min:expr,
+        max = $max:expr $(,)?
+    ) => {
+        #[derive(Debug)]
+        pub struct $name;
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ZeroInclusiveOneInclusive;
+        impl $crate::Checker<$t> for $name {
+            fn check(value: &$t) -> $crate::StdResult<()> {
+                let min: ::core::option::Option<$crate::Bound<$t>> = $min;
+                let max: ::core::option::Option<$crate::Bound<$t>> = $max;
 
-impl Bounds<Udec128> for ZeroInclusiveOneInclusive {
-    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
-    const MIN: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ZERO));
+                match &min {
+                    Some($crate::Bound::Inclusive(bound)) if value < bound => {
+                        return Err($crate::StdError::out_of_range(
+                            value.to_string(),
+                            "<",
+                            bound.to_string(),
+                        ));
+                    },
+                    Some($crate::Bound::Exclusive(bound)) if value <= bound => {
+                        return Err($crate::StdError::out_of_range(
+                            value.to_string(),
+                            "<=",
+                            bound.to_string(),
+                        ));
+                    },
+                    _ => (),
+                }
+
+                match &max {
+                    Some($crate::Bound::Inclusive(bound)) if value > bound => {
+                        return Err($crate::StdError::out_of_range(
+                            value.to_string(),
+                            ">",
+                            bound.to_string(),
+                        ));
+                    },
+                    Some($crate::Bound::Exclusive(bound)) if value >= bound => {
+                        return Err($crate::StdError::out_of_range(
+                            value.to_string(),
+                            ">=",
+                            bound.to_string(),
+                        ));
+                    },
+                    _ => (),
+                }
+
+                Ok(())
+            }
+        }
+    };
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ZeroInclusiveOneExclusive;
-
-impl Bounds<Udec128> for ZeroInclusiveOneExclusive {
-    const MAX: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ONE));
-    const MIN: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ZERO));
+define_bounds! {
+    ZeroInclusiveOneInclusive,
+    Udec128,
+    min = Some(Bound::Inclusive(Udec128::ZERO)),
+    max = Some(Bound::Inclusive(Udec128::ONE)),
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ZeroExclusiveOneInclusive;
-
-impl Bounds<Udec128> for ZeroExclusiveOneInclusive {
-    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
-    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
+define_bounds! {
+    ZeroInclusiveOneExclusive,
+    Udec128,
+    min = Some(Bound::Inclusive(Udec128::ZERO)),
+    max = Some(Bound::Exclusive(Udec128::ONE)),
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ZeroExclusiveOneExclusive;
+define_bounds! {
+    ZeroExclusiveOneInclusive,
+    Udec128,
+    min = Some(Bound::Exclusive(Udec128::ZERO)),
+    max = Some(Bound::Inclusive(Udec128::ONE)),
+}
 
-impl Bounds<Udec128> for ZeroExclusiveOneExclusive {
-    const MAX: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ONE));
-    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
+define_bounds! {
+    ZeroExclusiveOneExclusive,
+    Udec128,
+    min = Some(Bound::Exclusive(Udec128::ZERO)),
+    max = Some(Bound::Exclusive(Udec128::ONE)),
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -110,21 +119,20 @@ impl Bounds<Udec128> for ZeroExclusiveOneExclusive {
 mod tests {
     use {
         super::*,
-        crate::{Inner, JsonDeExt, JsonSerExt, ResultExt},
+        crate::{Inner, JsonDeExt, JsonSerExt, ResultExt, StdError},
         grug_math::{NumberConst, Udec256, Uint256},
     };
 
-    #[derive(Debug)]
-    struct FeeRateBounds;
-
-    impl Bounds<Udec256> for FeeRateBounds {
+    define_bounds! {
+        FeeRateBounds,
+        Udec256,
+        // Minimum fee rate is 0% (inclusive).
+        min = Some(Bound::Inclusive(Udec256::ZERO)),
         // Maximum fee rate is 100% (exclusive).
         // If only there's an easier way to define a constant Udec256...
-        const MAX: Option<Bound<Udec256>> = Some(Bound::Exclusive(Udec256::raw(
+        max = Some(Bound::Exclusive(Udec256::raw(
             Uint256::new_from_u128(1_000_000_000_000_000_000),
-        )));
-        // Minimum fee rate is 0% (inclusive).
-        const MIN: Option<Bound<Udec256>> = Some(Bound::Inclusive(Udec256::ZERO));
+        ))),
     }
 
     type FeeRate = Bounded<Udec256, FeeRateBounds>;

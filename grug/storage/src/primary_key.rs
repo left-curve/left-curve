@@ -6,8 +6,8 @@ use {
     },
     grug_math::{Bytable, Dec, Int},
     grug_types::{
-        Binary, Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Inner,
-        LengthBounded, Lengthy, Part, StdError, StdResult, nested_namespaces_with_key,
+        Binary, Checker, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Inner, Part,
+        Predicate, StdError, StdResult, nested_namespaces_with_key,
     },
     std::{mem, str, vec},
 };
@@ -693,12 +693,12 @@ impl_bnum_signed_integer_key! {
     I512 => U512 => Fixed512,
 }
 
-impl<T, B> PrimaryKey for Bounded<T, B>
+impl<T, C> PrimaryKey for Predicate<T, C>
 where
-    T: PrimaryKey<Output = T> + PartialOrd + ToString,
-    B: Bounds<T>,
+    T: PrimaryKey<Output = T>,
+    C: Checker<T>,
 {
-    type Output = Bounded<T, B>;
+    type Output = Predicate<T, C>;
     type Prefix = T::Prefix;
     type Suffix = T::Suffix;
 
@@ -709,26 +709,7 @@ where
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        T::from_slice(bytes).and_then(Bounded::new)
-    }
-}
-
-impl<T, const MIN: usize, const MAX: usize> PrimaryKey for LengthBounded<T, MIN, MAX>
-where
-    T: PrimaryKey<Output = T> + Lengthy,
-{
-    type Output = LengthBounded<T, MIN, MAX>;
-    type Prefix = T::Prefix;
-    type Suffix = T::Suffix;
-
-    const KEY_ELEMS: u8 = T::KEY_ELEMS;
-
-    fn raw_keys(&self) -> Vec<RawKey<'_>> {
-        self.inner().raw_keys()
-    }
-
-    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        T::from_slice(bytes).and_then(LengthBounded::new)
+        T::from_slice(bytes).and_then(Predicate::new)
     }
 }
 
