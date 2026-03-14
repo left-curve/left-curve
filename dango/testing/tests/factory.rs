@@ -7,7 +7,7 @@ use {
     },
     dango_types::{
         account,
-        account_factory::{self, Account, RegisterUserData},
+        account_factory::{self, Account, RegisterUserData, UserIndexOrName},
         auth::AccountStatus,
         bank,
         constants::usdc,
@@ -128,7 +128,7 @@ fn onboarding_without_deposit() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryUserRequest { index: user_index },
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
         )
         .should_succeed_and(|res| {
             res.accounts.len() == 2
@@ -179,9 +179,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryUserRequest {
-                index: user.user_index(),
-            },
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user.user_index())),
         )
         .should_succeed_and(|res| {
             res.keys == btree_map! { user.first_key_hash() => user.first_key() }
@@ -191,9 +189,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryUserRequest {
-                index: user.user_index(),
-            },
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user.user_index())),
         )
         .map(|res| res.accounts)
         .should_succeed_and_equal(vec![user.address()]);
@@ -358,9 +354,7 @@ fn update_key() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryUserRequest {
-                index: user.user_index(),
-            },
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user.user_index())),
         )
         .map(|res| res.keys)
         .should_succeed_and_equal(btree_map! { user.first_key_hash() => user.first_key() });
@@ -384,9 +378,7 @@ fn update_key() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryUserRequest {
-                index: user.user_index(),
-            },
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user.user_index())),
         )
         .map(|res| res.keys)
         .should_succeed_and_equal(btree_map! {
@@ -427,9 +419,7 @@ fn update_key() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryUserRequest {
-                index: user.user_index(),
-            },
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user.user_index())),
         )
         .map(|res| res.keys)
         .should_succeed_and_equal(btree_map! { key_hash => pk });

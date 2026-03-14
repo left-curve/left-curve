@@ -1,7 +1,7 @@
 use {
     anyhow::ensure,
     dango_genesis::GenesisCodes,
-    dango_types::account_factory::{self, User},
+    dango_types::account_factory::{self, User, UserIndexOrName},
     grug::{
         BlockInfo, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GenesisState, JsonDeExt, Query,
         Timestamp,
@@ -385,9 +385,10 @@ fn main() -> anyhow::Result<()> {
         .account_factory;
     let user0 = app
         .do_query_app(
-            Query::wasm_smart(account_factory, &account_factory::QueryMsg::User {
-                index: 0,
-            })?,
+            Query::wasm_smart(
+                account_factory,
+                &account_factory::QueryMsg::User(UserIndexOrName::Index(0)),
+            )?,
             None,
             false,
         )?
