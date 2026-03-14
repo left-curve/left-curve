@@ -157,6 +157,14 @@ add-debian-key:
 
 # Pre-fetch vault passwords into environment variables (memory only, no disk)
 # Spawns a new shell with passwords set. Exit the shell when done.
+# List all B2 buckets (requires B2 credentials in env or vault)
+list-b2-buckets:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags list
+
+# Delete empty B2 buckets (requires B2 credentials in env or vault)
+cleanup-b2-buckets:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40
+
 add-passwords:
   #!/bin/bash
   VAULT=$(./vault-password.sh 2>/dev/null) || { echo "Failed to get vault password" >&2; exit 1; }
