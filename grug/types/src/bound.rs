@@ -1,5 +1,5 @@
 use {
-    crate::Predicate,
+    crate::{Checker, Predicate, StdError, StdResult},
     grug_math::{NumberConst, Udec128},
 };
 
@@ -38,43 +38,27 @@ macro_rules! define_bounds {
         #[derive(Debug)]
         pub struct $name;
 
-        impl $crate::Checker<$t> for $name {
-            fn check(value: &$t) -> $crate::StdResult<()> {
-                let min: ::core::option::Option<$crate::Bound<$t>> = $min;
-                let max: ::core::option::Option<$crate::Bound<$t>> = $max;
+        impl Checker<$t> for $name {
+            fn check(value: &$t) -> StdResult<()> {
+                let min: Option<Bound<$t>> = $min;
+                let max: Option<Bound<$t>> = $max;
 
                 match &min {
-                    Some($crate::Bound::Inclusive(bound)) if value < bound => {
-                        return Err($crate::StdError::out_of_range(
-                            value.to_string(),
-                            "<",
-                            bound.to_string(),
-                        ));
+                    Some(Bound::Inclusive(bound)) if value < bound => {
+                        return Err(StdError::out_of_range(value, "<", bound));
                     },
-                    Some($crate::Bound::Exclusive(bound)) if value <= bound => {
-                        return Err($crate::StdError::out_of_range(
-                            value.to_string(),
-                            "<=",
-                            bound.to_string(),
-                        ));
+                    Some(Bound::Exclusive(bound)) if value <= bound => {
+                        return Err(StdError::out_of_range(value, "<=", bound));
                     },
                     _ => (),
                 }
 
                 match &max {
-                    Some($crate::Bound::Inclusive(bound)) if value > bound => {
-                        return Err($crate::StdError::out_of_range(
-                            value.to_string(),
-                            ">",
-                            bound.to_string(),
-                        ));
+                    Some(Bound::Inclusive(bound)) if value > bound => {
+                        return Err(StdError::out_of_range(value, ">", bound));
                     },
-                    Some($crate::Bound::Exclusive(bound)) if value >= bound => {
-                        return Err($crate::StdError::out_of_range(
-                            value.to_string(),
-                            ">=",
-                            bound.to_string(),
-                        ));
+                    Some(Bound::Exclusive(bound)) if value >= bound => {
+                        return Err(StdError::out_of_range(value, ">=", bound));
                     },
                     _ => (),
                 }
