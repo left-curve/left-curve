@@ -20,7 +20,7 @@ use {
     pyth_types::{ExponentialBackoff, PriceUpdate, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
-        collections::HashMap,
+        collections::{HashMap, HashSet},
         pin::Pin,
         sync::{
             Arc,
@@ -399,6 +399,51 @@ impl PythClient {
             },
         }
     }
+
+    /// Group subscription details by channel, deduplicating `PriceFeedId` values
+    /// within each channel. Returns the grouped map and the list of subscription IDs.
+    fn group_ids_by_channel(
+        &mut self,
+        ids: impl IntoIterator<Item = PythLazerSubscriptionDetails>,
+    ) -> (HashMap<Channel, (u64, Vec<PriceFeedId>)>, Vec<u64>) {
+        // Use an HashSet in order to dedupe the PriceFeedId, otherwise the Pyth will throw an error.
+        let mut ids_per_channel: HashMap<Channel, (u64, HashSet<PriceFeedId>)> = HashMap::new();
+        let mut subscription_ids = vec![];
+
+        for value in ids {
+            let channel = value.channel;
+
+            match ids_per_channel.get_mut(&channel) {
+                Some((_, price_feed)) => {
+                    price_feed.insert(PriceFeedId(value.id));
+                },
+                None => {
+                    self.last_subscription_id += 1;
+
+                    subscription_ids.push(self.last_subscription_id);
+
+                    ids_per_channel.insert(
+                        channel,
+                        (
+                            self.last_subscription_id,
+                            HashSet::from([PriceFeedId(value.id)]),
+                        ),
+                    );
+                },
+            }
+        }
+
+        // Return the ids as a `Vec<PriceFeedId>` since in `stream()` function, each time we subscribe
+        // we use need as a Vec.
+        let ids_per_channel = ids_per_channel
+            .into_iter()
+            .map(|(channel, (sub_id, feed_ids))| {
+                (channel, (sub_id, feed_ids.into_iter().collect()))
+            })
+            .collect();
+
+        (ids_per_channel, subscription_ids)
+    }
 }
 
 #[async_trait::async_trait]
@@ -418,28 +463,8 @@ impl PythClientTrait for PythClient {
         self.keep_running = Arc::new(AtomicBool::new(true));
         let keep_running = self.keep_running.clone();
 
-        // Divide the ids depending on the channel.
-        let mut ids_per_channel: HashMap<Channel, (u64, Vec<PriceFeedId>)> = HashMap::new();
-
-        let mut subscription_ids = vec![];
-
-        for value in ids.into_inner() {
-            let channel = value.channel;
-
-            match ids_per_channel.get_mut(&channel) {
-                Some((_, price_feed)) => price_feed.push(PriceFeedId(value.id)),
-                None => {
-                    self.last_subscription_id += 1;
-
-                    subscription_ids.push(self.last_subscription_id);
-
-                    ids_per_channel.insert(
-                        channel,
-                        (self.last_subscription_id, vec![PriceFeedId(value.id)]),
-                    );
-                },
-            }
-        }
+        // Divide the ids depending on the channel, deduplicating within each channel.
+        let (ids_per_channel, subscription_ids) = self.group_ids_by_channel(ids.into_inner());
 
         // Build the new client and subscribe to the price feeds.
         let builder = PythLazerStreamClientBuilder::new(self.access_token.clone())
@@ -655,4 +680,141 @@ pub fn init_metrics() {
         pyth_types::metrics::PYTH_DATA_READ,
         "Number of times data was read from Pyth Lazer"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        pyth_lazer_protocol::{api::Channel, time::FixedRate},
+        pyth_types::PythLazerSubscriptionDetails,
+    };
+
+    fn test_client() -> PythClient {
+        PythClient::new(NonEmpty::new_unchecked(vec!["wss://example.com"]), "token").unwrap()
+    }
+
+    #[test]
+    fn group_ids_deduplicates_same_id_same_channel() {
+        let mut client = test_client();
+
+        let ids = vec![
+            PythLazerSubscriptionDetails {
+                id: 1,
+                channel: Channel::RealTime,
+            },
+            // Duplicate: same id + same channel.
+            PythLazerSubscriptionDetails {
+                id: 1,
+                channel: Channel::RealTime,
+            },
+        ];
+
+        let (ids_per_channel, subscription_ids) = client.group_ids_by_channel(ids);
+
+        // Only one channel entry.
+        assert_eq!(ids_per_channel.len(), 1);
+        // Only one subscription id.
+        assert_eq!(subscription_ids.len(), 1);
+
+        let (_, feed_ids) = &ids_per_channel[&Channel::RealTime];
+        // The duplicate was collapsed into a single feed id.
+        assert_eq!(feed_ids.len(), 1);
+        assert!(feed_ids.contains(&PriceFeedId(1)));
+    }
+
+    #[test]
+    fn group_ids_keeps_distinct_ids_same_channel() {
+        let mut client = test_client();
+
+        let ids = vec![
+            PythLazerSubscriptionDetails {
+                id: 1,
+                channel: Channel::RealTime,
+            },
+            PythLazerSubscriptionDetails {
+                id: 2,
+                channel: Channel::RealTime,
+            },
+        ];
+
+        let (ids_per_channel, subscription_ids) = client.group_ids_by_channel(ids);
+
+        assert_eq!(ids_per_channel.len(), 1);
+        assert_eq!(subscription_ids.len(), 1);
+
+        let (_, feed_ids) = &ids_per_channel[&Channel::RealTime];
+        assert_eq!(feed_ids.len(), 2);
+    }
+
+    #[test]
+    fn group_ids_separates_channels() {
+        let mut client = test_client();
+
+        let ids = vec![
+            PythLazerSubscriptionDetails {
+                id: 1,
+                channel: Channel::RealTime,
+            },
+            PythLazerSubscriptionDetails {
+                id: 44,
+                channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+            },
+        ];
+
+        let (ids_per_channel, subscription_ids) = client.group_ids_by_channel(ids);
+
+        assert_eq!(ids_per_channel.len(), 2);
+        assert_eq!(subscription_ids.len(), 2);
+    }
+
+    #[test]
+    fn group_ids_deduplicates_across_multiple_duplicates() {
+        let mut client = test_client();
+
+        // Three entries for id=1 on FixedRate, two for id=2 on FixedRate, one unique on RealTime.
+        let ids = vec![
+            PythLazerSubscriptionDetails {
+                id: 1,
+                channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+            },
+            PythLazerSubscriptionDetails {
+                id: 1,
+                channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+            },
+            PythLazerSubscriptionDetails {
+                id: 1,
+                channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+            },
+            PythLazerSubscriptionDetails {
+                id: 2,
+                channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+            },
+            PythLazerSubscriptionDetails {
+                id: 2,
+                channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+            },
+            PythLazerSubscriptionDetails {
+                id: 5,
+                channel: Channel::RealTime,
+            },
+        ];
+
+        let (ids_per_channel, subscription_ids) = client.group_ids_by_channel(ids);
+
+        // Two channels.
+        assert_eq!(ids_per_channel.len(), 2);
+        assert_eq!(subscription_ids.len(), 2);
+
+        // FixedRate channel: only 2 unique feed ids (1 and 2).
+        let (_, fixed_ids) = &ids_per_channel[&Channel::FixedRate(FixedRate::RATE_200_MS)];
+        assert_eq!(fixed_ids.len(), 2);
+        assert!(fixed_ids.contains(&PriceFeedId(1)));
+        assert!(fixed_ids.contains(&PriceFeedId(2)));
+
+        // RealTime channel: 1 feed id.
+        let (_, rt_ids) = &ids_per_channel[&Channel::RealTime];
+        assert_eq!(rt_ids.len(), 1);
+        assert!(rt_ids.contains(&PriceFeedId(5)));
+    }
 }
