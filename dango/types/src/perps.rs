@@ -1,7 +1,10 @@
 use {
     crate::{Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
     grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
-    std::{collections::{BTreeMap, BTreeSet, VecDeque}, sync::LazyLock},
+    std::{
+        collections::{BTreeMap, BTreeSet, VecDeque},
+        sync::LazyLock,
+    },
 };
 
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("perp"));
