@@ -1,9 +1,4 @@
-use {
-    crate::{Inner, Lengthy, StdError, StdResult},
-    borsh::{BorshDeserialize, BorshSerialize},
-    serde::{Deserialize, Deserializer, Serialize, Serializer},
-    std::{io, ops::Deref},
-};
+use crate::{Checker, Lengthy, Predicate, StdError, StdResult};
 
 /// A wrapper that enforces the value to be no longer than a maximum length.
 ///
@@ -21,19 +16,14 @@ pub type NonEmpty<T> = MinLength<T, 1>;
 /// A wrapper that enforces the value to be of an exact length.
 pub type FixedLength<T, const LEN: usize> = LengthBounded<T, LEN, LEN>;
 
-/// A wrapper that enforces the value to be within a bound of length.
-///
-/// The minimum and maximum lengths are both _inclusive_.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct LengthBounded<T, const MIN: usize, const MAX: usize>(T)
-where
-    T: Lengthy;
+/// Checker that validates a value's length is within `[MIN, MAX]`.
+pub struct LengthBounds<const MIN: usize, const MAX: usize>;
 
-impl<T, const MIN: usize, const MAX: usize> LengthBounded<T, MIN, MAX>
+impl<T, const MIN: usize, const MAX: usize> Checker<T> for LengthBounds<MIN, MAX>
 where
     T: Lengthy,
 {
-    pub fn new(value: T) -> StdResult<Self> {
+    fn check(value: &T) -> StdResult<()> {
         let length = value.length();
 
         if length < MIN {
@@ -44,100 +34,15 @@ where
             return Err(StdError::length_out_of_range::<T>(length, ">", MAX));
         }
 
-        Ok(Self(value))
-    }
-
-    pub fn new_unchecked(value: T) -> Self {
-        Self(value)
+        Ok(())
     }
 }
 
-impl<T, const MIN: usize, const MAX: usize> Inner for LengthBounded<T, MIN, MAX>
-where
-    T: Lengthy,
-{
-    type U = T;
-
-    fn inner(&self) -> &Self::U {
-        &self.0
-    }
-
-    fn into_inner(self) -> Self::U {
-        self.0
-    }
-}
-
-impl<T, const MIN: usize, const MAX: usize> AsRef<T> for LengthBounded<T, MIN, MAX>
-where
-    T: Lengthy,
-{
-    fn as_ref(&self) -> &T {
-        &self.0
-    }
-}
-
-impl<T, const MIN: usize, const MAX: usize> Deref for LengthBounded<T, MIN, MAX>
-where
-    T: Lengthy,
-{
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T, const MIN: usize, const MAX: usize> Serialize for LengthBounded<T, MIN, MAX>
-where
-    T: Lengthy + Serialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0.serialize(serializer)
-    }
-}
-
-impl<'de, T, const MIN: usize, const MAX: usize> Deserialize<'de> for LengthBounded<T, MIN, MAX>
-where
-    T: Lengthy + Deserialize<'de>,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = T::deserialize(deserializer)?;
-
-        LengthBounded::new(value).map_err(serde::de::Error::custom)
-    }
-}
-
-impl<T, const MIN: usize, const MAX: usize> BorshSerialize for LengthBounded<T, MIN, MAX>
-where
-    T: Lengthy + BorshSerialize,
-{
-    fn serialize<W>(&self, writer: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        self.0.serialize(writer)
-    }
-}
-
-impl<T, const MIN: usize, const MAX: usize> BorshDeserialize for LengthBounded<T, MIN, MAX>
-where
-    T: Lengthy + BorshDeserialize,
-{
-    fn deserialize_reader<R>(reader: &mut R) -> io::Result<Self>
-    where
-        R: io::Read,
-    {
-        let value = BorshDeserialize::deserialize_reader(reader)?;
-
-        Self::new(value).map_err(io::Error::other)
-    }
-}
+/// A wrapper that enforces the value to be within a bound of length.
+///
+/// The minimum and maximum lengths are both _inclusive_.
+pub type LengthBounded<T, const MIN: usize, const MAX: usize> =
+    Predicate<T, LengthBounds<MIN, MAX>>;
 
 impl<T, U, const LEN: usize> From<[U; LEN]> for FixedLength<T, LEN>
 where
