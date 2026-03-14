@@ -434,7 +434,7 @@ impl PythClient {
         }
 
         // Return the ids as a `Vec<PriceFeedId>` since in `stream()` function, each time we subscribe
-        // we use need as a Vec.
+        // we need them as a Vec.
         let ids_per_channel = ids_per_channel
             .into_iter()
             .map(|(channel, (sub_id, feed_ids))| {
