@@ -3,7 +3,7 @@ use {
     anyhow::anyhow,
     dango_types::{
         account,
-        account_factory::{self, UserIndex, UserIndexOrName},
+        account_factory::{self, UserIndex},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
         config::AppConfig,
         signer::SequencedSigner,
@@ -136,18 +136,14 @@ where
             .ok_or_else(|| anyhow!("no user index found for key hash {key_hash}"))?
             .index;
 
-        let address = *client
+        let address = client
             .query_wasm_smart(
                 factory_addr,
-                account_factory::QueryAccountsByUserRequest {
-                    user: UserIndexOrName::Index(user_index),
-                },
+                account_factory::QueryUserRequest { index: user_index },
                 None,
             )
             .await?
-            .first_key_value()
-            .ok_or_else(|| anyhow!("no address found for user index {user_index}"))?
-            .0;
+            .master_account();
 
         Ok(SingleSigner {
             address,
@@ -340,13 +336,14 @@ mod tests {
     use {
         super::*,
         crate::{Eip712, Secp256k1},
-        dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
+        dango_account_factory::USERS,
         dango_auth::{account::STATUS, authenticate_tx},
         dango_types::{
+            account_factory::User,
             auth::AccountStatus,
             config::{AppAddresses, AppConfig},
         },
-        grug::{AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt},
+        grug::{AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt, btree_map},
     };
 
     #[test]
@@ -379,15 +376,12 @@ mod tests {
 
         let mock_querier = MockQuerier::new()
             .with_raw_contract_storage(account_factory, |storage| {
-                ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, address))
-                    .unwrap();
-                KEYS.save(
-                    storage,
-                    (user_index, signer.secret.key_hash()),
-                    &signer.secret.key(),
-                )
-                .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: vec![address],
+                    keys: btree_map! { signer.secret.key_hash() => signer.secret.key() },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             })
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -438,15 +432,12 @@ mod tests {
 
         let mock_querier = MockQuerier::new()
             .with_raw_contract_storage(account_factory, |storage| {
-                ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, address))
-                    .unwrap();
-                KEYS.save(
-                    storage,
-                    (user_index, signer.secret.key_hash()),
-                    &signer.secret.key(),
-                )
-                .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: vec![address],
+                    keys: btree_map! { signer.secret.key_hash() => signer.secret.key() },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             })
             .with_app_config(AppConfig {
                 addresses: AppAddresses {

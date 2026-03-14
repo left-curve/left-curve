@@ -22,12 +22,31 @@ pub struct UserIndexAndName {
 }
 
 /// Information about a user. Used in query response.
-#[grug::derive(Serde)]
+#[grug::derive(Serde, Borsh)]
 pub struct User {
+    /// The user's username, if he has chosen one.
+    pub name: Option<Username>,
+
+    /// Accounts associated with this user, in chronological order that they
+    /// were created.
+    pub accounts: Vec<Addr>,
+
     /// Keys associated with this user, indexes by hashes.
     pub keys: BTreeMap<Hash256, Key>,
-    /// Accounts associated with this user, indexes by addresses.
-    pub accounts: BTreeMap<Addr, Account>,
+}
+
+impl User {
+    /// Return the user's master account, i.e. the first account created for
+    /// this user.
+    ///
+    /// Since `User::accounts` contains all the accounts in order of creation,
+    /// it is simply the vector's first element.
+    pub fn master_account(&self) -> Addr {
+        self.accounts
+            .first()
+            .copied()
+            .expect("the user to have at least one account")
+    }
 }
 
 /// Data the user must sign when onboarding. Currently, this consists of only
@@ -91,21 +110,15 @@ pub enum QueryMsg {
     /// Query the next account index.
     #[returns(AccountIndex)]
     NextAccountIndex {},
-    /// Query a key by its hash and the user it is associated with.
-    #[returns(Key)]
-    Key {
-        hash: Hash256,
-        user: UserIndexOrName,
-    },
-    /// Enumerate all keys.
-    #[returns(Vec<QueryKeyResponseItem>)]
-    Keys {
-        start_after: Option<QueryKeyPaginateParam>,
+    /// Query a single user by index.
+    #[returns(User)]
+    User { index: UserIndex },
+    /// Enumerate all users by indexes.
+    #[returns(BTreeMap<UserIndex, User>)]
+    Users {
+        start_after: Option<UserIndex>,
         limit: Option<u32>,
     },
-    /// Find all keys associated with a user.
-    #[returns(BTreeMap<Hash256, Key>)]
-    KeysByUser { user: UserIndexOrName },
     /// Query parameters of an account by address.
     #[returns(Account)]
     Account { address: Addr },
@@ -115,42 +128,12 @@ pub enum QueryMsg {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
-    /// Find all accounts associated with a user.
-    #[returns(BTreeMap<Addr, Account>)]
-    AccountsByUser { user: UserIndexOrName },
-    /// Query a single user by its identifier (either the index or the username).
-    #[returns(User)]
-    User(UserIndexOrName),
-    /// Query a user's username by index.
-    ///
-    /// `None` if the user index doesn't exist, or if the user index exists but
-    /// its username is unset.
-    #[returns(Option<Username>)]
-    UserNameByIndex(UserIndex),
-    /// Query a user's index by username.
-    ///
-    /// `None` if no user index is associated with this username.
-    #[returns(Option<UserIndex>)]
-    UserIndexByName(Username),
-    /// Query user identifiers (index or username) associated with a given key hash.
+    /// Query users associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
     #[returns(Vec<UserIndexAndName>)]
     ForgotUsername {
         key_hash: Hash256,
-        start_after: Option<UserIndexOrName>,
+        start_after: Option<UserIndex>,
         limit: Option<u32>,
     },
-}
-
-#[grug::derive(Serde)]
-pub struct QueryKeyPaginateParam {
-    pub user: UserIndexOrName,
-    pub key_hash: Hash256,
-}
-
-#[grug::derive(Serde)]
-pub struct QueryKeyResponseItem {
-    pub user: UserIndexAndName,
-    pub key_hash: Hash256,
-    pub key: Key,
 }
