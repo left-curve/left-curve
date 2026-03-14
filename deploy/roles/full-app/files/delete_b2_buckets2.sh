@@ -18,6 +18,9 @@
 
 set -e
 
+# b2 is installed via pipx in ~/.local/bin
+export PATH="$HOME/.local/bin:$PATH"
+
 buckets_json=$(b2 bucket list --json)
 
 # Extract dango-pr-* and dango-devnet-* bucket names (skip testnet/mainnet for now).
