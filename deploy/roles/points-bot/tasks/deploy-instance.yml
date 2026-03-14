@@ -1,0 +1,45 @@
+---
+- name: "{{ network }} - Create directories"
+  file:
+    path: "{{ points_bot_dir }}/{{ network }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - ""
+    - "db"
+
+- name: "{{ network }} - Copy config.json"
+  copy:
+    src: "{{ network }}/config.json"
+    dest: "{{ points_bot_dir }}/{{ network }}/config.json"
+    mode: "0644"
+
+- name: "{{ network }} - Template docker-compose.yml"
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ points_bot_dir }}/{{ network }}/docker-compose.yml"
+    mode: "0644"
+
+- name: "{{ network }} - Login to GHCR"
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ points_bot_ghcr_user }}"
+    password: "{{ points_bot_ghcr_token }}"
+
+- name: "{{ network }} - Launch stack"
+  community.docker.docker_compose_v2:
+    project_src: "{{ points_bot_dir }}/{{ network }}"
+    pull: always
+    state: present
+    recreate: always
+
+- name: "{{ network }} - Logout from GHCR"
+  community.docker.docker_login:
+    registry: ghcr.io
+    state: absent
+
+- name: "{{ network }} - Configure Traefik route"
+  template:
+    src: traefik-points-bot.yml.j2
+    dest: "{{ traefik_dir }}/config/points-{{ network }}.yml"
+    mode: "0644"
