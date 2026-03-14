@@ -1,65 +1,43 @@
 use {
-    crate::{Inner, Lengthy, StdError, StdResult},
-    borsh::{BorshDeserialize, BorshSerialize},
-    serde::{Serialize, de},
-    std::{collections::HashSet, hash::Hash, io, vec},
+    crate::{Checker, Lengthy, Predicate, StdError, StdResult},
+    std::{collections::HashSet, hash::Hash, vec},
 };
 
-/// A wrapper over a vector that guarantees that no element appears twice.
-///
-/// This is useful if you want to ensure a collection of items is unique, and
-/// also _ordered_ (in which case `BTreeSet` isn't suitable).
-#[derive(Serialize, BorshSerialize, Default, Debug, Clone, PartialEq, Eq)]
-pub struct UniqueVec<T>(Vec<T>)
-where
-    T: Eq + Hash;
+/// Checker that rejects duplicate elements in a vector.
+pub struct IsUnique;
 
-impl<T> UniqueVec<T>
+impl<T> Checker<Vec<T>> for IsUnique
 where
     T: Eq + Hash,
 {
-    // Here we collect the elements into a set, and check whether the set has
-    // the same length as the vector.
-    // Different trait bounds are required using HashSet or BTreeSet.
-    // HashSet has faster insertion and lookup, while BTreeSet has faster
-    // comparison if `T` is a simple number type such as `u32`.
-    // Overall, we choose to use a HashSet here.
-    pub fn new(inner: Vec<T>) -> StdResult<Self> {
-        if inner.iter().collect::<HashSet<_>>().len() != inner.len() {
+    fn check(value: &Vec<T>) -> StdResult<()> {
+        if value.iter().collect::<HashSet<_>>().len() != value.len() {
             return Err(StdError::duplicate_data::<T>());
         }
-
-        Ok(Self(inner))
-    }
-
-    pub fn new_unchecked(inner: Vec<T>) -> Self {
-        Self(inner)
-    }
-
-    /// Check if the item is already in the vector, and if not, push it.
-    pub fn try_push(&mut self, item: T) -> StdResult<()> {
-        if self.0.contains(&item) {
-            return Err(StdError::duplicate_data::<T>());
-        }
-
-        self.0.push(item);
 
         Ok(())
     }
 }
 
-impl<T> Inner for UniqueVec<T>
+/// A wrapper over a vector that guarantees that no element appears twice.
+///
+/// This is useful if you want to ensure a collection of items is unique, and
+/// also _ordered_ (in which case `BTreeSet` isn't suitable).
+pub type UniqueVec<T> = Predicate<Vec<T>, IsUnique>;
+
+impl<T> UniqueVec<T>
 where
     T: Eq + Hash,
 {
-    type U = Vec<T>;
+    /// Check if the item is already in the vector, and if not, push it.
+    pub fn try_push(&mut self, item: T) -> StdResult<()> {
+        if self.value.contains(&item) {
+            return Err(StdError::duplicate_data::<T>());
+        }
 
-    fn inner(&self) -> &Self::U {
-        &self.0
-    }
+        self.value.push(item);
 
-    fn into_inner(self) -> Self::U {
-        self.0
+        Ok(())
     }
 }
 
@@ -68,7 +46,7 @@ where
     T: Eq + Hash,
 {
     fn length(&self) -> usize {
-        self.0.len()
+        self.value.len()
     }
 }
 
@@ -80,7 +58,7 @@ where
     type Item = T;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.value.into_iter()
     }
 }
 
@@ -92,31 +70,6 @@ where
 
     fn try_from(vector: Vec<T>) -> StdResult<Self> {
         Self::new(vector)
-    }
-}
-
-impl<'de, T> de::Deserialize<'de> for UniqueVec<T>
-where
-    T: Eq + Hash + de::Deserialize<'de>,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        <Vec<T> as de::Deserialize>::deserialize(deserializer)?
-            .try_into()
-            .map_err(de::Error::custom)
-    }
-}
-
-impl<T> BorshDeserialize for UniqueVec<T>
-where
-    T: Eq + Hash + BorshDeserialize,
-{
-    fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
-        <Vec<T> as BorshDeserialize>::deserialize_reader(reader)?
-            .try_into()
-            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
     }
 }
 

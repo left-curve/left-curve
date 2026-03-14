@@ -36,6 +36,7 @@ mod macros;
 mod metrics;
 mod non_zero;
 mod outcome;
+mod predicate;
 mod query;
 mod response;
 mod result;
@@ -55,9 +56,9 @@ pub use {
     changeset::*, code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, dec_coin::*,
     denom::*, empty::*, encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*,
     hash::*, hashers::*, imports::*, indexer::*, inner::*, jellyfish_merkle::*, json::*,
-    length_bounded::*, lengthy::*, metrics::*, non_zero::*, outcome::*, query::*, response::*,
-    result::*, serializers::*, shared::*, signer::*, status::*, time::*, transfer::*, tx::*,
-    unique_vec::*, upgrade::*, utils::*,
+    length_bounded::*, lengthy::*, metrics::*, non_zero::*, outcome::*, predicate::*, query::*,
+    response::*, result::*, serializers::*, shared::*, signer::*, status::*, time::*, transfer::*,
+    tx::*, unique_vec::*, upgrade::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
