@@ -1,13 +1,8 @@
 use {
-    crate::{Inner, StdError, StdResult},
-    borsh::{BorshDeserialize, BorshSerialize},
+    crate::{Checker, Predicate, StdError, StdResult},
     grug_math::{NumberConst, Udec128},
-    serde::{
-        Deserialize, Serialize,
-        de::{self, Error},
-        ser,
-    },
-    std::{io, marker::PhantomData, ops::Deref},
+    serde::{Deserialize, Serialize},
+    std::marker::PhantomData,
 };
 
 /// A limit for a value.
@@ -23,150 +18,57 @@ pub trait Bounds<T> {
     const MAX: Option<Bound<T>>;
 }
 
-/// A wrapper that enforces the value to be within the specified bounds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Bounded<T, B>
-where
-    T: PartialOrd + ToString,
-    B: Bounds<T>,
-{
-    value: T,
-    bounds: PhantomData<B>,
-}
+/// Checker wrapper that validates a value against a `Bounds<T>` implementation.
+pub struct BoundsCheck<B>(PhantomData<B>);
 
-impl<T, B> Bounded<T, B>
+impl<T, B> Checker<T> for BoundsCheck<B>
 where
     T: PartialOrd + ToString,
     B: Bounds<T>,
 {
-    pub fn new(value: T) -> StdResult<Self> {
-        match B::MIN {
+    fn check(value: &T) -> StdResult<()> {
+        match &B::MIN {
             Some(Bound::Inclusive(bound)) if value < bound => {
-                return Err(StdError::out_of_range(value, "<", bound));
+                return Err(StdError::out_of_range(
+                    value.to_string(),
+                    "<",
+                    bound.to_string(),
+                ));
             },
             Some(Bound::Exclusive(bound)) if value <= bound => {
-                return Err(StdError::out_of_range(value, "<=", bound));
+                return Err(StdError::out_of_range(
+                    value.to_string(),
+                    "<=",
+                    bound.to_string(),
+                ));
             },
             _ => (),
         }
 
-        match B::MAX {
+        match &B::MAX {
             Some(Bound::Inclusive(bound)) if value > bound => {
-                return Err(StdError::out_of_range(value, ">", bound));
+                return Err(StdError::out_of_range(
+                    value.to_string(),
+                    ">",
+                    bound.to_string(),
+                ));
             },
             Some(Bound::Exclusive(bound)) if value >= bound => {
-                return Err(StdError::out_of_range(value, ">=", bound));
+                return Err(StdError::out_of_range(
+                    value.to_string(),
+                    ">=",
+                    bound.to_string(),
+                ));
             },
             _ => (),
         }
 
-        Ok(Self {
-            value,
-            bounds: PhantomData,
-        })
-    }
-
-    pub fn new_unchecked(value: T) -> Self {
-        Self {
-            value,
-            bounds: PhantomData,
-        }
+        Ok(())
     }
 }
 
-impl<T, B> Inner for Bounded<T, B>
-where
-    T: PartialOrd + ToString,
-    B: Bounds<T>,
-{
-    type U = T;
-
-    fn inner(&self) -> &Self::U {
-        &self.value
-    }
-
-    fn into_inner(self) -> Self::U {
-        self.value
-    }
-}
-
-impl<T, B> AsRef<T> for Bounded<T, B>
-where
-    T: PartialOrd + ToString,
-    B: Bounds<T>,
-{
-    fn as_ref(&self) -> &T {
-        &self.value
-    }
-}
-
-impl<T, B> Deref for Bounded<T, B>
-where
-    T: PartialOrd + ToString,
-    B: Bounds<T>,
-{
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-
-impl<T, B> ser::Serialize for Bounded<T, B>
-where
-    T: PartialOrd + ToString + ser::Serialize,
-    B: Bounds<T>,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        self.value.serialize(serializer)
-    }
-}
-
-impl<'de, T, B> de::Deserialize<'de> for Bounded<T, B>
-where
-    T: PartialOrd + ToString + de::Deserialize<'de>,
-    B: Bounds<T>,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        let value = T::deserialize(deserializer)?;
-
-        Self::new(value).map_err(D::Error::custom)
-    }
-}
-
-impl<T, B> BorshSerialize for Bounded<T, B>
-where
-    T: PartialOrd + ToString + BorshSerialize,
-    B: Bounds<T>,
-{
-    fn serialize<W>(&self, writer: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        self.value.serialize(writer)
-    }
-}
-
-impl<T, B> BorshDeserialize for Bounded<T, B>
-where
-    T: PartialOrd + ToString + BorshDeserialize,
-    B: Bounds<T>,
-{
-    fn deserialize_reader<R>(reader: &mut R) -> io::Result<Self>
-    where
-        R: io::Read,
-    {
-        let value = BorshDeserialize::deserialize_reader(reader)?;
-
-        Self::new(value).map_err(io::Error::other)
-    }
-}
+/// A wrapper that enforces the value to be within the specified bounds.
+pub type Bounded<T, B> = Predicate<T, BoundsCheck<B>>;
 
 // ------------------------------ Standard bounds ------------------------------
 
@@ -208,7 +110,7 @@ impl Bounds<Udec128> for ZeroExclusiveOneExclusive {
 mod tests {
     use {
         super::*,
-        crate::{JsonDeExt, JsonSerExt, ResultExt},
+        crate::{Inner, JsonDeExt, JsonSerExt, ResultExt},
         grug_math::{NumberConst, Udec256, Uint256},
     };
 
