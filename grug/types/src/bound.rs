@@ -13,28 +13,15 @@ pub enum Bound<T> {
 /// A wrapper that enforces the value to be within the specified bounds.
 pub type Bounded<T, B> = Predicate<T, B>;
 
-/// Define a bounds checker type that implements `Checker<T>` with the given
-/// min/max bounds. Use this instead of manually implementing `Checker`.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// define_bounds! {
-///     MyBounds,
-///     Udec128,
-///     min = Some(Bound::Inclusive(Udec128::ZERO)),
-///     max = Some(Bound::Exclusive(Udec128::ONE)),
-/// }
-///
-/// type MyBounded = Bounded<Udec128, MyBounds>;
-/// ```
 macro_rules! define_bounds {
     (
         $name:ident,
         $t:ty,
         min = $min:expr,
-        max = $max:expr $(,)?
+        max = $max:expr,
+        doc = $doc:expr $(,)?
     ) => {
+        #[doc = $doc]
         #[derive(Debug)]
         pub struct $name;
 
@@ -74,6 +61,7 @@ define_bounds! {
     Udec128,
     min = Some(Bound::Inclusive(Udec128::ZERO)),
     max = Some(Bound::Inclusive(Udec128::ONE)),
+    doc = "Bounds checker for `[0, 1]`.",
 }
 
 define_bounds! {
@@ -81,6 +69,7 @@ define_bounds! {
     Udec128,
     min = Some(Bound::Inclusive(Udec128::ZERO)),
     max = Some(Bound::Exclusive(Udec128::ONE)),
+    doc = "Bounds checker for `[0, 1)`.",
 }
 
 define_bounds! {
@@ -88,6 +77,7 @@ define_bounds! {
     Udec128,
     min = Some(Bound::Exclusive(Udec128::ZERO)),
     max = Some(Bound::Inclusive(Udec128::ONE)),
+    doc = "Bounds checker for `(0, 1]`.",
 }
 
 define_bounds! {
@@ -95,6 +85,7 @@ define_bounds! {
     Udec128,
     min = Some(Bound::Exclusive(Udec128::ZERO)),
     max = Some(Bound::Exclusive(Udec128::ONE)),
+    doc = "Bounds checker for `(0, 1)`.",
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -110,13 +101,11 @@ mod tests {
     define_bounds! {
         FeeRateBounds,
         Udec256,
-        // Minimum fee rate is 0% (inclusive).
         min = Some(Bound::Inclusive(Udec256::ZERO)),
-        // Maximum fee rate is 100% (exclusive).
-        // If only there's an easier way to define a constant Udec256...
         max = Some(Bound::Exclusive(Udec256::raw(
             Uint256::new_from_u128(1_000_000_000_000_000_000),
         ))),
+        doc = "Bounds checker for fee rates in `[0%, 100%)`.",
     }
 
     type FeeRate = Bounded<Udec256, FeeRateBounds>;
