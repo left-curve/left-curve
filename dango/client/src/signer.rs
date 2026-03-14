@@ -3,7 +3,7 @@ use {
     anyhow::anyhow,
     dango_types::{
         account,
-        account_factory::{self, UserIndex},
+        account_factory::{self, UserIndex, UserIndexOrName},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
         config::AppConfig,
         signer::SequencedSigner,
@@ -139,7 +139,7 @@ where
         let address = client
             .query_wasm_smart(
                 factory_addr,
-                account_factory::QueryUserRequest { index: user_index },
+                account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
                 None,
             )
             .await?

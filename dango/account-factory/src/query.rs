@@ -1,7 +1,7 @@
 use {
     crate::{ACCOUNTS, CODE_HASH, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS},
     dango_types::account_factory::{
-        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexAndName,
+        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexAndName, UserIndexOrName,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -25,8 +25,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_next_account_index(ctx.storage)?;
             res.to_json_value()
         },
-        QueryMsg::User { index } => {
-            let res = query_user(ctx.storage, index)?;
+        QueryMsg::User(index_or_name) => {
+            let res = query_user(ctx.storage, index_or_name)?;
             res.to_json_value()
         },
         QueryMsg::Users { start_after, limit } => {
@@ -65,8 +65,11 @@ fn query_next_account_index(storage: &dyn Storage) -> StdResult<AccountIndex> {
     NEXT_ACCOUNT_INDEX.current(storage)
 }
 
-fn query_user(storage: &dyn Storage, user_index: UserIndex) -> StdResult<User> {
-    USERS.load(storage, user_index)
+fn query_user(storage: &dyn Storage, index_or_name: UserIndexOrName) -> StdResult<User> {
+    match index_or_name {
+        UserIndexOrName::Index(idx) => USERS.load(storage, idx),
+        UserIndexOrName::Name(username) => USERS.idx.by_name.load_value(storage, username),
+    }
 }
 
 fn query_users(

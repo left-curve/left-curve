@@ -110,10 +110,10 @@ pub enum QueryMsg {
     /// Query the next account index.
     #[returns(AccountIndex)]
     NextAccountIndex {},
-    /// Query a single user by index.
+    /// Query a single user by index or username.
     #[returns(User)]
-    User { index: UserIndex },
-    /// Enumerate all users by indexes.
+    User(UserIndexOrName),
+    /// Enumerate all users by indexes. Enumeration by usernames is not supported.
     #[returns(BTreeMap<UserIndex, User>)]
     Users {
         start_after: Option<UserIndex>,

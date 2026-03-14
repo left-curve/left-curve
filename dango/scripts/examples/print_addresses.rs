@@ -1,5 +1,8 @@
 use {
-    dango_types::{account_factory, config::AppConfig},
+    dango_types::{
+        account_factory::{self, UserIndexOrName},
+        config::AppConfig,
+    },
     grug::QueryClientExt,
     indexer_client::HttpClient,
 };
@@ -23,7 +26,7 @@ async fn main() {
         let user_address = client
             .query_wasm_smart(
                 app_config.addresses.account_factory,
-                account_factory::QueryUserRequest { index: i },
+                account_factory::QueryUserRequest(UserIndexOrName::Index(i)),
                 None,
             )
             .await
