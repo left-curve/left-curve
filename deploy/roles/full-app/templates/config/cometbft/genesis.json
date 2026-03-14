@@ -844,6 +844,13 @@
                   "id": 14,
                   "precision": 6
                 }
+              },
+              "perp/ethusd": {
+                "pyth": {
+                  "channel": "real_time",
+                  "id": 2,
+                  "precision": 18
+                }
               }
             },
             "trusted_signers": {

@@ -2,7 +2,7 @@
 
 use {
     crate::{
-        constants::{atom, bch, bnb, btc, doge, eth, ltc, sol, usdc, xrp},
+        constants::{atom, bch, bnb, btc, doge, eth, ltc, perp_eth, sol, usdc, xrp},
         oracle::PriceSource,
     },
     grug::{Denom, btree_map},
@@ -64,6 +64,11 @@ pub static PYTH_PRICE_SOURCES: LazyLock<BTreeMap<Denom, PriceSource>> = LazyLock
             id: XRP_USD_ID.id,
             channel: XRP_USD_ID.channel,
             precision: 6,
+        },
+        perp_eth::DENOM.clone() => PriceSource::Pyth {
+            id: ETH_USD_ID.id,
+            channel: ETH_USD_ID.channel,
+            precision: 18,
         },
     }
 });
