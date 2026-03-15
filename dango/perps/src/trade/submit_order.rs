@@ -39,6 +39,9 @@ pub fn submit_order(
     kind: OrderKind,
     reduce_only: bool,
 ) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let start = std::time::Instant::now();
+
     // ---------------------------- 1. Preparation -----------------------------
 
     let param = PARAM.load(ctx.storage)?;
@@ -78,6 +81,9 @@ pub fn submit_order(
             reduce_only,
             &mut events,
         )?;
+
+    #[cfg(feature = "metrics")]
+    let pair_label = pair_id.to_string();
 
     // ------------------------ 3. Apply state changes -------------------------
 
@@ -169,6 +175,33 @@ pub fn submit_order(
             limit_price,
             size: order.size,
         })?;
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::counter!(
+            crate::metrics::LABEL_ORDERS_SUBMITTED,
+            "pair_id" => pair_label.clone()
+        )
+        .increment(1);
+
+        metrics::gauge!(
+            crate::metrics::LABEL_OPEN_INTEREST_LONG,
+            "pair_id" => pair_label.clone()
+        )
+        .set(crate::metrics::to_float(pair_state.long_oi));
+
+        metrics::gauge!(
+            crate::metrics::LABEL_OPEN_INTEREST_SHORT,
+            "pair_id" => pair_label.clone()
+        )
+        .set(crate::metrics::to_float(pair_state.short_oi));
+
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_SUBMIT_ORDER,
+            "pair_id" => pair_label
+        )
+        .record(start.elapsed().as_secs_f64());
     }
 
     // No token transfers — all PnL/fees settled via user_state.margin.
@@ -614,6 +647,13 @@ pub fn match_order(
         if maker_order.size.is_zero() {
             maker_state.open_order_count -= 1;
 
+            #[cfg(feature = "metrics")]
+            metrics::counter!(
+                crate::metrics::LABEL_ORDERS_FILLED,
+                "pair_id" => pair_id.to_string()
+            )
+            .increment(1);
+
             order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
 
             // Vault order removal is internal churn — suppress the event.
@@ -683,6 +723,31 @@ pub fn settle_fill(
     let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
 
     let volume = compute_notional(fill_size, fill_price)?;
+
+    #[cfg(feature = "metrics")]
+    {
+        let pair_label = pair_id.to_string();
+
+        metrics::counter!(
+            crate::metrics::LABEL_TRADES,
+            "pair_id" => pair_label.clone()
+        )
+        .increment(1);
+
+        let vol = crate::metrics::to_float(volume).abs();
+
+        metrics::histogram!(
+            crate::metrics::LABEL_VOLUME_PER_TRADE,
+            "pair_id" => pair_label.clone()
+        )
+        .record(vol);
+
+        metrics::histogram!(
+            crate::metrics::LABEL_FEES_COLLECTED,
+            "pair_id" => pair_label
+        )
+        .record(crate::metrics::to_float(fee).abs());
+    }
 
     pnls.entry(user).or_default().checked_add_assign(pnl)?;
 

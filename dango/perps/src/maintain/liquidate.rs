@@ -41,6 +41,9 @@ use {
 ///
 /// Returns: empty `Response` (all PnL/fees settled via internal margins).
 pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let start = std::time::Instant::now();
+
     // --------------------- 1. Preparation + basic checks ---------------------
 
     ensure!(user != ctx.contract, "cannot liquidate the vault");
@@ -185,6 +188,32 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     apply_position_index_updates(ctx.storage, &index_updates)?;
 
+    #[cfg(feature = "metrics")]
+    {
+        metrics::counter!(crate::metrics::LABEL_LIQUIDATIONS).increment(1);
+
+        metrics::histogram!(crate::metrics::LABEL_DURATION_LIQUIDATE)
+            .record(start.elapsed().as_secs_f64());
+    }
+
+    // OI gauges are updated per pair after liquidation.
+    #[cfg(feature = "metrics")]
+    for (pair_id, pair_state) in &pair_states {
+        let pair_label = pair_id.to_string();
+
+        metrics::gauge!(
+            crate::metrics::LABEL_OPEN_INTEREST_LONG,
+            "pair_id" => pair_label.clone()
+        )
+        .set(crate::metrics::to_float(pair_state.long_oi));
+
+        metrics::gauge!(
+            crate::metrics::LABEL_OPEN_INTEREST_SHORT,
+            "pair_id" => pair_label
+        )
+        .set(crate::metrics::to_float(pair_state.short_oi));
+    }
+
     Ok(Response::new().add_events(events)?)
 }
 
@@ -319,6 +348,10 @@ fn _liquidate(
 
         // Deduct from insurance fund (can go negative as last resort).
         state.insurance_fund.checked_sub_assign(bad_debt)?;
+
+        #[cfg(feature = "metrics")]
+        metrics::histogram!(crate::metrics::LABEL_BAD_DEBT)
+            .record(crate::metrics::to_float(bad_debt).abs());
 
         events.push(BadDebtCovered {
             liquidated_user: user,
@@ -468,6 +501,13 @@ fn execute_close_schedule(
             // Add ADL notional.
             closed_notional
                 .checked_add_assign(adl_size.checked_abs()?.checked_mul(oracle_price)?)?;
+
+            #[cfg(feature = "metrics")]
+            metrics::counter!(
+                crate::metrics::LABEL_ADL_EVENTS,
+                "pair_id" => pair_id.to_string()
+            )
+            .increment(1);
 
             events.push(Liquidated {
                 user,
