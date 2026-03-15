@@ -164,3 +164,21 @@ add-passwords:
   export ANSIBLE_VAULT_PASSWORD="$VAULT"
   export ANSIBLE_DEBIAN_PASSWORD="$DEBIAN"
   exec $SHELL
+
+# ---------- B2 Bucket Commands ----------
+
+# List all B2 buckets
+b2-list-buckets:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags list
+
+# Delete empty B2 buckets (PR and devnet only, requires lifecycle rules)
+b2-cleanup-buckets:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags cleanup
+
+# Delete a specific B2 bucket by name (must be empty)
+b2-delete-bucket name:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags delete-bucket -e b2_bucket={{name}}
+
+# Mark a B2 bucket for deletion (sets lifecycle rules to drain files in ~2 days)
+b2-mark-bucket-deletable name:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags mark-bucket-deletable -e b2_bucket={{name}}
