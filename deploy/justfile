@@ -186,7 +186,7 @@ deploy-db:
 deploy-clickhouse:
   ansible-playbook clickhouse.yml
 
-# ---------- B2 Bucket Commands ----------
+# -------------------------------- B2 Buckets ----------------------------------
 
 # List all B2 buckets
 b2-list-buckets:
