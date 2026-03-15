@@ -90,11 +90,8 @@ deploy-testnet:
   ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' -e frontend_enabled_features='points' --limit 100.90.163.19,100.109.200.70
 
 # Note: the `reset-and-deploy-testnet` command has been deleted.
-# We don't ever want to reset testnet since we want to keep it updated to ensure everithing works
-# before update the mainnet.
-# reset-and-deploy-testnet:
-  # just stop-testnet
-  # ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest", "reset_data": true}' -e frontend_enabled_features='points' --limit 100.90.163.19,100.109.200.70
+# We don't ever want to reset testnet since we want to keep it updated to ensure everything works
+# before updating mainnet.
 
 stop-testnet:
   ansible-playbook stop-services.yml -e dango_network=testnet --limit 100.90.163.19,100.109.200.70
