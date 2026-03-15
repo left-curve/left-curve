@@ -1,8 +1,7 @@
 [workspace]
 members = [
-  "dango/account/factory",
-  "dango/account/multi",
-  "dango/account/single",
+  "dango/account",
+  "dango/account-factory",
   "dango/auth",
   "dango/bank",
   "dango/cli",
@@ -205,9 +204,8 @@ aws-credential-types = "1"
 aws-sdk-s3           = "1"
 
 # Left curve packages
-dango-account-factory       = { path = "dango/account/factory" }
-dango-account-multi         = { path = "dango/account/multi" }
-dango-account-single        = { path = "dango/account/single" }
+dango-account               = { path = "dango/account" }
+dango-account-factory       = { path = "dango/account-factory" }
 dango-amm                   = { path = "dango/amm" }
 dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }

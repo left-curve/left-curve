@@ -1,6 +1,6 @@
 use {
     dango_types::{
-        account_factory::{QueryUserRequest, UserIndexOrName},
+        account_factory::{self, UserIndexOrName},
         config::AppConfig,
     },
     grug::QueryClientExt,
@@ -23,17 +23,15 @@ async fn main() {
 
     // Query the user addresses
     for i in 1..10 {
-        let (user_address, _) = client
+        let user_address = client
             .query_wasm_smart(
                 app_config.addresses.account_factory,
-                QueryUserRequest(UserIndexOrName::Index(i)),
+                account_factory::QueryUserRequest(UserIndexOrName::Index(i)),
                 None,
             )
             .await
             .unwrap()
-            .accounts
-            .pop_first()
-            .unwrap();
+            .master_account();
 
         println!("user address {}: {}", i, user_address);
     }

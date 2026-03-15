@@ -1,9 +1,6 @@
 use {
     crate::{
-        account_factory::{
-            Account, AccountIndex, AccountParamUpdates, AccountParams, AccountType, NewUserSalt,
-            UserIndex, Username,
-        },
+        account_factory::{Account, AccountIndex, NewUserSalt, UserIndex, Username},
         auth::{Key, Signature},
     },
     grug::{Addr, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
@@ -25,12 +22,31 @@ pub struct UserIndexAndName {
 }
 
 /// Information about a user. Used in query response.
-#[grug::derive(Serde)]
+#[grug::derive(Serde, Borsh)]
 pub struct User {
+    /// The user's username, if he has chosen one.
+    pub name: Option<Username>,
+
+    /// Accounts associated with this user, keyed by account index.
+    /// A BTreeMap preserves creation-time ordering via key sort.
+    pub accounts: BTreeMap<AccountIndex, Addr>,
+
     /// Keys associated with this user, indexes by hashes.
     pub keys: BTreeMap<Hash256, Key>,
-    /// Accounts associated with this user, indexes by addresses.
-    pub accounts: BTreeMap<Addr, Account>,
+}
+
+impl User {
+    /// Return the user's master account, i.e. the first account created for
+    /// this user.
+    ///
+    /// Since `User::accounts` is a BTreeMap sorted by AccountIndex,
+    /// the first entry is the earliest created account.
+    pub fn master_account(&self) -> Addr {
+        self.accounts
+            .first_key_value()
+            .map(|(_, addr)| *addr)
+            .expect("the user to have at least one account")
+    }
 }
 
 /// Data the user must sign when onboarding. Currently, this consists of only
@@ -51,8 +67,8 @@ impl SignData for RegisterUserData {
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    /// Code hash to be associated with each account type.
-    pub code_hashes: BTreeMap<AccountType, Hash256>,
+    /// Code hash to be associated with the Dango account contract.
+    pub account_code_hash: Hash256,
     /// Users with associated key to set up during genesis.
     /// Each genesis user is to be associated with exactly one key.
     /// A single-signature account will be created for each genesis user.
@@ -73,11 +89,9 @@ pub enum ExecuteMsg {
         signature: Signature,
     },
     /// Register a new account for an existing user.
-    RegisterAccount { params: AccountParams },
+    RegisterAccount {},
     /// Associate a new or disassociate an existing key with a username.
     UpdateKey { key_hash: Hash256, key: Op<Key> },
-    /// Update an account's parameters.
-    UpdateAccount(AccountParamUpdates),
     /// Update the username.
     ///
     /// For now, we only support setting the username once when it's unset.
@@ -87,36 +101,24 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query the code hash associated with the Dango account contract.
+    #[returns(Hash256)]
+    CodeHash {},
     /// Query the next user index.
     #[returns(UserIndex)]
     NextUserIndex {},
     /// Query the next account index.
     #[returns(AccountIndex)]
     NextAccountIndex {},
-    /// Query the code hash associated with the an account type.
-    #[returns(Hash256)]
-    CodeHash { account_type: AccountType },
-    /// Enumerate all code hashes associated with account types.
-    #[returns(BTreeMap<AccountType, Hash256>)]
-    CodeHashes {
-        start_after: Option<AccountType>,
+    /// Query a single user by index or username.
+    #[returns(User)]
+    User(UserIndexOrName),
+    /// Enumerate all users by indexes. Enumeration by usernames is not supported.
+    #[returns(BTreeMap<UserIndex, User>)]
+    Users {
+        start_after: Option<UserIndex>,
         limit: Option<u32>,
     },
-    /// Query a key by its hash and the user it is associated with.
-    #[returns(Key)]
-    Key {
-        hash: Hash256,
-        user: UserIndexOrName,
-    },
-    /// Enumerate all keys.
-    #[returns(Vec<QueryKeyResponseItem>)]
-    Keys {
-        start_after: Option<QueryKeyPaginateParam>,
-        limit: Option<u32>,
-    },
-    /// Find all keys associated with a user.
-    #[returns(BTreeMap<Hash256, Key>)]
-    KeysByUser { user: UserIndexOrName },
     /// Query parameters of an account by address.
     #[returns(Account)]
     Account { address: Addr },
@@ -126,42 +128,12 @@ pub enum QueryMsg {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
-    /// Find all accounts associated with a user.
-    #[returns(BTreeMap<Addr, Account>)]
-    AccountsByUser { user: UserIndexOrName },
-    /// Query a single user by its identifier (either the index or the username).
-    #[returns(User)]
-    User(UserIndexOrName),
-    /// Query a user's username by index.
-    ///
-    /// `None` if the user index doesn't exist, or if the user index exists but
-    /// its username is unset.
-    #[returns(Option<Username>)]
-    UserNameByIndex(UserIndex),
-    /// Query a user's index by username.
-    ///
-    /// `None` if no user index is associated with this username.
-    #[returns(Option<UserIndex>)]
-    UserIndexByName(Username),
-    /// Query user identifiers (index or username) associated with a given key hash.
+    /// Query users associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
     #[returns(Vec<UserIndexAndName>)]
     ForgotUsername {
         key_hash: Hash256,
-        start_after: Option<UserIndexOrName>,
+        start_after: Option<UserIndex>,
         limit: Option<u32>,
     },
-}
-
-#[grug::derive(Serde)]
-pub struct QueryKeyPaginateParam {
-    pub user: UserIndexOrName,
-    pub key_hash: Hash256,
-}
-
-#[grug::derive(Serde)]
-pub struct QueryKeyResponseItem {
-    pub user: UserIndexAndName,
-    pub key_hash: Hash256,
-    pub key: Key,
 }

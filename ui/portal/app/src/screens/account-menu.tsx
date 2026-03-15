@@ -22,14 +22,9 @@ export default function AccountMenuScreen() {
         <AccountCard
           account={{
             index: 10,
-            params: {
-              single: {
-                owner: 1,
-              },
-            },
+            owner: 1,
             address: "0x75b89bd4a0e12b45dd12a6e12550aed2b8fd858f",
             username: "cookie",
-            type: "single",
           }}
           balance={"120"}
         />

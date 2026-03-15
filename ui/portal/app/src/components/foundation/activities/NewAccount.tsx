@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { forwardRef, useImperativeHandle } from "react";
 
 import { View, type GestureResponderEvent } from "react-native";
-import { Badge } from "../Badge";
 import { AddressVisualizer } from "../AddressVisualizer";
 import { IconNewAccount } from "../icons/IconNewAccount";
 
@@ -21,7 +20,7 @@ type ActivityAccountProps = {
 export const ActivityNewAccount = forwardRef<ActivityRef, ActivityAccountProps>(
   ({ activity }, ref) => {
     const { navigate } = useRouter();
-    const { address, accountType } = activity.data;
+    const { address } = activity.data;
 
     const navigateToAccount = () => navigate("account");
     useImperativeHandle(ref, () => ({
@@ -37,7 +36,6 @@ export const ActivityNewAccount = forwardRef<ActivityRef, ActivityAccountProps>(
         <View className="flex flex-col max-w-[100%] overflow-hidden">
           <View className="flex flex-row justify-center items-center gap-2 diatype-m-medium text-ink-secondary-700 capitalize">
             <GlobalText>Account created</GlobalText>
-            <Badge classNames={{ text: "capitalize" }} text={accountType} />
           </View>
 
           <AddressVisualizer

@@ -1,5 +1,4 @@
 use {
-    anyhow::anyhow,
     dango_genesis::GenesisCodes,
     dango_testing::{TestAccount, TestSuite},
     dango_types::{account, account_factory, dex},
@@ -73,12 +72,10 @@ fn main() -> anyhow::Result<()> {
         .query_wasm_smart(ACCOUNT_FACTORY, account_factory::QueryAccountRequest {
             address: OWNER,
         })?
-        .params
-        .owner()
-        .ok_or_else(|| anyhow!("owner {OWNER} is not a single signature account"))?;
+        .owner;
 
     let owner_nonce = suite
-        .query_wasm_smart(OWNER, account::single::QuerySeenNoncesRequest {})
+        .query_wasm_smart(OWNER, account::QuerySeenNoncesRequest {})
         .should_succeed()
         .pop_last()
         .unwrap_or(0);

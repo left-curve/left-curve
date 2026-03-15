@@ -808,7 +808,7 @@ mod cosmwasm_tests {
     // Future Note: this can likely be macro-derived
     impl<PK> IndexList<PK, Data> for DataCompositeMultiIndex<'_, PK>
     where
-        PK: PrimaryKey,
+        PK: PrimaryKey + Clone,
     {
         fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<PK, Data>> + '_> {
             let v: Vec<&dyn Index<PK, Data>> = vec![&self.name_age];

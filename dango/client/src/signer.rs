@@ -2,7 +2,7 @@ use {
     crate::Secret,
     anyhow::anyhow,
     dango_types::{
-        account::single,
+        account,
         account_factory::{self, UserIndex, UserIndexOrName},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
         config::AppConfig,
@@ -48,7 +48,7 @@ where
             .addresses
             .account_factory;
 
-        client
+        Ok(client
             .query_wasm_smart(
                 account_factory,
                 account_factory::QueryAccountRequest {
@@ -57,9 +57,7 @@ where
                 None,
             )
             .await?
-            .params
-            .owner()
-            .ok_or_else(|| anyhow!("account {} is not a single signature account", self.address))
+            .owner)
     }
 
     pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
@@ -70,7 +68,7 @@ where
         // If the account hasn't sent any transaction yet, use 0 as nonce.
         // Otherwise, use the latest seen nonce + 1.
         let nonce = client
-            .query_wasm_smart(self.address, single::QuerySeenNoncesRequest {}, None)
+            .query_wasm_smart(self.address, account::QuerySeenNoncesRequest {}, None)
             .await?
             .last()
             .map(|newest_nonce| newest_nonce + 1)
@@ -138,18 +136,14 @@ where
             .ok_or_else(|| anyhow!("no user index found for key hash {key_hash}"))?
             .index;
 
-        let address = *client
+        let address = client
             .query_wasm_smart(
                 factory_addr,
-                account_factory::QueryAccountsByUserRequest {
-                    user: UserIndexOrName::Index(user_index),
-                },
+                account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
                 None,
             )
             .await?
-            .first_key_value()
-            .ok_or_else(|| anyhow!("no address found for user index {user_index}"))?
-            .0;
+            .master_account();
 
         Ok(SingleSigner {
             address,
@@ -342,13 +336,14 @@ mod tests {
     use {
         super::*,
         crate::{Eip712, Secp256k1},
-        dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
+        dango_account_factory::USERS,
         dango_auth::{account::STATUS, authenticate_tx},
         dango_types::{
+            account_factory::User,
             auth::AccountStatus,
             config::{AppAddresses, AppConfig},
         },
-        grug::{AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt},
+        grug::{AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt, btree_map},
     };
 
     #[test]
@@ -381,15 +376,12 @@ mod tests {
 
         let mock_querier = MockQuerier::new()
             .with_raw_contract_storage(account_factory, |storage| {
-                ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, address))
-                    .unwrap();
-                KEYS.save(
-                    storage,
-                    (user_index, signer.secret.key_hash()),
-                    &signer.secret.key(),
-                )
-                .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: btree_map! { 0u32 => address },
+                    keys: btree_map! { signer.secret.key_hash() => signer.secret.key() },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             })
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -440,15 +432,12 @@ mod tests {
 
         let mock_querier = MockQuerier::new()
             .with_raw_contract_storage(account_factory, |storage| {
-                ACCOUNTS_BY_USER
-                    .insert(storage, (user_index, address))
-                    .unwrap();
-                KEYS.save(
-                    storage,
-                    (user_index, signer.secret.key_hash()),
-                    &signer.secret.key(),
-                )
-                .unwrap();
+                let user = User {
+                    name: None,
+                    accounts: btree_map! { 0u32 => address },
+                    keys: btree_map! { signer.secret.key_hash() => signer.secret.key() },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
             })
             .with_app_config(AppConfig {
                 addresses: AppAddresses {

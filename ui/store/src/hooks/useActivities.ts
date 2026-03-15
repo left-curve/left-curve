@@ -7,7 +7,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { snakeToCamel, uid } from "@left-curve/dango/utils";
 
 import type {
-  AccountTypes,
   Address,
   Coins,
   Hex,
@@ -28,7 +27,6 @@ export type Activities = {
   };
   account: {
     address: Address;
-    accountType: AccountTypes;
     accountIndex: number;
   };
   orderCreated: OrderCreatedEvent;
@@ -115,14 +113,13 @@ export function useActivities() {
     const sinceBlockHeight = lastKnownBlockHeight + 1;
 
     const unsubscribeAccount = subscriptions.subscribe("account", {
-      params: { userIndex: account.index },
+      params: { userIndex: account.owner },
       listener: ({ accounts }) => {
         for (const account of accounts) {
-          const { address, accountType, accountIndex, createdAt, createdBlockHeight } = account;
+          const { address, accountIndex, createdAt, createdBlockHeight } = account;
 
           const activity = {
             address,
-            accountType,
             accountIndex,
           };
 

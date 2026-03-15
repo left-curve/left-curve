@@ -1,15 +1,14 @@
 use {
-    anyhow::{anyhow, ensure},
+    anyhow::ensure,
     dango_genesis::GenesisCodes,
-    dango_types::account_factory::{self, Account, UserIndexOrName},
+    dango_types::account_factory::{self, User, UserIndexOrName},
     grug::{
-        Addr, BlockInfo, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GenesisState, JsonDeExt, Query,
+        BlockInfo, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GenesisState, JsonDeExt, Query,
         Timestamp,
     },
     grug_app::{App, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
-    std::collections::BTreeMap,
 };
 
 const CHAIN_ID: &str = "dango-1";
@@ -384,21 +383,18 @@ fn main() -> anyhow::Result<()> {
         .deserialize_json::<dango_types::config::AppConfig>()?
         .addresses
         .account_factory;
-    let (user0, _) = app
+    let user0 = app
         .do_query_app(
             Query::wasm_smart(
                 account_factory,
-                &account_factory::QueryMsg::AccountsByUser {
-                    user: UserIndexOrName::Index(0),
-                },
+                &account_factory::QueryMsg::User(UserIndexOrName::Index(0)),
             )?,
             None,
             false,
         )?
         .into_wasm_smart()
-        .deserialize_json::<BTreeMap<Addr, Account>>()?
-        .pop_last()
-        .ok_or(anyhow!("no account found for user index 0"))?;
+        .deserialize_json::<User>()?
+        .master_account();
 
     ensure!(
         owner == user0,

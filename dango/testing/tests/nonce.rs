@@ -1,6 +1,6 @@
 use {
     dango_testing::{TestAccounts, constants::MOCK_CHAIN_ID, setup_test_naive},
-    dango_types::{account::single::QuerySeenNoncesRequest, constants::dango},
+    dango_types::{account::QuerySeenNoncesRequest, constants::dango},
     grug::{
         Addressable, Coins, Duration, JsonSerExt, Message, NonEmpty, QuerierExt, ResultExt, Tx,
     },

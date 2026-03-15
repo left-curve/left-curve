@@ -9,7 +9,6 @@ query Accounts($after: String, $before: String, $first: Int, $last: Int, $sortBy
     nodes {
       accountIndex
       address
-      accountType
       createdBlockHeight
       createdTxHash
       createdAt
