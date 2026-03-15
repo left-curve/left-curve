@@ -4,33 +4,7 @@ set positional-arguments
 default:
   @just --list
 
-edit-secrets:
-  ansible-vault edit group_vars/all/vault.yml
-
-edit-hyperlane-secrets:
-  ansible-vault edit group_vars/hyperlane/vault.yml
-
-edit-points-bot-secrets:
-  EDITOR="cursor --wait" ansible-vault edit group_vars/points-bot/vault.yml
-
-# Print validator address from AWS KMS (cast)
-# Usage: just hyperlane-kms-address testnet 1
-hyperlane-kms-address network index:
-  ansible-playbook hyperlane-kms-address.yml \
-    -e hyperlane_agents_network={{network}} \
-    -e hyperlane_validator_index={{index}}
-
-edit-root-key:
-  ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
-
-edit-root-secrets:
-  ansible-vault edit vaults/debian/root_vault.yml --vault-id debian@debian-password.sh --encrypt-vault-id debian
-
-cold-provision:
-  ansible-playbook playbook.yml
-
-provision:
-  ansible-playbook playbook.yml --skip-tags setup
+# ----------------------------------- Setup ------------------------------------
 
 # Set up Python environment and install Ansible + role
 setup:
@@ -43,62 +17,66 @@ setup:
 lint:
   find . -name '*.yml' -o -name '*.yaml' | grep -v vault | grep -v .venv | xargs uvx yamllint -d relaxed
 
-deploy-github-runners:
-  ansible-playbook setup-github-runner-hosts.yml
-  ansible-playbook install-github-runner-hosts.yml
+add-deploy-key:
+  ./deploy-key.sh | ssh-add - >/dev/null
+  @echo "Deploy key added to ssh-agent. You can now run ansible-playbook normally."
 
-remove-deploy-lock-devnet:
-  ansible-playbook remove-deploy-locks.yml -e dango_network=devnet --limit 100.96.253.40,100.107.248.71
+add-debian-key:
+  ./debian-key.sh | ssh-add - >/dev/null
+  @echo "debian key added to ssh-agent. You can now run ansible-playbook normally."
 
-remove-deploy-lock-testnet:
-  ansible-playbook remove-deploy-locks.yml -e dango_network=testnet --limit 100.90.163.19,100.109.200.70
+# Pre-fetch vault passwords into environment variables (memory only, no disk)
+# Spawns a new shell with passwords set. Exit the shell when done.
+add-passwords:
+  #!/bin/bash
+  VAULT=$(./vault-password.sh 2>/dev/null) || { echo "Failed to get vault password" >&2; exit 1; }
+  DEBIAN=$(./debian-password.sh 2>/dev/null) || { echo "Failed to get debian password" >&2; exit 1; }
+  export ANSIBLE_VAULT_PASSWORD="$VAULT"
+  export ANSIBLE_DEBIAN_PASSWORD="$DEBIAN"
+  exec $SHELL
 
-remove-deploy-lock-mainnet:
-  ansible-playbook remove-deploy-locks.yml -e dango_network=mainnet --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
+# ---------------------------------- Secrets -----------------------------------
 
-stop-devnet:
-  ansible-playbook stop-services.yml -e dango_network=devnet --limit 100.96.253.40,100.107.248.71
+edit-secrets:
+  ansible-vault edit group_vars/all/vault.yml
 
-stop-testnet:
-  ansible-playbook stop-services.yml -e dango_network=testnet --limit 100.90.163.19,100.109.200.70
+edit-hyperlane-secrets:
+  ansible-vault edit group_vars/hyperlane/vault.yml
 
-stop-mainnet:
-  ansible-playbook stop-services.yml -e dango_network=mainnet --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
+edit-points-bot-secrets:
+  EDITOR="cursor --wait" ansible-vault edit group_vars/points-bot/vault.yml
 
-restart-devnet:
-  ansible-playbook restart-services.yml -e dango_network=devnet --limit 100.96.253.40,100.107.248.71
+edit-root-key:
+  ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
 
-restart-testnet:
-  ansible-playbook restart-services.yml -e dango_network=testnet --limit 100.90.163.19,100.109.200.70
+edit-root-secrets:
+  ansible-vault edit vaults/debian/root_vault.yml --vault-id debian@debian-password.sh --encrypt-vault-id debian
 
-restart-mainnet:
-  ansible-playbook restart-services.yml -e dango_network=mainnet --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
+# -------------------------------- Provisioning --------------------------------
 
-# Note: the `reset-and-deploy-mainnet` command has been deleted.
-# We don't ever want to reset mainnet. Deleting the command so we don't do it by mistake.
+cold-provision:
+  ansible-playbook playbook.yml
 
-deploy-mainnet:
-  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "faucet_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
+provision:
+  ansible-playbook playbook.yml --skip-tags setup
 
-reset-and-deploy-testnet:
-  just stop-testnet
-  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest", "reset_data": true}' -e frontend_enabled_features='points' --limit 100.90.163.19,100.109.200.70
+# ---------------------------------- Devnet ------------------------------------
 
-deploy-testnet:
-  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' -e frontend_enabled_features='points' --limit 100.90.163.19,100.109.200.70
+deploy-devnet:
+  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true}' -e frontend_enabled_features='points' --limit 100.96.253.40,100.107.248.71
 
 reset-and-deploy-devnet:
   just stop-devnet
   ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true, "reset_data": true}' -e frontend_enabled_features='points' --limit 100.96.253.40,100.107.248.71
 
-deploy-devnet:
-  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true}' -e frontend_enabled_features='points' --limit 100.96.253.40,100.107.248.71
+stop-devnet:
+  ansible-playbook stop-services.yml -e dango_network=devnet --limit 100.96.253.40,100.107.248.71
 
-deploy-preview-latest:
-  ansible-playbook full-app.yml -e '{"expose_ports": true, "dex_bot_enabled":true, "faucet_bot_enabled": true, "cometbft_generate_keys":true}' -e deploy_env=preview -e dango_image_tag=latest -e dango_network=previewnet -e frontend_image_tag=latest -e chain_id=preview --limit 100.96.253.40,100.107.248.71,100.122.37.57
+restart-devnet:
+  ansible-playbook restart-services.yml -e dango_network=devnet --limit 100.96.253.40,100.107.248.71
 
-delete-pr number:
-  ansible-playbook delete-full-app.yml -e deployment_name=pr-{{number}}
+remove-deploy-lock-devnet:
+  ansible-playbook remove-deploy-locks.yml -e dango_network=devnet --limit 100.96.253.40,100.107.248.71
 
 deploy-points-bot-devnet:
   ansible-playbook points-bot.yml -e '{"points_bot_networks": ["devnet"]}' --limit 100.107.248.71
@@ -106,20 +84,50 @@ deploy-points-bot-devnet:
 delete-points-bot-devnet:
   ansible-playbook delete-points-bot.yml -e '{"points_bot_networks": ["devnet"]}' --limit 100.107.248.71
 
-deploy-dozzle:
-  ansible-playbook dozzle.yml
+# ---------------------------------- Testnet -----------------------------------
 
-deploy-monitoring:
-  ansible-playbook monitoring.yml
+deploy-testnet:
+  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' -e frontend_enabled_features='points' --limit 100.90.163.19,100.109.200.70
 
-deploy-tailscale:
-  ansible-playbook tailscale.yml
+# Note: the `reset-and-deploy-testnet` command has been deleted.
+# We don't ever want to reset testnet since we want to keep it updated to ensure everything works
+# before updating mainnet.
 
-deploy-db:
-  ansible-playbook db.yml
+stop-testnet:
+  ansible-playbook stop-services.yml -e dango_network=testnet --limit 100.90.163.19,100.109.200.70
 
-deploy-clickhouse:
-  ansible-playbook clickhouse.yml
+restart-testnet:
+  ansible-playbook restart-services.yml -e dango_network=testnet --limit 100.90.163.19,100.109.200.70
+
+remove-deploy-lock-testnet:
+  ansible-playbook remove-deploy-locks.yml -e dango_network=testnet --limit 100.90.163.19,100.109.200.70
+
+# ---------------------------------- Mainnet -----------------------------------
+
+# Note: the `reset-and-deploy-mainnet` command has been deleted.
+# We don't ever want to reset mainnet. Deleting the command so we don't do it by mistake.
+
+deploy-mainnet:
+  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "faucet_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
+
+stop-mainnet:
+  ansible-playbook stop-services.yml -e dango_network=mainnet --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
+
+restart-mainnet:
+  ansible-playbook restart-services.yml -e dango_network=mainnet --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
+
+remove-deploy-lock-mainnet:
+  ansible-playbook remove-deploy-locks.yml -e dango_network=mainnet --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30
+
+# ---------------------------------- Preview -----------------------------------
+
+deploy-preview-latest:
+  ansible-playbook full-app.yml -e '{"expose_ports": true, "dex_bot_enabled":true, "faucet_bot_enabled": true, "cometbft_generate_keys":true}' -e deploy_env=preview -e dango_image_tag=latest -e dango_network=previewnet -e frontend_image_tag=latest -e chain_id=preview --limit 100.96.253.40,100.107.248.71,100.122.37.57
+
+delete-pr number:
+  ansible-playbook delete-full-app.yml -e deployment_name=pr-{{number}}
+
+# --------------------------------- Hyperlane ----------------------------------
 
 # Deploy Hyperlane agent locally
 # Usage: just hyperlane-local testnet relayer
@@ -147,25 +155,35 @@ deploy-hyperlane-testnet:
   just deploy-hyperlane testnet validator 100.109.200.70 2
   just deploy-hyperlane testnet relayer 100.109.200.70
 
-add-deploy-key:
-  ./deploy-key.sh | ssh-add - >/dev/null
-  @echo "Deploy key added to ssh-agent. You can now run ansible-playbook normally."
+# Print validator address from AWS KMS (cast)
+# Usage: just hyperlane-kms-address testnet 1
+hyperlane-kms-address network index:
+  ansible-playbook hyperlane-kms-address.yml \
+    -e hyperlane_agents_network={{network}} \
+    -e hyperlane_validator_index={{index}}
 
-add-debian-key:
-  ./debian-key.sh | ssh-add - >/dev/null
-  @echo "debian key added to ssh-agent. You can now run ansible-playbook normally."
+# ------------------------------- Infrastructure -------------------------------
 
-# Pre-fetch vault passwords into environment variables (memory only, no disk)
-# Spawns a new shell with passwords set. Exit the shell when done.
-add-passwords:
-  #!/bin/bash
-  VAULT=$(./vault-password.sh 2>/dev/null) || { echo "Failed to get vault password" >&2; exit 1; }
-  DEBIAN=$(./debian-password.sh 2>/dev/null) || { echo "Failed to get debian password" >&2; exit 1; }
-  export ANSIBLE_VAULT_PASSWORD="$VAULT"
-  export ANSIBLE_DEBIAN_PASSWORD="$DEBIAN"
-  exec $SHELL
+deploy-github-runners:
+  ansible-playbook setup-github-runner-hosts.yml
+  ansible-playbook install-github-runner-hosts.yml
 
-# ---------- B2 Bucket Commands ----------
+deploy-dozzle:
+  ansible-playbook dozzle.yml
+
+deploy-monitoring:
+  ansible-playbook monitoring.yml
+
+deploy-tailscale:
+  ansible-playbook tailscale.yml
+
+deploy-db:
+  ansible-playbook db.yml
+
+deploy-clickhouse:
+  ansible-playbook clickhouse.yml
+
+# -------------------------------- B2 Buckets ----------------------------------
 
 # List all B2 buckets
 b2-list-buckets:
