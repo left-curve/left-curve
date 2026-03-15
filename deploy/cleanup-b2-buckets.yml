@@ -17,7 +17,7 @@
 
     - name: Show B2 buckets
       debug:
-        msg: "{{ b2_bucket_list.stdout }}"
+        msg: "{{ b2_bucket_list.stdout_lines }}"
       run_once: true
       tags: [list]
 
