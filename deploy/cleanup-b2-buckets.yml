@@ -59,3 +59,26 @@
         B2_APPLICATION_KEY: "{{ s3_master_secret_key }}"
       run_once: true
       tags: [delete-bucket]
+
+    - name: Reject marking testnet/mainnet buckets for deletion
+      assert:
+        that:
+          - "'testnet' not in b2_bucket"
+          - "'mainnet' not in b2_bucket"
+        fail_msg: "Refusing to mark bucket '{{ b2_bucket }}' — testnet/mainnet buckets are protected"
+      run_once: true
+      tags: [mark-bucket-deletable]
+
+    - name: Set lifecycle rules to drain files from bucket
+      command: >
+        {{ ansible_facts['env']['HOME'] }}/.local/bin/b2 bucket update
+        "{{ b2_bucket }}"
+        allPrivate
+        --lifecycle-rules '[{"fileNamePrefix":"",
+                             "daysFromUploadingToHiding":1,
+                             "daysFromHidingToDeleting":1}]'
+      environment:
+        B2_APPLICATION_KEY_ID: "{{ s3_master_access_key }}"
+        B2_APPLICATION_KEY: "{{ s3_master_secret_key }}"
+      run_once: true
+      tags: [mark-bucket-deletable]

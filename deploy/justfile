@@ -157,19 +157,6 @@ add-debian-key:
 
 # Pre-fetch vault passwords into environment variables (memory only, no disk)
 # Spawns a new shell with passwords set. Exit the shell when done.
-# List all B2 buckets (requires B2 credentials in env or vault)
-list-b2-buckets:
-  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags list
-
-# Delete empty B2 buckets (requires B2 credentials in env or vault)
-cleanup-b2-buckets:
-  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags cleanup
-
-# Delete a specific B2 bucket by name
-# Usage: just delete-b2-bucket dango-pr-1437-20251130154322
-delete-b2-bucket name:
-  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags delete-bucket -e b2_bucket={{name}}
-
 add-passwords:
   #!/bin/bash
   VAULT=$(./vault-password.sh 2>/dev/null) || { echo "Failed to get vault password" >&2; exit 1; }
@@ -177,3 +164,23 @@ add-passwords:
   export ANSIBLE_VAULT_PASSWORD="$VAULT"
   export ANSIBLE_DEBIAN_PASSWORD="$DEBIAN"
   exec $SHELL
+
+# ---------- B2 Bucket Commands ----------
+
+# List all B2 buckets
+list-b2-buckets:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags list
+
+# Delete empty B2 buckets (PR and devnet only, requires lifecycle rules)
+cleanup-b2-buckets:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags cleanup
+
+# Delete a specific B2 bucket by name (must be empty)
+# Usage: just delete-b2-bucket dango-pr-1437-20251130154322
+delete-b2-bucket name:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags delete-bucket -e b2_bucket={{name}}
+
+# Mark a B2 bucket for deletion (sets lifecycle rules to drain files in ~2 days)
+# Usage: just mark-b2-bucket-deletable dango-pr-1397-20251208151620
+mark-b2-bucket-deletable name:
+  ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags mark-bucket-deletable -e b2_bucket={{name}}
