@@ -28,7 +28,7 @@
         mode: '0755'
       tags: [cleanup]
 
-    - name: Run B2 bucket cleanup (dry run)
+    - name: Run B2 bucket cleanup
       command: "{{ ansible_facts['env']['HOME'] }}/delete_b2_buckets2.sh"
       environment:
         B2_APPLICATION_KEY_ID: "{{ s3_master_access_key }}"

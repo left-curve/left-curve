@@ -103,13 +103,12 @@ for b in $all_buckets; do
   count=$(echo "$json" | jq '.fileCount')
 
   if [ "$count" -eq 0 ]; then
-    echo "  WOULD DELETE (empty, lifecycle rules active)"
-    # TODO: uncomment to enable actual deletion
-    # b2 bucket delete "$b"
+    echo "  DELETING (empty, lifecycle rules active)"
+    b2 bucket delete "$b"
   else
     echo "  KEEP (count=$count, waiting for lifecycle to clear files)"
   fi
 done
 
 echo ""
-echo "=== Dry run complete — no buckets were deleted ==="
+echo "=== Cleanup complete ==="
