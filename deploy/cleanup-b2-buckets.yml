@@ -23,13 +23,13 @@
 
     - name: Ensure delete script exists
       copy:
-        src: roles/full-app/files/delete_b2_buckets2.sh
-        dest: "{{ ansible_facts['env']['HOME'] }}/delete_b2_buckets2.sh"
+        src: roles/full-app/files/delete_b2_buckets.sh
+        dest: "{{ ansible_facts['env']['HOME'] }}/delete_b2_buckets.sh"
         mode: '0755'
       tags: [cleanup]
 
     - name: Run B2 bucket cleanup
-      command: "{{ ansible_facts['env']['HOME'] }}/delete_b2_buckets2.sh"
+      command: "{{ ansible_facts['env']['HOME'] }}/delete_b2_buckets.sh"
       environment:
         B2_APPLICATION_KEY_ID: "{{ s3_master_access_key }}"
         B2_APPLICATION_KEY: "{{ s3_master_secret_key }}"
