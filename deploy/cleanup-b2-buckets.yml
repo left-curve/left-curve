@@ -52,16 +52,10 @@
       run_once: true
       tags: [delete-bucket]
 
-    - name: Would delete specific B2 bucket (dry run)
-      debug:
-        msg: "WOULD DELETE bucket '{{ b2_bucket }}'"
+    - name: Delete specific B2 bucket
+      command: "{{ ansible_facts['env']['HOME'] }}/.local/bin/b2 bucket delete {{ b2_bucket }}"
+      environment:
+        B2_APPLICATION_KEY_ID: "{{ s3_master_access_key }}"
+        B2_APPLICATION_KEY: "{{ s3_master_secret_key }}"
       run_once: true
       tags: [delete-bucket]
-
-    # - name: Delete specific B2 bucket
-    #   command: "{{ ansible_facts['env']['HOME'] }}/.local/bin/b2 bucket delete {{ b2_bucket }}"
-    #   environment:
-    #     B2_APPLICATION_KEY_ID: "{{ s3_master_access_key }}"
-    #     B2_APPLICATION_KEY: "{{ s3_master_secret_key }}"
-    #   run_once: true
-    #   tags: [delete-bucket]
