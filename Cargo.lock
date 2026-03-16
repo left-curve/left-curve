@@ -4319,6 +4319,7 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
+ "serde_json",
  "tracing",
 ]
 
