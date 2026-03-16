@@ -66,12 +66,10 @@ fn query_next_account_index(storage: &dyn Storage) -> StdResult<AccountIndex> {
 }
 
 fn query_user(storage: &dyn Storage, index_or_name: UserIndexOrName) -> StdResult<User> {
-    let (index, mut user) = match index_or_name {
-        UserIndexOrName::Index(idx) => (idx, USERS.load(storage, idx)?),
-        UserIndexOrName::Name(username) => USERS.idx.by_name.load(storage, username)?,
-    };
-    user.index = index;
-    Ok(user)
+    match index_or_name {
+        UserIndexOrName::Index(idx) => USERS.load(storage, idx),
+        UserIndexOrName::Name(username) => USERS.idx.by_name.load_value(storage, username),
+    }
 }
 
 fn query_users(
@@ -86,8 +84,7 @@ fn query_users(
         .range(storage, start, None, Order::Ascending)
         .take(limit)
         .map(|res| {
-            let (idx, mut user) = res?;
-            user.index = idx;
+            let (idx, user) = res?;
             Ok((idx, user))
         })
         .collect()
@@ -142,8 +139,7 @@ fn forgot_username(
         .prefix(key_hash)
         .range(storage, start, None, Order::Ascending)
         .map(|res| {
-            let (index, mut user) = res?;
-            user.index = index;
+            let (_index, user) = res?;
             Ok(user)
         })
         .take(limit)

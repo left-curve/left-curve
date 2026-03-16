@@ -17,9 +17,7 @@ pub enum UserIndexOrName {
 /// Information about a user. Used in query response.
 #[grug::derive(Serde, Borsh)]
 pub struct User {
-    /// The user's numerical index. Skipped in Borsh (it's the map key);
-    /// populated by query handlers so JSON responses are self-contained.
-    #[borsh(skip)]
+    /// The user's numerical index.
     pub index: UserIndex,
 
     /// The user's username.
