@@ -83,10 +83,6 @@ fn query_users(
     USERS
         .range(storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|res| {
-            let (idx, user) = res?;
-            Ok((idx, user))
-        })
         .collect()
 }
 
@@ -137,11 +133,7 @@ fn forgot_username(
         .idx
         .by_key
         .prefix(key_hash)
-        .range(storage, start, None, Order::Ascending)
-        .map(|res| {
-            let (_index, user) = res?;
-            Ok(user)
-        })
+        .values(storage, start, None, Order::Ascending)
         .take(limit)
         .collect()
 }
