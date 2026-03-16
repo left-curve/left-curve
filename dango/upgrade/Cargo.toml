@@ -14,5 +14,4 @@ dango-account-factory = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
 grug-app              = { workspace = true }
-serde_json            = { workspace = true }
 tracing               = { workspace = true }

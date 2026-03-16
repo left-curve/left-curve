@@ -3,9 +3,8 @@ use {
         account_factory::{AccountIndex, User, UserIndex, Username},
         config::AppConfig,
     },
-    grug::{Addr, Inner, JsonDeExt, Order, StdResult, Storage, addr},
+    grug::{Addr, Inner, JsonDeExt, JsonSerExt, Order, StdResult, Storage, addr},
     grug_app::{APP_CONFIG, AppResult, CONTRACT_NAMESPACE, StorageProvider},
-    serde_json::Value,
     std::collections::BTreeMap,
 };
 
@@ -71,7 +70,7 @@ pub fn do_upgrade<VM>(
 
         addresses.insert(
             "perps".to_string(),
-            Value::String("0x0000000000000000000000000000000000000000".to_string()),
+            Addr::ZERO.to_json_value()?.into_inner(),
         );
 
         // Verify the modified JSON is a valid AppConfig.
