@@ -106,18 +106,6 @@
           debug:
             msg: "{{ cleanup_deploy_dir.stdout_lines }}"
 
-        - name: Remove devnet data directory
-          command: /usr/bin/sudo /usr/local/sbin/dango-cleanup-devnet-data "{{ deployment_name }}"
-          register: cleanup_devnet_data
-          changed_when: "'deleted' in cleanup_devnet_data.stdout"
-          failed_when: cleanup_devnet_data.rc != 0
-          when: remove_devnet_data | default(false) | bool
-
-        - name: Show devnet data cleanup result
-          debug:
-            msg: "{{ cleanup_devnet_data.stdout_lines }}"
-          when: remove_devnet_data | default(false) | bool
-
         - name: Prune unused Docker resources
           community.docker.docker_prune:
             containers: yes
@@ -127,6 +115,21 @@
             builder_cache: yes
           ignore_errors: true
       when: deployment_dir.stat.exists
+
+    - name: Check devnet data directory exists
+      stat:
+        path: "{{ ansible_facts['env']['HOME'] }}/devnet/{{ deployment_name }}"
+      register: devnet_data_dir
+      when: remove_devnet_data | default(false) | bool
+
+    - name: Remove devnet data directory
+      file:
+        path: "{{ ansible_facts['env']['HOME'] }}/devnet/{{ deployment_name }}"
+        state: absent
+      become: true
+      when:
+        - remove_devnet_data | default(false) | bool
+        - devnet_data_dir.stat.exists
 
     - name: Remove lock file
       file:
