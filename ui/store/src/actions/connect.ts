@@ -2,11 +2,9 @@ import { ConnectionStatus } from "../types/store.js";
 
 import type { Connector } from "../types/connector.js";
 import type { Config } from "../types/store.js";
-import type { UserIndexAndName } from "@left-curve/dango/types";
-
 export type ConnectParameters = {
   chainId: string;
-  userIndexAndName: UserIndexAndName;
+  userIndex: number;
   connector: Connector;
   challenge: string;
 };

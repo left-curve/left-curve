@@ -88,27 +88,30 @@ export function useSignupState(parameters: UseSignupStateParameters) {
 
       const connector = connectorRef.current!;
 
-      const { account, keyHash, signingSession } = await (async () => {
+      const { userIndex, keyHash, signingSession } = await (async () => {
         if (useSessionKey) {
           const signingSession = await createSessionKey(
             { connector, expireAt: Date.now() + expiration },
             { setSession: false },
           );
-          const usersIndexAndName = await client.forgotUsername({
+          const users = await client.forgotUsername({
             keyHash: signingSession.keyHash,
           });
 
-          return { account: usersIndexAndName[usersIndexAndName.length - 1], signingSession };
+          return {
+            userIndex: users[users.length - 1].index,
+            signingSession,
+          };
         } else {
           const keyHash = await connector.getKeyHash();
-          const usersIndexAndName = await client.forgotUsername({ keyHash });
-          return { account: usersIndexAndName[usersIndexAndName.length - 1], keyHash };
+          const users = await client.forgotUsername({ keyHash });
+          return { userIndex: users[users.length - 1].index, keyHash };
         }
       })();
 
       if (!signingSession) {
         return await connector.connect({
-          userIndexAndName: account,
+          userIndex,
           chainId,
           ...(keyHash
             ? { keyHash }
@@ -119,7 +122,7 @@ export function useSignupState(parameters: UseSignupStateParameters) {
       setSession(signingSession);
 
       await connector.connect({
-        userIndexAndName: account,
+        userIndex,
         chainId,
         keyHash: signingSession.keyHash,
       });

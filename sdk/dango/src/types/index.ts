@@ -21,7 +21,6 @@ export type {
   AccountInfo,
   User,
   Username,
-  UserIndexAndName,
   UserIndexOrName,
   UserStatus,
 } from "./account.js";

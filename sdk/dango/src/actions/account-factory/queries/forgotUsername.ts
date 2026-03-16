@@ -2,24 +2,24 @@ import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
 
 import { getAction } from "@left-curve/sdk/actions";
 import type { Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
-import type { AppConfig, KeyHash, UserIndexAndName, Username } from "../../../types/index.js";
+import type { AppConfig, KeyHash, User } from "../../../types/index.js";
 
 export type ForgotUsernameParameters = {
   keyHash: KeyHash;
   limit?: number;
-  startAfter?: Username;
+  startAfter?: number;
   height?: number;
 };
 
-export type ForgotUsernameReturnType = Promise<UserIndexAndName[]>;
+export type ForgotUsernameReturnType = Promise<User[]>;
 /**
- * Given a key hash, get the username(s) associated with it.
+ * Given a key hash, get the user(s) associated with it.
  * @param parameters
- * @param parameters.keyHash The key hash to get the username for.
- * @param parameters.limit The maximum number of usernames to return.
- * @param parameters.startAfter The username to start after.
+ * @param parameters.keyHash The key hash to get the user for.
+ * @param parameters.limit The maximum number of users to return.
+ * @param parameters.startAfter The user index to start after.
  * @param parameters.height The height at which query is made.
- * @returns The username(s)
+ * @returns The user(s)
  */
 export async function forgotUsername<
   chain extends Chain | undefined,

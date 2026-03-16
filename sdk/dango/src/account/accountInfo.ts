@@ -1,23 +1,19 @@
 import type { Address } from "@left-curve/sdk/types";
-import type { AccountInfo, UserIndexAndName } from "../types/account.js";
+import type { AccountIndex, User } from "../types/account.js";
 
 export type ToAccountParameters = {
-  userIndexAndName: UserIndexAndName;
+  user: User;
+  accountIndex: AccountIndex;
   address: Address;
-  info: AccountInfo;
 };
 
 export function toAccount(parameters: ToAccountParameters) {
-  const { userIndexAndName, address, info } = parameters;
-  const { index, owner } = info;
+  const { user, accountIndex, address } = parameters;
 
   return {
-    index,
-    owner,
+    index: accountIndex,
+    owner: user.index,
     address: address as Address,
-    username:
-      "name" in userIndexAndName
-        ? (userIndexAndName.name as string)
-        : `User #${userIndexAndName.index}`,
+    username: user.name,
   };
 }
