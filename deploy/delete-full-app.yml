@@ -99,8 +99,24 @@
         - name: Remove deployment directory
           command: /usr/bin/sudo /usr/local/sbin/dango-cleanup-deployment "{{ deployment_name }}"
           register: cleanup_deploy_dir
-          changed_when: cleanup_deploy_dir.stdout == "deleted"
+          changed_when: "'deleted' in cleanup_deploy_dir.stdout"
           failed_when: cleanup_deploy_dir.rc != 0
+
+        - name: Show cleanup result
+          debug:
+            msg: "{{ cleanup_deploy_dir.stdout_lines }}"
+
+        - name: Remove devnet data directory
+          command: /usr/bin/sudo /usr/local/sbin/dango-cleanup-devnet-data "{{ deployment_name }}"
+          register: cleanup_devnet_data
+          changed_when: "'deleted' in cleanup_devnet_data.stdout"
+          failed_when: cleanup_devnet_data.rc != 0
+          when: remove_devnet_data | default(false) | bool
+
+        - name: Show devnet data cleanup result
+          debug:
+            msg: "{{ cleanup_devnet_data.stdout_lines }}"
+          when: remove_devnet_data | default(false) | bool
 
         - name: Prune unused Docker resources
           community.docker.docker_prune:

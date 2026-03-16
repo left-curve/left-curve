@@ -124,9 +124,6 @@ remove-deploy-lock-mainnet:
 deploy-preview-latest:
   ansible-playbook full-app.yml -e '{"expose_ports": true, "dex_bot_enabled":true, "faucet_bot_enabled": true, "cometbft_generate_keys":true}' -e deploy_env=preview -e dango_image_tag=latest -e dango_network=previewnet -e frontend_image_tag=latest -e chain_id=preview --limit 100.96.253.40,100.107.248.71,100.122.37.57
 
-delete-pr number:
-  ansible-playbook delete-full-app.yml -e deployment_name=pr-{{number}}
-
 # --------------------------------- Hyperlane ----------------------------------
 
 # Deploy Hyperlane agent locally
@@ -200,3 +197,21 @@ b2-delete-bucket name:
 # Mark a B2 bucket for deletion (sets lifecycle rules to drain files in ~2 days)
 b2-mark-bucket-deletable name:
   ansible-playbook cleanup-b2-buckets.yml --limit 100.96.253.40 --tags mark-bucket-deletable -e b2_bucket={{name}}
+
+# -------------------------------- PR Deploys ----------------------------------
+
+# List all PR deployments with age on ovh1 and ovh2
+list-pr-deploys:
+  ansible-playbook list-pr-deploys.yml --limit 100.96.253.40,100.107.248.71
+
+# Delete the deploy of a specific PR
+delete-pr number:
+  ansible-playbook delete-full-app.yml -e deployment_name=pr-{{number}} --limit 100.96.253.40,100.107.248.71
+
+# Delete a specific devnet deploy by timestamp (e.g. just delete-devnet-deploy 20260122064234)
+delete-devnet-deploy timestamp:
+  ansible-playbook delete-old-devnet-deploys.yml -e deployment_name={{timestamp}} --limit 100.96.253.40,100.107.248.71
+
+# Delete a specific devnet deploy AND its data directory under ~/devnet/<timestamp>
+delete-devnet-deploy-with-data timestamp:
+  ansible-playbook delete-old-devnet-deploys.yml -e deployment_name={{timestamp}} -e remove_devnet_data=true --limit 100.96.253.40,100.107.248.71
