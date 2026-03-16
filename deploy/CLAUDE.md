@@ -20,6 +20,20 @@ Do NOT try to SSH directly as `deploy` user - it won't work.
 ### Confirm Destructive SSH Commands
 Any command executed over SSH that edits files, modifies state, or performs destructive actions (e.g., `docker rm`, `systemctl restart`, `rm`, database changes) must be confirmed with the user before execution. Read-only commands (e.g., `docker ps`, `systemctl status`, `cat`, `ls`) do not require confirmation.
 
+### Use Playbooks for State-Changing Operations
+All state-changing operations (starting, stopping, restarting, or deploying services) must be done using existing Ansible playbooks, not by running `docker compose` or `systemctl` commands directly over SSH. Playbooks may use multiple compose files, host-specific overrides, or additional provisioning steps that a bare `docker compose up` would miss.
+
+Key playbooks:
+- `traefik.yml` — Traefik reverse proxy (uses host-specific compose overrides)
+- `db.yml` — PostgreSQL
+- `clickhouse.yml` — ClickHouse
+- `promtail.yml` — Promtail + Node-exporter (both in one playbook)
+- `full-app.yml` — Full application deployment
+- `restart-services.yml` — Restart dango/cometbft services
+- `stop-services.yml` — Stop services
+
+Most playbooks require both the `deploy` and `debian` SSH keys. Use `--limit <ip>` to target a specific server.
+
 ### Linting Requirements
 Always lint YAML files after modifications and before commits:
 
