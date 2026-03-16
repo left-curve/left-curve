@@ -1,5 +1,5 @@
 import { createSignerClient, toAccount } from "@left-curve/dango";
-import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
+import { getUser } from "@left-curve/dango/actions";
 
 import { createConnector } from "./createConnector.js";
 import { requestRemote } from "../remote.js";
@@ -8,24 +8,22 @@ import type { KeyHash, ArbitrarySignatureOutcome, SignatureOutcome } from "@left
 import type { Address } from "@left-curve/dango/types";
 
 export function remote() {
-  return createConnector<undefined>(({ transport, getUserIndexAndName, emitter, chain }) => {
+  return createConnector<undefined>(({ transport, getUserIndex, emitter, chain }) => {
     return {
       id: "remote",
       name: "Remote",
       icon: undefined,
       type: "remote",
-      async connect({ userIndexAndName, chainId, keyHash: _keyHash_ }) {
+      async connect({ userIndex, chainId, keyHash: _keyHash_ }) {
         const client = createSignerClient({
           signer: this,
           type: "remote",
           transport,
         });
 
-        const accountsInfo = await getAccountsByUsername(client, {
-          userIndexOrName: userIndexAndName,
-        });
-        const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
-          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
+        const user = await getUser(client, { userIndexOrName: { index: userIndex } });
+        const accounts = Object.entries(user.accounts).map(([accountIndex, address]) =>
+          toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
         );
 
         const keyHash = await (async () => {
@@ -33,14 +31,12 @@ export function remote() {
           return await this.getKeyHash();
         })();
 
-        const keys = await getKeysByUsername(client, { userIndexOrName: userIndexAndName });
-
-        if (!keys[keyHash]) throw new Error("Not authorized");
+        if (!user.keys[keyHash]) throw new Error("Not authorized");
 
         const account = accounts[0];
         const userStatus = await client.getAccountStatus({ address: account.address });
 
-        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash, userStatus });
+        emitter.emit("connect", { accounts, chainId, userIndex, keyHash, userStatus });
       },
       async disconnect() {
         emitter.emit("disconnect");
@@ -64,12 +60,12 @@ export function remote() {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const userIndexAndName = await getUserIndexAndName();
-        if (!userIndexAndName) throw new Error("remote: user index not found");
+        const userIndex = getUserIndex();
+        if (userIndex === undefined) throw new Error("remote: user index not found");
 
-        const accounts = await getAccountsByUsername(client, { userIndexOrName: userIndexAndName });
-        return Object.entries(accounts).map(([address, accountInfo]) =>
-          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
+        const user = await getUser(client, { userIndexOrName: { index: userIndex } });
+        return Object.entries(user.accounts).map(([accountIndex, address]) =>
+          toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
         );
       },
       async isAuthorized() {

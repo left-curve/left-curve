@@ -2,13 +2,13 @@ import type { Address } from "@left-curve/sdk/types";
 import type { Key, KeyHash } from "./key.js";
 
 export type User = {
+  index: number;
+  name: Username;
   keys: Record<KeyHash, Key>;
-  accounts: Record<Address, AccountInfo>;
+  accounts: Record<AccountIndex, Address>;
 };
 
 export type Username = string;
-
-export type UserIndexAndName = { index: number; name?: string };
 
 export type UserIndexOrName = { index: number } | { name: string };
 

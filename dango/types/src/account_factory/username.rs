@@ -26,6 +26,18 @@ impl Username {
     /// The maximum length allowed for usernames.
     pub const MAX_LEN: usize = 15;
 
+    /// Generate the default username for a given user index.
+    pub fn default_for_index(index: UserIndex) -> Self {
+        Self(format!("user_{index}"))
+    }
+
+    /// Check if this username is a system-generated default (matches `user_\d+`).
+    pub fn is_default(&self) -> bool {
+        self.0
+            .strip_prefix("user_")
+            .is_some_and(|rest| !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit()))
+    }
+
     /// Return the username's length as a single byte.
     ///
     /// Usernames cannot be longer than 15 characters, so a single byte suffices.

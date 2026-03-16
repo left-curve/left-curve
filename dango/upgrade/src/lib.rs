@@ -121,7 +121,11 @@ pub fn do_upgrade<VM>(
 
     for &user_index in all_user_indexes.keys() {
         let user = User {
-            name: usernames.get(&user_index).cloned(),
+            index: user_index,
+            name: usernames
+                .get(&user_index)
+                .cloned()
+                .unwrap_or_else(|| Username::default_for_index(user_index)),
             accounts: accounts_by_user
                 .get(&user_index)
                 .cloned()

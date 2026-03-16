@@ -1,7 +1,7 @@
 import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 
 import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango";
-import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
+import { getUser } from "@left-curve/dango/actions";
 
 import { composeArbitraryTypedData } from "@left-curve/dango/utils";
 import { createConnector } from "./createConnector.js";
@@ -40,7 +40,7 @@ export function privy(parameters: PrivyConnectorParameters) {
     storage: new LocalStorage(),
   });
 
-  return createConnector<EIP1193Provider>(({ transport, emitter, getUserIndexAndName, chain }) => {
+  return createConnector<EIP1193Provider>(({ transport, emitter, getUserIndex, chain }) => {
     return {
       id: "privy",
       name: "Privy",
@@ -53,7 +53,7 @@ export function privy(parameters: PrivyConnectorParameters) {
 
         await privy.initialize();
       },
-      async connect({ userIndexAndName, chainId, keyHash: _keyHash_ }) {
+      async connect({ userIndex, chainId, keyHash: _keyHash_ }) {
         const client = createSignerClient({
           signer: this,
           type: "privy",
@@ -62,11 +62,10 @@ export function privy(parameters: PrivyConnectorParameters) {
 
         const provider = await this.getProvider();
         await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
-        const accountsInfo = await getAccountsByUsername(client, {
-          userIndexOrName: userIndexAndName,
-        });
-        const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
-          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
+
+        const user = await getUser(client, { userIndexOrName: { index: userIndex } });
+        const accounts = Object.entries(user.accounts).map(([accountIndex, address]) =>
+          toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
         );
 
         const keyHash = await (async () => {
@@ -76,14 +75,12 @@ export function privy(parameters: PrivyConnectorParameters) {
           return createKeyHash(controllerAddress.toLowerCase());
         })();
 
-        const keys = await getKeysByUsername(client, { userIndexOrName: userIndexAndName });
-
-        if (!keys[keyHash]) throw new Error("Not authorized");
+        if (!user.keys[keyHash]) throw new Error("Not authorized");
 
         const account = accounts[0];
         const userStatus = await client.getAccountStatus({ address: account.address });
 
-        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash, userStatus });
+        emitter.emit("connect", { accounts, chainId, userIndex, keyHash, userStatus });
       },
       async disconnect() {
         emitter.emit("disconnect");
@@ -116,14 +113,12 @@ export function privy(parameters: PrivyConnectorParameters) {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const userIndexAndName = await getUserIndexAndName();
-        if (!userIndexAndName) throw new Error("eip1193: user index not found");
+        const userIndex = getUserIndex();
+        if (userIndex === undefined) throw new Error("privy: user index not found");
 
-        const accountsInfo = await getAccountsByUsername(client, {
-          userIndexOrName: userIndexAndName,
-        });
-        return Object.entries(accountsInfo).map(([address, accountInfo]) =>
-          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
+        const user = await getUser(client, { userIndexOrName: { index: userIndex } });
+        return Object.entries(user.accounts).map(([accountIndex, address]) =>
+          toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
         );
       },
       async switchChain({ chainId }) {

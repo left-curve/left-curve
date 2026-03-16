@@ -79,22 +79,8 @@ export function createConfig<
     return collection;
   });
 
-  async function getUserIndexAndName(): Promise<{ index: number; name: string } | undefined> {
-    const { userIndexAndName } = store.getState();
-    if (!userIndexAndName) return undefined;
-    const client = getClient() as PublicClient;
-    const username = await client.getUsernameByIndex({ index: userIndexAndName.index });
-
-    const response = {
-      index: userIndexAndName.index,
-      name: username ?? `User #${userIndexAndName.index}`,
-    };
-
-    if (response.name !== userIndexAndName.name) {
-      store.setState((x) => ({ ...x, userIndexAndName: response }));
-    }
-
-    return response;
+  function getUserIndex(): number | undefined {
+    return store.getState().userIndex;
   }
 
   function setup(connectorFn: CreateConnectorFn): Connector {
@@ -106,7 +92,7 @@ export function createConfig<
         chain: rest.chain,
         transport: rest.transport,
         storage,
-        getUserIndexAndName,
+        getUserIndex,
       }),
       emitter,
       uid: emitter.uid,
@@ -179,7 +165,7 @@ export function createConfig<
       chainId: rest.chain.id,
       connectors: new Map(),
       current: null,
-      userIndexAndName: undefined,
+      userIndex: undefined,
       userStatus: undefined,
       status: ConnectionStatus.Disconnected,
     };
@@ -198,13 +184,13 @@ export function createConfig<
           return { ...initialState };
         },
         partialize(state) {
-          const { chainId, connectors, status, current, userIndexAndName, userStatus } = state;
+          const { chainId, connectors, status, current, userIndex, userStatus } = state;
           return {
             chainId,
             status,
             current,
             userStatus,
-            userIndexAndName,
+            userIndex,
             connectors: new Map(
               Array.from(connectors.entries()).map(([key, connection]) => {
                 const { id, name, type, uid } = connection.connector;
@@ -298,13 +284,11 @@ export function createConfig<
         connector.emitter.on("disconnect", disconnect);
       }
 
-      const { index, name } = data.userIndexAndName;
-
       return {
         ...x,
         current: data.uid,
         userStatus: data.userStatus,
-        userIndexAndName: { index, name: name ?? `User #${index}` },
+        userIndex: data.userIndex,
         connectors: new Map(x.connectors).set(data.uid, {
           keyHash: data.keyHash,
           account: data.accounts[0],
@@ -342,9 +326,9 @@ export function createConfig<
       if (x.connectors.size === 0) {
         return {
           ...x,
-          username: undefined,
           connectors: new Map(),
           current: null,
+          userIndex: undefined,
           userStatus: undefined,
           status: ConnectionStatus.Disconnected,
         };
