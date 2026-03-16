@@ -182,7 +182,8 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
     // the oracle update itself isn't reverted.
     // Skip if perps address is zero (not yet instantiated).
     let perps = ctx.querier.query_perps()?;
-    let submsg = if perps != Addr::ZERO {
+
+    Ok(Response::new().may_add_submessage(if perps != Addr::ZERO {
         Some(SubMessage::reply_on_error(
             Message::execute(
                 perps,
@@ -193,9 +194,7 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
         )?)
     } else {
         None
-    };
-
-    Ok(Response::new().may_add_submessage(submsg))
+    }))
 }
 
 fn verify_pyth_lazer_message(
