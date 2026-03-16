@@ -15,17 +15,17 @@ pub const USERS: IndexedMap<UserIndex, User, UserIndexes> = IndexedMap::new("use
         "user",
         "user__key",
     ),
-    by_name: UniqueIndex::new2(|_, user| vec![user.name.clone()], "user", "user__name"),
     by_account: UniqueIndex::new2(
         |_, user| user.accounts.values().copied().collect(),
         "user",
         "user__account",
     ),
+    by_name: UniqueIndex::new2(|_, user| vec![user.name.clone()], "user", "user__name"),
 });
 
 #[grug::index_list(UserIndex, User)]
 pub struct UserIndexes<'a> {
     pub by_key: MultiIndex<'a, UserIndex, Hash256, User>,
-    pub by_name: UniqueIndex<'a, UserIndex, Username, User>,
     pub by_account: UniqueIndex<'a, UserIndex, Addr, User>,
+    pub by_name: UniqueIndex<'a, UserIndex, Username, User>,
 }
