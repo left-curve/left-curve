@@ -517,7 +517,10 @@ mod tests {
     use {
         super::*,
         crate::account_factory::USERS,
-        dango_types::config::{AppAddresses, AppConfig},
+        dango_types::{
+            account_factory::Username,
+            config::{AppAddresses, AppConfig},
+        },
         grug::{
             Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr,
             btree_map, hash,
@@ -592,7 +595,8 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
                     accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
@@ -636,7 +640,8 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
                     accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
@@ -738,7 +743,8 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
                     accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
@@ -810,7 +816,8 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
                     accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
@@ -892,7 +899,8 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
                     accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
@@ -973,7 +981,8 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
                     accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
