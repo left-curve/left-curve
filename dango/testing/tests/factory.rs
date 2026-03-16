@@ -7,7 +7,7 @@ use {
     },
     dango_types::{
         account,
-        account_factory::{self, Account, RegisterUserData, UserIndexOrName},
+        account_factory::{self, Account, RegisterUserData, UserIndexOrName, Username},
         auth::AccountStatus,
         bank,
         constants::usdc,
@@ -16,6 +16,7 @@ use {
         Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
         Signer, StorageQuerier, Uint128, btree_map, coins,
     },
+    std::str::FromStr,
 };
 
 /// Prior to PR [#1460](https://github.com/left-curve/left-curve/pull/1460),
@@ -458,4 +459,217 @@ fn single_signature_account_count_limit() {
             Coins::new(),
         )
         .should_fail_with_error(format!("user {user_index} has reached max account count"));
+}
+
+/// New users should automatically get a `user_{index}` default username.
+#[test]
+fn new_user_gets_default_username() {
+    let (mut suite, _, codes, contracts, _) = setup_test_naive(Default::default());
+
+    let chain_id = suite.chain_id.clone();
+
+    let user = TestAccount::new_random().predict_address(
+        contracts.account_factory,
+        0,
+        codes.account.to_bytes().hash256(),
+        true,
+    );
+
+    suite
+        .execute(
+            &mut Factory::new(contracts.account_factory),
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterUser {
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+                seed: 0,
+                signature: user
+                    .sign_arbitrary(RegisterUserData {
+                        chain_id: chain_id.clone(),
+                    })
+                    .unwrap(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let user = user.query_user_index(suite.querier());
+    let user_index = user.user_index();
+
+    // Query the user and verify the default username is `user_{index}`.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
+        )
+        .should_succeed_and(|res| {
+            res.name == Username::default_for_index(user_index) && res.index == user_index
+        });
+}
+
+/// Genesis users should also have a default `user_{index}` username.
+#[test]
+fn genesis_users_have_default_username() {
+    let (suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let user_index = accounts.user1.user_index();
+
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
+        )
+        .should_succeed_and(|res| {
+            res.name == Username::default_for_index(user_index) && res.index == user_index
+        });
+}
+
+/// A user with a default username can change it to a custom one.
+#[test]
+fn update_default_username() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let user_index = accounts.user1.user_index();
+    let custom_name = Username::from_str("alice").unwrap();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateUsername(custom_name.clone()),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify the username was updated.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
+        )
+        .should_succeed_and(|res| res.name == custom_name);
+
+    // Verify the user can be looked up by the new username.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryUserRequest(UserIndexOrName::Name(custom_name)),
+        )
+        .should_succeed_and(|res| res.index == user_index);
+}
+
+/// A user with a custom username cannot change it again.
+#[test]
+fn cannot_change_custom_username() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let user_index = accounts.user1.user_index();
+    let custom_name = Username::from_str("alice").unwrap();
+
+    // First change: default → custom. Should succeed.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateUsername(custom_name),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Second change: custom → another custom. Should fail.
+    let another_name = Username::from_str("bob").unwrap();
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateUsername(another_name),
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "a custom username is already set for user {user_index}"
+        ));
+}
+
+/// Users cannot set a reserved `user_N` pattern as their custom username.
+#[test]
+fn cannot_set_reserved_username() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let reserved_name = Username::from_str("user_999").unwrap();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateUsername(reserved_name),
+            Coins::new(),
+        )
+        .should_fail_with_error("usernames matching 'user_N' are reserved");
+}
+
+/// Two users cannot claim the same username.
+#[test]
+fn cannot_claim_taken_username() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let name = Username::from_str("alice").unwrap();
+
+    // User 1 claims "alice".
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateUsername(name.clone()),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User 2 tries to claim "alice". Should fail.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateUsername(name.clone()),
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "the username `{name}` is already associated with a user index"
+        ));
+}
+
+/// `Username::is_default` correctly identifies system-generated usernames.
+#[test]
+fn username_is_default_detection() {
+    assert!(Username::default_for_index(0).is_default());
+    assert!(Username::default_for_index(42).is_default());
+    assert!(Username::default_for_index(u32::MAX).is_default());
+
+    assert!(!Username::from_str("alice").unwrap().is_default());
+    assert!(!Username::from_str("user_").unwrap().is_default());
+    assert!(!Username::from_str("user_abc").unwrap().is_default());
+    assert!(!Username::from_str("user_0x1").unwrap().is_default());
+}
+
+/// `ForgotUsername` query returns `User` structs with populated `index`.
+#[test]
+fn forgot_username_returns_users_with_index() {
+    let (suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let user_index = accounts.user1.user_index();
+    let key_hash = accounts.user1.first_key_hash();
+
+    let users: Vec<account_factory::User> = suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryForgotUsernameRequest {
+                key_hash,
+                start_after: None,
+                limit: None,
+            },
+        )
+        .should_succeed();
+
+    assert_eq!(users.len(), 1);
+    assert_eq!(users[0].index, user_index);
+    assert_eq!(users[0].name, Username::default_for_index(user_index));
 }
