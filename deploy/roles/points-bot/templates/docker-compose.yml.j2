@@ -7,6 +7,8 @@ services:
     command: ["points", "start"]
     environment:
       - alchemy_api_key={{ points_bot_alchemy_keys[network] }}
+    ports:
+      - "{{ points_bot_metrics_ports[network] }}:8080"
     volumes:
       - ./config.json:/root/.dango-points/config.json
       - ./db:/root/.dango-points/db
