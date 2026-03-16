@@ -78,11 +78,17 @@ restart-devnet:
 remove-deploy-lock-devnet:
   ansible-playbook remove-deploy-locks.yml -e dango_network=devnet --limit 100.96.253.40,100.107.248.71
 
-deploy-points-bot-devnet:
-  ansible-playbook points-bot.yml -e '{"points_bot_networks": ["devnet"]}' --limit 100.107.248.71
+deploy-points-bot network:
+  ansible-playbook points-bot.yml -e '{"points_bot_networks": ["{{network}}"]}' --limit points-bot-{{network}}
 
-delete-points-bot-devnet:
-  ansible-playbook delete-points-bot.yml -e '{"points_bot_networks": ["devnet"]}' --limit 100.107.248.71
+stop-points-bot network:
+  ansible-playbook stop-points-bot.yml -e '{"points_bot_networks": ["{{network}}"]}' --limit points-bot-{{network}}
+
+drop-db-points-bot network:
+  ansible-playbook drop-db-points-bot.yml -e '{"points_bot_networks": ["{{network}}"]}' --limit points-bot-{{network}}
+
+delete-points-bot network:
+  ansible-playbook delete-points-bot.yml -e '{"points_bot_networks": ["{{network}}"]}' --limit points-bot-{{network}}
 
 # ---------------------------------- Testnet -----------------------------------
 

@@ -1,0 +1,23 @@
+---
+- hosts: points-bot
+  become: true
+  become_user: "{{ deploy_user }}"
+  remote_user: debian
+  collections:
+    - community.docker
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+  tasks:
+    - name: Drop points-bot app database
+      include_role:
+        name: points-bot
+        tasks_from: drop-db-instance
+      loop: "{{ points_bot_networks }}"
+      loop_control:
+        loop_var: network

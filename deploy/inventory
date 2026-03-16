@@ -96,8 +96,19 @@ deploy_user="deploy"
 [vaultwarden]
 100.122.37.57  # ovh3
 
-[points-bot]
+[points-bot-devnet]
 100.107.248.71 # ovh2
+
+[points-bot-testnet]
+100.107.248.71 # ovh2 TODO: change it according to the new server
+
+[points-bot-mainnet]
+100.107.248.71 # ovh2 TODO: change it according to the new server
+
+[points-bot:children]
+points-bot-devnet
+points-bot-testnet
+points-bot-mainnet
 
 [hyperlane]
 100.89.7.33    # inter1
