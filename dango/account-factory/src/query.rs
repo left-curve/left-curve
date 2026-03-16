@@ -1,7 +1,7 @@
 use {
     crate::{CODE_HASH, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS},
     dango_types::account_factory::{
-        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexAndName, UserIndexOrName,
+        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexOrName,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -66,10 +66,12 @@ fn query_next_account_index(storage: &dyn Storage) -> StdResult<AccountIndex> {
 }
 
 fn query_user(storage: &dyn Storage, index_or_name: UserIndexOrName) -> StdResult<User> {
-    match index_or_name {
-        UserIndexOrName::Index(idx) => USERS.load(storage, idx),
-        UserIndexOrName::Name(username) => USERS.idx.by_name.load_value(storage, username),
-    }
+    let (index, mut user) = match index_or_name {
+        UserIndexOrName::Index(idx) => (idx, USERS.load(storage, idx)?),
+        UserIndexOrName::Name(username) => USERS.idx.by_name.load(storage, username)?,
+    };
+    user.index = index;
+    Ok(user)
 }
 
 fn query_users(
@@ -83,6 +85,11 @@ fn query_users(
     USERS
         .range(storage, start, None, Order::Ascending)
         .take(limit)
+        .map(|res| {
+            let (idx, mut user) = res?;
+            user.index = idx;
+            Ok((idx, user))
+        })
         .collect()
 }
 
@@ -125,7 +132,7 @@ fn forgot_username(
     key_hash: Hash256,
     start_after: Option<UserIndex>,
     limit: Option<u32>,
-) -> StdResult<Vec<UserIndexAndName>> {
+) -> StdResult<Vec<User>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
@@ -135,11 +142,9 @@ fn forgot_username(
         .prefix(key_hash)
         .range(storage, start, None, Order::Ascending)
         .map(|res| {
-            let (index, user) = res?;
-            Ok(UserIndexAndName {
-                index,
-                name: user.name,
-            })
+            let (index, mut user) = res?;
+            user.index = index;
+            Ok(user)
         })
         .take(limit)
         .collect()

@@ -182,7 +182,8 @@ fn onboard_new_user(
     let address = Addr::derive(factory, code_hash, &salt.to_bytes());
 
     let user = User {
-        name: None,
+        index: user_index,
+        name: Username::default_for_index(user_index),
         accounts: btree_map! { account_index => address },
         keys: btree_map! { key_hash => key },
     };
@@ -325,8 +326,13 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
     let (user_index, mut user) = USERS.idx.by_account.load(ctx.storage, ctx.sender)?;
 
     ensure!(
-        user.name.is_none(),
-        "a username is already associated with user index {user_index}",
+        user.name.is_default(),
+        "a custom username is already set for user {user_index}",
+    );
+
+    ensure!(
+        !username.is_default(),
+        "usernames matching 'user_N' are reserved",
     );
 
     ensure!(
@@ -338,7 +344,7 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
         "the username `{username}` is already associated with a user index"
     );
 
-    user.name = Some(username.clone());
+    user.name = username.clone();
 
     USERS.save(ctx.storage, user_index, &user)?;
 

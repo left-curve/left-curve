@@ -16,7 +16,7 @@ pub const USERS: IndexedMap<UserIndex, User, UserIndexes> = IndexedMap::new("use
         "user__key",
     ),
     by_name: UniqueIndex::new2(
-        |_, user| user.name.clone().into_iter().collect(),
+        |_, user| vec![user.name.clone()],
         "user",
         "user__name",
     ),
