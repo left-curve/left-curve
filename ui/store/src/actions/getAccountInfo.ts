@@ -1,6 +1,4 @@
-import {
-  getAccountInfo as getAccountInfoSdkAction,
-} from "@left-curve/dango/actions";
+import { getAccountInfo as getAccountInfoSdkAction } from "@left-curve/dango/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
 import type { Account } from "@left-curve/dango/types";

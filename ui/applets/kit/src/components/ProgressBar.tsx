@@ -41,18 +41,14 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     <div className={twMerge("w-full flex flex-col gap-2", className, classNames?.container)}>
       <div className="flex items-center gap-3">
         <div
-          className={twMerge(
-            "relative flex-1 h-3 rounded-full",
-            styles.track,
-            classNames?.track
-          )}
+          className={twMerge("relative flex-1 h-3 rounded-full", styles.track, classNames?.track)}
         >
           <div className="absolute inset-0 rounded-full overflow-hidden">
             <div
               className={twMerge(
                 "absolute inset-y-0 left-0 rounded-full transition-all duration-300",
                 styles.fill,
-                classNames?.fill
+                classNames?.fill,
               )}
               style={{ width: `${clampedProgress}%` }}
             />
@@ -63,7 +59,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
               alt="Progress"
               className={twMerge(
                 "absolute -top-3 w-8 h-8 select-none drag-none",
-                classNames?.thumb
+                classNames?.thumb,
               )}
               style={{ left: `calc(${clampedProgress}% - 16px)` }}
             />
@@ -75,16 +71,13 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
             alt={endImageAlt}
             className={twMerge(
               "w-[4rem] h-auto select-none drag-none hidden lg:block",
-              classNames?.endImage
+              classNames?.endImage,
             )}
           />
         )}
         {!endImageSrc && rightLabel && (
           <p
-            className={twMerge(
-              "diatype-lg-bold text-utility-warning-600",
-              classNames?.rightLabel
-            )}
+            className={twMerge("diatype-lg-bold text-utility-warning-600", classNames?.rightLabel)}
           >
             {rightLabel}
           </p>
@@ -101,7 +94,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
             <p
               className={twMerge(
                 "diatype-lg-bold text-utility-warning-600 ml-auto",
-                classNames?.rightLabel
+                classNames?.rightLabel,
               )}
             >
               {rightLabel}
