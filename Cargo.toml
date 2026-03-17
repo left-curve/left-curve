@@ -96,7 +96,7 @@ alloy                       = "1.1"
 anyhow                      = "1"
 assert-json-diff            = "2"
 assertor                    = "0.0.4"
-async-graphql               = { version = "7.0", features = ["apollo_persisted_queries", "apollo_tracing", "chrono", "dataloader", "decimal", "log", "opentelemetry", "tracing", "unblock", "url", "uuid"] } # see https://github.com/async-graphql/async-graphql/issues/1726
+async-graphql               = { version = "7.0", features = ["apollo_persisted_queries", "apollo_tracing", "chrono", "dataloader", "decimal", "log", "opentelemetry", "tracing", "unblock", "url", "uuid"] }
 async-graphql-actix-web     = "7.0"
 async-std                   = { version = "1", features = ["attributes", "tokio1"] }
 async-stream                = "0"
