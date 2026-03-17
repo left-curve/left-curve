@@ -140,7 +140,7 @@ pure val ics23::InnerSpec: InnerSpec = {
 }
 ```
 
-`InnerSpec.child_order` for Grug JMT is defined [here](https://github.com/left-curve/left-curve/blob/4890cb58a4b60acfacbc19d6c041f72db2b5b8ee/grug/jellyfish-merkle/src/ics23.rs#L27).
+`InnerSpec.child_order` for Grug JMT is defined [in the source](https://github.com/left-curve/left-curve/blob/4890cb58a4b60acfacbc19d6c041f72db2b5b8ee/grug/jellyfish-merkle/src/ics23.rs#L27).
 `Hash256_ZERO` is placed in [hashes.qnt](../quint/hashes.qnt).
 
 ```bluespec
@@ -156,7 +156,7 @@ val Hash256_ZERO = raw([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 >  ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
 > ```
 >
-> They can be found [here](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/api.rs#L197-L221).
+> They can be found [in the ICS23 Rust API](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/api.rs#L197-L221).
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 

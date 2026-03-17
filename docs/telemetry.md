@@ -3,6 +3,7 @@
 This playbook documents how traces are exported via OpenTelemetry (OTLP) and how Sentry is integrated, including graceful shutdown paths so data is not lost on exit or Ctrl-C.
 
 ## Versions
+
 - `opentelemetry = 0.31`
 - `opentelemetry_sdk = 0.31`
 - `opentelemetry-otlp = 0.31` with features: `grpc-tonic`, `trace`
@@ -12,6 +13,7 @@ This playbook documents how traces are exported via OpenTelemetry (OTLP) and how
 Keep these aligned across the workspace to avoid trait/type mismatches.
 
 ## Config Schema
+
 - `[trace]` in `app.toml` (local or template):
   - `enabled = true|false`
   - `protocol = "otlp_grpc" | "otlp_http"`
@@ -21,6 +23,7 @@ Keep these aligned across the workspace to avoid trait/type mismatches.
   - `TraceProtocol = OtlpGrpc | OtlpHttp` (serde snake_case)
 
 ## Initialization (dango/cli/src/main.rs)
+
 1) Build `Resource` with service name and attributes (e.g., `chain.id`).
 2) Build exporter depending on protocol:
    - gRPC: `SpanExporter::builder().with_tonic().with_export_config(ExportConfig{ protocol: Protocol::Grpc, endpoint: Some(..) }).build()?`
@@ -32,6 +35,7 @@ Keep these aligned across the workspace to avoid trait/type mismatches.
 5) Sentry: initialize with `sentry::init(..)` and include `sentry_tracing` layer when enabled.
 
 ## Graceful Shutdown
+
 - Module: `dango/cli/src/telemetry.rs`
   - Stores provider in `OnceLock`; `shutdown()` calls `provider.shutdown()`.
   - `shutdown_sentry()` fetches current client and `client.close(None)`.
@@ -39,6 +43,7 @@ Keep these aligned across the workspace to avoid trait/type mismatches.
 - Signals: `dango/cli/src/start.rs` listens for SIGINT/SIGTERM and calls both shutdown helpers before return.
 
 ## Example app.toml
+
 ```toml
 [trace]
 enabled = true
@@ -52,6 +57,7 @@ endpoint = "http://collector:4317"
 ```
 
 ## Notes
+
 - Default `service.name` is "dango"; consider making it configurable per binary.
 - For HTTP, ensure your collector path matches (often `/v1/traces`).
 - Jaeger/Tempo both accept OTLP; prefer OTLP over vendor-specific exporters.

@@ -23,9 +23,11 @@ This Ansible role sets up a WireGuard mesh network across all hosts in the inven
 ## Variables
 
 **Required (must be set in host_vars):**
+
 - `wireguard_ip`: The WireGuard IP address for this host (e.g., "10.99.0.1")
 
 **Optional (see `defaults/main.yml`):**
+
 - `wireguard_port`: UDP port for WireGuard (default: 51820)
 - `wireguard_persistent_keepalive`: Keepalive interval in seconds (default: 25)
 - `wireguard_authorized_peers`: List of authorized peers (team members, personal devices) that can connect to the mesh network (default: [])
@@ -63,6 +65,7 @@ wireguard_authorized_peers:
 ### Generating Keys for Authorized Peers
 
 On the client device:
+
 ```bash
 # Generate private key
 wg genkey > privatekey
@@ -105,6 +108,7 @@ PersistentKeepalive = 25
 The `wireguard_ip` variable is available in each host's vars and can be referenced in other roles to communicate over the secure WireGuard network.
 
 Example:
+
 ```yaml
 - name: Connect to service on WireGuard network
   uri:
