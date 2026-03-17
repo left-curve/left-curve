@@ -141,8 +141,8 @@ pnpm storybook
 Install dependencies:
 
 ```shell
-cargo install mdbook
-cargo install mdbook-katex
+cargo install mdbook@0.5.2
+cargo install mdbook-katex@0.10.0-alpha
 ```
 
 Generate book:
