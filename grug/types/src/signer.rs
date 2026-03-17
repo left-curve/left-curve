@@ -1,6 +1,6 @@
 use {
     crate::{Addr, Message, NonEmpty, StdResult, Tx, UnsignedTx},
-    digest::{Digest, Output},
+    sha2::digest::{Digest, Output},
 };
 
 /// Represents an object that has an onchain address.
