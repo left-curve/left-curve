@@ -3,7 +3,7 @@
   community.docker.docker_compose_v2:
     project_src: "{{ points_bot_dir }}/{{ network }}"
     state: stopped
-  ignore_errors: true
+    pull: never
 
 - name: "{{ network }} - Drop app database"
   command:
