@@ -12,6 +12,12 @@
 //! Adapted from:
 //! [cosmwasm-crypto](https://github.com/CosmWasm/cosmwasm/blob/main/packages/crypto/src/identity_digest.rs)
 
+// TODO: `generic-array` 0.14.9 deprecated the entire `GenericArray` type to push
+// users toward 1.x, but `digest 0.10` (latest stable) still re-exports 0.14.
+// Suppress until the RustCrypto ecosystem ships stable `digest 0.11`.
+// Relevant RustCrypto crates: blake2, sha2, ecdsa, k256, p256, hmac, signature, curve25519-dalek
+#![allow(deprecated)]
+
 use {
     digest::{
         FixedOutput, HashMarker, Output, OutputSizeUser, Update,
@@ -46,7 +52,7 @@ macro_rules! identity {
         impl From<[u8; $len]> for $name {
             fn from(bytes: [u8; $len]) -> Self {
                 Self {
-                    bytes: *GenericArray::from_slice(&bytes),
+                    bytes: GenericArray::from(bytes),
                 }
             }
         }
@@ -61,8 +67,8 @@ macro_rules! identity {
 
         impl Update for $name {
             fn update(&mut self, data: &[u8]) {
-                assert_eq!(data.len(), $len);
-                self.bytes = *GenericArray::from_slice(data);
+                let arr: [u8; $len] = data.try_into().expect("data length mismatch");
+                self.bytes = GenericArray::from(arr);
             }
         }
 
