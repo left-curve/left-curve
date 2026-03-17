@@ -14,19 +14,12 @@ import {
   useInputs,
 } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import {
-  useAccount,
-  useConfig,
-  usePublicClient,
-  useSigningClient,
-  useSubmitTx,
-} from "@left-curve/store";
-import type { Address, UserIndexAndName } from "@left-curve/dango/types";
+import { useAccount, usePublicClient, useSigningClient, useSubmitTx } from "@left-curve/store";
+import type { Address } from "@left-curve/dango/types";
 
 export const EditUsername = forwardRef((_props, _ref) => {
   const { hideModal } = useApp();
-  const { setState } = useConfig();
-  const { username, account } = useAccount();
+  const { username, account, refreshAccounts } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { register, inputs, reset } = useInputs({
     initialValues: {
@@ -43,7 +36,7 @@ export const EditUsername = forwardRef((_props, _ref) => {
     isFetching,
     error: errorMessage = error,
   } = useQuery({
-    enabled: !!editedUsername && editedUsername !== `User #${account?.index}`,
+    enabled: !!editedUsername && editedUsername !== username,
     queryKey: ["username", editedUsername],
     queryFn: async ({ signal }) => {
       await wait(450);
@@ -51,7 +44,7 @@ export const EditUsername = forwardRef((_props, _ref) => {
       if (!editedUsername) return new Error(m["signin.errors.usernameRequired"]());
       if (error) throw error;
       const { accounts } = await client
-        .getUser({ username: editedUsername })
+        .getUser({ userIndexOrName: { name: editedUsername } })
         .catch(() => ({ accounts: {} }));
       const isUsernameAvailable = !Object.keys(accounts).length;
 
@@ -63,13 +56,7 @@ export const EditUsername = forwardRef((_props, _ref) => {
   const { mutateAsync: changeUsername, isPending } = useSubmitTx({
     mutation: {
       onSuccess: () => {
-        setState((x) => ({
-          ...x,
-          userIndexAndName: {
-            ...(x.userIndexAndName as UserIndexAndName),
-            name: editedUsername,
-          },
-        }));
+        refreshAccounts?.();
         hideModal();
         reset();
       },
@@ -132,7 +119,7 @@ export const EditUsername = forwardRef((_props, _ref) => {
         <Button
           fullWidth
           isLoading={isPending}
-          isDisabled={inputs.editedUsername?.value === `User #${account?.index}` || !!errorMessage}
+          isDisabled={inputs.editedUsername?.value === username || !!errorMessage}
           type="submit"
         >
           {m["settings.session.username.save"]()}

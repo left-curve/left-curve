@@ -221,7 +221,7 @@ services:
 
 {% if faucet_bot_enabled %}
   faucet-bot:
-    image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
+    image: ghcr.io/left-curve/bots/faucet:${FAUCET_BOT_TAG:-latest}
     restart: unless-stopped
     ulimits:
       nofile:

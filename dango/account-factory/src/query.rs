@@ -1,7 +1,7 @@
 use {
     crate::{CODE_HASH, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS},
     dango_types::account_factory::{
-        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexAndName, UserIndexOrName,
+        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexOrName,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -125,7 +125,7 @@ fn forgot_username(
     key_hash: Hash256,
     start_after: Option<UserIndex>,
     limit: Option<u32>,
-) -> StdResult<Vec<UserIndexAndName>> {
+) -> StdResult<Vec<User>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
@@ -133,14 +133,7 @@ fn forgot_username(
         .idx
         .by_key
         .prefix(key_hash)
-        .range(storage, start, None, Order::Ascending)
-        .map(|res| {
-            let (index, user) = res?;
-            Ok(UserIndexAndName {
-                index,
-                name: user.name,
-            })
-        })
+        .values(storage, start, None, Order::Ascending)
         .take(limit)
         .collect()
 }

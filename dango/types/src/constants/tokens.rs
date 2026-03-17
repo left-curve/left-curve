@@ -44,3 +44,28 @@ define_denom! {
     usdc => 6,
     xrp  => 6
 }
+
+macro_rules! define_perp_denom {
+    ($name:ident, $subdenom:literal => $decimal:expr) => {
+        pub mod $name {
+            use super::*;
+
+            pub static SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked($subdenom));
+
+            pub static DENOM: LazyLock<Denom> = LazyLock::new(|| {
+                Denom::from_parts([crate::perps::NAMESPACE.clone(), SUBDENOM.clone()]).unwrap()
+            });
+
+            pub const DECIMAL: u32 = $decimal;
+        }
+    };
+    ($($name:ident, $subdenom:literal => $decimal:expr);*) => {
+        $(
+            define_perp_denom!($name, $subdenom => $decimal);
+        )*
+    };
+}
+
+define_perp_denom! {
+    perp_eth, "ethusd" => eth::DECIMAL
+}

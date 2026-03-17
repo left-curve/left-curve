@@ -92,7 +92,9 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
                 {
                   (
                     Children.toArray(children).find(
-                      (e) => isValidElement(e) && selected === (e as ReactElement<SelectItemPropsInternal>).props.value,
+                      (e) =>
+                        isValidElement(e) &&
+                        selected === (e as ReactElement<SelectItemPropsInternal>).props.value,
                     ) as ReactElement<SelectItemPropsInternal> | undefined
                   )?.props.children
                 }
@@ -173,7 +175,8 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
   const { base, trigger } = slots;
 
   const SelectedItem = Children.toArray(children).find(
-    (e) => isValidElement(e) && selected === (e as ReactElement<SelectItemPropsInternal>).props.value,
+    (e) =>
+      isValidElement(e) && selected === (e as ReactElement<SelectItemPropsInternal>).props.value,
   ) as ReactElement<SelectItemPropsInternal> | undefined;
 
   return (

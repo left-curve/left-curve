@@ -14,18 +14,14 @@ pub enum UserIndexOrName {
     Name(Username),
 }
 
-#[grug::derive(Serde)]
-pub struct UserIndexAndName {
-    pub index: UserIndex,
-    /// `None` if the user hasn't chosen a username yet.
-    pub name: Option<Username>,
-}
-
 /// Information about a user. Used in query response.
 #[grug::derive(Serde, Borsh)]
 pub struct User {
-    /// The user's username, if he has chosen one.
-    pub name: Option<Username>,
+    /// The user's numerical index.
+    pub index: UserIndex,
+
+    /// The user's username.
+    pub name: Username,
 
     /// Accounts associated with this user, keyed by account index.
     /// A BTreeMap preserves creation-time ordering via key sort.
@@ -130,7 +126,7 @@ pub enum QueryMsg {
     },
     /// Query users associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
-    #[returns(Vec<UserIndexAndName>)]
+    #[returns(Vec<User>)]
     ForgotUsername {
         key_hash: Hash256,
         start_after: Option<UserIndex>,

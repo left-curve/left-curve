@@ -40,17 +40,12 @@
     "msgs": [
       {
         "upload": {
-          "code": "AAAAAAAAAAA="
-        }
-      },
-      {
-        "upload": {
-          "code": "AQAAAAAAAAA="
-        }
-      },
-      {
-        "upload": {
           "code": "AgAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
+          "code": "AAAAAAAAAAA="
         }
       },
       {
@@ -845,7 +840,7 @@
                   "precision": 6
                 }
               },
-              "perps/ethusd": {
+              "perp/ethusd": {
                 "pyth": {
                   "channel": "real_time",
                   "id": 2,

@@ -3,12 +3,7 @@ import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js"
 
 import { getAction } from "@left-curve/sdk/actions";
 import type { Address, Funds, Transport, TxParameters } from "@left-curve/sdk/types";
-import type {
-  AppConfig,
-  DangoClient,
-  Signer,
-  TypedDataParameter,
-} from "../../../types/index.js";
+import type { AppConfig, DangoClient, Signer, TypedDataParameter } from "../../../types/index.js";
 
 export type RegisterAccountParameters = {
   sender: Address;

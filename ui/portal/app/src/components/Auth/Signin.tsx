@@ -14,7 +14,6 @@ import {
   IconLeft,
   IconQR,
   IconTwitter,
-  Input,
 } from "../foundation";
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { EmailCredential } from "./EmailCredential";
@@ -53,13 +52,13 @@ export const Signin: React.FC<SignInProps> = ({ goTo }) => {
 };
 
 const Header: React.FC = () => {
-  const { screen, email, usersIndexAndName } = useSignin();
+  const { screen, email, users } = useSignin();
 
   let title = m["common.signin"]();
   let description: React.ReactNode = null;
 
   if (screen === "usernames") {
-    if (usersIndexAndName.length > 0) {
+    if (users.length > 0) {
       title = m["signin.usernamesFound"]();
       description = m["signin.chooseCredential"]();
     } else {
@@ -173,13 +172,13 @@ const Credentials: React.FC = () => {
 };
 
 const UsernamesSection: React.FC = () => {
-  const { screen, setScreen, usersIndexAndName, login } = useSignin();
+  const { screen, setScreen, users, login } = useSignin();
 
   const goBack = () => setScreen("options");
 
   if (screen !== "usernames") return null;
 
-  const existUsernames = usersIndexAndName.length > 0;
+  const existUsernames = users.length > 0;
 
   return (
     <View className="flex flex-col gap-6 w-full items-center text-center">

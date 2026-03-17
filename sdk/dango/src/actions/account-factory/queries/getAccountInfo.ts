@@ -1,5 +1,5 @@
 import { getAction, getAppConfig, queryWasmSmart } from "@left-curve/sdk/actions";
-import { getUsernameByIndex } from "./getUsernameByIndex.js";
+import { getUser } from "./getUser.js";
 
 import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
 import type { Account, AccountInfo, AppConfig } from "../../../types/index.js";
@@ -40,11 +40,11 @@ export async function getAccountInfo<
 
   if (!account) return null;
 
-  const username = await getUsernameByIndex(client, { index: account.owner });
+  const user = await getUser(client, { userIndexOrName: { index: account.owner }, height });
 
   return {
     ...account,
-    username: username ?? `User #${account.owner}`,
+    username: user.name,
     address: parameters.address,
   };
 }

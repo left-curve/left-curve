@@ -1,0 +1,11 @@
+---
+- name: "{{ network }} - Stop stack"
+  community.docker.docker_compose_v2:
+    project_src: "{{ points_bot_dir }}/{{ network }}"
+    state: stopped
+    pull: never
+
+- name: "{{ network }} - Drop app database"
+  command:
+    cmd: docker compose run --rm --pull never points points drop-db
+    chdir: "{{ points_bot_dir }}/{{ network }}"

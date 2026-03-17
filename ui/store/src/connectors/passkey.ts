@@ -8,7 +8,7 @@ import {
 import { encodeBase64, encodeUtf8, serialize } from "@left-curve/dango/encoding";
 
 import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango";
-import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
+import { getUser } from "@left-curve/dango/actions";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 
 import { createConnector } from "./createConnector.js";
@@ -22,13 +22,13 @@ type PasskeyConnectorParameters = {
 export function passkey(parameters: PasskeyConnectorParameters = {}) {
   const { icon } = parameters;
 
-  return createConnector<undefined>(({ transport, emitter, getUserIndexAndName, chain }) => {
+  return createConnector<undefined>(({ transport, emitter, getUserIndex, chain }) => {
     return {
       id: "passkey",
       name: "Passkey",
       type: "passkey",
       icon,
-      async connect({ userIndexAndName, chainId, challenge, keyHash: _keyHash_ }) {
+      async connect({ userIndex, chainId, challenge, keyHash: _keyHash_ }) {
         const client = createSignerClient({
           signer: this,
           type: "passkey",
@@ -47,21 +47,18 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           return createKeyHash(credentialId);
         })();
 
-        const keys = await getKeysByUsername(client, { userIndexOrName: userIndexAndName });
+        const user = await getUser(client, { userIndexOrName: { index: userIndex } });
 
-        if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
+        if (!user.keys[keyHash]) throw new Error("Not authorized");
 
-        const accountsInfo = await getAccountsByUsername(client, {
-          userIndexOrName: userIndexAndName,
-        });
-        const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
-          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
+        const accounts = Object.entries(user.accounts).map(([accountIndex, address]) =>
+          toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
         );
 
         const account = accounts[0];
         const userStatus = await client.getAccountStatus({ address: account.address });
 
-        emitter.emit("connect", { accounts, chainId, userIndexAndName, keyHash, userStatus });
+        emitter.emit("connect", { accounts, chainId, userIndex, keyHash, userStatus });
       },
       async disconnect() {
         emitter.emit("disconnect");
@@ -107,13 +104,11 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const userIndexAndName = await getUserIndexAndName();
-        if (!userIndexAndName) throw new Error("passkey: user index not found");
-        const accountsInfo = await getAccountsByUsername(client, {
-          userIndexOrName: userIndexAndName,
-        });
-        const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
-          toAccount({ userIndexAndName, address: address as Address, info: accountInfo }),
+        const userIndex = getUserIndex();
+        if (userIndex === undefined) throw new Error("passkey: user index not found");
+        const user = await getUser(client, { userIndexOrName: { index: userIndex } });
+        const accounts = Object.entries(user.accounts).map(([accountIndex, address]) =>
+          toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
         );
         return accounts;
       },

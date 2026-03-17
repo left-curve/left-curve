@@ -8,11 +8,8 @@ import type {
   Flatten,
   Hex,
   PairUpdate,
-  Prettify,
-  Require,
   Transport,
   UID,
-  UserIndexAndName,
   UserStatus,
 } from "@left-curve/dango/types";
 
@@ -35,7 +32,7 @@ export type State = {
   chainId: ChainId;
   isMipdLoaded: boolean;
   current: UID | null;
-  userIndexAndName: Prettify<Require<UserIndexAndName, "name">> | undefined;
+  userIndex: number | undefined;
   userStatus: UserStatus | undefined;
   connectors: Map<UID, Connection>;
   status: ConnectionStatusType;

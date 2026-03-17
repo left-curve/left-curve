@@ -34,7 +34,7 @@ const UsernameSection: React.FC = () => {
   const { username, isConnected, userIndex, isUserActive } = useAccount();
   const { showModal } = useApp();
 
-  const hasNotChangedUsername = username === `User #${userIndex}`;
+  const hasNotChangedUsername = username === `user_${userIndex}`;
   const allowEdit = isUserActive && hasNotChangedUsername;
 
   if (!isConnected) return null;

@@ -9,12 +9,6 @@ export {
 } from "./queries/getAccountInfo.js";
 
 export {
-  type GetAccountsByUsernameParameters,
-  type GetAccountsByUsernameReturnType,
-  getAccountsByUsername,
-} from "./queries/getAccountsByUsername.js";
-
-export {
   type GetAccountSeenNoncesParameters,
   type GetAccountSeenNoncesReturnType,
   getAccountSeenNonces,
@@ -33,24 +27,6 @@ export {
 } from "./queries/getAllAccountInfo.js";
 
 export {
-  type GetKeyParameters,
-  type GetKeyReturnType,
-  getKey,
-} from "./queries/getKey.js";
-
-export {
-  type GetKeysParameters,
-  type GetKeysReturnType,
-  getKeys,
-} from "./queries/getKeys.js";
-
-export {
-  type GetKeysByUsernameParameters,
-  type GetKeysByUsernameReturnType,
-  getKeysByUsername,
-} from "./queries/getKeysByUsername.js";
-
-export {
   type GetNextAccountIndexParameters,
   type GetNextAccountIndexReturnType,
   getNextAccountIndex,
@@ -61,18 +37,6 @@ export {
   type GetUserReturnType,
   getUser,
 } from "./queries/getUser.js";
-
-export {
-  type GetUsersByKeyhashParameters,
-  type GetUsersByKeyHashReturnType,
-  getUsersByKeyHash,
-} from "./queries/getUsersByKeyHash.js";
-
-export {
-  type GetUsernameByIndexParameters,
-  type GetUsernameByIndexReturnType,
-  getUsernameByIndex,
-} from "./queries/getUsernameByIndex.js";
 
 export {
   type ForgotUsernameParameters,
