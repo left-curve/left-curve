@@ -2,7 +2,6 @@
 authors      = ["Left Curve Software Ltd. (https://grug.build/about)"]
 description  = "Everything about Dango"
 language     = "en"
-multilingual = false
 src          = "book/"
 title        = "The Dango Book"
 
@@ -13,7 +12,7 @@ git-repository-url = "https://github.com/left-curve/left-curve"
 build-dir = "target/book/"
 
 [rust]
-edition = "2021"
+edition = "2024"
 
-# This is for Latex support, install with: `cargo install mdbook-katex`.
+# This is for Latex support, install with: `cargo install mdbook-katex@0.10.0-alpha`.
 [preprocessor.katex]
