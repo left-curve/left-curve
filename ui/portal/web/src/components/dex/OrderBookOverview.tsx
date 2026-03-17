@@ -27,22 +27,22 @@ type OrderBookOverviewProps = {
 export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, controllers }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
-  const { isLg, is3Xl } = useMediaQuery();
+  const { isLg, is3XlTall } = useMediaQuery();
 
   useEffect(() => {
-    if (is3Xl) {
+    if (is3XlTall) {
       setActiveTab("order book");
     } else {
       setActiveTab(isLg ? "order book" : "graph");
     }
-  }, [isLg, is3Xl]);
+  }, [isLg, is3XlTall]);
 
   const tabsKeys = useMemo(() => {
-    if (is3Xl) {
+    if (is3XlTall) {
       return ["order book"];
     }
     return isLg ? ["order book", "trades"] : ["graph", "order book", "trades"];
-  }, [isLg, is3Xl]);
+  }, [isLg, is3XlTall]);
 
   return (
     <ResizerContainer
@@ -68,7 +68,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
           {activeTab === "trades" && <LiveTrades state={state} controllers={controllers} />}
         </>
       )}
-      {is3Xl && (
+      {is3XlTall && (
         <>
           <Tabs
             color="line-red"
