@@ -45,7 +45,7 @@ impl Keystore {
         );
 
         // decrypt the private key
-        let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&password_hash));
+        let cipher = Aes256Gcm::new(&Key::<Aes256Gcm>::from(password_hash));
 
         cipher
             .decrypt(keystore.nonce.as_ref().into(), keystore.ciphertext.as_ref())?
@@ -79,7 +79,7 @@ impl Keystore {
         );
 
         // encrypt the private key
-        let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&password_hash));
+        let cipher = Aes256Gcm::new(&Key::<Aes256Gcm>::from(password_hash));
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
         let ciphertext = cipher.encrypt(&nonce, secret.private_key().as_ref())?;
 
@@ -87,7 +87,7 @@ impl Keystore {
         let keystore = Keystore {
             pk: secret.public_key().into(),
             salt: salt.into(),
-            nonce: nonce.as_slice().try_into()?,
+            nonce: (&nonce[..]).try_into()?,
             ciphertext: ciphertext.into(),
         };
         let keystore_str = keystore.to_json_string_pretty()?;

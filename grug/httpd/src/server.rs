@@ -42,9 +42,7 @@ where
     tracing::info!(%ip, port, "Starting httpd server");
 
     #[cfg(feature = "metrics")]
-    let metrics = ActixWebMetricsBuilder::new()
-        .build()
-        .map_err(|_| Error::ActixWebMetricsBuilder)?;
+    let metrics = ActixWebMetricsBuilder::new().build();
 
     let shutdown_flag_clone = shutdown_flag.clone();
     HttpServer::new(move || {
@@ -104,9 +102,7 @@ where
     #[cfg(feature = "tracing")]
     tracing::info!(%ip, port, "Starting metrics httpd server");
 
-    let metrics = ActixWebMetricsBuilder::new()
-        .build()
-        .map_err(|_| Error::ActixWebMetricsBuilder)?;
+    let metrics = ActixWebMetricsBuilder::new().build();
 
     let recorder = PrometheusBuilder::new().build_recorder();
     let metrics_handler2 = recorder.handle();

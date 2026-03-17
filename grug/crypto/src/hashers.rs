@@ -1,8 +1,7 @@
 use {
     crate::utils::truncate,
     blake2::{Blake2b512, Blake2s256},
-    digest::Digest,
-    sha2::{Sha256, Sha512},
+    sha2::{Digest, Sha256, Sha512},
     sha3::{Keccak256, Sha3_256, Sha3_512},
 };
 

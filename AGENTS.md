@@ -194,9 +194,9 @@ pub async fn process_request(&self, req: Request) -> Result<Response> {
 
     Ok(response)
 }
-
-Telemetry (OTLP + Sentry, graceful shutdown): `telemetry.md`
 ```
+
+Telemetry (OTLP + Sentry, graceful shutdown): see [`telemetry.md`](./telemetry.md).
 
 ## Git Workflow
 
@@ -221,9 +221,13 @@ to handle network interruptions gracefully.
 Fixes #123
 ```
 
-**No Co-Authored-By trailers.** Never add `Co-Authored-By` lines (e.g.
-`Co-Authored-By: Claude ...`) to commit messages or documentation. Commits
-should only contain the message itself — no AI attribution trailers.
+**Include Co-Authored-By trailers.** When an AI agent contributes to a commit,
+include a `Co-Authored-By` trailer to give proper credit. Use your actual
+model/agent name and email:
+
+```text
+Co-Authored-By: <agent name> <your@email.com>
+```
 
 **Never overwrite existing tags.** When a release build fails or needs fixes,
 always create a new version tag (e.g. `v0.1.7` instead of re-tagging `v0.1.6`).
