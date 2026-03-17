@@ -9068,9 +9068,9 @@ dependencies = [
 
 [[package]]
 name = "pyth-lazer-client"
-version = "15.0.0"
+version = "20.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d6b7e6b8722a8939658176454bc9337d8b7e6ecfef5b8519306817c914a759d"
+checksum = "a538344db0cde41a3248c3bc24a89279688a041969c4cf8f72735bc873753993"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -9100,9 +9100,9 @@ dependencies = [
 
 [[package]]
 name = "pyth-lazer-protocol"
-version = "0.26.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7ad9d625a4461c4166633c2ded7bcf7c8eec2da7386a1885b2b19c489a4ebc1"
+checksum = "489c315f5059794b0da43cfeecfa7dedae4124ce25bed8e0e91d09a9b623b111"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -9116,15 +9116,17 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_json",
+ "serde_with",
+ "strum 0.27.2",
  "thiserror 2.0.18",
  "utoipa",
 ]
 
 [[package]]
 name = "pyth-lazer-publisher-sdk"
-version = "0.26.1"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42311494e1d5c302784dbf0f26f919c7ad1a039943634859a32108795de7f433"
+checksum = "978f0e0aff0060cac201870c6bf1e3c31da2c4b3743d73124e76052e9c3176af"
 dependencies = [
  "anyhow",
  "fs-err",
