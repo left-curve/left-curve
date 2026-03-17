@@ -1,6 +1,5 @@
 # Based on:
 # https://github.com/rust-lang/mdBook/wiki/Automated-Deployment%3A-GitHub-Actions
-# https://github.com/peaceiris/actions-gh-pages?tab=readme-ov-file#%EF%B8%8F-mdbook-rust
 
 name: Book
 
@@ -21,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: github-pages
     permissions:
-      contents: write # To push a branch
       pages: write    # To push to a GitHub Pages site
       id-token: write # To update the deployment status
     steps:
@@ -51,8 +49,10 @@ jobs:
       - name: Create CNAME file
         run: echo "docs.dango.exchange" > ./target/book/CNAME
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/book/
+          path: ./target/book/
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac553fd0d31 # v4
