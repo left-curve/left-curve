@@ -7,7 +7,6 @@ mod buffer;
 mod builder;
 mod bytes;
 mod cache;
-mod changeset;
 mod code;
 mod coin;
 mod coin_pair;
@@ -36,6 +35,7 @@ mod macros;
 mod metrics;
 mod non_zero;
 mod outcome;
+mod predicate;
 mod query;
 mod response;
 mod result;
@@ -52,12 +52,12 @@ mod utils;
 
 pub use {
     address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
-    changeset::*, code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, dec_coin::*,
-    denom::*, empty::*, encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*,
-    hash::*, hashers::*, imports::*, indexer::*, inner::*, jellyfish_merkle::*, json::*,
-    length_bounded::*, lengthy::*, metrics::*, non_zero::*, outcome::*, query::*, response::*,
-    result::*, serializers::*, shared::*, signer::*, status::*, time::*, transfer::*, tx::*,
-    unique_vec::*, upgrade::*, utils::*,
+    code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, dec_coin::*, denom::*, empty::*,
+    encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*, hash::*, hashers::*,
+    imports::*, indexer::*, inner::*, jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*,
+    metrics::*, non_zero::*, outcome::*, predicate::*, query::*, response::*, result::*,
+    serializers::*, shared::*, signer::*, status::*, time::*, transfer::*, tx::*, unique_vec::*,
+    upgrade::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

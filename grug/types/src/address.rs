@@ -37,6 +37,7 @@ pub type Addr = EncodedBytes<[u8; 20], AddrEncoder>;
 
 impl Addr {
     pub const LENGTH: usize = 20;
+    pub const ZERO: Self = Self::from_inner([0; Self::LENGTH]);
 
     /// Generate a mock address from use in testing.
     pub const fn mock(index: u8) -> Self {

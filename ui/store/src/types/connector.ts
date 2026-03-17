@@ -6,7 +6,6 @@ import type {
   Prettify,
   Transport,
   UID,
-  UserIndexAndName,
   UserStatus,
 } from "@left-curve/dango/types";
 import type { Emitter, EventData } from "./emitter.js";
@@ -54,14 +53,14 @@ export type ConnectorParameter = {
 export type ConnectorEventMap = {
   change: {
     userStatus: UserStatus | undefined;
-    userIndexAndName: UserIndexAndName;
+    userIndex: number;
     accounts?: readonly Account[] | undefined;
     chainId?: string;
     keyHash: KeyHash;
   };
   connect: {
     userStatus: UserStatus | undefined;
-    userIndexAndName: UserIndexAndName;
+    userIndex: number;
     accounts: readonly Account[];
     chainId: string;
     keyHash: KeyHash;
@@ -91,7 +90,7 @@ export type CreateConnectorFn<
   emitter: Emitter<ConnectorEventMap>;
   transport: transport;
   storage: Storage;
-  getUserIndexAndName: () => Promise<UserIndexAndName | undefined>;
+  getUserIndex: () => number | undefined;
 }) => Prettify<
   properties &
     Signer & {
@@ -103,7 +102,7 @@ export type CreateConnectorFn<
       setup?(): Promise<void>;
       connect(
         parameters: {
-          userIndexAndName: UserIndexAndName;
+          userIndex: number;
           chainId: Chain["id"];
         } & OneRequired<
           {

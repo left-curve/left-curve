@@ -25,26 +25,10 @@ import {
 } from "./queries/getCodeHash.js";
 
 import {
-  type GetAccountsByUsernameParameters,
-  type GetAccountsByUsernameReturnType,
-  getAccountsByUsername,
-} from "./queries/getAccountsByUsername.js";
-
-import {
   type GetAllAccountInfoParameters,
   type GetAllAccountInfoReturnType,
   getAllAccountInfo,
 } from "./queries/getAllAccountInfo.js";
-
-import { type GetKeyParameters, type GetKeyReturnType, getKey } from "./queries/getKey.js";
-
-import { type GetKeysParameters, type GetKeysReturnType, getKeys } from "./queries/getKeys.js";
-
-import {
-  type GetKeysByUsernameParameters,
-  type GetKeysByUsernameReturnType,
-  getKeysByUsername,
-} from "./queries/getKeysByUsername.js";
 
 import {
   type GetNextAccountIndexParameters,
@@ -61,12 +45,6 @@ import {
   type UpdateKeyReturnType,
   updateKey,
 } from "./mutations/updateKey.js";
-
-import {
-  type GetUsersByKeyHashReturnType,
-  type GetUsersByKeyhashParameters,
-  getUsersByKeyHash,
-} from "./queries/getUsersByKeyHash.js";
 
 import {
   type CreateSessionParameters,
@@ -89,12 +67,6 @@ import {
 } from "./queries/getUserKeys.js";
 
 import {
-  getUsernameByIndex,
-  type GetUsernameByIndexParameters,
-  type GetUsernameByIndexReturnType,
-} from "./queries/getUsernameByIndex.js";
-
-import {
   updateUsername,
   type UpdateUsernameParameters,
   type UpdateUsernameReturnType,
@@ -109,18 +81,12 @@ import {
 export type AccountFactoryQueryActions = {
   forgotUsername: (args: ForgotUsernameParameters) => ForgotUsernameReturnType;
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
-  getAccountsByUsername: (args: GetAccountsByUsernameParameters) => GetAccountsByUsernameReturnType;
   getAccountSeenNonces: (args: GetAccountSeenNoncesParameters) => GetAccountSeenNoncesReturnType;
   getCodeHash: (args?: GetCodeHashParameters) => GetCodeHashReturnType;
   getAllAccountInfo: (args: GetAllAccountInfoParameters) => GetAllAccountInfoReturnType;
-  getKey: (args: GetKeyParameters) => GetKeyReturnType;
-  getKeys: (args: GetKeysParameters) => GetKeysReturnType;
-  getKeysByUsername: (args: GetKeysByUsernameParameters) => GetKeysByUsernameReturnType;
   getNextAccountIndex: (args: GetNextAccountIndexParameters) => GetNextAccountIndexReturnType;
   getUser: (args: GetUserParameters) => GetUserReturnType;
   getUserKeys: (args: GetUserKeysParameters) => GetUserKeysReturnType;
-  getUsersByKeyHash: (args: GetUsersByKeyhashParameters) => GetUsersByKeyHashReturnType;
-  getUsernameByIndex: (args: GetUsernameByIndexParameters) => GetUsernameByIndexReturnType;
   getAccountStatus: (args: GetAccountStatusParameters) => GetAccountStatusReturnType;
 };
 
@@ -141,18 +107,12 @@ export function accountFactoryQueryActions<transport extends Transport = Transpo
   return {
     forgotUsername: (args) => forgotUsername(client, args),
     getAccountInfo: (args) => getAccountInfo(client, args),
-    getAccountsByUsername: (args) => getAccountsByUsername(client, args),
     getAccountSeenNonces: (args) => getAccountSeenNonces(client, args),
     getCodeHash: (args) => getCodeHash(client, args),
     getAllAccountInfo: (args) => getAllAccountInfo(client, args),
-    getKey: (args) => getKey(client, args),
-    getKeys: (args) => getKeys(client, args),
-    getKeysByUsername: (args) => getKeysByUsername(client, args),
     getNextAccountIndex: (args) => getNextAccountIndex(client, args),
     getUser: (args) => getUser(client, args),
     getUserKeys: (args) => getUserKeys(client, args),
-    getUsersByKeyHash: (args) => getUsersByKeyHash(client, args),
-    getUsernameByIndex: (args) => getUsernameByIndex(client, args),
     getAccountStatus: (args) => getAccountStatus(client, args),
   };
 }

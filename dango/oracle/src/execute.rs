@@ -7,9 +7,9 @@ use {
         perps,
     },
     grug::{
-        Api, AuthCtx, AuthMode, AuthResponse, Binary, Coins, Denom, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, QuerierExt, Response, StdResult, Storage, SubMessage, SubMsgResult,
-        SudoCtx, Timestamp, Tx,
+        Addr, Api, AuthCtx, AuthMode, AuthResponse, Binary, Coins, Denom, Inner, JsonDeExt,
+        Message, MsgExecute, MutableCtx, QuerierExt, Response, StdResult, Storage, SubMessage,
+        SubMsgResult, SudoCtx, Timestamp, Tx,
     },
     pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
     std::collections::BTreeMap,
@@ -88,7 +88,7 @@ pub fn reply(_ctx: SudoCtx, msg: ReplyMsg, _res: SubMsgResult) -> StdResult<Resp
             {
                 tracing::error!(
                     error = _res.unwrap_err(),
-                    "!!! PERPS ON_ORACLE_UPDATE FAILED !!!"
+                    "!!! PERPS VAULT REFRESH FAILED !!!"
                 );
             }
 
@@ -175,21 +175,25 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
         }
     }
 
-    Ok(Response::new().add_submessage({
-        // Call the perps contract's `on_oracle_update` function.
-        // The perps market making vault refreshes its quotes based on the latest
-        // oracle prices.
-        // Use `reply_on_error` to ensure that even if the perps contract errors,
-        // the oracle update itself isn't reverted.
-        let perps = ctx.querier.query_perps()?;
-        SubMessage::reply_on_error(
+    // Call the perps contract's `on_oracle_update` function.
+    // The perps market making vault refreshes its quotes based on the latest
+    // oracle prices.
+    // Use `reply_on_error` to ensure that even if the perps contract errors,
+    // the oracle update itself isn't reverted.
+    // Skip if perps address is zero (not yet instantiated).
+    let perps = ctx.querier.query_perps()?;
+
+    Ok(Response::new().may_add_submessage(if perps != Addr::ZERO {
+        Some(SubMessage::reply_on_error(
             Message::execute(
                 perps,
                 &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
                 Coins::new(),
             )?,
             &ReplyMsg::AfterOnOracleUpdate {},
-        )?
+        )?)
+    } else {
+        None
     }))
 }
 

@@ -1,0 +1,6 @@
+---
+- name: Deploy points-bot instances
+  include_tasks: deploy-instance.yml
+  loop: "{{ points_bot_networks }}"
+  loop_control:
+    loop_var: network

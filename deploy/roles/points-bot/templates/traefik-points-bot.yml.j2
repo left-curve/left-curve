@@ -1,0 +1,20 @@
+http:
+  services:
+    points-{{ network }}:
+      loadBalancer:
+        servers:
+          - url: "http://points-bot-{{ network }}:8080"
+
+  routers:
+    points-{{ network }}-ssl:
+      rule: "Host(`points-{{ network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls: {}
+      service: "points-{{ network }}"
+
+    points-{{ network }}:
+      rule: "Host(`points-{{ network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "points-{{ network }}"

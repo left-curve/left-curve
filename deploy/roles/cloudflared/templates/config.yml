@@ -22,5 +22,7 @@ ingress:
     service: http://traefik
   - hostname: faucet-{{ dango_network }}.{{ dango_domain }}
     service: http://traefik
+  - hostname: points-{{ dango_network }}.{{ dango_domain }}
+    service: http://traefik
 {% endfor %}
   - service: http_status:404

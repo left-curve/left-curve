@@ -1,14 +1,12 @@
 use {
-    crate::{
-        ACCOUNTS, CODE_HASH, MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS,
-    },
+    crate::{CODE_HASH, MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS},
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
     dango_types::{
         account,
         account_factory::{
-            Account, AccountOwned, AccountRegistered, ExecuteMsg, InstantiateMsg, KeyDisowned,
-            KeyOwned, NewUserSalt, RegisterUserData, Salt, User, UserRegistered, Username,
+            AccountOwned, AccountRegistered, ExecuteMsg, InstantiateMsg, KeyDisowned, KeyOwned,
+            NewUserSalt, RegisterUserData, Salt, User, UserRegistered, Username,
         },
         auth::{Key, Signature},
     },
@@ -184,19 +182,13 @@ fn onboard_new_user(
     let address = Addr::derive(factory, code_hash, &salt.to_bytes());
 
     let user = User {
-        name: None,
-        accounts: vec![address],
+        index: user_index,
+        name: Username::default_for_index(user_index),
+        accounts: btree_map! { account_index => address },
         keys: btree_map! { key_hash => key },
     };
 
-    let account = Account {
-        index: account_index,
-        owner: user_index,
-    };
-
     USERS.save(storage, user_index, &user)?;
-
-    ACCOUNTS.save(storage, address, &account)?;
 
     Ok((
         Message::instantiate(
@@ -226,7 +218,7 @@ fn onboard_new_user(
 
 fn register_account(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Load the sender's user index.
-    let user_index = ACCOUNTS.load(ctx.storage, ctx.sender)?.owner;
+    let user_index = USERS.idx.by_account.load_key(ctx.storage, ctx.sender)?;
 
     // Load the user's profile.
     let mut user = USERS.load(ctx.storage, user_index)?;
@@ -249,13 +241,7 @@ fn register_account(ctx: MutableCtx) -> anyhow::Result<Response> {
     let address = Addr::derive(ctx.contract, code_hash, &salt);
 
     // Insert the account to the user's profile.
-    user.accounts.push(address);
-
-    // Save the account info.
-    ACCOUNTS.save(ctx.storage, address, &Account {
-        index,
-        owner: user_index,
-    })?;
+    user.accounts.insert(index, address);
 
     // Save the updated user profile.
     USERS.save(ctx.storage, user_index, &user)?;
@@ -286,7 +272,7 @@ fn register_account(ctx: MutableCtx) -> anyhow::Result<Response> {
 }
 
 fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
-    let user_index = ACCOUNTS.load(ctx.storage, ctx.sender)?.owner;
+    let user_index = USERS.idx.by_account.load_key(ctx.storage, ctx.sender)?;
     let mut user = USERS.load(ctx.storage, user_index)?;
 
     match key {
@@ -337,12 +323,16 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
 }
 
 fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Response> {
-    let user_index = ACCOUNTS.load(ctx.storage, ctx.sender)?.owner;
-    let mut user = USERS.load(ctx.storage, user_index)?;
+    let (user_index, mut user) = USERS.idx.by_account.load(ctx.storage, ctx.sender)?;
 
     ensure!(
-        user.name.is_none(),
-        "a username is already associated with user index {user_index}",
+        user.name.is_default(),
+        "a custom username is already set for user {user_index}",
+    );
+
+    ensure!(
+        !username.is_default(),
+        "usernames matching 'user_N' are reserved",
     );
 
     ensure!(
@@ -354,7 +344,7 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
         "the username `{username}` is already associated with a user index"
     );
 
-    user.name = Some(username.clone());
+    user.name = username.clone();
 
     USERS.save(ctx.storage, user_index, &user)?;
 

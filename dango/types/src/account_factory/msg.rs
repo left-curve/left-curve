@@ -14,22 +14,18 @@ pub enum UserIndexOrName {
     Name(Username),
 }
 
-#[grug::derive(Serde)]
-pub struct UserIndexAndName {
-    pub index: UserIndex,
-    /// `None` if the user hasn't chosen a username yet.
-    pub name: Option<Username>,
-}
-
 /// Information about a user. Used in query response.
 #[grug::derive(Serde, Borsh)]
 pub struct User {
-    /// The user's username, if he has chosen one.
-    pub name: Option<Username>,
+    /// The user's numerical index.
+    pub index: UserIndex,
 
-    /// Accounts associated with this user, in chronological order that they
-    /// were created.
-    pub accounts: Vec<Addr>,
+    /// The user's username.
+    pub name: Username,
+
+    /// Accounts associated with this user, keyed by account index.
+    /// A BTreeMap preserves creation-time ordering via key sort.
+    pub accounts: BTreeMap<AccountIndex, Addr>,
 
     /// Keys associated with this user, indexes by hashes.
     pub keys: BTreeMap<Hash256, Key>,
@@ -39,12 +35,12 @@ impl User {
     /// Return the user's master account, i.e. the first account created for
     /// this user.
     ///
-    /// Since `User::accounts` contains all the accounts in order of creation,
-    /// it is simply the vector's first element.
+    /// Since `User::accounts` is a BTreeMap sorted by AccountIndex,
+    /// the first entry is the earliest created account.
     pub fn master_account(&self) -> Addr {
         self.accounts
-            .first()
-            .copied()
+            .first_key_value()
+            .map(|(_, addr)| *addr)
             .expect("the user to have at least one account")
     }
 }
@@ -130,7 +126,7 @@ pub enum QueryMsg {
     },
     /// Query users associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
-    #[returns(Vec<UserIndexAndName>)]
+    #[returns(Vec<User>)]
     ForgotUsername {
         key_hash: Hash256,
         start_after: Option<UserIndex>,

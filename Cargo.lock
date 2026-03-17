@@ -3860,7 +3860,7 @@ dependencies = [
 
 [[package]]
 name = "dango-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bip32",
@@ -4212,7 +4212,6 @@ name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "dango-account-factory",
  "dango-types",
  "grug",
  "metrics",

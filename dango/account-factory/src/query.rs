@@ -1,7 +1,7 @@
 use {
-    crate::{ACCOUNTS, CODE_HASH, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS},
+    crate::{CODE_HASH, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS},
     dango_types::account_factory::{
-        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexAndName, UserIndexOrName,
+        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexOrName,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -87,7 +87,13 @@ fn query_users(
 }
 
 fn query_account(storage: &dyn Storage, address: Addr) -> StdResult<Account> {
-    ACCOUNTS.load(storage, address)
+    let (user_index, user) = USERS.idx.by_account.load(storage, address)?;
+    let (&index, _) = user.accounts.iter().find(|(_, a)| **a == address).unwrap();
+
+    Ok(Account {
+        index,
+        owner: user_index,
+    })
 }
 
 fn query_accounts(
@@ -98,9 +104,19 @@ fn query_accounts(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    ACCOUNTS
+    USERS
+        .idx
+        .by_account
         .range(storage, start, None, Order::Ascending)
         .take(limit)
+        .map(|res| {
+            let (addr, user_index, user) = res?;
+            let (&index, _) = user.accounts.iter().find(|(_, a)| **a == addr).unwrap();
+            Ok((addr, Account {
+                index,
+                owner: user_index,
+            }))
+        })
         .collect()
 }
 
@@ -109,7 +125,7 @@ fn forgot_username(
     key_hash: Hash256,
     start_after: Option<UserIndex>,
     limit: Option<u32>,
-) -> StdResult<Vec<UserIndexAndName>> {
+) -> StdResult<Vec<User>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
@@ -117,14 +133,7 @@ fn forgot_username(
         .idx
         .by_key
         .prefix(key_hash)
-        .range(storage, start, None, Order::Ascending)
-        .map(|res| {
-            let (index, user) = res?;
-            Ok(UserIndexAndName {
-                index,
-                name: user.name,
-            })
-        })
+        .values(storage, start, None, Order::Ascending)
         .take(limit)
         .collect()
 }

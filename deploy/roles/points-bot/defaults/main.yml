@@ -1,0 +1,9 @@
+---
+points_bot_dir: "{{ deploy_home }}/points-bot"
+points_bot_image: "ghcr.io/left-curve/bots/points"
+points_bot_tag: "latest"
+points_bot_networks: []
+points_bot_metrics_ports:
+  devnet: 9300
+  testnet: 9301
+  mainnet: 9302

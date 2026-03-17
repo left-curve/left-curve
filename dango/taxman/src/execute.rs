@@ -1,10 +1,9 @@
 use {
     crate::{CONFIG, VOLUME_TIME_GRANULARITY, VOLUMES_BY_USER, WITHHELD_FEE},
     anyhow::ensure,
-    dango_account_factory::AccountQuerier,
     dango_types::{
         DangoQuerier,
-        account_factory::UserIndex,
+        account_factory::{self, UserIndex},
         bank,
         taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
     },
@@ -94,16 +93,16 @@ fn report_volumes(ctx: MutableCtx, volumes: BTreeMap<Addr, Udec128_6>) -> anyhow
         "only the dex contract can report volumes"
     );
 
-    // Create account querier.
-    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
-
     // Round the current timestamp _down_ to the nearest day.
     let timestamp = ctx.block.timestamp - ctx.block.timestamp % VOLUME_TIME_GRANULARITY;
 
     for (user, volume) in volumes {
         // Query the user's account info. If there isn't one (i.e. the user
         // isn't registered through the account factory), skip.
-        let Some(account) = account_querier.query_account(user)? else {
+        let Ok(account) = ctx.querier.query_wasm_smart(
+            app_cfg.addresses.account_factory,
+            account_factory::QueryAccountRequest { address: user },
+        ) else {
             continue;
         };
 

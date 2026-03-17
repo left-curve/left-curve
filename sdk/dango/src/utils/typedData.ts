@@ -101,4 +101,3 @@ export function getCoinsTypedData(coins?: Coins): TypedDataProperty[] {
   if (!coins) return [];
   return Object.keys(coins).map((coin) => ({ name: coin, type: "string" }));
 }
-

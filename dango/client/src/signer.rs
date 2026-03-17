@@ -339,7 +339,7 @@ mod tests {
         dango_account_factory::USERS,
         dango_auth::{account::STATUS, authenticate_tx},
         dango_types::{
-            account_factory::User,
+            account_factory::{User, Username},
             auth::AccountStatus,
             config::{AppAddresses, AppConfig},
         },
@@ -377,8 +377,9 @@ mod tests {
         let mock_querier = MockQuerier::new()
             .with_raw_contract_storage(account_factory, |storage| {
                 let user = User {
-                    name: None,
-                    accounts: vec![address],
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => address },
                     keys: btree_map! { signer.secret.key_hash() => signer.secret.key() },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -433,8 +434,9 @@ mod tests {
         let mock_querier = MockQuerier::new()
             .with_raw_contract_storage(account_factory, |storage| {
                 let user = User {
-                    name: None,
-                    accounts: vec![address],
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => address },
                     keys: btree_map! { signer.secret.key_hash() => signer.secret.key() },
                 };
                 USERS.save(storage, user_index, &user).unwrap();

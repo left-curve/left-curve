@@ -195,7 +195,7 @@ pub fn authenticate_tx(
 
     // The sender's address and the user profile declared in metadata must match.
     ensure!(
-        user.accounts.contains(&tx.sender),
+        user.accounts.values().any(|a| *a == tx.sender),
         "account {} isn't associated with user {}",
         tx.sender,
         metadata.user_index,
@@ -517,7 +517,10 @@ mod tests {
     use {
         super::*,
         crate::account_factory::USERS,
-        dango_types::config::{AppAddresses, AppConfig},
+        dango_types::{
+            account_factory::Username,
+            config::{AppAddresses, AppConfig},
+        },
         grug::{
             Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr,
             btree_map, hash,
@@ -592,8 +595,9 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
-                    accounts: vec![user_address],
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -636,8 +640,9 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
-                    accounts: vec![user_address],
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -738,8 +743,9 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
-                    accounts: vec![user_address],
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -810,8 +816,9 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
-                    accounts: vec![user_address],
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -892,8 +899,9 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
-                    accounts: vec![user_address],
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();
@@ -973,8 +981,9 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 let user = User {
-                    name: None,
-                    accounts: vec![user_address],
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
                     keys: btree_map! { user_keyhash => user_key },
                 };
                 USERS.save(storage, user_index, &user).unwrap();

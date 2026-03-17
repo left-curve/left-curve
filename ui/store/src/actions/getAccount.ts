@@ -2,13 +2,7 @@ import { changeAccount as changeAccountAction } from "./changeAccount.js";
 import { refreshAccounts as refreshAccountsAction } from "./refreshAccounts.js";
 import { refreshUserStatus as refreshUserStatusAction } from "./refreshUserStatus.js";
 
-import type {
-  Account,
-  Address,
-  KeyHash,
-  Username,
-  UserStatus,
-} from "@left-curve/dango/types";
+import type { Account, Address, KeyHash, Username, UserStatus } from "@left-curve/dango/types";
 import type { Chain, ChainId } from "@left-curve/dango/types";
 
 import type { Connector } from "../types/connector.js";
@@ -117,9 +111,7 @@ const disconnected = {
   refreshUserStatus: undefined,
 } as const;
 
-export function getAccount<config extends Config = Config>(
-  config: config,
-): GetAccountReturnType {
+export function getAccount<config extends Config = Config>(config: config): GetAccountReturnType {
   const { chainId, connectors, status, userStatus } = config.state;
   const connectorUId = config.state.current!;
   const connection = connectors.get(connectorUId);
@@ -139,16 +131,16 @@ export function getAccount<config extends Config = Config>(
   };
 
   const refreshAccounts = async () => {
-    if (!config.state.userIndexAndName) return;
+    if (config.state.userIndex === undefined) return;
     refreshAccountsAction(config, {
       connectorUId,
-      userIndexAndName: config.state.userIndexAndName,
+      userIndex: config.state.userIndex,
     });
   };
 
   const { accounts, connector, account: acc, keyHash } = connection;
-  const username = config.state.userIndexAndName?.name;
-  const userIndex = config.state.userIndexAndName?.index;
+  const username = acc?.username;
+  const userIndex = config.state.userIndex;
   const isUserActive = userStatus === "active";
 
   const account = acc as Account;

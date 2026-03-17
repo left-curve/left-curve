@@ -1,4 +1,7 @@
-import { getAccountStatus, getUsernameByIndex } from "@left-curve/dango/actions";
+import { toAccount } from "@left-curve/dango";
+import { getAccountStatus, getUser } from "@left-curve/dango/actions";
+
+import type { Address } from "@left-curve/dango/types";
 import { type Config, ConnectionStatus } from "../types/store.js";
 
 export type ReconnectReturnType = void;
@@ -22,11 +25,22 @@ export async function reconnect<config extends Config>(
 
   let current = config.state.current;
 
+  const user = config.state.userIndex
+    ? await getUser(client, { userIndexOrName: { index: config.state.userIndex } }).catch(
+        () => undefined,
+      )
+    : undefined;
+
+  const accounts = user
+    ? Object.entries(user.accounts).map(([accountIndex, address]) =>
+        toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
+      )
+    : undefined;
+
   const connectors = new Map();
-  for (const {
+  for await (const {
     chainId,
     connector: _connector_,
-    accounts,
     account,
     keyHash,
   } of config.state.connectors.values()) {
@@ -51,26 +65,14 @@ export async function reconnect<config extends Config>(
     } catch (_) {}
   }
 
-  const userIndexAndName = await (async () => {
-    if (!config.state.userIndexAndName) return;
-    const { index } = config.state.userIndexAndName;
-    const name = await getUsernameByIndex(client, { index });
-    return { index, name: name || `User #${index}` };
-  })();
-
-  const userStatus = await (async () => {
-    if (!config.state.userStatus || !config.state.current) return;
-    const address = config.state.connectors.get(config.state.current)?.account?.address;
-    if (!address) return;
-    const status = await getAccountStatus(client, { address }).catch(() => undefined);
-    return status;
-  })();
+  const userStatus = accounts
+    ? await getAccountStatus(client, { address: accounts[0].address }).catch(() => undefined)
+    : undefined;
 
   config.setState((x) => ({
     ...x,
     connectors,
     current,
-    userIndexAndName,
     userStatus,
     status: connectors.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
   }));
