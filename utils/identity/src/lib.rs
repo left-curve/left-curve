@@ -29,19 +29,27 @@ use {
 
 macro_rules! identity {
     ($name:ident, $array_len:ty, $len:literal, $doc:literal) => {
-        #[derive(Default, Clone)]
+        #[derive(Clone)]
         #[doc = $doc]
         pub struct $name {
-            bytes: GenericArray<u8, $array_len>,
+            bytes: [u8; $len],
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self { bytes: [0u8; $len] }
+            }
         }
 
         impl $name {
-            pub const fn from_inner(bytes: GenericArray<u8, $array_len>) -> Self {
-                Self { bytes }
+            pub fn from_inner(bytes: impl Into<[u8; $len]>) -> Self {
+                Self {
+                    bytes: bytes.into(),
+                }
             }
 
             pub fn into_bytes(self) -> [u8; $len] {
-                self.bytes.into()
+                self.bytes
             }
 
             pub fn as_bytes(&self) -> &[u8] {
@@ -51,9 +59,7 @@ macro_rules! identity {
 
         impl From<[u8; $len]> for $name {
             fn from(bytes: [u8; $len]) -> Self {
-                Self {
-                    bytes: GenericArray::from(bytes),
-                }
+                Self { bytes }
             }
         }
 
@@ -67,14 +73,13 @@ macro_rules! identity {
 
         impl Update for $name {
             fn update(&mut self, data: &[u8]) {
-                let arr: [u8; $len] = data.try_into().expect("data length mismatch");
-                self.bytes = GenericArray::from(arr);
+                self.bytes = data.try_into().expect("data length mismatch");
             }
         }
 
         impl FixedOutput for $name {
             fn finalize_into(self, out: &mut Output<Self>) {
-                *out = self.bytes;
+                *out = GenericArray::from(self.bytes);
             }
         }
 

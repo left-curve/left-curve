@@ -1,6 +1,6 @@
 use {
     crate::{Addr, Message, NonEmpty, StdResult, Tx, UnsignedTx},
-    digest::{Digest, OutputSizeUser, generic_array::GenericArray},
+    digest::{Digest, Output},
 };
 
 /// Represents an object that has an onchain address.
@@ -46,9 +46,7 @@ pub trait SignData {
 
     fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error>;
 
-    fn to_sign_data(
-        &self,
-    ) -> Result<GenericArray<u8, <Self::Hasher as OutputSizeUser>::OutputSize>, Self::Error> {
+    fn to_sign_data(&self) -> Result<Output<Self::Hasher>, Self::Error> {
         let mut hasher = Self::Hasher::new();
         hasher.update(self.to_prehash_sign_data()?);
         Ok(hasher.finalize())
