@@ -5,7 +5,8 @@
     "timeout": "30s"
   },
   "bot": {
-    "event_duration": 12,
+    "epoch_duration": "10m",
+    "event_duration": 4320,
     "event_start": {
       "block": 2
     },
@@ -58,8 +59,8 @@
     },
     "oat_multiplier": "1",
     "perps_expression": "1 + math::log10(x)",
-    "weekly_perps_share": "750000",
-    "weekly_vault_points": "250000"
+    "epoch_perps_share": "750000",
+    "epoch_vault_points": "250000"
   },
   "http_url": "https://api-devnet.dango.zone",
   "httpd": {
