@@ -28,7 +28,7 @@ Imagine Alice is trading on an order book exchange and wants to cancel two activ
 
 ## HyperLiquid's solution
 
-As described in [HyperLiquid docs](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/nonces-and-api-wallets).
+As described [here](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/nonces-and-api-wallets).
 
 In HyperLiquid, an account can have many **session keys**, each of which has its own nonce. In our case, to simplify things, let's just have one nonce for each account (across all session keys).
 

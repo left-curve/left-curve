@@ -8,7 +8,7 @@ The question is how to associate Wasmer points to the chain's gas units.
 
 ## CosmWasm's approach
 
-As documented in [CosmWasm docs](https://github.com/CosmWasm/cosmwasm/blob/main/docs/GAS.md), its approach is as follows:
+As documented [here](https://github.com/CosmWasm/cosmwasm/blob/main/docs/GAS.md), CosmWasm's approach is as follows:
 
 1. Perform a benchmark to measure how many "points" Wasmer can execute per second. Then, set a target amount of gas per second (they use 10^12 gas per second). Between these two numbers, CosmWasm decides that 1 Wasmer point is to equal 170 gas units.
 

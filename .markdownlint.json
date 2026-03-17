@@ -14,5 +14,6 @@
   "no-duplicate-heading": false,
   "no-space-in-emphasis": false,
   "no-emphasis-as-heading": false,
-  "table-column-count": false
+  "table-column-count": false,
+  "descriptive-link-text": false
 }
