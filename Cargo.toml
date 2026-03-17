@@ -102,6 +102,9 @@ async-std                   = { version = "1", features = ["attributes", "tokio1
 async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
+aws-config                  = "1"
+aws-credential-types        = "1"
+aws-sdk-s3                  = "1"
 axum                        = { version = "0.8", features = ["ws"] }
 backtrace                   = "0.3"
 bigdecimal                  = "0.4"
@@ -197,11 +200,6 @@ url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "6"
 wasmer-middlewares          = "6"
-
-# S3 client (AWS SDK v1)
-aws-config           = "1"
-aws-credential-types = "1"
-aws-sdk-s3           = "1"
 
 # Left curve packages
 dango-account               = { path = "dango/account" }
