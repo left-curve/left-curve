@@ -6,13 +6,13 @@ Patterns and conventions for `.ts` and `.tsx` files in this monorepo.
 
 ## Naming Conventions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Source files | camelCase | `baseClient.ts`, `grugClient.ts` |
-| React components | PascalCase | `Button.tsx`, `AccountMenu.tsx` |
-| Directories | lowercase | `clients/`, `crypto/`, `types/` |
-| Test files | `.spec.ts` suffix | `binary.spec.ts` |
-| Story files | `.stories.tsx` suffix | `Button.stories.tsx` |
+| Type             | Convention            | Example                          |
+| ---------------- | --------------------- | -------------------------------- |
+| Source files     | camelCase             | `baseClient.ts`, `grugClient.ts` |
+| React components | PascalCase            | `Button.tsx`, `AccountMenu.tsx`  |
+| Directories      | lowercase             | `clients/`, `crypto/`, `types/`  |
+| Test files       | `.spec.ts` suffix     | `binary.spec.ts`                 |
+| Story files      | `.stories.tsx` suffix | `Button.stories.tsx`             |
 
 ---
 
@@ -35,10 +35,10 @@ export * from "./webauthn/index.js";
 
 ## Type Definitions
 
-| Use | For |
-|-----|-----|
+| Use         | For                                                        |
+| ----------- | ---------------------------------------------------------- |
 | `interface` | Contracts, structural patterns (`HashFunction`, `KeyPair`) |
-| `type` | Unions, aliases, complex types (`Result<T>`, `Message`) |
+| `type`      | Unions, aliases, complex types (`Result<T>`, `Message`)    |
 
 ```typescript
 // Interfaces for contracts
@@ -352,14 +352,14 @@ export const Signin: React.FC = () => {
 
 ## Custom Hooks
 
-| Hook | Purpose |
-|------|---------|
-| `useInputs` | Form state with validation/masking |
+| Hook                 | Purpose                            |
+| -------------------- | ---------------------------------- |
+| `useInputs`          | Form state with validation/masking |
 | `useControlledState` | Dual controlled/uncontrolled state |
-| `useAsyncFn` | Async operation state |
-| `useMediaQuery` | Responsive breakpoints |
-| `useClickAway` | Click outside detection |
-| `useMountedState` | Prevent updates after unmount |
+| `useAsyncFn`         | Async operation state              |
+| `useMediaQuery`      | Responsive breakpoints             |
+| `useClickAway`       | Click outside detection            |
+| `useMountedState`    | Prevent updates after unmount      |
 
 ```typescript
 // useInputs example
@@ -530,16 +530,16 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 ## Quick Reference
 
-| Category | Key Pattern |
-|----------|-------------|
-| Exports | Named only, barrel files, `.js` extensions |
-| Types | Interfaces for contracts, types for unions |
+| Category   | Key Pattern                                                      |
+| ---------- | ---------------------------------------------------------------- |
+| Exports    | Named only, barrel files, `.js` extensions                       |
+| Types      | Interfaces for contracts, types for unions                       |
 | Code Style | `const` over `let`, IIFE for scope, immutable ops, early returns |
-| Classes | `#` private fields, static factories |
-| Components | `React.FC`, polymorphic, `Object.assign` composition |
-| State | Store hooks, `createContext` utility |
-| Styling | `tailwind-variants`, `twMerge` |
-| Forms | `useInputs` with validation strategies |
-| Animation | Framer Motion with `AnimatePresence` |
-| Routing | TanStack Router, `useNavigate` |
-| I18N | Paraglide `m["key"]()` |
+| Classes    | `#` private fields, static factories                             |
+| Components | `React.FC`, polymorphic, `Object.assign` composition             |
+| State      | Store hooks, `createContext` utility                             |
+| Styling    | `tailwind-variants`, `twMerge`                                   |
+| Forms      | `useInputs` with validation strategies                           |
+| Animation  | Framer Motion with `AnimatePresence`                             |
+| Routing    | TanStack Router, `useNavigate`                                   |
+| I18N       | Paraglide `m["key"]()`                                           |
