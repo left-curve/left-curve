@@ -1,7 +1,10 @@
 use {
-    dango_types::account_factory::{AccountIndex, User, UserIndex, Username},
-    grug::{Addr, Inner, Order, StdResult, Storage, addr},
-    grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
+    dango_types::{
+        account_factory::{AccountIndex, User, UserIndex, Username},
+        config::AppConfig,
+    },
+    grug::{Addr, Inner, JsonDeExt, JsonSerExt, Order, StdResult, Storage, addr},
+    grug_app::{APP_CONFIG, AppResult, CONTRACT_NAMESPACE, StorageProvider},
     std::collections::BTreeMap,
 };
 
@@ -45,10 +48,39 @@ mod legacy {
 }
 
 pub fn do_upgrade<VM>(
-    storage: Box<dyn Storage>,
+    mut storage: Box<dyn Storage>,
     _vm: VM,
     _block: grug::BlockInfo,
 ) -> AppResult<()> {
+    // ======================== Migrate AppConfig ===============================
+    //
+    // The `perps` field was added to `AppAddresses`. Insert a zero address so
+    // the on-chain JSON deserializes correctly. The oracle guards against
+    // calling a zero perps address.
+    {
+        let mut json = APP_CONFIG.load(&storage)?;
+        let obj = json
+            .as_object_mut()
+            .expect("AppConfig must be a JSON object");
+        let addresses = obj
+            .get_mut("addresses")
+            .expect("AppConfig must have `addresses`")
+            .as_object_mut()
+            .expect("`addresses` must be a JSON object");
+
+        addresses.insert(
+            "perps".to_string(),
+            Addr::ZERO.to_json_value()?.into_inner(),
+        );
+
+        // Verify the modified JSON is a valid AppConfig.
+        let _: AppConfig = json.clone().deserialize_json()?;
+
+        APP_CONFIG.save(&mut storage, &json)?;
+
+        tracing::info!("Migrated AppConfig: added zero perps address");
+    }
+
     let mut factory_storage =
         StorageProvider::new(storage, &[CONTRACT_NAMESPACE, ACCOUNT_FACTORY.inner()]);
     let factory_storage = &mut factory_storage;
