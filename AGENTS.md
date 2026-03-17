@@ -195,7 +195,7 @@ pub async fn process_request(&self, req: Request) -> Result<Response> {
     Ok(response)
 }
 
-Telemetry (OTLP + Sentry, graceful shutdown): `docs/telemetry.md`
+Telemetry (OTLP + Sentry, graceful shutdown): `telemetry.md`
 ```
 
 ## Git Workflow

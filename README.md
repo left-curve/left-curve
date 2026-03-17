@@ -134,7 +134,7 @@ pnpm storybook
 ## Agent Guide
 
 - Contributor handoff: see `AGENTS.md` for a generic, evergreen guide.
-- Telemetry playbook (OTLP + Sentry): see `docs/telemetry.md`.
+- Telemetry playbook (OTLP + Sentry): see `telemetry.md`.
 
 ## Book
 
