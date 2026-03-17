@@ -5,6 +5,7 @@ frontend_image_tag: "{{ github_sha }}"
 # Image digests for immutable pinning (provided by CI, empty means resolve at deploy time)
 dango_image_digest: ""
 frontend_image_digest: ""
+faucet_bot_tag: "latest"
 dex_bot_tag: "latest"
 cometbft_node_key: ""
 cometbft_validator_address: ""

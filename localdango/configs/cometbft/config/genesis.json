@@ -42,17 +42,12 @@
     "msgs": [
       {
         "upload": {
-          "code": "AAAAAAAAAAA="
-        }
-      },
-      {
-        "upload": {
-          "code": "AQAAAAAAAAA="
-        }
-      },
-      {
-        "upload": {
           "code": "AgAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
+          "code": "AAAAAAAAAAA="
         }
       },
       {
@@ -851,6 +846,13 @@
                   "id": 14,
                   "precision": 6
                 }
+              },
+              "perp/ethusd": {
+                "pyth": {
+                  "channel": "real_time",
+                  "id": 2,
+                  "precision": 18
+                }
               }
             },
             "trusted_signers": {
@@ -869,11 +871,7 @@
           "msg": {
             "pair_params": {
               "perp/ethusd": {
-                "bucket_sizes": [
-                  "1",
-                  "10",
-                  "100"
-                ],
+                "bucket_sizes": [],
                 "impact_size": "10000",
                 "initial_margin_ratio": "0.1",
                 "maintenance_margin_ratio": "0.05",
