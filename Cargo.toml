@@ -198,8 +198,8 @@ tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt"
 typenum                     = "1"
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
-wasmer                      = "6"
-wasmer-middlewares          = "6"
+wasmer                      = "7"
+wasmer-middlewares          = "7"
 
 # Left curve packages
 dango-account               = { path = "dango/account" }
