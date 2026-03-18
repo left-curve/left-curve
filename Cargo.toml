@@ -111,7 +111,7 @@ bigdecimal                  = "0.4"
 bip32                       = "0.5"
 blake2                      = "0.10"
 blake3                      = "1"
-bnum                        = "0.13" # FIXME: non-trivial refactor required to bump to 0.14
+bnum                        = "0.14"
 borsh                       = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }

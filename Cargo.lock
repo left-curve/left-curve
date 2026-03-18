@@ -2852,6 +2852,12 @@ name = "bnum"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "119771309b95163ec7aaf79810da82f7cd0599c19722d48b9c03894dca833966"
+
+[[package]]
+name = "bnum"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d14a3912e1478234033344e1817fc1bdd0e8b088658922101cf9c8e5dbc96f6"
 dependencies = [
  "borsh",
  "serde",
@@ -3206,7 +3212,7 @@ version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d975a05171c6f8a453f60ec6287c0018c90911d5a8a46d9b6abe386ea359fab3"
 dependencies = [
- "bnum",
+ "bnum 0.13.0",
  "bstr",
  "bytes",
  "chrono",
@@ -4153,7 +4159,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "bigdecimal",
- "bnum",
+ "bnum 0.14.2",
  "borsh",
  "chrono",
  "clickhouse",
@@ -4411,7 +4417,7 @@ dependencies = [
  "anyhow",
  "async-graphql",
  "async-trait",
- "bnum",
+ "bnum 0.14.2",
  "borsh",
  "grug",
  "hyperlane-types",
@@ -5885,7 +5891,7 @@ dependencies = [
 name = "grug-math"
 version = "0.0.0"
 dependencies = [
- "bnum",
+ "bnum 0.14.2",
  "borsh",
  "error-backtrace",
  "paste",
@@ -5938,7 +5944,7 @@ dependencies = [
 name = "grug-storage"
 version = "0.0.0"
 dependencies = [
- "bnum",
+ "bnum 0.14.2",
  "borsh",
  "error-backtrace",
  "grug-math",
@@ -5994,7 +6000,7 @@ version = "0.0.0"
 dependencies = [
  "async-graphql",
  "async-trait",
- "bnum",
+ "bnum 0.14.2",
  "borsh",
  "chrono",
  "data-encoding",

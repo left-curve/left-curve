@@ -174,8 +174,11 @@ impl_exponentiate! {
 #[cfg(test)]
 mod int_tests {
     use {
-        crate::{Exponentiate, Int, MathError, dts, int_test, test_utils::bt},
-        bnum::types::{I256, U256},
+        crate::{Exponentiate, Int, MathError, NumberConst, dts, int_test, test_utils::bt},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, U256},
+        },
     };
 
     int_test!( checked_pow
@@ -192,8 +195,8 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(2_u32), 2, U256::from(4_u32)),
-                    (U256::from(10_u32), 3, U256::from(1_000_u32)),
+                    (U256::cast_from(2_u32), 2, U256::cast_from(4_u32)),
+                    (U256::cast_from(10_u32), 3, U256::cast_from(1_000_u32)),
                     (U256::ZERO, 2, U256::ZERO),
                 ],
                 failing: [
@@ -215,10 +218,10 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(2), 2, I256::from(4)),
-                    (I256::from(10), 3, I256::from(1_000)),
-                    (I256::from(-2), 2, I256::from(4)),
-                    (I256::from(-10), 3, I256::from(-1_000)),
+                    (I256::cast_from(2_i128), 2, I256::cast_from(4_i128)),
+                    (I256::cast_from(10_i128), 3, I256::cast_from(1_000_i128)),
+                    (I256::cast_from(-2_i128), 2, I256::cast_from(4_i128)),
+                    (I256::cast_from(-10_i128), 3, I256::cast_from(-1_000_i128)),
                     (I256::ZERO, 2, I256::ZERO),
                 ],
                 failing: [
@@ -255,10 +258,10 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(4_u32), U256::from(2_u32)),
-                    (U256::from(64_u32), U256::from(8_u32)),
-                    (U256::from(80_u32), U256::from(8_u32)),
-                    (U256::from(81_u32), U256::from(9_u32)),
+                    (U256::cast_from(4_u32), U256::cast_from(2_u32)),
+                    (U256::cast_from(64_u32), U256::cast_from(8_u32)),
+                    (U256::cast_from(80_u32), U256::cast_from(8_u32)),
+                    (U256::cast_from(81_u32), U256::cast_from(9_u32)),
                 ],
                 failing: []
             }
@@ -276,14 +279,14 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(4_i128), I256::from(2_i128)),
-                    (I256::from(64), I256::from(8)),
-                    (I256::from(80), I256::from(8)),
-                    (I256::from(81), I256::from(9)),
+                    (I256::cast_from(4_i128), I256::cast_from(2_i128)),
+                    (I256::cast_from(64_i128), I256::cast_from(8_i128)),
+                    (I256::cast_from(80_i128), I256::cast_from(8_i128)),
+                    (I256::cast_from(81_i128), I256::cast_from(9_i128)),
                 ],
                 failing: [
-                    I256::from(-1),
-                    I256::from(-4),
+                    I256::cast_from(-1_i128),
+                    I256::cast_from(-4_i128),
                 ]
             }
         }

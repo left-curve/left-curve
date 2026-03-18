@@ -160,6 +160,7 @@ mod test {
     use {
         super::*,
         assertor::*,
+        bnum::cast::CastFrom,
         chrono::SubsecRound,
         grug::{Dec128_6, NumberConst, Udec128, Udec256, Uint128, Uint256},
     };
@@ -192,7 +193,7 @@ mod test {
     /// For when I'll need to switch to bnum for U256.
     #[test]
     fn test_bnum_u256() {
-        let udec256 = serde_json::json!({"max": bnum::types::U256::MAX, "min": bnum::types::U256::MIN, "one": bnum::types::U256::ONE});
+        let udec256 = serde_json::json!({"max": bnum::types::U256::MAX, "min": bnum::types::U256::MIN, "one": bnum::types::U256::cast_from(1u32)});
         let serialized = serde_json::to_string(&udec256).unwrap();
         let _deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
 
@@ -213,8 +214,8 @@ mod test {
             "volume": Dec128_6::MAX,
             "a": Udec128_24::MAX,
             "clearing_price": Udec128::MAX,
-            "bnum_u128": bnum::types::U128::ONE,
-            "bnum_u256": bnum::types::U256::ONE,
+            "bnum_u128": bnum::types::U128::cast_from(1u32),
+            "bnum_u256": bnum::types::U256::cast_from(1u32),
         });
         let serialized = serde_json::to_string(&all_types).unwrap();
         let _deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
