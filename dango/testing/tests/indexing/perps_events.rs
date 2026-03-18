@@ -25,15 +25,20 @@ async fn index_perps_events() -> anyhow::Result<()> {
         .all(&dango_context.db)
         .await?;
 
-    // Each fill produces at least 2 OrderFilled events (maker + taker).
-    assert_that!(events.len()).is_at_least(2);
-
+    // All events should have correct pair_id and non-empty fields.
     for event in &events {
-        assert_that!(event.event_type.as_str()).is_equal_to("order_filled");
         assert_that!(event.pair_id.as_str()).is_equal_to(pair_id().to_string().as_str());
         assert!(!event.user_addr.is_empty(), "user_addr should not be empty");
         assert!(!event.data.is_null(), "data should not be null");
     }
+
+    // A fill produces order_persisted (book placement) and order_filled events.
+    let filled: Vec<_> = events
+        .iter()
+        .filter(|e| e.event_type == "order_filled")
+        .collect();
+    // At least 2 OrderFilled events (maker + taker).
+    assert_that!(filled.len()).is_at_least(2);
 
     Ok(())
 }
