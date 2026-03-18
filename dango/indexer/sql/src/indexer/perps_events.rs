@@ -2,7 +2,7 @@ use {
     crate::{entity, error::Error},
     dango_types::{
         config::AppConfig,
-        perps::{Deleveraged, Liquidated, OrderFilled, OrderPersisted},
+        perps::{Deleveraged, Liquidated, OrderFilled, OrderPersisted, OrderRemoved},
     },
     grug::{
         BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus, EvtCron,
@@ -23,6 +23,7 @@ use {
 const PERPS_EVENT_NAMES: &[&str] = &[
     OrderFilled::EVENT_NAME,
     OrderPersisted::EVENT_NAME,
+    OrderRemoved::EVENT_NAME,
     Liquidated::EVENT_NAME,
     Deleveraged::EVENT_NAME,
 ];

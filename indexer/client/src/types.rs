@@ -219,6 +219,10 @@ generate_types! {
         path: "src/schemas/queries/perpsCandles.graphql",
     },
     {
+        name: PerpsEvents,
+        path: "src/schemas/queries/perpsEvents.graphql",
+    },
+    {
         name: Trades,
         path: "src/schemas/queries/trades.graphql",
     },
