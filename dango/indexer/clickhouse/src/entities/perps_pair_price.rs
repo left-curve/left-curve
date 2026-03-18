@@ -2,7 +2,7 @@ use {
     crate::error::Result,
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    grug::{Udec128_6, Udec128_24},
+    grug::Udec128_6,
     serde::{Deserialize, Serialize},
 };
 #[cfg(feature = "async-graphql")]
@@ -20,13 +20,13 @@ pub struct PerpsPairPrice {
     pub pair_id: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "crate::entities::pair_price::dec")]
-    pub high: Udec128_24,
+    pub high: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "crate::entities::pair_price::dec")]
-    pub low: Udec128_24,
+    pub low: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "crate::entities::pair_price::dec")]
-    pub close: Udec128_24,
+    pub close: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "crate::entities::pair_price::dec")]
     pub volume: Udec128_6,

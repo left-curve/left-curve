@@ -10,7 +10,7 @@ use {
     grug::{
         Addr, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus,
         EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, JsonDeExt,
-        NaiveFlatten, SearchEvent, Udec128_6, Udec128_24,
+        NaiveFlatten, Number, NumberConst, SearchEvent, Sign, Signed, Udec128_6,
     },
     std::collections::HashMap,
 };
@@ -135,9 +135,9 @@ impl Indexer {
 /// Accumulator for aggregating multiple fills per pair within a single block
 struct PerpsPairPriceAccumulator {
     pair_id: String,
-    high: Udec128_24,
-    low: Udec128_24,
-    close: Udec128_24,
+    high: Udec128_6,
+    low: Udec128_6,
+    close: Udec128_6,
     volume: Udec128_6,
     volume_usd: Udec128_6,
 }
@@ -153,44 +153,38 @@ fn process_order_filled(
 
     let pair_id = order_filled.pair_id.to_string();
 
-    // Convert fill_price (UsdPrice = Number<N1,P1,Z0> wrapping Dec128_6) to Udec128_24
-    // fill_price.into_inner() -> Dec128_6 (Dec<i128, 6>)
-    // Dec128_6.0 -> Int<i128>, .0 -> i128 (raw value at 6 decimal places)
-    // Udec128_24::raw(Int::new(raw as u128)) scales from 6 to 24 decimals
-    let fill_price_raw: i128 = (order_filled.fill_price.into_inner().0).0;
-    let fill_price_u128 = fill_price_raw.unsigned_abs();
-    // Scale from 6 decimals to 24 decimals: multiply by 10^18
-    let fill_price_24 = Udec128_24::raw(grug::Int::new(fill_price_u128 * 10u128.pow(18)));
-
-    // Convert fill_size (Quantity = Number<P1,Z0,Z0> wrapping Dec128_6) to Udec128_6
-    let fill_size_raw: i128 = (order_filled.fill_size.into_inner().0).0;
-    let fill_size_abs = fill_size_raw.unsigned_abs();
-    let fill_volume = Udec128_6::raw(grug::Int::new(fill_size_abs));
-
-    // volume_usd = abs(fill_size) * fill_price (at 6 decimal precision)
-    // fill_size is Dec128_6, fill_price is Dec128_6, product raw = fill_size_raw * fill_price_raw / 10^6
-    let volume_usd_raw = fill_size_abs.saturating_mul(fill_price_u128) / 10u128.pow(6);
-    let fill_volume_usd = Udec128_6::raw(grug::Int::new(volume_usd_raw));
+    let fill_price = order_filled
+        .fill_price
+        .into_inner()
+        .checked_abs()?
+        .checked_into_unsigned()?;
 
     let acc = fills_by_pair
         .entry(pair_id.clone())
         .or_insert_with(|| PerpsPairPriceAccumulator {
             pair_id,
-            high: fill_price_24,
-            low: fill_price_24,
-            close: fill_price_24,
-            volume: Udec128_6::raw(grug::Int::new(0)),
-            volume_usd: Udec128_6::raw(grug::Int::new(0)),
+            high: fill_price,
+            low: fill_price,
+            close: fill_price,
+            volume: Udec128_6::ZERO,
+            volume_usd: Udec128_6::ZERO,
         });
 
     // Update OHLC
-    acc.high = acc.high.max(fill_price_24);
-    acc.low = acc.low.min(fill_price_24);
-    acc.close = fill_price_24; // Last fill in block determines close
+    acc.high = acc.high.max(fill_price);
+    acc.low = acc.low.min(fill_price);
+    acc.close = fill_price; // Last fill in block determines close
+
+    let volume = order_filled
+        .fill_size
+        .into_inner()
+        .checked_abs()?
+        .checked_into_unsigned()?;
+    let volume_usd = volume.checked_mul(fill_price)?;
 
     // Accumulate volumes
-    acc.volume += fill_volume;
-    acc.volume_usd += fill_volume_usd;
+    acc.volume.checked_add_assign(volume)?;
+    acc.volume_usd.checked_add_assign(volume_usd)?;
 
     Ok(())
 }

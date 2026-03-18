@@ -11,7 +11,7 @@ use {
     crate::entities::{CandleInterval, perps_pair_price::PerpsPairPrice},
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    grug::{NumberConst, Udec128_6, Udec128_24},
+    grug::{NumberConst, Udec128_6},
     serde::{Deserialize, Serialize},
 };
 
@@ -25,16 +25,16 @@ pub struct PerpsCandle {
     pub time_start: DateTime<Utc>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "crate::entities::pair_price::dec")]
-    pub open: Udec128_24,
+    pub open: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "crate::entities::pair_price::dec")]
-    pub high: Udec128_24,
+    pub high: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "crate::entities::pair_price::dec")]
-    pub low: Udec128_24,
+    pub low: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "crate::entities::pair_price::dec")]
-    pub close: Udec128_24,
+    pub close: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "crate::entities::pair_price::dec")]
     pub volume: Udec128_6,
@@ -91,7 +91,7 @@ impl PerpsCandle {
         }
     }
 
-    pub fn set_high_low(&mut self, high: Udec128_24, low: Udec128_24) {
+    pub fn set_high_low(&mut self, high: Udec128_6, low: Udec128_6) {
         self.high = self.high.max(high);
         self.low = self.low.min(low);
     }
@@ -108,25 +108,25 @@ impl PerpsCandle {
     async fn open(&self) -> GraphqlBigDecimal {
         let inner_value = self.open.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 24).normalized().into()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
     async fn high(&self) -> GraphqlBigDecimal {
         let inner_value = self.high.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 24).normalized().into()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
     async fn low(&self) -> GraphqlBigDecimal {
         let inner_value = self.low.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 24).normalized().into()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
     async fn close(&self) -> GraphqlBigDecimal {
         let inner_value = self.close.inner();
         let bigint = BigInt::from(*inner_value);
-        BigDecimal::new(bigint, 24).normalized().into()
+        BigDecimal::new(bigint, 6).normalized().into()
     }
 
     async fn volume(&self) -> GraphqlBigDecimal {

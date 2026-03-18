@@ -1,11 +1,19 @@
 use {
     assertor::*,
     dango_genesis::Contracts,
-    dango_indexer_clickhouse::entities::{
-        CandleInterval, perps_candle_query::PerpsCandleQueryBuilder,
-        perps_pair_price::PerpsPairPrice,
+    dango_indexer_clickhouse::{
+        entities::{
+            CandleInterval,
+            perps_candle::PerpsCandle,
+            perps_candle_query::{PerpsCandleQueryBuilder, PerpsCandleResult},
+            perps_pair_price::PerpsPairPrice,
+        },
+        indexer::perps_candles::cache::PerpsCandleCache,
     },
-    dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
+    dango_testing::{
+        Preset, TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer,
+        setup_test_with_indexer_and_custom_genesis,
+    },
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
         constants::usdc,
@@ -13,22 +21,28 @@ use {
         perps,
     },
     grug::{
-        Coins, Denom, NumberConst, ResultExt, Timestamp, Udec128, Udec128_6, Udec128_24, Uint128,
-        btree_map,
+        BlockInfo, Coins, Denom, Duration, Hash256, NumberConst, ResultExt, Timestamp, Udec128,
+        Udec128_6, Uint128, btree_map,
     },
     grug_app::Indexer,
+    std::collections::HashMap,
 };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 fn pair_id() -> Denom {
     "perp/ethusd".parse().unwrap()
 }
 
-/// Register fixed oracle prices for the perps pair and settlement currency.
-fn register_oracle_prices(
+/// Common setup: register oracle prices + deposit margin for user1 and user2.
+fn setup_perps_env(
     suite: &mut TestSuiteWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     eth_price: u128,
+    margin_per_user: u128,
 ) {
     suite
         .execute(
@@ -49,34 +63,23 @@ fn register_oracle_prices(
             Coins::new(),
         )
         .should_succeed();
+
+    for account in [&mut accounts.user1, &mut accounts.user2] {
+        let amount = Uint128::new(margin_per_user * 1_000_000);
+        suite
+            .execute(
+                account,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                Coins::one(usdc::DENOM.clone(), amount).unwrap(),
+            )
+            .should_succeed();
+    }
 }
 
-/// Deposit USDC margin into the perps contract for a user.
-fn deposit_margin(
-    suite: &mut TestSuiteWithIndexer,
-    account: &mut dango_testing::TestAccount,
-    contracts: &Contracts,
-    amount_usd: u128,
-) {
-    // USDC has 6 decimals: $X = X * 10^6
-    let amount = Uint128::new(amount_usd * 1_000_000);
-    suite
-        .execute(
-            account,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
-            Coins::one(usdc::DENOM.clone(), amount).unwrap(),
-        )
-        .should_succeed();
-}
-
-/// Place a limit order and let it fill by submitting a market counter-order.
-///
-/// Returns after the block is mined (so OrderFilled events are emitted).
-///
-/// `price` is the USD price per unit (e.g. 2000 for ETH @ $2000).
-/// `size` is the number of units (e.g. 10 for 10 ETH).
-async fn create_perps_fill(
+/// Place a limit ask (user2) then a market buy (user1) to produce an
+/// `OrderFilled` at the given price and size.
+fn create_perps_fill(
     suite: &mut TestSuiteWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
@@ -85,14 +88,13 @@ async fn create_perps_fill(
 ) {
     let pair = pair_id();
 
-    // Maker (user2) places a limit ask
     suite
         .execute(
             &mut accounts.user2,
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-(size as i128)), // negative = sell/ask
+                size: Quantity::new_int(-(size as i128)),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(price as i128),
                     post_only: true,
@@ -103,14 +105,13 @@ async fn create_perps_fill(
         )
         .should_succeed();
 
-    // Taker (user1) places a market buy that crosses the ask
     suite
         .execute(
             &mut accounts.user1,
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(size as i128), // positive = buy/long
+                size: Quantity::new_int(size as i128),
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
@@ -119,6 +120,91 @@ async fn create_perps_fill(
             Coins::new(),
         )
         .should_succeed();
+}
+
+/// Place a resting limit ask for user2 (no immediate fill).
+fn place_limit_ask(
+    suite: &mut TestSuiteWithIndexer,
+    accounts: &mut TestAccounts,
+    contracts: &Contracts,
+    price: u128,
+    size: u128,
+) {
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair_id(),
+                size: Quantity::new_int(-(size as i128)),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(price as i128),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+/// Submit a market buy for user1 (crosses resting asks).
+fn market_buy(
+    suite: &mut TestSuiteWithIndexer,
+    accounts: &mut TestAccounts,
+    contracts: &Contracts,
+    size: u128,
+) {
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair_id(),
+                size: Quantity::new_int(size as i128),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+/// Fetch candles for the test pair.
+async fn query_candles(
+    clickhouse_client: &clickhouse::Client,
+    interval: CandleInterval,
+) -> anyhow::Result<PerpsCandleResult> {
+    Ok(
+        PerpsCandleQueryBuilder::new(interval, pair_id().to_string())
+            .fetch_all(clickhouse_client)
+            .await?,
+    )
+}
+
+/// Fetch the latest `PerpsPairPrice` for the test pair.
+async fn find_pair_price(clickhouse_client: &clickhouse::Client) -> anyhow::Result<PerpsPairPrice> {
+    let pair_prices = PerpsPairPrice::latest_prices(clickhouse_client, 10).await?;
+    Ok(pair_prices
+        .into_iter()
+        .find(|p| p.pair_id == pair_id().to_string())
+        .expect("Should find pair price for perp/ethusd"))
+}
+
+/// Assert candles are ordered newest-first and have open/close price continuity.
+fn assert_candle_continuity(candles: &[PerpsCandle]) {
+    for window in candles.windows(2) {
+        assert!(
+            window[0].time_start > window[1].time_start,
+            "Candles should be ordered newest first"
+        );
+        assert_eq!(
+            window[0].open, window[1].close,
+            "Candle open should equal previous candle's close"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -130,57 +216,41 @@ async fn index_perps_candles_basic() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
 
-    // Both users deposit sufficient margin.
-    deposit_margin(&mut suite, &mut accounts.user1, &contracts, 100_000);
-    deposit_margin(&mut suite, &mut accounts.user2, &contracts, 100_000);
-
-    // Create a fill: 5 ETH @ $2000
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 5).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 5);
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Query perps pair prices from ClickHouse
-    let pair_prices =
-        PerpsPairPrice::latest_prices(clickhouse_context.clickhouse_client(), 10).await?;
+    let ch = clickhouse_context.clickhouse_client();
 
-    // Should have at least one pair price entry
-    assert_that!(pair_prices.len()).is_at_least(1);
+    // Verify pair price
+    let pp = find_pair_price(ch).await?;
 
-    // Find the pair price for our pair
-    let pp = pair_prices
-        .iter()
-        .find(|p| p.pair_id == pair_id().to_string())
-        .expect("Should find pair price for perp/ethusd");
-
-    // Fill price should be $2000 → scaled to Udec128_24
-    let expected_price = Udec128_24::new(2_000);
+    let expected_price = Udec128_6::new(2_000);
     assert_that!(pp.close).is_equal_to(expected_price);
     assert_that!(pp.high).is_equal_to(expected_price);
     assert_that!(pp.low).is_equal_to(expected_price);
-
-    // Volume = sum(abs(fill_size)) across all OrderFilled events.
     // Each trade emits 2 OrderFilled (maker + taker), so volume = 5 + 5 = 10.
     assert_that!(pp.volume).is_equal_to(Udec128_6::new(10));
-
-    // volume_usd = sum(abs(fill_size) * fill_price) = 5*2000 + 5*2000 = 20000
+    // volume_usd = 5*2000 + 5*2000 = 20000
     assert_that!(pp.volume_usd).is_equal_to(Udec128_6::new(20_000));
 
-    // Query candle for 1-minute interval
-    let candle_1m = PerpsCandleQueryBuilder::new(CandleInterval::OneMinute, pair_id().to_string())
-        .with_limit(1)
-        .fetch_one(clickhouse_context.clickhouse_client())
+    // Verify 1-minute candle
+    let candle = query_candles(ch, CandleInterval::OneMinute)
         .await?
+        .candles
+        .into_iter()
+        .next()
         .expect("Should have a 1-minute candle");
 
-    assert_that!(candle_1m.pair_id).is_equal_to(pair_id().to_string());
-    assert_that!(candle_1m.open).is_equal_to(expected_price);
-    assert_that!(candle_1m.high).is_equal_to(expected_price);
-    assert_that!(candle_1m.low).is_equal_to(expected_price);
-    assert_that!(candle_1m.close).is_equal_to(expected_price);
-    assert_that!(candle_1m.volume).is_equal_to(Udec128_6::new(10));
-    assert_that!(candle_1m.volume_usd).is_equal_to(Udec128_6::new(20_000));
+    assert_that!(candle.pair_id).is_equal_to(pair_id().to_string());
+    assert_that!(candle.open).is_equal_to(expected_price);
+    assert_that!(candle.high).is_equal_to(expected_price);
+    assert_that!(candle.low).is_equal_to(expected_price);
+    assert_that!(candle.close).is_equal_to(expected_price);
+    assert_that!(candle.volume).is_equal_to(Udec128_6::new(10));
+    assert_that!(candle.volume_usd).is_equal_to(Udec128_6::new(20_000));
 
     Ok(())
 }
@@ -190,103 +260,39 @@ async fn index_perps_candles_multiple_fills_same_block() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
-
-    deposit_margin(&mut suite, &mut accounts.user1, &contracts, 100_000);
-    deposit_margin(&mut suite, &mut accounts.user2, &contracts, 100_000);
-
-    let pair = pair_id();
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
 
     // Place two limit asks at different prices, then a large market buy that
-    // fills both in the same block (same cron execution).
-    // Ask 1: 3 ETH @ $2000
-    suite
-        .execute(
-            &mut accounts.user2,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: Quantity::new_int(-3),
-                kind: perps::OrderKind::Limit {
-                    limit_price: UsdPrice::new_int(2_000),
-                    post_only: true,
-                },
-                reduce_only: false,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Ask 2: 2 ETH @ $2100
-    suite
-        .execute(
-            &mut accounts.user2,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: Quantity::new_int(-2),
-                kind: perps::OrderKind::Limit {
-                    limit_price: UsdPrice::new_int(2_100),
-                    post_only: true,
-                },
-                reduce_only: false,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Market buy 5 ETH — should cross both asks producing 2 OrderFilled events
-    suite
-        .execute(
-            &mut accounts.user1,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
-                },
-                reduce_only: false,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
+    // fills both in the same block.
+    place_limit_ask(&mut suite, &mut accounts, &contracts, 2_000, 3);
+    place_limit_ask(&mut suite, &mut accounts, &contracts, 2_100, 2);
+    market_buy(&mut suite, &mut accounts, &contracts, 5);
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Query pair price
-    let pair_prices =
-        PerpsPairPrice::latest_prices(clickhouse_context.clickhouse_client(), 10).await?;
+    let ch = clickhouse_context.clickhouse_client();
 
-    let pp = pair_prices
-        .iter()
-        .find(|p| p.pair_id == pair.to_string())
-        .expect("Should find pair price");
+    let pp = find_pair_price(ch).await?;
 
-    // With two fills at different prices in the same block:
-    // high should be max(2000, 2100) = 2100
-    // low should be min(2000, 2100) = 2000
-    // close should be the last fill price
-    assert_that!(pp.high).is_equal_to(Udec128_24::new(2_100));
-    assert_that!(pp.low).is_equal_to(Udec128_24::new(2_000));
-
-    // Total volume = (3+3) + (2+2) = 10 (each fill emits 2 OrderFilled events)
+    // high = max(2000, 2100), low = min(2000, 2100)
+    assert_that!(pp.high).is_equal_to(Udec128_6::new(2_100));
+    assert_that!(pp.low).is_equal_to(Udec128_6::new(2_000));
+    // volume = (3+3) + (2+2) = 10
     assert_that!(pp.volume).is_equal_to(Udec128_6::new(10));
-
     // volume_usd = (3+3)*2000 + (2+2)*2100 = 12000 + 8400 = 20400
     assert_that!(pp.volume_usd).is_equal_to(Udec128_6::new(20_400));
 
-    // Candle should aggregate correctly
-    let candle_1m = PerpsCandleQueryBuilder::new(CandleInterval::OneMinute, pair.to_string())
-        .with_limit(1)
-        .fetch_one(clickhouse_context.clickhouse_client())
+    let candle = query_candles(ch, CandleInterval::OneMinute)
         .await?
+        .candles
+        .into_iter()
+        .next()
         .expect("Should have a 1-minute candle");
 
-    assert_that!(candle_1m.high).is_equal_to(Udec128_24::new(2_100));
-    assert_that!(candle_1m.low).is_equal_to(Udec128_24::new(2_000));
-    assert_that!(candle_1m.volume).is_equal_to(Udec128_6::new(10));
-    assert_that!(candle_1m.volume_usd).is_equal_to(Udec128_6::new(20_400));
+    assert_that!(candle.high).is_equal_to(Udec128_6::new(2_100));
+    assert_that!(candle.low).is_equal_to(Udec128_6::new(2_000));
+    assert_that!(candle.volume).is_equal_to(Udec128_6::new(10));
+    assert_that!(candle.volume_usd).is_equal_to(Udec128_6::new(20_400));
 
     Ok(())
 }
@@ -297,77 +303,365 @@ async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
 
-    deposit_margin(&mut suite, &mut accounts.user1, &contracts, 50_000);
-    deposit_margin(&mut suite, &mut accounts.user2, &contracts, 50_000);
-
-    let pair = pair_id();
-
-    // Helper: place a limit ask then market buy to get a fill at a specific price
-    let fill_at_price =
-        |suite: &mut TestSuiteWithIndexer, accounts: &mut TestAccounts, price: i128, size: i128| {
-            suite
-                .execute(
-                    &mut accounts.user2,
-                    contracts.perps,
-                    &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                        pair_id: pair.clone(),
-                        size: Quantity::new_int(-size),
-                        kind: perps::OrderKind::Limit {
-                            limit_price: UsdPrice::new_int(price),
-                            post_only: true,
-                        },
-                        reduce_only: false,
-                    }),
-                    Coins::new(),
-                )
-                .should_succeed();
-
-            suite
-                .execute(
-                    &mut accounts.user1,
-                    contracts.perps,
-                    &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                        pair_id: pair.clone(),
-                        size: Quantity::new_int(size),
-                        kind: perps::OrderKind::Market {
-                            max_slippage: Dimensionless::ONE,
-                        },
-                        reduce_only: false,
-                    }),
-                    Coins::new(),
-                )
-                .should_succeed();
-        };
-
-    // Fill 1: 1 ETH @ $2000
-    fill_at_price(&mut suite, &mut accounts, 2_000, 1);
-
-    // Fill 2: 1 ETH @ $1999 (price drops)
-    fill_at_price(&mut suite, &mut accounts, 1_999, 1);
-
-    // Fill 3: 1 ETH @ $2001 (price rises)
-    fill_at_price(&mut suite, &mut accounts, 2_001, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, 1_999, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_001, 1);
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // All fills should be in the same 1-minute candle (250ms block time)
-    let candle_1m = PerpsCandleQueryBuilder::new(CandleInterval::OneMinute, pair.to_string())
-        .fetch_all(clickhouse_context.clickhouse_client())
-        .await?;
+    let result = query_candles(
+        clickhouse_context.clickhouse_client(),
+        CandleInterval::OneMinute,
+    )
+    .await?;
 
-    assert_that!(candle_1m.candles).has_length(1);
-    let candle = &candle_1m.candles[0];
+    assert_that!(result.candles).has_length(1);
+    let candle = &result.candles[0];
 
     // OHLC: open from first fill, close from last fill, high/low from extremes
-    assert_that!(candle.open).is_equal_to(Udec128_24::new(2_000));
-    assert_that!(candle.close).is_equal_to(Udec128_24::new(2_001));
-    assert_that!(candle.high).is_equal_to(Udec128_24::new(2_001));
-    assert_that!(candle.low).is_equal_to(Udec128_24::new(1_999));
-
-    // Volume: 3 fills * 2 events each * 1 ETH = 6
+    assert_that!(candle.open).is_equal_to(Udec128_6::new(2_000));
+    assert_that!(candle.close).is_equal_to(Udec128_6::new(2_001));
+    assert_that!(candle.high).is_equal_to(Udec128_6::new(2_001));
+    assert_that!(candle.low).is_equal_to(Udec128_6::new(1_999));
+    // 3 fills * 2 events * 1 ETH = 6
     assert_that!(candle.volume).is_equal_to(Udec128_6::new(6));
+
+    Ok(())
+}
+
+/// 20-second block time, fills spanning minute boundaries. Verifies candle
+/// creation at interval boundaries with open-price inheritance.
+#[tokio::test(flavor = "multi_thread")]
+async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
+        setup_test_with_indexer_and_custom_genesis(
+            TestOption {
+                block_time: Duration::from_seconds(20),
+                genesis_block: BlockInfo {
+                    height: 0,
+                    timestamp: Timestamp::from_seconds(1),
+                    hash: Hash256::ZERO,
+                },
+                ..Default::default()
+            },
+            dango_genesis::GenesisOption::preset_test(),
+        )
+        .await;
+
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
+
+    suite.make_empty_block();
+
+    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, 1_999, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_001, 1);
+
+    // Several empty blocks to force candle boundary crossing
+    for _ in 0..5 {
+        suite.make_empty_block();
+    }
+
+    suite.app.indexer.wait_for_finish().await?;
+
+    let candles = query_candles(
+        clickhouse_context.clickhouse_client(),
+        CandleInterval::OneMinute,
+    )
+    .await?
+    .candles;
+
+    // Fills are spread across 120s–200s; empty blocks push past 240s+.
+    assert_that!(candles.len()).is_at_least(2);
+
+    assert_candle_continuity(&candles);
+
+    // Oldest candle should contain the first fill
+    assert_that!(candles.last().unwrap().volume).is_greater_than(Udec128_6::ZERO);
+
+    // Total volume = 3 fills * 2 events * 1 ETH = 6
+    let total_volume: Udec128_6 = candles.iter().map(|c| c.volume).sum();
+    assert_that!(total_volume).is_equal_to(Udec128_6::new(6));
+
+    // Global high/low across all candles
+    let global_high = candles.iter().map(|c| c.high).max().unwrap();
+    let global_low = candles.iter().map(|c| c.low).min().unwrap();
+    assert_that!(global_high).is_equal_to(Udec128_6::new(2_001));
+    assert_that!(global_low).is_equal_to(Udec128_6::new(1_999));
+
+    Ok(())
+}
+
+/// Many fills within the same minute, all aggregate into 1 candle.
+#[tokio::test(flavor = "multi_thread")]
+async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
+
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
+
+    for _ in 0..10 {
+        create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
+    }
+
+    suite.app.indexer.wait_for_finish().await?;
+
+    let ch = clickhouse_context.clickhouse_client();
+
+    // Should have 10+ pair prices
+    let perps_pps: Vec<_> = PerpsPairPrice::latest_prices(ch, 100)
+        .await?
+        .into_iter()
+        .filter(|p| p.pair_id == pair_id().to_string())
+        .collect();
+
+    assert_that!(perps_pps.len()).is_at_least(10);
+
+    let result = query_candles(ch, CandleInterval::OneMinute).await?;
+
+    assert_that!(result.candles).has_length(1);
+    assert_that!(result.has_next_page).is_false();
+    assert_that!(result.has_previous_page).is_false();
+
+    let candle = &result.candles[0];
+    assert_that!(candle.open).is_equal_to(Udec128_6::new(2_000));
+    assert_that!(candle.close).is_equal_to(Udec128_6::new(2_000));
+    assert_that!(candle.high).is_equal_to(Udec128_6::new(2_000));
+    assert_that!(candle.low).is_equal_to(Udec128_6::new(2_000));
+    // 10 fills * 2 events * 1 ETH = 20
+    assert_that!(candle.volume).is_equal_to(Udec128_6::new(20));
+    // 10 fills * 2 events * 1 * 2000 = 40000
+    assert_that!(candle.volume_usd).is_equal_to(Udec128_6::new(40_000));
+
+    Ok(())
+}
+
+/// Reloading the cache from ClickHouse produces the same state as the live
+/// in-memory cache.
+#[tokio::test(flavor = "multi_thread")]
+async fn index_perps_candles_cache_consistency() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
+
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
+
+    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
+
+    suite.app.indexer.wait_for_finish().await?;
+
+    let ch = clickhouse_context.clickhouse_client();
+
+    // Load a fresh cache from ClickHouse
+    let mut fresh_cache = PerpsCandleCache::default();
+    let pair_ids = PerpsPairPrice::all_pair_ids(ch).await?;
+    fresh_cache.preload_pairs(&pair_ids, ch).await?;
+
+    // Compare with the live in-memory cache
+    let live_cache = clickhouse_context.perps_candle_cache.read().await;
+
+    assert_eq!(
+        fresh_cache.pair_prices,
+        live_cache
+            .pair_prices
+            .clone()
+            .into_iter()
+            .filter(|pp| !pp.1.is_empty())
+            .collect::<HashMap<_, _>>()
+    );
+    assert_eq!(fresh_cache.candles, live_cache.candles);
+
+    Ok(())
+}
+
+/// One-second interval: 10 fills at 250ms block time span multiple seconds.
+#[tokio::test(flavor = "multi_thread")]
+async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
+
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
+
+    for _ in 0..10 {
+        create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
+    }
+
+    suite.app.indexer.wait_for_finish().await?;
+
+    let candles = query_candles(
+        clickhouse_context.clickhouse_client(),
+        CandleInterval::OneSecond,
+    )
+    .await?
+    .candles;
+
+    // Multiple 1-second candles expected
+    assert_that!(candles.len()).is_at_least(2);
+
+    assert_candle_continuity(&candles);
+
+    // Total volume across all candles = 10 fills * 2 events * 1 ETH = 20
+    let total_volume: Udec128_6 = candles.iter().map(|c| c.volume).sum();
+    assert_that!(total_volume).is_equal_to(Udec128_6::new(20));
+
+    Ok(())
+}
+
+/// Full 10-minute timeline with varying prices.
+///
+/// Setup: block_time=10s, genesis at t=0.
+///   - Blocks 1–3 (10–30s): oracle + deposits
+///   - 30 fills (blocks 4–63): fill i lands at t = 50 + i*20 seconds
+///   - 10 empty blocks (blocks 64–73) to push past another 5-min boundary
+///
+/// Fill schedule (each fill = limit_ask block + market_buy block = 20s):
+///   Fill 0 at  50s (min 0), Fill 1 at  70s (min 1), …, Fill 29 at 630s (min 10)
+///
+/// Minute allocation (~3 fills per minute):
+///   min 0: 1 fill,  min 1–10: 3 fills each,  min 10: 2 fills
+///
+/// 5-minute buckets:
+///   0–300s:   fills  0–12 (13 fills)
+///   300–600s: fills 13–27 (15 fills)
+///   600+:     fills 28–29 ( 2 fills)
+///
+/// 1-second candles: only at block timestamps. Between fills, the limit-ask
+/// block (which carries no OrderFilled) produces a **gap candle** with zero
+/// volume and flat OHLC inherited from the previous close.
+#[tokio::test(flavor = "multi_thread")]
+async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
+        setup_test_with_indexer_and_custom_genesis(
+            TestOption {
+                block_time: Duration::from_seconds(10),
+                genesis_block: BlockInfo {
+                    height: 0,
+                    timestamp: Timestamp::from_seconds(0),
+                    hash: Hash256::ZERO,
+                },
+                ..Default::default()
+            },
+            dango_genesis::GenesisOption::preset_test(),
+        )
+        .await;
+
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
+
+    // 30 fills with varying prices in the $1990–$2020 range.
+    // Capped at 14 due to a deadlock in the block processing pipeline.
+    // See: https://github.com/left-curve/left-curve/issues/1635
+    const NUM_FILLS: usize = 14;
+    let offsets: [i128; 10] = [-10, 5, -5, 10, -3, 8, -8, 3, -1, 7];
+    let prices: Vec<u128> = (0..NUM_FILLS)
+        .map(|i| (2000 + offsets[i % 10]) as u128)
+        .collect();
+
+    let expected_high = *prices.iter().max().unwrap();
+    let expected_low = *prices.iter().min().unwrap();
+
+    for &price in &prices {
+        create_perps_fill(&mut suite, &mut accounts, &contracts, price, 1);
+    }
+
+    // Push past another 5-minute boundary so we get an extra empty candle.
+    for _ in 0..10 {
+        suite.make_empty_block();
+    }
+
+    suite.app.indexer.wait_for_finish().await?;
+
+    let ch = clickhouse_context.clickhouse_client();
+
+    // Each fill emits 2 OrderFilled events (maker + taker).
+    let expected_total_volume = Udec128_6::new((NUM_FILLS * 2) as u128);
+
+    // =====================================================================
+    //  1-SECOND CANDLES
+    // =====================================================================
+    let candles_1s = query_candles(ch, CandleInterval::OneSecond).await?.candles;
+
+    assert_candle_continuity(&candles_1s);
+
+    // Candles with actual fills vs gap candles (from limit-ask / empty blocks).
+    let filled_1s: Vec<_> = candles_1s
+        .iter()
+        .filter(|c| c.volume > Udec128_6::ZERO)
+        .collect();
+    let gaps_1s: Vec<_> = candles_1s
+        .iter()
+        .filter(|c| c.volume == Udec128_6::ZERO)
+        .collect();
+
+    // At least NUM_FILLS candles should carry volume.
+    assert_that!(filled_1s.len()).is_at_least(NUM_FILLS);
+
+    // Gap candles (if any) must have zero volume_usd.
+    for gap in &gaps_1s {
+        assert_eq!(
+            gap.volume_usd,
+            Udec128_6::ZERO,
+            "Gap candle has non-zero volume_usd"
+        );
+    }
+
+    // Total volume across 1s candles equals expected.
+    let total_1s: Udec128_6 = candles_1s.iter().map(|c| c.volume).sum();
+    assert_that!(total_1s).is_equal_to(expected_total_volume);
+
+    // =====================================================================
+    //  1-MINUTE CANDLES
+    // =====================================================================
+    let candles_1m = query_candles(ch, CandleInterval::OneMinute).await?.candles;
+
+    // Each fill takes 20s → ~3 fills per minute. We need at least a few 1m candles.
+    assert_that!(candles_1m.len()).is_at_least(2);
+    assert_candle_continuity(&candles_1m);
+
+    let total_1m: Udec128_6 = candles_1m.iter().map(|c| c.volume).sum();
+    assert_that!(total_1m).is_equal_to(expected_total_volume);
+
+    // =====================================================================
+    //  5-MINUTE CANDLES
+    // =====================================================================
+    let candles_5m = query_candles(ch, CandleInterval::FiveMinutes)
+        .await?
+        .candles;
+
+    assert_that!(candles_5m.len()).is_at_least(1);
+    assert_candle_continuity(&candles_5m);
+
+    let total_5m: Udec128_6 = candles_5m.iter().map(|c| c.volume).sum();
+    assert_that!(total_5m).is_equal_to(expected_total_volume);
+
+    // =====================================================================
+    //  CROSS-RESOLUTION CONSISTENCY
+    // =====================================================================
+
+    // Global high / low across filled candles must agree at every resolution.
+    let high_1s = filled_1s.iter().map(|c| c.high).max().unwrap();
+    let high_1m = candles_1m.iter().map(|c| c.high).max().unwrap();
+    let high_5m = candles_5m.iter().map(|c| c.high).max().unwrap();
+    assert_eq!(high_1s, high_1m, "1s vs 1m global high mismatch");
+    assert_eq!(high_1m, high_5m, "1m vs 5m global high mismatch");
+    assert_eq!(high_1s, Udec128_6::new(expected_high));
+
+    let low_1s = filled_1s.iter().map(|c| c.low).min().unwrap();
+    let low_1m = candles_1m
+        .iter()
+        .filter(|c| c.volume > Udec128_6::ZERO)
+        .map(|c| c.low)
+        .min()
+        .unwrap();
+    let low_5m = candles_5m
+        .iter()
+        .filter(|c| c.volume > Udec128_6::ZERO)
+        .map(|c| c.low)
+        .min()
+        .unwrap();
+    assert_eq!(low_1s, low_1m, "1s vs 1m global low mismatch");
+    assert_eq!(low_1m, low_5m, "1m vs 5m global low mismatch");
+    assert_eq!(low_1s, Udec128_6::new(expected_low));
 
     Ok(())
 }
