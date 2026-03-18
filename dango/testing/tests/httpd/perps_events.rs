@@ -101,26 +101,65 @@ async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
 
                 let nodes = response.data.unwrap().perps_events.nodes;
 
-                // user2 should see: order_persisted, order_filled, order_persisted, order_removed
-                assert_that!(nodes.len()).is_at_least(4);
-
+                // user2 lifecycle (ASC):
+                //  0: order_persisted  — limit ask at 2000, size -3
+                //  1: order_filled     — maker fill at 2000
+                //  2: order_removed    — reason Filled (order fully consumed)
+                //  3: order_persisted  — second limit ask at 2100, size -2
+                //  4: order_removed    — reason Canceled
                 let types: Vec<&str> = nodes.iter().map(|n| n.event_type.as_str()).collect();
-
-                // First event must be order_persisted (the limit ask placement).
-                assert_that!(types[0]).is_equal_to("order_persisted");
-
-                // Must contain a fill event.
-                assert!(
-                    types.contains(&"order_filled"),
-                    "Expected order_filled in events, got: {types:?}"
+                assert_eq!(
+                    types,
+                    &[
+                        "order_persisted",
+                        "order_filled",
+                        "order_removed",
+                        "order_persisted",
+                        "order_removed",
+                    ],
+                    "Unexpected event sequence (ASC): {types:?}"
                 );
 
-                // The last two events should be the second persist + cancel.
-                let last_two: Vec<&str> = types.iter().rev().take(2).copied().collect();
-                assert_that!(last_two).contains("order_persisted");
-                assert_that!(last_two).contains("order_removed");
+                // [0] order_persisted — first limit ask
+                assert!(
+                    nodes[0].data.to_string().contains("2000"),
+                    "First persist should reference price 2000, got: {}",
+                    nodes[0].data
+                );
 
-                // Verify ascending block_height order.
+                // [1] order_filled — maker side of the match
+                assert!(
+                    nodes[1].data.to_string().contains("2000"),
+                    "Fill should reference price 2000, got: {}",
+                    nodes[1].data
+                );
+                assert!(
+                    nodes[1].data.get("fill_size").is_some(),
+                    "Fill event should contain fill_size field"
+                );
+
+                // [2] order_removed — fully filled
+                assert_eq!(
+                    nodes[2].data["reason"].as_str().unwrap(),
+                    "filled",
+                    "First removal should be reason=filled"
+                );
+
+                // [3] order_persisted — second limit ask at 2100
+                assert!(
+                    nodes[3].data.to_string().contains("2100"),
+                    "Second persist should reference price 2100, got: {}",
+                    nodes[3].data
+                );
+
+                // [4] order_removed — user canceled
+                assert_eq!(
+                    nodes[4].data["reason"].as_str().unwrap(),
+                    "canceled",
+                    "Second removal should be reason=canceled"
+                );
+
+                // Ascending block_height order.
                 for window in nodes.windows(2) {
                     assert!(
                         window[0].block_height <= window[1].block_height,
@@ -137,7 +176,7 @@ async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
                 }
 
                 // ---------------------------------------------------------------
-                // Query again in descending order (default) — should be reversed.
+                // Query again in descending order — mirror of ascending.
                 // ---------------------------------------------------------------
                 let response_desc = call_graphql_query::<_, perps_events::ResponseData>(
                     dango_httpd_context.clone(),
@@ -151,10 +190,52 @@ async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
                 .await?;
 
                 let nodes_desc = response_desc.data.unwrap().perps_events.nodes;
+                assert_that!(nodes_desc).has_length(5);
 
-                assert_that!(nodes_desc.len()).is_equal_to(nodes.len() as usize);
+                // DESC is the reverse lifecycle: most recent first.
+                //  0: order_removed    — reason Canceled
+                //  1: order_persisted  — second limit ask at 2100
+                //  2: order_removed    — reason Filled
+                //  3: order_filled     — maker fill at 2000
+                //  4: order_persisted  — first limit ask at 2000
 
-                // Verify descending block_height order.
+                // [0] order_removed — cancel (most recent)
+                assert_eq!(nodes_desc[0].event_type, "order_removed");
+                assert_eq!(nodes_desc[0].data["reason"].as_str().unwrap(), "canceled");
+
+                // [1] order_persisted — second limit ask at 2100
+                assert_eq!(nodes_desc[1].event_type, "order_persisted");
+                assert!(
+                    nodes_desc[1].data.to_string().contains("2100"),
+                    "Second persist (DESC[1]) should reference price 2100, got: {}",
+                    nodes_desc[1].data
+                );
+
+                // [2] order_removed — fully filled
+                assert_eq!(nodes_desc[2].event_type, "order_removed");
+                assert_eq!(nodes_desc[2].data["reason"].as_str().unwrap(), "filled");
+
+                // [3] order_filled — maker fill at 2000
+                assert_eq!(nodes_desc[3].event_type, "order_filled");
+                assert!(
+                    nodes_desc[3].data.to_string().contains("2000"),
+                    "Fill (DESC[3]) should reference price 2000, got: {}",
+                    nodes_desc[3].data
+                );
+                assert!(
+                    nodes_desc[3].data.get("fill_size").is_some(),
+                    "Fill event should contain fill_size field"
+                );
+
+                // [4] order_persisted — first limit ask at 2000 (oldest)
+                assert_eq!(nodes_desc[4].event_type, "order_persisted");
+                assert!(
+                    nodes_desc[4].data.to_string().contains("2000"),
+                    "First persist (DESC[4]) should reference price 2000, got: {}",
+                    nodes_desc[4].data
+                );
+
+                // Descending block_height order.
                 for window in nodes_desc.windows(2) {
                     assert!(
                         window[0].block_height >= window[1].block_height,
