@@ -63,3 +63,18 @@ pub enum PublicKey {
     CreatedBlockHeight,
     CreatedAt,
 }
+
+#[derive(DeriveIden)]
+pub enum PerpsEvent {
+    #[sea_orm(iden = "perps_events")]
+    Table,
+    Id,
+    Idx,
+    BlockHeight,
+    TxHash,
+    CreatedAt,
+    EventType,
+    UserAddr,
+    PairId,
+    Data,
+}

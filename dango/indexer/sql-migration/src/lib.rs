@@ -7,6 +7,7 @@ mod m20250609_154519_transfers_transactions_hash;
 mod m20250812_110356_accounts_indexes;
 mod m20250908_212847_accounts_tx_hash;
 mod m20260310_000001_drop_account_type;
+mod m20260317_000001_create_perps_events_table;
 
 pub struct Migrator;
 
@@ -20,6 +21,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250812_110356_accounts_indexes::Migration),
             Box::new(m20250908_212847_accounts_tx_hash::Migration),
             Box::new(m20260310_000001_drop_account_type::Migration),
+            Box::new(m20260317_000001_create_perps_events_table::Migration),
         ]
     }
 

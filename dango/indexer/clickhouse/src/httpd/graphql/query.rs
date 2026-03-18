@@ -1,10 +1,12 @@
 use {
-    async_graphql::MergedObject, candle::CandleQuery, pair_stats::PairStatsQuery, trade::TradeQuery,
+    async_graphql::MergedObject, candle::CandleQuery, pair_stats::PairStatsQuery,
+    perps_candle::PerpsCandleQuery, trade::TradeQuery,
 };
 
 pub mod candle;
 pub mod pair_stats;
+pub mod perps_candle;
 pub mod trade;
 
 #[derive(MergedObject, Default)]
-pub struct Query(CandleQuery, TradeQuery, PairStatsQuery);
+pub struct Query(CandleQuery, TradeQuery, PairStatsQuery, PerpsCandleQuery);

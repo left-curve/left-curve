@@ -12,6 +12,7 @@ use {
 };
 
 mod accounts;
+mod perps_events;
 mod transfers;
 
 pub struct Indexer {
@@ -44,6 +45,7 @@ impl grug_app::Indexer for Indexer {
         {
             transfers::init_metrics();
             accounts::init_metrics();
+            perps_events::init_metrics();
             init_metrics();
 
             histogram!("indexer.dango.start.duration").record(start.elapsed().as_secs_f64());
@@ -69,10 +71,11 @@ impl grug_app::Indexer for Indexer {
             ),
         )?;
 
-        // Run transfer processing and account saving in parallel
-        let (transfers_result, accounts_result) = tokio::join!(
+        // Run transfer, account, and perps event processing in parallel
+        let (transfers_result, accounts_result, perps_result) = tokio::join!(
             transfers::save_transfers(&self.context, block_height),
-            accounts::save_accounts(&self.context, block_to_index, app_cfg)
+            accounts::save_accounts(&self.context, block_to_index, app_cfg.clone()),
+            perps_events::save_perps_events(&self.context, block_to_index, app_cfg)
         );
 
         // Handle errors and increment counters
@@ -84,10 +87,15 @@ impl grug_app::Indexer for Indexer {
             #[cfg(feature = "metrics")]
             counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
         }
+        if perps_result.is_err() {
+            #[cfg(feature = "metrics")]
+            counter!("indexer.dango.hooks.perps_events.errors.total").increment(1);
+        }
 
         // Return the first error if any
         transfers_result?;
         accounts_result?;
+        perps_result?;
 
         self.context
             .pubsub
