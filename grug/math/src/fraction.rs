@@ -43,7 +43,10 @@ mod tests {
             Dec, Dec128, Dec256, FixedPoint, Fraction, Int, Int128, Int256, MathError, NumberConst,
             Udec128, Udec256, Uint128, Uint256, dec_test, test_utils::dt,
         },
-        bnum::types::{I256, U256},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, U256},
+        },
         std::fmt::Debug,
     };
 
@@ -99,7 +102,7 @@ mod tests {
             }
             udec256 = {
                 passing: [
-                    U256::from(1_000_000_000_000_000_000_u128),
+                    U256::cast_from(1_000_000_000_000_000_000_u128),
                 ]
             }
             dec128 = {
@@ -109,7 +112,7 @@ mod tests {
             }
             dec256 = {
                 passing: [
-                    I256::from(1_000_000_000_000_000_000_i128),
+                    I256::cast_from(1_000_000_000_000_000_000_i128),
                 ]
             }
         }
