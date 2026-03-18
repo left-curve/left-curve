@@ -1,19 +1,17 @@
 use {
-    crate::{USER_STATES, oracle},
+    crate::USER_STATES,
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_types::{
         Quantity,
-        perps::{Deposited, settlement_currency},
+        perps::{Deposited, SETTLEMENT_CURRENCY_PRICE, settlement_currency},
     },
     grug::{IsZero, MutableCtx, Response},
 };
 
 /// Deposit settlement currency into the trader's margin account.
 ///
-/// The deposited tokens are converted to USD at the current oracle price and
-/// credited to `user_state.margin`. Tokens stay in the perps contract's bank
-/// balance.
+/// The deposited tokens are converted to USD at a fixed 1:1 rate and credited
+/// to `user_state.margin`. Tokens stay in the perps contract's bank balance.
 pub fn deposit(mut ctx: MutableCtx) -> anyhow::Result<Response> {
     // ----------------------- 1. Extract deposit amount -----------------------
 
@@ -25,11 +23,8 @@ pub fn deposit(mut ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // -------------------- 2. Convert deposit to USD value --------------------
 
-    let settlement_currency_price = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-        .query_price_for_perps(&settlement_currency::DENOM)?;
-
     let deposit_value = Quantity::from_base(deposit_amount, settlement_currency::DECIMAL)?
-        .checked_mul(settlement_currency_price)?;
+        .checked_mul(SETTLEMENT_CURRENCY_PRICE)?;
 
     // ------------------------- 3. Update user state --------------------------
 
