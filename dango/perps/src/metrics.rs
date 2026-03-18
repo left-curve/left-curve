@@ -31,6 +31,8 @@ pub const LABEL_OPEN_INTEREST_SHORT: &str = "dango.contract.perps.open_interest_
 /// Vault equity in USD, updated once per block in cron.
 pub const LABEL_VAULT_EQUITY: &str = "dango.contract.perps.vault_equity";
 
+pub const LABEL_VAULT_MARGIN: &str = "dango.contract.perps.vault_margin";
+
 pub const LABEL_INSURANCE_FUND: &str = "dango.contract.perps.insurance_fund";
 
 pub const LABEL_TREASURY: &str = "dango.contract.perps.treasury";
@@ -80,6 +82,7 @@ pub fn init_metrics() {
 
         // Vault / global state
         describe_gauge!(LABEL_VAULT_EQUITY, "Vault equity in USD");
+        describe_gauge!(LABEL_VAULT_MARGIN, "Vault deposited margin in USD");
         describe_gauge!(LABEL_INSURANCE_FUND, "Insurance fund balance in USD");
         describe_gauge!(LABEL_TREASURY, "Protocol treasury balance in USD");
 

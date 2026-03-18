@@ -102,6 +102,9 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
                 .set(crate::metrics::to_float(vault_equity));
         }
 
+        ::metrics::gauge!(crate::metrics::LABEL_VAULT_MARGIN)
+            .set(crate::metrics::to_float(vault_user_state.margin));
+
         ::metrics::gauge!(crate::metrics::LABEL_INSURANCE_FUND)
             .set(crate::metrics::to_float(state.insurance_fund));
 
