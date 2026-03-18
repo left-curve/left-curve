@@ -407,6 +407,113 @@ type PairStats {
 	priceChange24H: BigDecimal
 }
 
+type PerpsCandle {
+	pairId: String!
+	minBlockHeight: Int!
+	maxBlockHeight: Int!
+	interval: CandleInterval!
+	blockHeight: Int! @deprecated(reason: "Use `maxBlockHeight` instead")
+	open: BigDecimal!
+	high: BigDecimal!
+	low: BigDecimal!
+	close: BigDecimal!
+	volume: BigDecimal!
+	volumeUsd: BigDecimal!
+	"""
+	Return time_start in ISO 8601 format with time zone.
+	"""
+	timeStart: String!
+	"""
+	Return time_start as a unix timestamp
+	"""
+	timeStartUnix: Int!
+	"""
+	Return time_end in ISO 8601 format with time zone.
+	"""
+	timeEnd: String!
+	"""
+	Return time_end as a unix timestamp
+	"""
+	timeEndUnix: Int!
+}
+
+type PerpsCandleConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [PerpsCandleEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [PerpsCandle!]!
+}
+
+"""
+An edge in a connection.
+"""
+type PerpsCandleEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: PerpsCandle!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+type PerpsEvent {
+	idx: Int!
+	blockHeight: Int!
+	txHash: String!
+	eventType: String!
+	userAddr: String!
+	pairId: String!
+	data: JSON!
+	"""
+	Returns the event timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+}
+
+type PerpsEventConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [PerpsEventEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [PerpsEvent!]!
+}
+
+"""
+An edge in a connection.
+"""
+type PerpsEventEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: PerpsEvent!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum PerpsEventSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
 type PublicKey {
 	userIndex: Int!
 	keyHash: String!
@@ -635,6 +742,64 @@ type Query {
 	Fields are fetched lazily - only requested fields trigger database queries.
 	"""
 	allPairStats: [PairStats!]!
+	"""
+	Get paginated perps candles
+	"""
+	perpsCandles(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Pair ID (e.g. perp/btcusd)
+		"""
+		pairId: String!,
+		"""
+		Interval
+		"""
+		interval: CandleInterval!,		earlierThan: DateTime,		laterThan: DateTime
+	): PerpsCandleConnection!
+	"""
+	Get paginated perps events
+	"""
+	perpsEvents(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: PerpsEventSortBy,
+		"""
+		Filter by user address
+		"""
+		userAddr: String,
+		"""
+		Filter by event type
+		"""
+		eventType: String,
+		"""
+		Filter by trading pair ID
+		"""
+		pairId: String,
+		"""
+		Filter by block height
+		"""
+		blockHeight: Int
+	): PerpsEventConnection!
 }
 
 type QueryResponseWithBlockHeight {
@@ -678,6 +843,10 @@ type Subscription {
 	Get all trades, this will not include past trades but only new ones since you subscribed.
 	"""
 	trades(baseDenom: String!, quoteDenom: String!): Trade!
+	"""
+	Get perps candles for a given pair_id and interval
+	"""
+	perpsCandles(pairId: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [PerpsCandle!]!
 	queryApp(
 		"""
 		Request as JSON
@@ -704,6 +873,24 @@ type Subscription {
 		"""
 		blockInterval: Int! = 10
 	): Status!
+	perpsEvents(
+		"""
+		Filter by user address
+		"""
+		userAddr: String,
+		"""
+		Filter by event type
+		"""
+		eventType: String,
+		"""
+		Filter by trading pair ID
+		"""
+		pairId: String,
+		"""
+		Block height to start from (for reconnection)
+		"""
+		sinceBlockHeight: Int
+	): [PerpsEvent!]!
 }
 
 enum TimeInForce {
