@@ -1,6 +1,6 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::{TestOption, setup_test_naive},
+    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
@@ -8,17 +8,13 @@ use {
         perps::{self, LiquidityDepthResponse, PairParam, Param, UserState},
     },
     grug::{
-        Addressable, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, NumberConst, QuerierExt,
+        Addressable, Binary, ByteArray, Coins, Duration, NonEmpty, NumberConst, QuerierExt,
         ResultExt, Timestamp, Udec128, Uint128, btree_map, btree_set, concat,
     },
     grug_app::CONTRACT_NAMESPACE,
     pyth_types::{Channel, LeEcdsaMessage},
     std::{collections::BTreeMap, str::FromStr},
 };
-
-fn pair_id() -> Denom {
-    "perp/ethusd".parse().unwrap()
-}
 
 /// Return the genesis-default global params (mirrors `PerpsOption::preset_test()`).
 fn default_param() -> Param {

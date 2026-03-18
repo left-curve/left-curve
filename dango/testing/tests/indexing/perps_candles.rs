@@ -11,116 +11,23 @@ use {
         indexer::perps_candles::cache::PerpsCandleCache,
     },
     dango_testing::{
-        Preset, TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer,
-        setup_test_with_indexer_and_custom_genesis,
+        Preset, TestAccounts, TestOption, TestSuiteWithIndexer,
+        perps::{create_perps_fill, pair_id, setup_perps_env},
+        setup_test_with_indexer, setup_test_with_indexer_and_custom_genesis,
     },
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
         constants::usdc,
         oracle::{self, PriceSource},
-        perps,
+        perps::{self, PairParam},
     },
     grug::{
         BlockInfo, Coins, Denom, Duration, Hash256, NumberConst, ResultExt, Timestamp, Udec128,
-        Udec128_6, Uint128, btree_map,
+        Udec128_6, btree_map,
     },
     grug_app::Indexer,
     std::collections::HashMap,
 };
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-fn pair_id() -> Denom {
-    "perp/ethusd".parse().unwrap()
-}
-
-/// Common setup: register oracle prices + deposit margin for user1 and user2.
-fn setup_perps_env(
-    suite: &mut TestSuiteWithIndexer,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-    eth_price: u128,
-    margin_per_user: u128,
-) {
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                pair_id() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(eth_price),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    for account in [&mut accounts.user1, &mut accounts.user2] {
-        let amount = Uint128::new(margin_per_user * 1_000_000);
-        suite
-            .execute(
-                account,
-                contracts.perps,
-                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
-                Coins::one(usdc::DENOM.clone(), amount).unwrap(),
-            )
-            .should_succeed();
-    }
-}
-
-/// Place a limit ask (user2) then a market buy (user1) to produce an
-/// `OrderFilled` at the given price and size.
-fn create_perps_fill(
-    suite: &mut TestSuiteWithIndexer,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-    price: u128,
-    size: u128,
-) {
-    let pair = pair_id();
-
-    suite
-        .execute(
-            &mut accounts.user2,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: Quantity::new_int(-(size as i128)),
-                kind: perps::OrderKind::Limit {
-                    limit_price: UsdPrice::new_int(price as i128),
-                    post_only: true,
-                },
-                reduce_only: false,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    suite
-        .execute(
-            &mut accounts.user1,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: Quantity::new_int(size as i128),
-                kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
-                },
-                reduce_only: false,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-}
 
 /// Place a resting limit ask for user2 (no immediate fill).
 fn place_limit_ask(
@@ -218,7 +125,7 @@ async fn index_perps_candles_basic() -> anyhow::Result<()> {
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 5);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5);
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -305,9 +212,9 @@ async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 1_999, 1);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_001, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 1_999, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_001, 1);
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -354,9 +261,9 @@ async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
 
     suite.make_empty_block();
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 1_999, 1);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_001, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 1_999, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_001, 1);
 
     // Several empty blocks to force candle boundary crossing
     for _ in 0..5 {
@@ -402,7 +309,7 @@ async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
 
     for _ in 0..10 {
-        create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
+        create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1);
     }
 
     suite.app.indexer.wait_for_finish().await?;
@@ -446,8 +353,8 @@ async fn index_perps_candles_cache_consistency() -> anyhow::Result<()> {
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1);
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -484,7 +391,7 @@ async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
 
     for _ in 0..10 {
-        create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 1);
+        create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1);
     }
 
     suite.app.indexer.wait_for_finish().await?;
@@ -561,7 +468,7 @@ async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
     let expected_low = *prices.iter().min().unwrap();
 
     for &price in &prices {
-        create_perps_fill(&mut suite, &mut accounts, &contracts, price, 1);
+        create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), price, 1);
     }
 
     // Push past another 5-minute boundary so we get an extra empty candle.
@@ -662,6 +569,136 @@ async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
     assert_eq!(low_1s, low_1m, "1s vs 1m global low mismatch");
     assert_eq!(low_1m, low_5m, "1m vs 5m global low mismatch");
     assert_eq!(low_1s, Udec128_6::new(expected_low));
+
+    Ok(())
+}
+
+/// Two pairs (ETH and BTC) produce independent candles.
+#[tokio::test(flavor = "multi_thread")]
+async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
+
+    let eth_pair = pair_id(); // perp/ethusd
+    let btc_pair: Denom = "perp/btcusd".parse().unwrap();
+
+    // Register oracle prices for both pairs.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: usdc::DECIMAL as u8,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+                eth_pair.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::new(2_000),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+                btc_pair.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::new(60_000),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Register the BTC pair via MaintainerMsg::Configure (ETH pair already
+    // exists from genesis; re-specifying it keeps it unchanged).
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: perps::Param {
+                    base_taker_fee_rate: Dimensionless::new_permille(1),
+                    base_maker_fee_rate: Dimensionless::ZERO,
+                    tiered_taker_fee_rate: Default::default(),
+                    tiered_maker_fee_rate: Default::default(),
+                    protocol_fee_rate: Dimensionless::ZERO,
+                    liquidation_fee_rate: Dimensionless::new_permille(10),
+                    vault_cooldown_period: Duration::from_days(1),
+                    max_unlocks: 10,
+                    max_open_orders: 100,
+                    funding_period: Duration::from_hours(1),
+                    vault_total_weight: Dimensionless::ZERO,
+                },
+                pair_params: btree_map! {
+                    eth_pair.clone() => PairParam {
+                        initial_margin_ratio: Dimensionless::new_permille(100),
+                        maintenance_margin_ratio: Dimensionless::new_permille(50),
+                        tick_size: UsdPrice::new_int(1),
+                        max_abs_oi: Quantity::new_int(1_000_000),
+                        ..PairParam::new_mock()
+                    },
+                    btc_pair.clone() => PairParam {
+                        initial_margin_ratio: Dimensionless::new_permille(100),
+                        maintenance_margin_ratio: Dimensionless::new_permille(50),
+                        tick_size: UsdPrice::new_int(1),
+                        max_abs_oi: Quantity::new_int(1_000_000),
+                        ..PairParam::new_mock()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Deposit margin for both users.
+    for account in [&mut accounts.user1, &mut accounts.user2] {
+        suite
+            .execute(
+                account,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                Coins::one(usdc::DENOM.clone(), grug::Uint128::new(100_000 * 1_000_000)).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Create fills on both pairs.
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &eth_pair, 2_000, 3);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &btc_pair, 60_000, 1);
+
+    suite.app.indexer.wait_for_finish().await?;
+
+    let ch = clickhouse_context.clickhouse_client();
+
+    // Query 1-minute candles for each pair independently.
+    let eth_candles = PerpsCandleQueryBuilder::new(CandleInterval::OneMinute, eth_pair.to_string())
+        .fetch_all(ch)
+        .await?
+        .candles;
+
+    let btc_candles = PerpsCandleQueryBuilder::new(CandleInterval::OneMinute, btc_pair.to_string())
+        .fetch_all(ch)
+        .await?
+        .candles;
+
+    assert_that!(eth_candles.len()).is_at_least(1);
+    assert_that!(btc_candles.len()).is_at_least(1);
+
+    let eth_candle = &eth_candles[0];
+    let btc_candle = &btc_candles[0];
+
+    // ETH candle: pair_id, price at 2000, volume = 3 * 2 = 6
+    assert_that!(eth_candle.pair_id.as_str()).is_equal_to(eth_pair.to_string().as_str());
+    assert_that!(eth_candle.close).is_equal_to(Udec128_6::new(2_000));
+    assert_that!(eth_candle.volume).is_equal_to(Udec128_6::new(6));
+    // volume_usd = 3 * 2000 * 2 = 12000
+    assert_that!(eth_candle.volume_usd).is_equal_to(Udec128_6::new(12_000));
+
+    // BTC candle: pair_id, price at 60000, volume = 1 * 2 = 2
+    assert_that!(btc_candle.pair_id.as_str()).is_equal_to(btc_pair.to_string().as_str());
+    assert_that!(btc_candle.close).is_equal_to(Udec128_6::new(60_000));
+    assert_that!(btc_candle.volume).is_equal_to(Udec128_6::new(2));
+    // volume_usd = 1 * 60000 * 2 = 120000
+    assert_that!(btc_candle.volume_usd).is_equal_to(Udec128_6::new(120_000));
 
     Ok(())
 }

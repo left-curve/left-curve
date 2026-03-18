@@ -1,17 +1,13 @@
 use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
-    dango_genesis::Contracts,
     dango_indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
-    dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
-    dango_types::{
-        Dimensionless, Quantity, UsdPrice,
-        constants::usdc,
-        oracle::{self, PriceSource},
-        perps,
+    dango_testing::{
+        TestOption,
+        perps::{create_perps_fill, pair_id, setup_perps_env},
+        setup_test_with_indexer,
     },
     graphql_client::GraphQLQuery,
-    grug::{Coins, Denom, NumberConst, ResultExt, Timestamp, Udec128, Uint128, btree_map},
     grug_app::Indexer,
     indexer_client::{PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles},
     indexer_testing::{
@@ -22,95 +18,6 @@ use {
 };
 
 // ---------------------------------------------------------------------------
-// Helpers (same as indexing tests)
-// ---------------------------------------------------------------------------
-
-fn pair_id() -> Denom {
-    "perp/ethusd".parse().unwrap()
-}
-
-fn setup_perps_env(
-    suite: &mut TestSuiteWithIndexer,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-) {
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                pair_id() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(2_000),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    for account in [&mut accounts.user1, &mut accounts.user2] {
-        let amount = Uint128::new(100_000 * 1_000_000);
-        suite
-            .execute(
-                account,
-                contracts.perps,
-                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
-                Coins::one(usdc::DENOM.clone(), amount).unwrap(),
-            )
-            .should_succeed();
-    }
-}
-
-fn create_perps_fill(
-    suite: &mut TestSuiteWithIndexer,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-    price: u128,
-    size: u128,
-) {
-    let pair = pair_id();
-
-    suite
-        .execute(
-            &mut accounts.user2,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: Quantity::new_int(-(size as i128)),
-                kind: perps::OrderKind::Limit {
-                    limit_price: UsdPrice::new_int(price as i128),
-                    post_only: true,
-                },
-                reduce_only: false,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    suite
-        .execute(
-            &mut accounts.user1,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: Quantity::new_int(size as i128),
-                kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
-                },
-                reduce_only: false,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-}
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -119,9 +26,9 @@ async fn query_perps_candles() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    setup_perps_env(&mut suite, &mut accounts, &contracts);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 5);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5);
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -168,10 +75,10 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    setup_perps_env(&mut suite, &mut accounts, &contracts);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 5);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, 2_000, 5);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5);
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -192,7 +99,14 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
     tokio::spawn(async move {
         while rx.recv().await.is_some() {
             let mut suite_guard = suite_clone.lock().await;
-            create_perps_fill(&mut suite_guard, &mut accounts, &contracts, 2_000, 1);
+            create_perps_fill(
+                &mut suite_guard,
+                &mut accounts,
+                &contracts,
+                &pair_id(),
+                2_000,
+                1,
+            );
         }
         Ok::<(), anyhow::Error>(())
     });

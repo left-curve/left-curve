@@ -75,9 +75,9 @@ impl Indexer {
         }
 
         // Process cron_outcomes (liquidations, book-matched orders)
-        for outcome in block_and_block_outcome.block_outcome.cron_outcomes.clone() {
+        for outcome in &block_and_block_outcome.block_outcome.cron_outcomes {
             let CommitmentStatus::Committed(EventStatus::Ok(EvtCron {
-                guest_event: EventStatus::Ok(event),
+                guest_event: EventStatus::Ok(ref event),
                 ..
             })) = outcome.cron_event
             else {
@@ -88,7 +88,10 @@ impl Indexer {
                 continue;
             }
 
-            for event in event.naive_flatten(FlatCommitmentStatus::Committed, FlatEventStatus::Ok) {
+            for event in event
+                .clone()
+                .naive_flatten(FlatCommitmentStatus::Committed, FlatEventStatus::Ok)
+            {
                 let FlatEventInfo {
                     event: FlatEvent::ContractEvent(ref contract_event),
                     commitment_status: FlatCommitmentStatus::Committed,
