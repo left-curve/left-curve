@@ -8,6 +8,6 @@ export const Route = createFileRoute("/(app)/_app/transfer")({
     meta: [{ title: `Dango | ${m["sendAndReceive.title"]()}` }],
   }),
   validateSearch: z.object({
-    action: z.enum(["send", "receive"]).catch("send"),
+    action: z.enum(["send", "spot-perp"]).catch("send"),
   }),
 });

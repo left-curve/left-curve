@@ -653,6 +653,13 @@
       "title": "Transfer Error",
       "description": "We couldn’t complete your transfer. Please try again later."
     },
+    "spotPerp": {
+      "from": "From",
+      "to": "To",
+      "youReceive": "You receive",
+      "depositSuccess": "Deposited to perp account",
+      "withdrawSuccess": "Withdrawn to spot account"
+    },
     "warning": {
       "deposit": "deposit",
       "withdraw": "withdraw",

@@ -46,6 +46,8 @@ export { indexerActions, type IndexerActions } from "./indexer/indexerActions.js
 export {
   type PerpsQueryActions,
   perpsQueryActions,
+  type PerpsMutationActions,
+  perpsMutationActions,
 } from "./perps/index.js";
 
 /* -------------------------------------------------------------------------- */
@@ -238,6 +240,12 @@ export {
   type GetPerpsUserStateParameters,
   type GetPerpsUserStateReturnType,
   getPerpsUserState,
+  type DepositMarginParameters,
+  type DepositMarginReturnType,
+  depositMargin,
+  type WithdrawMarginParameters,
+  type WithdrawMarginReturnType,
+  withdrawMargin,
 } from "./perps/index.js";
 
 /* -------------------------------------------------------------------------- */

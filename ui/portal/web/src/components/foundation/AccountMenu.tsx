@@ -313,7 +313,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           variant="secondary"
           size="md"
           fullWidth
-          onClick={() => [navigate({ to: "/transfer" }), setSidebarVisibility(false)]}
+          onClick={() => [navigate({ to: "/transfer", search: { action: "spot-perp" } }), setSidebarVisibility(false)]}
         >
           {m["accountMenu.spotPerp"]()}
         </Button>

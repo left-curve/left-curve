@@ -52,7 +52,7 @@ export function usePerpsUserState(parameters?: UsePerpsUserStateParameters) {
 
     const unsubscribe = subscriptions.subscribe("queryApp", {
       params: {
-        interval: 1,
+        interval: 5,
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
             contract: addresses.perps,
