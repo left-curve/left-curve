@@ -7,6 +7,7 @@ export type AppConfig = {
     lending: Address;
     oracle: Address;
     dex: Address;
+    perps: Address;
     warp: Address;
     taxman: Address;
     hyperlane: {

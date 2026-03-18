@@ -39,6 +39,7 @@ const DANGO_CONTRACT_NAMES: Record<AllLeafKeys<AppConfig["addresses"]>, string> 
   taxman: "Taxman",
   va: "VA",
   warp: "Warp",
+  perps: "Perps",
 };
 
 export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({

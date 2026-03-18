@@ -43,6 +43,11 @@ export {
 
 export { indexerActions, type IndexerActions } from "./indexer/indexerActions.js";
 
+export {
+  type PerpsQueryActions,
+  perpsQueryActions,
+} from "./perps/index.js";
+
 /* -------------------------------------------------------------------------- */
 /*                                 App Actions                                */
 /* -------------------------------------------------------------------------- */
@@ -224,6 +229,16 @@ export {
   type SwapExactAmountInReturnType,
   swapExactAmountIn,
 } from "./dex/mutations/swapExactAmountIn.js";
+
+/* -------------------------------------------------------------------------- */
+/*                                Perps Actions                               */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type GetPerpsUserStateParameters,
+  type GetPerpsUserStateReturnType,
+  getPerpsUserState,
+} from "./perps/index.js";
 
 /* -------------------------------------------------------------------------- */
 /*                           Re-export Grug Actions                           */

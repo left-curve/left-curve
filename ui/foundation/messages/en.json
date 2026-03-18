@@ -59,8 +59,7 @@
     "accountMenu": {
       "assets": {
         "dex": "DEX",
-        "lendingMarket": "Lending Market",
-        "wallet": "Wallet"
+        "lendingMarket": "Lending Market"
       }
     },
     "signWithWallet": [
@@ -888,8 +887,12 @@
       "otherAccounts": "Other Accounts",
       "addAccount": "Add Account"
     },
+    "wallet": "Wallet",
     "noVaults": "You don't have any vaults yet",
-    "noWalletCoins": "You don't have any coins yet"
+    "noWalletCoins": "You don't have any coins yet",
+    "spotPerp": "Spot \u2194 Perp",
+    "perpAccount": "Perp Account",
+    "spotAccount": "Spot Account"
   },
   "dex": {
     "fee": "Fee",

@@ -100,6 +100,18 @@ export function useActivities() {
     [username],
   );
 
+  const unseenCount = useMemo(
+    () => userActivities.filter((a) => a.seen === false).length,
+    [userActivities],
+  );
+
+  const markAllSeen = useCallback(() => {
+    setAllActivities((activities) => {
+      const updated = (activities[username] || []).map((a) => ({ ...a, seen: true }));
+      return { ...activities, [username]: updated };
+    });
+  }, [username]);
+
   const hasActivities = totalActivities > 0;
 
   const startActivities = useCallback(() => {
@@ -212,5 +224,7 @@ export function useActivities() {
     userActivities,
     hasActivities,
     totalActivities,
+    unseenCount,
+    markAllSeen,
   };
 }
