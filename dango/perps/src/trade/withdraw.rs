@@ -4,15 +4,15 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         UsdValue,
-        perps::{Withdrew, settlement_currency},
+        perps::{SETTLEMENT_CURRENCY_PRICE, Withdrew, settlement_currency},
     },
     grug::{IsZero, Message, MutableCtx, Response, coins},
 };
 
 /// Withdraw margin from the trader's margin account.
 /// The requested USD amount is validated against the user's available margin,
-/// deducted from `user_state.margin`, converted to settlement currency at the
-/// current oracle price (floor-rounded), and transferred to the user.
+/// deducted from `user_state.margin`, converted to settlement currency at a
+/// fixed 1:1 rate (floor-rounded), and transferred to the user.
 ///
 /// Mutates: `USER_STATES` (margin decreased, possibly removed if empty).
 ///
@@ -42,11 +42,10 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
     // ----------------------- 2. Compute refund amount ------------------------
 
     // Convert USD to settlement currency base units (floor-rounded).
-    let settlement_currency_price =
-        oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
-
+    // Use a fixed 1:1 rate to guarantee solvency — total USDC held always
+    // equals total USD margin across all accounts.
     let refund = amount
-        .checked_div(settlement_currency_price)?
+        .checked_div(SETTLEMENT_CURRENCY_PRICE)?
         .into_base_floor(settlement_currency::DECIMAL)?;
 
     ensure!(

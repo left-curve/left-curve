@@ -44,7 +44,7 @@ const EarnPoolsCards: React.FC = () => {
 
   return (
     <div className="flex gap-4 scrollbar-none justify-start lg:justify-between p-4 overflow-x-auto overflow-y-visible">
-      {Object.values(appConfig?.pairs || {})
+      {Object.values(appConfig.pairs)
         .slice(0, 4)
         .map((pair, index) => (
           <StrategyCard

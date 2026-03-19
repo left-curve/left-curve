@@ -21,7 +21,6 @@ dango-indexer-clickhouse = { workspace = true, features = ["async-graphql", "met
 dango-indexer-sql        = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 dango-proposal-preparer  = { workspace = true }
 dango-types              = { workspace = true, features = ["async-graphql"] }
-digest                   = { workspace = true }
 grug                     = { workspace = true }
 grug-app                 = { workspace = true }
 grug-client              = { workspace = true }

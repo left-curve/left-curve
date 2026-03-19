@@ -50,6 +50,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       hideErrorMessage,
       onFocus,
       onBlur,
+      readOnly,
       ...props
     },
     ref,
@@ -60,6 +61,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       fullWidth,
       isDisabled,
       isInvalid,
+      isReadOnly: readOnly,
     });
 
     return (
@@ -98,14 +100,15 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 <input
                   type={type}
                   onFocus={(e) => {
-                    setIsFocus(true);
+                    if (!readOnly) setIsFocus(true);
                     onFocus?.(e);
                   }}
                   onBlur={(e) => {
-                    setIsFocus(false);
+                    if (!readOnly) setIsFocus(false);
                     onBlur?.(e);
                   }}
                   disabled={isDisabled}
+                  readOnly={readOnly}
                   className={input({ startText, className: classNames?.input })}
                   ref={ref}
                   name={name}
@@ -173,6 +176,12 @@ const inputVariants = tv(
           inputWrapper:
             "pointer-events-none bg-surface-disabled-gray placeholder:text-fg-disabled text-fg-disabled active:border-transparent",
           label: "pointer-events-none",
+        },
+      },
+      isReadOnly: {
+        true: {
+          inputWrapper: "hover:bg-surface-secondary-rice active:border-transparent cursor-default",
+          input: "cursor-default",
         },
       },
       isInvalid: {

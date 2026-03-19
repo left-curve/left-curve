@@ -2,7 +2,8 @@
 
 This document is a generic, evergreen guide for new agents working in this repository. Feature-specific deep dives are documented as playbooks and linked at the end.
 
-# TypeScript Guidelines
+## TypeScript Guidelines
+
 See `TYPESCRIPT_GUIDELINES.md`.
 
 ## Repository Overview
@@ -82,6 +83,7 @@ documentation, and avoids stringly-typed field access. Reserve
 type system is your best tool for correctness; use it everywhere:
 
 Benefits of type-based matching:
+
 - **Exhaustiveness checking**: compiler warns if you miss a variant
 - **Refactoring safety**: renaming a variant updates all match arms
 - **No typos**: `Database::Rdis` won't compile, `"rdis"` will
@@ -192,13 +194,14 @@ pub async fn process_request(&self, req: Request) -> Result<Response> {
 
     Ok(response)
 }
-
-Telemetry (OTLP + Sentry, graceful shutdown): `docs/telemetry.md`
 ```
+
+Telemetry (OTLP + Sentry, graceful shutdown): see [`telemetry.md`](./telemetry.md).
 
 ## Git Workflow
 
 Follow conventional commit format:
+
 - **Type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 - **Scope**: Optional, indicates the area affected
 - **Description**: Clear, imperative mood description (e.g., "add feature" not "added feature")
@@ -208,7 +211,8 @@ Follow conventional commit format:
 - Use `users.noreply.github.com` as the domain for co-author emails
 
 Example:
-```
+
+```text
 feat(websocket): add reconnection logic
 
 Implement exponential backoff retry mechanism for WebSocket connections
@@ -217,9 +221,13 @@ to handle network interruptions gracefully.
 Fixes #123
 ```
 
-**No Co-Authored-By trailers.** Never add `Co-Authored-By` lines (e.g.
-`Co-Authored-By: Claude ...`) to commit messages or documentation. Commits
-should only contain the message itself — no AI attribution trailers.
+**Include Co-Authored-By trailers.** When an AI agent contributes to a commit,
+include a `Co-Authored-By` trailer to give proper credit. Use your actual
+model/agent name and email:
+
+```text
+Co-Authored-By: <agent name> <your@email.com>
+```
 
 **Never overwrite existing tags.** When a release build fails or needs fixes,
 always create a new version tag (e.g. `v0.1.7` instead of re-tagging `v0.1.6`).
@@ -245,6 +253,7 @@ integrate them together so nothing is lost.
 
 **PR description quality:** Every pull request must include a clear, reviewer-friendly
 description with at least these sections:
+
 - `## Summary` (what changed and why)
 - `## Validation` using checkboxes (not plain bullets), split into:
   - `### Completed` — checked items for commands that passed

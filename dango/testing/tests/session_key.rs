@@ -88,7 +88,7 @@ mod session_account {
             };
 
             let sign_data = session_info.to_sign_data()?;
-            let credential = self.account.create_standard_credential(sign_data);
+            let credential = self.account.create_standard_credential(sign_data.into());
 
             let session_buffer = SessionInfoBuffer {
                 session_info,
@@ -153,7 +153,7 @@ mod session_account {
                 data: data.clone(),
             };
 
-            let sign_data = sign_doc.to_sign_data()?;
+            let sign_data = sign_doc.to_sign_data()?.into();
             let session_signature = create_signature(&self.session_sk, sign_data);
 
             let standard_credential = StandardCredential {

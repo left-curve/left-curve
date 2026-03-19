@@ -16,7 +16,6 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 | [`types`](./grug/types)       | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
 | [`utils`](./grug/utils)       | Its a collection of utility functions that are used across the project. These utilities are designed to simplify common tasks and improve code reusability. |
 
-
 ## Supported JS environments
 
 Packages in the workspace are compiled to JavaScript ES2022, targeting the latest ECMAScript standard, and support both ESM and CJS module formats.

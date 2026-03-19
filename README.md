@@ -134,15 +134,15 @@ pnpm storybook
 ## Agent Guide
 
 - Contributor handoff: see `AGENTS.md` for a generic, evergreen guide.
-- Telemetry playbook (OTLP + Sentry): see `docs/telemetry.md`.
+- Telemetry playbook (OTLP + Sentry): see `telemetry.md`.
 
 ## Book
 
 Install dependencies:
 
 ```shell
-cargo install mdbook
-cargo install mdbook-katex
+cargo install mdbook@0.5.2
+cargo install mdbook-katex@0.10.0-alpha
 ```
 
 Generate book:

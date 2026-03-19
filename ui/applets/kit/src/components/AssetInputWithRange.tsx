@@ -35,6 +35,7 @@ type AssetInputWithRangeProps = {
     isDisabled?: boolean;
   }) => React.ReactNode;
   bottomComponent?: React.ReactNode;
+  hidePrice?: boolean;
 };
 
 export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) => {
@@ -61,6 +62,7 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
     triggerSimulation,
     renderSelector,
     extendValidation,
+    hidePrice,
   } = props;
 
   const { register, setValue } = controllers;
@@ -137,16 +139,18 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
                 {formatNumber(balance, formatNumberOptions)} {asset.symbol}
               </p>
             </div>
-            <div>
-              {isLoading ? (
-                <Skeleton className="w-14 h-4" />
-              ) : (
-                getPrice(value, asset.denom, {
-                  format: true,
-                  formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
-                })
-              )}
-            </div>
+            {!hidePrice && (
+              <div>
+                {isLoading ? (
+                  <Skeleton className="w-14 h-4" />
+                ) : (
+                  getPrice(value, asset.denom, {
+                    format: true,
+                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
+                  })
+                )}
+              </div>
+            )}
           </div>
           {showRange && (
             <RangeWithButtons

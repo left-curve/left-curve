@@ -9,7 +9,6 @@ use {
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
         signer::SequencedSigner,
     },
-    digest::{consts::U32, generic_array::GenericArray},
     grug::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, NonEmpty, QuerierExt, QuerierWrapper, QueryClient, QueryClientExt,
@@ -240,16 +239,13 @@ where
         StdError: From<D::Error>,
     {
         let bytes = data.to_sign_data()?;
-        let standard_credential = self.create_standard_credential(bytes);
+        let standard_credential = self.create_standard_credential(bytes.into());
 
         Ok(standard_credential.signature)
     }
 
     /// Note: This function expects the _hashed_ sign data.
-    pub fn create_standard_credential(
-        &self,
-        sign_data: GenericArray<u8, U32>,
-    ) -> StandardCredential {
+    pub fn create_standard_credential(&self, sign_data: [u8; 32]) -> StandardCredential {
         let sk = &self.keys.get(&self.sign_with).unwrap().0;
         let signature = create_signature(sk, sign_data);
 
@@ -296,7 +292,7 @@ where
         };
 
         let sign_data = sign_doc.to_sign_data()?;
-        let standard_credential = self.create_standard_credential(sign_data);
+        let standard_credential = self.create_standard_credential(sign_data.into());
 
         Ok((data, Credential::Standard(standard_credential)))
     }

@@ -309,7 +309,10 @@ mod int_tests {
             Exponentiate, Int, MathError, Number, NumberConst, dts, int_test,
             test_utils::{bt, int},
         },
-        bnum::types::{I256, U256},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, U256},
+        },
     };
 
     int_test!( checked_add
@@ -328,7 +331,7 @@ mod int_tests {
                 passing: [
                     (U256::ZERO, U256::ZERO, U256::ZERO),
                     (U256::ZERO, U256::MAX, U256::MAX),
-                    (U256::from(10_u32), U256::from(20_u32), U256::from(30_u32))
+                    (U256::cast_from(10_u32), U256::cast_from(20_u32), U256::cast_from(30_u32))
                 ],
                 failing: [
                     (U256::MAX, U256::ONE),
@@ -354,10 +357,10 @@ mod int_tests {
                     (I256::ZERO, I256::ZERO, I256::ZERO),
                     (I256::ZERO, I256::MAX, I256::MAX),
                     (I256::ZERO, I256::MIN, I256::MIN),
-                    (I256::from(10), I256::from(20), I256::from(30)),
-                    (I256::from(-10), I256::from(20), I256::from(10)),
-                    (I256::from(10), I256::from(-20), I256::from(-10)),
-                    (I256::from(-10), I256::from(-20), I256::from(-30)),
+                    (I256::cast_from(10_i128), I256::cast_from(20_i128), I256::cast_from(30_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(20_i128), I256::cast_from(10_i128)),
+                    (I256::cast_from(10_i128), I256::cast_from(-20_i128), I256::cast_from(-10_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(-20_i128), I256::cast_from(-30_i128)),
                 ]
                 failing: [
                     (I256::MAX, I256::ONE),
@@ -395,9 +398,9 @@ mod int_tests {
     int_test!( add_assign
         attrs = #[allow(clippy::op_ref)]
         method = |_0| {
-            let mut a = bt(_0, Int::new(14_u64.into()));
-            a += bt(_0, Int::new(2_u64.into()));
-            assert_eq!(a, bt(_0, Int::new(16_u64.into())));
+            let mut a = bt(_0, int("14"));
+            a += bt(_0, int("2"));
+            assert_eq!(a, bt(_0, int("16")));
         }
     );
 
@@ -417,10 +420,10 @@ mod int_tests {
                 passing: [
                     (U256::ZERO, U256::ZERO, U256::ZERO),
                     (U256::MAX, U256::MAX, U256::ZERO),
-                    (U256::from(30_u32), U256::from(10_u32), U256::from(20_u32)),
+                    (U256::cast_from(30_u32), U256::cast_from(10_u32), U256::cast_from(20_u32)),
                 ],
                 failing: [
-                    (U256::ONE, U256::from(2_u32)),
+                    (U256::ONE, U256::cast_from(2_u32)),
                 ]
             }
             i128 = {
@@ -445,10 +448,10 @@ mod int_tests {
                     (I256::MAX, I256::MAX, I256::ZERO),
                     (I256::MIN, I256::MIN, I256::ZERO),
                     (I256::ZERO, I256::MIN + I256::ONE, I256::MAX),
-                    (I256::from(30), I256::from(20), I256::from(10)),
-                    (I256::from(-10), I256::from(20), I256::from(-30)),
-                    (I256::from(10), I256::from(-20), I256::from(30)),
-                    (I256::from(-10), I256::from(-20), I256::from(10)),
+                    (I256::cast_from(30_i128), I256::cast_from(20_i128), I256::cast_from(10_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(20_i128), I256::cast_from(-30_i128)),
+                    (I256::cast_from(10_i128), I256::cast_from(-20_i128), I256::cast_from(30_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(-20_i128), I256::cast_from(10_i128)),
                 ],
                 failing: [
                     (I256::MIN, I256::ONE),
@@ -486,9 +489,9 @@ mod int_tests {
     int_test!( sub_assign
         attrs = #[allow(clippy::op_ref)]
         method = |_0| {
-            let mut a = bt(_0, Int::new(14_u64.into()));
-            a -= bt(_0, Int::new(2_u64.into()));
-            assert_eq!(a, bt(_0, Int::new(12_u64.into())));
+            let mut a = bt(_0, int("14"));
+            a -= bt(_0, int("2"));
+            assert_eq!(a, bt(_0, int("12")));
         }
     );
 
@@ -508,10 +511,10 @@ mod int_tests {
                 passing: [
                     (U256::ZERO, U256::ZERO, U256::ZERO),
                     (U256::MAX, U256::ZERO, U256::ZERO),
-                    (U256::from(30_u32), U256::from(10_u32), U256::from(300_u32)),
+                    (U256::cast_from(30_u32), U256::cast_from(10_u32), U256::cast_from(300_u32)),
                 ],
                 failing: [
-                    (U256::MAX, U256::from(2_u32)),
+                    (U256::MAX, U256::cast_from(2_u32)),
                 ]
             }
             i128 = {
@@ -540,16 +543,16 @@ mod int_tests {
                     (I256::MIN, I256::ONE, I256::MIN),
                     (I256::MIN + I256::ONE, -I256::ONE, I256::MAX),
                     (I256::MAX, -I256::ONE, I256::MIN + I256::ONE),
-                    (I256::from(30), I256::from(20), I256::from(600)),
-                    (I256::from(-10), I256::from(20), I256::from(-200)),
-                    (I256::from(10), I256::from(-20), I256::from(-200)),
-                    (I256::from(-10), I256::from(-20), I256::from(200)),
+                    (I256::cast_from(30_i128), I256::cast_from(20_i128), I256::cast_from(600_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(20_i128), I256::cast_from(-200_i128)),
+                    (I256::cast_from(10_i128), I256::cast_from(-20_i128), I256::cast_from(-200_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(-20_i128), I256::cast_from(200_i128)),
                 ],
                 failing: [
-                    (I256::MIN, I256::from(2)),
-                    (I256::MIN, I256::from(-2)),
-                    (I256::MAX, I256::from(2)),
-                    (I256::MAX, I256::from(-2)),
+                    (I256::MIN, I256::cast_from(2_i128)),
+                    (I256::MIN, I256::cast_from(-2_i128)),
+                    (I256::MAX, I256::cast_from(2_i128)),
+                    (I256::MAX, I256::cast_from(-2_i128)),
                 ]
             }
         }
@@ -575,17 +578,17 @@ mod int_tests {
         attrs = #[should_panic(expected = "multiplication overflow")]
         method = |_0| {
             let max = bt(_0, Int::MAX);
-            let one = bt(_0, Int::new(2_u64.into()));
-            let _ = max * one;
+            let two = bt(_0, int("2"));
+            let _ = max * two;
         }
     );
 
     int_test!( mul_assign
         attrs = #[allow(clippy::op_ref)]
         method = |_0| {
-            let mut a = bt(_0, Int::new(14_u64.into()));
-            a *= bt(_0, Int::new(2_u64.into()));
-            assert_eq!(a, bt(_0, Int::new(28_u64.into())));
+            let mut a = bt(_0, int("14"));
+            a *= bt(_0, int("2"));
+            assert_eq!(a, bt(_0, int("28")));
         }
     );
 
@@ -603,8 +606,8 @@ mod int_tests {
                 passing: [
                     (U256::MAX, U256::ONE, U256::MAX),
                     (U256::ZERO, U256::ONE, U256::ZERO),
-                    (U256::from(300_u32), U256::from(20_u32), U256::from(15_u32)),
-                    (U256::from(30_u32), U256::from(20_u32), U256::from(1_u32)),
+                    (U256::cast_from(300_u32), U256::cast_from(20_u32), U256::cast_from(15_u32)),
+                    (U256::cast_from(30_u32), U256::cast_from(20_u32), U256::cast_from(1_u32)),
                 ]
             }
             i128 = {
@@ -627,12 +630,12 @@ mod int_tests {
                     (I256::MIN, I256::ONE, I256::MIN),
                     (I256::MIN + I256::ONE, -I256::ONE, I256::MAX),
                     (I256::MAX, -I256::ONE, I256::MIN + I256::ONE),
-                    (I256::from(300), I256::from(20), I256::from(15)),
-                    (I256::from(30), I256::from(20), I256::from(1)),
-                    (I256::from(-300), I256::from(20), I256::from(-15)),
-                    (I256::from(-30), I256::from(20), I256::from(-1)),
-                    (I256::from(-300), I256::from(-20), I256::from(15)),
-                    (I256::from(300), I256::from(-20), I256::from(-15)),
+                    (I256::cast_from(300_i128), I256::cast_from(20_i128), I256::cast_from(15_i128)),
+                    (I256::cast_from(30_i128), I256::cast_from(20_i128), I256::cast_from(1_i128)),
+                    (I256::cast_from(-300_i128), I256::cast_from(20_i128), I256::cast_from(-15_i128)),
+                    (I256::cast_from(-30_i128), I256::cast_from(20_i128), I256::cast_from(-1_i128)),
+                    (I256::cast_from(-300_i128), I256::cast_from(-20_i128), I256::cast_from(15_i128)),
+                    (I256::cast_from(300_i128), I256::cast_from(-20_i128), I256::cast_from(-15_i128)),
                 ]
             }
         }
@@ -664,9 +667,9 @@ mod int_tests {
     int_test!( div_assign
         attrs = #[allow(clippy::op_ref)]
         method = |_0| {
-            let mut a = bt(_0, Int::new(14_u64.into()));
-            a /= bt(_0, Int::new(2_u64.into()));
-            assert_eq!(a, bt(_0, Int::new(7_u64.into())));
+            let mut a = bt(_0, int("14"));
+            a /= bt(_0, int("2"));
+            assert_eq!(a, bt(_0, int("7")));
         }
     );
 
@@ -682,10 +685,10 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(10_u32), U256::from(4_u32), U256::from(2_u32)),
-                    (U256::from(10_u32), U256::from(3_u32), U256::from(1_u32)),
-                    (U256::from(10_u32), U256::ONE, U256::ZERO),
-                    (U256::from(10_u32), U256::from(2_u32), U256::ZERO),
+                    (U256::cast_from(10_u32), U256::cast_from(4_u32), U256::cast_from(2_u32)),
+                    (U256::cast_from(10_u32), U256::cast_from(3_u32), U256::cast_from(1_u32)),
+                    (U256::cast_from(10_u32), U256::ONE, U256::ZERO),
+                    (U256::cast_from(10_u32), U256::cast_from(2_u32), U256::ZERO),
                 ]
             }
             i128 = {
@@ -710,22 +713,22 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(10_i128), I256::from(4_i128), I256::from(2_i128)),
-                    (I256::from(10_i128), I256::from(3_i128), I256::from(1_i128)),
-                    (I256::from(10_i128), I256::ONE, I256::ZERO),
-                    (I256::from(10_i128), I256::from(2_i128), I256::ZERO),
-                    (I256::from(-10_i128), I256::from(4_i128), I256::from(-2_i128)),
-                    (I256::from(-10_i128), I256::from(3_i128), I256::from(-1_i128)),
-                    (I256::from(-10_i128), I256::ONE, I256::ZERO),
-                    (I256::from(-10_i128), I256::from(2_i128), I256::ZERO),
-                    (I256::from(10_i128), I256::from(-4_i128), I256::from(2_i128)),
-                    (I256::from(10_i128), I256::from(-3_i128), I256::from(1_i128)),
-                    (I256::from(10_i128), I256::from(-1_i128), I256::ZERO),
-                    (I256::from(10_i128), I256::from(-2_i128), I256::ZERO),
-                    (I256::from(-10_i128), I256::from(-4_i128), I256::from(-2_i128)),
-                    (I256::from(-10_i128), I256::from(-3_i128), I256::from(-1_i128)),
-                    (I256::from(-10_i128), I256::from(-1_i128), I256::ZERO),
-                    (I256::from(-10_i128), I256::from(-2_i128), I256::ZERO),
+                    (I256::cast_from(10_i128), I256::cast_from(4_i128), I256::cast_from(2_i128)),
+                    (I256::cast_from(10_i128), I256::cast_from(3_i128), I256::cast_from(1_i128)),
+                    (I256::cast_from(10_i128), I256::ONE, I256::ZERO),
+                    (I256::cast_from(10_i128), I256::cast_from(2_i128), I256::ZERO),
+                    (I256::cast_from(-10_i128), I256::cast_from(4_i128), I256::cast_from(-2_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(3_i128), I256::cast_from(-1_i128)),
+                    (I256::cast_from(-10_i128), I256::ONE, I256::ZERO),
+                    (I256::cast_from(-10_i128), I256::cast_from(2_i128), I256::ZERO),
+                    (I256::cast_from(10_i128), I256::cast_from(-4_i128), I256::cast_from(2_i128)),
+                    (I256::cast_from(10_i128), I256::cast_from(-3_i128), I256::cast_from(1_i128)),
+                    (I256::cast_from(10_i128), I256::cast_from(-1_i128), I256::ZERO),
+                    (I256::cast_from(10_i128), I256::cast_from(-2_i128), I256::ZERO),
+                    (I256::cast_from(-10_i128), I256::cast_from(-4_i128), I256::cast_from(-2_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(-3_i128), I256::cast_from(-1_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(-1_i128), I256::ZERO),
+                    (I256::cast_from(-10_i128), I256::cast_from(-2_i128), I256::ZERO),
                 ]
             }
         }
@@ -755,9 +758,9 @@ mod int_tests {
     int_test!( rem_assign
         attrs = #[allow(clippy::op_ref)]
         method = |_0| {
-            let mut a = bt(_0, Int::new(14_u64.into()));
-            a %= bt(_0, Int::new(3_u64.into()));
-            assert_eq!(a, bt(_0, Int::new(2_u64.into())));
+            let mut a = bt(_0, int("14"));
+            a %= bt(_0, int("3"));
+            assert_eq!(a, bt(_0, int("2")));
         }
     );
 

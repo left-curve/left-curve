@@ -1,6 +1,5 @@
 # Based on:
 # https://github.com/rust-lang/mdBook/wiki/Automated-Deployment%3A-GitHub-Actions
-# https://github.com/peaceiris/actions-gh-pages?tab=readme-ov-file#%EF%B8%8F-mdbook-rust
 
 name: Book
 
@@ -21,12 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: github-pages
     permissions:
-      contents: write # To push a branch
       pages: write    # To push to a GitHub Pages site
       id-token: write # To update the deployment status
     steps:
       - name: Checkout sources
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
 
@@ -36,14 +34,8 @@ jobs:
       # This builds mdbook from source, which is really slow.
       # We should consider using: https://github.com/peaceiris/actions-mdbook
       # but it doesn't support the katex preprocessor.
-      #
-      # 20251124: mdbook 0.5 is released, but mdbook-katex won't support it:
-      # https://github.com/lzanini/mdbook-katex/issues/130
-      # It's a shame, because 0.5 comes with a bunch of nice new features.
-      # For now, let's just pin mdbook to 0.4. At a later time we can migrate to
-      # another LaTeX renderer e.g. MathJax.
       - name: Install mdbook and preprocessors
-        run: cargo install mdbook@0.4.48 mdbook-katex@0.9.4
+        run: cargo install mdbook@0.5.2 mdbook-katex@0.10.0-alpha
 
       - name: Build book
         run: mdbook build
@@ -51,8 +43,10 @@ jobs:
       - name: Create CNAME file
         run: echo "docs.dango.exchange" > ./target/book/CNAME
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/book/
+          path: ./target/book/
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

@@ -4,7 +4,10 @@ import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 
 import type { Prettify } from "@left-curve/dango/types";
 import type { QueryOptions } from "@tanstack/query-core";
-import type { GetAppConfigErrorType, GetAppConfigReturnType } from "../actions/getAppConfig.js";
+import type {
+  GetAppConfigData as GetAppConfigActionData,
+  GetAppConfigErrorType,
+} from "../actions/getAppConfig.js";
 import type { Config } from "../types/store.js";
 
 export type GetAppConfigOptions = Prettify<ScopeKeyParameter>;
@@ -29,7 +32,7 @@ export function getAppConfigQueryOptions<config extends Config>(
   >;
 }
 
-export type GetAppConfigQueryFnData = Awaited<GetAppConfigReturnType>;
+export type GetAppConfigQueryFnData = GetAppConfigActionData;
 
 export type GetAppConfigData = GetAppConfigQueryFnData;
 

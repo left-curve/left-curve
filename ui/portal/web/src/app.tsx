@@ -1,5 +1,5 @@
 import { DangoStoreProvider } from "@left-curve/store";
-import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
 import { AppRouter, router } from "./app.router";
@@ -7,6 +7,7 @@ import { AppProvider } from "@left-curve/foundation";
 import { Toaster, toast } from "@left-curve/applets-kit";
 import { RootModal } from "./components/modals/RootModal";
 import { StatusBadge } from "./components/foundation/StatusBadge";
+import { queryClient } from "./queryClient";
 
 import type React from "react";
 
@@ -21,31 +22,6 @@ import "@left-curve/foundation/fonts/ABCDiatypeRounded/mono/500.css";
 
 import "@left-curve/foundation/fonts/Exposure/italic/400.css";
 import "@left-curve/foundation/fonts/Exposure/italic/700.css";
-
-const channel = new BroadcastChannel("dango.queries");
-
-channel.onmessage = ({ data: event }) => {
-  if (event.type === "invalidate") {
-    for (const key of event.keys) {
-      queryClient.invalidateQueries({ queryKey: key });
-    }
-  }
-};
-
-const queryClient = new QueryClient({
-  mutationCache: new MutationCache({
-    onSettled(_data, _error, _variables, _context, mutation) {
-      if (!mutation.meta?.invalidateKeys) return;
-      channel.postMessage({ type: "invalidate", keys: mutation.meta.invalidateKeys });
-    },
-  }),
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 0,
-    },
-  },
-});
 
 export const App: React.FC = () => {
   return (

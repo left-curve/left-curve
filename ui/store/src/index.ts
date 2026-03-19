@@ -216,6 +216,7 @@ export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";
 
+export { usePerpsUserState, perpsUserStateStore, perpsMarginAsset } from "./hooks/usePerpsUserState.js";
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
 export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";
@@ -324,6 +325,16 @@ export {
 /* -------------------------------------------------------------------------- */
 
 export { withPagination } from "./handlers/pagination.js";
+
+export {
+  type GetAppConfigData,
+  type GetAppConfigQueryFnData,
+  type GetAppConfigQueryKey,
+  type GetAppConfigOptions,
+  type GetAppConfigErrorType,
+  getAppConfigQueryOptions,
+  getAppConfigQueryKey,
+} from "./handlers/getAppConfig.js";
 
 export {
   type ConnectData,
