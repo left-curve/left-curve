@@ -191,7 +191,7 @@ pub fn submit_order(
 ///   `BTreeMap<Addr, UserState>`.
 /// - Order mutations to apply: `Vec<(OrderKey, Option<Order>)>`.
 /// - GTC order to store: `Option<(stored_price, order_id, Order)>`.
-fn _submit_order(
+pub(crate) fn _submit_order(
     storage: &dyn Storage,
     taker: Addr,
     contract: Addr,

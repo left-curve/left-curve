@@ -13,7 +13,10 @@ use {
         },
         price::may_invert_price,
         state::{LONGS, SHORTS},
-        trade::{_cancel_all_orders, match_order, settle_fill, settle_pnls},
+        trade::{
+            _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
+            settle_pnls,
+        },
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -21,7 +24,7 @@ use {
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
             BadDebtCovered, Deleveraged, Liquidated, Order, OrderId, PairId, PairParam, PairState,
-            Param, ReasonForOrderRemoval, State, UserState,
+            Param, ReasonForConditionalRemoval, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
@@ -62,6 +65,14 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         &mut user_state,
         Some(&mut events),
         ReasonForOrderRemoval::Liquidated,
+    )?;
+
+    _cancel_all_conditional_orders(
+        ctx.storage,
+        user,
+        &mut user_state,
+        &mut events,
+        ReasonForConditionalRemoval::Liquidated,
     )?;
 
     // ------------------- 3. Load pair params and states ---------------------

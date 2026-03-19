@@ -82,6 +82,14 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
+    cron::process_conditional_orders(
+        ctx.storage,
+        ctx.contract,
+        ctx.block.timestamp,
+        &mut oracle_querier,
+        &mut events,
+    )?;
+
     Ok(Response::new().add_events(events)?)
 }
 
@@ -107,6 +115,21 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 trade::cancel_one_order(ctx, order_id)
             },
             TraderMsg::CancelOrder(CancelOrderRequest::All) => trade::cancel_all_orders(ctx),
+            TraderMsg::SubmitConditionalOrder {
+                pair_id,
+                size,
+                trigger_price,
+                trigger_direction,
+                max_slippage,
+            } => trade::submit_conditional_order(
+                ctx,
+                pair_id,
+                size,
+                trigger_price,
+                trigger_direction,
+                max_slippage,
+            ),
+            TraderMsg::CancelConditionalOrder(req) => trade::cancel_conditional_order(ctx, req),
         },
         ExecuteMsg::Vault(msg) => match msg {
             VaultMsg::AddLiquidity {
@@ -151,6 +174,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         } => query::query_liquidity_depth(ctx, pair_id, bucket_size, limit)?.to_json_value(),
         QueryMsg::Volume { user, since } => {
             query::query_volume(ctx.storage, user, since)?.to_json_value()
+        },
+        QueryMsg::ConditionalOrdersByUser { user } => {
+            query::query_conditional_orders_by_user(ctx, user)?.to_json_value()
+        },
+        QueryMsg::ConditionalOrder { order_id } => {
+            query::query_conditional_order(ctx, order_id)?.to_json_value()
         },
     }
     .map_err(Into::into)
