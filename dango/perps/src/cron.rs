@@ -190,13 +190,7 @@ pub fn process_conditional_orders(
     let mut state = STATE.load(storage)?;
     let pair_ids = PAIR_IDS.load(storage)?;
 
-    let mut triggers_processed = 0u32;
-    const MAX_TRIGGERS_PER_CRON: u32 = 20;
-
     for pair_id in pair_ids {
-        if triggers_processed >= MAX_TRIGGERS_PER_CRON {
-            break;
-        }
         process_conditional_orders_for_pair(
             storage,
             contract,
@@ -205,8 +199,6 @@ pub fn process_conditional_orders(
             &param,
             &mut state,
             &pair_id,
-            &mut triggers_processed,
-            MAX_TRIGGERS_PER_CRON,
             events,
         )?;
     }
@@ -224,8 +216,6 @@ fn process_conditional_orders_for_pair(
     param: &Param,
     state: &mut State,
     pair_id: &PairId,
-    triggers_processed: &mut u32,
-    max_triggers: u32,
     events: &mut EventBuilder,
 ) -> anyhow::Result<()> {
     let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
@@ -245,9 +235,6 @@ fn process_conditional_orders_for_pair(
         .collect::<StdResult<Vec<_>>>()?;
 
     for ((trigger_price, order_id), order) in above_triggered {
-        if *triggers_processed >= max_triggers {
-            break;
-        }
         let key = (pair_id.clone(), trigger_price, order_id);
         CONDITIONAL_ABOVE.remove(storage, key)?;
         process_triggered_order(
@@ -265,7 +252,6 @@ fn process_conditional_orders_for_pair(
             oracle_price,
             events,
         )?;
-        *triggers_processed += 1;
     }
 
     // BELOW orders: trigger when oracle_price <= trigger_price.
@@ -281,9 +267,6 @@ fn process_conditional_orders_for_pair(
         .collect::<StdResult<Vec<_>>>()?;
 
     for ((trigger_price, order_id), order) in below_triggered {
-        if *triggers_processed >= max_triggers {
-            break;
-        }
         let key = (pair_id.clone(), trigger_price, order_id);
         CONDITIONAL_BELOW.remove(storage, key)?;
         process_triggered_order(
@@ -301,7 +284,6 @@ fn process_conditional_orders_for_pair(
             oracle_price,
             events,
         )?;
-        *triggers_processed += 1;
     }
 
     PAIR_STATES.save(storage, pair_id, &pair_state)?;
