@@ -197,87 +197,114 @@ pub fn process_conditional_orders(
         if triggers_processed >= MAX_TRIGGERS_PER_CRON {
             break;
         }
-
-        let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
-        let pair_param = PAIR_PARAMS.load(storage, &pair_id)?;
-        let mut pair_state = PAIR_STATES.load(storage, &pair_id)?;
-
-        // ABOVE orders: trigger when oracle_price >= trigger_price.
-        // Range: all keys with trigger_price <= oracle_price.
-        let above_triggered: Vec<_> = CONDITIONAL_ABOVE
-            .prefix(pair_id.clone())
-            .range(
-                storage,
-                None,
-                Some(Bound::Inclusive((oracle_price, OrderId::MAX))),
-                IterationOrder::Ascending,
-            )
-            .collect::<StdResult<Vec<_>>>()?;
-
-        for ((trigger_price, order_id), order) in above_triggered {
-            if triggers_processed >= MAX_TRIGGERS_PER_CRON {
-                break;
-            }
-            let key = (pair_id.clone(), trigger_price, order_id);
-            CONDITIONAL_ABOVE.remove(storage, key)?;
-            process_triggered_order(
-                storage,
-                contract,
-                current_time,
-                oracle_querier,
-                &param,
-                &mut state,
-                &pair_id,
-                &pair_param,
-                &mut pair_state,
-                order_id,
-                order,
-                oracle_price,
-                events,
-            )?;
-            triggers_processed += 1;
-        }
-
-        // BELOW orders: trigger when oracle_price <= trigger_price.
-        // Range: all keys with trigger_price >= oracle_price.
-        let below_triggered: Vec<_> = CONDITIONAL_BELOW
-            .prefix(pair_id.clone())
-            .range(
-                storage,
-                Some(Bound::Inclusive((oracle_price, OrderId::ZERO))),
-                None,
-                IterationOrder::Ascending,
-            )
-            .collect::<StdResult<Vec<_>>>()?;
-
-        for ((trigger_price, order_id), order) in below_triggered {
-            if triggers_processed >= MAX_TRIGGERS_PER_CRON {
-                break;
-            }
-            let key = (pair_id.clone(), trigger_price, order_id);
-            CONDITIONAL_BELOW.remove(storage, key)?;
-            process_triggered_order(
-                storage,
-                contract,
-                current_time,
-                oracle_querier,
-                &param,
-                &mut state,
-                &pair_id,
-                &pair_param,
-                &mut pair_state,
-                order_id,
-                order,
-                oracle_price,
-                events,
-            )?;
-            triggers_processed += 1;
-        }
-
-        PAIR_STATES.save(storage, &pair_id, &pair_state)?;
+        process_conditional_orders_for_pair(
+            storage,
+            contract,
+            current_time,
+            oracle_querier,
+            &param,
+            &mut state,
+            &pair_id,
+            &mut triggers_processed,
+            MAX_TRIGGERS_PER_CRON,
+            events,
+        )?;
     }
 
     STATE.save(storage, &state)?;
+
+    Ok(())
+}
+
+fn process_conditional_orders_for_pair(
+    storage: &mut dyn Storage,
+    contract: Addr,
+    current_time: Timestamp,
+    oracle_querier: &mut OracleQuerier,
+    param: &Param,
+    state: &mut State,
+    pair_id: &PairId,
+    triggers_processed: &mut u32,
+    max_triggers: u32,
+    events: &mut EventBuilder,
+) -> anyhow::Result<()> {
+    let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+    let pair_param = PAIR_PARAMS.load(storage, pair_id)?;
+    let mut pair_state = PAIR_STATES.load(storage, pair_id)?;
+
+    // ABOVE orders: trigger when oracle_price >= trigger_price.
+    // Range: all keys with trigger_price <= oracle_price.
+    let above_triggered: Vec<_> = CONDITIONAL_ABOVE
+        .prefix(pair_id.clone())
+        .range(
+            storage,
+            None,
+            Some(Bound::Inclusive((oracle_price, OrderId::MAX))),
+            IterationOrder::Ascending,
+        )
+        .collect::<StdResult<Vec<_>>>()?;
+
+    for ((trigger_price, order_id), order) in above_triggered {
+        if *triggers_processed >= max_triggers {
+            break;
+        }
+        let key = (pair_id.clone(), trigger_price, order_id);
+        CONDITIONAL_ABOVE.remove(storage, key)?;
+        process_triggered_order(
+            storage,
+            contract,
+            current_time,
+            oracle_querier,
+            param,
+            state,
+            pair_id,
+            &pair_param,
+            &mut pair_state,
+            order_id,
+            order,
+            oracle_price,
+            events,
+        )?;
+        *triggers_processed += 1;
+    }
+
+    // BELOW orders: trigger when oracle_price <= trigger_price.
+    // Range: all keys with trigger_price >= oracle_price.
+    let below_triggered: Vec<_> = CONDITIONAL_BELOW
+        .prefix(pair_id.clone())
+        .range(
+            storage,
+            Some(Bound::Inclusive((oracle_price, OrderId::ZERO))),
+            None,
+            IterationOrder::Ascending,
+        )
+        .collect::<StdResult<Vec<_>>>()?;
+
+    for ((trigger_price, order_id), order) in below_triggered {
+        if *triggers_processed >= max_triggers {
+            break;
+        }
+        let key = (pair_id.clone(), trigger_price, order_id);
+        CONDITIONAL_BELOW.remove(storage, key)?;
+        process_triggered_order(
+            storage,
+            contract,
+            current_time,
+            oracle_querier,
+            param,
+            state,
+            pair_id,
+            &pair_param,
+            &mut pair_state,
+            order_id,
+            order,
+            oracle_price,
+            events,
+        )?;
+        *triggers_processed += 1;
+    }
+
+    PAIR_STATES.save(storage, pair_id, &pair_state)?;
 
     Ok(())
 }
