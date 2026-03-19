@@ -21,37 +21,48 @@ pub fn submit_conditional_order(
     let param = PARAM.load(ctx.storage)?;
     let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
+    // -------------------------------- Checks ---------------------------------
+
     // 1. User must have an open position in this pair.
+    // 2. Size sign must oppose the position sign (reduce-only).
+    // 3. |size| must not exceed |position.size|.
+    // 4. Must not exceed max conditional orders.
+
     let position = user_state
         .positions
         .get(&pair_id)
         .ok_or_else(|| anyhow!("no position in pair {pair_id}"))?;
 
-    // 2. Size sign must oppose the position sign (reduce-only).
     ensure!(
         (size.is_negative() && position.size.is_positive())
             || (size.is_positive() && position.size.is_negative()),
         "size must oppose position direction"
     );
 
-    // 3. |size| must not exceed |position.size|.
-    let abs_size = size.checked_abs()?;
-    let abs_pos_size = position.size.checked_abs()?;
     ensure!(
-        abs_size <= abs_pos_size,
+        {
+            let abs_size = size.checked_abs()?;
+            let abs_pos_size = position.size.checked_abs()?;
+            abs_size <= abs_pos_size
+        },
         "conditional order size exceeds position size"
     );
 
-    // 4. Must not exceed max conditional orders.
     ensure!(
         user_state.conditional_order_count < param.max_conditional_orders,
         "maximum conditional orders reached"
     );
 
-    // Allocate ID from shared counter.
-    let order_id = NEXT_ORDER_ID.load(ctx.storage)?;
-    NEXT_ORDER_ID.save(ctx.storage, &(order_id + ConditionalOrderId::ONE))?;
+    // ----------------------------- State changes -----------------------------
 
+    // Assign order ID.
+    let order_id = NEXT_ORDER_ID.load(ctx.storage)?;
+
+    // Increment the user's conditional order count.
+    user_state.conditional_order_count += 1;
+
+    // Create the order.
+    let key = (pair_id.clone(), trigger_price, order_id);
     let order = ConditionalOrder {
         user: ctx.sender,
         size,
@@ -60,15 +71,14 @@ pub fn submit_conditional_order(
         max_slippage,
     };
 
-    // Store based on trigger direction.
-    let key = (pair_id.clone(), trigger_price, order_id);
+    NEXT_ORDER_ID.save(ctx.storage, &(order_id + ConditionalOrderId::ONE))?;
+
+    USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
+
     match trigger_direction {
         TriggerDirection::Above => CONDITIONAL_ABOVE.save(ctx.storage, key, &order)?,
         TriggerDirection::Below => CONDITIONAL_BELOW.save(ctx.storage, key, &order)?,
     }
-
-    user_state.conditional_order_count += 1;
-    USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
 
     Ok(Response::new().add_event(ConditionalOrderPlaced {
         order_id,
