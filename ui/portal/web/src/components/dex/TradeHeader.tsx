@@ -8,23 +8,25 @@ import {
   useApp,
   useMediaQuery,
 } from "@left-curve/applets-kit";
+import { useProTrade } from "./ProTrade";
 import { AnimatePresence, motion } from "framer-motion";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { useOrderBookState, usePairStats, type useProTradeState } from "@left-curve/store";
+import { useCurrentPrice, usePairStats, tradePairStore } from "@left-curve/store";
 import type React from "react";
-import type { PairId } from "@left-curve/dango/types";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import type { SearchTokenRow } from "./SearchToken";
 
-type TradeHeaderProps = {
-  state: ReturnType<typeof useProTradeState>;
-};
-
-export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
+export const TradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
-  const { pairId, onChangePairId } = state;
+
+  const mode = tradePairStore((s) => s.mode);
+  const pairId = tradePairStore((s) => s.pairId);
+
+  const { onChangePairId } = useProTrade();
+
   const pairStats = usePairStats({
     baseDenom: pairId.baseDenom,
     quoteDenom: pairId.quoteDenom,
@@ -34,13 +36,21 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
     setIsExpanded(isLg);
   }, [isLg]);
 
+  const handleChangePair = (row: SearchTokenRow) => {
+    onChangePairId(`${row.baseCoin.symbol}-${row.quoteCoin.symbol}`, row.mode);
+  };
+
   return (
     <div className="flex bg-surface-primary-rice lg:gap-8 px-4 py-3 flex-col lg:flex-row w-full lg:justify-between shadow-account-card z-20 lg:z-10">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-1">
-          <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
+          <SearchToken pairId={pairId} onChangePairId={handleChangePair} />
           <div className="lg:pl-8">
-            <Badge text="Spot" color="blue" size="s" />
+            {mode === "perps" ? (
+              <Badge text="Perp" color="green" size="s" />
+            ) : (
+              <Badge text="Spot" color="blue" size="s" />
+            )}
           </div>
         </div>
         <div className="flex gap-2 items-center">
@@ -54,7 +64,6 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
               })}
             />
           </div>
-          {/*   <IconEmptyStar className="w-5 h-5 text-ink-tertiary-500" /> */}
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -69,7 +78,7 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
             className="gap-2 lg:gap-5 grid grid-cols-3 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
             <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
-            <HeaderPrice pairId={pairId} />
+            <HeaderPrice />
             <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
               <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.24hChange"]()}
@@ -100,18 +109,11 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
   );
 };
 
-type HeaderPriceProps = {
-  pairId: PairId;
-};
-
-const HeaderPrice: React.FC<HeaderPriceProps> = ({ pairId }) => {
+const HeaderPrice: React.FC = () => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const { orderBookStore } = useOrderBookState({ pairId });
-
-  const previousPrice = orderBookStore((s) => s.previousPrice);
-  const currentPrice = orderBookStore((s) => s.currentPrice);
+  const { currentPrice, previousPrice } = useCurrentPrice();
 
   return (
     <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">

@@ -1,22 +1,15 @@
-import { useAppConfig, useConfig } from "@left-curve/store";
+import { useAppConfig, useConfig, tradePairStore, perpsMarginAsset } from "@left-curve/store";
 import { useRef, useState } from "react";
 
-import {
-  IconChevronDownFill,
-  IconSearch,
-  Input,
-  Popover,
-  Tabs,
-  twMerge,
-  useMediaQuery,
-} from "@left-curve/applets-kit";
+import { IconSearch, Input, Popover, Tabs, useMediaQuery } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 import { SearchTokenTable } from "./SearchTokenTable";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PopoverRef } from "@left-curve/applets-kit";
-import type { PairId } from "@left-curve/dango/types";
+import type { PairId, PairUpdate, PerpsPairParam } from "@left-curve/dango/types";
+import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 
 type SearchTokenHeaderProps = {
@@ -26,23 +19,114 @@ type SearchTokenHeaderProps = {
 
 const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId }) => {
   const { coins } = useConfig();
+  const mode = tradePairStore((s) => s.mode);
+
   const baseCoin = coins.byDenom[pairId.baseDenom];
-  const quoteCoin = coins.byDenom[pairId.quoteDenom];
+  const quoteCoin =
+    mode === "perps"
+      ? { symbol: perpsMarginAsset.symbol, logoURI: perpsMarginAsset.logoURI }
+      : coins.byDenom[pairId.quoteDenom];
 
   return (
     <div className="flex gap-2 items-center">
-      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="h-6 w-6 drag-none select-none" />
+      <img
+        src={baseCoin?.logoURI}
+        alt={baseCoin?.symbol}
+        className="h-6 w-6 drag-none select-none"
+      />
       <p className="diatype-lg-heavy text-ink-secondary-700 min-w-fit">
-        {`${baseCoin.symbol}-${quoteCoin.symbol}`}
+        {`${baseCoin?.symbol ?? "?"}-${quoteCoin?.symbol ?? "?"}`}
       </p>
     </div>
   );
 };
 
-const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId }) => {
+export type SearchTokenRow = {
+  baseCoin: AnyCoin;
+  quoteCoin: AnyCoin;
+  pairId: PairId;
+  pairKey: string;
+  mode: "spot" | "perps";
+  perpsPairId?: string;
+};
+
+function normalizeRows(
+  config: any,
+  coins: { byDenom: Record<string, AnyCoin>; bySymbol: Record<string, AnyCoin> },
+): SearchTokenRow[] {
+  const rows: SearchTokenRow[] = [];
+
+  const pairs: Record<string, PairUpdate> = config?.pairs ?? {};
+  for (const pair of Object.values(pairs)) {
+    if (pair.baseDenom.includes("dango")) continue;
+    const base = coins.byDenom[pair.baseDenom];
+    const quote = coins.byDenom[pair.quoteDenom];
+    if (!base || !quote) continue;
+    rows.push({
+      baseCoin: base,
+      quoteCoin: quote,
+      pairId: { baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom },
+      pairKey: `${base.symbol}-${quote.symbol}`,
+      mode: "spot",
+    });
+  }
+
+  const perpsPairs: Record<string, PerpsPairParam> = (config as any)?.perpsPairs ?? {};
+  for (const [perpsPairId, _param] of Object.entries(perpsPairs)) {
+    const symbol = perpsPairId.replace("perp/", "").toUpperCase();
+
+    const baseSym = symbol.replace(/USDC$|USD$/, "");
+    const base = coins.bySymbol[baseSym];
+    if (!base) continue;
+
+    const syntheticQuote: AnyCoin = {
+      symbol: perpsMarginAsset.symbol,
+      denom: "usd",
+      decimals: perpsMarginAsset.decimals,
+      name: perpsMarginAsset.name,
+      logoURI: perpsMarginAsset.logoURI,
+      type: "native",
+    };
+
+    rows.push({
+      baseCoin: base,
+      quoteCoin: syntheticQuote,
+      pairId: { baseDenom: base.denom, quoteDenom: "usd" },
+      pairKey: `${base.symbol}-USD`,
+      mode: "perps",
+      perpsPairId,
+    });
+  }
+
+  return rows;
+}
+
+const SearchTokenMenu: React.FC<{
+  pairId: PairId;
+  onChangePairId: (row: SearchTokenRow) => void;
+}> = ({ onChangePairId }) => {
   const [activeFilter, setActiveFilter] = useState<string>("All");
   const [searchText, setSearchText] = useState<string>("");
   const { data: config } = useAppConfig();
+  const { coins } = useConfig();
+
+  const allRows = normalizeRows(config, coins);
+
+  const filteredRows = allRows
+    .filter((row) => {
+      if (activeFilter === "Spot") return row.mode === "spot";
+      if (activeFilter === "Perps") return row.mode === "perps";
+      return true;
+    })
+    .filter((row) => {
+      if (!searchText) return true;
+      const upper = searchText.toUpperCase();
+      return (
+        row.baseCoin.symbol.toUpperCase().includes(upper) ||
+        row.quoteCoin.symbol.toUpperCase().includes(upper) ||
+        row.pairKey.toUpperCase().includes(upper)
+      );
+    });
 
   return (
     <div className="flex flex-col gap-2">
@@ -65,28 +149,22 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
           color="line-red"
           layoutId="search-token-tabs"
           selectedTab={activeFilter}
-          keys={["All", "Spot"]}
+          keys={["All", "Spot", "Perps"]}
           onTabChange={setActiveFilter}
           classNames={{ base: "z-10" }}
         />
 
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
-      <SearchTokenTable>
-        <SearchTokenTable.Spot
-          data={Object.values(config.pairs).filter((c) => !c.baseDenom.includes("dango"))}
-          searchText={searchText.toUpperCase()}
-          onChangePairId={onChangePairId}
-          pairId={pairId}
-        />
-      </SearchTokenTable>
+
+      <SearchTokenTable data={filteredRows} onChangePairId={onChangePairId} />
     </div>
   );
 };
 
 type SearchTokenProps = {
   pairId: PairId;
-  onChangePairId: (pairId: PairId) => void;
+  onChangePairId: (row: SearchTokenRow) => void;
 };
 
 export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId }) => {
@@ -104,9 +182,9 @@ export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId
         menu={
           <SearchTokenMenu
             pairId={pairId}
-            onChangePairId={(pairId) => {
+            onChangePairId={(row) => {
               popoverRef.current?.close();
-              onChangePairId(pairId);
+              onChangePairId(row);
             }}
           />
         }
@@ -129,9 +207,9 @@ export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId
             <div className="flex flex-col gap-4 p-4">
               <SearchTokenMenu
                 pairId={pairId}
-                onChangePairId={(pairId) => {
+                onChangePairId={(row) => {
                   setIsSearchTokenVisible(false);
-                  onChangePairId(pairId);
+                  onChangePairId(row);
                 }}
               />
             </div>

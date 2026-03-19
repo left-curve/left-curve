@@ -27,6 +27,9 @@ export const Modals = {
   BridgeDeposit: "bridge-deposit",
   AddressWarning: "address-warning",
   EditCommissionRate: "edit-commission-rate",
+  PerpsCloseOrder: "perps-close-order",
+  PerpsCloseAll: "perps-close-all",
+  PerpsClosePosition: "perps-close-position",
 };
 
 export type ModalRef = {

@@ -8,6 +8,7 @@ import type {
   Flatten,
   Hex,
   PairUpdate,
+  PerpsParam,
   PerpsPairParam,
 } from "@left-curve/dango/types";
 import type { Config } from "../types/store.js";
@@ -17,6 +18,7 @@ export type GetAppConfigData = {
   accountFactory: { codeHash: Hex };
   pairs: Record<Denom, PairUpdate>;
   perpsPairs: Record<string, PerpsPairParam>;
+  perpsParam: PerpsParam;
 } & Omit<AppConfig, "addresses">;
 
 export type GetAppConfigReturnType = Promise<GetAppConfigData>;
@@ -25,11 +27,12 @@ export type GetAppConfigErrorType = Error;
 
 export async function getAppConfig<config extends Config>(config: config): GetAppConfigReturnType {
   const client = getPublicClient(config);
-  const [appConfig, codeHash, pairs, perpsPairs] = await Promise.all([
+  const [appConfig, codeHash, pairs, perpsPairs, perpsParam] = await Promise.all([
     client.getAppConfig(),
     client.getCodeHash(),
     client.getPairs(),
     client.getPerpsPairParams(),
+    client.getPerpsParam(),
   ]);
 
   const addresses = plainObject(appConfig.addresses) as Flatten<AppConfig["addresses"]>;
@@ -49,5 +52,6 @@ export async function getAppConfig<config extends Config>(config: config): GetAp
       Object.create({}) as Record<Denom, PairUpdate>,
     ),
     perpsPairs,
+    perpsParam,
   };
 }

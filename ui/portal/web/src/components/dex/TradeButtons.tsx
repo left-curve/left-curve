@@ -7,25 +7,23 @@ import {
   useApp,
   usePortalTarget,
 } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store";
+import { useAccount, tradePairStore, tradeInfoStore, useTradeCoins } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { useProTradeState } from "@left-curve/store";
 import type React from "react";
 
-type TradeButtonsProps = {
-  state: ReturnType<typeof useProTradeState>;
-};
-
-export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
+export const TradeButtons: React.FC = () => {
   const navigate = useNavigate();
   const { setTradeBarVisibility, showModal } = useApp();
   const { isConnected } = useAccount();
 
-  const { changeAction, baseCoin } = state;
+  const mode = tradePairStore((s) => s.mode);
+  const pairId = tradePairStore((s) => s.pairId);
+  const { baseCoin } = useTradeCoins({ pairId, mode });
+  const changeAction = tradeInfoStore((s) => s.setAction);
 
   const container = usePortalTarget("#trade-buttons");
 
