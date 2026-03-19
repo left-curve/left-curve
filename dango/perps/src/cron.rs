@@ -14,13 +14,13 @@ use {
         Days, UsdPrice, UsdValue,
         perps::{
             ConditionalOrder, ConditionalOrderId, ConditionalOrderRemoved,
-            ConditionalOrderTriggered, LiquidityReleased, OrderId, OrderKind, PairId, PairParam,
-            PairState, Param, ReasonForOrderRemoval, State, UserState,
+            ConditionalOrderTriggered, LiquidityReleased, OrderKind, PairId, PairParam, PairState,
+            Param, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
-        Addr, Bound, EventBuilder, NumberConst, Order as IterationOrder, PrefixBound, StdResult,
-        Storage, Timestamp,
+        Addr, EventBuilder, Order as IterationOrder, PrefixBound, StdResult, Storage,
+        Timestamp,
     },
 };
 
@@ -227,10 +227,10 @@ fn process_conditional_orders_for_pair(
     // Range: all keys with trigger_price <= oracle_price.
     let above_triggered = CONDITIONAL_ABOVE
         .prefix(pair_id.clone())
-        .range(
+        .prefix_range(
             storage,
             None,
-            Some(Bound::Inclusive((oracle_price, OrderId::MAX))),
+            Some(PrefixBound::Inclusive(oracle_price)),
             IterationOrder::Ascending,
         )
         .collect::<StdResult<Vec<_>>>()?;
@@ -259,10 +259,10 @@ fn process_conditional_orders_for_pair(
     // Keys store inverted trigger_price, so stored <= !oracle_price ≡ real >= oracle_price.
     let below_triggered = CONDITIONAL_BELOW
         .prefix(pair_id.clone())
-        .range(
+        .prefix_range(
             storage,
             None,
-            Some(Bound::Inclusive((!oracle_price, OrderId::MAX))),
+            Some(PrefixBound::Inclusive(!oracle_price)),
             IterationOrder::Ascending,
         )
         .collect::<StdResult<Vec<_>>>()?;
