@@ -256,13 +256,13 @@ fn process_conditional_orders_for_pair(
     }
 
     // BELOW orders: trigger when oracle_price <= trigger_price.
-    // Range: all keys with trigger_price >= oracle_price.
+    // Keys store inverted trigger_price, so stored <= !oracle_price ≡ real >= oracle_price.
     let below_triggered = CONDITIONAL_BELOW
         .prefix(pair_id.clone())
         .range(
             storage,
-            Some(Bound::Inclusive((oracle_price, OrderId::ZERO))),
             None,
+            Some(Bound::Inclusive((!oracle_price, OrderId::MAX))),
             IterationOrder::Ascending,
         )
         .collect::<StdResult<Vec<_>>>()?;

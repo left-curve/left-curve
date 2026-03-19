@@ -62,7 +62,14 @@ pub fn submit_conditional_order(
     user_state.conditional_order_count += 1;
 
     // Create the order.
-    let key = (pair_id.clone(), trigger_price, order_id);
+    // For BELOW orders, invert the trigger_price in the storage key so that
+    // ascending iteration yields highest-real-trigger-price first (the order
+    // crossed earliest as price fell) with FIFO tiebreaker on order_id.
+    let stored_price = match trigger_direction {
+        TriggerDirection::Above => trigger_price,
+        TriggerDirection::Below => !trigger_price,
+    };
+    let key = (pair_id.clone(), stored_price, order_id);
     let order = ConditionalOrder {
         user: ctx.sender,
         size,
