@@ -276,12 +276,7 @@ const PerpsPositionsTable: React.FC = () => {
           .replace("perp/", "")
           .replace(/usd$/i, "/USD")
           .toUpperCase();
-        return (
-          <div className="flex items-center gap-1">
-            <Cell.Text text={label} className="diatype-xs-medium" />
-            <Badge text="Perp" color="green" size="s" />
-          </div>
-        );
+        return <Cell.Text text={label} className="diatype-xs-medium" />;
       },
     },
     {
@@ -547,22 +542,37 @@ const UnifiedOpenOrders: React.FC = () => {
     {
       id: "cancel-order",
       header: () => (
-        <Cell.Action
-          isDisabled={!unifiedRows.length}
-          action={() => {
-            if (mode === "spot") {
-              const ids = unifiedRows.filter((o) => o.rawSpotOrderId).map((o) => o.rawSpotOrderId!);
-              showModal(Modals.ProTradeCloseAll, { ordersId: ids });
-            } else {
-              showModal(Modals.PerpsCloseAll, {});
-            }
-          }}
-          label={m["common.cancelAll"]()}
-          classNames={{
-            cell: "items-end diatype-xs-regular",
-            button: "!exposure-xs-italic m-0 p-0 px-1 h-fit",
-          }}
-        />
+        <div className="flex items-center justify-end gap-2">
+          {mode === "perps" && (
+            <label className="flex items-center gap-1.5 cursor-pointer diatype-xs-regular text-ink-tertiary-500">
+              <input
+                type="checkbox"
+                checked={showAllPairs}
+                onChange={(e) => setShowAllPairs(e.target.checked)}
+                className="accent-primitives-red-light-500 w-3 h-3"
+              />
+              Show all pairs
+            </label>
+          )}
+          <Cell.Action
+            isDisabled={!unifiedRows.length}
+            action={() => {
+              if (mode === "spot") {
+                const ids = unifiedRows
+                  .filter((o) => o.rawSpotOrderId)
+                  .map((o) => o.rawSpotOrderId!);
+                showModal(Modals.ProTradeCloseAll, { ordersId: ids });
+              } else {
+                showModal(Modals.PerpsCloseAll, {});
+              }
+            }}
+            label={m["common.cancelAll"]()}
+            classNames={{
+              cell: "items-end diatype-xs-regular",
+              button: "!exposure-xs-italic m-0 p-0 px-1 h-fit",
+            }}
+          />
+        </div>
       ),
       cell: ({ row }) => (
         <Cell.Action
@@ -584,40 +594,25 @@ const UnifiedOpenOrders: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col gap-2">
-      {mode === "perps" ? (
-        <div className="flex justify-end">
-          <label className="flex items-center gap-1.5 cursor-pointer diatype-xs-regular text-ink-tertiary-500">
-            <input
-              type="checkbox"
-              checked={showAllPairs}
-              onChange={(e) => setShowAllPairs(e.target.checked)}
-              className="accent-primitives-red-light-500 w-3 h-3"
-            />
-            Show all pairs
-          </label>
-        </div>
-      ) : null}
-      <Table
-        data={unifiedRows}
-        columns={columns}
-        style="simple"
-        classNames={{
-          row: "h-fit",
-          header: "pt-0",
-          base: "pb-[1.5rem] max-h-[9.5rem] overflow-y-scroll",
-          cell: twMerge("diatype-xs-regular py-1", {
-            "group-hover:bg-transparent": !unifiedRows.length,
-          }),
-        }}
-        emptyComponent={
-          <EmptyPlaceholder
-            component={m["dex.protrade.history.noOpenOrders"]()}
-            className="h-[3.5rem]"
-          />
-        }
-      />
-    </div>
+    <Table
+      data={unifiedRows}
+      columns={columns}
+      style="simple"
+      classNames={{
+        row: "h-fit",
+        header: "pt-0",
+        base: "pb-[1.5rem] max-h-[9.5rem] overflow-y-scroll",
+        cell: twMerge("diatype-xs-regular py-1", {
+          "group-hover:bg-transparent": !unifiedRows.length,
+        }),
+      }}
+      emptyComponent={
+        <EmptyPlaceholder
+          component={m["dex.protrade.history.noOpenOrders"]()}
+          className="h-[3.5rem]"
+        />
+      }
+    />
   );
 };
 
