@@ -12,9 +12,10 @@ fn parse_index_attr(variant: &syn::Variant) -> Option<u8> {
             continue;
         }
 
-        let Meta::NameValue(nv) = attr.parse_args().expect(
-            "expected `#[primary_key(index = <u8>)]`",
-        ) else {
+        let Meta::NameValue(nv) = attr
+            .parse_args()
+            .expect("expected `#[primary_key(index = <u8>)]`")
+        else {
             panic!("expected `#[primary_key(index = <u8>)]`");
         };
 
