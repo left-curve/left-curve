@@ -105,6 +105,11 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         ::metrics::gauge!(crate::metrics::LABEL_VAULT_MARGIN)
             .set(crate::metrics::to_float(vault_user_state.margin));
 
+        for (pair_id, position) in &vault_user_state.positions {
+            ::metrics::gauge!(crate::metrics::LABEL_VAULT_POSITION, "pair_id" => pair_id.to_string())
+                .set(crate::metrics::to_float(position.size));
+        }
+
         ::metrics::gauge!(crate::metrics::LABEL_INSURANCE_FUND)
             .set(crate::metrics::to_float(state.insurance_fund));
 
