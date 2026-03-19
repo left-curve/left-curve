@@ -62,7 +62,7 @@ pub fn derive_query(input: TokenStream) -> TokenStream {
     query::process(input)
 }
 
-#[proc_macro_derive(PrimaryKey)]
+#[proc_macro_derive(PrimaryKey, attributes(primary_key))]
 pub fn derive_primary_key(input: TokenStream) -> TokenStream {
     primary_key::process(input)
 }
