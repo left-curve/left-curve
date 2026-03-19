@@ -19,8 +19,7 @@ use {
         },
     },
     grug::{
-        Addr, EventBuilder, Order as IterationOrder, PrefixBound, StdResult, Storage,
-        Timestamp,
+        Addr, EventBuilder, Order as IterationOrder, PrefixBound, StdResult, Storage, Timestamp,
     },
 };
 
