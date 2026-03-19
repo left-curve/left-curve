@@ -480,13 +480,6 @@ jobs:
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
         run: sccache --show-stats || true
 
-      - name: Upload coverage to Qlty
-        if: env.BACKEND_CHANGED == 'true'
-        uses: qltysh/qlty-action/coverage@a19242102d17e497f437d7466aa01b528537e899 # v2
-        with:
-          files: target/coverage/lcov.info
-          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
-
       - name: Cleanup PostgreSQL container
         if: always() && env.BACKEND_CHANGED == 'true'
         env:
