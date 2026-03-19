@@ -1,17 +1,18 @@
-import { useConfig, usePrices } from "@left-curve/store";
+import { useConfig, usePrices, perpsMarginAsset } from "@left-curve/store";
 
-import { PairAssets, useApp } from "@left-curve/applets-kit";
+import { FormattedNumber, PairAssets, useApp } from "@left-curve/applets-kit";
 import { twMerge } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 
 import type { Coin } from "@left-curve/dango/types";
-interface Props {
+
+interface SpotProps {
   coin: Coin;
 }
 
-export const AssetCard: React.FC<Props> = ({ coin }) => {
+const Spot: React.FC<SpotProps> = ({ coin }) => {
   const { getCoinInfo } = useConfig();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
@@ -51,3 +52,29 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
     </motion.div>
   );
 };
+
+interface PerpsProps {
+  amount: string;
+}
+
+const Perp: React.FC<PerpsProps> = ({ amount }) => {
+  return (
+    <motion.div layout="position" className="flex flex-col p-4 w-full">
+      <div className={twMerge("flex items-center justify-between transition-all")}>
+        <div className="flex gap-2 items-center">
+          <div className="flex h-8 w-12">
+            <img src={perpsMarginAsset.logoURI} className="h-8 w-8" alt={perpsMarginAsset.symbol} />
+          </div>
+          <div className="flex flex-col">
+            <p className="text-ink-primary-900 diatype-m-bold">{perpsMarginAsset.name}</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end text-ink-primary-900">
+          <FormattedNumber className="diatype-m-bold" number={amount} />
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+export const AssetCard = Object.assign(Spot, { Spot, Perp });

@@ -74,7 +74,7 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
       </div>
       <SearchTokenTable>
         <SearchTokenTable.Spot
-          data={Object.values(config?.pairs || {}).filter((c) => !c.baseDenom.includes("dango"))}
+          data={Object.values(config.pairs).filter((c) => !c.baseDenom.includes("dango"))}
           searchText={searchText.toUpperCase()}
           onChangePairId={onChangePairId}
           pairId={pairId}

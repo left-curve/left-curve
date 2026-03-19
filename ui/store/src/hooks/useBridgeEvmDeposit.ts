@@ -1,6 +1,6 @@
 import { createPublicClient, createWalletClient, custom, http } from "viem";
-import { useConfig } from "./useConfig.js";
 import { useQuery } from "@tanstack/react-query";
+import { useAppConfig } from "./useAppConfig.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useAccount } from "./useAccount.js";
 import { useSubmitTx } from "./useSubmitTx.js";
@@ -32,7 +32,7 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
   const { bridger, router, chain } = config;
 
   const { account } = useAccount();
-  const { getAppConfig } = useConfig();
+  const { data: appConfig } = useAppConfig();
   const { data: signingClient } = useSigningClient();
 
   const depositAmount = BigInt(parseUnits(amount, coin.decimals));
@@ -110,7 +110,6 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
           throw new Error("Wasn't able to deposit");
         }
 
-        const appConfig = await getAppConfig();
         const mailboxConfig: MailBoxConfig = await signingClient.queryWasmSmart({
           contract: appConfig.addresses.mailbox,
           msg: { config: {} },

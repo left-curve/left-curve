@@ -139,6 +139,14 @@ export type {
 } from "./dex.js";
 
 export type {
+  PerpsUserState,
+  PerpsPosition,
+  PerpsUnlock,
+  PerpsQueryMsg,
+  GetPerpsQueryMsg,
+} from "./perps.js";
+
+export type {
   MailBoxConfig,
   Addr32,
   BitcoinRemote,

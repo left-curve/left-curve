@@ -218,7 +218,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               {m["dex.protrade.spot.fees"]()}
             </p>
             <p className="diatype-xs-medium text-ink-secondary-700">
-              {Number(appConfig?.takerFeeRate) * 100} % / {Number(appConfig?.makerFeeRate) * 100} %
+              {Number(appConfig.takerFeeRate) * 100} % / {Number(appConfig.makerFeeRate) * 100} %
             </p>
           </div>
         </div>
