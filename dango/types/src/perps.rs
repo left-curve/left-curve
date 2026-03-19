@@ -23,33 +23,6 @@ pub type OrderId = Uint64;
 /// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
 pub type ConditionalOrderId = OrderId;
 
-/// Direction the oracle price must cross to trigger a conditional order.
-#[grug::derive(Serde, Borsh)]
-#[derive(Copy)]
-pub enum TriggerDirection {
-    /// Trigger when oracle_price >= trigger_price (TP for longs, SL for shorts).
-    Above,
-    /// Trigger when oracle_price <= trigger_price (SL for longs, TP for shorts).
-    Below,
-}
-
-/// A conditional order stored off-book until triggered.
-///
-/// `pair_id` is part of the storage key, not this struct.
-#[grug::derive(Serde, Borsh)]
-pub struct ConditionalOrder {
-    pub user: Addr,
-    /// Size to close (sign must oppose the position: negative for closing longs,
-    /// positive for closing shorts). Always reduce-only.
-    pub size: Quantity,
-    /// Oracle price that activates this order.
-    pub trigger_price: UsdPrice,
-    /// Direction oracle must cross.
-    pub trigger_direction: TriggerDirection,
-    /// Max slippage for the market order executed at trigger.
-    pub max_slippage: Dimensionless,
-}
-
 #[grug::derive(Serde)]
 #[derive(Copy)]
 pub enum OrderKind {
@@ -85,6 +58,18 @@ impl OrderKind {
             _ => None,
         }
     }
+}
+
+/// For a conditional (TP/SL) order, direction the oracle price must cross to
+/// trigger it.
+#[grug::derive(Serde, Borsh)]
+#[derive(Copy)]
+pub enum TriggerDirection {
+    /// Trigger when oracle_price >= trigger_price (TP for longs, SL for shorts).
+    Above,
+
+    /// Trigger when oracle_price <= trigger_price (SL for longs, TP for shorts).
+    Below,
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
@@ -334,6 +319,25 @@ pub struct Order {
     pub size: Quantity,
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
+}
+
+/// A conditional order stored off-book until triggered.
+#[grug::derive(Serde, Borsh)]
+pub struct ConditionalOrder {
+    pub user: Addr,
+
+    /// Size to close (sign must oppose the position: negative for closing longs,
+    /// positive for closing shorts). Always reduce-only.
+    pub size: Quantity,
+
+    /// Oracle price that activates this order.
+    pub trigger_price: UsdPrice,
+
+    /// Direction oracle must cross.
+    pub trigger_direction: TriggerDirection,
+
+    /// Max slippage for the market order executed at trigger.
+    pub max_slippage: Dimensionless,
 }
 
 #[grug::derive(Serde)]
@@ -705,6 +709,40 @@ pub struct OrderRemoved {
     pub reason: ReasonForOrderRemoval,
 }
 
+/// Event indicating a conditional (TP/SL) order has been placed.
+#[grug::event("conditional_order_placed")]
+#[grug::derive(Serde)]
+pub struct ConditionalOrderPlaced {
+    pub order_id: ConditionalOrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub trigger_price: UsdPrice,
+    pub trigger_direction: TriggerDirection,
+    pub size: Quantity,
+    pub max_slippage: Dimensionless,
+}
+
+/// Event indicating a conditional order was triggered by an oracle price move.
+#[grug::event("conditional_order_triggered")]
+#[grug::derive(Serde)]
+pub struct ConditionalOrderTriggered {
+    pub order_id: ConditionalOrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub trigger_price: UsdPrice,
+    pub oracle_price: UsdPrice,
+}
+
+/// Event indicating a conditional order was removed without being triggered.
+#[grug::event("conditional_order_removed")]
+#[grug::derive(Serde)]
+pub struct ConditionalOrderRemoved {
+    pub order_id: ConditionalOrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub reason: ReasonForOrderRemoval,
+}
+
 #[grug::derive(Serde)]
 #[derive(Copy)]
 pub enum ReasonForOrderRemoval {
@@ -713,6 +751,9 @@ pub enum ReasonForOrderRemoval {
 
     /// The user voluntarily canceled the order.
     Canceled,
+
+    /// In case of conditional (TP/SL) orders, the position was closed or flipped.
+    PositionClosed,
 
     /// The user submitted an order on the other side of the order book whose
     /// price crossed this order's. Following the principle of self-trade prevention,
@@ -770,51 +811,4 @@ pub struct BadDebtCovered {
     pub liquidated_user: Addr,
     pub amount: UsdValue,
     pub insurance_fund_remaining: UsdValue,
-}
-
-// ----------------------------- Conditional orders ----------------------------
-
-/// Event indicating a conditional (TP/SL) order has been placed.
-#[grug::event("conditional_order_placed")]
-#[grug::derive(Serde)]
-pub struct ConditionalOrderPlaced {
-    pub order_id: ConditionalOrderId,
-    pub pair_id: PairId,
-    pub user: Addr,
-    pub trigger_price: UsdPrice,
-    pub trigger_direction: TriggerDirection,
-    pub size: Quantity,
-    pub max_slippage: Dimensionless,
-}
-
-/// Event indicating a conditional order was triggered by an oracle price move.
-#[grug::event("conditional_order_triggered")]
-#[grug::derive(Serde)]
-pub struct ConditionalOrderTriggered {
-    pub order_id: ConditionalOrderId,
-    pub pair_id: PairId,
-    pub user: Addr,
-    pub trigger_price: UsdPrice,
-    pub oracle_price: UsdPrice,
-}
-
-/// Event indicating a conditional order was removed without being triggered.
-#[grug::event("conditional_order_removed")]
-#[grug::derive(Serde)]
-pub struct ConditionalOrderRemoved {
-    pub order_id: ConditionalOrderId,
-    pub pair_id: PairId,
-    pub user: Addr,
-    pub reason: ReasonForConditionalRemoval,
-}
-
-#[grug::derive(Serde)]
-#[derive(Copy)]
-pub enum ReasonForConditionalRemoval {
-    /// The user voluntarily canceled the order.
-    Canceled,
-    /// The position was closed or flipped before trigger.
-    PositionClosed,
-    /// The user was liquidated.
-    Liquidated,
 }

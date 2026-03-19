@@ -41,17 +41,13 @@ pub const LONGS: Set<(PairId, UsdPrice, Addr)> = Set::new("long");
 /// Used during auto-deleveraging (ADL) to find the most profitable positions.
 pub const SHORTS: Set<(PairId, UsdPrice, Addr)> = Set::new("short");
 
+/// Buy orders.
 pub const BIDS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("bid", OrderIndexes::new("bid", "bid__id", "bid__user"));
 
+/// Sell orders.
 pub const ASKS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
-
-pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
-
-/// Cumulative trading volume per user, bucketed by day.
-/// Key: (user, day_timestamp). Value: lifetime cumulative USD notional.
-pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
 
 /// Conditional orders that trigger when oracle_price >= trigger_price.
 /// Used for: TP on longs, SL on shorts.
@@ -74,6 +70,13 @@ pub const CONDITIONAL_BELOW: IndexedMap<
     "condb",
     ConditionalOrderIndexes::new("condb", "condb__id", "condb__user"),
 );
+
+/// Liquidity depths of the order book.
+pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
+
+/// Cumulative trading volume per user, bucketed by day.
+/// Key: (user, day_timestamp). Value: lifetime cumulative USD notional.
+pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
 
 // ----------------------------------- types -----------------------------------
 

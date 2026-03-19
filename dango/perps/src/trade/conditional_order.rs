@@ -5,8 +5,7 @@ use {
         Dimensionless, Quantity, UsdPrice,
         perps::{
             CancelOrderRequest, ConditionalOrder, ConditionalOrderId, ConditionalOrderPlaced,
-            ConditionalOrderRemoved, PairId, ReasonForConditionalRemoval, TriggerDirection,
-            UserState,
+            ConditionalOrderRemoved, PairId, ReasonForOrderRemoval, TriggerDirection, UserState,
         },
     },
     grug::{
@@ -102,7 +101,7 @@ pub fn cancel_conditional_order(
                 ctx.sender,
                 order_id,
                 &mut events,
-                ReasonForConditionalRemoval::Canceled,
+                ReasonForOrderRemoval::Canceled,
             )?;
         },
         CancelOrderRequest::All => {
@@ -112,7 +111,7 @@ pub fn cancel_conditional_order(
                 ctx.sender,
                 &mut user_state,
                 &mut events,
-                ReasonForConditionalRemoval::Canceled,
+                ReasonForOrderRemoval::Canceled,
             )?;
             if user_state.is_empty() {
                 USER_STATES.remove(ctx.storage, ctx.sender)?;
@@ -130,7 +129,7 @@ fn cancel_one_conditional_order(
     sender: Addr,
     order_id: ConditionalOrderId,
     events: &mut EventBuilder,
-    reason: ReasonForConditionalRemoval,
+    reason: ReasonForOrderRemoval,
 ) -> anyhow::Result<()> {
     // Try CONDITIONAL_ABOVE first, then CONDITIONAL_BELOW (same pattern as
     // cancel_one_order tries BIDS then ASKS).
@@ -193,7 +192,7 @@ pub fn _cancel_all_conditional_orders(
     user: Addr,
     user_state: &mut UserState,
     events: &mut EventBuilder,
-    reason: ReasonForConditionalRemoval,
+    reason: ReasonForOrderRemoval,
 ) -> StdResult<()> {
     // Collect from both maps.
     let above = CONDITIONAL_ABOVE

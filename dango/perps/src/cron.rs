@@ -14,7 +14,7 @@ use {
         perps::{
             ConditionalOrder, ConditionalOrderId, ConditionalOrderRemoved,
             ConditionalOrderTriggered, LiquidityReleased, OrderId, OrderKind, PairId, PairParam,
-            PairState, Param, ReasonForConditionalRemoval, State, UserState,
+            PairState, Param, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
@@ -324,7 +324,7 @@ fn process_triggered_order(
             order_id,
             pair_id: pair_id.clone(),
             user: order.user,
-            reason: ReasonForConditionalRemoval::PositionClosed,
+            reason: ReasonForOrderRemoval::PositionClosed,
         })?;
 
         if user_state.is_empty() {

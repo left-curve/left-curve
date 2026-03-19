@@ -24,7 +24,7 @@ use {
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
             BadDebtCovered, Deleveraged, Liquidated, Order, OrderId, PairId, PairParam, PairState,
-            Param, ReasonForConditionalRemoval, ReasonForOrderRemoval, State, UserState,
+            Param, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
@@ -72,7 +72,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         user,
         &mut user_state,
         &mut events,
-        ReasonForConditionalRemoval::Liquidated,
+        ReasonForOrderRemoval::Liquidated,
     )?;
 
     // ------------------- 3. Load pair params and states ---------------------
