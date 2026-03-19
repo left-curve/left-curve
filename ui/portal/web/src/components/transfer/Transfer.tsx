@@ -326,11 +326,12 @@ const TransferSpotPerp: React.FC = () => {
     <div className="flex flex-col w-full gap-4">
       <div className="flex flex-col items-center pb-2">
         <div className="flex flex-col gap-4 w-full mb-[-8px]">
-          <Input readOnly label={m["transfer.spotPerp.from"]()} value={fromLabel} />
+          <Input readOnly name="from" label={m["transfer.spotPerp.from"]()} value={fromLabel} />
 
           <div className="flex items-center justify-center">
             <button
               type="button"
+              data-testid="flip-direction"
               onClick={flipDirection}
               className="flex items-center justify-center cursor-pointer"
             >
@@ -341,6 +342,7 @@ const TransferSpotPerp: React.FC = () => {
 
         <Input
           readOnly
+          name="to"
           label={m["transfer.spotPerp.to"]()}
           value={toLabel}
           classNames={{ inputWrapper: "hover:bg-surface-secondary-rice cursor-default" }}
