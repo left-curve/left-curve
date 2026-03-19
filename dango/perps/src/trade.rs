@@ -1,10 +1,14 @@
+mod cancel_conditional_order;
 mod cancel_order;
-mod conditional_order;
 mod deposit;
+mod submit_conditional_order;
 mod submit_order;
 mod withdraw;
 
-pub use {cancel_order::*, conditional_order::*, deposit::*, submit_order::*, withdraw::*};
+pub use {
+    cancel_conditional_order::*, cancel_order::*, deposit::*, submit_conditional_order::*,
+    submit_order::*, withdraw::*,
+};
 
 use {
     crate::USER_STATES,
