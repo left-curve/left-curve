@@ -67,11 +67,10 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         ReasonForOrderRemoval::Liquidated,
     )?;
 
-    _cancel_all_conditional_orders(
+    let cond_events = _cancel_all_conditional_orders(
         ctx.storage,
         user,
         &mut user_state,
-        &mut events,
         ReasonForOrderRemoval::Liquidated,
     )?;
 
@@ -196,7 +195,9 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     apply_position_index_updates(ctx.storage, &index_updates)?;
 
-    Ok(Response::new().add_events(events)?)
+    Ok(Response::new()
+        .add_events(events)?
+        .add_events(cond_events)?)
 }
 
 /// Mutates:

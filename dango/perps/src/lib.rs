@@ -129,7 +129,12 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 trigger_direction,
                 max_slippage,
             ),
-            TraderMsg::CancelConditionalOrder(req) => trade::cancel_conditional_order(ctx, req),
+            TraderMsg::CancelConditionalOrder(CancelOrderRequest::One(order_id)) => {
+                trade::cancel_one_conditional_order(ctx, order_id)
+            },
+            TraderMsg::CancelConditionalOrder(CancelOrderRequest::All) => {
+                trade::cancel_all_conditional_orders(ctx)
+            },
         },
         ExecuteMsg::Vault(msg) => match msg {
             VaultMsg::AddLiquidity {

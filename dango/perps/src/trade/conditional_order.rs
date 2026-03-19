@@ -1,11 +1,14 @@
 use {
-    crate::{CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, PARAM, USER_STATES},
+    crate::{
+        CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, PARAM, USER_STATES,
+        state::ConditionalOrderKey, trade::update_user_state_with,
+    },
     anyhow::{anyhow, ensure},
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
         perps::{
-            CancelOrderRequest, ConditionalOrder, ConditionalOrderId, ConditionalOrderPlaced,
-            ConditionalOrderRemoved, PairId, ReasonForOrderRemoval, TriggerDirection, UserState,
+            ConditionalOrder, ConditionalOrderId, ConditionalOrderPlaced, ConditionalOrderRemoved,
+            PairId, ReasonForOrderRemoval, TriggerDirection, UserState,
         },
     },
     grug::{
@@ -74,8 +77,7 @@ pub fn submit_conditional_order(
     user_state.conditional_order_count += 1;
     USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
 
-    let mut events = EventBuilder::new();
-    events.push(ConditionalOrderPlaced {
+    Ok(Response::new().add_event(ConditionalOrderPlaced {
         order_id,
         pair_id,
         user: ctx.sender,
@@ -83,66 +85,25 @@ pub fn submit_conditional_order(
         trigger_direction,
         size,
         max_slippage,
-    })?;
-
-    Ok(Response::new().add_events(events)?)
+    })?)
 }
 
-pub fn cancel_conditional_order(
+pub fn cancel_one_conditional_order(
     ctx: MutableCtx,
-    req: CancelOrderRequest,
-) -> anyhow::Result<Response> {
-    let mut events = EventBuilder::new();
-
-    match req {
-        CancelOrderRequest::One(order_id) => {
-            cancel_one_conditional_order(
-                ctx.storage,
-                ctx.sender,
-                order_id,
-                &mut events,
-                ReasonForOrderRemoval::Canceled,
-            )?;
-        },
-        CancelOrderRequest::All => {
-            let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
-            _cancel_all_conditional_orders(
-                ctx.storage,
-                ctx.sender,
-                &mut user_state,
-                &mut events,
-                ReasonForOrderRemoval::Canceled,
-            )?;
-            if user_state.is_empty() {
-                USER_STATES.remove(ctx.storage, ctx.sender)?;
-            } else {
-                USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
-            }
-        },
-    }
-
-    Ok(Response::new().add_events(events)?)
-}
-
-fn cancel_one_conditional_order(
-    storage: &mut dyn Storage,
-    sender: Addr,
     order_id: ConditionalOrderId,
-    events: &mut EventBuilder,
-    reason: ReasonForOrderRemoval,
-) -> anyhow::Result<()> {
-    // Try CONDITIONAL_ABOVE first, then CONDITIONAL_BELOW (same pattern as
-    // cancel_one_order tries BIDS then ASKS).
+) -> anyhow::Result<Response> {
+    // Try CONDITIONAL_ABOVE first, then CONDITIONAL_BELOW (same pattern
+    // as cancel_one_order tries BIDS then ASKS).
     let (key, order, is_above) = CONDITIONAL_ABOVE
         .idx
         .order_id
-        .may_load(storage, order_id)?
+        .may_load(ctx.storage, order_id)?
         .map(|(k, o)| (k, o, true))
         .or_else(|| {
             CONDITIONAL_BELOW
                 .idx
                 .order_id
-                .may_load(storage, order_id)
+                .may_load(ctx.storage, order_id)
                 .ok()
                 .flatten()
                 .map(|(k, o)| (k, o, false))
@@ -150,12 +111,57 @@ fn cancel_one_conditional_order(
         .ok_or_else(|| anyhow!("conditional order not found with id {order_id}"))?;
 
     ensure!(
-        sender == order.user,
+        ctx.sender == order.user,
         "you are not the owner of this conditional order"
     );
 
-    let (pair_id, ..) = &key;
-    let pair_id = pair_id.clone();
+    let event =
+        update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
+            _cancel_one_conditional_order(
+                storage,
+                user_state,
+                key,
+                order,
+                is_above,
+                ReasonForOrderRemoval::Canceled,
+            )
+        })?;
+
+    Ok(Response::new().add_event(event)?)
+}
+
+pub fn cancel_all_conditional_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let events =
+        update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
+            _cancel_all_conditional_orders(
+                storage,
+                ctx.sender,
+                user_state,
+                ReasonForOrderRemoval::Canceled,
+            )
+        })?;
+
+    Ok(Response::new().add_events(events)?)
+}
+
+/// Mutates user_state in memory (decrements count). Does NOT persist it.
+/// Removes order from CONDITIONAL_ABOVE or CONDITIONAL_BELOW.
+/// Returns the ConditionalOrderRemoved event.
+fn _cancel_one_conditional_order(
+    storage: &mut dyn Storage,
+    user_state: &mut UserState,
+    key: ConditionalOrderKey,
+    order: ConditionalOrder,
+    is_above: bool,
+    reason: ReasonForOrderRemoval,
+) -> StdResult<ConditionalOrderRemoved> {
+    let (pair_id, _, order_id) = &key;
+    let event = ConditionalOrderRemoved {
+        order_id: *order_id,
+        pair_id: pair_id.clone(),
+        user: order.user,
+        reason,
+    };
 
     if is_above {
         CONDITIONAL_ABOVE.remove(storage, key)?;
@@ -163,23 +169,9 @@ fn cancel_one_conditional_order(
         CONDITIONAL_BELOW.remove(storage, key)?;
     }
 
-    // Decrement count.
-    let mut user_state = USER_STATES.load(storage, sender)?;
     user_state.conditional_order_count -= 1;
-    if user_state.is_empty() {
-        USER_STATES.remove(storage, sender)?;
-    } else {
-        USER_STATES.save(storage, sender, &user_state)?;
-    }
 
-    events.push(ConditionalOrderRemoved {
-        order_id,
-        pair_id,
-        user: order.user,
-        reason,
-    })?;
-
-    Ok(())
+    Ok(event)
 }
 
 /// Cancel all conditional orders for a user, updating the in-memory `user_state`.
@@ -191,15 +183,17 @@ pub fn _cancel_all_conditional_orders(
     storage: &mut dyn Storage,
     user: Addr,
     user_state: &mut UserState,
-    events: &mut EventBuilder,
     reason: ReasonForOrderRemoval,
-) -> StdResult<()> {
+) -> StdResult<EventBuilder> {
+    let mut events = EventBuilder::new();
+
     // Collect from both maps.
     let above = CONDITIONAL_ABOVE
         .idx
         .user
         .prefix(user)
         .range(storage, None, None, IterationOrder::Ascending)
+        .map(|res| res.map(|(k, o)| (k, o, true)))
         .collect::<StdResult<Vec<_>>>()?;
 
     let below = CONDITIONAL_BELOW
@@ -207,33 +201,16 @@ pub fn _cancel_all_conditional_orders(
         .user
         .prefix(user)
         .range(storage, None, None, IterationOrder::Ascending)
+        .map(|res| res.map(|(k, o)| (k, o, false)))
         .collect::<StdResult<Vec<_>>>()?;
 
-    for (key, order) in &above {
-        let (pair_id, _, order_id) = key;
-        CONDITIONAL_ABOVE.remove(storage, key.clone())?;
-        user_state.conditional_order_count -= 1;
-        events.push(ConditionalOrderRemoved {
-            order_id: *order_id,
-            pair_id: pair_id.clone(),
-            user: order.user,
-            reason,
-        })?;
+    for (key, order, is_above) in above.into_iter().chain(below) {
+        events.push(_cancel_one_conditional_order(
+            storage, user_state, key, order, is_above, reason,
+        )?)?;
     }
 
-    for (key, order) in &below {
-        let (pair_id, _, order_id) = key;
-        CONDITIONAL_BELOW.remove(storage, key.clone())?;
-        user_state.conditional_order_count -= 1;
-        events.push(ConditionalOrderRemoved {
-            order_id: *order_id,
-            pair_id: pair_id.clone(),
-            user: order.user,
-            reason,
-        })?;
-    }
-
-    Ok(())
+    Ok(events)
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -542,8 +519,7 @@ mod tests {
             .save(&mut ctx.storage, key, &order)
             .unwrap();
 
-        cancel_conditional_order(ctx.as_mutable(), CancelOrderRequest::One(Uint64::new(7)))
-            .should_succeed();
+        cancel_one_conditional_order(ctx.as_mutable(), Uint64::new(7)).should_succeed();
 
         // Order removed.
         assert!(
@@ -596,7 +572,7 @@ mod tests {
             .save(&mut ctx.storage, key, &order)
             .unwrap();
 
-        cancel_conditional_order(ctx.as_mutable(), CancelOrderRequest::One(Uint64::new(7)))
+        cancel_one_conditional_order(ctx.as_mutable(), Uint64::new(7))
             .should_fail_with_error("not the owner");
     }
 
@@ -611,7 +587,7 @@ mod tests {
             user_state_with_position(long_position(10)),
         );
 
-        cancel_conditional_order(ctx.as_mutable(), CancelOrderRequest::One(Uint64::new(99)))
+        cancel_one_conditional_order(ctx.as_mutable(), Uint64::new(99))
             .should_fail_with_error("not found");
     }
 
@@ -651,7 +627,7 @@ mod tests {
             }
         }
 
-        cancel_conditional_order(ctx.as_mutable(), CancelOrderRequest::All).should_succeed();
+        cancel_all_conditional_orders(ctx.as_mutable()).should_succeed();
 
         // All removed.
         for id in 1..=3u64 {
@@ -690,6 +666,6 @@ mod tests {
         );
 
         // No conditional orders exist — should succeed with no changes.
-        cancel_conditional_order(ctx.as_mutable(), CancelOrderRequest::All).should_succeed();
+        cancel_all_conditional_orders(ctx.as_mutable()).should_succeed();
     }
 }
