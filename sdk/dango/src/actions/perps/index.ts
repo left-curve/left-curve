@@ -24,6 +24,12 @@ export {
 } from "./queries/getLiquidityDepth.js";
 
 export {
+  type GetPerpsPairParamParameters,
+  type GetPerpsPairParamReturnType,
+  getPerpsPairParam,
+} from "./queries/getPairParam.js";
+
+export {
   type GetPerpsPairParamsParameters,
   type GetPerpsPairParamsReturnType,
   getPerpsPairParams,

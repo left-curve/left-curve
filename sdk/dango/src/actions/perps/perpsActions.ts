@@ -21,6 +21,12 @@ import {
 } from "./queries/getLiquidityDepth.js";
 
 import {
+  type GetPerpsPairParamParameters,
+  type GetPerpsPairParamReturnType,
+  getPerpsPairParam,
+} from "./queries/getPairParam.js";
+
+import {
   type GetPerpsPairParamsParameters,
   type GetPerpsPairParamsReturnType,
   getPerpsPairParams,
@@ -62,6 +68,7 @@ export type PerpsQueryActions = {
   getPerpsLiquidityDepth: (
     args: GetPerpsLiquidityDepthParameters,
   ) => GetPerpsLiquidityDepthReturnType;
+  getPerpsPairParam: (args: GetPerpsPairParamParameters) => GetPerpsPairParamReturnType;
   getPerpsPairParams: (args?: GetPerpsPairParamsParameters) => GetPerpsPairParamsReturnType;
   getPerpsParam: (args?: GetPerpsParamParameters) => GetPerpsParamReturnType;
 };
@@ -73,6 +80,7 @@ export function perpsQueryActions<transport extends Transport = Transport>(
     getPerpsUserState: (args) => getPerpsUserState(client, args),
     getPerpsOrdersByUser: (args) => getPerpsOrdersByUser(client, args),
     getPerpsLiquidityDepth: (args) => getPerpsLiquidityDepth(client, args),
+    getPerpsPairParam: (args) => getPerpsPairParam(client, args),
     getPerpsPairParams: (args) => getPerpsPairParams(client, args),
     getPerpsParam: (args) => getPerpsParam(client, args),
   };

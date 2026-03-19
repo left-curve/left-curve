@@ -6,8 +6,6 @@ import { useHeaderHeight } from "@left-curve/applets-kit";
 
 import { ProTrade } from "~/components/dex/ProTrade";
 
-import type { PairId } from "@left-curve/dango/types";
-
 export const Route = createLazyFileRoute("/(app)/_app/trade/$pairSymbols")({
   component: ProTradeApplet,
 });
@@ -19,13 +17,10 @@ function ProTradeApplet() {
   const { action = "buy", order_type = "market", type = "spot" } = Route.useSearch();
   const headerHeight = useHeaderHeight();
 
-  const onChangePairId = ({ baseDenom, quoteDenom }: PairId) => {
-    const baseSymbol = coins.byDenom[baseDenom]?.symbol;
-    const quoteSymbol = coins.byDenom[quoteDenom]?.symbol;
-
+  const onChangePairId = (pairSymbols: string, type: "spot" | "perps") => {
     navigate({
       to: "/trade/$pairSymbols",
-      params: { pairSymbols: `${baseSymbol}-${quoteSymbol}` },
+      params: { pairSymbols },
       search: { type },
       replace: true,
     });
