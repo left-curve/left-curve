@@ -1,7 +1,5 @@
-use grug::{Binary, PrimaryKey, RawKey, StdError, StdResult};
-
 #[grug::derive(Borsh, Serde)]
-#[derive(Copy, PartialOrd, Ord, Hash)]
+#[derive(Copy, PartialOrd, Ord, Hash, grug::PrimaryKey)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
 pub enum TimeInForce {
     /// Good-Til-Canceled (GTC): indicates that if the order is not fully filled
@@ -17,31 +15,4 @@ pub enum TimeInForce {
     #[serde(rename = "IOC")]
     #[cfg_attr(feature = "async-graphql", graphql(name = "IOC"))]
     ImmediateOrCancel,
-}
-
-impl PrimaryKey for TimeInForce {
-    type Output = Self;
-    type Prefix = ();
-    type Suffix = ();
-
-    const KEY_ELEMS: u8 = 1;
-
-    fn raw_keys(&self) -> Vec<RawKey<'_>> {
-        match self {
-            TimeInForce::GoodTilCanceled => vec![RawKey::Fixed8([0])],
-            TimeInForce::ImmediateOrCancel => vec![RawKey::Fixed8([1])],
-        }
-    }
-
-    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        match bytes {
-            [0] => Ok(TimeInForce::GoodTilCanceled),
-            [1] => Ok(TimeInForce::ImmediateOrCancel),
-            _ => Err(StdError::deserialize::<Self::Output, _, Binary>(
-                "key",
-                "invalid time-in-force! must be 0|1",
-                bytes.into(),
-            )),
-        }
-    }
 }

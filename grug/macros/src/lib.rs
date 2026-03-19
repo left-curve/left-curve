@@ -2,6 +2,7 @@ mod derive;
 mod event;
 mod export;
 mod index_list;
+mod primary_key;
 mod query;
 
 use proc_macro::TokenStream;
@@ -59,4 +60,9 @@ pub fn index_list(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_derive(QueryRequest, attributes(returns))]
 pub fn derive_query(input: TokenStream) -> TokenStream {
     query::process(input)
+}
+
+#[proc_macro_derive(PrimaryKey)]
+pub fn derive_primary_key(input: TokenStream) -> TokenStream {
+    primary_key::process(input)
 }
