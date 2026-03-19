@@ -9,6 +9,30 @@ import {
 } from "./queries/getUserState.js";
 
 import {
+  type GetPerpsOrdersByUserParameters,
+  type GetPerpsOrdersByUserReturnType,
+  getPerpsOrdersByUser,
+} from "./queries/getOrdersByUser.js";
+
+import {
+  type GetPerpsLiquidityDepthParameters,
+  type GetPerpsLiquidityDepthReturnType,
+  getPerpsLiquidityDepth,
+} from "./queries/getLiquidityDepth.js";
+
+import {
+  type GetPerpsPairParamsParameters,
+  type GetPerpsPairParamsReturnType,
+  getPerpsPairParams,
+} from "./queries/getPairParams.js";
+
+import {
+  type GetPerpsParamParameters,
+  type GetPerpsParamReturnType,
+  getPerpsParam,
+} from "./queries/getParam.js";
+
+import {
   type DepositMarginParameters,
   type DepositMarginReturnType,
   depositMargin,
@@ -20,8 +44,26 @@ import {
   withdrawMargin,
 } from "./mutations/withdrawMargin.js";
 
+import {
+  type SubmitPerpsOrderParameters,
+  type SubmitPerpsOrderReturnType,
+  submitPerpsOrder,
+} from "./mutations/submitOrder.js";
+
+import {
+  type CancelPerpsOrderParameters,
+  type CancelPerpsOrderReturnType,
+  cancelPerpsOrder,
+} from "./mutations/cancelOrder.js";
+
 export type PerpsQueryActions = {
   getPerpsUserState: (args: GetPerpsUserStateParameters) => GetPerpsUserStateReturnType;
+  getPerpsOrdersByUser: (args: GetPerpsOrdersByUserParameters) => GetPerpsOrdersByUserReturnType;
+  getPerpsLiquidityDepth: (
+    args: GetPerpsLiquidityDepthParameters,
+  ) => GetPerpsLiquidityDepthReturnType;
+  getPerpsPairParams: (args?: GetPerpsPairParamsParameters) => GetPerpsPairParamsReturnType;
+  getPerpsParam: (args?: GetPerpsParamParameters) => GetPerpsParamReturnType;
 };
 
 export function perpsQueryActions<transport extends Transport = Transport>(
@@ -29,12 +71,18 @@ export function perpsQueryActions<transport extends Transport = Transport>(
 ): PerpsQueryActions {
   return {
     getPerpsUserState: (args) => getPerpsUserState(client, args),
+    getPerpsOrdersByUser: (args) => getPerpsOrdersByUser(client, args),
+    getPerpsLiquidityDepth: (args) => getPerpsLiquidityDepth(client, args),
+    getPerpsPairParams: (args) => getPerpsPairParams(client, args),
+    getPerpsParam: (args) => getPerpsParam(client, args),
   };
 }
 
 export type PerpsMutationActions = {
   depositMargin: (args: DepositMarginParameters) => DepositMarginReturnType;
   withdrawMargin: (args: WithdrawMarginParameters) => WithdrawMarginReturnType;
+  submitPerpsOrder: (args: SubmitPerpsOrderParameters) => SubmitPerpsOrderReturnType;
+  cancelPerpsOrder: (args: CancelPerpsOrderParameters) => CancelPerpsOrderReturnType;
 };
 
 export function perpsMutationActions<transport extends Transport = Transport>(
@@ -43,5 +91,7 @@ export function perpsMutationActions<transport extends Transport = Transport>(
   return {
     depositMargin: (args) => depositMargin(client, args),
     withdrawMargin: (args) => withdrawMargin(client, args),
+    submitPerpsOrder: (args) => submitPerpsOrder(client, args),
+    cancelPerpsOrder: (args) => cancelPerpsOrder(client, args),
   };
 }
