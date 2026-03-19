@@ -371,27 +371,49 @@ fn process_triggered_order(
     })?;
 
     // Execute as a market order via `_submit_order`.
+    let result = _submit_order(
+        storage,
+        order.user,
+        contract,
+        current_time,
+        oracle_querier,
+        param,
+        state,
+        pair_id,
+        pair_param,
+        pair_state,
+        &mut user_state,
+        oracle_price,
+        clamped_size,
+        OrderKind::Market {
+            max_slippage: order.max_slippage,
+        },
+        true, // reduce_only
+        events,
+    );
+
     let (maker_states, order_mutations, _order_to_store, next_order_id, index_updates, volumes) =
-        _submit_order(
-            storage,
-            order.user,
-            contract,
-            current_time,
-            oracle_querier,
-            param,
-            state,
-            pair_id,
-            pair_param,
-            pair_state,
-            &mut user_state,
-            oracle_price,
-            clamped_size,
-            OrderKind::Market {
-                max_slippage: order.max_slippage,
+        match result {
+            Err(_) => {
+                // Order couldn't fill (slippage exceeded or no liquidity).
+                // Cancel it gracefully — don't block other orders.
+                events.push(ConditionalOrderRemoved {
+                    order_id,
+                    pair_id: pair_id.clone(),
+                    user: order.user,
+                    reason: ReasonForOrderRemoval::SlippageExceeded,
+                })?;
+
+                if user_state.is_empty() {
+                    USER_STATES.remove(storage, order.user)?;
+                } else {
+                    USER_STATES.save(storage, order.user, &user_state)?;
+                }
+
+                return Ok(());
             },
-            true, // reduce_only
-            events,
-        )?;
+            Ok(tuple) => tuple,
+        };
 
     // Apply state changes (same pattern as submit_order's section 3).
     flush_volumes(storage, current_time, &volumes)?;

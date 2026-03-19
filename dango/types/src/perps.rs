@@ -771,6 +771,10 @@ pub enum ReasonForOrderRemoval {
 
     /// The user was hit by auto-deleveraging (ADL).
     Deleveraged,
+
+    /// The conditional order was triggered but could not fill within the
+    /// user's max_slippage tolerance (insufficient book liquidity).
+    SlippageExceeded,
 }
 
 /// Event indicating a user has been liquidated in a specific pair.
