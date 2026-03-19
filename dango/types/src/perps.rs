@@ -508,6 +508,14 @@ pub enum QueryMsg {
     #[returns(QueryOrdersByUserResponse)]
     OrdersByUser { user: Addr },
 
+    /// Query a single conditional order by ID.
+    #[returns(Option<QueryConditionalOrderResponse>)]
+    ConditionalOrder { order_id: ConditionalOrderId },
+
+    /// Query all conditional orders for a user.
+    #[returns(QueryConditionalOrdersByUserResponse)]
+    ConditionalOrdersByUser { user: Addr },
+
     /// Query aggregated order book depth at a specific bucket size.
     #[returns(LiquidityDepthResponse)]
     LiquidityDepth {
@@ -523,14 +531,6 @@ pub enum QueryMsg {
         user: Addr,
         since: Option<Timestamp>,
     },
-
-    /// Query all conditional orders for a user.
-    #[returns(Vec<QueryConditionalOrderResponse>)]
-    ConditionalOrdersByUser { user: Addr },
-
-    /// Query a single conditional order by ID.
-    #[returns(Option<QueryConditionalOrderResponse>)]
-    ConditionalOrder { order_id: ConditionalOrderId },
 }
 
 #[grug::derive(Serde)]
@@ -554,6 +554,12 @@ pub struct QueryConditionalOrderResponse {
     pub order_id: ConditionalOrderId,
     pub pair_id: PairId,
     pub order: ConditionalOrder,
+}
+
+#[grug::derive(Serde)]
+pub struct QueryConditionalOrdersByUserResponse {
+    pub above: Vec<QueryConditionalOrderResponse>,
+    pub below: Vec<QueryConditionalOrderResponse>,
 }
 
 #[grug::derive(Serde)]

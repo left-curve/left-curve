@@ -2033,7 +2033,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
         .should_succeed();
 
     // Step 5: Query conditional orders.
-    let cond_orders: Vec<perps::QueryConditionalOrderResponse> = suite
+    let cond_orders: perps::QueryConditionalOrdersByUserResponse = suite
         .query_wasm_smart(
             contracts.perps,
             perps::QueryConditionalOrdersByUserRequest {
@@ -2042,7 +2042,10 @@ fn conditional_order_tp_triggers_on_price_rise() {
         )
         .should_succeed();
 
-    assert_eq!(cond_orders.len(), 1, "should have 1 conditional order");
+    assert!(
+        cond_orders.above.len() == 1 && cond_orders.below.is_empty(),
+        "should have exactly 1 above and 0 below conditional orders"
+    );
 
     let state: UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
@@ -2099,7 +2102,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
     );
 
     // Step 10: Query conditional orders — should be empty.
-    let cond_orders: Vec<perps::QueryConditionalOrderResponse> = suite
+    let cond_orders: perps::QueryConditionalOrdersByUserResponse = suite
         .query_wasm_smart(
             contracts.perps,
             perps::QueryConditionalOrdersByUserRequest {
@@ -2109,7 +2112,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
         .should_succeed();
 
     assert!(
-        cond_orders.is_empty(),
+        cond_orders.above.is_empty() && cond_orders.below.is_empty(),
         "conditional orders should be empty after trigger"
     );
 }
@@ -2420,7 +2423,7 @@ fn liquidation_cancels_conditional_orders() {
     );
 
     // Conditional orders should be gone from storage.
-    let cond_orders: Vec<perps::QueryConditionalOrderResponse> = suite
+    let cond_orders: perps::QueryConditionalOrdersByUserResponse = suite
         .query_wasm_smart(
             contracts.perps,
             perps::QueryConditionalOrdersByUserRequest {
@@ -2430,7 +2433,7 @@ fn liquidation_cancels_conditional_orders() {
         .should_succeed();
 
     assert!(
-        cond_orders.is_empty(),
+        cond_orders.above.is_empty() && cond_orders.below.is_empty(),
         "conditional orders should be empty after liquidation"
     );
 }
