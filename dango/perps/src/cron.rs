@@ -224,7 +224,7 @@ fn process_conditional_orders_for_pair(
 
     // ABOVE orders: trigger when oracle_price >= trigger_price.
     // Range: all keys with trigger_price <= oracle_price.
-    let above_triggered: Vec<_> = CONDITIONAL_ABOVE
+    let above_triggered = CONDITIONAL_ABOVE
         .prefix(pair_id.clone())
         .range(
             storage,
@@ -235,8 +235,6 @@ fn process_conditional_orders_for_pair(
         .collect::<StdResult<Vec<_>>>()?;
 
     for ((trigger_price, order_id), order) in above_triggered {
-        let key = (pair_id.clone(), trigger_price, order_id);
-        CONDITIONAL_ABOVE.remove(storage, key)?;
         process_triggered_order(
             storage,
             contract,
@@ -252,11 +250,13 @@ fn process_conditional_orders_for_pair(
             oracle_price,
             events,
         )?;
+
+        CONDITIONAL_ABOVE.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
     }
 
     // BELOW orders: trigger when oracle_price <= trigger_price.
     // Range: all keys with trigger_price >= oracle_price.
-    let below_triggered: Vec<_> = CONDITIONAL_BELOW
+    let below_triggered = CONDITIONAL_BELOW
         .prefix(pair_id.clone())
         .range(
             storage,
@@ -267,8 +267,6 @@ fn process_conditional_orders_for_pair(
         .collect::<StdResult<Vec<_>>>()?;
 
     for ((trigger_price, order_id), order) in below_triggered {
-        let key = (pair_id.clone(), trigger_price, order_id);
-        CONDITIONAL_BELOW.remove(storage, key)?;
         process_triggered_order(
             storage,
             contract,
@@ -284,6 +282,8 @@ fn process_conditional_orders_for_pair(
             oracle_price,
             events,
         )?;
+
+        CONDITIONAL_BELOW.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
     }
 
     PAIR_STATES.save(storage, pair_id, &pair_state)?;
@@ -319,13 +319,13 @@ fn process_triggered_order(
     let position = user_state.positions.get(pair_id);
 
     let should_cancel = match position {
-        None => true,
         Some(pos) => {
             // Position flipped: the conditional order's size no longer reduces.
             // E.g. order.size is negative (close long) but position is now short.
             (order.size.is_negative() && pos.size.is_negative())
                 || (order.size.is_positive() && pos.size.is_positive())
         },
+        None => true,
     };
 
     if should_cancel {
@@ -370,10 +370,6 @@ fn process_triggered_order(
     })?;
 
     // Execute as a market order via _submit_order.
-    let kind = OrderKind::Market {
-        max_slippage: order.max_slippage,
-    };
-
     let (maker_states, order_mutations, _order_to_store, next_order_id, index_updates, volumes) =
         crate::trade::_submit_order(
             storage,
@@ -389,7 +385,9 @@ fn process_triggered_order(
             &mut user_state,
             oracle_price,
             clamped_size,
-            kind,
+            OrderKind::Market {
+                max_slippage: order.max_slippage,
+            },
             true, // reduce_only
             events,
         )?;
@@ -438,6 +436,7 @@ fn process_triggered_order(
                     maker_order.size.checked_abs()?,
                     &pair_param.bucket_sizes,
                 )?;
+
                 maker_book.save(storage, order_key, &maker_order)?;
             },
             None => {
