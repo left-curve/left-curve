@@ -154,6 +154,12 @@ fn process_order_filled(
         .clone()
         .deserialize_json::<OrderFilled>()?;
 
+    // Only count one side of each fill to avoid double-counting volume.
+    // Both sides share the same fill_price, so OHLC is unaffected.
+    if order_filled.fill_size.is_negative() {
+        return Ok(());
+    }
+
     let pair_id = order_filled.pair_id.to_string();
 
     let fill_price = order_filled

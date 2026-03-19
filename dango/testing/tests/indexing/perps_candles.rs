@@ -138,10 +138,10 @@ async fn index_perps_candles_basic() -> anyhow::Result<()> {
     assert_that!(pp.close).is_equal_to(expected_price);
     assert_that!(pp.high).is_equal_to(expected_price);
     assert_that!(pp.low).is_equal_to(expected_price);
-    // Each trade emits 2 OrderFilled (maker + taker), so volume = 5 + 5 = 10.
-    assert_that!(pp.volume).is_equal_to(Udec128_6::new(10));
-    // volume_usd = 5*2000 + 5*2000 = 20000
-    assert_that!(pp.volume_usd).is_equal_to(Udec128_6::new(20_000));
+    // Only one side of each fill is counted (positive fill_size).
+    assert_that!(pp.volume).is_equal_to(Udec128_6::new(5));
+    // volume_usd = 5 * 2000 = 10000
+    assert_that!(pp.volume_usd).is_equal_to(Udec128_6::new(10_000));
 
     // Verify 1-minute candle
     let candle = query_candles(ch, CandleInterval::OneMinute)
@@ -156,8 +156,8 @@ async fn index_perps_candles_basic() -> anyhow::Result<()> {
     assert_that!(candle.high).is_equal_to(expected_price);
     assert_that!(candle.low).is_equal_to(expected_price);
     assert_that!(candle.close).is_equal_to(expected_price);
-    assert_that!(candle.volume).is_equal_to(Udec128_6::new(10));
-    assert_that!(candle.volume_usd).is_equal_to(Udec128_6::new(20_000));
+    assert_that!(candle.volume).is_equal_to(Udec128_6::new(5));
+    assert_that!(candle.volume_usd).is_equal_to(Udec128_6::new(10_000));
 
     Ok(())
 }
@@ -184,10 +184,10 @@ async fn index_perps_candles_multiple_fills_same_block() -> anyhow::Result<()> {
     // high = max(2000, 2100), low = min(2000, 2100)
     assert_that!(pp.high).is_equal_to(Udec128_6::new(2_100));
     assert_that!(pp.low).is_equal_to(Udec128_6::new(2_000));
-    // volume = (3+3) + (2+2) = 10
-    assert_that!(pp.volume).is_equal_to(Udec128_6::new(10));
-    // volume_usd = (3+3)*2000 + (2+2)*2100 = 12000 + 8400 = 20400
-    assert_that!(pp.volume_usd).is_equal_to(Udec128_6::new(20_400));
+    // volume = 3 + 2 = 5 (one side per fill)
+    assert_that!(pp.volume).is_equal_to(Udec128_6::new(5));
+    // volume_usd = 3*2000 + 2*2100 = 6000 + 4200 = 10200
+    assert_that!(pp.volume_usd).is_equal_to(Udec128_6::new(10_200));
 
     let candle = query_candles(ch, CandleInterval::OneMinute)
         .await?
@@ -198,8 +198,8 @@ async fn index_perps_candles_multiple_fills_same_block() -> anyhow::Result<()> {
 
     assert_that!(candle.high).is_equal_to(Udec128_6::new(2_100));
     assert_that!(candle.low).is_equal_to(Udec128_6::new(2_000));
-    assert_that!(candle.volume).is_equal_to(Udec128_6::new(10));
-    assert_that!(candle.volume_usd).is_equal_to(Udec128_6::new(20_400));
+    assert_that!(candle.volume).is_equal_to(Udec128_6::new(5));
+    assert_that!(candle.volume_usd).is_equal_to(Udec128_6::new(10_200));
 
     Ok(())
 }
@@ -232,8 +232,8 @@ async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
     assert_that!(candle.close).is_equal_to(Udec128_6::new(2_001));
     assert_that!(candle.high).is_equal_to(Udec128_6::new(2_001));
     assert_that!(candle.low).is_equal_to(Udec128_6::new(1_999));
-    // 3 fills * 2 events * 1 ETH = 6
-    assert_that!(candle.volume).is_equal_to(Udec128_6::new(6));
+    // 3 fills * 1 event (positive side) * 1 ETH = 3
+    assert_that!(candle.volume).is_equal_to(Udec128_6::new(3));
 
     Ok(())
 }
@@ -287,9 +287,9 @@ async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
     // Oldest candle should contain the first fill
     assert_that!(candles.last().unwrap().volume).is_greater_than(Udec128_6::ZERO);
 
-    // Total volume = 3 fills * 2 events * 1 ETH = 6
+    // Total volume = 3 fills * 1 event (positive side) * 1 ETH = 3
     let total_volume: Udec128_6 = candles.iter().map(|c| c.volume).sum();
-    assert_that!(total_volume).is_equal_to(Udec128_6::new(6));
+    assert_that!(total_volume).is_equal_to(Udec128_6::new(3));
 
     // Global high/low across all candles
     let global_high = candles.iter().map(|c| c.high).max().unwrap();
@@ -323,7 +323,7 @@ async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
         .filter(|p| p.pair_id == pair_id().to_string())
         .collect();
 
-    assert_that!(perps_pps.len()).is_at_least(10);
+    assert_that!(perps_pps.len()).is_at_least(5);
 
     let result = query_candles(ch, CandleInterval::OneMinute).await?;
 
@@ -336,10 +336,10 @@ async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
     assert_that!(candle.close).is_equal_to(Udec128_6::new(2_000));
     assert_that!(candle.high).is_equal_to(Udec128_6::new(2_000));
     assert_that!(candle.low).is_equal_to(Udec128_6::new(2_000));
-    // 10 fills * 2 events * 1 ETH = 20
-    assert_that!(candle.volume).is_equal_to(Udec128_6::new(20));
-    // 10 fills * 2 events * 1 * 2000 = 40000
-    assert_that!(candle.volume_usd).is_equal_to(Udec128_6::new(40_000));
+    // 10 fills * 1 event (positive side) * 1 ETH = 10
+    assert_that!(candle.volume).is_equal_to(Udec128_6::new(10));
+    // 10 fills * 1 * 2000 = 20000
+    assert_that!(candle.volume_usd).is_equal_to(Udec128_6::new(20_000));
 
     Ok(())
 }
@@ -408,9 +408,9 @@ async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
 
     assert_candle_continuity(&candles);
 
-    // Total volume across all candles = 10 fills * 2 events * 1 ETH = 20
+    // Total volume across all candles = 10 fills * 1 event (positive side) * 1 ETH = 10
     let total_volume: Udec128_6 = candles.iter().map(|c| c.volume).sum();
-    assert_that!(total_volume).is_equal_to(Udec128_6::new(20));
+    assert_that!(total_volume).is_equal_to(Udec128_6::new(10));
 
     Ok(())
 }
@@ -480,8 +480,8 @@ async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
 
     let ch = clickhouse_context.clickhouse_client();
 
-    // Each fill emits 2 OrderFilled events (maker + taker).
-    let expected_total_volume = Udec128_6::new((NUM_FILLS * 2) as u128);
+    // Only one side (positive fill_size) is counted per fill.
+    let expected_total_volume = Udec128_6::new(NUM_FILLS as u128);
 
     // =====================================================================
     //  1-SECOND CANDLES
@@ -686,19 +686,19 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
     let eth_candle = &eth_candles[0];
     let btc_candle = &btc_candles[0];
 
-    // ETH candle: pair_id, price at 2000, volume = 3 * 2 = 6
+    // ETH candle: pair_id, price at 2000, volume = 3 (one side per fill)
     assert_that!(eth_candle.pair_id.as_str()).is_equal_to(eth_pair.to_string().as_str());
     assert_that!(eth_candle.close).is_equal_to(Udec128_6::new(2_000));
-    assert_that!(eth_candle.volume).is_equal_to(Udec128_6::new(6));
-    // volume_usd = 3 * 2000 * 2 = 12000
-    assert_that!(eth_candle.volume_usd).is_equal_to(Udec128_6::new(12_000));
+    assert_that!(eth_candle.volume).is_equal_to(Udec128_6::new(3));
+    // volume_usd = 3 * 2000 = 6000
+    assert_that!(eth_candle.volume_usd).is_equal_to(Udec128_6::new(6_000));
 
-    // BTC candle: pair_id, price at 60000, volume = 1 * 2 = 2
+    // BTC candle: pair_id, price at 60000, volume = 1 (one side per fill)
     assert_that!(btc_candle.pair_id.as_str()).is_equal_to(btc_pair.to_string().as_str());
     assert_that!(btc_candle.close).is_equal_to(Udec128_6::new(60_000));
-    assert_that!(btc_candle.volume).is_equal_to(Udec128_6::new(2));
-    // volume_usd = 1 * 60000 * 2 = 120000
-    assert_that!(btc_candle.volume_usd).is_equal_to(Udec128_6::new(120_000));
+    assert_that!(btc_candle.volume).is_equal_to(Udec128_6::new(1));
+    // volume_usd = 1 * 60000 = 60000
+    assert_that!(btc_candle.volume_usd).is_equal_to(Udec128_6::new(60_000));
 
     Ok(())
 }

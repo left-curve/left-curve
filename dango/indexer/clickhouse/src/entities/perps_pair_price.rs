@@ -79,22 +79,4 @@ impl PerpsPairPrice {
 
         Ok(pairs)
     }
-
-    pub async fn cleanup_old_synthetic_data(
-        clickhouse_client: &clickhouse::Client,
-        current_block: u64,
-    ) -> Result<()> {
-        if current_block < 1 {
-            return Ok(());
-        }
-
-        let query = "DELETE FROM perps_pair_prices WHERE volume = 0 AND volume_usd = 0 AND block_height = ?";
-        clickhouse_client
-            .query(query)
-            .bind(current_block - 1)
-            .execute()
-            .await?;
-
-        Ok(())
-    }
 }

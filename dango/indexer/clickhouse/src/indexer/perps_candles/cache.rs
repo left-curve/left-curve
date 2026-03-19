@@ -227,18 +227,15 @@ impl PerpsCandleCache {
 
             candles[current_index].set_high_low(pair_price.high, pair_price.low);
 
-            if block_height < candles[current_index].min_block_height {
-                if current_index.checked_sub(1).is_none() {
-                    candles[current_index].open = pair_price.close;
-                }
-
-                candles[current_index].set_high_low(pair_price.high, pair_price.low);
+            if block_height < candles[current_index].min_block_height
+                && current_index.checked_sub(1).is_none()
+            {
+                candles[current_index].open = pair_price.close;
             }
 
             // Set close price from latest block
             if block_height > candles[current_index].max_block_height {
                 candles[current_index].close = pair_price.close;
-                candles[current_index].set_high_low(pair_price.high, pair_price.low);
 
                 if let Some(next_candle) = candles.get_mut(current_index + 1) {
                     next_candle.open = pair_price.close;
@@ -439,5 +436,458 @@ impl PerpsCandleCache {
             gauge!("indexer.clickhouse.perps_pair_prices.cache.size.pair_prices")
                 .set(total_pair_prices as f64);
         }
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+impl PerpsCandleCache {
+    pub fn add_multi_block_pair_prices(
+        &mut self,
+        pair_prices: Vec<PerpsPairPrice>,
+    ) -> crate::error::Result<()> {
+        for pair_price in pair_prices {
+            let block_height = pair_price.block_height;
+            self.add_pair_prices(block_height, pair_price.created_at, vec![pair_price]);
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        assertor::*,
+        chrono::NaiveDateTime,
+        grug::{NumberConst, Udec128_6},
+        itertools::Itertools,
+        std::{collections::VecDeque, str::FromStr},
+    };
+
+    fn parse_timestamp(s: &str) -> crate::error::Result<DateTime<Utc>> {
+        let naive = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.3f")?;
+        Ok(DateTime::from_naive_utc_and_offset(naive, Utc))
+    }
+
+    fn perps_pair_price(
+        pair_id: &str,
+        high: u128,
+        low: u128,
+        close: u128,
+        volume: u128,
+        volume_usd: u128,
+        created_at: &str,
+        block_height: u64,
+    ) -> crate::error::Result<PerpsPairPrice> {
+        Ok(PerpsPairPrice {
+            pair_id: pair_id.to_string(),
+            high: Udec128_6::raw(grug::Int::new(high)),
+            low: Udec128_6::raw(grug::Int::new(low)),
+            close: Udec128_6::raw(grug::Int::new(close)),
+            volume: Udec128_6::raw(grug::Int::new(volume)),
+            volume_usd: Udec128_6::raw(grug::Int::new(volume_usd)),
+            created_at: NaiveDateTime::parse_from_str(created_at, "%Y-%m-%d %H:%M:%S%.f")?
+                .and_utc(),
+            block_height,
+        })
+    }
+
+    fn parsed_pair_prices() -> crate::error::Result<Vec<PerpsPairPrice>> {
+        let pair_id = "perp/ethusd";
+
+        Ok(vec![
+            perps_pair_price(
+                pair_id,
+                2000_000000,
+                2000_000000,
+                2000_000000,
+                0,
+                0,
+                "2025-08-13 17:36:00.038565",
+                1277884,
+            )?,
+            perps_pair_price(
+                pair_id,
+                2000_000000,
+                2000_000000,
+                2000_000000,
+                0,
+                0,
+                "2025-08-13 17:36:01.086616",
+                1277885,
+            )?,
+            perps_pair_price(
+                pair_id,
+                2010_000000,
+                1990_000000,
+                1995_000000,
+                5_000000,
+                9975_000000,
+                "2025-08-13 17:36:02.134583",
+                1277886,
+            )?,
+            perps_pair_price(
+                pair_id,
+                2005_000000,
+                1998_000000,
+                2002_000000,
+                3_000000,
+                6006_000000,
+                "2025-08-13 17:36:03.182534",
+                1277887,
+            )?,
+            perps_pair_price(
+                pair_id,
+                2002_000000,
+                2002_000000,
+                2002_000000,
+                0,
+                0,
+                "2025-08-13 17:36:04.230527",
+                1277888,
+            )?,
+        ])
+    }
+
+    #[tokio::test]
+    async fn create_candles() -> crate::error::Result<()> {
+        let mut candle_cache = PerpsCandleCache::default();
+
+        candle_cache.add_multi_block_pair_prices(parsed_pair_prices()?)?;
+
+        let cache_key =
+            PerpsCandleCacheKey::new("perp/ethusd".to_string(), CandleInterval::OneSecond);
+
+        let mut candles: VecDeque<PerpsCandle> = candle_cache
+            .get_candles(&cache_key)
+            .expect("No candles found")
+            .clone()
+            .into();
+
+        let mut previous_candle = candles.pop_front().expect("No previous candle found");
+
+        while let Some(candle) = candles.pop_front() {
+            assert!(
+                candle.time_start > previous_candle.time_start,
+                "Candle time_start is not greater than previous candle"
+            );
+            assert!(
+                candle.max_block_height >= previous_candle.max_block_height,
+                "Candle max_block_height is not greater than or equal to previous candle"
+            );
+            assert_eq!(
+                previous_candle.close, candle.open,
+                "Candle close price does not match next candle open price"
+            );
+
+            previous_candle = candle;
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn when_pair_prices_are_not_in_order() -> crate::error::Result<()> {
+        let mut candle_cache = PerpsCandleCache::default();
+
+        let pair_id = "perp/ethusd";
+
+        let pair_prices = vec![
+            perps_pair_price(
+                pair_id,
+                2000_000000,
+                2000_000000,
+                2000_000000,
+                0,
+                0,
+                "2025-08-13 17:36:01.038565",
+                4,
+            )?,
+            perps_pair_price(
+                pair_id,
+                2000_000000,
+                2000_000000,
+                2000_000000,
+                0,
+                0,
+                "2025-08-13 17:36:00.086616",
+                2,
+            )?,
+            perps_pair_price(
+                pair_id,
+                2010_000000,
+                1990_000000,
+                1995_000000,
+                5_000000,
+                9975_000000,
+                "2025-08-13 17:36:01.734583",
+                6,
+            )?,
+        ];
+
+        candle_cache.add_multi_block_pair_prices(pair_prices)?;
+
+        let cache_key = PerpsCandleCacheKey::new(pair_id.to_string(), CandleInterval::OneSecond);
+
+        assert_that!(candle_cache.get_candles(&cache_key).cloned().unwrap()).has_length(2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn correct_candles_when_pair_prices_are_not_in_order() -> crate::error::Result<()> {
+        let pair_id = "perp/ethusd";
+
+        let pair_prices = vec![
+            perps_pair_price(
+                pair_id,
+                25_000000,
+                25_000000,
+                25_000000,
+                25_000000,
+                625_000000,
+                "1971-01-01 00:00:01.500",
+                6,
+            )?,
+            perps_pair_price(
+                pair_id,
+                27_500000,
+                27_500000,
+                27_500000,
+                25_000000,
+                687_500000,
+                "1971-01-01 00:00:00.500",
+                2,
+            )?,
+            perps_pair_price(
+                pair_id,
+                25_000000,
+                25_000000,
+                25_000000,
+                25_000000,
+                625_000000,
+                "1971-01-01 00:00:01.000",
+                4,
+            )?,
+        ];
+
+        let len = pair_prices.len();
+        let all_pair_prices: Vec<Vec<PerpsPairPrice>> =
+            pair_prices.into_iter().permutations(len).collect();
+
+        for pair_prices in all_pair_prices {
+            let mut candle_cache = PerpsCandleCache::default();
+
+            candle_cache.add_multi_block_pair_prices(pair_prices)?;
+
+            let cache_key =
+                PerpsCandleCacheKey::new(pair_id.to_string(), CandleInterval::OneMinute);
+
+            let cached_candles = candle_cache
+                .get_candles(&cache_key)
+                .expect("no candles found");
+
+            let expected_candle = PerpsCandle {
+                pair_id: pair_id.to_string(),
+                interval: CandleInterval::OneMinute,
+                close: Udec128_6::from_str("25").unwrap(),
+                high: Udec128_6::from_str("27.5").unwrap(),
+                low: Udec128_6::from_str("25").unwrap(),
+                open: Udec128_6::from_str("27.5").unwrap(),
+                volume: Udec128_6::from_str("75").unwrap(),
+                volume_usd: Udec128_6::from_str("1937.5").unwrap(),
+                max_block_height: 6,
+                min_block_height: 2,
+                time_start: parse_timestamp("1971-01-01 00:00:00.000")?,
+            };
+
+            assert_that!(cached_candles.first().unwrap()).is_equal_to(&expected_candle);
+
+            let cache_key =
+                PerpsCandleCacheKey::new(pair_id.to_string(), CandleInterval::OneSecond);
+
+            let cached_candles = candle_cache
+                .get_candles(&cache_key)
+                .expect("no candles found");
+
+            let expected_candles = vec![
+                PerpsCandle {
+                    pair_id: pair_id.to_string(),
+                    interval: CandleInterval::OneSecond,
+                    close: Udec128_6::from_str("27.5").unwrap(),
+                    high: Udec128_6::from_str("27.5").unwrap(),
+                    low: Udec128_6::from_str("27.5").unwrap(),
+                    open: Udec128_6::from_str("27.5").unwrap(),
+                    volume: Udec128_6::from_str("25").unwrap(),
+                    volume_usd: Udec128_6::from_str("687.5").unwrap(),
+                    min_block_height: 2,
+                    max_block_height: 2,
+                    time_start: parse_timestamp("1971-01-01 00:00:00.000")?,
+                },
+                PerpsCandle {
+                    pair_id: pair_id.to_string(),
+                    interval: CandleInterval::OneSecond,
+                    close: Udec128_6::from_str("25").unwrap(),
+                    high: Udec128_6::from_str("27.5").unwrap(),
+                    low: Udec128_6::from_str("25").unwrap(),
+                    open: Udec128_6::from_str("27.5").unwrap(),
+                    volume: Udec128_6::from_str("50").unwrap(),
+                    volume_usd: Udec128_6::from_str("1250").unwrap(),
+                    min_block_height: 4,
+                    max_block_height: 6,
+                    time_start: parse_timestamp("1971-01-01 00:00:01.000")?,
+                },
+            ];
+
+            assert_that!(cached_candles).is_equal_to(&expected_candles);
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn close_price_is_correct() -> crate::error::Result<()> {
+        let mut candle_cache = PerpsCandleCache::default();
+
+        let pair_id = "perp/ethusd";
+
+        let pair_prices = vec![
+            perps_pair_price(
+                pair_id,
+                27_500000,
+                27_500000,
+                27_500000,
+                5_000000,
+                137_500000,
+                "1971-01-01 00:00:00.500",
+                2,
+            )?,
+            perps_pair_price(
+                pair_id,
+                27_500000,
+                27_500000,
+                27_500000,
+                5_000000,
+                137_500000,
+                "1971-01-01 00:00:01.000",
+                4,
+            )?,
+            perps_pair_price(
+                pair_id,
+                25_000000,
+                25_000000,
+                25_000000,
+                5_000000,
+                125_000000,
+                "1971-01-01 00:00:01.500",
+                6,
+            )?,
+        ];
+
+        candle_cache.add_multi_block_pair_prices(pair_prices)?;
+
+        let cache_key = PerpsCandleCacheKey::new(pair_id.to_string(), CandleInterval::OneSecond);
+
+        let candles = candle_cache.get_candles(&cache_key).cloned().unwrap();
+
+        let first_candle = candles.first().unwrap();
+
+        assert_that!(first_candle.open).is_equal_to(Udec128_6::from_str("27.5").unwrap());
+        assert_that!(first_candle.close).is_equal_to(Udec128_6::from_str("27.5").unwrap());
+
+        let last_candle = candles.last().unwrap();
+        assert_that!(last_candle.open).is_equal_to(Udec128_6::from_str("27.5").unwrap());
+        assert_that!(last_candle.close).is_equal_to(Udec128_6::from_str("25").unwrap());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn missing_pair_prices_creates_candles() -> crate::error::Result<()> {
+        let mut candle_cache = PerpsCandleCache::default();
+
+        let pair_id = "perp/ethusd";
+
+        let pair_prices = vec![
+            perps_pair_price(
+                pair_id,
+                27_500000,
+                27_500000,
+                27_500000,
+                25_000000,
+                625_000000,
+                "1971-01-01 00:00:00.500",
+                2,
+            )?,
+            perps_pair_price(
+                pair_id,
+                27_500000,
+                27_500000,
+                27_500000,
+                25_000000,
+                625_000000,
+                "1971-01-01 00:00:01.500",
+                4,
+            )?,
+        ];
+
+        candle_cache.add_multi_block_pair_prices(pair_prices)?;
+
+        candle_cache.add_pair_prices(3, parse_timestamp("1971-01-01 00:00:01.000")?, vec![]);
+        candle_cache.add_pair_prices(5, parse_timestamp("1971-01-01 00:00:02.000")?, vec![]);
+
+        let cache_key = PerpsCandleCacheKey::new(pair_id.to_string(), CandleInterval::OneSecond);
+
+        let cached_candles = candle_cache
+            .get_candles(&cache_key)
+            .expect("no candles found");
+
+        let expected_candles = vec![
+            PerpsCandle {
+                pair_id: pair_id.to_string(),
+                interval: CandleInterval::OneSecond,
+                close: Udec128_6::from_str("27.5").unwrap(),
+                high: Udec128_6::from_str("27.5").unwrap(),
+                low: Udec128_6::from_str("27.5").unwrap(),
+                open: Udec128_6::from_str("27.5").unwrap(),
+                volume: Udec128_6::from_str("25").unwrap(),
+                volume_usd: Udec128_6::from_str("625").unwrap(),
+                min_block_height: 2,
+                max_block_height: 2,
+                time_start: parse_timestamp("1971-01-01 00:00:00.000")?,
+            },
+            PerpsCandle {
+                pair_id: pair_id.to_string(),
+                interval: CandleInterval::OneSecond,
+                close: Udec128_6::from_str("27.5").unwrap(),
+                high: Udec128_6::from_str("27.5").unwrap(),
+                low: Udec128_6::from_str("27.5").unwrap(),
+                open: Udec128_6::from_str("27.5").unwrap(),
+                volume: Udec128_6::from_str("25").unwrap(),
+                volume_usd: Udec128_6::from_str("625").unwrap(),
+                min_block_height: 3,
+                max_block_height: 4,
+                time_start: parse_timestamp("1971-01-01 00:00:01.000")?,
+            },
+            PerpsCandle {
+                pair_id: pair_id.to_string(),
+                interval: CandleInterval::OneSecond,
+                close: Udec128_6::from_str("27.5").unwrap(),
+                high: Udec128_6::from_str("27.5").unwrap(),
+                low: Udec128_6::from_str("27.5").unwrap(),
+                open: Udec128_6::from_str("27.5").unwrap(),
+                volume: Udec128_6::ZERO,
+                volume_usd: Udec128_6::ZERO,
+                min_block_height: 5,
+                max_block_height: 5,
+                time_start: parse_timestamp("1971-01-01 00:00:02.000")?,
+            },
+        ];
+
+        assert_that!(cached_candles).is_equal_to(&expected_candles);
+
+        Ok(())
     }
 }
