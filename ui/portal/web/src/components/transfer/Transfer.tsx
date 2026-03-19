@@ -13,7 +13,6 @@ import {
   useBalances,
   useConfig,
   usePerpsUserState,
-  usePrices,
   usePublicClient,
   useSigningClient,
   useSubmitTx,
@@ -245,7 +244,6 @@ const TransferSpotPerp: React.FC = () => {
   const { account, isConnected } = useAccount();
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
-  const { getPrice } = usePrices();
 
   usePerpsUserState();
   const perpsState = perpsUserStateStore((s) => s.userState);
@@ -287,18 +285,6 @@ const TransferSpotPerp: React.FC = () => {
     : { "bridge/usdc": perpMargin };
 
   const amount = inputs.amount?.value || "0";
-
-  const receiveAmount = (() => {
-    if (amount === "0") return "0";
-    if (isSpotToPerp) {
-      const usdValue = getPrice(amount, "bridge/usdc");
-      return usdValue ? usdValue.toString() : amount;
-    }
-
-    const usdcPrice = getPrice(1, "bridge/usdc");
-    if (!usdcPrice) return amount;
-    return Decimal(amount).div(usdcPrice).toFixed();
-  })();
 
   const { mutateAsync: onSubmit, isPending } = useSubmitTx<void, Error, { amount: string }>({
     submission: {
@@ -384,7 +370,7 @@ const TransferSpotPerp: React.FC = () => {
             placeholder="0"
             readOnly
             label={m["transfer.spotPerp.youReceive"]()}
-            value={receiveAmount}
+            value={amount}
             classNames={{
               base: "z-20",
               inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
