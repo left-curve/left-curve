@@ -61,7 +61,7 @@ pub fn process(input: TokenStream) -> TokenStream {
     }
 
     // Collect explicit indices.
-    let explicit_indices: Vec<Option<u8>> = variants.iter().map(|v| parse_index_attr(v)).collect();
+    let explicit_indices: Vec<Option<u8>> = variants.iter().map(parse_index_attr).collect();
 
     let has_any = explicit_indices.iter().any(|i| i.is_some());
     let has_all = explicit_indices.iter().all(|i| i.is_some());
