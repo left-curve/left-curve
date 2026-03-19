@@ -66,7 +66,7 @@ export function useConvertState(parameters: UseConvertStateParameters) {
     [from, to],
   );
 
-  const pair = config?.pairs[pairId.base.denom];
+  const pair = config.pairs[pairId.base.denom];
 
   const changePair = (symbol: string) => {
     const newPair = isReverse ? { from: symbol, to } : { from, to: symbol };

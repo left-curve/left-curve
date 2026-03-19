@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useReducer, useState } from "react";
-import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useAppConfig } from "./useAppConfig.js";
 
@@ -38,7 +37,6 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
   const [searchText, setSearchText] = useState("");
 
   const allContracts = useMemo(() => {
-    if (!appConfig) return [];
     return Object.entries(appConfig.addresses)
       .filter(([key]) => !key.startsWith("0x"))
       .map(([key, value]) => ({ label: key, address: value })) as (ContractInfo & {
@@ -62,7 +60,6 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
     noResult,
   );
 
-  const { getAppConfig } = useConfig();
   const queryClient = useQueryClient();
   const client = usePublicClient();
 
@@ -99,7 +96,7 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
       if (signal.aborted) return;
 
       const promises: Promise<unknown>[] = [];
-      const { accountFactory } = await getAppConfig();
+      const { accountFactory } = appConfig;
 
       if (isValidAddress(searchText)) {
         // search for contract

@@ -50,7 +50,7 @@ export function useOrderBookState(parameters: UseOrderBookStateParameters) {
   const { setState } = orderBookStore();
 
   useEffect(() => {
-    if (!appConfig || !subscribe) return;
+    if (!subscribe) return;
 
     const { addresses } = appConfig;
     const unsubscribe = subscriptions.subscribe("queryApp", {
@@ -88,7 +88,7 @@ export function useOrderBookState(parameters: UseOrderBookStateParameters) {
     return () => {
       unsubscribe();
     };
-  }, [pairId, subscribe, appConfig]);
+  }, [pairId, subscribe, appConfig.addresses]);
 
   return { orderBookStore };
 }

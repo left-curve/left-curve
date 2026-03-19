@@ -7,7 +7,9 @@ import {
   getAppConfigQueryOptions,
 } from "../handlers/getAppConfig.js";
 
-import { type QueryParameter, type UseQueryReturnType, useQuery } from "../query.js";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import type { UseSuspenseQueryResult } from "@tanstack/react-query";
+import type { QueryParameter } from "../query.js";
 import { useConfig } from "./useConfig.js";
 
 import type { Prettify } from "@left-curve/dango/types";
@@ -22,7 +24,7 @@ export type UseAppConfigParameters<
     QueryParameter<GetAppConfigQueryFnData, GetAppConfigErrorType, selectData, GetAppConfigQueryKey>
 >;
 
-export type UseAppConfigReturnType<selectData = GetAppConfigData> = UseQueryReturnType<
+export type UseAppConfigReturnType<selectData = GetAppConfigData> = UseSuspenseQueryResult<
   selectData,
   GetAppConfigErrorType
 >;
@@ -35,5 +37,5 @@ export function useAppConfig(parameters: UseAppConfigParameters = {}): UseAppCon
     ...parameters,
   });
 
-  return useQuery({ ...query, ...options });
+  return useSuspenseQuery({ ...query, ...options });
 }

@@ -47,7 +47,7 @@ export function usePerpsUserState(parameters?: UsePerpsUserStateParameters) {
   const { setState } = perpsUserStateStore();
 
   useEffect(() => {
-    if (!appConfig || !subscribe || !account) return;
+    if (!subscribe || !account) return;
     const { addresses } = appConfig;
 
     const unsubscribe = subscriptions.subscribe("queryApp", {
@@ -71,7 +71,7 @@ export function usePerpsUserState(parameters?: UsePerpsUserStateParameters) {
     });
 
     return () => unsubscribe();
-  }, [appConfig, subscribe, account]);
+  }, [appConfig.addresses, subscribe, account]);
 
   return { perpsUserStateStore };
 }

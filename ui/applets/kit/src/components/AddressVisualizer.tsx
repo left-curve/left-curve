@@ -71,7 +71,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
     queryFn: async () => {
       if (addresses[address]) return addresses[address];
 
-      const contractName = config?.addresses[address as keyof typeof config.addresses] as string;
+      const contractName = config.addresses[address as keyof typeof config.addresses] as string;
       if (contractName) {
         return {
           contract: {
