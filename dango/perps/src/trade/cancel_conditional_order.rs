@@ -63,13 +63,7 @@ fn _cancel_one_conditional_order(
     is_above: bool,
     reason: ReasonForOrderRemoval,
 ) -> StdResult<ConditionalOrderRemoved> {
-    let (pair_id, _, order_id) = &key;
-    let event = ConditionalOrderRemoved {
-        order_id: *order_id,
-        pair_id: pair_id.clone(),
-        user: order.user,
-        reason,
-    };
+    let (pair_id, _, order_id) = key.clone();
 
     if is_above {
         CONDITIONAL_ABOVE.remove(storage, key)?;
@@ -79,7 +73,12 @@ fn _cancel_one_conditional_order(
 
     user_state.conditional_order_count -= 1;
 
-    Ok(event)
+    Ok(ConditionalOrderRemoved {
+        order_id,
+        pair_id,
+        user: order.user,
+        reason,
+    })
 }
 
 pub fn cancel_all_conditional_orders(ctx: MutableCtx) -> anyhow::Result<Response> {

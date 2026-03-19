@@ -7,6 +7,7 @@ use {
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::apply_position_index_updates,
         price::may_invert_price,
+        trade::_submit_order,
     },
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -369,9 +370,9 @@ fn process_triggered_order(
         oracle_price,
     })?;
 
-    // Execute as a market order via _submit_order.
+    // Execute as a market order via `_submit_order`.
     let (maker_states, order_mutations, _order_to_store, next_order_id, index_updates, volumes) =
-        crate::trade::_submit_order(
+        _submit_order(
             storage,
             order.user,
             contract,
