@@ -172,12 +172,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Order { order_id } => query::query_order(ctx, order_id)?.to_json_value(),
         QueryMsg::OrdersByUser { user } => query::query_orders_by_user(ctx, user)?.to_json_value(),
-        QueryMsg::ConditionalOrder { order_id } => {
-            query::query_conditional_order(ctx, order_id)?.to_json_value()
-        },
-        QueryMsg::ConditionalOrdersByUser { user } => {
-            query::query_conditional_orders_by_user(ctx, user)?.to_json_value()
-        },
         QueryMsg::LiquidityDepth {
             pair_id,
             bucket_size,

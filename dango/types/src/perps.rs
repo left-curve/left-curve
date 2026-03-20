@@ -318,13 +318,14 @@ pub struct Unlock {
 ///
 /// This struct does not contain the pair ID, order ID, and the limit price,
 /// which are instead included in the storage key, with which this struct is
-/// saved in the contract storage .
+/// saved in the contract storage.
 #[grug::derive(Serde, Borsh)]
-pub struct Order {
+pub struct LimitOrder {
     pub user: Addr,
     pub size: Quantity,
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
+    pub created_at: Timestamp,
 }
 
 /// A conditional order stored off-book until triggered.
@@ -344,6 +345,8 @@ pub struct ConditionalOrder {
 
     /// Max slippage for the market order executed at trigger.
     pub max_slippage: Dimensionless,
+
+    pub created_at: Timestamp,
 }
 
 #[grug::derive(Serde)]
@@ -506,21 +509,13 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Query a single order by ID.
+    /// Query a single order (limit or conditional) by ID.
     #[returns(Option<QueryOrderResponse>)]
     Order { order_id: OrderId },
 
-    /// Query all orders of a single user.
-    #[returns(QueryOrdersByUserResponse)]
+    /// Query all orders (limit + conditional) of a single user.
+    #[returns(BTreeMap<OrderId, QueryOrdersByUserResponseItem>)]
     OrdersByUser { user: Addr },
-
-    /// Query a single conditional order by ID.
-    #[returns(Option<QueryConditionalOrderResponse>)]
-    ConditionalOrder { order_id: ConditionalOrderId },
-
-    /// Query all conditional orders for a user.
-    #[returns(QueryConditionalOrdersByUserResponse)]
-    ConditionalOrdersByUser { user: Addr },
 
     /// Query aggregated order book depth at a specific bucket size.
     #[returns(LiquidityDepthResponse)]
@@ -540,38 +535,44 @@ pub enum QueryMsg {
 }
 
 #[grug::derive(Serde)]
+pub enum LimitOrConditionalOrder {
+    Limit {
+        limit_price: UsdPrice,
+        reduce_only: bool,
+        reserved_margin: UsdValue,
+    },
+    Conditional {
+        trigger_price: UsdPrice,
+        trigger_direction: TriggerDirection,
+        // Conditonal orders are always `reduce_only` and has zero `reserved_margin`.
+    },
+}
+
+#[grug::derive(Serde)]
 pub struct QueryOrderResponse {
-    pub order_id: OrderId,
+    pub user: Addr,
     pub pair_id: PairId,
-    pub limit_price: UsdPrice,
     pub size: Quantity,
-    pub reduce_only: bool,
-    pub reserved_margin: UsdValue,
+    pub kind: LimitOrConditionalOrder,
+    pub created_at: Timestamp,
+    // `order_id` is not included in the response because the client already knows it.
 }
 
 #[grug::derive(Serde)]
-pub struct QueryOrdersByUserResponse {
-    pub bids: Vec<QueryOrderResponse>,
-    pub asks: Vec<QueryOrderResponse>,
-}
-
-#[grug::derive(Serde)]
-pub struct QueryConditionalOrderResponse {
-    pub order_id: ConditionalOrderId,
+pub struct QueryOrdersByUserResponseItem {
     pub pair_id: PairId,
-    pub order: ConditionalOrder,
-}
-
-#[grug::derive(Serde)]
-pub struct QueryConditionalOrdersByUserResponse {
-    pub above: Vec<QueryConditionalOrderResponse>,
-    pub below: Vec<QueryConditionalOrderResponse>,
+    pub size: Quantity,
+    pub kind: LimitOrConditionalOrder,
+    pub created_at: Timestamp,
+    // `user` is not included in the response because the client already knows it.
+    // `order_id` is the map key.
 }
 
 #[grug::derive(Serde)]
 pub struct LiquidityDepth {
     /// Absolute order size aggregated in this bucket.
     pub size: Quantity,
+
     /// USD notional value aggregated in this bucket (size × price).
     pub notional: UsdValue,
 }

@@ -23,8 +23,8 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            BadDebtCovered, Deleveraged, Liquidated, Order, OrderId, PairId, PairParam, PairState,
-            Param, ReasonForOrderRemoval, State, UserState,
+            BadDebtCovered, Deleveraged, LimitOrder, Liquidated, OrderId, PairId, PairParam,
+            PairState, Param, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
@@ -227,7 +227,14 @@ fn _liquidate(
     events: &mut EventBuilder,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
-    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
+    Vec<(
+        PairId,
+        bool,
+        UsdPrice,
+        OrderId,
+        Option<LimitOrder>,
+        Quantity,
+    )>,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
 )> {
@@ -367,7 +374,14 @@ fn execute_close_schedule(
 ) -> anyhow::Result<(
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
-    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
+    Vec<(
+        PairId,
+        bool,
+        UsdPrice,
+        OrderId,
+        Option<LimitOrder>,
+        Quantity,
+    )>,
     UsdValue,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
@@ -685,7 +699,7 @@ mod tests {
         },
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{Order, PairParam, PairState, Param, Position, State, UserState},
+            perps::{LimitOrder, PairParam, PairState, Param, Position, State, UserState},
         },
         grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64},
         std::collections::BTreeMap,
@@ -777,11 +791,12 @@ mod tests {
         use crate::price::may_invert_price;
         let stored_price = may_invert_price(UsdPrice::new_int(price), true);
         let key: OrderKey = (pair_id.clone(), stored_price, Uint64::new(order_id));
-        let order = Order {
+        let order = LimitOrder {
             user: maker,
             size: Quantity::new_int(size),
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
+            created_at: Timestamp::ZERO,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -797,11 +812,12 @@ mod tests {
     ) {
         let stored_price = UsdPrice::new_int(price);
         let key: OrderKey = (pair_id.clone(), stored_price, Uint64::new(order_id));
-        let order = Order {
+        let order = LimitOrder {
             user: maker,
             size: Quantity::new_int(size),
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
+            created_at: Timestamp::ZERO,
         };
         ASKS.save(storage, key, &order).unwrap();
     }

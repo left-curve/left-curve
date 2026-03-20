@@ -21,7 +21,7 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            Order, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
+            LimitOrder, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
             PairParam, PairState, Param, ReasonForOrderRemoval, State, UserState,
         },
     },
@@ -189,8 +189,8 @@ pub fn submit_order(
 ///
 /// - Maker `UserState`s to persist (includes the vault's `UserState`):
 ///   `BTreeMap<Addr, UserState>`.
-/// - Order mutations to apply: `Vec<(OrderKey, Option<Order>)>`.
-/// - GTC order to store: `Option<(stored_price, order_id, Order)>`.
+/// - Order mutations to apply: `Vec<(OrderKey, Option<LimitOrder>)>`.
+/// - GTC order to store: `Option<(stored_price, order_id, LimitOrder)>`.
 pub(crate) fn _submit_order(
     storage: &dyn Storage,
     taker: Addr,
@@ -210,8 +210,8 @@ pub(crate) fn _submit_order(
     events: &mut EventBuilder,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
-    Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
-    Option<(UsdPrice, OrderId, Order)>,
+    Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
+    Option<(UsdPrice, OrderId, LimitOrder)>,
     OrderId,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
@@ -256,6 +256,7 @@ pub(crate) fn _submit_order(
         let order_to_store = store_post_only_limit_order(
             storage,
             taker,
+            current_time,
             oracle_querier,
             param,
             pair_id,
@@ -338,6 +339,7 @@ pub(crate) fn _submit_order(
             OrderKind::Limit { limit_price, .. } => Some(store_limit_order(
                 storage,
                 taker,
+                current_time,
                 oracle_querier,
                 param,
                 pair_param,
@@ -402,7 +404,7 @@ pub(crate) fn _submit_order(
 /// - Per-user position PnL in USD (`BTreeMap<Addr, UsdValue>`).
 /// - Per-user trading fees in USD (`BTreeMap<Addr, UsdValue>`).
 /// - Order mutations to apply. Each entry is
-///   `(StoredPrice, OrderId, Option<Order>, pre_fill_abs_size)`:
+///   `(StoredPrice, OrderId, Option<LimitOrder>, pre_fill_abs_size)`:
 ///   `None` = remove (fully filled / self-trade), `Some` = update (partially
 ///   filled). `pre_fill_abs_size` is the maker order's absolute size *before*
 ///   this match, used for depth bookkeeping.
@@ -433,7 +435,7 @@ pub fn match_order(
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
-    Vec<(UsdPrice, OrderId, Option<Order>, Quantity)>,
+    Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
     Vec<PositionIndexUpdate>,
 )> {
     let mut pnls = BTreeMap::new();
@@ -810,10 +812,11 @@ pub fn settle_pnls(
 ///
 /// Returns:
 ///
-/// - `(stored_price, order_id, Order)` — the resting order to persist.
+/// - `(stored_price, order_id, LimitOrder)` — the resting order to persist.
 fn store_post_only_limit_order(
     storage: &dyn Storage,
     taker: Addr,
+    current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
     param: &Param,
     pair_id: &PairId,
@@ -823,7 +826,7 @@ fn store_post_only_limit_order(
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
-) -> anyhow::Result<(UsdPrice, OrderId, Order)> {
+) -> anyhow::Result<(UsdPrice, OrderId, LimitOrder)> {
     let taker_is_bid = size.is_positive();
     let maker_is_bid = !taker_is_bid;
 
@@ -857,6 +860,7 @@ fn store_post_only_limit_order(
     store_limit_order(
         storage,
         taker,
+        current_time,
         oracle_querier,
         param,
         pair_param,
@@ -876,10 +880,11 @@ fn store_post_only_limit_order(
 ///
 /// Returns:
 ///
-/// - `(stored_price, order_id, Order)` — the resting order to persist.
+/// - `(stored_price, order_id, LimitOrder)` — the resting order to persist.
 fn store_limit_order(
     storage: &dyn Storage,
     user: Addr,
+    current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
     param: &Param,
     pair_param: &PairParam,
@@ -888,7 +893,7 @@ fn store_limit_order(
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
-) -> anyhow::Result<(UsdPrice, OrderId, Order)> {
+) -> anyhow::Result<(UsdPrice, OrderId, LimitOrder)> {
     ensure!(
         user_state.open_order_count < param.max_open_orders,
         "too many open orders! max allowed: {}",
@@ -928,11 +933,12 @@ fn store_limit_order(
     // Invert price for buy orders so storage order matches price-time priority.
     let stored_price = may_invert_price(limit_price, size.is_positive());
 
-    Ok((stored_price, order_id, Order {
+    Ok((stored_price, order_id, LimitOrder {
         user,
         size,
         reduce_only,
         reserved_margin: margin_to_reserve,
+        created_at: current_time,
     }))
 }
 
@@ -1002,11 +1008,12 @@ mod tests {
     /// Place a resting ask (sell) order on the book.
     fn place_ask(storage: &mut dyn Storage, maker: Addr, price: i128, size: i128, order_id: u64) {
         let key = (pair_id(), UsdPrice::new_int(price), Uint64::new(order_id));
-        let order = Order {
+        let order = LimitOrder {
             user: maker,
             size: Quantity::new_int(-size.abs()),
             reduce_only: false,
             reserved_margin: UsdValue::new_int(size.abs() * price / 20), // 5% margin
+            created_at: Timestamp::from_nanos(0),
         };
         ASKS.save(storage, key, &order).unwrap();
 
@@ -1026,11 +1033,12 @@ mod tests {
     fn place_bid(storage: &mut dyn Storage, maker: Addr, price: i128, size: i128, order_id: u64) {
         let inverted_price = !UsdPrice::new_int(price);
         let key = (pair_id(), inverted_price, Uint64::new(order_id));
-        let order = Order {
+        let order = LimitOrder {
             user: maker,
             size: Quantity::new_int(size.abs()),
             reduce_only: false,
             reserved_margin: UsdValue::new_int(size.abs() * price / 20),
+            created_at: Timestamp::from_nanos(0),
         };
         BIDS.save(storage, key, &order).unwrap();
 

@@ -8,7 +8,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         UsdValue,
-        perps::{Order, ReasonForOrderRemoval},
+        perps::{LimitOrder, ReasonForOrderRemoval},
     },
     grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
 };
@@ -112,11 +112,12 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         // Place bid order.
         if let Some(bid_quote) = bid {
             let stored_price = may_invert_price(bid_quote.price, true);
-            let order = Order {
+            let order = LimitOrder {
                 user: ctx.contract,
                 size: bid_quote.size,
                 reduce_only: false,
                 reserved_margin: UsdValue::ZERO,
+                created_at: ctx.block.timestamp,
             };
 
             BIDS.save(
@@ -140,11 +141,12 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         // Place ask order.
         if let Some(ask_quote) = ask {
-            let order = Order {
+            let order = LimitOrder {
                 user: ctx.contract,
                 size: ask_quote.size,
                 reduce_only: false,
                 reserved_margin: UsdValue::ZERO,
+                created_at: ctx.block.timestamp,
             };
 
             ASKS.save(

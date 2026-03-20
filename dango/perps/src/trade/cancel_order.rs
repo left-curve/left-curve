@@ -5,7 +5,7 @@ use {
     },
     anyhow::{anyhow, ensure},
     dango_types::perps::{
-        Order, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval, UserState,
+        LimitOrder, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval, UserState,
     },
     grug::{Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
     std::collections::{BTreeMap, BTreeSet},
@@ -62,7 +62,7 @@ fn _cancel_one_order<F>(
     storage: &mut dyn Storage,
     user_state: &mut UserState,
     order_key: OrderKey,
-    order: Order,
+    order: LimitOrder,
     events: Option<&mut EventBuilder>,
     reason: ReasonForOrderRemoval,
     pair_param: F,
@@ -196,9 +196,9 @@ mod tests {
         },
         dango_types::{
             FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{Order, PairId, PairParam, Position, UserState},
+            perps::{LimitOrder, PairId, PairParam, Position, UserState},
         },
-        grug::{Addr, Coins, MockContext, ResultExt, Storage, Uint64},
+        grug::{Addr, Coins, MockContext, ResultExt, Storage, Timestamp, Uint64},
         std::collections::{BTreeMap, VecDeque},
     };
 
@@ -233,11 +233,12 @@ mod tests {
     ) {
         ensure_pair_param(storage);
         let key = order_key(order_id);
-        let order = Order {
+        let order = LimitOrder {
             user,
             size: Quantity::new_int(size),
             reduce_only: false,
             reserved_margin: UsdValue::new_int(reserved_margin),
+            created_at: Timestamp::from_nanos(0),
         };
 
         BIDS.save(storage, key, &order).unwrap();
@@ -253,11 +254,12 @@ mod tests {
     ) {
         ensure_pair_param(storage);
         let key = order_key(order_id);
-        let order = Order {
+        let order = LimitOrder {
             user,
             size: Quantity::new_int(size),
             reduce_only: false,
             reserved_margin: UsdValue::new_int(reserved_margin),
+            created_at: Timestamp::from_nanos(0),
         };
 
         ASKS.save(storage, key, &order).unwrap();
