@@ -24,6 +24,8 @@ mod candles;
 mod grug;
 mod metrics;
 mod pair_stats;
+mod perps_candles;
+mod perps_events;
 mod shutdown;
 mod trades;
 mod transfers;

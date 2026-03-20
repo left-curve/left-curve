@@ -215,6 +215,14 @@ generate_types! {
         path: "src/schemas/queries/candles.graphql",
     },
     {
+        name: PerpsCandles,
+        path: "src/schemas/queries/perpsCandles.graphql",
+    },
+    {
+        name: PerpsEvents,
+        path: "src/schemas/queries/perpsEvents.graphql",
+    },
+    {
         name: Trades,
         path: "src/schemas/queries/trades.graphql",
     },
@@ -238,6 +246,12 @@ generate_types! {
 
 // Implement Default for enum types used as required fields in Variables
 impl Default for candles::CandleInterval {
+    fn default() -> Self {
+        Self::ONE_MINUTE
+    }
+}
+
+impl Default for perps_candles::CandleInterval {
     fn default() -> Self {
         Self::ONE_MINUTE
     }
@@ -487,6 +501,19 @@ generate_subscription_types! {
         require_data: false  // Event-driven
     },
     {
+        name: SubscribePerpsCandles,
+        path: "src/schemas/subscriptions/perpsCandles.graphql",
+        test_with: crate::subscribe_perps_candles::Variables {
+            pair_id: "perp/ethusd".to_string(),
+            interval: crate::subscribe_perps_candles::CandleInterval::ONE_MINUTE,
+            later_than: None,
+        },
+        expect: |_data: crate::subscribe_perps_candles::ResponseData| {
+            true
+        },
+        require_data: false  // Event-driven
+    },
+    {
         name: SubscribeTrades,
         path: "src/schemas/subscriptions/trades.graphql",
         test_with: crate::subscribe_trades::Variables {
@@ -541,13 +568,20 @@ generate_subscription_types! {
 pub mod subscriptions {
     pub use super::{
         subscribe_accounts, subscribe_block, subscribe_candles, subscribe_event_by_addresses,
-        subscribe_events, subscribe_messages, subscribe_query_app, subscribe_query_status,
-        subscribe_query_store, subscribe_trades, subscribe_transactions, subscribe_transfers,
+        subscribe_events, subscribe_messages, subscribe_perps_candles, subscribe_query_app,
+        subscribe_query_status, subscribe_query_store, subscribe_trades, subscribe_transactions,
+        subscribe_transfers,
     };
 }
 
 // Implement Default for subscription enum types
 impl Default for subscribe_candles::CandleInterval {
+    fn default() -> Self {
+        Self::ONE_MINUTE
+    }
+}
+
+impl Default for subscribe_perps_candles::CandleInterval {
     fn default() -> Self {
         Self::ONE_MINUTE
     }

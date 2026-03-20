@@ -1,7 +1,15 @@
-use {async_graphql::*, candle::CandleSubscription, trade::TradeSubscription};
+use {
+    async_graphql::*, candle::CandleSubscription, perps_candle::PerpsCandleSubscription,
+    trade::TradeSubscription,
+};
 
 pub mod candle;
+pub mod perps_candle;
 pub mod trade;
 
 #[derive(MergedSubscription, Default)]
-pub struct Subscription(CandleSubscription, TradeSubscription);
+pub struct Subscription(
+    CandleSubscription,
+    TradeSubscription,
+    PerpsCandleSubscription,
+);

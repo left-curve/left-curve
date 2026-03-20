@@ -1,0 +1,20 @@
+query PerpsEvents($after: String, $before: String, $first: Int, $last: Int, $sortBy: PerpsEventSortBy, $userAddr: String, $eventType: String, $pairId: String, $blockHeight: Int) {
+  perpsEvents(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy, userAddr: $userAddr, eventType: $eventType, pairId: $pairId, blockHeight: $blockHeight) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      idx
+      blockHeight
+      txHash
+      eventType
+      userAddr
+      pairId
+      data
+      createdAt
+    }
+  }
+}
