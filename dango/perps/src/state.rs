@@ -1,7 +1,10 @@
 use {
     dango_types::{
         Quantity, UsdPrice, UsdValue,
-        perps::{Order, OrderId, PairId, PairParam, PairState, Param, State, UserState},
+        perps::{
+            ConditionalOrder, ConditionalOrderId, Order, OrderId, PairId, PairParam, PairState,
+            Param, State, UserState,
+        },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
     std::collections::BTreeSet,
@@ -38,12 +41,37 @@ pub const LONGS: Set<(PairId, UsdPrice, Addr)> = Set::new("long");
 /// Used during auto-deleveraging (ADL) to find the most profitable positions.
 pub const SHORTS: Set<(PairId, UsdPrice, Addr)> = Set::new("short");
 
+/// Buy orders.
 pub const BIDS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("bid", OrderIndexes::new("bid", "bid__id", "bid__user"));
 
+/// Sell orders.
 pub const ASKS: IndexedMap<OrderKey, Order, OrderIndexes> =
     IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
 
+/// Conditional orders that trigger when oracle_price >= trigger_price.
+/// Used for: TP on longs, SL on shorts.
+pub const CONDITIONAL_ABOVE: IndexedMap<
+    ConditionalOrderKey,
+    ConditionalOrder,
+    ConditionalOrderIndexes,
+> = IndexedMap::new(
+    "conda",
+    ConditionalOrderIndexes::new("conda", "conda__id", "conda__user"),
+);
+
+/// Conditional orders that trigger when oracle_price <= trigger_price.
+/// Used for: SL on longs, TP on shorts.
+pub const CONDITIONAL_BELOW: IndexedMap<
+    ConditionalOrderKey,
+    ConditionalOrder,
+    ConditionalOrderIndexes,
+> = IndexedMap::new(
+    "condb",
+    ConditionalOrderIndexes::new("condb", "condb__id", "condb__user"),
+);
+
+/// Liquidity depths of the order book.
 pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 
 /// Cumulative trading volume per user, bucketed by day.
@@ -53,6 +81,8 @@ pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
 // ----------------------------------- types -----------------------------------
 
 pub type OrderKey = (PairId, UsdPrice, OrderId);
+
+pub type ConditionalOrderKey = (PairId, UsdPrice, ConditionalOrderId);
 
 #[grug::index_list(OrderKey, Order)]
 pub struct OrderIndexes<'a> {
@@ -67,6 +97,29 @@ impl OrderIndexes<'static> {
         user_namespace: &'static str,
     ) -> Self {
         OrderIndexes {
+            order_id: UniqueIndex::new(
+                |(_, _, order_id), _| *order_id,
+                pk_namespace,
+                order_id_namespace,
+            ),
+            user: MultiIndex::new(|_, order| order.user, pk_namespace, user_namespace),
+        }
+    }
+}
+
+#[grug::index_list(ConditionalOrderKey, ConditionalOrder)]
+pub struct ConditionalOrderIndexes<'a> {
+    pub order_id: UniqueIndex<'a, ConditionalOrderKey, ConditionalOrderId, ConditionalOrder>,
+    pub user: MultiIndex<'a, ConditionalOrderKey, Addr, ConditionalOrder>,
+}
+
+impl ConditionalOrderIndexes<'static> {
+    pub const fn new(
+        pk_namespace: &'static str,
+        order_id_namespace: &'static str,
+        user_namespace: &'static str,
+    ) -> Self {
+        ConditionalOrderIndexes {
             order_id: UniqueIndex::new(
                 |(_, _, order_id), _| *order_id,
                 pk_namespace,

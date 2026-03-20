@@ -28,6 +28,7 @@ fn default_param() -> Param {
         vault_cooldown_period: Duration::from_days(1),
         max_unlocks: 10,
         max_open_orders: 100,
+        max_conditional_orders: 10,
         funding_period: Duration::from_hours(1),
         vault_total_weight: Dimensionless::ZERO,
     }
@@ -1931,5 +1932,1051 @@ fn protocol_fee_accumulates_across_fills() {
         global_state.treasury,
         UsdValue::new_int(8),
         "treasury should be $8 after second fill (accumulated, not overwritten)"
+    );
+}
+
+/// Full lifecycle: deposit → open position → place TP → oracle rises →
+/// cron triggers TP → position closed.
+#[test]
+fn conditional_order_tp_triggers_on_price_rise() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Step 1: Trader deposits $10,000 USDC.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Step 2: Maker places ask: 10 ETH @ $2,000.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Step 3: Trader market buys 10 ETH. Fee = 10 * $2,000 * 0.1% = $20.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert_eq!(state.margin, UsdValue::new_int(9_980));
+    assert_eq!(
+        state.positions.get(&pair).unwrap().size,
+        Quantity::new_int(10)
+    );
+
+    // Step 4: Trader submits TP: sell 10 @ trigger $2,500 Above, 1% slippage.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                trigger_price: UsdPrice::new_int(2_500),
+                trigger_direction: perps::TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(1),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Step 5: Query conditional orders.
+    let cond_orders: perps::QueryConditionalOrdersByUserResponse = suite
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryConditionalOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
+        .should_succeed();
+
+    assert!(
+        cond_orders.above.len() == 1 && cond_orders.below.is_empty(),
+        "should have exactly 1 above and 0 below conditional orders"
+    );
+
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    assert_eq!(state.conditional_order_count, 1);
+
+    // Step 6: Bidder (user2) places bid: 10 ETH @ $2,500.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_500),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Step 7: Oracle updated to $2,500.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+
+    // Step 8: Advance time so perps cron fires (interval = 1 min).
+    suite.increase_time(Duration::from_minutes(2));
+
+    // Step 9: Verify trader state — position closed.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert!(
+        !state.positions.contains_key(&pair),
+        "position should be closed after TP triggered"
+    );
+    assert_eq!(state.conditional_order_count, 0);
+
+    // PnL should be positive: 10 * ($2,500 - $2,000) = +$5,000 (minus fees).
+    // Margin started at $9,980, so should be > $14,000.
+    assert!(
+        state.margin > UsdValue::new_int(14_000),
+        "margin should reflect positive PnL: got {:?}",
+        state.margin
+    );
+
+    // Step 10: Query conditional orders — should be empty.
+    let cond_orders: perps::QueryConditionalOrdersByUserResponse = suite
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryConditionalOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
+        .should_succeed();
+
+    assert!(
+        cond_orders.above.is_empty() && cond_orders.below.is_empty(),
+        "conditional orders should be empty after trigger"
+    );
+}
+
+/// SL triggers on price drop: deposit → buy → place SL → oracle drops →
+/// cron triggers SL → position closed with loss.
+#[test]
+fn conditional_order_sl_triggers_on_price_drop() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Step 1: Trader deposits $10,000, buys 5 ETH @ $2,000.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Maker deposits and places ask.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Step 2: Trader submits SL: sell 5 @ trigger $1,800 Below, 2% slippage.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                trigger_price: UsdPrice::new_int(1_800),
+                trigger_direction: perps::TriggerDirection::Below,
+                max_slippage: Dimensionless::new_percent(2),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Step 3: Bidder places bid: 5 ETH @ $1,800.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_800),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Step 4: Oracle drops to $1,800, advance time so perps cron fires.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800);
+    suite.increase_time(Duration::from_minutes(2));
+
+    // Step 5: Verify trader state — position closed, PnL = 5*($1,800-$2,000) = -$1,000.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert!(
+        !state.positions.contains_key(&pair),
+        "position should be closed after SL triggered"
+    );
+    assert_eq!(state.conditional_order_count, 0);
+
+    // Margin started at $9,990 (after $10 fee), loss of $1,000, minus close fee.
+    // Should be roughly $8,980.
+    assert!(
+        state.margin < UsdValue::new_int(9_000),
+        "margin should reflect loss: got {:?}",
+        state.margin
+    );
+}
+
+/// Liquidation cancels conditional orders alongside regular orders.
+/// Follows the pattern from `liquidation_on_order_book`.
+#[test]
+fn liquidation_cancels_conditional_orders() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Step 1: Fund vault ($100k via user4), trader (user1) deposits $3,000.
+    suite
+        .execute(
+            &mut accounts.user4,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user4,
+            contracts.perps,
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::AddLiquidity {
+                amount: UsdValue::new_int(100_000),
+                min_shares_to_mint: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(3_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Step 2: Maker (user2) deposits and places ask: 5 ETH @ $2,000.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trader buys 5 ETH.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Step 3: Trader submits TP and SL conditional orders.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                trigger_price: UsdPrice::new_int(2_500),
+                trigger_direction: perps::TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(1),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                trigger_price: UsdPrice::new_int(1_500),
+                trigger_direction: perps::TriggerDirection::Below,
+                max_slippage: Dimensionless::new_percent(2),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    assert_eq!(state.conditional_order_count, 2);
+
+    // Step 4: Oracle drops to $1,450.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
+
+    // Step 5: Bidder (user3) deposits and places bid: 5 ETH @ $1,450.
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_450),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Step 6: Liquidate trader.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Liquidate {
+                user: accounts.user1.address(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Step 7: Verify conditional orders are canceled.
+    // Note: liquidation may be partial, so the position may still exist
+    // (just reduced). The key assertion is that conditional orders were canceled.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert_eq!(
+        state.conditional_order_count, 0,
+        "conditional orders should be canceled by liquidation"
+    );
+
+    // Conditional orders should be gone from storage.
+    let cond_orders: perps::QueryConditionalOrdersByUserResponse = suite
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryConditionalOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
+        .should_succeed();
+
+    assert!(
+        cond_orders.above.is_empty() && cond_orders.below.is_empty(),
+        "conditional orders should be empty after liquidation"
+    );
+}
+
+/// BELOW conditional orders store `!trigger_price` (bitwise-inverted) in the
+/// storage key so that ascending iteration yields descending real trigger
+/// prices. This means the order closest to the current market price executes
+/// first during cron processing.
+///
+/// This test verifies price-time priority by placing two BELOW stop-losses at
+/// different trigger prices ($1,900 and $1,800). Two bids at different prices
+/// ($1,790 better, $1,770 worse) sit on the book. When the oracle drops to
+/// $1,800 and the cron fires, the $1,900 SL (closer to market) must execute
+/// first and consume the better $1,790 bid, leaving the $1,770 bid for the
+/// $1,800 SL.
+#[test]
+fn conditional_orders_follow_price_time_priority() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Setup: User1, User3 deposit $10k each. Maker (user2) deposits $100k.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 1: Maker places ask: 10 ETH @ $2,000.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 2: User1 market buys 5 ETH → 5 ETH long @ $2,000.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 3: User3 market buys 5 ETH → 5 ETH long @ $2,000.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 4: User1 places SL: BELOW $1,900, size -5, max_slippage 2%.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                trigger_price: UsdPrice::new_int(1_900),
+                trigger_direction: perps::TriggerDirection::Below,
+                max_slippage: Dimensionless::new_percent(2),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 5: User3 places SL: BELOW $1,800, size -5, max_slippage 2%.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                trigger_price: UsdPrice::new_int(1_800),
+                trigger_direction: perps::TriggerDirection::Below,
+                max_slippage: Dimensionless::new_percent(2),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 6: Maker places two bids at different prices.
+    //   - 5 ETH @ $1,790 (better price — consumed by first-to-execute order)
+    //   - 5 ETH @ $1,770 (worse price — consumed by second-to-execute order)
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_790),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_770),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 7: Oracle → $1,800, advance time 2 min so cron fires.
+    //
+    // Both SLs trigger (oracle <= trigger_price for both $1,900 and $1,800).
+    // Correct priority (descending real trigger price):
+    //   User1's SL ($1,900) executes first → fills against best bid @ $1,790.
+    //   User3's SL ($1,800) executes second → fills against next bid @ $1,770.
+    //
+    // Slippage check: oracle=$1,800, max_slippage=2%, target=$1,800*0.98=$1,764.
+    // Both $1,790 and $1,770 are above $1,764 → within tolerance.
+    // -------------------------------------------------------------------------
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800);
+    suite.increase_time(Duration::from_minutes(2));
+
+    // -------------------------------------------------------------------------
+    // Assertions: Both positions closed, both conditional orders consumed.
+    // -------------------------------------------------------------------------
+
+    let state_user1: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert!(
+        !state_user1.positions.contains_key(&pair),
+        "User1 position should be closed after SL triggered"
+    );
+    assert_eq!(
+        state_user1.conditional_order_count, 0,
+        "User1 should have 0 conditional orders"
+    );
+
+    let state_user3: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user3.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert!(
+        !state_user3.positions.contains_key(&pair),
+        "User3 position should be closed after SL triggered"
+    );
+    assert_eq!(
+        state_user3.conditional_order_count, 0,
+        "User3 should have 0 conditional orders"
+    );
+
+    // User1 got the better fill ($1,790) so should have more margin than User3
+    // who got the worse fill ($1,770). Both started with the same deposit and
+    // position, so the ~$100 PnL difference should be reflected in margins.
+    //
+    // User1 PnL: 5 * ($1,790 - $2,000) = -$1,050
+    // User3 PnL: 5 * ($1,770 - $2,000) = -$1,150
+    assert!(
+        state_user1.margin > state_user3.margin,
+        "User1 margin ({}) should exceed User3 margin ({}) — \
+         User1 got the better fill due to price-time priority",
+        state_user1.margin,
+        state_user3.margin,
+    );
+}
+
+/// When a conditional order's `_submit_order` fails (e.g. no liquidity on the
+/// book for the order's side), the cron now gracefully cancels it with
+/// `SlippageExceeded` instead of propagating the error via `?`. Previously
+/// the error would abort the entire cron, leaving the failed order stuck
+/// retrying every tick and blocking all subsequent conditional orders from
+/// processing.
+///
+/// This test places two BELOW conditional orders: one sell (no bids on book →
+/// will fail) and one buy (ask available → will succeed). It verifies that
+/// the first order's failure does not prevent the second from executing.
+#[test]
+fn conditional_order_failure_does_not_block_others() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Setup: User1, User3 deposit $10k each. Maker (user2) deposits $100k.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 1: Maker places ask: 5 ETH @ $2,000. User1 market buys 5 ETH long.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 2: Maker places bid: 5 ETH @ $2,000. User3 market sells 5 ETH short.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify positions: User1 = 5 long, User3 = 5 short.
+    let state_user1: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    assert_eq!(
+        state_user1.positions.get(&pair).unwrap().size,
+        Quantity::new_int(5),
+        "User1 should be 5 ETH long"
+    );
+
+    let state_user3: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user3.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    assert_eq!(
+        state_user3.positions.get(&pair).unwrap().size,
+        Quantity::new_int(-5),
+        "User3 should be 5 ETH short"
+    );
+
+    // -------------------------------------------------------------------------
+    // Step 3: User1 places SL: BELOW $1,900, size -5 (sell). No bids will be
+    // on book at trigger time → _submit_order will fail.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                trigger_price: UsdPrice::new_int(1_900),
+                trigger_direction: perps::TriggerDirection::Below,
+                max_slippage: Dimensionless::new_percent(2),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 4: User3 places closing order: BELOW $1,800, size +5 (buy to close
+    // short). Maker will place an ask for this to fill against.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                trigger_price: UsdPrice::new_int(1_800),
+                trigger_direction: perps::TriggerDirection::Below,
+                max_slippage: Dimensionless::new_percent(2),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 5: Maker places ask: 5 ETH @ $1,800 (liquidity for User3's buy).
+    // No bids are placed — User1's sell will have nothing to fill against.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_800),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 6: Oracle → $1,800, advance time 2 min so cron fires.
+    //
+    // Processing order (BELOW, descending real trigger price):
+    //   1. User1's SL ($1,900) triggers → sell → no bids → fails → graceful
+    //      SlippageExceeded cancel → cron continues.
+    //   2. User3's order ($1,800) triggers → buy → fills against ask @ $1,800
+    //      → succeeds.
+    // -------------------------------------------------------------------------
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800);
+    suite.increase_time(Duration::from_minutes(2));
+
+    // -------------------------------------------------------------------------
+    // Assertions
+    // -------------------------------------------------------------------------
+
+    // User1: position unchanged (sell failed), conditional order cancelled (not stuck).
+    let state_user1: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert_eq!(
+        state_user1.positions.get(&pair).unwrap().size,
+        Quantity::new_int(5),
+        "User1 should still be 5 ETH long (sell had no liquidity)"
+    );
+    assert_eq!(
+        state_user1.conditional_order_count, 0,
+        "User1 SL should be cancelled, not stuck retrying"
+    );
+
+    // User3: position closed (short covered), conditional order consumed.
+    let state_user3: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user3.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert!(
+        !state_user3.positions.contains_key(&pair),
+        "User3 short should be closed (buy filled against ask @ $1,800)"
+    );
+    assert_eq!(
+        state_user3.conditional_order_count, 0,
+        "User3 should have 0 conditional orders"
+    );
+
+    // Both users' conditional order queries should return empty.
+    let cond_user1: perps::QueryConditionalOrdersByUserResponse = suite
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryConditionalOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
+        .should_succeed();
+
+    assert!(
+        cond_user1.above.is_empty() && cond_user1.below.is_empty(),
+        "User1 conditional orders should be empty"
+    );
+
+    let cond_user3: perps::QueryConditionalOrdersByUserResponse = suite
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryConditionalOrdersByUserRequest {
+                user: accounts.user3.address(),
+            },
+        )
+        .should_succeed();
+
+    assert!(
+        cond_user3.above.is_empty() && cond_user3.below.is_empty(),
+        "User3 conditional orders should be empty"
     );
 }

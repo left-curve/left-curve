@@ -13,7 +13,10 @@ use {
         },
         price::may_invert_price,
         state::{LONGS, SHORTS},
-        trade::{_cancel_all_orders, match_order, settle_fill, settle_pnls},
+        trade::{
+            _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
+            settle_pnls,
+        },
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -61,6 +64,13 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         user,
         &mut user_state,
         Some(&mut events),
+        ReasonForOrderRemoval::Liquidated,
+    )?;
+
+    let cond_events = _cancel_all_conditional_orders(
+        ctx.storage,
+        user,
+        &mut user_state,
         ReasonForOrderRemoval::Liquidated,
     )?;
 
@@ -185,7 +195,9 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     apply_position_index_updates(ctx.storage, &index_updates)?;
 
-    Ok(Response::new().add_events(events)?)
+    Ok(Response::new()
+        .add_events(events)?
+        .add_events(cond_events)?)
 }
 
 /// Mutates:

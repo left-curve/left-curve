@@ -889,6 +889,7 @@
               "base_taker_fee_rate": "0.001",
               "funding_period": "3600",
               "liquidation_fee_rate": "0.01",
+              "max_conditional_orders": 10,
               "max_open_orders": 100,
               "max_unlocks": 10,
               "protocol_fee_rate": "0",

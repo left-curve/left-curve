@@ -1,13 +1,16 @@
 use {
     crate::{
-        ASKS, BIDS, DEPTHS, OrderKey, PAIR_PARAMS, PAIR_STATES, USER_STATES, VOLUMES, round_to_day,
+        ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, DEPTHS, OrderKey, PAIR_PARAMS,
+        PAIR_STATES, USER_STATES, VOLUMES, round_to_day,
     },
     anyhow::ensure,
     dango_types::{
         UsdPrice, UsdValue,
         perps::{
-            LiquidityDepth, LiquidityDepthResponse, Order, OrderId, PairId, PairParam, PairState,
-            QueryOrderResponse, QueryOrdersByUserResponse, UserState,
+            ConditionalOrderId, LiquidityDepth, LiquidityDepthResponse, Order, OrderId, PairId,
+            PairParam, PairState, QueryConditionalOrderResponse,
+            QueryConditionalOrdersByUserResponse, QueryOrderResponse, QueryOrdersByUserResponse,
+            UserState,
         },
     },
     grug::{
@@ -127,6 +130,74 @@ fn try_into_query_order_response_with_inverted_price(
     res: StdResult<(OrderKey, Order)>,
 ) -> StdResult<QueryOrderResponse> {
     res.map(into_query_order_response_with_inverted_price)
+}
+
+pub fn query_conditional_order(
+    ctx: ImmutableCtx,
+    order_id: ConditionalOrderId,
+) -> StdResult<Option<QueryConditionalOrderResponse>> {
+    if let Some(((pair_id, _, order_id), order)) = CONDITIONAL_ABOVE
+        .idx
+        .order_id
+        .may_load(ctx.storage, order_id)?
+    {
+        return Ok(Some(QueryConditionalOrderResponse {
+            order_id,
+            pair_id,
+            order,
+        }));
+    }
+
+    if let Some(((pair_id, _, order_id), order)) = CONDITIONAL_BELOW
+        .idx
+        .order_id
+        .may_load(ctx.storage, order_id)?
+    {
+        return Ok(Some(QueryConditionalOrderResponse {
+            order_id,
+            pair_id,
+            order,
+        }));
+    }
+
+    Ok(None)
+}
+
+pub fn query_conditional_orders_by_user(
+    ctx: ImmutableCtx,
+    user: Addr,
+) -> StdResult<QueryConditionalOrdersByUserResponse> {
+    let above = CONDITIONAL_ABOVE
+        .idx
+        .user
+        .prefix(user)
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .map(|res| {
+            let ((pair_id, _, order_id), order) = res?;
+            Ok(QueryConditionalOrderResponse {
+                order_id,
+                pair_id,
+                order,
+            })
+        })
+        .collect::<StdResult<Vec<_>>>()?;
+
+    let below = CONDITIONAL_BELOW
+        .idx
+        .user
+        .prefix(user)
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .map(|res| {
+            let ((pair_id, _, order_id), order) = res?;
+            Ok(QueryConditionalOrderResponse {
+                order_id,
+                pair_id,
+                order,
+            })
+        })
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(QueryConditionalOrdersByUserResponse { above, below })
 }
 
 pub fn query_liquidity_depth(

@@ -1,13 +1,22 @@
 use {
     crate::{
-        ASKS, BIDS, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
+        ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS,
+        PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{compute_funding_delta, compute_impact_price, compute_premium},
+        flush_volumes,
+        liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
+        position_index::apply_position_index_updates,
         price::may_invert_price,
+        trade::_submit_order,
     },
     dango_oracle::OracleQuerier,
     dango_types::{
-        Days, UsdValue,
-        perps::{LiquidityReleased, PairId, UserState},
+        Days, UsdPrice, UsdValue,
+        perps::{
+            ConditionalOrder, ConditionalOrderId, ConditionalOrderRemoved,
+            ConditionalOrderTriggered, LiquidityReleased, OrderKind, PairId, PairParam, PairState,
+            Param, ReasonForOrderRemoval, State, UserState,
+        },
     },
     grug::{
         Addr, EventBuilder, Order as IterationOrder, PrefixBound, StdResult, Storage, Timestamp,
@@ -162,6 +171,301 @@ fn process_funding_for_pair(
     (pair_state.funding_per_unit).checked_add_assign(funding_delta)?;
 
     PAIR_STATES.save(storage, &pair_id, &pair_state)?;
+
+    Ok(())
+}
+
+/// Evaluate and trigger conditional orders whose trigger conditions are met.
+///
+/// Called from `cron_execute` after `process_funding`. Uses range-bounded
+/// iteration so only triggered orders are visited (no full scan).
+pub fn process_conditional_orders(
+    storage: &mut dyn Storage,
+    contract: Addr,
+    current_time: Timestamp,
+    oracle_querier: &mut OracleQuerier,
+    events: &mut EventBuilder,
+) -> anyhow::Result<()> {
+    let param = PARAM.load(storage)?;
+    let mut state = STATE.load(storage)?;
+    let pair_ids = PAIR_IDS.load(storage)?;
+
+    for pair_id in pair_ids {
+        process_conditional_orders_for_pair(
+            storage,
+            contract,
+            current_time,
+            oracle_querier,
+            &param,
+            &mut state,
+            &pair_id,
+            events,
+        )?;
+    }
+
+    STATE.save(storage, &state)?;
+
+    Ok(())
+}
+
+fn process_conditional_orders_for_pair(
+    storage: &mut dyn Storage,
+    contract: Addr,
+    current_time: Timestamp,
+    oracle_querier: &mut OracleQuerier,
+    param: &Param,
+    state: &mut State,
+    pair_id: &PairId,
+    events: &mut EventBuilder,
+) -> anyhow::Result<()> {
+    let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+    let pair_param = PAIR_PARAMS.load(storage, pair_id)?;
+    let mut pair_state = PAIR_STATES.load(storage, pair_id)?;
+
+    // ABOVE orders: trigger when oracle_price >= trigger_price.
+    // Range: all keys with trigger_price <= oracle_price.
+    let above_triggered = CONDITIONAL_ABOVE
+        .prefix(pair_id.clone())
+        .prefix_range(
+            storage,
+            None,
+            Some(PrefixBound::Inclusive(oracle_price)),
+            IterationOrder::Ascending,
+        )
+        .collect::<StdResult<Vec<_>>>()?;
+
+    for ((trigger_price, order_id), order) in above_triggered {
+        process_triggered_order(
+            storage,
+            contract,
+            current_time,
+            oracle_querier,
+            param,
+            state,
+            pair_id,
+            &pair_param,
+            &mut pair_state,
+            order_id,
+            order,
+            oracle_price,
+            events,
+        )?;
+
+        CONDITIONAL_ABOVE.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
+    }
+
+    // BELOW orders: trigger when oracle_price <= trigger_price.
+    // Keys store inverted trigger_price, so stored <= !oracle_price ≡ real >= oracle_price.
+    let below_triggered = CONDITIONAL_BELOW
+        .prefix(pair_id.clone())
+        .prefix_range(
+            storage,
+            None,
+            Some(PrefixBound::Inclusive(!oracle_price)),
+            IterationOrder::Ascending,
+        )
+        .collect::<StdResult<Vec<_>>>()?;
+
+    for ((trigger_price, order_id), order) in below_triggered {
+        process_triggered_order(
+            storage,
+            contract,
+            current_time,
+            oracle_querier,
+            param,
+            state,
+            pair_id,
+            &pair_param,
+            &mut pair_state,
+            order_id,
+            order,
+            oracle_price,
+            events,
+        )?;
+
+        CONDITIONAL_BELOW.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
+    }
+
+    PAIR_STATES.save(storage, pair_id, &pair_state)?;
+
+    Ok(())
+}
+
+/// Process a single triggered conditional order: verify position, clamp size,
+/// submit a market order to close.
+fn process_triggered_order(
+    storage: &mut dyn Storage,
+    contract: Addr,
+    current_time: Timestamp,
+    oracle_querier: &mut OracleQuerier,
+    param: &Param,
+    state: &mut State,
+    pair_id: &PairId,
+    pair_param: &PairParam,
+    pair_state: &mut PairState,
+    order_id: ConditionalOrderId,
+    order: ConditionalOrder,
+    oracle_price: UsdPrice,
+    events: &mut EventBuilder,
+) -> anyhow::Result<()> {
+    let mut user_state = USER_STATES
+        .may_load(storage, order.user)?
+        .unwrap_or_default();
+
+    // Decrement conditional order count.
+    user_state.conditional_order_count = user_state.conditional_order_count.saturating_sub(1);
+
+    // Check if the user still has a position in this pair.
+    let position = user_state.positions.get(pair_id);
+
+    let should_cancel = match position {
+        Some(pos) => {
+            // Position flipped: the conditional order's size no longer reduces.
+            // E.g. order.size is negative (close long) but position is now short.
+            (order.size.is_negative() && pos.size.is_negative())
+                || (order.size.is_positive() && pos.size.is_positive())
+        },
+        None => true,
+    };
+
+    if should_cancel {
+        events.push(ConditionalOrderRemoved {
+            order_id,
+            pair_id: pair_id.clone(),
+            user: order.user,
+            reason: ReasonForOrderRemoval::PositionClosed,
+        })?;
+
+        if user_state.is_empty() {
+            USER_STATES.remove(storage, order.user)?;
+        } else {
+            USER_STATES.save(storage, order.user, &user_state)?;
+        }
+
+        return Ok(());
+    }
+
+    let position = position.unwrap();
+
+    // Auto-resize: clamp |order.size| to |position.size|.
+    let abs_order_size = order.size.checked_abs()?;
+    let abs_pos_size = position.size.checked_abs()?;
+    let clamped_size = if abs_order_size > abs_pos_size {
+        // Preserve the sign of order.size but clamp the magnitude.
+        if order.size.is_negative() {
+            abs_pos_size.checked_neg()?
+        } else {
+            abs_pos_size
+        }
+    } else {
+        order.size
+    };
+
+    events.push(ConditionalOrderTriggered {
+        order_id,
+        pair_id: pair_id.clone(),
+        user: order.user,
+        trigger_price: order.trigger_price,
+        oracle_price,
+    })?;
+
+    // Execute as a market order via `_submit_order`.
+    let result = _submit_order(
+        storage,
+        order.user,
+        contract,
+        current_time,
+        oracle_querier,
+        param,
+        state,
+        pair_id,
+        pair_param,
+        pair_state,
+        &mut user_state,
+        oracle_price,
+        clamped_size,
+        OrderKind::Market {
+            max_slippage: order.max_slippage,
+        },
+        true, // reduce_only
+        events,
+    );
+
+    let (maker_states, order_mutations, _order_to_store, next_order_id, index_updates, volumes) =
+        match result {
+            Err(_) => {
+                // Order couldn't fill (slippage exceeded or no liquidity).
+                // Cancel it gracefully — don't block other orders.
+                events.push(ConditionalOrderRemoved {
+                    order_id,
+                    pair_id: pair_id.clone(),
+                    user: order.user,
+                    reason: ReasonForOrderRemoval::SlippageExceeded,
+                })?;
+
+                if user_state.is_empty() {
+                    USER_STATES.remove(storage, order.user)?;
+                } else {
+                    USER_STATES.save(storage, order.user, &user_state)?;
+                }
+
+                return Ok(());
+            },
+            Ok(tuple) => tuple,
+        };
+
+    // Apply state changes (same pattern as submit_order's section 3).
+    flush_volumes(storage, current_time, &volumes)?;
+
+    NEXT_ORDER_ID.save(storage, &next_order_id)?;
+
+    USER_STATES.save(storage, order.user, &user_state)?;
+
+    for (addr, maker_state) in &maker_states {
+        USER_STATES.save(storage, *addr, maker_state)?;
+    }
+
+    apply_position_index_updates(storage, &index_updates)?;
+
+    let is_buy = clamped_size.is_positive();
+    let (maker_book, _taker_book) = if is_buy {
+        (ASKS, BIDS)
+    } else {
+        (BIDS, ASKS)
+    };
+
+    for (stored_price, maker_order_id, mutation, pre_fill_abs_size) in order_mutations {
+        let order_key = (pair_id.clone(), stored_price, maker_order_id);
+        let maker_is_bid = !is_buy;
+        let real_price = may_invert_price(stored_price, maker_is_bid);
+
+        decrease_liquidity_depths(
+            storage,
+            pair_id,
+            maker_is_bid,
+            real_price,
+            pre_fill_abs_size,
+            &pair_param.bucket_sizes,
+        )?;
+
+        match mutation {
+            Some(maker_order) => {
+                increase_liquidity_depths(
+                    storage,
+                    pair_id,
+                    maker_is_bid,
+                    real_price,
+                    maker_order.size.checked_abs()?,
+                    &pair_param.bucket_sizes,
+                )?;
+
+                maker_book.save(storage, order_key, &maker_order)?;
+            },
+            None => {
+                maker_book.remove(storage, order_key)?;
+            },
+        }
+    }
 
     Ok(())
 }
