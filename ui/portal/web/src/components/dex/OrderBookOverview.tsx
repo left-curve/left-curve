@@ -27,27 +27,30 @@ type OrderBookOverviewProps = {
 export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, controllers }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
-  const { isLg, is3Xl } = useMediaQuery();
+  const { isLg, is3XlTall } = useMediaQuery();
 
   useEffect(() => {
-    if (is3Xl) {
+    if (is3XlTall) {
       setActiveTab("order book");
     } else {
       setActiveTab(isLg ? "order book" : "graph");
     }
-  }, [isLg, is3Xl]);
+  }, [isLg, is3XlTall]);
 
   const tabsKeys = useMemo(() => {
-    if (is3Xl) {
+    if (is3XlTall) {
       return ["order book"];
     }
     return isLg ? ["order book", "trades"] : ["graph", "order book", "trades"];
-  }, [isLg, is3Xl]);
+  }, [isLg, is3XlTall]);
 
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:h-[38.65625rem] 3xl:min-h-[51.6875rem] 4xl:min-h-[61.6875rem] h-full"
+      className={twMerge(
+        "overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:h-[38.65625rem] 3xl:min-h-[40rem] h-full",
+        { "3xl:min-h-[51.6875rem] 4xl:min-h-[61.6875rem]": is3XlTall },
+      )}
     >
       <Tabs
         color="line-red"
@@ -68,7 +71,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
           {activeTab === "trades" && <LiveTrades state={state} controllers={controllers} />}
         </>
       )}
-      {is3Xl && (
+      {is3XlTall && (
         <>
           <Tabs
             color="line-red"
@@ -198,6 +201,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state, controllers }) => 
 const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
+  const { is3XlTall } = useMediaQuery();
   const { timeFormat } = settings;
   const { baseCoin, quoteCoin, pairId } = state;
   const { liveTradesStore } = useLiveTradesState({ pairId });
@@ -206,7 +210,12 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const trades = useDeferredValue(liveTrades);
 
   return (
-    <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[38.75rem] 3xl:max-h-[15rem] 3xl:min-h-[15rem] 4xl:max-h-[20rem] 4xl:min-h-[20rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4">
+    <div
+      className={twMerge(
+        "flex gap-2 flex-col items-center justify-start lg:max-h-[38.75rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4",
+        is3XlTall && "max-h-[15rem] min-h-[15rem] 4xl:max-h-[20rem] 4xl:min-h-[20rem]",
+      )}
+    >
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>

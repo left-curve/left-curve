@@ -1,6 +1,6 @@
 import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useAccount, useActivities, useSessionKey } from "@left-curve/store";
+import { getAppConfigQueryOptions, useAccount, useActivities, useSessionKey } from "@left-curve/store";
 
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
@@ -13,7 +13,7 @@ import type { RouterContext } from "~/app.router";
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ context }) => {
-    const { config } = context;
+    const { config, queryClient } = context;
     if (!config.state.isMipdLoaded) {
       await new Promise((resolve) => {
         config?.subscribe(
@@ -22,6 +22,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         );
       });
     }
+    await queryClient.ensureQueryData(getAppConfigQueryOptions(config, {}));
   },
   component: () => {
     const { modal, settings, showModal } = useApp();

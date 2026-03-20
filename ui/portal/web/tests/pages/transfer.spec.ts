@@ -12,17 +12,17 @@ test.describe("Transfer Applet", () => {
     test("only send tab is visible", async ({ page }) => {
       // When not authenticated, only "send" tab/button is visible
       // Use exact: true to distinguish from "Send" submit button
-      const sendTab = page.getByRole("button", { name: "send", exact: true });
+      const sendTab = page.getByRole("button", { name: "Send" }).first();
       await expect(sendTab).toBeVisible();
 
-      // Receive tab should NOT be visible
-      const receiveTab = page.getByRole("button", { name: "receive", exact: true });
-      await expect(receiveTab).not.toBeVisible();
+      // Spot-Perp tab should NOT be visible
+      const spotPerpTab = page.getByRole("button", { name: /spot.*perp/i });
+      await expect(spotPerpTab).not.toBeVisible();
     });
 
     test("send button is disabled", async ({ page }) => {
       // The submit button says "Send" and should be disabled
-      const sendButton = page.getByRole("button", { name: "Send", exact: true });
+      const sendButton = page.locator("form").getByRole("button", { name: "Send" });
       await expect(sendButton).toBeVisible();
       await expect(sendButton).toBeDisabled();
     });
@@ -47,16 +47,15 @@ test.describe("Transfer Applet", () => {
       }
     });
 
-    test("both send and receive tabs are visible", async () => {
+    test("both send and spot-perp tabs are visible", async () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
 
-      // Use exact: true to distinguish tab from submit button
-      const sendTab = sharedPage.getByRole("button", { name: "send", exact: true });
+      const sendTab = sharedPage.getByRole("button", { name: "Send" }).first();
       await expect(sendTab).toBeVisible();
 
-      const receiveTab = sharedPage.getByRole("button", { name: "receive", exact: true });
-      await expect(receiveTab).toBeVisible();
+      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      await expect(spotPerpTab).toBeVisible();
     });
 
     test("send tab is default selected", async () => {
@@ -64,96 +63,93 @@ test.describe("Transfer Applet", () => {
       await waitForStorageHydration(sharedPage);
 
       // Send form should be visible
-      const sendButton = sharedPage.getByRole("button", { name: "Send", exact: true });
+      const sendButton = sharedPage.locator("form").getByRole("button", { name: "Send" });
       await expect(sendButton).toBeVisible();
 
       const amountInput = sharedPage.getByRole("textbox").first();
       await expect(amountInput).toBeVisible();
     });
 
-    test("clicking receive tab shows QR code", async () => {
+    test("clicking spot-perp tab shows transfer form", async () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
 
-      const receiveTab = sharedPage.getByRole("button", { name: "receive", exact: true });
-      await receiveTab.click();
+      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      await spotPerpTab.click();
       await sharedPage.waitForTimeout(500);
 
-      // QR code is a canvas element with specific dimensions (220x220)
-      const qrCode = sharedPage.locator('canvas[width="220"][height="220"]');
-      await expect(qrCode).toBeVisible();
+      // From and To labels should be visible
+      await expect(sharedPage.getByText("From")).toBeVisible();
+      await expect(sharedPage.getByText("To").first()).toBeVisible();
+
+      // Flip direction button (wrapping IconTwoArrows svg) should be visible
+      const flipButton = sharedPage.getByTestId("flip-direction");
+      await expect(flipButton).toBeVisible();
     });
 
-    test("receive tab shows account address", async () => {
-      await sharedPage.goto("/transfer?action=receive");
-      await waitForStorageHydration(sharedPage);
-      await sharedPage.waitForTimeout(500);
-
-      // The receive tab should show address info in various possible formats:
-      // - Full address: 0x followed by hex chars
-      // - Truncated: 0x...1234 format
-      // - QR code canvas for the address
-      // - Account label like "Account #X" or "Single Account"
-      const fullAddress = sharedPage.getByText(/0x[a-fA-F0-9]{4,}/);
-      const truncatedAddress = sharedPage.getByText(/0x[a-fA-F0-9]*\.{2,}/);
-      const qrCode = sharedPage.locator("canvas").first();
-      const accountLabel = sharedPage.getByText(/Account/i);
-
-      const hasAddressInfo =
-        (await fullAddress.count()) > 0 ||
-        (await truncatedAddress.count()) > 0 ||
-        (await qrCode.isVisible()) ||
-        (await accountLabel.count()) > 0;
-
-      expect(hasAddressInfo).toBeTruthy();
-    });
-
-    test("receive tab shows account type label", async () => {
-      await sharedPage.goto("/transfer?action=receive");
-      await waitForStorageHydration(sharedPage);
-
-      // Multiple elements may match - use first() to avoid strict mode violation
-      const accountLabel = sharedPage.getByText(/Account #\d+/);
-      await expect(accountLabel.first()).toBeVisible();
-    });
-
-    test("receive tab shows warning message", async () => {
-      await sharedPage.goto("/transfer?action=receive");
-      await waitForStorageHydration(sharedPage);
-
-      // Warning component should be present - check for warning-related classes or text
-      const warningByClass = sharedPage.locator('[class*="warning"]');
-      const warningByText = sharedPage.getByText(/warning|caution|note|only send/i);
-
-      const warningExists =
-        (await warningByClass.count()) > 0 || (await warningByText.count()) > 0;
-      expect(warningExists).toBeTruthy();
-    });
-
-    test("receive tab has copy functionality", async () => {
-      await sharedPage.goto("/transfer?action=receive");
-      await waitForStorageHydration(sharedPage);
-
-      // There should be a copy icon/button near the address
-      const copyIcon = sharedPage.locator("svg").filter({ hasText: "" });
-      const hasCopyIcon = (await copyIcon.count()) > 0;
-      expect(hasCopyIcon).toBeTruthy();
-    });
-
-    test("can switch between send and receive tabs", async () => {
+    test("spot-perp tab shows direction labels", async () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
 
-      const sendTab = sharedPage.getByRole("button", { name: "send", exact: true });
-      const receiveTab = sharedPage.getByRole("button", { name: "receive", exact: true });
+      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      await spotPerpTab.click();
+      await sharedPage.waitForTimeout(500);
 
-      // Switch to receive
-      await receiveTab.click();
+      // Default direction is spot-to-perp
+      await expect(sharedPage.locator('input[name="from"]')).toHaveValue("Spot Account");
+      await expect(sharedPage.locator('input[name="to"]')).toHaveValue("Perp Account");
+    });
+
+    test("spot-perp direction can be flipped", async () => {
+      await sharedPage.goto("/transfer");
+      await waitForStorageHydration(sharedPage);
+
+      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      await spotPerpTab.click();
+      await sharedPage.waitForTimeout(500);
+
+      // Get the From/To input values before flip
+      const fromInput = sharedPage.locator("input[readonly]").first();
+      const initialFromValue = await fromInput.inputValue();
+
+      // Click the flip direction button
+      const flipButton = sharedPage.getByTestId("flip-direction");
+      await flipButton.click();
       await sharedPage.waitForTimeout(300);
 
-      // QR code is a canvas element with specific dimensions (220x220)
-      const qrCode = sharedPage.locator('canvas[width="220"][height="220"]');
-      await expect(qrCode).toBeVisible();
+      // After flip, the from value should have changed
+      const newFromValue = await fromInput.inputValue();
+      expect(newFromValue).not.toBe(initialFromValue);
+    });
+
+    test("spot-perp tab shows amount input and receive preview", async () => {
+      await sharedPage.goto("/transfer");
+      await waitForStorageHydration(sharedPage);
+
+      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      await spotPerpTab.click();
+      await sharedPage.waitForTimeout(500);
+
+      // Amount input should be visible
+      const amountInput = sharedPage.getByRole("textbox").first();
+      await expect(amountInput).toBeVisible();
+
+      // "You receive" label should be visible
+      await expect(sharedPage.getByText("You receive")).toBeVisible();
+    });
+
+    test("can switch between send and spot-perp tabs", async () => {
+      await sharedPage.goto("/transfer");
+      await waitForStorageHydration(sharedPage);
+
+      const sendTab = sharedPage.getByRole("button", { name: "Send" }).first();
+      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+
+      // Switch to spot-perp
+      await spotPerpTab.click();
+      await sharedPage.waitForTimeout(300);
+
+      await expect(sharedPage.getByText("From")).toBeVisible();
 
       // Switch back to send
       await sendTab.click();

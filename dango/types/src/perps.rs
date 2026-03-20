@@ -1,8 +1,19 @@
 use {
     crate::{Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
-    grug::{Addr, Denom, Duration, Timestamp, Uint64, Uint128},
-    std::collections::{BTreeMap, BTreeSet, VecDeque},
+    grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
+    std::{
+        collections::{BTreeMap, BTreeSet, VecDeque},
+        sync::LazyLock,
+    },
 };
+
+/// Perpetual trading pairs are to be registered in the oracle contract. These
+/// pairs are namespaced with this value to distinguish from spot assets.
+pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("perp"));
+
+/// The settlement currency (USDC) is valued at a fixed $1 per unit for deposit
+/// and withdrawal conversions.
+pub const SETTLEMENT_CURRENCY_PRICE: UsdPrice = UsdPrice::new_int(1);
 
 // ----------------------------------- Types -----------------------------------
 

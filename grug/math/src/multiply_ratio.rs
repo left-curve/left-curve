@@ -106,7 +106,10 @@ where
 mod tests {
     use {
         crate::{Int, MathError, MultiplyRatio, NumberConst, dts, int_test},
-        bnum::types::{I256, U256},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, U256},
+        },
     };
 
     int_test!( multiply_ratio
@@ -125,13 +128,13 @@ mod tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(500_u128), U256::ONE, U256::ONE, U256::from(500_u128)),
-                    (U256::from(500_u128), U256::from(3_u128), U256::from(2_u128), U256::from(750_u128)),
-                    (U256::from(500_u128), U256::from(333333_u128), U256::from(222222_u128), U256::from(750_u128)),
-                    (U256::from(500_u128), U256::from(2_u128), U256::from(3_u128), U256::from(333_u128)),
-                    (U256::from(500_u128), U256::from(222222_u128), U256::from(333333_u128), U256::from(333_u128)),
-                    (U256::from(500_u128), U256::from(5_u128), U256::from(6_u128), U256::from(416_u128)),
-                    (U256::from(500_u128), U256::from(100_u128), U256::from(120_u128), U256::from(416_u128)),
+                    (U256::cast_from(500_u128), U256::ONE, U256::ONE, U256::cast_from(500_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(3_u128), U256::cast_from(2_u128), U256::cast_from(750_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(333333_u128), U256::cast_from(222222_u128), U256::cast_from(750_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(2_u128), U256::cast_from(3_u128), U256::cast_from(333_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(222222_u128), U256::cast_from(333333_u128), U256::cast_from(333_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(5_u128), U256::cast_from(6_u128), U256::cast_from(416_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(100_u128), U256::cast_from(120_u128), U256::cast_from(416_u128)),
                     (U256::MAX, U256::MAX, U256::MAX, U256::MAX),
                 ]
             }
@@ -157,22 +160,22 @@ mod tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(500_i128), I256::ONE, I256::ONE, I256::from(500_i128)),
-                    (I256::from(500_i128), I256::from(3_i128), I256::from(2_i128), I256::from(750_i128)),
-                    (I256::from(500_i128), I256::from(333333_i128), I256::from(222222_i128), I256::from(750_i128)),
-                    (I256::from(500_i128), I256::from(2_i128), I256::from(3_i128), I256::from(333_i128)),
-                    (I256::from(500_i128), I256::from(222222_i128), I256::from(333333_i128), I256::from(333_i128)),
-                    (I256::from(500_i128), I256::from(5_i128), I256::from(6_i128), I256::from(416_i128)),
-                    (I256::from(500_i128), I256::from(100_i128), I256::from(120_i128), I256::from(416_i128)),
+                    (I256::cast_from(500_i128), I256::ONE, I256::ONE, I256::cast_from(500_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(3_i128), I256::cast_from(2_i128), I256::cast_from(750_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(333333_i128), I256::cast_from(222222_i128), I256::cast_from(750_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(2_i128), I256::cast_from(3_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(222222_i128), I256::cast_from(333333_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(5_i128), I256::cast_from(6_i128), I256::cast_from(416_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(100_i128), I256::cast_from(120_i128), I256::cast_from(416_i128)),
                     (I256::MAX, I256::MAX, I256::MAX, I256::MAX),
 
-                    (I256::from(500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(-333_i128)),
-                    (I256::from(500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(-333_i128)),
-                    (I256::from(500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(333_i128)),
-                    (I256::from(-500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(333_i128)),
-                    (I256::from(-500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(333_i128)),
-                    (I256::from(-500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(-333_i128)),
-                    (I256::MIN, I256::from(2_i128), I256::from(2_i128), I256::MIN),
+                    (I256::cast_from(500_i128), I256::cast_from(-2_i128), I256::cast_from(3_i128), I256::cast_from(-333_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(2_i128), I256::cast_from(-3_i128), I256::cast_from(-333_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(-2_i128), I256::cast_from(-3_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(-500_i128), I256::cast_from(-2_i128), I256::cast_from(3_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(-500_i128), I256::cast_from(2_i128), I256::cast_from(-3_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(-500_i128), I256::cast_from(-2_i128), I256::cast_from(-3_i128), I256::cast_from(-333_i128)),
+                    (I256::MIN, I256::cast_from(2_i128), I256::cast_from(2_i128), I256::MIN),
                 ]
             }
         }
@@ -223,13 +226,13 @@ mod tests {
                     (U256::ZERO, U256::ONE, U256::TEN, U256::ZERO),
                     (U256::ONE, U256::ZERO, U256::TEN, U256::ZERO),
                     (U256::ONE, U256::ONE, U256::TEN, U256::ZERO),
-                    (U256::from(500_u128), U256::ONE, U256::ONE, U256::from(500_u128)),
-                    (U256::from(500_u128), U256::from(3_u128), U256::from(2_u128), U256::from(750_u128)),
-                    (U256::from(500_u128), U256::from(333333_u128), U256::from(222222_u128), U256::from(750_u128)),
-                    (U256::from(500_u128), U256::from(2_u128), U256::from(3_u128), U256::from(333_u128)),
-                    (U256::from(500_u128), U256::from(222222_u128), U256::from(333333_u128), U256::from(333_u128)),
-                    (U256::from(500_u128), U256::from(5_u128), U256::from(6_u128), U256::from(416_u128)),
-                    (U256::from(500_u128), U256::from(100_u128), U256::from(120_u128), U256::from(416_u128)),
+                    (U256::cast_from(500_u128), U256::ONE, U256::ONE, U256::cast_from(500_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(3_u128), U256::cast_from(2_u128), U256::cast_from(750_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(333333_u128), U256::cast_from(222222_u128), U256::cast_from(750_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(2_u128), U256::cast_from(3_u128), U256::cast_from(333_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(222222_u128), U256::cast_from(333333_u128), U256::cast_from(333_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(5_u128), U256::cast_from(6_u128), U256::cast_from(416_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(100_u128), U256::cast_from(120_u128), U256::cast_from(416_u128)),
                     (U256::MAX, U256::MAX, U256::MAX, U256::MAX),
                 ]
             }
@@ -264,25 +267,25 @@ mod tests {
                     (I256::ZERO, I256::ONE, I256::TEN, I256::ZERO),
                     (I256::ONE, I256::ZERO, I256::TEN, I256::ZERO),
                     (I256::ONE, I256::ONE, I256::TEN, I256::ZERO),
-                    (I256::from(500_i128), I256::ONE, I256::ONE, I256::from(500_i128)),
-                    (I256::from(500_i128), I256::from(3_i128), I256::from(2_i128), I256::from(750_i128)),
-                    (I256::from(500_i128), I256::from(333333_i128), I256::from(222222_i128), I256::from(750_i128)),
-                    (I256::from(500_i128), I256::from(2_i128), I256::from(3_i128), I256::from(333_i128)),
-                    (I256::from(500_i128), I256::from(222222_i128), I256::from(333333_i128), I256::from(333_i128)),
-                    (I256::from(500_i128), I256::from(5_i128), I256::from(6_i128), I256::from(416_i128)),
-                    (I256::from(500_i128), I256::from(100_i128), I256::from(120_i128), I256::from(416_i128)),
+                    (I256::cast_from(500_i128), I256::ONE, I256::ONE, I256::cast_from(500_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(3_i128), I256::cast_from(2_i128), I256::cast_from(750_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(333333_i128), I256::cast_from(222222_i128), I256::cast_from(750_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(2_i128), I256::cast_from(3_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(222222_i128), I256::cast_from(333333_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(5_i128), I256::cast_from(6_i128), I256::cast_from(416_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(100_i128), I256::cast_from(120_i128), I256::cast_from(416_i128)),
                     (I256::MAX, I256::MAX, I256::MAX, I256::MAX),
 
                     (I256::ZERO, -I256::ONE, I256::TEN, I256::ZERO),
                     (-I256::ONE, I256::ZERO, I256::TEN, I256::ZERO),
                     (-I256::ONE, I256::ONE, I256::TEN, -I256::ONE),
-                    (I256::from(500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(-334_i128)),
-                    (I256::from(500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(-334_i128)),
-                    (I256::from(500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(333_i128)),
-                    (I256::from(-500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(333_i128)),
-                    (I256::from(-500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(333_i128)),
-                    (I256::from(-500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(-334_i128)),
-                    (I256::MIN, I256::from(2_i128), I256::from(2_i128), I256::MIN),
+                    (I256::cast_from(500_i128), I256::cast_from(-2_i128), I256::cast_from(3_i128), I256::cast_from(-334_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(2_i128), I256::cast_from(-3_i128), I256::cast_from(-334_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(-2_i128), I256::cast_from(-3_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(-500_i128), I256::cast_from(-2_i128), I256::cast_from(3_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(-500_i128), I256::cast_from(2_i128), I256::cast_from(-3_i128), I256::cast_from(333_i128)),
+                    (I256::cast_from(-500_i128), I256::cast_from(-2_i128), I256::cast_from(-3_i128), I256::cast_from(-334_i128)),
+                    (I256::MIN, I256::cast_from(2_i128), I256::cast_from(2_i128), I256::MIN),
                 ]
             }
         }
@@ -331,13 +334,13 @@ mod tests {
             u256 = {
                 passing: [
                     (U256::ONE, U256::ONE, U256::TEN, U256::ONE),
-                    (U256::from(500_u128), U256::ONE, U256::ONE, U256::from(500_u128)),
-                    (U256::from(500_u128), U256::from(3_u128), U256::from(2_u128), U256::from(750_u128)),
-                    (U256::from(500_u128), U256::from(333333_u128), U256::from(222222_u128), U256::from(750_u128)),
-                    (U256::from(500_u128), U256::from(2_u128), U256::from(3_u128), U256::from(334_u128)),
-                    (U256::from(500_u128), U256::from(222222_u128), U256::from(333333_u128), U256::from(334_u128)),
-                    (U256::from(500_u128), U256::from(5_u128), U256::from(6_u128), U256::from(417_u128)),
-                    (U256::from(500_u128), U256::from(100_u128), U256::from(120_u128), U256::from(417_u128)),
+                    (U256::cast_from(500_u128), U256::ONE, U256::ONE, U256::cast_from(500_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(3_u128), U256::cast_from(2_u128), U256::cast_from(750_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(333333_u128), U256::cast_from(222222_u128), U256::cast_from(750_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(2_u128), U256::cast_from(3_u128), U256::cast_from(334_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(222222_u128), U256::cast_from(333333_u128), U256::cast_from(334_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(5_u128), U256::cast_from(6_u128), U256::cast_from(417_u128)),
+                    (U256::cast_from(500_u128), U256::cast_from(100_u128), U256::cast_from(120_u128), U256::cast_from(417_u128)),
                     (U256::MAX, U256::MAX, U256::MAX, U256::MAX),
                 ]
             }
@@ -366,23 +369,23 @@ mod tests {
             i256 = {
                 passing: [
                     (I256::ONE, I256::ONE, I256::TEN, I256::ONE),
-                    (I256::from(500_i128), I256::ONE, I256::ONE, I256::from(500_i128)),
-                    (I256::from(500_i128), I256::from(3_i128), I256::from(2_i128), I256::from(750_i128)),
-                    (I256::from(500_i128), I256::from(333333_i128), I256::from(222222_i128), I256::from(750_i128)),
-                    (I256::from(500_i128), I256::from(2_i128), I256::from(3_i128), I256::from(334_i128)),
-                    (I256::from(500_i128), I256::from(222222_i128), I256::from(333333_i128), I256::from(334_i128)),
-                    (I256::from(500_i128), I256::from(5_i128), I256::from(6_i128), I256::from(417_i128)),
-                    (I256::from(500_i128), I256::from(100_i128), I256::from(120_i128), I256::from(417_i128)),
+                    (I256::cast_from(500_i128), I256::ONE, I256::ONE, I256::cast_from(500_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(3_i128), I256::cast_from(2_i128), I256::cast_from(750_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(333333_i128), I256::cast_from(222222_i128), I256::cast_from(750_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(2_i128), I256::cast_from(3_i128), I256::cast_from(334_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(222222_i128), I256::cast_from(333333_i128), I256::cast_from(334_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(5_i128), I256::cast_from(6_i128), I256::cast_from(417_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(100_i128), I256::cast_from(120_i128), I256::cast_from(417_i128)),
                     (I256::MAX, I256::MAX, I256::MAX, I256::MAX),
 
                     (-I256::ONE, I256::ONE, I256::TEN, -I256::ZERO),
-                    (I256::from(500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(-333_i128)),
-                    (I256::from(500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(-333_i128)),
-                    (I256::from(500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(334_i128)),
-                    (I256::from(-500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(334_i128)),
-                    (I256::from(-500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(334_i128)),
-                    (I256::from(-500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(-333_i128)),
-                    (I256::MIN, I256::from(2_i128), I256::from(2_i128), I256::MIN),
+                    (I256::cast_from(500_i128), I256::cast_from(-2_i128), I256::cast_from(3_i128), I256::cast_from(-333_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(2_i128), I256::cast_from(-3_i128), I256::cast_from(-333_i128)),
+                    (I256::cast_from(500_i128), I256::cast_from(-2_i128), I256::cast_from(-3_i128), I256::cast_from(334_i128)),
+                    (I256::cast_from(-500_i128), I256::cast_from(-2_i128), I256::cast_from(3_i128), I256::cast_from(334_i128)),
+                    (I256::cast_from(-500_i128), I256::cast_from(2_i128), I256::cast_from(-3_i128), I256::cast_from(334_i128)),
+                    (I256::cast_from(-500_i128), I256::cast_from(-2_i128), I256::cast_from(-3_i128), I256::cast_from(-333_i128)),
+                    (I256::MIN, I256::cast_from(2_i128), I256::cast_from(2_i128), I256::MIN),
                 ]
             }
         }

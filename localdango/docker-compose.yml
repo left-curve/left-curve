@@ -82,7 +82,7 @@ services:
       "
 
   faucet:
-    image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
+    image: ghcr.io/left-curve/bots/faucet:${FAUCET_BOT_TAG:-latest}
     pull_policy: always
     profiles: ["faucet"]
     depends_on:

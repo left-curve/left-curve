@@ -146,33 +146,22 @@ impl_bytable_signed_std!(i128, 16);
 
 macro_rules! impl_bytable_bnum {
     ($t:ty, $rot:literal) => {
+        #[deny(unconditional_recursion)]
         impl Bytable<$rot> for $t {
             fn from_be_bytes(bytes: [u8; $rot]) -> Self {
-                Self::from_be_slice(&bytes).unwrap()
+                <$t>::from_be_bytes(bytes)
             }
 
             fn from_le_bytes(bytes: [u8; $rot]) -> Self {
-                Self::from_le_slice(&bytes).unwrap()
+                <$t>::from_le_bytes(bytes)
             }
 
             fn to_be_bytes(self) -> [u8; $rot] {
-                let words = self.digits();
-                let mut bytes = [[0u8; 8]; $rot / 8];
-                for i in 0..$rot / 8 {
-                    bytes[i] = words[$rot / 8 - i - 1].to_be_bytes();
-                }
-
-                unsafe { std::mem::transmute(bytes) }
+                <$t>::to_be_bytes(self)
             }
 
             fn to_le_bytes(self) -> [u8; $rot] {
-                let words = self.digits();
-                let mut bytes = [[0u8; 8]; $rot / 8];
-                for i in 0..$rot / 8 {
-                    bytes[i] = words[i].to_le_bytes();
-                }
-
-                unsafe { std::mem::transmute(bytes) }
+                <$t>::to_le_bytes(self)
             }
 
             fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
@@ -188,21 +177,22 @@ macro_rules! impl_bytable_bnum {
 
 macro_rules! impl_bytable_signed_bnum {
     ($t:ty, $rot:literal) => {
+        #[deny(unconditional_recursion)]
         impl Bytable<$rot> for $t {
             fn from_be_bytes(bytes: [u8; $rot]) -> Self {
-                Self::from_be_slice(&bytes).unwrap()
+                <$t>::from_be_bytes(bytes)
             }
 
             fn from_le_bytes(bytes: [u8; $rot]) -> Self {
-                Self::from_le_slice(&bytes).unwrap()
+                <$t>::from_le_bytes(bytes)
             }
 
             fn to_be_bytes(self) -> [u8; $rot] {
-                self.to_bits().to_be_bytes()
+                self.cast_unsigned().to_be_bytes()
             }
 
             fn to_le_bytes(self) -> [u8; $rot] {
-                self.to_bits().to_le_bytes()
+                self.cast_unsigned().to_le_bytes()
             }
 
             fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
@@ -227,7 +217,10 @@ impl_bytable_signed_bnum!(I512, 64);
 mod tests {
     use {
         crate::{Bytable, Int128, Int256, Uint128, Uint256},
-        bnum::types::{I256, I512, U256, U512},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, I512, U256, U512},
+        },
         proptest::{array::uniform32, prelude::*},
     };
 
@@ -299,10 +292,10 @@ mod tests {
                 ($t:ty, $($val:expr),+) => {
                     $(
                         let compare = <$t>::from_be_bytes_growing($val.to_be_bytes());
-                        assert_eq!(<$t>::from($val), compare);
+                        assert_eq!(<$t>::cast_from($val), compare);
 
                         let compare = <$t>::from_le_bytes_growing($val.to_le_bytes());
-                        assert_eq!(<$t>::from($val), compare);
+                        assert_eq!(<$t>::cast_from($val), compare);
                     )+
                 };
             }
@@ -319,10 +312,10 @@ mod tests {
                 ($t:ty, $($val:expr),+) => {
                     $(
                         let compare = <$t>::from_be_bytes_growing($val.to_be_bytes());
-                        assert_eq!(<$t>::from($val), compare);
+                        assert_eq!(<$t>::cast_from($val), compare);
 
                         let compare = <$t>::from_le_bytes_growing($val.to_le_bytes());
-                        assert_eq!(<$t>::from($val), compare);
+                        assert_eq!(<$t>::cast_from($val), compare);
                     )+
                 };
             }

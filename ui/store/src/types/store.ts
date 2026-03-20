@@ -1,13 +1,8 @@
 import type {
-  Address,
-  AppConfig,
   Chain,
   ChainId,
   Client,
   Denom,
-  Flatten,
-  Hex,
-  PairUpdate,
   Transport,
   UID,
   UserStatus,
@@ -58,13 +53,6 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
     },
   ): () => void;
   getCoinInfo(denom: Denom): AnyCoin;
-  getAppConfig(): Promise<
-    {
-      addresses: Flatten<AppConfig["addresses"]> & Record<Address, string>;
-      accountFactory: { codeHash: Hex };
-      pairs: Record<Denom, PairUpdate>;
-    } & Omit<AppConfig, "addresses">
-  >;
   getClient(): Client<transport>;
   captureError(error: unknown): void;
   _internal: Internal<transport>;

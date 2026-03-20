@@ -32,7 +32,6 @@ bnum            = { workspace = true, features = ["borsh"] }
 borsh           = { workspace = true, features = ["de_strict_order", "derive"] }
 chrono          = { workspace = true, optional = true }
 data-encoding   = { workspace = true }
-digest          = { workspace = true }
 dyn-clone       = { workspace = true }
 error-backtrace = { workspace = true }
 grug-math       = { workspace = true }

@@ -2,7 +2,7 @@ import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
 import { createPublicClient } from "@left-curve/dango";
-import { plainObject, uid } from "@left-curve/dango/utils";
+import { uid } from "@left-curve/dango/utils";
 
 import { eip6963 } from "./connectors/eip6963.js";
 import { type EventData, createEmitter } from "./createEmitter.js";
@@ -11,18 +11,11 @@ import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
 import type {
-  Address,
-  AppConfig,
   Client,
   Denom,
-  Flatten,
-  Hex,
-  PairUpdate,
   PublicClient,
   Transport,
 } from "@left-curve/dango/types";
-
-import { invertObject } from "@left-curve/dango/utils";
 
 import { subscriptionsStore } from "./subscriptions.js";
 import type { AnyCoin } from "./types/coin.js";
@@ -119,40 +112,6 @@ export function createConfig<
 
     _client = client;
     return client;
-  }
-
-  let _appConfig:
-    | ({
-        addresses: Flatten<AppConfig["addresses"]> & Record<Address, string>;
-        accountFactory: { codeHash: Hex };
-        pairs: Record<Denom, PairUpdate>;
-      } & Omit<AppConfig, "addresses">)
-    | undefined;
-
-  async function getAppConfig() {
-    if (_appConfig) return _appConfig;
-    const client = getClient() as PublicClient;
-    const [appConfig, codeHash, pairs] = await Promise.all([
-      client.getAppConfig(),
-      client.getCodeHash(),
-      client.getPairs(),
-    ]);
-
-    const addresses = plainObject(appConfig.addresses) as Flatten<AppConfig["addresses"]>;
-
-    _appConfig = {
-      ...appConfig,
-      addresses: {
-        ...addresses,
-        ...invertObject(addresses),
-      },
-      accountFactory: { codeHash },
-      pairs: pairs.reduce((acc, pair) => {
-        acc[pair.baseDenom] = pair;
-        return acc;
-      }, Object.create({})),
-    };
-    return _appConfig;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -386,7 +345,6 @@ export function createConfig<
     },
     storage,
     getCoinInfo,
-    getAppConfig,
     getClient,
     captureError(error: unknown) {
       if (onError) onError(error);

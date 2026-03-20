@@ -176,7 +176,10 @@ mod int_tests {
             Dec, Dec128, Dec256, Int, MathError, MultiplyFraction, NumberConst, Udec128, Udec256,
             int_test, test_utils::bt,
         },
-        bnum::types::{I256, U256},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, U256},
+        },
     };
 
     int_test!( checked_mul_dec
@@ -192,11 +195,11 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(10_u128), Udec256::new(2), U256::from(20_u128)),
-                    (U256::from(10_u128), Udec256::new_percent(150), U256::from(15_u128)),
-                    (U256::from(10_u128), Udec256::new_percent(50), U256::from(5_u128)),
-                    (U256::from(11_u128), Udec256::new_percent(50), U256::from(5_u128)),
-                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(4_u128)),
+                    (U256::cast_from(10_u128), Udec256::new(2), U256::cast_from(20_u128)),
+                    (U256::cast_from(10_u128), Udec256::new_percent(150), U256::cast_from(15_u128)),
+                    (U256::cast_from(10_u128), Udec256::new_percent(50), U256::cast_from(5_u128)),
+                    (U256::cast_from(11_u128), Udec256::new_percent(50), U256::cast_from(5_u128)),
+                    (U256::cast_from(9_u128), Udec256::new_percent(50), U256::cast_from(4_u128)),
                 ]
             }
             i128 = {
@@ -222,23 +225,23 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(10_i128), Dec256::new(2), I256::from(20_i128)),
-                    (I256::from(10_i128), Dec256::new_percent(150), I256::from(15_i128)),
-                    (I256::from(10_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(11_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(4_i128)),
+                    (I256::cast_from(10_i128), Dec256::new(2), I256::cast_from(20_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(150), I256::cast_from(15_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new_percent(50), I256::cast_from(4_i128)),
 
-                    (I256::from(-10_i128), Dec256::new_percent(50), I256::from(-5_i128)),
-                    (I256::from(-11_i128), Dec256::new_percent(50), I256::from(-5_i128)),
-                    (I256::from(-9_i128), Dec256::new_percent(50), I256::from(-4_i128)),
+                    (I256::cast_from(-10_i128), Dec256::new_percent(50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(-11_i128), Dec256::new_percent(50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(-9_i128), Dec256::new_percent(50), I256::cast_from(-4_i128)),
 
-                    (I256::from(10_i128), Dec256::new_percent(-50), I256::from(-5_i128)),
-                    (I256::from(11_i128), Dec256::new_percent(-50), I256::from(-5_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(-50), I256::from(-4_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(-50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new_percent(-50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new_percent(-50), I256::cast_from(-4_i128)),
 
-                    (I256::from(10_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(11_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(4_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new_percent(50), I256::cast_from(4_i128)),
                 ]
             }
         }
@@ -264,11 +267,11 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(10_u128), Udec256::new(2), U256::from(20_u128)),
-                    (U256::from(10_u128), Udec256::new_percent(150), U256::from(15_u128)),
-                    (U256::from(10_u128), Udec256::new_percent(50), U256::from(5_u128)),
-                    (U256::from(11_u128), Udec256::new_percent(50), U256::from(5_u128)),
-                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(4_u128)),
+                    (U256::cast_from(10_u128), Udec256::new(2), U256::cast_from(20_u128)),
+                    (U256::cast_from(10_u128), Udec256::new_percent(150), U256::cast_from(15_u128)),
+                    (U256::cast_from(10_u128), Udec256::new_percent(50), U256::cast_from(5_u128)),
+                    (U256::cast_from(11_u128), Udec256::new_percent(50), U256::cast_from(5_u128)),
+                    (U256::cast_from(9_u128), Udec256::new_percent(50), U256::cast_from(4_u128)),
                 ]
             }
             i128 = {
@@ -294,23 +297,23 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(10_i128), Dec256::new(2), I256::from(20_i128)),
-                    (I256::from(10_i128), Dec256::new_percent(150), I256::from(15_i128)),
-                    (I256::from(10_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(11_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(4_i128)),
+                    (I256::cast_from(10_i128), Dec256::new(2), I256::cast_from(20_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(150), I256::cast_from(15_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new_percent(50), I256::cast_from(4_i128)),
 
-                    (I256::from(-10_i128), Dec256::new_percent(50), I256::from(-5_i128)),
-                    (I256::from(-11_i128), Dec256::new_percent(50), I256::from(-6_i128)),
-                    (I256::from(-9_i128), Dec256::new_percent(50), I256::from(-5_i128)),
+                    (I256::cast_from(-10_i128), Dec256::new_percent(50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(-11_i128), Dec256::new_percent(50), I256::cast_from(-6_i128)),
+                    (I256::cast_from(-9_i128), Dec256::new_percent(50), I256::cast_from(-5_i128)),
 
-                    (I256::from(10_i128), Dec256::new_percent(-50), I256::from(-5_i128)),
-                    (I256::from(11_i128), Dec256::new_percent(-50), I256::from(-6_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(-50), I256::from(-5_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(-50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new_percent(-50), I256::cast_from(-6_i128)),
+                    (I256::cast_from(9_i128), Dec256::new_percent(-50), I256::cast_from(-5_i128)),
 
-                    (I256::from(10_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(11_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(4_i128))
+                    (I256::cast_from(10_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new_percent(50), I256::cast_from(4_i128))
                 ]
             }
         }
@@ -336,11 +339,11 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(10_u128), Udec256::new(2), U256::from(20_u128)),
-                    (U256::from(10_u128), Udec256::new_percent(150), U256::from(15_u128)),
-                    (U256::from(10_u128), Udec256::new_percent(50), U256::from(5_u128)),
-                    (U256::from(11_u128), Udec256::new_percent(50), U256::from(6_u128)),
-                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(5_u128)),
+                    (U256::cast_from(10_u128), Udec256::new(2), U256::cast_from(20_u128)),
+                    (U256::cast_from(10_u128), Udec256::new_percent(150), U256::cast_from(15_u128)),
+                    (U256::cast_from(10_u128), Udec256::new_percent(50), U256::cast_from(5_u128)),
+                    (U256::cast_from(11_u128), Udec256::new_percent(50), U256::cast_from(6_u128)),
+                    (U256::cast_from(9_u128), Udec256::new_percent(50), U256::cast_from(5_u128)),
                 ]
             }
             i128 = {
@@ -366,23 +369,23 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(10_i128), Dec256::new(2), I256::from(20_i128)),
-                    (I256::from(10_i128), Dec256::new_percent(150), I256::from(15_i128)),
-                    (I256::from(10_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(11_i128), Dec256::new_percent(50), I256::from(6_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(5_i128)),
+                    (I256::cast_from(10_i128), Dec256::new(2), I256::cast_from(20_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(150), I256::cast_from(15_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new_percent(50), I256::cast_from(6_i128)),
+                    (I256::cast_from(9_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
 
-                    (I256::from(-10_i128), Dec256::new_percent(50), I256::from(-5_i128)),
-                    (I256::from(-11_i128), Dec256::new_percent(50), I256::from(-5_i128)),
-                    (I256::from(-9_i128), Dec256::new_percent(50), I256::from(-4_i128)),
+                    (I256::cast_from(-10_i128), Dec256::new_percent(50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(-11_i128), Dec256::new_percent(50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(-9_i128), Dec256::new_percent(50), I256::cast_from(-4_i128)),
 
-                    (I256::from(10_i128), Dec256::new_percent(-50), I256::from(-5_i128)),
-                    (I256::from(11_i128), Dec256::new_percent(-50), I256::from(-5_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(-50), I256::from(-4_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(-50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new_percent(-50), I256::cast_from(-5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new_percent(-50), I256::cast_from(-4_i128)),
 
-                    (I256::from(10_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(11_i128), Dec256::new_percent(50), I256::from(6_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(5_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new_percent(50), I256::cast_from(6_i128)),
+                    (I256::cast_from(9_i128), Dec256::new_percent(50), I256::cast_from(5_i128)),
                 ]
             }
         }
@@ -407,10 +410,10 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(10_u128), Udec256::new_percent(50), U256::from(20_u128)),
-                    (U256::from(10_u128), Udec256::new(2), U256::from(5_u128)),
-                    (U256::from(9_u128), Udec256::new(2), U256::from(4_u128)),
-                    (U256::from(11_u128), Udec256::new(2), U256::from(5_u128)),
+                    (U256::cast_from(10_u128), Udec256::new_percent(50), U256::cast_from(20_u128)),
+                    (U256::cast_from(10_u128), Udec256::new(2), U256::cast_from(5_u128)),
+                    (U256::cast_from(9_u128), Udec256::new(2), U256::cast_from(4_u128)),
+                    (U256::cast_from(11_u128), Udec256::new(2), U256::cast_from(5_u128)),
                 ]
             }
             i128 = {
@@ -435,22 +438,22 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(10_i128), Dec256::new_percent(50), I256::from(20_i128)),
-                    (I256::from(10_i128), Dec256::new(2), I256::from(5_i128)),
-                    (I256::from(9_i128), Dec256::new(2), I256::from(4_i128)),
-                    (I256::from(11_i128), Dec256::new(2), I256::from(5_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(50), I256::cast_from(20_i128)),
+                    (I256::cast_from(10_i128), Dec256::new(2), I256::cast_from(5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new(2), I256::cast_from(4_i128)),
+                    (I256::cast_from(11_i128), Dec256::new(2), I256::cast_from(5_i128)),
 
-                    (I256::from(-10_i128), Dec256::new(2), I256::from(-5_i128)),
-                    (I256::from(-9_i128), Dec256::new(2), I256::from(-4_i128)),
-                    (I256::from(-11_i128), Dec256::new(2), I256::from(-5_i128)),
+                    (I256::cast_from(-10_i128), Dec256::new(2), I256::cast_from(-5_i128)),
+                    (I256::cast_from(-9_i128), Dec256::new(2), I256::cast_from(-4_i128)),
+                    (I256::cast_from(-11_i128), Dec256::new(2), I256::cast_from(-5_i128)),
 
-                    (I256::from(10_i128), Dec256::new(-2), I256::from(-5_i128)),
-                    (I256::from(9_i128), Dec256::new(-2), I256::from(-4_i128)),
-                    (I256::from(11_i128), Dec256::new(-2), I256::from(-5_i128)),
+                    (I256::cast_from(10_i128), Dec256::new(-2), I256::cast_from(-5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new(-2), I256::cast_from(-4_i128)),
+                    (I256::cast_from(11_i128), Dec256::new(-2), I256::cast_from(-5_i128)),
 
-                    (I256::from(-10_i128), Dec256::new(-2), I256::from(5_i128)),
-                    (I256::from(-9_i128), Dec256::new(-2), I256::from(4_i128)),
-                    (I256::from(-11_i128), Dec256::new(-2), I256::from(5_i128)),
+                    (I256::cast_from(-10_i128), Dec256::new(-2), I256::cast_from(5_i128)),
+                    (I256::cast_from(-9_i128), Dec256::new(-2), I256::cast_from(4_i128)),
+                    (I256::cast_from(-11_i128), Dec256::new(-2), I256::cast_from(5_i128)),
                 ]
             }
         }
@@ -479,10 +482,10 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(10_u128), Udec256::new_percent(50), U256::from(20_u128)),
-                    (U256::from(10_u128), Udec256::new(2), U256::from(5_u128)),
-                    (U256::from(9_u128), Udec256::new(2), U256::from(4_u128)),
-                    (U256::from(11_u128), Udec256::new(2), U256::from(5_u128)),
+                    (U256::cast_from(10_u128), Udec256::new_percent(50), U256::cast_from(20_u128)),
+                    (U256::cast_from(10_u128), Udec256::new(2), U256::cast_from(5_u128)),
+                    (U256::cast_from(9_u128), Udec256::new(2), U256::cast_from(4_u128)),
+                    (U256::cast_from(11_u128), Udec256::new(2), U256::cast_from(5_u128)),
                 ]
             }
             i128 = {
@@ -507,22 +510,22 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(10_i128), Dec256::new_percent(50), I256::from(20_i128)),
-                    (I256::from(10_i128), Dec256::new(2), I256::from(5_i128)),
-                    (I256::from(9_i128), Dec256::new(2), I256::from(4_i128)),
-                    (I256::from(11_i128), Dec256::new(2), I256::from(5_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(50), I256::cast_from(20_i128)),
+                    (I256::cast_from(10_i128), Dec256::new(2), I256::cast_from(5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new(2), I256::cast_from(4_i128)),
+                    (I256::cast_from(11_i128), Dec256::new(2), I256::cast_from(5_i128)),
 
-                    (I256::from(-10_i128), Dec256::new(2), I256::from(-5_i128)),
-                    (I256::from(-9_i128), Dec256::new(2), I256::from(-5_i128)),
-                    (I256::from(-11_i128), Dec256::new(2), I256::from(-6_i128)),
+                    (I256::cast_from(-10_i128), Dec256::new(2), I256::cast_from(-5_i128)),
+                    (I256::cast_from(-9_i128), Dec256::new(2), I256::cast_from(-5_i128)),
+                    (I256::cast_from(-11_i128), Dec256::new(2), I256::cast_from(-6_i128)),
 
-                    (I256::from(10_i128), Dec256::new(-2), I256::from(-5_i128)),
-                    (I256::from(9_i128), Dec256::new(-2), I256::from(-5_i128)),
-                    (I256::from(11_i128), Dec256::new(-2), I256::from(-6_i128)),
+                    (I256::cast_from(10_i128), Dec256::new(-2), I256::cast_from(-5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new(-2), I256::cast_from(-5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new(-2), I256::cast_from(-6_i128)),
 
-                    (I256::from(-10_i128), Dec256::new(-2), I256::from(5_i128)),
-                    (I256::from(-9_i128), Dec256::new(-2), I256::from(4_i128)),
-                    (I256::from(-11_i128), Dec256::new(-2), I256::from(5_i128)),
+                    (I256::cast_from(-10_i128), Dec256::new(-2), I256::cast_from(5_i128)),
+                    (I256::cast_from(-9_i128), Dec256::new(-2), I256::cast_from(4_i128)),
+                    (I256::cast_from(-11_i128), Dec256::new(-2), I256::cast_from(5_i128)),
                 ]
             }
         }
@@ -551,10 +554,10 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(10_u128), Udec256::new_percent(50), U256::from(20_u128)),
-                    (U256::from(10_u128), Udec256::new(2), U256::from(5_u128)),
-                    (U256::from(9_u128), Udec256::new(2), U256::from(5_u128)),
-                    (U256::from(11_u128), Udec256::new(2), U256::from(6_u128)),
+                    (U256::cast_from(10_u128), Udec256::new_percent(50), U256::cast_from(20_u128)),
+                    (U256::cast_from(10_u128), Udec256::new(2), U256::cast_from(5_u128)),
+                    (U256::cast_from(9_u128), Udec256::new(2), U256::cast_from(5_u128)),
+                    (U256::cast_from(11_u128), Udec256::new(2), U256::cast_from(6_u128)),
                 ]
             }
             i128 = {
@@ -579,22 +582,22 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(10_i128), Dec256::new_percent(50), I256::from(20_i128)),
-                    (I256::from(10_i128), Dec256::new(2), I256::from(5_i128)),
-                    (I256::from(9_i128), Dec256::new(2), I256::from(5_i128)),
-                    (I256::from(11_i128), Dec256::new(2), I256::from(6_i128)),
+                    (I256::cast_from(10_i128), Dec256::new_percent(50), I256::cast_from(20_i128)),
+                    (I256::cast_from(10_i128), Dec256::new(2), I256::cast_from(5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new(2), I256::cast_from(5_i128)),
+                    (I256::cast_from(11_i128), Dec256::new(2), I256::cast_from(6_i128)),
 
-                    (I256::from(-10_i128), Dec256::new(2), I256::from(-5_i128)),
-                    (I256::from(-9_i128), Dec256::new(2), I256::from(-4_i128)),
-                    (I256::from(-11_i128), Dec256::new(2), I256::from(-5_i128)),
+                    (I256::cast_from(-10_i128), Dec256::new(2), I256::cast_from(-5_i128)),
+                    (I256::cast_from(-9_i128), Dec256::new(2), I256::cast_from(-4_i128)),
+                    (I256::cast_from(-11_i128), Dec256::new(2), I256::cast_from(-5_i128)),
 
-                    (I256::from(10_i128), Dec256::new(-2), I256::from(-5_i128)),
-                    (I256::from(9_i128), Dec256::new(-2), I256::from(-4_i128)),
-                    (I256::from(11_i128), Dec256::new(-2), I256::from(-5_i128)),
+                    (I256::cast_from(10_i128), Dec256::new(-2), I256::cast_from(-5_i128)),
+                    (I256::cast_from(9_i128), Dec256::new(-2), I256::cast_from(-4_i128)),
+                    (I256::cast_from(11_i128), Dec256::new(-2), I256::cast_from(-5_i128)),
 
-                    (I256::from(-10_i128), Dec256::new(-2), I256::from(5_i128)),
-                    (I256::from(-9_i128), Dec256::new(-2), I256::from(5_i128)),
-                    (I256::from(-11_i128), Dec256::new(-2), I256::from(6_i128)),
+                    (I256::cast_from(-10_i128), Dec256::new(-2), I256::cast_from(5_i128)),
+                    (I256::cast_from(-9_i128), Dec256::new(-2), I256::cast_from(5_i128)),
+                    (I256::cast_from(-11_i128), Dec256::new(-2), I256::cast_from(6_i128)),
                 ]
             }
         }

@@ -152,7 +152,7 @@ const EvmDeposit: React.FC = () => {
   const { inputs, errors } = controllers;
 
   const { data: appConfig } = useAppConfig();
-  const { minimumDeposit } = appConfig || { minimumDeposit: {} };
+  const { minimumDeposit } = appConfig;
 
   const { coin, connector, setConnectorId, config, reset } = state as NonNullablePropertiesBy<
     typeof state,
