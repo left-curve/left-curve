@@ -9,6 +9,10 @@ const medias = {
   "3xl": 2272,
 };
 
+const heights = {
+  minTall: 1125,
+};
+
 type MediaQueries = {
   isSm: boolean;
   isMd: boolean;
@@ -16,6 +20,7 @@ type MediaQueries = {
   isXl: boolean;
   is2Xl: boolean;
   is3Xl: boolean;
+  is3XlTall: boolean;
 };
 
 export const useMediaQuery = () => {
@@ -26,6 +31,7 @@ export const useMediaQuery = () => {
     isXl: window.innerWidth >= medias.xl,
     is2Xl: window.innerWidth >= medias["2xl"],
     is3Xl: window.innerWidth >= medias["3xl"],
+    is3XlTall: window.innerWidth >= medias["3xl"] && window.innerHeight >= heights.minTall,
   });
 
   useEffect(() => {
@@ -37,6 +43,7 @@ export const useMediaQuery = () => {
         isXl: window.innerWidth >= medias.xl,
         is2Xl: window.innerWidth >= medias["2xl"],
         is3Xl: window.innerWidth >= medias["3xl"],
+        is3XlTall: window.innerWidth >= medias["3xl"] && window.innerHeight >= heights.minTall,
       });
     };
     window.addEventListener("resize", handleResize);

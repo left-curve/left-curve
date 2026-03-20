@@ -1,7 +1,10 @@
 import {
   useAccount,
+  useActivities,
   useBalances,
   useOrdersByUser,
+  usePerpsUserState,
+  perpsUserStateStore,
   usePrices,
   useSessionKey,
 } from "@left-curve/store";
@@ -17,6 +20,7 @@ import {
   Button,
   IconAddCross,
   IconLeft,
+  Tab,
   Tabs,
   IconSwitch,
   twMerge,
@@ -54,6 +58,7 @@ const Container: React.FC = () => {
   const { isLg } = useMediaQuery();
   const { account } = useAccount();
   const { calculateBalance } = usePrices();
+  usePerpsUserState();
 
   const { formatNumberOptions } = settings;
 
@@ -247,6 +252,11 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { deleteSessionKey } = useSessionKey();
   const { isMd } = useMediaQuery();
   const [activeTab, setActiveTab] = useState("wallet");
+  const { unseenCount, markAllSeen } = useActivities();
+
+  useEffect(() => {
+    if (activeTab === "activities") markAllSeen();
+  }, [activeTab, markAllSeen]);
 
   return (
     <div className="flex flex-col w-full gap-6 items-center h-full">
@@ -282,10 +292,31 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           color="line-red"
           layoutId="tabs-assets-account"
           selectedTab={activeTab}
-          keys={["wallet", "activities"]}
           fullWidth
           onTabChange={setActiveTab}
-        />
+        >
+          <Tab title="wallet">{m["accountMenu.wallet"]()}</Tab>
+          <Tab title="activities">
+            <span className="flex items-center gap-1">
+              {m["activities.title"]()}
+              {unseenCount > 0 && (
+                <span className="bg-red-500 text-surface-primary-rice rounded-full min-w-[22px] h-[22px] flex items-center justify-center diatype-sm-medium pt-0.5 px-2">
+                  {unseenCount}
+                </span>
+              )}
+            </span>
+          </Tab>
+        </Tabs>
+      </div>
+      <div className="px-4 py-0 w-full">
+        <Button
+          variant="secondary"
+          size="md"
+          fullWidth
+          onClick={() => [navigate({ to: "/transfer", search: { action: "spot-perp" } }), setSidebarVisibility(false)]}
+        >
+          {m["accountMenu.spotPerp"]()}
+        </Button>
       </div>
       <motion.div
         key={activeTab}
@@ -301,10 +332,17 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   );
 };
 
+const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
+  <div className="flex items-center justify-center px-4 w-full">
+    <p className="flex-1 diatype-m-bold text-ink-primary-900">{title}</p>
+  </div>
+);
+
 export const WalletTab: React.FC = () => {
   const context = useAccountMenu();
   const balances = Object.entries(context.balances);
   const { calculateBalance } = usePrices();
+  const perpsState = perpsUserStateStore((s) => s.userState);
 
   const sortedBalances = useMemo(() => {
     return balances.sort(([denomA, amountA], [denomB, amountB]) => {
@@ -316,14 +354,21 @@ export const WalletTab: React.FC = () => {
   }, [balances, calculateBalance]);
 
   return (
-    <div className="flex flex-col w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none">
-      {sortedBalances.length > 0 ? (
-        sortedBalances.map(([denom, amount]) => <AssetCard key={denom} coin={{ denom, amount }} />)
-      ) : (
-        <div className="px-4">
-          <EmptyPlaceholder component={m["accountMenu.noWalletCoins"]()} className="p-4" />
-        </div>
-      )}
+    <div className="flex flex-col gap-3 w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none">
+      <div className="flex flex-col w-full">
+        <SectionHeader title={m["accountMenu.perpAccount"]()} />
+        <AssetCard.Perp amount={perpsState?.margin ?? "0"} />
+      </div>
+      <div className="flex flex-col w-full">
+        <SectionHeader title={m["accountMenu.spotAccount"]()} />
+        {sortedBalances.length > 0 ? (
+          sortedBalances.map(([denom, amount]) => <AssetCard key={denom} coin={{ denom, amount }} />)
+        ) : (
+          <div className="px-4">
+            <EmptyPlaceholder component={m["accountMenu.noWalletCoins"]()} className="p-4" />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

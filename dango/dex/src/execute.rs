@@ -497,7 +497,6 @@ fn swap_exact_amount_out(
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-// qlty-ignore: similar-code
 mod tests {
     use {
         super::*,

@@ -111,7 +111,7 @@ bigdecimal                  = "0.4"
 bip32                       = "0.5"
 blake2                      = "0.10"
 blake3                      = "1"
-bnum                        = "0.13" # FIXME: non-trivial refactor required to bump to 0.14
+bnum                        = "0.14"
 borsh                       = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
@@ -157,8 +157,8 @@ proc-macro2                 = "1"
 prometheus                  = "0.14"
 proptest                    = "1"
 prost                       = "0.14"
-pyth-lazer-client           = "20.0.0"
-pyth-lazer-protocol         = "0.32.0"
+pyth-lazer-client           = "22.0.0"
+pyth-lazer-protocol         = "0.35.0"
 quote                       = "1"
 rand                        = "0.8" # FIXME: can't bump to 0.10 because RustCrypto requires 0.8
 reqwest                     = { version = "0.13", features = ["stream"] }

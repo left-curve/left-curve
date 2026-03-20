@@ -74,7 +74,7 @@ const QueryMsg: React.FC = () => {
           return { error: e.details };
         }),
   });
-  if (currentTab !== "query" || !config) return null;
+  if (currentTab !== "query") return null;
 
   const addresses = Object.fromEntries(
     Object.entries(config.addresses).filter(([key]) => !key.includes("0x")),
