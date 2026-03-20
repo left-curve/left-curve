@@ -479,7 +479,7 @@ mod tests {
         dango_types::{
             FundingPerUnit, FundingRate, Quantity, UsdPrice,
             oracle::PrecisionedPrice,
-            perps::{Order, PairParam, PairState, Param, State, Unlock},
+            perps::{LimitOrder, PairParam, PairState, Param, State, Unlock},
         },
         grug::{Duration, MockStorage, Udec128, Uint64, hash_map},
         std::collections::{BTreeSet, VecDeque},
@@ -524,11 +524,12 @@ mod tests {
     ) {
         let inverted_price = !UsdPrice::new_int(price);
         let key = (pair_id.clone(), inverted_price, Uint64::new(order_id));
-        let order = Order {
+        let order = LimitOrder {
             user: MAKER,
             size: Quantity::new_int(size.abs()),
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
+            created_at: Timestamp::ZERO,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -549,11 +550,12 @@ mod tests {
             UsdPrice::new_int(price),
             Uint64::new(order_id),
         );
-        let order = Order {
+        let order = LimitOrder {
             user: MAKER,
             size: Quantity::new_int(-size.abs()),
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
+            created_at: Timestamp::ZERO,
         };
         ASKS.save(storage, key, &order).unwrap();
     }

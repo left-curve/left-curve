@@ -144,7 +144,7 @@ mod tests {
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             perps::{OrderId, PairId, Param, Position, TriggerDirection, UserState},
         },
-        grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Uint64},
+        grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Timestamp, Uint64},
         std::collections::BTreeMap,
     };
 
@@ -201,6 +201,7 @@ mod tests {
             trigger_price: UsdPrice::new_int(2_500),
             trigger_direction: TriggerDirection::Above,
             max_slippage: Dimensionless::new_percent(1),
+            created_at: Timestamp::from_nanos(0),
         };
         let key = (pair_id(), UsdPrice::new_int(2_500), Uint64::new(7));
         CONDITIONAL_ABOVE
@@ -254,6 +255,7 @@ mod tests {
             trigger_price: UsdPrice::new_int(2_500),
             trigger_direction: TriggerDirection::Above,
             max_slippage: Dimensionless::new_percent(1),
+            created_at: Timestamp::from_nanos(0),
         };
         let key = (pair_id(), UsdPrice::new_int(2_500), Uint64::new(7));
         CONDITIONAL_ABOVE
@@ -302,6 +304,7 @@ mod tests {
                     TriggerDirection::Below
                 },
                 max_slippage: Dimensionless::new_percent(1),
+                created_at: Timestamp::from_nanos(0),
             };
             let key = (pair_id(), UsdPrice::new_int(price), Uint64::new(id));
             if is_above {

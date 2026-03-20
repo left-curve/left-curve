@@ -146,13 +146,13 @@ fn trading_lifecycle() {
         .should_succeed();
 
     // Verify ask exists on the book.
-    let orders = suite
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
         .should_succeed();
 
-    assert_eq!(orders.asks.len(), 1, "maker should have 1 ask");
+    assert_eq!(orders.len(), 1, "maker should have 1 ask");
 
     // -------------------------------------------------------------------------
     // Step 3: Trader market buys 10 ETH.
@@ -196,14 +196,14 @@ fn trading_lifecycle() {
     );
 
     // Maker's ask should be removed.
-    let orders = suite
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
         .should_succeed();
 
     assert!(
-        orders.asks.is_empty(),
+        orders.is_empty(),
         "maker ask should be fully filled and removed"
     );
 
@@ -364,19 +364,23 @@ fn limit_order_partial_fill_and_cancel() {
     assert_eq!(state.open_order_count, 1, "should have 1 open order");
 
     // Verify bid exists on the book.
-    let orders = suite
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
         .should_succeed();
 
-    assert_eq!(orders.bids.len(), 1, "trader should have 1 resting bid");
+    let limit_orders: Vec<_> = orders
+        .iter()
+        .filter(|(_, o)| matches!(o.kind, perps::LimitOrConditionalOrder::Limit { .. }))
+        .collect();
+    assert_eq!(limit_orders.len(), 1, "trader should have 1 resting bid");
 
     // -------------------------------------------------------------------------
     // Step 4: Trader cancels the resting order.
     // -------------------------------------------------------------------------
 
-    let order_id = orders.bids[0].order_id;
+    let order_id = *limit_orders[0].0;
 
     suite
         .execute(
@@ -405,13 +409,13 @@ fn limit_order_partial_fill_and_cancel() {
     assert_eq!(state.open_order_count, 0, "should have 0 open orders");
 
     // Verify bid removed from book.
-    let orders = suite
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
         .should_succeed();
 
-    assert!(orders.bids.is_empty(), "bids should be empty after cancel");
+    assert!(orders.is_empty(), "orders should be empty after cancel");
 
     // Verify position unchanged: still 5 ETH long @ $2,000.
     let pos = state
@@ -1091,25 +1095,42 @@ fn vault_lp_lifecycle() {
         .should_succeed();
 
     // Vault should have orders on the book.
-    let vault_orders = suite
+    let vault_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
         .should_succeed();
 
+    let vault_bids: Vec<_> = vault_orders
+        .values()
+        .filter(|o| {
+            matches!(o.kind, perps::LimitOrConditionalOrder::Limit { .. }) && o.size.is_positive()
+        })
+        .collect();
+    let vault_asks: Vec<_> = vault_orders
+        .values()
+        .filter(|o| {
+            matches!(o.kind, perps::LimitOrConditionalOrder::Limit { .. }) && o.size.is_negative()
+        })
+        .collect();
+
     assert!(
-        !vault_orders.bids.is_empty(),
+        !vault_bids.is_empty(),
         "vault should have a bid on the book"
     );
     assert!(
-        !vault_orders.asks.is_empty(),
+        !vault_asks.is_empty(),
         "vault should have an ask on the book"
     );
 
     // Vault bid = $2,000 * (1 - 5%) = $1,900, ask = $2,000 * (1 + 5%) = $2,100.
-    assert_eq!(vault_orders.bids[0].limit_price, UsdPrice::new_int(1_900));
+    let bid_price = match vault_bids[0].kind {
+        perps::LimitOrConditionalOrder::Limit { limit_price, .. } => limit_price,
+        _ => unreachable!(),
+    };
+    assert_eq!(bid_price, UsdPrice::new_int(1_900));
 
-    let vault_bid_size = vault_orders.bids[0].size;
+    let vault_bid_size = vault_bids[0].size;
 
     // -------------------------------------------------------------------------
     // Step 4: Taker (user2) deposits $10k, market sells into vault's bid.
@@ -1403,19 +1424,15 @@ fn oracle_triggers_on_oracle_update() {
         .should_succeed();
 
     // Vault should have no orders before any price is fed.
-    let vault_orders_0 = suite
+    let vault_orders_0: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
         .should_succeed();
 
     assert!(
-        vault_orders_0.bids.is_empty(),
-        "vault should have no bids before feeding prices"
-    );
-    assert!(
-        vault_orders_0.asks.is_empty(),
-        "vault should have no asks before feeding prices"
+        vault_orders_0.is_empty(),
+        "vault should have no orders before feeding prices"
     );
 
     // -------------------------------------------------------------------------
@@ -1457,28 +1474,37 @@ fn oracle_triggers_on_oracle_update() {
     );
 
     // Vault should have orders on the book (placed by OnOracleUpdate).
-    let vault_orders_1 = suite
+    let vault_orders_1: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
         .should_succeed();
 
+    let vo1_bids: Vec<_> = vault_orders_1
+        .values()
+        .filter(|o| o.size.is_positive())
+        .collect();
+    let vo1_asks: Vec<_> = vault_orders_1
+        .values()
+        .filter(|o| o.size.is_negative())
+        .collect();
+
     assert_eq!(
-        vault_orders_1.bids.len(),
+        vo1_bids.len(),
         1,
         "vault should have exactly 1 bid after OnOracleUpdate"
     );
     assert_eq!(
-        vault_orders_1.asks.len(),
+        vo1_asks.len(),
         1,
         "vault should have exactly 1 ask after OnOracleUpdate"
     );
     assert_eq!(
-        vault_orders_1.bids[0].pair_id, pair,
+        vo1_bids[0].pair_id, pair,
         "bid should be for the perps pair"
     );
     assert_eq!(
-        vault_orders_1.asks[0].pair_id, pair,
+        vo1_asks[0].pair_id, pair,
         "ask should be for the perps pair"
     );
 
@@ -1487,13 +1513,21 @@ fn oracle_triggers_on_oracle_update() {
     //
     // Note that we use $1 tick size in the testing setup. It's not a sensible
     // tick size for production, but it simplifies assertions like this.
-    assert_eq!(vault_orders_1.bids[0].limit_price, UsdPrice::new_int(1_936));
-    assert_eq!(vault_orders_1.asks[0].limit_price, UsdPrice::new_int(2_140));
+    let vo1_bid_price = match vo1_bids[0].kind {
+        perps::LimitOrConditionalOrder::Limit { limit_price, .. } => limit_price,
+        _ => unreachable!(),
+    };
+    let vo1_ask_price = match vo1_asks[0].kind {
+        perps::LimitOrConditionalOrder::Limit { limit_price, .. } => limit_price,
+        _ => unreachable!(),
+    };
+    assert_eq!(vo1_bid_price, UsdPrice::new_int(1_936));
+    assert_eq!(vo1_ask_price, UsdPrice::new_int(2_140));
 
     // |size| = min(half_margin / (oracle * IMR), vault_max_quote_size)
     //        = min(2500 / (2038.056 * 0.1), 2) = min(12.27, 2) = 2
-    assert_eq!(vault_orders_1.bids[0].size, Quantity::new_int(2));
-    assert_eq!(vault_orders_1.asks[0].size, Quantity::new_int(-2));
+    assert_eq!(vo1_bids[0].size, Quantity::new_int(2));
+    assert_eq!(vo1_asks[0].size, Quantity::new_int(-2));
 
     // -------------------------------------------------------------------------
     // Step 2: Corrupt perps PARAM storage so OnOracleUpdate will fail on the
@@ -1548,7 +1582,7 @@ fn oracle_triggers_on_oracle_update() {
     // Vault orders should be unchanged — the failed OnOracleUpdate rolled back
     // any state changes it attempted (cancel + re-place). Compare order IDs to
     // prove these are the exact same orders, not new ones at the same price.
-    let vault_orders_2 = suite
+    let vault_orders_2: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -1556,19 +1590,10 @@ fn oracle_triggers_on_oracle_update() {
 
     assert!(
         vault_orders_1
-            .bids
-            .iter()
-            .zip(vault_orders_2.bids.iter())
-            .all(|(a, b)| a.order_id == b.order_id),
-        "bid order IDs should be unchanged after failed OnOracleUpdate"
-    );
-    assert!(
-        vault_orders_1
-            .asks
-            .iter()
-            .zip(vault_orders_2.asks.iter())
-            .all(|(a, b)| a.order_id == b.order_id),
-        "ask order IDs should be unchanged after failed OnOracleUpdate"
+            .keys()
+            .zip(vault_orders_2.keys())
+            .all(|(a, b)| a == b),
+        "order IDs should be unchanged after failed OnOracleUpdate"
     );
 }
 
@@ -2029,18 +2054,20 @@ fn conditional_order_tp_triggers_on_price_rise() {
         .should_succeed();
 
     // Step 5: Query conditional orders.
-    let cond_orders: perps::QueryConditionalOrdersByUserResponse = suite
-        .query_wasm_smart(
-            contracts.perps,
-            perps::QueryConditionalOrdersByUserRequest {
-                user: accounts.user1.address(),
-            },
-        )
+    let all_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
         .should_succeed();
 
-    assert!(
-        cond_orders.above.len() == 1 && cond_orders.below.is_empty(),
-        "should have exactly 1 above and 0 below conditional orders"
+    let cond_orders: Vec<_> = all_orders
+        .values()
+        .filter(|o| matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. }))
+        .collect();
+    assert_eq!(
+        cond_orders.len(),
+        1,
+        "should have exactly 1 conditional order"
     );
 
     let state: UserState = suite
@@ -2098,17 +2125,18 @@ fn conditional_order_tp_triggers_on_price_rise() {
     );
 
     // Step 10: Query conditional orders — should be empty.
-    let cond_orders: perps::QueryConditionalOrdersByUserResponse = suite
-        .query_wasm_smart(
-            contracts.perps,
-            perps::QueryConditionalOrdersByUserRequest {
-                user: accounts.user1.address(),
-            },
-        )
+    let all_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
         .should_succeed();
 
+    let cond_orders: Vec<_> = all_orders
+        .values()
+        .filter(|o| matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. }))
+        .collect();
     assert!(
-        cond_orders.above.is_empty() && cond_orders.below.is_empty(),
+        cond_orders.is_empty(),
         "conditional orders should be empty after trigger"
     );
 }
@@ -2419,17 +2447,18 @@ fn liquidation_cancels_conditional_orders() {
     );
 
     // Conditional orders should be gone from storage.
-    let cond_orders: perps::QueryConditionalOrdersByUserResponse = suite
-        .query_wasm_smart(
-            contracts.perps,
-            perps::QueryConditionalOrdersByUserRequest {
-                user: accounts.user1.address(),
-            },
-        )
+    let all_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
         .should_succeed();
 
+    let cond_orders: Vec<_> = all_orders
+        .values()
+        .filter(|o| matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. }))
+        .collect();
     assert!(
-        cond_orders.above.is_empty() && cond_orders.below.is_empty(),
+        cond_orders.is_empty(),
         "conditional orders should be empty after liquidation"
     );
 }
@@ -2952,31 +2981,29 @@ fn conditional_order_failure_does_not_block_others() {
     );
 
     // Both users' conditional order queries should return empty.
-    let cond_user1: perps::QueryConditionalOrdersByUserResponse = suite
-        .query_wasm_smart(
-            contracts.perps,
-            perps::QueryConditionalOrdersByUserRequest {
-                user: accounts.user1.address(),
-            },
-        )
+    let orders_user1: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
         .should_succeed();
 
     assert!(
-        cond_user1.above.is_empty() && cond_user1.below.is_empty(),
+        orders_user1
+            .values()
+            .all(|o| !matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. })),
         "User1 conditional orders should be empty"
     );
 
-    let cond_user3: perps::QueryConditionalOrdersByUserResponse = suite
-        .query_wasm_smart(
-            contracts.perps,
-            perps::QueryConditionalOrdersByUserRequest {
-                user: accounts.user3.address(),
-            },
-        )
+    let orders_user3: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user3.address(),
+        })
         .should_succeed();
 
     assert!(
-        cond_user3.above.is_empty() && cond_user3.below.is_empty(),
+        orders_user3
+            .values()
+            .all(|o| !matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. })),
         "User3 conditional orders should be empty"
     );
 }

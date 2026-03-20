@@ -76,6 +76,7 @@ pub fn submit_conditional_order(
         trigger_price,
         trigger_direction,
         max_slippage,
+        created_at: ctx.block.timestamp,
     };
 
     NEXT_ORDER_ID.save(ctx.storage, &(order_id + ConditionalOrderId::ONE))?;

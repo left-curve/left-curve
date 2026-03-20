@@ -2,8 +2,8 @@ use {
     dango_types::{
         Quantity, UsdPrice, UsdValue,
         perps::{
-            ConditionalOrder, ConditionalOrderId, Order, OrderId, PairId, PairParam, PairState,
-            Param, State, UserState,
+            ConditionalOrder, ConditionalOrderId, LimitOrder, OrderId, PairId, PairParam,
+            PairState, Param, State, UserState,
         },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
@@ -42,11 +42,11 @@ pub const LONGS: Set<(PairId, UsdPrice, Addr)> = Set::new("long");
 pub const SHORTS: Set<(PairId, UsdPrice, Addr)> = Set::new("short");
 
 /// Buy orders.
-pub const BIDS: IndexedMap<OrderKey, Order, OrderIndexes> =
+pub const BIDS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
     IndexedMap::new("bid", OrderIndexes::new("bid", "bid__id", "bid__user"));
 
 /// Sell orders.
-pub const ASKS: IndexedMap<OrderKey, Order, OrderIndexes> =
+pub const ASKS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
     IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
 
 /// Conditional orders that trigger when oracle_price >= trigger_price.
@@ -84,10 +84,10 @@ pub type OrderKey = (PairId, UsdPrice, OrderId);
 
 pub type ConditionalOrderKey = (PairId, UsdPrice, ConditionalOrderId);
 
-#[grug::index_list(OrderKey, Order)]
+#[grug::index_list(OrderKey, LimitOrder)]
 pub struct OrderIndexes<'a> {
-    pub order_id: UniqueIndex<'a, OrderKey, OrderId, Order>,
-    pub user: MultiIndex<'a, OrderKey, Addr, Order>,
+    pub order_id: UniqueIndex<'a, OrderKey, OrderId, LimitOrder>,
+    pub user: MultiIndex<'a, OrderKey, Addr, LimitOrder>,
 }
 
 impl OrderIndexes<'static> {

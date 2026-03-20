@@ -11,6 +11,7 @@ use {
     grug::{Addressable, Coins, QuerierExt, ResultExt},
     grug_app::Indexer,
     indexer_client::{PerpsEvents, perps_events},
+    std::collections::BTreeMap,
 };
 
 /// Query a user's perps events and verify the order lifecycle is returned
@@ -56,13 +57,13 @@ async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
         .should_succeed();
 
     // Query the resting order to get its ID.
-    let orders: perps::QueryOrdersByUserResponse = suite
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
         .should_succeed();
 
-    let order_id = orders.asks[0].order_id;
+    let order_id = *orders.keys().next().unwrap();
 
     suite
         .execute(
