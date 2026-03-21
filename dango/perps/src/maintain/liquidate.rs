@@ -44,6 +44,9 @@ use {
 ///
 /// Returns: empty `Response` (all PnL/fees settled via internal margins).
 pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let start = std::time::Instant::now();
+
     // --------------------- 1. Preparation + basic checks ---------------------
 
     ensure!(user != ctx.contract, "cannot liquidate the vault");
@@ -202,6 +205,31 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
             num_positions = pair_ids.len(),
             "Liquidation executed"
         );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::counter!(crate::metrics::LABEL_LIQUIDATIONS).increment(1);
+
+        metrics::histogram!(crate::metrics::LABEL_DURATION_LIQUIDATE)
+            .record(start.elapsed().as_secs_f64());
+
+        // OI gauges are updated per pair after liquidation.
+        for (pair_id, pair_state) in &pair_states {
+            let pair_label = pair_id.to_string();
+
+            metrics::gauge!(
+                crate::metrics::LABEL_OPEN_INTEREST_LONG,
+                "pair_id" => pair_label.clone()
+            )
+            .set(pair_state.long_oi.to_f64());
+
+            metrics::gauge!(
+                crate::metrics::LABEL_OPEN_INTEREST_SHORT,
+                "pair_id" => pair_label
+            )
+            .set(pair_state.short_oi.to_f64());
+        }
     }
 
     Ok(Response::new()
@@ -363,6 +391,11 @@ fn _liquidate(
                 "!!! BAD DEBT COVERED !!!"
             );
         }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_BAD_DEBT).record(bad_debt.to_f64().abs());
+        }
     }
 
     Ok((
@@ -520,6 +553,15 @@ fn execute_close_schedule(
                 adl_size,
                 adl_price: Some(adl_price),
             })?;
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::counter!(
+                    crate::metrics::LABEL_ADL_EVENTS,
+                    "pair_id" => pair_id.to_string()
+                )
+                .increment(1);
+            }
         } else {
             events.push(Liquidated {
                 user,
