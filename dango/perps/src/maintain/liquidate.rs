@@ -204,24 +204,23 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
         metrics::histogram!(crate::metrics::LABEL_DURATION_LIQUIDATE)
             .record(start.elapsed().as_secs_f64());
-    }
 
-    // OI gauges are updated per pair after liquidation.
-    #[cfg(feature = "metrics")]
-    for (pair_id, pair_state) in &pair_states {
-        let pair_label = pair_id.to_string();
+        // OI gauges are updated per pair after liquidation.
+        for (pair_id, pair_state) in &pair_states {
+            let pair_label = pair_id.to_string();
 
-        metrics::gauge!(
-            crate::metrics::LABEL_OPEN_INTEREST_LONG,
-            "pair_id" => pair_label.clone()
-        )
-        .set(pair_state.long_oi.to_f64());
+            metrics::gauge!(
+                crate::metrics::LABEL_OPEN_INTEREST_LONG,
+                "pair_id" => pair_label.clone()
+            )
+            .set(pair_state.long_oi.to_f64());
 
-        metrics::gauge!(
-            crate::metrics::LABEL_OPEN_INTEREST_SHORT,
-            "pair_id" => pair_label
-        )
-        .set(pair_state.short_oi.to_f64());
+            metrics::gauge!(
+                crate::metrics::LABEL_OPEN_INTEREST_SHORT,
+                "pair_id" => pair_label
+            )
+            .set(pair_state.short_oi.to_f64());
+        }
     }
 
     Ok(Response::new()

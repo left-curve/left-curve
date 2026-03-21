@@ -170,14 +170,16 @@ fn process_funding_for_pair(
 
     (pair_state.funding_per_unit).checked_add_assign(funding_delta)?;
 
-    #[cfg(feature = "metrics")]
-    metrics::gauge!(
-        crate::metrics::LABEL_FUNDING_RATE,
-        "pair_id" => pair_id.to_string()
-    )
-    .set(pair_state.funding_per_unit.to_f64());
-
     PAIR_STATES.save(storage, &pair_id, &pair_state)?;
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::gauge!(
+            crate::metrics::LABEL_FUNDING_RATE,
+            "pair_id" => pair_id.to_string()
+        )
+        .set(pair_state.funding_per_unit.to_f64());
+    }
 
     Ok(())
 }

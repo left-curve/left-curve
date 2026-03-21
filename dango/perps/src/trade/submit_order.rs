@@ -82,9 +82,6 @@ pub fn submit_order(
             &mut events,
         )?;
 
-    #[cfg(feature = "metrics")]
-    let pair_label = pair_id.to_string();
-
     // ------------------------ 3. Apply state changes -------------------------
 
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
@@ -170,7 +167,7 @@ pub fn submit_order(
 
         events.push(OrderPersisted {
             order_id,
-            pair_id,
+            pair_id: pair_id.clone(),
             user: ctx.sender,
             limit_price,
             size: order.size,
@@ -179,6 +176,8 @@ pub fn submit_order(
 
     #[cfg(feature = "metrics")]
     {
+        let pair_label = pair_id.to_string();
+
         metrics::counter!(
             crate::metrics::LABEL_ORDERS_SUBMITTED,
             "pair_id" => pair_label.clone()
@@ -649,13 +648,6 @@ pub fn match_order(
         if maker_order.size.is_zero() {
             maker_state.open_order_count -= 1;
 
-            #[cfg(feature = "metrics")]
-            metrics::counter!(
-                crate::metrics::LABEL_ORDERS_FILLED,
-                "pair_id" => pair_id.to_string()
-            )
-            .increment(1);
-
             order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
 
             // Vault order removal is internal churn — suppress the event.
@@ -666,6 +658,15 @@ pub fn match_order(
                     user: maker_order.user,
                     reason: ReasonForOrderRemoval::Filled,
                 })?;
+            }
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::counter!(
+                    crate::metrics::LABEL_ORDERS_FILLED,
+                    "pair_id" => pair_id.to_string()
+                )
+                .increment(1);
             }
         } else {
             order_mutations.push((
@@ -726,6 +727,29 @@ pub fn settle_fill(
 
     let volume = compute_notional(fill_size, fill_price)?;
 
+    pnls.entry(user).or_default().checked_add_assign(pnl)?;
+
+    fees.entry(user).or_default().checked_add_assign(fee)?;
+
+    volumes
+        .entry(user)
+        .or_default()
+        .checked_add_assign(volume)?;
+
+    if let Some((events, order_id)) = events {
+        events.push(OrderFilled {
+            order_id,
+            pair_id: pair_id.clone(),
+            user,
+            fill_price,
+            fill_size,
+            closing_size: closing,
+            opening_size: opening,
+            realized_pnl: pnl,
+            fee,
+        })?;
+    }
+
     #[cfg(feature = "metrics")]
     {
         let pair_label = pair_id.to_string();
@@ -749,29 +773,6 @@ pub fn settle_fill(
             "pair_id" => pair_label
         )
         .record(fee.to_f64().abs());
-    }
-
-    pnls.entry(user).or_default().checked_add_assign(pnl)?;
-
-    fees.entry(user).or_default().checked_add_assign(fee)?;
-
-    volumes
-        .entry(user)
-        .or_default()
-        .checked_add_assign(volume)?;
-
-    if let Some((events, order_id)) = events {
-        events.push(OrderFilled {
-            order_id,
-            pair_id: pair_id.clone(),
-            user,
-            fill_price,
-            fill_size,
-            closing_size: closing,
-            opening_size: opening,
-            realized_pnl: pnl,
-            fee,
-        })?;
     }
 
     Ok(pnl)

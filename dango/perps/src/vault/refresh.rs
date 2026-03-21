@@ -185,8 +185,10 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     }
 
     #[cfg(feature = "metrics")]
-    metrics::histogram!(crate::metrics::LABEL_DURATION_VAULT_REFRESH)
-        .record(start.elapsed().as_secs_f64());
+    {
+        metrics::histogram!(crate::metrics::LABEL_DURATION_VAULT_REFRESH)
+            .record(start.elapsed().as_secs_f64());
+    }
 
     Ok(Response::new())
 }
