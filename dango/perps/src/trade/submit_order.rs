@@ -164,11 +164,21 @@ pub fn submit_order(
 
         events.push(OrderPersisted {
             order_id,
-            pair_id,
+            pair_id: pair_id.clone(),
             user: ctx.sender,
             limit_price,
             size: order.size,
         })?;
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            user = %ctx.sender,
+            %pair_id,
+            %size,
+            "Order submitted"
+        );
     }
 
     // No token transfers — all PnL/fees settled via user_state.margin.

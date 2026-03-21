@@ -195,6 +195,15 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     apply_position_index_updates(ctx.storage, &index_updates)?;
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            %user,
+            num_positions = pair_ids.len(),
+            "Liquidation executed"
+        );
+    }
+
     Ok(Response::new()
         .add_events(events)?
         .add_events(cond_events)?)
@@ -344,6 +353,16 @@ fn _liquidate(
             amount: bad_debt,
             insurance_fund_remaining: state.insurance_fund,
         })?;
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::warn!(
+                %user,
+                %bad_debt,
+                insurance_fund_remaining = %state.insurance_fund,
+                "!!! BAD DEBT COVERED !!!"
+            );
+        }
     }
 
     Ok((

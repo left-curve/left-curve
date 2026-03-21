@@ -58,6 +58,16 @@ pub fn add_liquidity(
     USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     USER_STATES.save(ctx.storage, ctx.contract, &vault_user_state)?;
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            user = %ctx.sender,
+            %amount,
+            %shares_minted,
+            "Liquidity added"
+        );
+    }
+
     Ok(Response::new().add_event(LiquidityAdded {
         user: ctx.sender,
         amount,
