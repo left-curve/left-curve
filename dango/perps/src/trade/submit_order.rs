@@ -39,6 +39,9 @@ pub fn submit_order(
     kind: OrderKind,
     reduce_only: bool,
 ) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let start = std::time::Instant::now();
+
     // ---------------------------- 1. Preparation -----------------------------
 
     let param = PARAM.load(ctx.storage)?;
@@ -164,11 +167,40 @@ pub fn submit_order(
 
         events.push(OrderPersisted {
             order_id,
-            pair_id,
+            pair_id: pair_id.clone(),
             user: ctx.sender,
             limit_price,
             size: order.size,
         })?;
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        let pair_label = pair_id.to_string();
+
+        metrics::counter!(
+            crate::metrics::LABEL_ORDERS_SUBMITTED,
+            "pair_id" => pair_label.clone()
+        )
+        .increment(1);
+
+        metrics::gauge!(
+            crate::metrics::LABEL_OPEN_INTEREST_LONG,
+            "pair_id" => pair_label.clone()
+        )
+        .set(pair_state.long_oi.to_f64());
+
+        metrics::gauge!(
+            crate::metrics::LABEL_OPEN_INTEREST_SHORT,
+            "pair_id" => pair_label.clone()
+        )
+        .set(pair_state.short_oi.to_f64());
+
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_SUBMIT_ORDER,
+            "pair_id" => pair_label
+        )
+        .record(start.elapsed().as_secs_f64());
     }
 
     // No token transfers — all PnL/fees settled via user_state.margin.
@@ -627,6 +659,15 @@ pub fn match_order(
                     reason: ReasonForOrderRemoval::Filled,
                 })?;
             }
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::counter!(
+                    crate::metrics::LABEL_ORDERS_FILLED,
+                    "pair_id" => pair_id.to_string()
+                )
+                .increment(1);
+            }
         } else {
             order_mutations.push((
                 stored_price,
@@ -707,6 +748,31 @@ pub fn settle_fill(
             realized_pnl: pnl,
             fee,
         })?;
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        let pair_label = pair_id.to_string();
+
+        metrics::counter!(
+            crate::metrics::LABEL_TRADES,
+            "pair_id" => pair_label.clone()
+        )
+        .increment(1);
+
+        let vol = volume.to_f64().abs();
+
+        metrics::histogram!(
+            crate::metrics::LABEL_VOLUME_PER_TRADE,
+            "pair_id" => pair_label.clone()
+        )
+        .record(vol);
+
+        metrics::histogram!(
+            crate::metrics::LABEL_FEES_COLLECTED,
+            "pair_id" => pair_label
+        )
+        .record(fee.to_f64().abs());
     }
 
     Ok(pnl)

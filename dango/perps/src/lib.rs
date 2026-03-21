@@ -2,6 +2,8 @@ mod core;
 mod cron;
 mod liquidity_depth;
 mod maintain;
+#[cfg(feature = "metrics")]
+pub mod metrics;
 mod position_index;
 mod price;
 mod querier;
@@ -74,6 +76,9 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let start = std::time::Instant::now();
+
     let mut events = EventBuilder::new();
 
     cron::process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
@@ -89,6 +94,11 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         &mut oracle_querier,
         &mut events,
     )?;
+
+    #[cfg(feature = "metrics")]
+    {
+        cron::emit_cron_metrics(ctx.storage, ctx.contract, &mut oracle_querier, start)?;
+    }
 
     Ok(Response::new().add_events(events)?)
 }
