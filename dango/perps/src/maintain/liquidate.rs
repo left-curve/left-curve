@@ -367,14 +367,16 @@ fn _liquidate(
         // Deduct from insurance fund (can go negative as last resort).
         state.insurance_fund.checked_sub_assign(bad_debt)?;
 
-        #[cfg(feature = "metrics")]
-        metrics::histogram!(crate::metrics::LABEL_BAD_DEBT).record(bad_debt.to_f64().abs());
-
         events.push(BadDebtCovered {
             liquidated_user: user,
             amount: bad_debt,
             insurance_fund_remaining: state.insurance_fund,
         })?;
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_BAD_DEBT).record(bad_debt.to_f64().abs());
+        }
     }
 
     Ok((
@@ -526,19 +528,21 @@ fn execute_close_schedule(
             closed_notional
                 .checked_add_assign(adl_size.checked_abs()?.checked_mul(oracle_price)?)?;
 
-            #[cfg(feature = "metrics")]
-            metrics::counter!(
-                crate::metrics::LABEL_ADL_EVENTS,
-                "pair_id" => pair_id.to_string()
-            )
-            .increment(1);
-
             events.push(Liquidated {
                 user,
                 pair_id: pair_id.clone(),
                 adl_size,
                 adl_price: Some(adl_price),
             })?;
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::counter!(
+                    crate::metrics::LABEL_ADL_EVENTS,
+                    "pair_id" => pair_id.to_string()
+                )
+                .increment(1);
+            }
         } else {
             events.push(Liquidated {
                 user,
