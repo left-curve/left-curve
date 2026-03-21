@@ -54,6 +54,16 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
     USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     USER_STATES.save(ctx.storage, ctx.contract, &vault_user_state)?;
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            user = %ctx.sender,
+            %shares_to_burn,
+            %amount,
+            "Liquidity removal queued"
+        );
+    }
+
     Ok(Response::new().add_event(LiquidityUnlocking {
         user: ctx.sender,
         amount,

@@ -174,6 +174,16 @@ pub fn submit_order(
         })?;
     }
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            user = %ctx.sender,
+            %pair_id,
+            %size,
+            "Order submitted"
+        );
+    }
+
     #[cfg(feature = "metrics")]
     {
         let pair_label = pair_id.to_string();

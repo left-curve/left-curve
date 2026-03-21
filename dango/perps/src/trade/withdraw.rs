@@ -63,6 +63,15 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
         USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
     }
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            user = %ctx.sender,
+            %amount,
+            "Margin withdrawn"
+        );
+    }
+
     Ok(Response::new()
         .add_message(Message::transfer(
             ctx.sender,

@@ -184,6 +184,15 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         USER_STATES.save(ctx.storage, ctx.contract, &vault_state)?;
     }
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            num_pairs = pair_ids.len(),
+            open_orders = vault_state.open_order_count,
+            "Vault orders refreshed"
+        );
+    }
+
     #[cfg(feature = "metrics")]
     {
         metrics::histogram!(crate::metrics::LABEL_DURATION_VAULT_REFRESH)

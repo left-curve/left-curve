@@ -36,6 +36,15 @@ pub fn deposit(mut ctx: MutableCtx) -> anyhow::Result<Response> {
 
     USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            user = %ctx.sender,
+            %deposit_value,
+            "Margin deposited"
+        );
+    }
+
     Ok(Response::new().add_event(Deposited {
         user: ctx.sender,
         amount: deposit_value,

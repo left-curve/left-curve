@@ -51,8 +51,16 @@ pub fn process_unlocks(
         })
         .collect::<StdResult<Vec<_>>>()?;
 
+    #[cfg(feature = "tracing")]
+    let num_users = users.len();
+
     for (user, user_state) in users {
         process_unlock_for_user(storage, current_time, user, user_state, events)?;
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(num_users, "Processed matured unlocks");
     }
 
     Ok(())
@@ -176,6 +184,15 @@ fn process_funding_for_pair(
     (pair_state.funding_per_unit).checked_add_assign(funding_delta)?;
 
     PAIR_STATES.save(storage, &pair_id, &pair_state)?;
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            %pair_id,
+            %funding_delta,
+            "Applied funding delta"
+        );
+    }
 
     #[cfg(feature = "metrics")]
     {
@@ -356,6 +373,16 @@ fn process_triggered_order(
             USER_STATES.save(storage, order.user, &user_state)?;
         }
 
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                %order_id,
+                %pair_id,
+                user = %order.user,
+                "Conditional order cancelled: position closed"
+            );
+        }
+
         return Ok(());
     }
 
@@ -421,6 +448,16 @@ fn process_triggered_order(
                     USER_STATES.remove(storage, order.user)?;
                 } else {
                     USER_STATES.save(storage, order.user, &user_state)?;
+                }
+
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::info!(
+                        %order_id,
+                        %pair_id,
+                        user = %order.user,
+                        "Conditional order cancelled: slippage exceeded"
+                    );
                 }
 
                 return Ok(());
