@@ -163,6 +163,7 @@ impl SubscriptionVariables for crate::subscribe_messages::Variables {}
 impl SubscriptionVariables for crate::subscribe_events::Variables {}
 impl SubscriptionVariables for crate::subscribe_event_by_addresses::Variables {}
 impl SubscriptionVariables for crate::subscribe_candles::Variables {}
+impl SubscriptionVariables for crate::subscribe_perps_candles::Variables {}
 impl SubscriptionVariables for crate::subscribe_trades::Variables {}
 impl SubscriptionVariables for crate::subscribe_query_app::Variables {}
 impl SubscriptionVariables for crate::subscribe_query_store::Variables {}

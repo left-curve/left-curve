@@ -1,11 +1,11 @@
 use {
     crate::{
-        ASKS, BIDS, OrderKey, PAIR_PARAMS, USER_STATES, liquidity_depth::decrease_liquidity_depths,
-        price::may_invert_price,
+        ASKS, BIDS, OrderKey, PAIR_PARAMS, liquidity_depth::decrease_liquidity_depths,
+        price::may_invert_price, trade::update_user_state_with,
     },
     anyhow::{anyhow, ensure},
     dango_types::perps::{
-        Order, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval, UserState,
+        LimitOrder, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval, UserState,
     },
     grug::{Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
     std::collections::{BTreeMap, BTreeSet},
@@ -62,7 +62,7 @@ fn _cancel_one_order<F>(
     storage: &mut dyn Storage,
     user_state: &mut UserState,
     order_key: OrderKey,
-    order: Order,
+    order: LimitOrder,
     events: Option<&mut EventBuilder>,
     reason: ReasonForOrderRemoval,
     pair_param: F,
@@ -184,26 +184,6 @@ pub fn _cancel_all_orders(
     Ok(())
 }
 
-/// 1. Load the user's state.
-/// 2. Perform a mutable action on the user state. The action may have side
-///    effect on the storage.
-/// 3. If the user state becomes empty, delete it from storage; otherwise, save
-///    the updated user state to storage.
-fn update_user_state_with<F>(storage: &mut dyn Storage, user: Addr, action: F) -> StdResult<()>
-where
-    F: FnOnce(&mut dyn Storage, &mut UserState) -> StdResult<()>,
-{
-    let mut user_state = USER_STATES.load(storage, user)?;
-
-    action(storage, &mut user_state)?;
-
-    if user_state.is_empty() {
-        USER_STATES.remove(storage, user)
-    } else {
-        USER_STATES.save(storage, user, &user_state)
-    }
-}
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -216,9 +196,9 @@ mod tests {
         },
         dango_types::{
             FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{Order, PairId, PairParam, Position, UserState},
+            perps::{LimitOrder, PairId, PairParam, Position, UserState},
         },
-        grug::{Addr, Coins, MockContext, ResultExt, Storage, Uint64, Uint128},
+        grug::{Addr, Coins, MockContext, ResultExt, Storage, Timestamp, Uint64},
         std::collections::{BTreeMap, VecDeque},
     };
 
@@ -253,11 +233,12 @@ mod tests {
     ) {
         ensure_pair_param(storage);
         let key = order_key(order_id);
-        let order = Order {
+        let order = LimitOrder {
             user,
             size: Quantity::new_int(size),
             reduce_only: false,
             reserved_margin: UsdValue::new_int(reserved_margin),
+            created_at: Timestamp::from_nanos(0),
         };
 
         BIDS.save(storage, key, &order).unwrap();
@@ -273,11 +254,12 @@ mod tests {
     ) {
         ensure_pair_param(storage);
         let key = order_key(order_id);
-        let order = Order {
+        let order = LimitOrder {
             user,
             size: Quantity::new_int(size),
             reduce_only: false,
             reserved_margin: UsdValue::new_int(reserved_margin),
+            created_at: Timestamp::from_nanos(0),
         };
 
         ASKS.save(storage, key, &order).unwrap();
@@ -296,8 +278,7 @@ mod tests {
             positions,
             reserved_margin: UsdValue::new_int(reserved_margin),
             open_order_count,
-            margin: UsdValue::ZERO,
-            vault_shares: Uint128::new(0),
+            ..Default::default()
         };
 
         USER_STATES.save(storage, user, &state).unwrap();

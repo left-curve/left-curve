@@ -10,8 +10,10 @@
   file:
     path: "{{ points_bot_dir }}/{{ network }}"
     state: absent
+  become_user: root
 
 - name: "{{ network }} - Remove Traefik route"
   file:
     path: "{{ traefik_dir }}/config/points-{{ network }}.yml"
     state: absent
+  become_user: root

@@ -1,0 +1,26 @@
+query PerpsCandles($after: String, $first: Int, $pairId: String!, $interval: CandleInterval!, $earlierThan: DateTime, $laterThan: DateTime) {
+  perpsCandles(after: $after, first: $first, pairId: $pairId, interval: $interval, earlierThan: $earlierThan, laterThan: $laterThan) {
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      pairId
+      interval
+      minBlockHeight
+      maxBlockHeight
+      open
+      high
+      low
+      close
+      volume
+      volumeUsd
+      timeStart
+      timeStartUnix
+      timeEnd
+      timeEndUnix
+    }
+  }
+}

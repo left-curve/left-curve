@@ -13,15 +13,18 @@ use {
         },
         price::may_invert_price,
         state::{LONGS, SHORTS},
-        trade::{_cancel_all_orders, match_order, settle_fill, settle_pnls},
+        trade::{
+            _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
+            settle_pnls,
+        },
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            BadDebtCovered, Deleveraged, Liquidated, Order, OrderId, PairId, PairParam, PairState,
-            Param, ReasonForOrderRemoval, State, UserState,
+            BadDebtCovered, Deleveraged, LimitOrder, Liquidated, OrderId, PairId, PairParam,
+            PairState, Param, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
@@ -64,6 +67,13 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         user,
         &mut user_state,
         Some(&mut events),
+        ReasonForOrderRemoval::Liquidated,
+    )?;
+
+    let cond_events = _cancel_all_conditional_orders(
+        ctx.storage,
+        user,
+        &mut user_state,
         ReasonForOrderRemoval::Liquidated,
     )?;
 
@@ -214,7 +224,9 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         .set(pair_state.short_oi.to_f64());
     }
 
-    Ok(Response::new().add_events(events)?)
+    Ok(Response::new()
+        .add_events(events)?
+        .add_events(cond_events)?)
 }
 
 /// Mutates:
@@ -244,7 +256,14 @@ fn _liquidate(
     events: &mut EventBuilder,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
-    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
+    Vec<(
+        PairId,
+        bool,
+        UsdPrice,
+        OrderId,
+        Option<LimitOrder>,
+        Quantity,
+    )>,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
 )> {
@@ -387,7 +406,14 @@ fn execute_close_schedule(
 ) -> anyhow::Result<(
     BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
-    Vec<(PairId, bool, UsdPrice, OrderId, Option<Order>, Quantity)>,
+    Vec<(
+        PairId,
+        bool,
+        UsdPrice,
+        OrderId,
+        Option<LimitOrder>,
+        Quantity,
+    )>,
     UsdValue,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
@@ -712,7 +738,7 @@ mod tests {
         },
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{Order, PairParam, PairState, Param, Position, State, UserState},
+            perps::{LimitOrder, PairParam, PairState, Param, Position, State, UserState},
         },
         grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64},
         std::collections::BTreeMap,
@@ -804,11 +830,12 @@ mod tests {
         use crate::price::may_invert_price;
         let stored_price = may_invert_price(UsdPrice::new_int(price), true);
         let key: OrderKey = (pair_id.clone(), stored_price, Uint64::new(order_id));
-        let order = Order {
+        let order = LimitOrder {
             user: maker,
             size: Quantity::new_int(size),
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
+            created_at: Timestamp::ZERO,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -824,11 +851,12 @@ mod tests {
     ) {
         let stored_price = UsdPrice::new_int(price);
         let key: OrderKey = (pair_id.clone(), stored_price, Uint64::new(order_id));
-        let order = Order {
+        let order = LimitOrder {
             user: maker,
             size: Quantity::new_int(size),
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
+            created_at: Timestamp::ZERO,
         };
         ASKS.save(storage, key, &order).unwrap();
     }

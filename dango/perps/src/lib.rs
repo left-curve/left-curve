@@ -87,6 +87,14 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
+    cron::process_conditional_orders(
+        ctx.storage,
+        ctx.contract,
+        ctx.block.timestamp,
+        &mut oracle_querier,
+        &mut events,
+    )?;
+
     #[cfg(feature = "metrics")]
     {
         let state = STATE.load(ctx.storage)?;
@@ -141,6 +149,26 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 trade::cancel_one_order(ctx, order_id)
             },
             TraderMsg::CancelOrder(CancelOrderRequest::All) => trade::cancel_all_orders(ctx),
+            TraderMsg::SubmitConditionalOrder {
+                pair_id,
+                size,
+                trigger_price,
+                trigger_direction,
+                max_slippage,
+            } => trade::submit_conditional_order(
+                ctx,
+                pair_id,
+                size,
+                trigger_price,
+                trigger_direction,
+                max_slippage,
+            ),
+            TraderMsg::CancelConditionalOrder(CancelOrderRequest::One(order_id)) => {
+                trade::cancel_one_conditional_order(ctx, order_id)
+            },
+            TraderMsg::CancelConditionalOrder(CancelOrderRequest::All) => {
+                trade::cancel_all_conditional_orders(ctx)
+            },
         },
         ExecuteMsg::Vault(msg) => match msg {
             VaultMsg::AddLiquidity {
@@ -158,33 +186,57 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
-        QueryMsg::Param {} => PARAM.load(ctx.storage)?.to_json_value(),
+        QueryMsg::Param {} => {
+            let res = PARAM.load(ctx.storage)?;
+            res.to_json_value()
+        },
         QueryMsg::PairParam { pair_id } => {
-            PAIR_PARAMS.may_load(ctx.storage, &pair_id)?.to_json_value()
+            let res = PAIR_PARAMS.may_load(ctx.storage, &pair_id)?;
+            res.to_json_value()
         },
         QueryMsg::PairParams { start_after, limit } => {
-            query::query_pair_params(ctx, start_after, limit)?.to_json_value()
+            let res = query::query_pair_params(ctx, start_after, limit)?;
+            res.to_json_value()
         },
-        QueryMsg::State {} => STATE.load(ctx.storage)?.to_json_value(),
+        QueryMsg::State {} => {
+            let res = STATE.load(ctx.storage)?;
+            res.to_json_value()
+        },
         QueryMsg::PairState { pair_id } => {
-            PAIR_STATES.may_load(ctx.storage, &pair_id)?.to_json_value()
+            let res = PAIR_STATES.may_load(ctx.storage, &pair_id)?;
+            res.to_json_value()
         },
         QueryMsg::PairStates { start_after, limit } => {
-            query::query_pair_states(ctx, start_after, limit)?.to_json_value()
+            let res = query::query_pair_states(ctx, start_after, limit)?;
+            res.to_json_value()
         },
-        QueryMsg::UserState { user } => USER_STATES.may_load(ctx.storage, user)?.to_json_value(),
+        QueryMsg::UserState { user } => {
+            let res = USER_STATES.may_load(ctx.storage, user)?;
+            res.to_json_value()
+        },
         QueryMsg::UserStates { start_after, limit } => {
-            query::query_user_states(ctx, start_after, limit)?.to_json_value()
+            let res = query::query_user_states(ctx, start_after, limit)?;
+            res.to_json_value()
         },
-        QueryMsg::Order { order_id } => query::query_order(ctx, order_id)?.to_json_value(),
-        QueryMsg::OrdersByUser { user } => query::query_orders_by_user(ctx, user)?.to_json_value(),
+        QueryMsg::Order { order_id } => {
+            let res = query::query_order(ctx, order_id)?;
+            res.to_json_value()
+        },
+        QueryMsg::OrdersByUser { user } => {
+            let res = query::query_orders_by_user(ctx, user)?;
+            res.to_json_value()
+        },
         QueryMsg::LiquidityDepth {
             pair_id,
             bucket_size,
             limit,
-        } => query::query_liquidity_depth(ctx, pair_id, bucket_size, limit)?.to_json_value(),
+        } => {
+            let res = query::query_liquidity_depth(ctx, pair_id, bucket_size, limit)?;
+            res.to_json_value()
+        },
         QueryMsg::Volume { user, since } => {
-            query::query_volume(ctx.storage, user, since)?.to_json_value()
+            let res = query::query_volume(ctx.storage, user, since)?;
+            res.to_json_value()
         },
     }
     .map_err(Into::into)

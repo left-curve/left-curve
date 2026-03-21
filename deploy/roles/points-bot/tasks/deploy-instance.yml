@@ -25,6 +25,7 @@
     registry: ghcr.io
     username: "{{ points_bot_ghcr_user }}"
     password: "{{ points_bot_ghcr_token }}"
+  no_log: true
 
 - name: "{{ network }} - Launch stack"
   community.docker.docker_compose_v2:

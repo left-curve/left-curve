@@ -26,6 +26,9 @@ pub type PairId = Denom;
 /// Identifies a resting limit order.
 pub type OrderId = Uint64;
 
+/// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
+pub type ConditionalOrderId = OrderId;
+
 #[grug::derive(Serde)]
 #[derive(Copy)]
 pub enum OrderKind {
@@ -63,6 +66,18 @@ impl OrderKind {
     }
 }
 
+/// For a conditional (TP/SL) order, direction the oracle price must cross to
+/// trigger it.
+#[grug::derive(Serde, Borsh)]
+#[derive(Copy)]
+pub enum TriggerDirection {
+    /// Trigger when oracle_price >= trigger_price (TP for longs, SL for shorts).
+    Above,
+
+    /// Trigger when oracle_price <= trigger_price (SL for longs, TP for shorts).
+    Below,
+}
+
 /// Global parameters that concerns the counterparty vault and all trading pairs.
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
@@ -73,6 +88,10 @@ pub struct Param {
     /// Maximum number of resting limit order a single user may have across all
     /// trading pairs.
     pub max_open_orders: usize,
+
+    /// Maximum number of conditional (TP/SL) orders a single user may have
+    /// across all trading pairs.
+    pub max_conditional_orders: usize,
 
     /// Base fee charged to makers, used when no volume tier qualifies.
     pub base_maker_fee_rate: Dimensionless,
@@ -257,6 +276,9 @@ pub struct UserState {
 
     /// Number of resting limit orders the user currently has on the book.
     pub open_order_count: usize,
+
+    /// Number of conditional (TP/SL) orders the user currently has.
+    pub conditional_order_count: usize,
 }
 
 impl UserState {
@@ -296,13 +318,35 @@ pub struct Unlock {
 ///
 /// This struct does not contain the pair ID, order ID, and the limit price,
 /// which are instead included in the storage key, with which this struct is
-/// saved in the contract storage .
+/// saved in the contract storage.
 #[grug::derive(Serde, Borsh)]
-pub struct Order {
+pub struct LimitOrder {
     pub user: Addr,
     pub size: Quantity,
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
+    pub created_at: Timestamp,
+}
+
+/// A conditional order stored off-book until triggered.
+#[grug::derive(Serde, Borsh)]
+pub struct ConditionalOrder {
+    pub user: Addr,
+
+    /// Size to close (sign must oppose the position: negative for closing longs,
+    /// positive for closing shorts). Always reduce-only.
+    pub size: Quantity,
+
+    /// Oracle price that activates this order.
+    pub trigger_price: UsdPrice,
+
+    /// Direction oracle must cross.
+    pub trigger_direction: TriggerDirection,
+
+    /// Max slippage for the market order executed at trigger.
+    pub max_slippage: Dimensionless,
+
+    pub created_at: Timestamp,
 }
 
 #[grug::derive(Serde)]
@@ -384,6 +428,20 @@ pub enum TraderMsg {
 
     /// Cancel a resting limit order.
     CancelOrder(CancelOrderRequest),
+
+    /// Submit a conditional (TP/SL) order that triggers when the oracle price
+    /// crosses the specified trigger price. Always reduce-only, executed as a
+    /// market order at trigger time.
+    SubmitConditionalOrder {
+        pair_id: PairId,
+        size: Quantity,
+        trigger_price: UsdPrice,
+        trigger_direction: TriggerDirection,
+        max_slippage: Dimensionless,
+    },
+
+    /// Cancel one or all conditional orders.
+    CancelConditionalOrder(CancelOrderRequest),
 }
 
 #[grug::derive(Serde)]
@@ -451,12 +509,12 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Query a single order by ID.
+    /// Query a single order (limit or conditional) by ID.
     #[returns(Option<QueryOrderResponse>)]
     Order { order_id: OrderId },
 
-    /// Query all orders of a single user.
-    #[returns(QueryOrdersByUserResponse)]
+    /// Query all orders (limit + conditional) of a single user.
+    #[returns(BTreeMap<OrderId, QueryOrdersByUserResponseItem>)]
     OrdersByUser { user: Addr },
 
     /// Query aggregated order book depth at a specific bucket size.
@@ -477,25 +535,44 @@ pub enum QueryMsg {
 }
 
 #[grug::derive(Serde)]
-pub struct QueryOrderResponse {
-    pub order_id: OrderId,
-    pub pair_id: PairId,
-    pub limit_price: UsdPrice,
-    pub size: Quantity,
-    pub reduce_only: bool,
-    pub reserved_margin: UsdValue,
+pub enum LimitOrConditionalOrder {
+    Limit {
+        limit_price: UsdPrice,
+        reduce_only: bool,
+        reserved_margin: UsdValue,
+    },
+    Conditional {
+        trigger_price: UsdPrice,
+        trigger_direction: TriggerDirection,
+        // Conditonal orders are always `reduce_only` and has zero `reserved_margin`.
+    },
 }
 
 #[grug::derive(Serde)]
-pub struct QueryOrdersByUserResponse {
-    pub bids: Vec<QueryOrderResponse>,
-    pub asks: Vec<QueryOrderResponse>,
+pub struct QueryOrderResponse {
+    pub user: Addr,
+    pub pair_id: PairId,
+    pub size: Quantity,
+    pub kind: LimitOrConditionalOrder,
+    pub created_at: Timestamp,
+    // `order_id` is not included in the response because the client already knows it.
+}
+
+#[grug::derive(Serde)]
+pub struct QueryOrdersByUserResponseItem {
+    pub pair_id: PairId,
+    pub size: Quantity,
+    pub kind: LimitOrConditionalOrder,
+    pub created_at: Timestamp,
+    // `user` is not included in the response because the client already knows it.
+    // `order_id` is the map key.
 }
 
 #[grug::derive(Serde)]
 pub struct LiquidityDepth {
     /// Absolute order size aggregated in this bucket.
     pub size: Quantity,
+
     /// USD notional value aggregated in this bucket (size × price).
     pub notional: UsdValue,
 }
@@ -645,6 +722,40 @@ pub struct OrderRemoved {
     pub reason: ReasonForOrderRemoval,
 }
 
+/// Event indicating a conditional (TP/SL) order has been placed.
+#[grug::event("conditional_order_placed")]
+#[grug::derive(Serde)]
+pub struct ConditionalOrderPlaced {
+    pub order_id: ConditionalOrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub trigger_price: UsdPrice,
+    pub trigger_direction: TriggerDirection,
+    pub size: Quantity,
+    pub max_slippage: Dimensionless,
+}
+
+/// Event indicating a conditional order was triggered by an oracle price move.
+#[grug::event("conditional_order_triggered")]
+#[grug::derive(Serde)]
+pub struct ConditionalOrderTriggered {
+    pub order_id: ConditionalOrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub trigger_price: UsdPrice,
+    pub oracle_price: UsdPrice,
+}
+
+/// Event indicating a conditional order was removed without being triggered.
+#[grug::event("conditional_order_removed")]
+#[grug::derive(Serde)]
+pub struct ConditionalOrderRemoved {
+    pub order_id: ConditionalOrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+    pub reason: ReasonForOrderRemoval,
+}
+
 #[grug::derive(Serde)]
 #[derive(Copy)]
 pub enum ReasonForOrderRemoval {
@@ -653,6 +764,9 @@ pub enum ReasonForOrderRemoval {
 
     /// The user voluntarily canceled the order.
     Canceled,
+
+    /// In case of conditional (TP/SL) orders, the position was closed or flipped.
+    PositionClosed,
 
     /// The user submitted an order on the other side of the order book whose
     /// price crossed this order's. Following the principle of self-trade prevention,
@@ -664,6 +778,10 @@ pub enum ReasonForOrderRemoval {
 
     /// The user was hit by auto-deleveraging (ADL).
     Deleveraged,
+
+    /// The conditional order was triggered but could not fill within the
+    /// user's max_slippage tolerance (insufficient book liquidity).
+    SlippageExceeded,
 }
 
 /// Event indicating a user has been liquidated in a specific pair.

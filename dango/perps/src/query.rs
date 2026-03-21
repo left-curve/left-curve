@@ -1,13 +1,15 @@
 use {
     crate::{
-        ASKS, BIDS, DEPTHS, OrderKey, PAIR_PARAMS, PAIR_STATES, USER_STATES, VOLUMES, round_to_day,
+        ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, DEPTHS, PAIR_PARAMS, PAIR_STATES,
+        USER_STATES, VOLUMES, round_to_day,
     },
     anyhow::ensure,
     dango_types::{
         UsdPrice, UsdValue,
         perps::{
-            LiquidityDepth, LiquidityDepthResponse, Order, OrderId, PairId, PairParam, PairState,
-            QueryOrderResponse, QueryOrdersByUserResponse, UserState,
+            ConditionalOrder, LimitOrConditionalOrder, LimitOrder, LiquidityDepth,
+            LiquidityDepthResponse, OrderId, PairId, PairParam, PairState, QueryOrderResponse,
+            QueryOrdersByUserResponseItem, UserState,
         },
     },
     grug::{
@@ -59,74 +61,160 @@ pub fn query_user_states(
         .collect()
 }
 
-/// We don't know if the order is a buy or a sell.
-/// First we look for it in the `BIDS` map. If non-exists, we look for it in the
-/// `ASKS` map. If still non-exists, return `None.`
+/// Search all 4 order maps (`BIDS`, `ASKS`, `CONDITIONAL_ABOVE`, `CONDITIONAL_BELOW`)
+/// for an order with the given ID. Since `OrderId` and `ConditionalOrderId` share
+/// the same ID space, an ID appears in exactly one map.
 pub fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<Option<QueryOrderResponse>> {
-    if let Some(record) = BIDS.idx.order_id.may_load(ctx.storage, order_id)? {
-        return Ok(Some(into_query_order_response_with_inverted_price(record)));
+    // Check `BIDS` (un-invert price).
+    if let Some(((pair_id, stored_price, _), order)) =
+        BIDS.idx.order_id.may_load(ctx.storage, order_id)?
+    {
+        return Ok(Some(limit_order_to_response(pair_id, !stored_price, order)));
     }
 
-    if let Some(record) = ASKS.idx.order_id.may_load(ctx.storage, order_id)? {
-        return Ok(Some(into_query_order_response(record)));
+    // Check `ASKS` (price as-is).
+    if let Some(((pair_id, limit_price, _), order)) =
+        ASKS.idx.order_id.may_load(ctx.storage, order_id)?
+    {
+        return Ok(Some(limit_order_to_response(pair_id, limit_price, order)));
+    }
+
+    // Check `CONDITIONAL_ABOVE`.
+    if let Some(((pair_id, ..), order)) = CONDITIONAL_ABOVE
+        .idx
+        .order_id
+        .may_load(ctx.storage, order_id)?
+    {
+        return Ok(Some(conditional_order_to_response(pair_id, order)));
+    }
+
+    // Check `CONDITIONAL_BELOW`.
+    if let Some(((pair_id, ..), order)) = CONDITIONAL_BELOW
+        .idx
+        .order_id
+        .may_load(ctx.storage, order_id)?
+    {
+        return Ok(Some(conditional_order_to_response(pair_id, order)));
     }
 
     Ok(None)
 }
 
-pub fn query_orders_by_user(ctx: ImmutableCtx, user: Addr) -> StdResult<QueryOrdersByUserResponse> {
-    let bids = BIDS
+/// Return all orders (limit + conditional) for a user, keyed by order ID.
+pub fn query_orders_by_user(
+    ctx: ImmutableCtx,
+    user: Addr,
+) -> StdResult<BTreeMap<OrderId, QueryOrdersByUserResponseItem>> {
+    let mut items = BTreeMap::new();
+
+    // `BIDS` (un-invert price).
+    for res in BIDS
         .idx
         .user
         .prefix(user)
         .range(ctx.storage, None, None, IterationOrder::Ascending)
-        .map(try_into_query_order_response_with_inverted_price)
-        .collect::<StdResult<Vec<_>>>()?;
+    {
+        let ((pair_id, stored_price, order_id), order) = res?;
+        items.insert(order_id, limit_order_to_item(pair_id, !stored_price, order));
+    }
 
-    let asks = ASKS
+    // `ASKS` (price as-is).
+    for res in ASKS
         .idx
         .user
         .prefix(user)
         .range(ctx.storage, None, None, IterationOrder::Ascending)
-        .map(try_into_query_order_response)
-        .collect::<StdResult<Vec<_>>>()?;
+    {
+        let ((pair_id, limit_price, order_id), order) = res?;
+        items.insert(order_id, limit_order_to_item(pair_id, limit_price, order));
+    }
 
-    Ok(QueryOrdersByUserResponse { bids, asks })
+    // `CONDITIONAL_ABOVE`.
+    for res in CONDITIONAL_ABOVE.idx.user.prefix(user).range(
+        ctx.storage,
+        None,
+        None,
+        IterationOrder::Ascending,
+    ) {
+        let ((pair_id, _, order_id), order) = res?;
+        items.insert(order_id, conditional_order_to_item(pair_id, order));
+    }
+
+    // `CONDITIONAL_BELOW`.
+    for res in CONDITIONAL_BELOW.idx.user.prefix(user).range(
+        ctx.storage,
+        None,
+        None,
+        IterationOrder::Ascending,
+    ) {
+        let ((pair_id, _, order_id), order) = res?;
+        items.insert(order_id, conditional_order_to_item(pair_id, order));
+    }
+
+    Ok(items)
 }
 
-fn into_query_order_response(
-    ((pair_id, limit_price, order_id), order): (OrderKey, Order),
+fn limit_order_to_response(
+    pair_id: PairId,
+    limit_price: UsdPrice,
+    order: LimitOrder,
 ) -> QueryOrderResponse {
     QueryOrderResponse {
-        order_id,
+        user: order.user,
         pair_id,
-        limit_price,
         size: order.size,
-        reduce_only: order.reduce_only,
-        reserved_margin: order.reserved_margin,
+        kind: LimitOrConditionalOrder::Limit {
+            limit_price,
+            reduce_only: order.reduce_only,
+            reserved_margin: order.reserved_margin,
+        },
+        created_at: order.created_at,
     }
 }
 
-/// When storing orders into the `BIDS` map, we "inverted" the price so that
-/// orders are sorted respecting the price-time priority.
-/// Now, reverse the inversion, so the response contains the original limit price.
-fn into_query_order_response_with_inverted_price(
-    ((pair_id, limit_price, order_id), order): (OrderKey, Order),
-) -> QueryOrderResponse {
-    let limit_price = !limit_price;
-    into_query_order_response(((pair_id, limit_price, order_id), order))
+fn conditional_order_to_response(pair_id: PairId, order: ConditionalOrder) -> QueryOrderResponse {
+    QueryOrderResponse {
+        user: order.user,
+        pair_id,
+        size: order.size,
+        kind: LimitOrConditionalOrder::Conditional {
+            trigger_price: order.trigger_price,
+            trigger_direction: order.trigger_direction,
+        },
+        created_at: order.created_at,
+    }
 }
 
-fn try_into_query_order_response(
-    res: StdResult<(OrderKey, Order)>,
-) -> StdResult<QueryOrderResponse> {
-    res.map(into_query_order_response)
+fn limit_order_to_item(
+    pair_id: PairId,
+    limit_price: UsdPrice,
+    order: LimitOrder,
+) -> QueryOrdersByUserResponseItem {
+    QueryOrdersByUserResponseItem {
+        pair_id,
+        size: order.size,
+        kind: LimitOrConditionalOrder::Limit {
+            limit_price,
+            reduce_only: order.reduce_only,
+            reserved_margin: order.reserved_margin,
+        },
+        created_at: order.created_at,
+    }
 }
 
-fn try_into_query_order_response_with_inverted_price(
-    res: StdResult<(OrderKey, Order)>,
-) -> StdResult<QueryOrderResponse> {
-    res.map(into_query_order_response_with_inverted_price)
+fn conditional_order_to_item(
+    pair_id: PairId,
+    order: ConditionalOrder,
+) -> QueryOrdersByUserResponseItem {
+    QueryOrdersByUserResponseItem {
+        pair_id,
+        size: order.size,
+        kind: LimitOrConditionalOrder::Conditional {
+            trigger_price: order.trigger_price,
+            trigger_direction: order.trigger_direction,
+        },
+        created_at: order.created_at,
+    }
 }
 
 pub fn query_liquidity_depth(
