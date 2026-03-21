@@ -166,7 +166,7 @@ fn process_funding_for_pair(
         crate::metrics::LABEL_FUNDING_RATE,
         "pair_id" => pair_id.to_string()
     )
-    .set(crate::metrics::to_float(pair_state.funding_per_unit));
+    .set(pair_state.funding_per_unit.to_f64());
 
     PAIR_STATES.save(storage, &pair_id, &pair_state)?;
 

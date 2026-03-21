@@ -2,8 +2,8 @@
 
 use {
     grug::{
-        Dec128_6, Duration, Exponentiate, Int128, IsZero, MathError, MathResult, Number as _,
-        NumberConst, PrimaryKey, RawKey, Sign, Signed, StdResult, Uint128, Unsigned,
+        Dec128_6, Duration, Exponentiate, Inner, Int128, IsZero, MathError, MathResult,
+        Number as _, NumberConst, PrimaryKey, RawKey, Sign, Signed, StdResult, Uint128, Unsigned,
     },
     std::{
         fmt,
@@ -74,6 +74,19 @@ impl<Q, U, D> Number<Q, U, D> {
 
     pub fn into_inner(self) -> Dec128_6 {
         self.inner
+    }
+
+    /// Convert to `f64`.
+    ///
+    /// `Number` wraps `Dec<i128, 6>`, a fixed-point integer scaled by 10^6.
+    /// The conversion is lossless for values whose raw `i128` representation
+    /// fits in 53 bits (i.e. absolute human-readable values below ~9 billion).
+    /// Beyond that, least-significant digits may be rounded.
+    ///
+    /// This conversion never panics.
+    pub fn to_f64(&self) -> f64 {
+        const SCALE: f64 = 1_000_000.; // 10^6
+        *self.inner.inner() as f64 / SCALE
     }
 
     /// Divide the number by two, rounded towards negative infinity.

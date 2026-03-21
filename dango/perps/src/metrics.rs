@@ -1,5 +1,3 @@
-use {dango_types::Number, grug::Inner};
-
 // ----------------------------- Order flow ------------------------------------
 
 pub const LABEL_ORDERS_SUBMITTED: &str = "dango.contract.perps.orders_submitted_count";
@@ -53,7 +51,6 @@ pub const LABEL_DURATION_CRON: &str = "dango.contract.perps.cron.duration";
 
 pub const LABEL_DURATION_VAULT_REFRESH: &str = "dango.contract.perps.vault_refresh.duration";
 
-#[cfg(feature = "metrics")]
 pub fn init_metrics() {
     use {
         metrics::{describe_counter, describe_gauge, describe_histogram},
@@ -113,12 +110,4 @@ pub fn init_metrics() {
             "Time spent refreshing vault orders"
         );
     });
-}
-
-/// Convert a typed `Number` (which wraps `Dec<i128, 6>`) to `f64`.
-/// All perps Number types share 6 decimal places.
-#[cfg(feature = "metrics")]
-pub fn to_float<Q, U, D>(value: Number<Q, U, D>) -> f64 {
-    const SCALE: f64 = 1_000_000.0; // 10^6
-    value.into_inner().into_inner() as f64 / SCALE
 }

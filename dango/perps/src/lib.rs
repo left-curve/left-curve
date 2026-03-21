@@ -98,23 +98,19 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         if let Ok(vault_equity) =
             crate::core::compute_user_equity(&mut oracle_querier, &perp_querier, &vault_user_state)
         {
-            ::metrics::gauge!(crate::metrics::LABEL_VAULT_EQUITY)
-                .set(crate::metrics::to_float(vault_equity));
+            ::metrics::gauge!(crate::metrics::LABEL_VAULT_EQUITY).set(vault_equity.to_f64());
         }
 
-        ::metrics::gauge!(crate::metrics::LABEL_VAULT_MARGIN)
-            .set(crate::metrics::to_float(vault_user_state.margin));
+        ::metrics::gauge!(crate::metrics::LABEL_VAULT_MARGIN).set(vault_user_state.margin.to_f64());
 
         for (pair_id, position) in &vault_user_state.positions {
             ::metrics::gauge!(crate::metrics::LABEL_VAULT_POSITION, "pair_id" => pair_id.to_string())
-                .set(crate::metrics::to_float(position.size));
+                .set(position.size.to_f64());
         }
 
-        ::metrics::gauge!(crate::metrics::LABEL_INSURANCE_FUND)
-            .set(crate::metrics::to_float(state.insurance_fund));
+        ::metrics::gauge!(crate::metrics::LABEL_INSURANCE_FUND).set(state.insurance_fund.to_f64());
 
-        ::metrics::gauge!(crate::metrics::LABEL_TREASURY)
-            .set(crate::metrics::to_float(state.treasury));
+        ::metrics::gauge!(crate::metrics::LABEL_TREASURY).set(state.treasury.to_f64());
 
         ::metrics::histogram!(crate::metrics::LABEL_DURATION_CRON)
             .record(start.elapsed().as_secs_f64());

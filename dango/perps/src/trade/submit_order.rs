@@ -189,13 +189,13 @@ pub fn submit_order(
             crate::metrics::LABEL_OPEN_INTEREST_LONG,
             "pair_id" => pair_label.clone()
         )
-        .set(crate::metrics::to_float(pair_state.long_oi));
+        .set(pair_state.long_oi.to_f64());
 
         metrics::gauge!(
             crate::metrics::LABEL_OPEN_INTEREST_SHORT,
             "pair_id" => pair_label.clone()
         )
-        .set(crate::metrics::to_float(pair_state.short_oi));
+        .set(pair_state.short_oi.to_f64());
 
         metrics::histogram!(
             crate::metrics::LABEL_DURATION_SUBMIT_ORDER,
@@ -734,7 +734,7 @@ pub fn settle_fill(
         )
         .increment(1);
 
-        let vol = crate::metrics::to_float(volume).abs();
+        let vol = volume.to_f64().abs();
 
         metrics::histogram!(
             crate::metrics::LABEL_VOLUME_PER_TRADE,
@@ -746,7 +746,7 @@ pub fn settle_fill(
             crate::metrics::LABEL_FEES_COLLECTED,
             "pair_id" => pair_label
         )
-        .record(crate::metrics::to_float(fee).abs());
+        .record(fee.to_f64().abs());
     }
 
     pnls.entry(user).or_default().checked_add_assign(pnl)?;

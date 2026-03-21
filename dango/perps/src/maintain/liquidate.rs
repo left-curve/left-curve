@@ -205,13 +205,13 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
             crate::metrics::LABEL_OPEN_INTEREST_LONG,
             "pair_id" => pair_label.clone()
         )
-        .set(crate::metrics::to_float(pair_state.long_oi));
+        .set(pair_state.long_oi.to_f64());
 
         metrics::gauge!(
             crate::metrics::LABEL_OPEN_INTEREST_SHORT,
             "pair_id" => pair_label
         )
-        .set(crate::metrics::to_float(pair_state.short_oi));
+        .set(pair_state.short_oi.to_f64());
     }
 
     Ok(Response::new().add_events(events)?)
@@ -350,8 +350,7 @@ fn _liquidate(
         state.insurance_fund.checked_sub_assign(bad_debt)?;
 
         #[cfg(feature = "metrics")]
-        metrics::histogram!(crate::metrics::LABEL_BAD_DEBT)
-            .record(crate::metrics::to_float(bad_debt).abs());
+        metrics::histogram!(crate::metrics::LABEL_BAD_DEBT).record(bad_debt.to_f64().abs());
 
         events.push(BadDebtCovered {
             liquidated_user: user,
