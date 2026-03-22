@@ -1,3 +1,17 @@
 {
-  "relaychains": "dango,ethereum"
+  "relaychains": "dango,ethereum",
+  "whitelist": [
+    {
+      "originDomain": "1",
+      "destinationDomain": "88888888",
+      "senderAddress": "*",
+      "recipientAddress": "*"
+    },
+    {
+      "originDomain": "88888888",
+      "destinationDomain": "1",
+      "senderAddress": "*",
+      "recipientAddress": "*"
+    }
+  ]
 }

@@ -386,15 +386,16 @@ scrape_configs:
           environment: 'production'
           network: 'devnet'
           dango_network: 'devnet'
-      - targets: ['ovh2:9301']
-        labels:
-          service: 'points-bot'
-          environment: 'production'
-          network: 'testnet'
-          dango_network: 'testnet'
-      - targets: ['ovh2:9302']
-        labels:
-          service: 'points-bot'
-          environment: 'production'
-          network: 'mainnet'
-          dango_network: 'mainnet'
+      # Uncomment when testnet/mainnet points-bot instances are deployed
+      # - targets: ['ovh2:9301']
+      #   labels:
+      #     service: 'points-bot'
+      #     environment: 'production'
+      #     network: 'testnet'
+      #     dango_network: 'testnet'
+      # - targets: ['ovh2:9302']
+      #   labels:
+      #     service: 'points-bot'
+      #     environment: 'production'
+      #     network: 'mainnet'
+      #     dango_network: 'mainnet'
