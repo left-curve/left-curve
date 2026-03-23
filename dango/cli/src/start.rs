@@ -279,10 +279,11 @@ impl StartCmd {
 
         // Preload the perps trade cache from existing DB data so that new
         // GraphQL subscribers immediately receive recent trades.
-        dango_context
-            .preload_perps_trade_cache()
-            .await
-            .map_err(|e| anyhow!("Failed to preload perps trade cache: {e}"))?;
+        // This is best-effort: on a fresh DB the table may not exist yet
+        // (migrations run on the first block), so we log and continue.
+        if let Err(e) = dango_context.preload_perps_trade_cache().await {
+            tracing::warn!("Failed to preload perps trade cache (will populate on first block): {e}");
+        }
 
         let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
 
