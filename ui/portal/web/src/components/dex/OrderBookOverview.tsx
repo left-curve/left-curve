@@ -8,7 +8,14 @@ import {
   useLiquidityDepthState,
   useLiveTradesState,
   useOrderBookState,
-  type useProTradeState,
+  useCurrentPrice,
+  useTradeCoins,
+  useAppConfig,
+  useConfig,
+  tradePairStore,
+  toPerpsPairId,
+  usePerpsOrderBookState,
+  perpsOrderBookStore,
 } from "@left-curve/store";
 import { calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
 
@@ -20,14 +27,48 @@ import type { AnyCoin } from "@left-curve/store/types";
 import type { Controllers } from "@left-curve/applets-kit";
 
 type OrderBookOverviewProps = {
-  state: ReturnType<typeof useProTradeState>;
   controllers: Controllers;
 };
 
-export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, controllers }) => {
+export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controllers }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
   const { isLg, is3XlTall } = useMediaQuery();
+
+  const mode = tradePairStore((s) => s.mode);
+  const pairId = tradePairStore((s) => s.pairId);
+  const { data: appConfig } = useAppConfig();
+  const { coins } = useConfig();
+
+  const { baseCoin, quoteCoin } = useTradeCoins({ pairId, mode });
+
+  const perpsPairId = useMemo(() => {
+    if (mode !== "perps") return null;
+    const baseSymbol = coins.byDenom[pairId.baseDenom]?.symbol;
+    const quoteSymbol = coins.byDenom[pairId.quoteDenom]?.symbol ?? "USD";
+    return baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : null;
+  }, [mode, pairId, coins]);
+
+  const pair =
+    mode === "spot"
+      ? appConfig?.pairs[pairId.baseDenom]
+      : perpsPairId
+        ? (appConfig as any)?.perpsPairs?.[perpsPairId]
+        : null;
+
+  const bucketSizes: string[] =
+    pair && "params" in pair ? pair.params.bucketSizes : ((pair as any)?.bucketSizes ?? []);
+  const [bucketSize, setBucketSize] = useState(bucketSizes[0] ?? "1");
+
+  useEffect(() => {
+    if (bucketSizes[0]) setBucketSize(bucketSizes[0]);
+  }, [bucketSizes[0]]);
+
+  usePerpsOrderBookState({
+    pairId: perpsPairId ?? "",
+    bucketSize,
+    subscribe: mode === "perps" && !!perpsPairId,
+  });
 
   useEffect(() => {
     if (is3XlTall) {
@@ -43,6 +84,8 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
     }
     return isLg ? ["order book", "trades"] : ["graph", "order book", "trades"];
   }, [isLg, is3XlTall]);
+
+  const bucketRecords = isLg ? 10 : 16;
 
   return (
     <ResizerContainer
@@ -67,8 +110,22 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
       />
       {(activeTab === "trades" || activeTab === "order book") && (
         <>
-          {activeTab === "order book" && <OrderBook state={state} controllers={controllers} />}
-          {activeTab === "trades" && <LiveTrades state={state} controllers={controllers} />}
+          {activeTab === "order book" && (
+            <OrderBook
+              baseCoin={baseCoin}
+              quoteCoin={quoteCoin}
+              bucketSizes={bucketSizes}
+              bucketSize={bucketSize}
+              setBucketSize={setBucketSize}
+              bucketRecords={bucketRecords}
+              pairId={pairId}
+              controllers={controllers}
+              mode={mode}
+            />
+          )}
+          {activeTab === "trades" && (
+            <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} pairId={pairId} mode={mode} />
+          )}
         </>
       )}
       {is3XlTall && (
@@ -81,10 +138,9 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
             fullWidth
             classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
           />
-          <LiveTrades state={state} controllers={controllers} />
+          <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} pairId={pairId} mode={mode} />
         </>
       )}
-      <Subscription pairId={state.pairId} />
     </ResizerContainer>
   );
 };
@@ -139,37 +195,68 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
   );
 };
 
-const OrderBook: React.FC<OrderBookOverviewProps> = ({ state, controllers }) => {
-  const { baseCoin, quoteCoin, pair, pairId, bucketRecords, bucketSize, setBucketSize } = state;
+type OrderBookProps = {
+  baseCoin: AnyCoin & { amount: string };
+  quoteCoin: AnyCoin & { amount: string };
+  bucketSizes: string[];
+  bucketSize: string;
+  setBucketSize: (size: string) => void;
+  bucketRecords: number;
+  pairId: PairId;
+  controllers: Controllers;
+  mode: "spot" | "perps";
+};
 
+const OrderBook: React.FC<OrderBookProps> = ({
+  baseCoin,
+  quoteCoin,
+  bucketSizes,
+  bucketSize,
+  setBucketSize,
+  bucketRecords,
+  pairId,
+  controllers,
+  mode,
+}) => {
   const bucketSizeCoin = liquidityDepthStore((s) => s.bucketSizeCoin);
   const setBucketSizeCoin = liquidityDepthStore((s) => s.setBucketSizeCoin);
 
-  const bucketSizeSymbol = bucketSizeCoin === "base" ? baseCoin.symbol : quoteCoin.symbol;
+  const bucketSizeSymbol =
+    mode === "perps"
+      ? baseCoin.symbol
+      : bucketSizeCoin === "base"
+        ? baseCoin.symbol
+        : quoteCoin.symbol;
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center h-full">
       <div className="flex items-center justify-between w-full px-4">
         <Select value={bucketSize} onChange={(key) => setBucketSize(key)} variant="plain">
-          {pair.params.bucketSizes.map((size) => {
+          {bucketSizes.map((size: string) => {
+            const displaySize =
+              mode === "perps"
+                ? size
+                : Decimal(size)
+                    .mul(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+                    .toString();
             return (
               <Select.Item key={`bucket-${size}`} value={size}>
-                {Decimal(size)
-                  .mul(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-                  .toString()}
+                {displaySize}
               </Select.Item>
             );
           })}
         </Select>
-        <Select
-          value={bucketSizeCoin === "base" ? baseCoin.symbol : quoteCoin.symbol}
-          onChange={(key) => setBucketSizeCoin(key === baseCoin.symbol ? "base" : "quote")}
-          variant="plain"
-          classNames={{ listboxWrapper: "right-0 left-auto" }}
-        >
-          <Select.Item value={baseCoin.symbol}>{baseCoin.symbol}</Select.Item>
-          <Select.Item value={quoteCoin.symbol}>{quoteCoin.symbol}</Select.Item>
-        </Select>
+        {mode === "spot" && (
+          <Select
+            value={bucketSizeCoin === "base" ? baseCoin.symbol : quoteCoin.symbol}
+            onChange={(key) => setBucketSizeCoin(key === baseCoin.symbol ? "base" : "quote")}
+            variant="plain"
+            classNames={{ listboxWrapper: "right-0 left-auto" }}
+          >
+            <Select.Item value={baseCoin.symbol}>{baseCoin.symbol}</Select.Item>
+            <Select.Item value={quoteCoin.symbol}>{quoteCoin.symbol}</Select.Item>
+          </Select>
+        )}
       </div>
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2 px-4">
         <p className="order-2 lg:order-none text-end lg:text-start">
@@ -193,21 +280,36 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state, controllers }) => 
         base={baseCoin}
         quote={quoteCoin}
         onSelectPrice={(price) => controllers.setValue("price", price)}
+        mode={mode}
       />
     </div>
   );
 };
 
-const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
+type LiveTradesProps = {
+  baseCoin: AnyCoin & { amount: string };
+  quoteCoin: AnyCoin & { amount: string };
+  pairId: PairId;
+  mode: "spot" | "perps";
+};
+
+const LiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin, pairId, mode }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
   const { is3XlTall } = useMediaQuery();
   const { timeFormat } = settings;
-  const { baseCoin, quoteCoin, pairId } = state;
   const { liveTradesStore } = useLiveTradesState({ pairId });
 
   const liveTrades = liveTradesStore((s) => s.trades);
   const trades = useDeferredValue(liveTrades);
+
+  if (mode === "perps") {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[10rem] px-4">
+        <p className="diatype-m-regular text-ink-tertiary-500">Perps live trades available soon</p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -277,6 +379,7 @@ type LiquidityDepthProps = {
   base: AnyCoin;
   quote: AnyCoin;
   onSelectPrice: (price: string) => void;
+  mode: "spot" | "perps";
 };
 
 const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
@@ -286,16 +389,24 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   base,
   quote,
   onSelectPrice,
+  mode,
 }) => {
   const { isLg } = useMediaQuery();
   const { liquidityDepthStore } = useLiquidityDepthState({
-    subscribe: true,
+    subscribe: mode === "spot",
     pairId,
     bucketSize,
     bucketRecords,
   });
 
-  const { liquidityDepth } = liquidityDepthStore();
+  const spotDepth = liquidityDepthStore();
+  const perpsDepthData = perpsOrderBookStore((s) => s.liquidityDepth);
+
+  const liquidityDepth = useMemo(() => {
+    if (mode === "spot") return spotDepth.liquidityDepth;
+    if (!perpsDepthData) return null;
+    return perpsLiquidityDepthMapper(perpsDepthData, bucketRecords);
+  }, [mode, spotDepth.liquidityDepth, perpsDepthData, bucketRecords]);
 
   if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
 
@@ -319,7 +430,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
         ))}
       </div>
 
-      <Spread pairId={pairId} base={base} quote={quote} />
+      <Spread pairId={pairId} base={base} quote={quote} mode={mode} />
 
       <div className="bid-container flex flex-1 flex-col w-full gap-[2px] order-1 lg:order-3">
         {[...bids.records].map((bid, i) => (
@@ -340,23 +451,46 @@ type SpreadProps = {
   pairId: PairId;
   base: AnyCoin;
   quote: AnyCoin;
+  mode: "spot" | "perps";
 };
 
-const Spread: React.FC<SpreadProps> = ({ pairId, base, quote }) => {
+const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
+  const { currentPrice, previousPrice } = useCurrentPrice();
   const { orderBookStore } = useOrderBookState({ pairId });
-  const previousPrice = orderBookStore((s) => s.previousPrice);
-  const currentPrice = orderBookStore((s) => s.currentPrice);
   const orderBook = orderBookStore((s) => s.orderBook);
+  const perpsDepth = perpsOrderBookStore((s) => s.liquidityDepth);
 
   const spreadCalc = useMemo(() => {
+    if (mode === "perps") {
+      if (!perpsDepth) return null;
+      const bidPrices = Object.keys(perpsDepth.bids);
+      const askPrices = Object.keys(perpsDepth.asks);
+      if (!bidPrices.length || !askPrices.length) return null;
+      const bestBid = bidPrices[bidPrices.length - 1];
+      const bestAsk = askPrices[0];
+      const mid = Decimal(bestBid).plus(bestAsk).div(2);
+      const spread = Decimal(bestAsk).minus(bestBid);
+      const spreadPercent = mid.gt(0) ? spread.div(mid).times(100) : Decimal(0);
+      return { spread, spreadPercent };
+    }
+
     if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice || !orderBook?.midPrice) return null;
     const spread = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
     const spreadPercent = spread.div(orderBook.midPrice).times(100);
     return { spread, spreadPercent };
-  }, [orderBook]);
+  }, [mode, orderBook, perpsDepth]);
+
+  const spreadDisplay = useMemo(() => {
+    if (!spreadCalc) return "n/a";
+    const spreadValue =
+      mode === "perps"
+        ? spreadCalc.spread.toFixed()
+        : spreadCalc.spread.mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed();
+    return `${formatNumber(+spreadValue, formatNumberOptions)} (${formatNumber(spreadCalc.spreadPercent.toFixed(), formatNumberOptions)}%)`;
+  }, [spreadCalc, mode, base.decimals, quote.decimals, formatNumberOptions]);
 
   return (
     <div className="hidden lg:flex w-full py-1 items-center justify-between relative order-2 px-4">
@@ -372,22 +506,45 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote }) => {
       </p>
       <div className="flex flex-col items-end text-ink-tertiary-500 relative z-20">
         <p className="diatype-xxs-medium">{m["dex.protrade.spread"]()}</p>
-        <p className="diatype-xxs-medium">
-          {!spreadCalc
-            ? "n/a"
-            : `${formatNumber(+spreadCalc.spread.mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed(), formatNumberOptions)} (${formatNumber(spreadCalc.spreadPercent.toFixed(), formatNumberOptions)}%)`}
-        </p>
+        <p className="diatype-xxs-medium">{spreadDisplay}</p>
       </div>
       <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
     </div>
   );
 };
 
-type SubscriptionProps = {
-  pairId: PairId;
-};
-const Subscription: React.FC<SubscriptionProps> = ({ pairId }) => {
-  useOrderBookState({ pairId, subscribe: true });
-  useLiveTradesState({ pairId, subscribe: true });
-  return null;
-};
+function perpsLiquidityDepthMapper(
+  data: {
+    bids: Record<string, { size: string; notional: string }>;
+    asks: Record<string, { size: string; notional: string }>;
+  },
+  bucketRecords: number,
+) {
+  function mapSide(
+    entries: Record<string, { size: string; notional: string }>,
+    direction: "bid" | "ask",
+  ) {
+    const sorted = Object.entries(entries)
+      .sort(([a], [b]) =>
+        direction === "bid" ? (Decimal(a).gt(b) ? -1 : 1) : Decimal(a).gt(b) ? 1 : -1,
+      )
+      .slice(0, bucketRecords);
+
+    let total = "0";
+    let highestSize = "0";
+    const records: { price: string; size: string; total: string }[] = [];
+
+    for (const [price, { size }] of sorted) {
+      total = Decimal(total).plus(size).toFixed();
+      records.push({ price, size, total });
+      if (Decimal(size).gt(highestSize)) highestSize = size;
+    }
+
+    return { records, highestSize };
+  }
+
+  return {
+    bids: mapSide(data.bids, "bid"),
+    asks: mapSide(data.asks, "ask"),
+  };
+}

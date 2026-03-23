@@ -2,12 +2,9 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 
 import { useConfig } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
+import { useHeaderHeight } from "@left-curve/applets-kit";
 
 import { ProTrade } from "~/components/dex/ProTrade";
-
-import type { PairId } from "@left-curve/dango/types";
-import { useLayoutEffect, useState } from "react";
-import { useHeaderHeight } from "@left-curve/applets-kit";
 
 export const Route = createLazyFileRoute("/(app)/_app/trade/$pairSymbols")({
   component: ProTradeApplet,
@@ -17,16 +14,14 @@ function ProTradeApplet() {
   const navigate = useNavigate();
   const { coins } = useConfig();
   const { pairSymbols } = Route.useParams();
-  const { action = "buy", order_type = "market" } = Route.useSearch();
+  const { action = "buy", order_type = "market", type = "spot" } = Route.useSearch();
   const headerHeight = useHeaderHeight();
 
-  const onChangePairId = ({ baseDenom, quoteDenom }: PairId) => {
-    const baseSymbol = coins.byDenom[baseDenom]?.symbol;
-    const quoteSymbol = coins.byDenom[quoteDenom]?.symbol;
-
+  const onChangePairId = (pairSymbols: string, type: "spot" | "perps") => {
     navigate({
       to: "/trade/$pairSymbols",
-      params: { pairSymbols: `${baseSymbol}-${quoteSymbol}` },
+      params: { pairSymbols },
+      search: { type },
       replace: true,
     });
   };
@@ -36,7 +31,7 @@ function ProTradeApplet() {
       to: "/trade/$pairSymbols",
       params: { pairSymbols },
       replace: true,
-      search: { order_type, action },
+      search: { order_type, action, type },
     });
   };
 
@@ -45,7 +40,7 @@ function ProTradeApplet() {
       to: "/trade/$pairSymbols",
       params: { pairSymbols },
       replace: true,
-      search: { order_type, action },
+      search: { order_type, action, type },
     });
   };
 
@@ -70,6 +65,7 @@ function ProTradeApplet() {
         onChangeAction={onChangeAction}
         orderType={order_type}
         onChangeOrderType={onChangeOrderType}
+        type={type}
       >
         <div className="flex flex-col flex-1">
           <div className="flex flex-col xl:flex-row flex-1">

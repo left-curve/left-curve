@@ -77,6 +77,9 @@ export type {
   OrderCreatedEvent,
   OrderCanceledEvent,
   OrderFilledEvent,
+  EventFilter,
+  EventFilterData,
+  SubscriptionEvent,
 } from "./event.js";
 
 export type {
@@ -129,6 +132,7 @@ export type {
   OrderId,
   Candle,
   CandleIntervals,
+  PerpsCandle,
   Trade,
   TimeInForceOptions,
   OrderTypes,
@@ -142,6 +146,16 @@ export type {
   PerpsUserState,
   PerpsPosition,
   PerpsUnlock,
+  PerpsOrderKind,
+  PerpsPairParam,
+  PerpsPairState,
+  PerpsParam,
+  PerpsState,
+  PerpsOrderResponse,
+  PerpsOrdersByUserResponse,
+  PerpsLiquidityDepth,
+  PerpsLiquidityDepthResponse,
+  PerpsCancelOrderRequest,
   PerpsQueryMsg,
   GetPerpsQueryMsg,
 } from "./perps.js";

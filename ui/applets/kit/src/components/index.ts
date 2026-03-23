@@ -58,6 +58,7 @@ export { TruncateResponsive } from "./TruncateResponsive";
 export { WarningContainer } from "./WarningContainer";
 export { AuthenticatedButton } from "./AuthenticatedButton";
 export { ProgressBar } from "./ProgressBar";
+export { InputSizeWithMax } from "./InputSizeWithMax";
 
 /* ---------------------------------- Icons --------------------------------- */
 

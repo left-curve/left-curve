@@ -1,5 +1,8 @@
 export { createConfig } from "./createConfig.js";
 export { createEventBus } from "./createEventBus.js";
+export { createBlockStore, type BlockGuardedState } from "./hooks/createBlockStore.js";
+export { tradePairStore, toPerpsPairId, type TradePairState } from "./stores/tradePairStore.js";
+export { tradeInfoStore, type TradeInfoState } from "./stores/tradeInfoStore.js";
 
 export { WebCryptoECDH } from "./ecdh.js";
 
@@ -149,10 +152,13 @@ export {
   useConvertState,
 } from "./hooks/useConvertState.js";
 
-export {
-  type UseProTradeStateParameters,
-  useProTradeState,
-} from "./hooks/useProTradeState.js";
+export { useTradeCoins } from "./hooks/useTradeCoins.js";
+export { useCurrentPrice } from "./hooks/useCurrentPrice.js";
+export { useSpotSubmission } from "./hooks/useSpotSubmission.js";
+export { usePerpsSubmission } from "./hooks/usePerpsSubmission.js";
+export { useSpotMaxSize } from "./hooks/useSpotMaxSize.js";
+export { usePerpsMaxSize } from "./hooks/usePerpsMaxSize.js";
+export { useErrorHandler } from "./hooks/useErrorHandler.js";
 
 export {
   type UsePoolLiquidityStateParameters,
@@ -216,10 +222,16 @@ export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";
 
-export { usePerpsUserState, perpsUserStateStore, perpsMarginAsset } from "./hooks/usePerpsUserState.js";
+export {
+  usePerpsUserState,
+  perpsUserStateStore,
+  perpsMarginAsset,
+} from "./hooks/usePerpsUserState.js";
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
 export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";
+export { usePerpsOrderBookState, perpsOrderBookStore } from "./hooks/usePerpsOrderBookState.js";
+export { usePerpsOrdersByUser, perpsOrdersByUserStore } from "./hooks/usePerpsOrdersByUser.js";
 
 export { rehydrate } from "./rehydrate.js";
 

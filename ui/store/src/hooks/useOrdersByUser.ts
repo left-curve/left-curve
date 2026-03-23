@@ -34,6 +34,7 @@ export function useOrdersByUser(
   return useQuery({
     enabled: !!enabled,
     queryKey: ["ordersByUser", address, ...queryKey],
+    initialData: [],
     queryFn: async () => {
       if (!account) return [];
       const response = await publicClient.ordersByUser({ user: account.address });

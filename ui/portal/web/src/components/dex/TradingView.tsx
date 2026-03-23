@@ -1,11 +1,11 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { useApp, useTheme } from "@left-curve/applets-kit";
-import { useConfig, usePublicClient, useStorage } from "@left-curve/store";
+import { useConfig, usePublicClient, useStorage, toPerpsPairId } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
-import { createTradingViewDataFeed } from "~/datafeed";
+import { createTradingViewDataFeed, createPerpsDataFeed } from "~/datafeed";
 import { Direction } from "@left-curve/dango/types";
 import { Decimal, adjustPrice } from "@left-curve/dango/utils";
 
@@ -15,10 +15,14 @@ import type { OrdersByUserResponse, WithId } from "@left-curve/dango/types";
 type TradingViewProps = {
   coins: { base: AnyCoin; quote: AnyCoin };
   orders: WithId<OrdersByUserResponse>[];
+  mode?: "spot" | "perps";
 };
 
-export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
-  const pairSymbol = `${coins.base.symbol}-${coins.quote.symbol}`;
+export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = "spot" }) => {
+  const isPerps = mode === "perps";
+  const pairSymbol = isPerps
+    ? `${coins.base.symbol}-USD`
+    : `${coins.base.symbol}-${coins.quote.symbol}`;
 
   const { theme } = useTheme();
   const publicClient = usePublicClient();
@@ -49,12 +53,20 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     const toolbar_bg = theme === "dark" ? "#2d2c2a" : "#FFFCF6";
     const textColor = theme === "dark" ? "#FFFCF6" : "#2E2521";
 
-    const datafeed = createTradingViewDataFeed({
-      client: publicClient,
-      queryClient,
-      subscriptions,
-      coins: allCoins.bySymbol,
-    });
+    const datafeed = isPerps
+      ? createPerpsDataFeed({
+          client: publicClient,
+          queryClient,
+          subscriptions,
+          pairId: toPerpsPairId(base.symbol, "USD"),
+          baseSymbol: base.symbol,
+        })
+      : createTradingViewDataFeed({
+          client: publicClient,
+          queryClient,
+          subscriptions,
+          coins: allCoins.bySymbol,
+        });
 
     const widget = new TV.widget({
       container: "tv-container",
@@ -139,7 +151,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       widgetRef.current?.remove();
       widgetRef.current = null;
     };
-  }, [theme, hasLoaded]);
+  }, [theme, hasLoaded, mode]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
@@ -150,7 +162,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
   }, [coins]);
 
   useEffect(() => {
-    if (!widgetRef.current) return;
+    if (!widgetRef.current || isPerps) return;
 
     const chart = widgetRef.current.chart();
 

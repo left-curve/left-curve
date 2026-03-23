@@ -36,7 +36,7 @@ export function useLiveTradesState(parameters: UseLiveTradesStateParameters) {
   const quoteCoin = coins.byDenom[pairId.quoteDenom];
 
   useEffect(() => {
-    if (!subscribe) return;
+    if (!subscribe || !baseCoin || !quoteCoin) return;
     const processBuffer = () => {
       if (tradesBuffer.current.length > 0) {
         addTrades(tradesBuffer.current);

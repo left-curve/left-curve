@@ -376,7 +376,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
         )}
       </button>
       <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5" />
-      <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <p className="min-w-[4.5rem]">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );

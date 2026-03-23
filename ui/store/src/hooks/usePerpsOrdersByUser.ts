@@ -9,33 +9,26 @@ import {
   snakeCaseJsonSerialization,
 } from "@left-curve/dango/encoding";
 
-import type { PerpsUserState, QueryRequest } from "@left-curve/dango/types";
+import type { PerpsOrdersByUserResponse, QueryRequest } from "@left-curve/dango/types";
 
-export const perpsMarginAsset = {
-  name: "US Dollar",
-  symbol: "USD",
-  logoURI: "/images/coins/usd.svg",
-  decimals: 6,
-} as const;
-
-export const perpsUserStateStore = createBlockStore({
-  initialState: { userState: null as PerpsUserState | null },
+export const perpsOrdersByUserStore = createBlockStore({
+  initialState: { orders: null as PerpsOrdersByUserResponse | null },
 });
 
-type UsePerpsUserStateParameters = {
+type UsePerpsOrdersByUserParameters = {
   subscribe?: boolean;
 };
 
-export function usePerpsUserState(parameters?: UsePerpsUserStateParameters) {
+export function usePerpsOrdersByUser(parameters?: UsePerpsOrdersByUserParameters) {
   const { subscribe = true } = parameters ?? {};
   const { subscriptions } = useConfig();
   const { data: appConfig } = useAppConfig();
   const { account } = useAccount();
 
-  const { setState } = perpsUserStateStore();
+  const { setState } = perpsOrdersByUserStore();
 
   useEffect(() => {
-    if (!subscribe || !account) return;
+    if (!appConfig || !subscribe || !account) return;
     const { addresses } = appConfig;
 
     const unsubscribe = subscriptions.subscribe("queryApp", {
@@ -44,22 +37,22 @@ export function usePerpsUserState(parameters?: UsePerpsUserStateParameters) {
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
             contract: addresses.perps,
-            msg: { userState: { user: account.address } },
+            msg: { ordersByUser: { user: account.address } },
           },
         }),
       },
       listener: (event) => {
         type Event = {
-          response: { wasmSmart: PerpsUserState | null };
+          response: { wasmSmart: PerpsOrdersByUserResponse | null };
           blockHeight: number;
         };
         const { response, blockHeight } = camelCaseJsonDeserialization<Event>(event);
-        setState({ userState: response.wasmSmart, blockHeight });
+        setState({ orders: response.wasmSmart, blockHeight });
       },
     });
 
     return () => unsubscribe();
-  }, [appConfig.addresses, subscribe, account]);
+  }, [appConfig, subscribe, account]);
 
-  return { perpsUserStateStore };
+  return { perpsOrdersByUserStore };
 }

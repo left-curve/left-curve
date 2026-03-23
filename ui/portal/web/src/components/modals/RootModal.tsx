@@ -219,6 +219,27 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.PerpsCloseOrder]: {
+    component: lazy(() =>
+      import("./PerpsCloseOrder").then(({ PerpsCloseOrder }) => ({
+        default: PerpsCloseOrder,
+      })),
+    ),
+  },
+  [Modals.PerpsCloseAll]: {
+    component: lazy(() =>
+      import("./PerpsCloseAll").then(({ PerpsCloseAll }) => ({
+        default: PerpsCloseAll,
+      })),
+    ),
+  },
+  [Modals.PerpsClosePosition]: {
+    component: lazy(() =>
+      import("./PerpsClosePosition").then(({ PerpsClosePosition }) => ({
+        default: PerpsClosePosition,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {

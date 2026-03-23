@@ -88,6 +88,22 @@ const blockSubscriptionExecutor: SubscriptionExecutor<"block"> = ({
   return unsubscribe;
 };
 
+const eventsSubscriptionExecutor: SubscriptionExecutor<"events"> = ({
+  client,
+  params,
+  getListeners,
+  onError,
+}) => {
+  return client.eventsSubscription({
+    ...params,
+    next: ({ events }) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(events));
+    },
+    error: onError,
+  });
+};
+
 const eventsByAddressesSubscriptionExecutor: SubscriptionExecutor<"eventsByAddresses"> = ({
   client,
   params,
@@ -154,6 +170,22 @@ const candlesSubscriptionExecutor: SubscriptionExecutor<"candles"> = ({
   });
 };
 
+const perpsCandlesSubscriptionExecutor: SubscriptionExecutor<"perpsCandles"> = ({
+  client,
+  params,
+  getListeners,
+  onError,
+}) => {
+  return client.perpsCandlesSubscription({
+    ...params,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+    error: onError,
+  });
+};
+
 const tradesSubscriptionExecutor: SubscriptionExecutor<"trades"> = ({
   client,
   params,
@@ -195,7 +227,9 @@ const SubscriptionExecutors = {
   account: accountSubscriptionExecutor,
   block: blockSubscriptionExecutor,
   candles: candlesSubscriptionExecutor,
+  events: eventsSubscriptionExecutor,
   eventsByAddresses: eventsByAddressesSubscriptionExecutor,
+  perpsCandles: perpsCandlesSubscriptionExecutor,
   submitTx: submitTxSubscriptionExecutor,
   trades: tradesSubscriptionExecutor,
   transfer: transferSubscriptionExecutor,
