@@ -107,6 +107,7 @@ export type {
   IndexedTrade,
   IndexedTradeSideType,
   IndexedAccountEvent,
+  PerpsTrade,
 } from "./indexer.js";
 
 export type {

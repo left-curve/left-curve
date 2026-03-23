@@ -9,6 +9,7 @@ import type {
   IndexedEvent,
   IndexedTransferEvent,
   PerpsCandle,
+  PerpsTrade,
   PublicClient,
   QueryRequest,
   QueryResponse,
@@ -69,6 +70,13 @@ export type SubscriptionSchema = [
       quoteDenom: Denom;
     };
     listener: (event: { trades: Trade }) => void;
+  },
+  {
+    key: "perpsTrades";
+    params: {
+      pairId: string;
+    };
+    listener: (event: { perpsTrades: PerpsTrade }) => void;
   },
   {
     key: "submitTx";

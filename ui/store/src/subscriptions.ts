@@ -202,6 +202,22 @@ const tradesSubscriptionExecutor: SubscriptionExecutor<"trades"> = ({
   });
 };
 
+const perpsTradesSubscriptionExecutor: SubscriptionExecutor<"perpsTrades"> = ({
+  client,
+  params,
+  getListeners,
+  onError,
+}) => {
+  return client.perpsTradesSubscription({
+    ...params,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+    error: onError,
+  });
+};
+
 const submitTxSubscriptionExecutor: SubscriptionExecutor<"submitTx"> = () => {
   // This execute is a noop function for submitTx subscription.
   return () => {};
@@ -230,6 +246,7 @@ const SubscriptionExecutors = {
   events: eventsSubscriptionExecutor,
   eventsByAddresses: eventsByAddressesSubscriptionExecutor,
   perpsCandles: perpsCandlesSubscriptionExecutor,
+  perpsTrades: perpsTradesSubscriptionExecutor,
   submitTx: submitTxSubscriptionExecutor,
   trades: tradesSubscriptionExecutor,
   transfer: transferSubscriptionExecutor,
