@@ -70,3 +70,15 @@ export {
   type CancelPerpsOrderReturnType,
   cancelPerpsOrder,
 } from "./mutations/cancelOrder.js";
+
+export {
+  type SubmitConditionalOrderParameters,
+  type SubmitConditionalOrderReturnType,
+  submitConditionalOrder,
+} from "./mutations/submitConditionalOrder.js";
+
+export {
+  type CancelConditionalOrderParameters,
+  type CancelConditionalOrderReturnType,
+  cancelConditionalOrder,
+} from "./mutations/cancelConditionalOrder.js";

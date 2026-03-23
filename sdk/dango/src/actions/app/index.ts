@@ -12,7 +12,12 @@ export {
 /*                                  Mutations                                 */
 /* -------------------------------------------------------------------------- */
 
-export { type ExecuteParameters, type ExecuteReturnType, execute } from "./mutations/execute.js";
+export {
+  type ExecuteParameters,
+  type ExecuteMsg,
+  type ExecuteReturnType,
+  execute,
+} from "./mutations/execute.js";
 
 export { type MigrateParameters, type MigrateReturnType, migrate } from "./mutations/migrate.js";
 

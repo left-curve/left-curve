@@ -64,6 +64,7 @@ export {
   type BroadcastTxSyncReturnType,
   broadcastTxSync,
   type ExecuteParameters,
+  type ExecuteMsg,
   type ExecuteReturnType,
   execute,
   type InstantiateParameters,
@@ -267,6 +268,12 @@ export {
   type CancelPerpsOrderParameters,
   type CancelPerpsOrderReturnType,
   cancelPerpsOrder,
+  type SubmitConditionalOrderParameters,
+  type SubmitConditionalOrderReturnType,
+  submitConditionalOrder,
+  type CancelConditionalOrderParameters,
+  type CancelConditionalOrderReturnType,
+  cancelConditionalOrder,
 } from "./perps/index.js";
 
 /* -------------------------------------------------------------------------- */

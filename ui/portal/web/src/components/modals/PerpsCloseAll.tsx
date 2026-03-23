@@ -17,10 +17,16 @@ export const PerpsCloseAll = forwardRef<void, Record<string, never>>(() => {
     mutation: {
       mutationFn: async () => {
         if (!signingClient) throw new Error("No signing client available");
-        await signingClient.cancelPerpsOrder({
-          sender: account!.address,
-          request: "all",
-        });
+        await Promise.all([
+          signingClient.cancelPerpsOrder({
+            sender: account!.address,
+            request: "all",
+          }),
+          signingClient.cancelConditionalOrder({
+            sender: account!.address,
+            request: "all",
+          }),
+        ]);
       },
       onSuccess: () => {
         hideModal();

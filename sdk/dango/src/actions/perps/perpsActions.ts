@@ -68,6 +68,18 @@ import {
   cancelPerpsOrder,
 } from "./mutations/cancelOrder.js";
 
+import {
+  type SubmitConditionalOrderParameters,
+  type SubmitConditionalOrderReturnType,
+  submitConditionalOrder,
+} from "./mutations/submitConditionalOrder.js";
+
+import {
+  type CancelConditionalOrderParameters,
+  type CancelConditionalOrderReturnType,
+  cancelConditionalOrder,
+} from "./mutations/cancelConditionalOrder.js";
+
 export type PerpsQueryActions = {
   getPerpsUserState: (args: GetPerpsUserStateParameters) => GetPerpsUserStateReturnType;
   getPerpsOrdersByUser: (args: GetPerpsOrdersByUserParameters) => GetPerpsOrdersByUserReturnType;
@@ -99,6 +111,8 @@ export type PerpsMutationActions = {
   withdrawMargin: (args: WithdrawMarginParameters) => WithdrawMarginReturnType;
   submitPerpsOrder: (args: SubmitPerpsOrderParameters) => SubmitPerpsOrderReturnType;
   cancelPerpsOrder: (args: CancelPerpsOrderParameters) => CancelPerpsOrderReturnType;
+  submitConditionalOrder: (args: SubmitConditionalOrderParameters) => SubmitConditionalOrderReturnType;
+  cancelConditionalOrder: (args: CancelConditionalOrderParameters) => CancelConditionalOrderReturnType;
 };
 
 export function perpsMutationActions<transport extends Transport = Transport>(
@@ -109,5 +123,7 @@ export function perpsMutationActions<transport extends Transport = Transport>(
     withdrawMargin: (args) => withdrawMargin(client, args),
     submitPerpsOrder: (args) => submitPerpsOrder(client, args),
     cancelPerpsOrder: (args) => cancelPerpsOrder(client, args),
+    submitConditionalOrder: (args) => submitConditionalOrder(client, args),
+    cancelConditionalOrder: (args) => cancelConditionalOrder(client, args),
   };
 }

@@ -24,6 +24,19 @@ export type PerpsOrderKind =
   | { market: { maxSlippage: string } }
   | { limit: { limitPrice: string; postOnly: boolean } };
 
+export type TriggerDirection = "above" | "below";
+
+export type LimitOrConditionalOrder =
+  | { limit: { limitPrice: string; reduceOnly: boolean; reservedMargin: string } }
+  | { conditional: { triggerPrice: string; triggerDirection: TriggerDirection } };
+
+export type PerpsOrdersByUserResponseItem = {
+  pairId: string;
+  size: string;
+  kind: LimitOrConditionalOrder;
+  createdAt: string;
+};
+
 export type PerpsPairParam = {
   tickSize: string;
   minOrderSize: string;
@@ -74,10 +87,7 @@ export type PerpsOrderResponse = {
   reservedMargin: string;
 };
 
-export type PerpsOrdersByUserResponse = {
-  bids: PerpsOrderResponse[];
-  asks: PerpsOrderResponse[];
-};
+export type PerpsOrdersByUserResponse = Record<string, PerpsOrdersByUserResponseItem>;
 
 export type PerpsLiquidityDepth = {
   size: string;

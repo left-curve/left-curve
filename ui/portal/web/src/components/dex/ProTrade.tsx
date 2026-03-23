@@ -225,6 +225,8 @@ type PerpsPositionRow = {
   entryPrice: string;
   currentPrice: number;
   pnl: number;
+  tpPrice: string | null;
+  slPrice: string | null;
 };
 
 const PerpsPositionsTable: React.FC = () => {
@@ -234,6 +236,7 @@ const PerpsPositionsTable: React.FC = () => {
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
   const userState = perpsUserStateStore((s) => s.userState);
+  const perpsOrders = perpsOrdersByUserStore((s) => s.orders);
 
   const symbolToDenom = useMemo(() => {
     const map: Record<string, string> = {};
@@ -252,17 +255,34 @@ const PerpsPositionsTable: React.FC = () => {
       const baseDenom = symbolToDenom[baseSymbol] ?? baseSymbol;
       const currentPrice = getPrice(1, baseDenom) || Number(pos.entryPrice);
       const size = Number(pos.size);
+      const isLong = size > 0;
       const pnl = size * (currentPrice - Number(pos.entryPrice));
+
+      let tpPrice: string | null = null;
+      let slPrice: string | null = null;
+
+      if (perpsOrders) {
+        for (const order of Object.values(perpsOrders)) {
+          if (order.pairId !== pairId || !("conditional" in order.kind)) continue;
+          const { triggerPrice, triggerDirection } = order.kind.conditional;
+          const isTp = isLong ? triggerDirection === "above" : triggerDirection === "below";
+          if (isTp) tpPrice = triggerPrice;
+          else slPrice = triggerPrice;
+        }
+      }
+
       result.push({
         pairId,
         size: pos.size,
         entryPrice: pos.entryPrice,
         currentPrice,
         pnl,
+        tpPrice,
+        slPrice,
       });
     }
     return result;
-  }, [userState, getPrice, symbolToDenom]);
+  }, [userState, getPrice, symbolToDenom, perpsOrders]);
 
   const columns: TableColumn<PerpsPositionRow> = [
     {
@@ -323,6 +343,41 @@ const PerpsPositionsTable: React.FC = () => {
       },
     },
     {
+      header: "TP/SL",
+      cell: ({ row }) => {
+        const { tpPrice, slPrice, pairId, size, entryPrice, currentPrice } = row.original;
+        if (tpPrice || slPrice) {
+          return (
+            <div
+              className="flex flex-col gap-0.5 cursor-pointer"
+              onClick={() =>
+                showModal(Modals.ProSwapEditTPSL, { pairId, size, entryPrice, currentPrice })
+              }
+            >
+              <span className="diatype-xs-regular text-utility-success-600">
+                {tpPrice ? `$${formatNumber(tpPrice, formatNumberOptions)}` : "-"}
+              </span>
+              <span className="diatype-xs-regular text-utility-error-600">
+                {slPrice ? `$${formatNumber(slPrice, formatNumberOptions)}` : "-"}
+              </span>
+            </div>
+          );
+        }
+        return (
+          <Cell.Action
+            action={() =>
+              showModal(Modals.ProSwapEditTPSL, { pairId, size, entryPrice, currentPrice })
+            }
+            label="Add"
+            classNames={{
+              cell: "items-start",
+              button: "!exposure-xs-italic m-0 p-0 px-1 h-fit",
+            }}
+          />
+        );
+      },
+    },
+    {
       id: "close-position",
       header: () => <Cell.Text text="" />,
       cell: ({ row }) => (
@@ -367,11 +422,12 @@ type UnifiedOrder = {
   market: "spot" | "perps";
   pairDisplay: string;
   side: "buy" | "sell";
-  type: "limit";
+  type: "limit" | "tp" | "sl";
   price: string;
   size: string;
   filled: string | null;
   reduceOnly: boolean;
+  isConditional: boolean;
   rawSpotOrderId?: OrderId;
   rawPerpsOrderId?: string;
 };
@@ -427,32 +483,48 @@ const UnifiedOpenOrders: React.FC = () => {
           size: originalSize,
           filled: filledQty,
           reduceOnly: false,
+          isConditional: false,
           rawSpotOrderId: order.id,
         });
       }
     }
 
-    if (mode === "perps" && perpsOrders?.bids && perpsOrders?.asks) {
-      const allPerpsOrders = [...perpsOrders.bids, ...perpsOrders.asks];
-      const filtered = showAllPairs
-        ? allPerpsOrders
-        : allPerpsOrders.filter((o) => o.pairId === currentPerpsPairId);
+    if (mode === "perps" && perpsOrders) {
+      for (const [orderId, order] of Object.entries(perpsOrders)) {
+        if (!showAllPairs && order.pairId !== currentPerpsPairId) continue;
 
-      for (const order of filtered) {
         const label = order.pairId.replace("perp/", "").replace(/usd$/i, "/USD").toUpperCase();
         const isLong = Number(order.size) > 0;
+        const { kind } = order;
+        const isConditional = "conditional" in kind;
+
+        let price: string;
+        let orderType: "limit" | "tp" | "sl";
+        let reduceOnly: boolean;
+
+        if ("conditional" in kind) {
+          const { triggerPrice, triggerDirection } = kind.conditional;
+          price = `$${formatNumber(triggerPrice, formatNumberOptions)}`;
+          orderType = triggerDirection === "above" ? (isLong ? "sl" : "tp") : isLong ? "tp" : "sl";
+          reduceOnly = true;
+        } else {
+          price = `$${formatNumber(kind.limit.limitPrice, formatNumberOptions)}`;
+          orderType = "limit";
+          reduceOnly = kind.limit.reduceOnly;
+        }
 
         rows.push({
-          id: order.orderId,
+          id: orderId,
           market: "perps",
           pairDisplay: label,
           side: isLong ? "buy" : "sell",
-          type: "limit",
-          price: `$${formatNumber(order.limitPrice, formatNumberOptions)}`,
+          type: orderType,
+          price,
           size: Math.abs(Number(order.size)).toString(),
           filled: null,
-          reduceOnly: order.reduceOnly,
-          rawPerpsOrderId: order.orderId,
+          reduceOnly,
+          isConditional,
+          rawPerpsOrderId: orderId,
         });
       }
     }
@@ -501,7 +573,11 @@ const UnifiedOpenOrders: React.FC = () => {
     },
     {
       header: "Type",
-      cell: () => <Cell.Text text="Limit" />,
+      cell: ({ row }) => {
+        if (row.original.type === "tp") return <Badge text="TP" color="green" size="s" />;
+        if (row.original.type === "sl") return <Badge text="SL" color="warning" size="s" />;
+        return <Cell.Text text="Limit" />;
+      },
     },
     {
       header: "Price",
@@ -576,7 +652,10 @@ const UnifiedOpenOrders: React.FC = () => {
             if (row.original.market === "spot" && row.original.rawSpotOrderId) {
               showModal(Modals.ProTradeCloseOrder, { orderId: row.original.rawSpotOrderId });
             } else if (row.original.rawPerpsOrderId) {
-              showModal(Modals.PerpsCloseOrder, { orderId: row.original.rawPerpsOrderId });
+              showModal(Modals.PerpsCloseOrder, {
+                orderId: row.original.rawPerpsOrderId,
+                isConditional: row.original.isConditional,
+              });
             }
           }}
           label={m["common.cancel"]()}

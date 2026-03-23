@@ -1,0 +1,69 @@
+import { getAppConfig } from "@left-curve/sdk";
+import { getAction } from "@left-curve/sdk/actions";
+import { execute } from "../../app/mutations/execute.js";
+
+import type { Address, Transport } from "@left-curve/sdk/types";
+import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
+import type {
+  AppConfig,
+  DangoClient,
+  Signer,
+  TriggerDirection,
+  TypedDataParameter,
+} from "../../../types/index.js";
+
+export type SubmitConditionalOrderParameters = {
+  sender: Address;
+  pairId: string;
+  size: string;
+  triggerPrice: string;
+  triggerDirection: TriggerDirection;
+  maxSlippage: string;
+};
+
+export type SubmitConditionalOrderReturnType = SignAndBroadcastTxReturnType;
+
+export async function submitConditionalOrder<transport extends Transport>(
+  client: DangoClient<transport, Signer>,
+  parameters: SubmitConditionalOrderParameters,
+): SubmitConditionalOrderReturnType {
+  const { sender, pairId, size, triggerPrice, triggerDirection, maxSlippage } = parameters;
+
+  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
+  const { addresses } = await getAppConfigAction<AppConfig>({});
+
+  const msg = {
+    trade: {
+      submitConditionalOrder: {
+        pairId,
+        size,
+        triggerPrice,
+        triggerDirection,
+        maxSlippage,
+      },
+    },
+  };
+
+  const typedData: TypedDataParameter = {
+    type: [{ name: "trade", type: "Trade" }],
+    extraTypes: {
+      Trade: [{ name: "submitConditionalOrder", type: "SubmitConditionalOrder" }],
+      SubmitConditionalOrder: [
+        { name: "pairId", type: "string" },
+        { name: "size", type: "string" },
+        { name: "triggerPrice", type: "string" },
+        { name: "triggerDirection", type: "string" },
+        { name: "maxSlippage", type: "string" },
+      ],
+    },
+  };
+
+  return await execute(client, {
+    sender,
+    execute: {
+      msg,
+      typedData,
+      contract: addresses.perps,
+    },
+  });
+}

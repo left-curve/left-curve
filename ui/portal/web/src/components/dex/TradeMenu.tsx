@@ -41,7 +41,6 @@ import { Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
 
-import { isFeatureEnabled } from "~/featureFlags";
 import type React from "react";
 
 const InfoRow: React.FC<{
@@ -422,6 +421,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return Decimal(size).div(currentPrice).toFixed(6);
   }, [size, isBaseSize, currentPrice]);
 
+  const tpPriceValue = inputs.tpPrice?.value || "";
+  const slPriceValue = inputs.slPrice?.value || "";
+
   const submission = usePerpsSubmission({
     perpsPairId,
     action,
@@ -430,6 +432,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     priceValue,
     controllers,
     onError,
+    tpslEnabled,
+    tpPrice: tpPriceValue,
+    slPrice: slPriceValue,
   });
 
   const leverageSteps = useMemo(() => {
@@ -519,42 +524,39 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           showSteps={leverageSteps}
           onChange={(v) => setLeverage(Math.max(1.1, Math.min(maxLeverage, v)))}
         />
-        {isFeatureEnabled("stopLoss") ? (
-          <>
-            <Checkbox
-              radius="md"
-              size="sm"
-              label="Take Profit/Stop Loss"
-              checked={tpslEnabled}
-              onChange={() => setTpslEnabled(!tpslEnabled)}
+        <Checkbox
+          radius="md"
+          size="sm"
+          label="Take Profit/Stop Loss"
+          checked={tpslEnabled}
+          onChange={() => setTpslEnabled(!tpslEnabled)}
+          isDisabled={operation === "limit" && !position}
+        />
+        {tpslEnabled ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              placeholder="0"
+              label="TP Price"
+              {...register("tpPrice", { mask: numberMask })}
             />
-            {tpslEnabled ? (
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  placeholder="0"
-                  label="TP Price"
-                  {...register("tpPrice", { mask: numberMask })}
-                />
-                <Input
-                  placeholder="0"
-                  label="Gain"
-                  endContent="%"
-                  {...register("tpPercent", { mask: numberMask })}
-                />
-                <Input
-                  placeholder="0"
-                  label="SL Price"
-                  {...register("slPrice", { mask: numberMask })}
-                />
-                <Input
-                  placeholder="0"
-                  label="Loss"
-                  endContent="%"
-                  {...register("slPercent", { mask: numberMask })}
-                />
-              </div>
-            ) : null}
-          </>
+            <Input
+              placeholder="0"
+              label="Gain"
+              endContent="%"
+              {...register("tpPercent", { mask: numberMask })}
+            />
+            <Input
+              placeholder="0"
+              label="SL Price"
+              {...register("slPrice", { mask: numberMask })}
+            />
+            <Input
+              placeholder="0"
+              label="Loss"
+              endContent="%"
+              {...register("slPercent", { mask: numberMask })}
+            />
+          </div>
         ) : null}
       </div>
       <div className="flex flex-col gap-4 pb-4 lg:pb-6">
