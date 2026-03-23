@@ -66,5 +66,13 @@ export type {
 
 export type { AppletMetadata } from "./applets.js";
 
+export type {
+  UserReferralData,
+  RefereeStats,
+  ReferralSettings,
+  ReferralConfig,
+  RefereeStatsOrderBy,
+} from "./referral.js";
+
 export { ConnectionStatus } from "./store.js";
 export { ConnectorIds } from "./connector.js";

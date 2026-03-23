@@ -272,6 +272,40 @@ export {
   checkOat,
 } from "./hooks/pointsApi.js";
 
+export {
+  type UseReferrerParameters,
+  type UseReferralDataParameters,
+  type UseRefereeStatsParameters,
+  type UseReferralSettingsParameters,
+  type UseUserVolumeParameters,
+  type UseReferralConfigParameters,
+  useReferrer,
+  useReferralData,
+  useRefereeStats,
+  useReferralSettings,
+  useUserVolume,
+  useReferralConfig,
+  getReferralCode,
+  getReferralLink,
+} from "./hooks/useReferral.js";
+
+export type {
+  UserReferralData,
+  RefereeStats,
+  ReferralSettings,
+  ReferralConfig,
+  RefereeStatsOrderBy,
+} from "./types/referral.js";
+
+export {
+  queryReferrer,
+  queryReferralData,
+  queryRefereeStats,
+  queryReferralSettings,
+  queryUserVolume,
+  queryReferralConfig,
+} from "./hooks/referralApi.js";
+
 export { rehydrate } from "./rehydrate.js";
 
 /* -------------------------------------------------------------------------- */

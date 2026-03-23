@@ -203,7 +203,7 @@
     },
     "referral": {
       "id": "referral",
-      "img": "/images/emojis/simple/money.svg",
+      "img": "/images/emojis/simple/referral.svg",
       "title": "Referral",
       "description": "Invite friends and earn rewards together.",
       "path": "/referral",
