@@ -277,6 +277,13 @@ impl StartCmd {
             .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {e}"))?
             .into();
 
+        // Preload the perps trade cache from existing DB data so that new
+        // GraphQL subscribers immediately receive recent trades.
+        dango_context
+            .preload_perps_trade_cache()
+            .await
+            .map_err(|e| anyhow!("Failed to preload perps trade cache: {e}"))?;
+
         let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
 
         let clickhouse_context = dango_indexer_clickhouse::context::Context::new(

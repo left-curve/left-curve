@@ -8,12 +8,12 @@ use {
         block::BlockSubscription, event::EventSubscription, grug::GrugSubscription,
         message::MessageSubscription, transaction::TransactionSubscription,
     },
-    perps_event::PerpsEventSubscription,
+    perps_trade::PerpsTradeSubscription,
     transfer::TransferSubscription,
 };
 
 pub mod account;
-pub mod perps_event;
+pub mod perps_trade;
 pub mod transfer;
 
 #[derive(MergedSubscription, Default)]
@@ -27,6 +27,6 @@ pub struct Subscription(
     CandleSubscription,
     TradeSubscription,
     PerpsCandleSubscription,
+    PerpsTradeSubscription,
     GrugSubscription,
-    PerpsEventSubscription,
 );
