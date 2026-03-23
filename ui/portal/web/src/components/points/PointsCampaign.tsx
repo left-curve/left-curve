@@ -1,9 +1,7 @@
 import {
   Button,
-  IconFriendshipGroup,
   IconGift,
   IconUser,
-  ResizerContainer,
   Tab,
   Tabs,
   createContext,
@@ -22,17 +20,10 @@ import {
   PointsProgressBar,
   useChestOpening,
 } from "./rewards";
-import {
-  CommissionRates,
-  MyCommission,
-  ReferralFaqs,
-  ReferralStats,
-  type ReferralMode,
-} from "./referral";
 import { UserPointsProvider } from "./useUserPoints";
 import { useAccount, useBoxes, useOats } from "@left-curve/store";
 
-type PointsCampaignTab = "profile" | "rewards" | "referral";
+type PointsCampaignTab = "profile" | "rewards";
 
 const [PointsCampaignProvider, usePointsCampaign] = createContext<{
   activeTab: PointsCampaignTab;
@@ -140,30 +131,6 @@ const RewardsSection: React.FC = () => (
   </div>
 );
 
-const ReferralSection: React.FC = () => {
-  const [referralMode, setReferralMode] = useState<ReferralMode>("affiliate");
-
-  return (
-    <div className="flex flex-col gap-6 w-full">
-      <ResizerContainer
-        layoutId="referra-container"
-        className="bg-surface-disabled-gray rounded-xl shadow-account-card overflow-hidden relative"
-      >
-        <PointsHeader />
-        <ResizerContainer
-          layoutId="referral-stats"
-          className="p-4 lg:p-8 bg-surface-primary-gray rounded-b-xl flex flex-col gap-6"
-        >
-          <ReferralStats mode={referralMode} onModeChange={setReferralMode} />
-          {referralMode === "affiliate" && <CommissionRates />}
-        </ResizerContainer>
-      </ResizerContainer>
-      <MyCommission mode={referralMode} />
-      {referralMode === "affiliate" && <ReferralFaqs />}
-    </div>
-  );
-};
-
 const PointsCampaignTabs: React.FC = () => {
   const { activeTab, setActiveTab } = usePointsCampaign();
 
@@ -187,16 +154,9 @@ const PointsCampaignTabs: React.FC = () => {
             Rewards
           </span>
         </Tab>
-        <Tab title="referral">
-          <span className="flex items-center gap-1">
-            <IconFriendshipGroup className="w-6 h-6" />
-            Referral
-          </span>
-        </Tab>
       </Tabs>
       {activeTab === "profile" ? <ProfileSection /> : null}
       {activeTab === "rewards" ? <RewardsSection /> : null}
-      {activeTab === "referral" ? <ReferralSection /> : null}
     </div>
   );
 };

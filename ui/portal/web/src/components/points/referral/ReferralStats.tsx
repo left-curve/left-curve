@@ -26,7 +26,7 @@ type ReferralStatsProps = {
 const UNLOCK_VOLUME = 10000;
 const TIER_2_VOLUME = 100000;
 
-const AffiliateStats: React.FC = () => {
+export const AffiliateStats: React.FC = () => {
   const { showModal } = useApp();
   const currentVolume = 11000;
   const isUnlocked = currentVolume >= UNLOCK_VOLUME;
@@ -134,7 +134,7 @@ const AffiliateStats: React.FC = () => {
   );
 };
 
-const TraderStats: React.FC = () => {
+export const TraderStats: React.FC = () => {
   const [referralCode, setReferralCode] = useState("");
   const hasReferrer = true; // Mock: change to false to see the input view
   const referrerName = "Scranton";

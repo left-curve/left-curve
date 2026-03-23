@@ -201,6 +201,14 @@
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
+    "referral": {
+      "id": "referral",
+      "img": "/images/emojis/simple/money.svg",
+      "title": "Referral",
+      "description": "Invite friends and earn rewards together.",
+      "path": "/referral",
+      "keywords": "referral,invite,friends,commission,affiliate"
+    },
     "devtool": {
       "id": "devtool",
       "img": "/images/emojis/simple/factory-2.svg",
@@ -1002,6 +1010,13 @@
     "errors": {
       "minimumOrderSize": "Order size too small. Minimum order size is {minOrderSize} {symbol}"
     }
+  },
+  "referral": {
+    "welcome": "Welcome to Dango's",
+    "title": "REFERRAL PROGRAM",
+    "readRules": "Read Rules",
+    "affiliate": "Affiliate",
+    "trader": "Trader"
   },
   "points": {
     "campaign": "Campaign",
