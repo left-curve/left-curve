@@ -42,6 +42,12 @@ export {
 } from "./queries/getParam.js";
 
 export {
+  type QueryPerpsCandlesParameters,
+  type QueryPerpsCandlesReturnType,
+  queryPerpsCandles,
+} from "./queries/perpsCandles.js";
+
+export {
   type DepositMarginParameters,
   type DepositMarginReturnType,
   depositMargin,

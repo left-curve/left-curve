@@ -39,6 +39,12 @@ import {
 } from "./queries/getParam.js";
 
 import {
+  type QueryPerpsCandlesParameters,
+  type QueryPerpsCandlesReturnType,
+  queryPerpsCandles,
+} from "./queries/perpsCandles.js";
+
+import {
   type DepositMarginParameters,
   type DepositMarginReturnType,
   depositMargin,
@@ -71,6 +77,7 @@ export type PerpsQueryActions = {
   getPerpsPairParam: (args: GetPerpsPairParamParameters) => GetPerpsPairParamReturnType;
   getPerpsPairParams: (args?: GetPerpsPairParamsParameters) => GetPerpsPairParamsReturnType;
   getPerpsParam: (args?: GetPerpsParamParameters) => GetPerpsParamReturnType;
+  queryPerpsCandles: (args: QueryPerpsCandlesParameters) => QueryPerpsCandlesReturnType;
 };
 
 export function perpsQueryActions<transport extends Transport = Transport>(
@@ -83,6 +90,7 @@ export function perpsQueryActions<transport extends Transport = Transport>(
     getPerpsPairParam: (args) => getPerpsPairParam(client, args),
     getPerpsPairParams: (args) => getPerpsPairParams(client, args),
     getPerpsParam: (args) => getPerpsParam(client, args),
+    queryPerpsCandles: (args) => queryPerpsCandles(client, args),
   };
 }
 

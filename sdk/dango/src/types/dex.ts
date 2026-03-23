@@ -406,6 +406,23 @@ export type Candle = {
   timeEndUnix: number;
 };
 
+export type PerpsCandle = {
+  pairId: string;
+  interval: CandleIntervals;
+  minBlockHeight: number;
+  maxBlockHeight: number;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volume: string;
+  volumeUsd: string;
+  timeStart: string;
+  timeStartUnix: number;
+  timeEnd: string;
+  timeEndUnix: number;
+};
+
 export type Trade = {
   addr: Address;
   quoteDenom: Denom;

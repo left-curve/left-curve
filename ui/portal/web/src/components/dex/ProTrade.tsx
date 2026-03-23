@@ -154,19 +154,15 @@ const ProTradeChart: React.FC = () => {
     [mode, orders.data, baseCoin.denom, quoteCoin.denom],
   );
 
-  if (mode === "perps") {
-    return (
-      <div className="flex w-full lg:min-h-[32.875rem] h-full items-center justify-center bg-surface-primary-rice">
-        <p className="diatype-m-regular text-ink-tertiary-500">Perps chart available soon</p>
-      </div>
-    );
-  }
-
   const Chart = (
     <Suspense fallback={<Spinner color="pink" size="md" />}>
       <div className="flex w-full lg:min-h-[32.875rem] h-full" id="chart-container">
         <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
-          <TradingView coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
+          <TradingView
+            coins={{ base: baseCoin, quote: quoteCoin }}
+            orders={ordersByPair}
+            mode={mode}
+          />
         </ErrorBoundary>
       </div>
     </Suspense>
@@ -436,7 +432,7 @@ const UnifiedOpenOrders: React.FC = () => {
       }
     }
 
-    if (mode === "perps" && perpsOrders) {
+    if (mode === "perps" && perpsOrders?.bids && perpsOrders?.asks) {
       const allPerpsOrders = [...perpsOrders.bids, ...perpsOrders.asks];
       const filtered = showAllPairs
         ? allPerpsOrders

@@ -1,5 +1,30 @@
-import type { Address, Coins, Denom, Hex, Json, UID } from "@left-curve/sdk/types";
+import type { Address, Coins, Denom, Hex, Json, JsonValue, UID } from "@left-curve/sdk/types";
 import type { Directions, OrderId, TimeInForceOptions } from "./dex.js";
+
+export type EventFilter = {
+  type?: string;
+  data?: EventFilterData[];
+};
+
+export type EventFilterData = {
+  path: string[];
+  checkMode: "EQUAL" | "CONTAINS";
+  value: JsonValue[];
+};
+
+export type SubscriptionEvent = {
+  type: string;
+  method: string | null;
+  eventStatus: EventStatus;
+  commitmentStatus: CommitmentStatus;
+  transactionType: number;
+  transactionIdx: number;
+  messageIdx: number | null;
+  eventIdx: number;
+  data: EventData;
+  blockHeight: number;
+  createdAt: string;
+};
 
 export type IndexedEvent = {
   id: UID;

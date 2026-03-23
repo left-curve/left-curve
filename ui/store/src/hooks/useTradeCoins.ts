@@ -31,8 +31,6 @@ export function useTradeCoins(parameters: UseTradeCoinsParameters) {
       type: "native" as const,
     };
 
-    console.log(balances);
-
     const amount =
       mode === "spot" && balances[pairId.baseDenom]
         ? formatUnits(balances[pairId.baseDenom] || "0", coin.decimals)

@@ -3,13 +3,16 @@ import type {
   Candle,
   CandleIntervals,
   Denom,
+  EventFilter,
   IndexedAccountEvent,
   IndexedBlock,
   IndexedEvent,
   IndexedTransferEvent,
+  PerpsCandle,
   PublicClient,
   QueryRequest,
   QueryResponse,
+  SubscriptionEvent as DangoSubscriptionEvent,
   Trade,
   Username,
 } from "@left-curve/dango/types";
@@ -31,6 +34,11 @@ export type SubscriptionSchema = [
     listener: (event: { accounts: IndexedAccountEvent[] }) => void;
   },
   {
+    key: "events";
+    params: { sinceBlockHeight?: number; filter?: EventFilter[] };
+    listener: (events: DangoSubscriptionEvent[]) => void;
+  },
+  {
     key: "eventsByAddresses";
     params: { addresses: Address[]; sinceBlockHeight?: number };
     listener: (events: IndexedEvent[]) => void;
@@ -45,6 +53,14 @@ export type SubscriptionSchema = [
       limit?: number;
     };
     listener: (event: { candles: Candle[] }) => void;
+  },
+  {
+    key: "perpsCandles";
+    params: {
+      pairId: string;
+      interval: CandleIntervals;
+    };
+    listener: (event: { perpsCandles: PerpsCandle[] }) => void;
   },
   {
     key: "trades";
