@@ -36,4 +36,11 @@ impl Context {
             static_files_path,
         }
     }
+
+    /// Preload the perps trade cache from existing DB data so that new
+    /// GraphQL subscribers immediately receive recent trades.
+    pub async fn start_perps_trade_cache(&self) -> Result<(), dango_indexer_sql::error::Error> {
+        let mut cache = self.perps_trade_cache.write().await;
+        cache.preload(&self.db).await
+    }
 }

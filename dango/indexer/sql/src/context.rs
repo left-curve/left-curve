@@ -1,6 +1,5 @@
 use {
     crate::{entity::perps_trade::PerpsTrade, indexer::perps_trades::cache::PerpsTradeCache},
-    dango_indexer_sql_migration::{Migrator, MigratorTrait},
     indexer_sql::pubsub::{MemoryPubSub, PubSub},
     sea_orm::DatabaseConnection,
     std::sync::Arc,
@@ -16,10 +15,6 @@ pub struct Context {
 }
 
 impl Context {
-    pub async fn run_migrations(&self) -> Result<(), sea_orm::DbErr> {
-        Migrator::up(&self.db, None).await
-    }
-
     pub async fn preload_perps_trade_cache(&self) -> Result<(), crate::error::Error> {
         let mut cache = self.perps_trade_cache.write().await;
         cache.preload(&self.db).await

@@ -277,20 +277,6 @@ impl StartCmd {
             .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {e}"))?
             .into();
 
-        // Run dango-specific migrations before preloading the cache so
-        // that tables like perps_events exist even on a fresh database.
-        dango_context
-            .run_migrations()
-            .await
-            .map_err(|e| anyhow!("Failed to run dango migrations: {e}"))?;
-
-        // Preload the perps trade cache from existing DB data so that new
-        // GraphQL subscribers immediately receive recent trades.
-        dango_context
-            .preload_perps_trade_cache()
-            .await
-            .map_err(|e| anyhow!("Failed to preload perps trade cache: {e}"))?;
-
         let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
 
         let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
@@ -381,6 +367,8 @@ impl StartCmd {
             .indexer_clickhouse_context
             .start_cache()
             .await?;
+
+        dango_httpd_context.start_perps_trade_cache().await?;
 
         dango_httpd::server::run_server(
             &cfg.ip,
