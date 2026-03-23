@@ -12,18 +12,21 @@ type OATsSectionProps = {
   oatCount: number;
   endsIn?: string;
   onLinkWallet?: () => void;
+  // TODO: fetch oat_multiplier from backend config endpoint when available
+  pointsBoostPerOat?: number;
 };
 
-const POINTS_BOOST_PER_OAT = 25;
+const DEFAULT_POINTS_BOOST_PER_OAT = 100;
 
 export const OATsSection: React.FC<OATsSectionProps> = ({
   oatStatuses,
   oatCount,
   endsIn = "2 days 21:24:32",
   onLinkWallet,
+  pointsBoostPerOat = DEFAULT_POINTS_BOOST_PER_OAT,
 }) => {
   const { isLg } = useMediaQuery();
-  const pointsBoost = oatCount * POINTS_BOOST_PER_OAT;
+  const pointsBoost = oatCount * pointsBoostPerOat;
 
   return (
     <div className="flex flex-col gap-4">

@@ -1,9 +1,10 @@
 export type PointsResponse = {
   vault: string;
-  trades: string;
   perps: string;
   referral: string;
 };
+
+export type WeeklyPointsResponse = Record<string, PointsResponse>;
 
 export type LeaderboardEntry = {
   user_index: number;
@@ -29,6 +30,19 @@ export const fetchUserPoints = async (
 ): Promise<PointsResponse> => {
   const res = await fetch(`${baseUrl}/points/${userIndex}`);
   if (!res.ok) throw new Error(`Failed to fetch points: ${res.status}`);
+  return res.json();
+};
+
+export const fetchWeeklyPoints = async (
+  baseUrl: string,
+  userIndex: number,
+  params?: { min?: number; max?: number },
+): Promise<WeeklyPointsResponse> => {
+  const url = new URL(`${baseUrl}/points/${userIndex}/weekly`);
+  if (params?.min !== undefined) url.searchParams.set("min", String(params.min));
+  if (params?.max !== undefined) url.searchParams.set("max", String(params.max));
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Failed to fetch weekly points: ${res.status}`);
   return res.json();
 };
 

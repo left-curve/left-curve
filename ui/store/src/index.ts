@@ -251,11 +251,18 @@ export {
 } from "./hooks/useOats.js";
 
 export {
+  type UseWeeklyPointsParameters,
+  useWeeklyPoints,
+} from "./hooks/useWeeklyPoints.js";
+
+export {
   type PointsResponse,
+  type WeeklyPointsResponse,
   type LeaderboardEntry,
   type BoxReward,
   type OatEntry,
   fetchUserPoints,
+  fetchWeeklyPoints,
   fetchLeaderboard,
   fetchUserBoxes,
   openBox,

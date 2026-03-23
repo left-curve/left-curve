@@ -42,7 +42,7 @@ export function usePoints(parameters: UsePointsParameters) {
     const leaderboard = leaderboardQuery.data;
 
     const lpPoints = parseUdec(data?.vault ?? "0");
-    const tradingPoints = parseUdec(data?.perps ?? "0") + parseUdec(data?.trades ?? "0");
+    const tradingPoints = parseUdec(data?.perps ?? "0");
     const referralPoints = parseUdec(data?.referral ?? "0");
     const points = lpPoints + tradingPoints + referralPoints;
 
