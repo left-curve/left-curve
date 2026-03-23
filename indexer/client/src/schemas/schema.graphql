@@ -514,6 +514,26 @@ enum PerpsEventSortBy {
 	BLOCK_HEIGHT_DESC
 }
 
+"""
+In-memory representation of a perps `OrderFilled` event for real-time
+streaming via GraphQL subscriptions. Not persisted to a dedicated table —
+the raw event data already lives in `perps_events`.
+"""
+type PerpsTrade {
+	orderId: String!
+	pairId: String!
+	user: String!
+	fillPrice: String!
+	fillSize: String!
+	closingSize: String!
+	openingSize: String!
+	realizedPnl: String!
+	fee: String!
+	createdAt: String!
+	blockHeight: Int!
+	tradeIdx: Int!
+}
+
 type PublicKey {
 	userIndex: Int!
 	keyHash: String!
@@ -847,6 +867,11 @@ type Subscription {
 	Get perps candles for a given pair_id and interval
 	"""
 	perpsCandles(pairId: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [PerpsCandle!]!
+	"""
+	Stream real-time perps trades for a given pair.
+	Returns cached recent trades first, then streams new trades as they occur.
+	"""
+	perpsTrades(pairId: String!): PerpsTrade!
 	queryApp(
 		"""
 		Request as JSON
@@ -873,24 +898,6 @@ type Subscription {
 		"""
 		blockInterval: Int! = 10
 	): Status!
-	perpsEvents(
-		"""
-		Filter by user address
-		"""
-		userAddr: String,
-		"""
-		Filter by event type
-		"""
-		eventType: String,
-		"""
-		Filter by trading pair ID
-		"""
-		pairId: String,
-		"""
-		Block height to start from (for reconnection)
-		"""
-		sinceBlockHeight: Int
-	): [PerpsEvent!]!
 }
 
 enum TimeInForce {

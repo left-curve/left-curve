@@ -13,6 +13,7 @@ use {
 
 mod accounts;
 mod perps_events;
+pub mod perps_trades;
 mod transfers;
 
 pub struct Indexer {

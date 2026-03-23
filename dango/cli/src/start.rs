@@ -368,6 +368,8 @@ impl StartCmd {
             .start_cache()
             .await?;
 
+        dango_httpd_context.start_perps_trade_cache().await?;
+
         dango_httpd::server::run_server(
             &cfg.ip,
             cfg.port,
