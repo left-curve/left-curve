@@ -57,6 +57,12 @@ import {
   type PerpsCandlesSubscriptionReturnType,
 } from "./subscriptions/perpsCandles.js";
 
+import {
+  perpsTradesSubscription,
+  type PerpsTradesSubscriptionParameters,
+  type PerpsTradesSubscriptionReturnType,
+} from "./subscriptions/perpsTrades.js";
+
 export type IndexerActions = {
   accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
   blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
@@ -68,6 +74,9 @@ export type IndexerActions = {
   perpsCandlesSubscription: (
     args: PerpsCandlesSubscriptionParameters,
   ) => PerpsCandlesSubscriptionReturnType;
+  perpsTradesSubscription: (
+    args: PerpsTradesSubscriptionParameters,
+  ) => PerpsTradesSubscriptionReturnType;
   searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
   tradesSubscription: (args: TradesSubscriptionParameters) => TradesSubscriptionReturnType;
   transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
@@ -85,6 +94,7 @@ export function indexerActions<transport extends Transport = Transport>(
     eventsSubscription: (args) => eventsSubscription(client, args),
     eventsByAddressesSubscription: (args) => eventsByAddressesSubscription(client, args),
     perpsCandlesSubscription: (args) => perpsCandlesSubscription(client, args),
+    perpsTradesSubscription: (args) => perpsTradesSubscription(client, args),
     searchTxs: (args) => searchTxs(client, args),
     tradesSubscription: (args) => tradesSubscription(client, args),
     transferSubscription: (args) => transferSubscription(client, args),

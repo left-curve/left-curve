@@ -230,6 +230,7 @@ export {
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
 export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";
+export { useLivePerpsTradesState, livePerpsTradesStore } from "./hooks/useLivePerpsTradesState.js";
 export { usePerpsOrderBookState, perpsOrderBookStore } from "./hooks/usePerpsOrderBookState.js";
 export { usePerpsOrdersByUser, perpsOrdersByUserStore } from "./hooks/usePerpsOrdersByUser.js";
 

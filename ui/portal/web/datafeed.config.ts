@@ -217,16 +217,14 @@ export function createTradingViewDataFeed(parameters: CreateDataFeedParameters):
   };
 }
 
-const PERPS_PRICE_DECIMALS = 6;
-
 function perpsCandlesToTradingViewBar(candles: PerpsCandle[]) {
   return candles.reverse().map((candle) => ({
     time: candle.timeStartUnix,
-    volume: +Decimal(candle.volumeUsd).div(Decimal(10).pow(PERPS_PRICE_DECIMALS)).toFixed(),
-    open: +Decimal(candle.open).div(Decimal(10).pow(PERPS_PRICE_DECIMALS)).toFixed(),
-    high: +Decimal(candle.high).div(Decimal(10).pow(PERPS_PRICE_DECIMALS)).toFixed(),
-    low: +Decimal(candle.low).div(Decimal(10).pow(PERPS_PRICE_DECIMALS)).toFixed(),
-    close: +Decimal(candle.close).div(Decimal(10).pow(PERPS_PRICE_DECIMALS)).toFixed(),
+    volume: +candle.volumeUsd,
+    open: +candle.open,
+    high: +candle.high,
+    low: +candle.low,
+    close: +candle.close,
   }));
 }
 

@@ -64,3 +64,18 @@ export type IndexedAccountEvent = {
 };
 
 export type IndexedTransactionType = "CRON" | "TX";
+
+export type PerpsTrade = {
+  orderId: string;
+  pairId: string;
+  user: string;
+  fillPrice: string;
+  fillSize: string;
+  closingSize: string;
+  openingSize: string;
+  realizedPnl: string;
+  fee: string;
+  createdAt: string;
+  blockHeight: number;
+  tradeIdx: number;
+};
