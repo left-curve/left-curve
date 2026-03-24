@@ -1,10 +1,4 @@
-import {
-  Badge,
-  Button,
-  ResizerContainer,
-  Tab,
-  Tabs,
-} from "@left-curve/applets-kit";
+import { Badge, Button, ResizerContainer, Tab, Tabs } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 import { useState } from "react";
@@ -21,7 +15,7 @@ import {
 
 const ReferralCampaignContainer: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
+    <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 lg:p-0 lg:pt-6 lg:pb-20 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
       <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
         {children}
       </div>
@@ -33,7 +27,9 @@ const ReferralCampaignHeader: React.FC = () => (
   <div className="flex flex-col gap-8 w-full items-center">
     <div className="max-w-[15.5rem] flex flex-col gap-2 items-center text-center">
       <p className="text-ink-tertiary-500 diatype-m-regular">{m["referral.welcome"]()}</p>
-      <h1 className="exposure-h1-italic lg:text-[48px] text-ink-primary-rice">{m["referral.title"]()}</h1>
+      <h1 className="exposure-h1-italic lg:text-[48px] text-ink-primary-rice">
+        {m["referral.title"]()}
+      </h1>
     </div>
     <Button variant="utility">{m["referral.readRules"]()}</Button>
   </div>

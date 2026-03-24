@@ -1,6 +1,7 @@
 import { formatNumber, type FormatNumberOptions } from "@left-curve/dango/utils";
 import { ProgressBar, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { useAccount } from "@left-curve/store";
 import type React from "react";
 
 type TierKey = "bronze" | "silver" | "gold" | "crystal";
@@ -52,6 +53,7 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
   currentVolume,
   className,
 }) => {
+  const { isConnected } = useAccount();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
@@ -72,11 +74,13 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
     Math.max(Math.floor(Math.abs(value)).toString().length, 1);
 
   const tierLabel = TierLabels[tier.key]();
-  const nextTargetLabel = formatUsd(target, { maximumTotalDigits: 3 });
-  const remainingLabel = m["points.rewards.boxes.volumeUntilNext"]({
-    amount: formatUsd(remaining, { maximumTotalDigits: integerDigits(remaining) }),
-    tier: tierLabel,
-  });
+  const nextTargetLabel = isConnected ? formatUsd(target, { maximumTotalDigits: 3 }) : "--";
+  const remainingLabel = isConnected
+    ? m["points.rewards.boxes.volumeUntilNext"]({
+        amount: formatUsd(remaining, { maximumTotalDigits: integerDigits(remaining) }),
+        tier: tierLabel,
+      })
+    : m["points.rewards.boxes.notLoggedIn"]();
 
   return (
     <ProgressBar

@@ -60,6 +60,8 @@ type BoxCardProps = {
   quantity: number;
   className?: string;
   onClick?: () => void;
+  /** When true, shows locked state regardless of quantity (e.g., user not logged in) */
+  isUserLocked?: boolean;
 };
 
 export const BoxCard: React.FC<BoxCardProps> = ({
@@ -67,13 +69,14 @@ export const BoxCard: React.FC<BoxCardProps> = ({
   onClick,
   quantity,
   variant,
+  isUserLocked = false,
 }) => {
   const { isLg } = useMediaQuery();
   const { badgeColor, imageShadow } = VariantConfig[variant];
   const label = VariantLabels[variant]();
   const tooltip = VariantTooltips[variant]();
 
-  const isLocked = quantity < 1;
+  const isLocked = isUserLocked || quantity < 1;
 
   const handleClick = () => {
     if (isLocked) return;
@@ -103,6 +106,7 @@ export const BoxCard: React.FC<BoxCardProps> = ({
             className={twMerge(
               "w-full h-full object-contain select-none drag-none absolute inset-0 -top-4 lg:-top-6",
               imageShadow,
+              isUserLocked && "opacity-50",
             )}
           />
         </div>

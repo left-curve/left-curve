@@ -1,5 +1,5 @@
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import type { BoxReward } from "@left-curve/store";
+import { useAccount, type BoxReward } from "@left-curve/store";
 import type React from "react";
 import { BoxCard, type BoxVariant } from "./BoxCard";
 
@@ -11,6 +11,8 @@ type BoxesSectionProps = {
 const VARIANTS: BoxVariant[] = ["bronze", "silver", "gold", "crystal"];
 
 export const BoxesSection: React.FC<BoxesSectionProps> = ({ unopenedBoxes, onOpenChest }) => {
+  const { isConnected } = useAccount();
+
   return (
     <div className="flex flex-col gap-3">
       <p className="h3-bold text-ink-primary-900">{m["points.rewards.boxes.title"]()}</p>
@@ -21,6 +23,7 @@ export const BoxesSection: React.FC<BoxesSectionProps> = ({ unopenedBoxes, onOpe
             variant={variant}
             quantity={unopenedBoxes[variant]?.length ?? 0}
             onClick={() => onOpenChest(variant)}
+            isUserLocked={!isConnected}
           />
         ))}
       </div>

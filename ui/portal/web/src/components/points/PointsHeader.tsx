@@ -1,13 +1,15 @@
 import { IconFriendshipGroup, IconSprout, IconSwapMoney, Tooltip } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { useAccount } from "@left-curve/store";
 import type React from "react";
 import { useUserPoints } from "./useUserPoints";
 
 export const PointsHeader: React.FC = () => {
+  const { isConnected } = useAccount();
   const { points, volume, rank, tradingPoints, lpPoints, referralPoints } = useUserPoints();
 
-  const formatNumber = (num: number) => num.toLocaleString();
-  const formatCurrency = (num: number) => `$${num.toLocaleString()}`;
+  const formatNumber = (num: number) => (isConnected ? num.toLocaleString() : "--");
+  const formatCurrency = (num: number) => (isConnected ? `$${num.toLocaleString()}` : "--");
 
   return (
     <div className="p-4 lg:p-8 lg:pb-[30px] flex flex-col gap-4 rounded-t-xl">
@@ -21,7 +23,9 @@ export const PointsHeader: React.FC = () => {
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myVolume"]()}</p>
         </div>
         <div className="flex flex-col items-center">
-          <p className="text-ink-secondary-rice h3-bold">#{formatNumber(rank)}</p>
+          <p className="text-ink-secondary-rice h3-bold">
+            {isConnected ? `#${rank.toLocaleString()}` : "--"}
+          </p>
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myRank"]()}</p>
         </div>
       </div>

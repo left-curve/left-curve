@@ -1078,7 +1078,8 @@
           "gold": "Receive a Gold chest for every $250k volume.",
           "crystal": "Receive a Crystal chest for every $500k volume."
         },
-        "volumeUntilNext": "{amount} volume until next {tier} Box"
+        "volumeUntilNext": "{amount} volume until next {tier} Box",
+        "notLoggedIn": "You are not logged in."
       },
       "nfts": {
         "title": "My NFTs",

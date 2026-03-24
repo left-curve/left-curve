@@ -75,7 +75,7 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="h3-bold text-ink-primary-900">{m["points.boosters.title"]()}</p>
+      <p className="h4-bold text-ink-primary-900">{m["points.boosters.title"]()}</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
         {oatStatuses.map((oat) => (

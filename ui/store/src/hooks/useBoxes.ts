@@ -17,6 +17,7 @@ export type NFTItem = {
   rarity: NFTRarity;
   quantity: number;
   imageSrc: string;
+  frameSrc: string;
 };
 
 export function useBoxes(parameters: UseBoxesParameters) {
@@ -40,6 +41,7 @@ export function useBoxes(parameters: UseBoxesParameters) {
       rarity,
       quantity: counts[rarity] ?? 0,
       imageSrc: `/images/points/nft/${rarity}.png`,
+      frameSrc: `/images/points/nft/frame-${rarity}.png`,
     }));
   }, [boxes]);
 

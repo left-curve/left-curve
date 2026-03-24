@@ -1,11 +1,4 @@
-import {
-  Button,
-  IconGift,
-  IconUser,
-  Tab,
-  Tabs,
-  createContext,
-} from "@left-curve/applets-kit";
+import { Button, IconGift, IconUser, Tab, Tabs, createContext } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
@@ -48,7 +41,7 @@ const PointsCampaignContainer: React.FC<PointsCampaignContainerProps> = ({
     <UserPointsProvider>
       <ChestOpeningProviderWrapper userIndex={userIndex}>
         <PointsCampaignProvider value={{ activeTab, setActiveTab: onTabChange }}>
-          <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
+          <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 lg:p-0 lg:pt-6 lg:pb-20 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
             <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
               {children}
             </div>
