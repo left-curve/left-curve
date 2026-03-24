@@ -1,0 +1,124 @@
+import { Cell, useApp } from "@left-curve/applets-kit";
+import { usePublicClient, useAccount, useQueryWithPagination } from "@left-curve/store";
+import { formatNumber } from "@left-curve/dango/utils";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { TradeHistoryTable } from "./TradeHistoryTable";
+
+import type { TableColumn } from "@left-curve/applets-kit";
+import type {
+  PerpsEvent,
+  OrderFilledData,
+  LiquidatedData,
+  DeleveragedData,
+} from "@left-curve/dango/types";
+
+const eventTypeLabels: Record<string, string> = {
+  order_filled: "Trade",
+  liquidated: "Liquidation",
+  deleveraged: "ADL",
+};
+
+function getPerpsEventSize(eventType: string, data: PerpsEvent["data"]): string | null {
+  if (eventType === "order_filled") return (data as OrderFilledData).fill_size;
+  if (eventType === "liquidated") return (data as LiquidatedData).adl_size;
+  if (eventType === "deleveraged") return (data as DeleveragedData).closing_size;
+  return null;
+}
+
+function getPerpsEventPrice(eventType: string, data: PerpsEvent["data"]): string | null {
+  if (eventType === "order_filled") return (data as OrderFilledData).fill_price;
+  if (eventType === "liquidated") return (data as LiquidatedData).adl_price;
+  if (eventType === "deleveraged") return (data as DeleveragedData).fill_price;
+  return null;
+}
+
+function getPerpsEventPnl(eventType: string, data: PerpsEvent["data"]): string | null {
+  if (eventType === "order_filled") return (data as OrderFilledData).realized_pnl;
+  if (eventType === "deleveraged") return (data as DeleveragedData).realized_pnl;
+  return null;
+}
+
+export const PerpsTradeHistory: React.FC = () => {
+  const { settings } = useApp();
+  const { account } = useAccount();
+  const publicClient = usePublicClient();
+  const { formatNumberOptions } = settings;
+
+  const { data, pagination, isLoading } = useQueryWithPagination({
+    enabled: !!account,
+    queryKey: ["perpsTradeHistory", account?.address as string],
+    queryFn: async () => {
+      if (!account) throw new Error();
+      return await publicClient.queryPerpsEvents({
+        userAddr: account.address,
+        sortBy: "BLOCK_HEIGHT_DESC",
+      });
+    },
+  });
+
+  const columns: TableColumn<PerpsEvent> = [
+    {
+      header: m["dex.protrade.tradeHistory.pair"](),
+      cell: ({ row }) => <Cell.Text text={row.original.pairId} className="diatype-xs-medium" />,
+    },
+    {
+      header: m["dex.protrade.history.type"](),
+      cell: ({ row }) => (
+        <Cell.Text text={eventTypeLabels[row.original.eventType] ?? row.original.eventType} />
+      ),
+    },
+    {
+      header: "Side",
+      cell: ({ row }) => {
+        const size = getPerpsEventSize(row.original.eventType, row.original.data);
+        if (!size) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
+        const isLong = !size.startsWith("-");
+        return (
+          <Cell.Text
+            text={isLong ? "Long" : "Short"}
+            className={isLong ? "text-green-500" : "text-red-500"}
+          />
+        );
+      },
+    },
+    {
+      header: "Size",
+      cell: ({ row }) => {
+        const size = getPerpsEventSize(row.original.eventType, row.original.data);
+        if (!size) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
+        const abs = size.startsWith("-") ? size.slice(1) : size;
+        return <Cell.Number formatOptions={formatNumberOptions} value={abs} />;
+      },
+    },
+    {
+      header: m["dex.protrade.history.price"](),
+      cell: ({ row }) => {
+        const price = getPerpsEventPrice(row.original.eventType, row.original.data);
+        if (!price) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
+        return <Cell.Text text={`$${formatNumber(price, formatNumberOptions)}`} />;
+      },
+    },
+    {
+      header: "PnL",
+      cell: ({ row }) => {
+        const pnl = getPerpsEventPnl(row.original.eventType, row.original.data);
+        if (!pnl || pnl === "0") return <Cell.Text text="-" className="text-ink-tertiary-500" />;
+        const isPositive = !pnl.startsWith("-");
+        return (
+          <Cell.Text
+            text={`${isPositive ? "+" : ""}${formatNumber(pnl, formatNumberOptions)}`}
+            className={isPositive ? "text-green-500" : "text-red-500"}
+          />
+        );
+      },
+    },
+    {
+      header: "Time",
+      cell: ({ row }) => <Cell.Time date={row.original.createdAt} dateFormat="MM/dd/yy h:mm a" />,
+    },
+  ];
+
+  return (
+    <TradeHistoryTable data={data} columns={columns} pagination={pagination} isLoading={isLoading} />
+  );
+};

@@ -48,6 +48,12 @@ export {
 } from "./queries/perpsCandles.js";
 
 export {
+  type QueryPerpsEventsParameters,
+  type QueryPerpsEventsReturnType,
+  queryPerpsEvents,
+} from "./queries/perpsEvents.js";
+
+export {
   type DepositMarginParameters,
   type DepositMarginReturnType,
   depositMargin,

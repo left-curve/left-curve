@@ -79,3 +79,43 @@ export type PerpsTrade = {
   blockHeight: number;
   tradeIdx: number;
 };
+
+export type PerpsEventType = "order_filled" | "liquidated" | "deleveraged";
+
+export type OrderFilledData = {
+  order_id: string;
+  pair_id: string;
+  user: string;
+  fill_price: string;
+  fill_size: string;
+  closing_size: string;
+  opening_size: string;
+  realized_pnl: string;
+  fee: string;
+};
+
+export type LiquidatedData = {
+  user: string;
+  pair_id: string;
+  adl_size: string;
+  adl_price: string | null;
+};
+
+export type DeleveragedData = {
+  user: string;
+  pair_id: string;
+  closing_size: string;
+  fill_price: string;
+  realized_pnl: string;
+};
+
+export type PerpsEvent = {
+  idx: number;
+  blockHeight: number;
+  txHash: string;
+  eventType: PerpsEventType;
+  userAddr: string;
+  pairId: string;
+  data: OrderFilledData | LiquidatedData | DeleveragedData;
+  createdAt: string;
+};
