@@ -30,7 +30,7 @@ export const OATsSection: React.FC<OATsSectionProps> = ({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="h3-bold text-ink-primary-900">My OATs</p>
+      <p className="h3-bold text-ink-primary-900">Boosters</p>
 
       <div className="flex flex-col lg:flex-row gap-3 md:gap-6">
         <div className="flex items-center justify-between gap-3 px-4 py-2 bg-surface-tertiary-gray shadow-account-card rounded-full flex-1">
