@@ -46,8 +46,7 @@ export const NFTCard: React.FC<NFTCardProps> = ({
   return (
     <div
       className={twMerge(
-        "flex flex-col gap-1 items-center overflow-hidden pb-2 pt-3 px-7 rounded-[21px] border border-outline-primary-gray bg-surface-secondary-rice max-w-[184px] w-full relative",
-        { "min-h-[11.875rem]": isLocked },
+        "flex flex-col gap-1 items-center overflow-hidden pb-2 pt-3 px-7 rounded-[21px] border border-outline-primary-gray bg-surface-secondary-rice max-w-[184px] w-full relative min-h-[11.875rem]",
         className,
       )}
     >

@@ -88,6 +88,10 @@ const ProfileHeader: React.FC = () => {
 };
 
 const ProfileTable: React.FC = () => {
+  const { isConnected } = useAccount();
+
+  if (!isConnected) return null;
+
   return (
     <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
       <div className="px-6 py-4">
