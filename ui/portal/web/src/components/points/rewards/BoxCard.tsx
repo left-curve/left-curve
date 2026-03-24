@@ -7,44 +7,49 @@ import {
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
 export type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 
+const VariantLabels: Record<BoxVariant, () => string> = {
+  bronze: () => m["points.rewards.boxes.tiers.bronze"](),
+  silver: () => m["points.rewards.boxes.tiers.silver"](),
+  gold: () => m["points.rewards.boxes.tiers.gold"](),
+  crystal: () => m["points.rewards.boxes.tiers.crystal"](),
+};
+
+const VariantTooltips: Record<BoxVariant, () => string> = {
+  bronze: () => m["points.rewards.boxes.tooltips.bronze"](),
+  silver: () => m["points.rewards.boxes.tooltips.silver"](),
+  gold: () => m["points.rewards.boxes.tooltips.gold"](),
+  crystal: () => m["points.rewards.boxes.tooltips.crystal"](),
+};
+
 const VariantConfig: Record<
   BoxVariant,
   {
-    label: string;
     badgeColor: "red" | "green" | "rice" | "blue";
-    tooltip: string;
     imageShadow: string;
   }
 > = {
   bronze: {
-    label: "Bronze",
     badgeColor: "red",
-    tooltip: "Receive a Bronze chest for every $25k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#C96A1D66)_drop-shadow(0px_1px_24px_#FFA72C4D)]",
   },
   silver: {
-    label: "Silver",
     badgeColor: "green",
-    tooltip: "Receive a Silver chest for every $100k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#80850680)_drop-shadow(0px_1px_24px_#B8BE0833)]",
   },
   gold: {
-    label: "Gold",
     badgeColor: "rice",
-    tooltip: "Receive a Gold chest for every $250k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#E3BD6666)_drop-shadow(0px_1px_24px_#DCA54333)]",
   },
   crystal: {
-    label: "Crystal",
     badgeColor: "blue",
-    tooltip: "Receive a Crystal chest for every $500k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#BCB8EB80)_drop-shadow(0px_1px_24px_#FFFFFF4D)]",
   },
@@ -64,7 +69,9 @@ export const BoxCard: React.FC<BoxCardProps> = ({
   variant,
 }) => {
   const { isLg } = useMediaQuery();
-  const { badgeColor, imageShadow, label } = VariantConfig[variant];
+  const { badgeColor, imageShadow } = VariantConfig[variant];
+  const label = VariantLabels[variant]();
+  const tooltip = VariantTooltips[variant]();
 
   const isLocked = quantity < 1;
 
@@ -82,11 +89,7 @@ export const BoxCard: React.FC<BoxCardProps> = ({
           text={
             <div className="flex pl-1 items-center gap-1">
               {label}
-              <Tooltip
-                className="max-w-[21rem]"
-                content={VariantConfig[variant].tooltip}
-                placement="top"
-              >
+              <Tooltip className="max-w-[21rem]" content={tooltip} placement="top">
                 <IconInfo className="inline-block w-4 h-4" />
               </Tooltip>
             </div>
@@ -120,7 +123,7 @@ export const BoxCard: React.FC<BoxCardProps> = ({
         isDisabled={isLocked}
         onClick={handleClick}
       >
-        Open
+        {m["points.rewards.boxes.open"]()}
       </Button>
     </div>
   );

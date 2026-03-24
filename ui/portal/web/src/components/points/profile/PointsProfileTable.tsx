@@ -1,4 +1,5 @@
 import { Cell, Table } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useWeeklyPoints } from "@left-curve/store";
 import { useMemo } from "react";
 
@@ -15,11 +16,20 @@ type PointsHistoryRow = {
 const EVENT_START_EPOCH = 1735689600; // Jan 1, 2025 00:00:00 UTC
 const SECONDS_PER_WEEK = 604_800;
 
-const SOURCE_LABELS: Record<string, string> = {
-  vault: "Provide Liquidity",
-  perps: "Trade",
-  referral: "Referral",
+const getSourceLabel = (source: string): string => {
+  switch (source) {
+    case "vault":
+      return m["points.profile.activities.provideLiquidity"]();
+    case "perps":
+      return m["points.profile.activities.trade"]();
+    case "referral":
+      return m["points.profile.activities.referral"]();
+    default:
+      return source;
+  }
 };
+
+const SOURCE_KEYS = ["vault", "perps", "referral"] as const;
 
 const formatWeekDate = (weekNumber: number): string => {
   const timestamp = EVENT_START_EPOCH + weekNumber * SECONDS_PER_WEEK;
@@ -38,10 +48,10 @@ export const PointsProfileTable: React.FC = () => {
     for (const [weekStr, points] of Object.entries(weeklyPoints)) {
       const weekNumber = Number(weekStr);
       const date = formatWeekDate(weekNumber);
-      for (const [source, label] of Object.entries(SOURCE_LABELS)) {
+      for (const source of SOURCE_KEYS) {
         const value = Number(points[source as keyof typeof points] ?? "0");
         if (value > 0) {
-          result.push({ activity: label, date, points: value });
+          result.push({ activity: getSourceLabel(source), date, points: value });
         }
       }
     }
@@ -50,19 +60,22 @@ export const PointsProfileTable: React.FC = () => {
 
   const columns: TableColumn<PointsHistoryRow> = [
     {
-      header: "Action",
+      header: m["points.profile.columns.action"](),
       cell: ({ row }) => (
         <Cell.Text className="text-ink-primary-900" text={row.original.activity} />
       ),
     },
     {
-      header: "Date",
+      header: m["points.profile.columns.date"](),
       cell: ({ row }) => <Cell.Text className="text-ink-primary-900" text={row.original.date} />,
     },
     {
-      header: "Points",
+      header: m["points.profile.columns.points"](),
       cell: ({ row }) => (
-        <Cell.Text className="text-ink-primary-900" text={`${row.original.points} XPoints`} />
+        <Cell.Text
+          className="text-ink-primary-900"
+          text={m["points.profile.xPoints"]({ points: String(row.original.points) })}
+        />
       ),
     },
   ];
@@ -70,7 +83,7 @@ export const PointsProfileTable: React.FC = () => {
   if (isLoading) {
     return (
       <div className="px-6 py-8 text-center text-ink-tertiary-500 diatype-m-regular">
-        Loading point history...
+        {m["points.profile.loading"]()}
       </div>
     );
   }
@@ -78,7 +91,7 @@ export const PointsProfileTable: React.FC = () => {
   if (rows.length === 0) {
     return (
       <div className="px-6 py-8 text-center text-ink-tertiary-500 diatype-m-regular">
-        No point history yet
+        {m["points.profile.noHistory"]()}
       </div>
     );
   }

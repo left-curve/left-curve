@@ -6,6 +6,7 @@ import {
   Tabs,
   createContext,
 } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
 import type { PropsWithChildren } from "react";
@@ -75,10 +76,12 @@ const ChestOpeningProviderWrapper: React.FC<PropsWithChildren<{ userIndex?: numb
 const PointsCampaignHeader: React.FC = () => (
   <div className="flex flex-col gap-8 w-full items-center">
     <div className="max-w-[15.5rem] flex flex-col gap-2 items-center text-center">
-      <p className="text-ink-tertiary-500 diatype-m-regular">Welcome to Dango's</p>
-      <h1 className="exposure-h1-italic lg:text-[48px] text-ink-primary-rice">POINTS PROGRAM</h1>
+      <p className="text-ink-tertiary-500 diatype-m-regular">{m["points.header.welcome"]()}</p>
+      <h1 className="exposure-h1-italic lg:text-[48px] text-ink-primary-rice">
+        {m["points.header.title"]()}
+      </h1>
     </div>
-    <Button variant="utility">Read Rules</Button>
+    <Button variant="utility">{m["points.header.readRules"]()}</Button>
   </div>
 );
 
@@ -95,11 +98,11 @@ const ProfileTable: React.FC = () => {
   return (
     <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
       <div className="px-6 py-4">
-        <p className="diatype-m-bold text-ink-primary-900">Point History</p>
+        <p className="diatype-m-bold text-ink-primary-900">{m["points.profile.pointHistory"]()}</p>
       </div>
       <PointsProfileTable />
       <div className="px-6 py-4 flex items-center justify-center">
-        <Button>Get Started!</Button>
+        <Button>{m["points.profile.getStarted"]()}</Button>
       </div>
     </div>
   );
@@ -152,13 +155,13 @@ const PointsCampaignTabs: React.FC = () => {
         <Tab title="profile">
           <span className="flex items-center gap-1">
             <IconUser className="w-4 h-4" />
-            Profile
+            {m["points.tabs.profile"]()}
           </span>
         </Tab>
         <Tab title="rewards">
           <span className="flex items-center gap-1">
             <IconGift className="w-4 h-4" />
-            Rewards
+            {m["points.tabs.rewards"]()}
           </span>
         </Tab>
       </Tabs>

@@ -1,18 +1,27 @@
 import { formatNumber, type FormatNumberOptions } from "@left-curve/dango/utils";
 import { ProgressBar, useApp } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
+type TierKey = "bronze" | "silver" | "gold" | "crystal";
+
 type Tier = {
-  key: "bronze" | "silver" | "gold" | "crystal";
-  label: string;
+  key: TierKey;
   threshold: number;
 };
 
+const TierLabels: Record<TierKey, () => string> = {
+  bronze: () => m["points.rewards.boxes.tiers.bronze"](),
+  silver: () => m["points.rewards.boxes.tiers.silver"](),
+  gold: () => m["points.rewards.boxes.tiers.gold"](),
+  crystal: () => m["points.rewards.boxes.tiers.crystal"](),
+};
+
 const TIERS: Tier[] = [
-  { key: "bronze", label: "Bronze", threshold: 25000 },
-  { key: "silver", label: "Silver", threshold: 100000 },
-  { key: "gold", label: "Gold", threshold: 250000 },
-  { key: "crystal", label: "Crystal", threshold: 500000 },
+  { key: "bronze", threshold: 25000 },
+  { key: "silver", threshold: 100000 },
+  { key: "gold", threshold: 250000 },
+  { key: "crystal", threshold: 500000 },
 ];
 
 const getNextTier = (currentVolume: number) => {
@@ -62,8 +71,12 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
   const integerDigits = (value: number) =>
     Math.max(Math.floor(Math.abs(value)).toString().length, 1);
 
+  const tierLabel = TierLabels[tier.key]();
   const nextTargetLabel = formatUsd(target, { maximumTotalDigits: 3 });
-  const remainingLabel = `${formatUsd(remaining, { maximumTotalDigits: integerDigits(remaining) })} volume until next ${tier.label} Box`;
+  const remainingLabel = m["points.rewards.boxes.volumeUntilNext"]({
+    amount: formatUsd(remaining, { maximumTotalDigits: integerDigits(remaining) }),
+    tier: tierLabel,
+  });
 
   return (
     <ProgressBar

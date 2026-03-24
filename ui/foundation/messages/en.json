@@ -1020,6 +1020,78 @@
   },
   "points": {
     "campaign": "Campaign",
+    "header": {
+      "welcome": "Welcome to Dango's",
+      "title": "POINTS PROGRAM",
+      "readRules": "Read Rules",
+      "myPoints": "My points",
+      "myVolume": "My volume",
+      "myRank": "My rank",
+      "points": "Points",
+      "tradingPoints": {
+        "title": "Trading Points",
+        "description": "Points earned from organic trading activity"
+      },
+      "lpPoints": {
+        "title": "LP Points",
+        "description": "Points earned from providing liquidity"
+      },
+      "referralPoints": {
+        "title": "Referral Points",
+        "description": "Points earned from referring other users"
+      }
+    },
+    "tabs": {
+      "profile": "Profile",
+      "rewards": "Rewards"
+    },
+    "profile": {
+      "pointHistory": "Point History",
+      "getStarted": "Get Started!",
+      "loading": "Loading point history...",
+      "noHistory": "No point history yet",
+      "columns": {
+        "action": "Action",
+        "date": "Date",
+        "points": "Points"
+      },
+      "activities": {
+        "provideLiquidity": "Provide Liquidity",
+        "trade": "Trade",
+        "referral": "Referral"
+      },
+      "xPoints": "{points} XPoints"
+    },
+    "rewards": {
+      "boxes": {
+        "title": "My boxes",
+        "open": "Open",
+        "tiers": {
+          "bronze": "Bronze",
+          "silver": "Silver",
+          "gold": "Gold",
+          "crystal": "Crystal"
+        },
+        "tooltips": {
+          "bronze": "Receive a Bronze chest for every $25k volume.",
+          "silver": "Receive a Silver chest for every $100k volume.",
+          "gold": "Receive a Gold chest for every $250k volume.",
+          "crystal": "Receive a Crystal chest for every $500k volume."
+        },
+        "volumeUntilNext": "{amount} volume until next {tier} Box"
+      },
+      "nfts": {
+        "title": "My NFTs",
+        "rarities": {
+          "common": "Common",
+          "uncommon": "Uncommon",
+          "rare": "Rare",
+          "epic": "Epic",
+          "legendary": "Legendary",
+          "mythic": "Mythic"
+        }
+      }
+    },
     "referral": {
       "faqs": {
         "title": "FAQs",
@@ -1029,6 +1101,17 @@
         "answer2": "Yes. You will get 1 point for every 5 points earned by your direct referrals, and 1 point for every 20 points earned by your indirect referrals.",
         "question3": "Is there a limit to how much of my commission I can share with my referees?",
         "answer3": "Yes. Referrers cannot share more than 50% of their total commission with their referees."
+      }
+    },
+    "boosters": {
+      "title": "Boosters",
+      "linkEvmWallet": "Link EVM Wallet",
+      "pointsBoost": "+{pointsBoost}% Points",
+      "oats": {
+        "hurrah": "The Last Hurrah",
+        "trader": "Testnet Trader",
+        "wizard": "Testnet Wizard",
+        "supporter": "Early Supporter"
       }
     },
     "leagues": {

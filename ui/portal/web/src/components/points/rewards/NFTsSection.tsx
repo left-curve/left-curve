@@ -1,3 +1,4 @@
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 import { NFTCard, type NFTRarity } from "./NFTCard";
 
@@ -14,7 +15,7 @@ type NFTsSectionProps = {
 export const NFTsSection: React.FC<NFTsSectionProps> = ({ nfts }) => {
   return (
     <div className="flex flex-col gap-3">
-      <p className="h3-bold text-ink-primary-900">My NFTs</p>
+      <p className="h3-bold text-ink-primary-900">{m["points.rewards.nfts.title"]()}</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
         {nfts.map((nft) => (
           <NFTCard

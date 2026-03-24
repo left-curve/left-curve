@@ -1,31 +1,21 @@
 import { IconFlash, IconTimer, twMerge } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
 export type OATType = "hurrah" | "trader" | "wizard" | "supporter";
 
-const OATConfig: Record<
-  OATType,
-  {
-    title: string;
-    imageSrc: string;
-  }
-> = {
-  hurrah: {
-    title: "The Last Hurrah",
-    imageSrc: "/images/points/oats/hurrah.png",
-  },
-  trader: {
-    title: "Testnet Trader",
-    imageSrc: "/images/points/oats/trader.png",
-  },
-  wizard: {
-    title: "Testnet Wizard",
-    imageSrc: "/images/points/oats/wizard.png",
-  },
-  supporter: {
-    title: "Early Supporter",
-    imageSrc: "/images/points/oats/supporter.png",
-  },
+const OATImages: Record<OATType, string> = {
+  hurrah: "/images/points/oats/hurrah.png",
+  trader: "/images/points/oats/trader.png",
+  wizard: "/images/points/oats/wizard.png",
+  supporter: "/images/points/oats/supporter.png",
+};
+
+const OATTitles: Record<OATType, () => string> = {
+  hurrah: () => m["points.boosters.oats.hurrah"](),
+  trader: () => m["points.boosters.oats.trader"](),
+  wizard: () => m["points.boosters.oats.wizard"](),
+  supporter: () => m["points.boosters.oats.supporter"](),
 };
 
 /**
@@ -56,7 +46,8 @@ export const OATCard: React.FC<OATCardProps> = ({
   pointsBoost = 100,
   className,
 }) => {
-  const { title, imageSrc } = OATConfig[type];
+  const title = OATTitles[type]();
+  const imageSrc = OATImages[type];
   const expirationDisplay = expiresAt ? formatExpirationDate(expiresAt) : "--";
 
   return (
@@ -77,7 +68,9 @@ export const OATCard: React.FC<OATCardProps> = ({
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 px-2 py-1 bg-surface-disabled-gray rounded-md">
           <IconFlash className="w-4 h-4 text-primitives-green-light-400" />
-          <span className="diatype-xs-regular text-ink-primary-900">+{pointsBoost}% Points</span>
+          <span className="diatype-xs-regular text-ink-primary-900">
+            {m["points.boosters.pointsBoost"]({ pointsBoost: String(pointsBoost) })}
+          </span>
         </div>
         <div className="flex items-center gap-2 px-2 py-1 bg-surface-disabled-gray rounded-md">
           <IconTimer className="w-4 h-4 text-brand-red-bean" />

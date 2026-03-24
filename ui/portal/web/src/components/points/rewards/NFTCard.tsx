@@ -1,4 +1,5 @@
 import { twMerge } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
 export type NFTRarity = "common" | "uncommon" | "epic" | "mythic" | "legendary" | "rare";
@@ -10,17 +11,17 @@ type NFTCardProps = {
   className?: string;
 };
 
-const RarityConfig: Record<NFTRarity, { label: string }> = {
-  common: { label: "Common" },
-  uncommon: { label: "Uncommon" },
-  epic: { label: "Epic" },
-  mythic: { label: "Mythic" },
-  legendary: { label: "Legendary" },
-  rare: { label: "Rare" },
+const RarityLabels: Record<NFTRarity, () => string> = {
+  common: () => m["points.rewards.nfts.rarities.common"](),
+  uncommon: () => m["points.rewards.nfts.rarities.uncommon"](),
+  rare: () => m["points.rewards.nfts.rarities.rare"](),
+  epic: () => m["points.rewards.nfts.rarities.epic"](),
+  legendary: () => m["points.rewards.nfts.rarities.legendary"](),
+  mythic: () => m["points.rewards.nfts.rarities.mythic"](),
 };
 
 export const NFTCard: React.FC<NFTCardProps> = ({ rarity, quantity, imageSrc, className }) => {
-  const { label } = RarityConfig[rarity];
+  const label = RarityLabels[rarity]();
 
   return (
     <div

@@ -1,5 +1,6 @@
 import { Button, useMediaQuery } from "@left-curve/applets-kit";
 import { Modals, useApp } from "@left-curve/foundation";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { withResolvers } from "@left-curve/dango/utils";
 import { useAccount, useConnectors, useRegisterOat } from "@left-curve/store";
 import type { EIP1193Provider } from "@left-curve/store/types";
@@ -57,13 +58,11 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
         return;
       }
 
-      // Get provider and request accounts to ensure wallet is connected
       const provider = await (
         connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
       ).getProvider();
       await provider.request({ method: "eth_requestAccounts" });
 
-      // Register the OAT
       await registerOat(walletId);
     } catch (error) {
       console.error("Wallet linking failed:", error);
@@ -76,7 +75,7 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="h3-bold text-ink-primary-900">Boosters</p>
+      <p className="h3-bold text-ink-primary-900">{m["points.boosters.title"]()}</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
         {oatStatuses.map((oat) => (
@@ -98,7 +97,7 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
         disabled={!isConnected}
         className="w-fit"
       >
-        Link EVM Wallet
+        {m["points.boosters.linkEvmWallet"]()}
       </Button>
     </div>
   );
