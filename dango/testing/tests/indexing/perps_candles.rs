@@ -628,6 +628,7 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
                     max_conditional_orders: 100,
                     funding_period: Duration::from_hours(1),
                     vault_total_weight: Dimensionless::ZERO,
+                    referral: Default::default(),
                 },
                 pair_params: btree_map! {
                     eth_pair.clone() => PairParam {

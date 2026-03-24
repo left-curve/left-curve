@@ -648,6 +648,7 @@ impl Preset for PerpsOption {
                 max_conditional_orders: 10,
                 funding_period: Duration::from_hours(1),
                 vault_total_weight: Dimensionless::ZERO,
+                referral: Default::default(),
             },
             pair_params: btree_map! {
                 pair_id => PairParam {

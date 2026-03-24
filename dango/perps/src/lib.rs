@@ -8,6 +8,7 @@ mod position_index;
 mod price;
 mod querier;
 mod query;
+mod referral;
 mod state;
 mod trade;
 mod vault;
@@ -21,7 +22,7 @@ use {
         DangoQuerier, UsdValue,
         perps::{
             CancelOrderRequest, ExecuteMsg, InstantiateMsg, MaintainerMsg, OrderId, QueryMsg,
-            State, TraderMsg, VaultMsg,
+            ReferralMsg, State, TraderMsg, VaultMsg,
         },
     },
     grug::{
@@ -156,6 +157,14 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             },
             VaultMsg::Refresh {} => vault::refresh_orders(ctx),
         },
+        ExecuteMsg::Referral(msg) => match msg {
+            ReferralMsg::SetReferral { referrer, referee } => {
+                referral::set_referral(ctx, referrer, referee)
+            },
+            ReferralMsg::SetFeeShareRatio { share_ratio } => {
+                referral::set_fee_share_ratio(ctx, share_ratio)
+            },
+        },
     }
 }
 
@@ -212,6 +221,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Volume { user, since } => {
             let res = query::query_volume(ctx.storage, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::Referrer { referee } => {
+            let res = query::query_referrer(ctx.storage, referee)?;
+            res.to_json_value()
+        },
+        QueryMsg::FeeShareRatio { referrer } => {
+            let res = query::query_fee_share_ratio(ctx.storage, referrer)?;
             res.to_json_value()
         },
     }

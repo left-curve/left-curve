@@ -1,9 +1,10 @@
 use {
     dango_types::{
         Quantity, UsdPrice, UsdValue,
+        account_factory::UserIndex,
         perps::{
-            ConditionalOrder, ConditionalOrderId, LimitOrder, OrderId, PairId, PairParam,
-            PairState, Param, State, UserState,
+            ConditionalOrder, ConditionalOrderId, FeeShareRatio, LimitOrder, OrderId, PairId,
+            PairParam, PairState, Param, State, UserState,
         },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
@@ -77,6 +78,14 @@ pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 /// Cumulative trading volume per user, bucketed by day.
 /// Key: (user, day_timestamp). Value: lifetime cumulative USD notional.
 pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
+
+// --------------------------------- referral ----------------------------------
+
+/// Maps a referee to their referrer. Immutable once set.
+pub const REFEREE_TO_REFERRER: Map<UserIndex, UserIndex> = Map::new("ref_r");
+
+/// Maps a referrer to their fee share ratio.
+pub const FEE_SHARE_RATIO: Map<UserIndex, FeeShareRatio> = Map::new("ref_sr");
 
 // ----------------------------------- types -----------------------------------
 

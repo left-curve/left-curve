@@ -1,5 +1,8 @@
 use {
-    crate::{Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
+    crate::{
+        Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
+        account_factory::UserIndex,
+    },
     grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
@@ -28,6 +31,16 @@ pub type OrderId = Uint64;
 
 /// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
 pub type ConditionalOrderId = OrderId;
+
+/// Type alias for a referrer's user index.
+pub type Referrer = UserIndex;
+
+/// Type alias for a referee's user index.
+pub type Referee = UserIndex;
+
+/// The fee share ratio a referrer gives back to the referee.
+/// Uses `Dimensionless` (a value in the range appropriate for ratios).
+pub type FeeShareRatio = Dimensionless;
 
 #[grug::derive(Serde)]
 #[derive(Copy)]
@@ -76,6 +89,15 @@ pub enum TriggerDirection {
 
     /// Trigger when oracle_price <= trigger_price (SL for longs, TP for shorts).
     Below,
+}
+
+/// Parameters for the referral system.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct ReferralParam {
+    /// Minimum lifetime perps trading volume a user must have
+    /// before they can become a referrer by setting a fee share ratio.
+    pub volume_to_be_referrer: UsdValue,
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
@@ -135,6 +157,9 @@ pub struct Param {
     /// submitted, the waiting time that must elapsed before the funds are released
     /// to the liquidity provider.
     pub vault_cooldown_period: Duration,
+
+    /// Referral system parameters.
+    pub referral: ReferralParam,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
@@ -375,6 +400,9 @@ pub enum ExecuteMsg {
 
     /// Messages related to the market making vault.
     Vault(VaultMsg),
+
+    /// Messages related to the referral system.
+    Referral(ReferralMsg),
 }
 
 #[grug::derive(Serde)]
@@ -466,6 +494,23 @@ pub enum VaultMsg {
     Refresh {},
 }
 
+#[grug::derive(Serde)]
+pub enum ReferralMsg {
+    /// Register a referral relationship between a referrer and a referee.
+    /// Called by the account factory during user registration, or by the
+    /// referee themselves.
+    SetReferral {
+        referrer: UserIndex,
+        referee: UserIndex,
+    },
+
+    /// Set or update the fee share ratio for the calling referrer.
+    /// The share ratio determines what fraction of the commission rebound
+    /// the referrer gives back to the referee.
+    /// Can only increase (never decrease) once set.
+    SetFeeShareRatio { share_ratio: FeeShareRatio },
+}
+
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the global parameters.
@@ -532,6 +577,14 @@ pub enum QueryMsg {
         user: Addr,
         since: Option<Timestamp>,
     },
+
+    /// Query the referrer of a given referee.
+    #[returns(Option<Referrer>)]
+    Referrer { referee: UserIndex },
+
+    /// Query the fee share ratio of a given referrer.
+    #[returns(Option<FeeShareRatio>)]
+    FeeShareRatio { referrer: UserIndex },
 }
 
 #[grug::derive(Serde)]
@@ -828,4 +881,12 @@ pub struct BadDebtCovered {
     pub liquidated_user: Addr,
     pub amount: UsdValue,
     pub insurance_fund_remaining: UsdValue,
+}
+
+/// Event indicating a referral relationship has been registered.
+#[grug::event("referral_set")]
+#[grug::derive(Serde)]
+pub struct Referral {
+    pub referrer: UserIndex,
+    pub referee: UserIndex,
 }

@@ -1,15 +1,16 @@
 use {
     crate::{
-        ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, DEPTHS, PAIR_PARAMS, PAIR_STATES,
-        USER_STATES, VOLUMES, round_to_day,
+        ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS,
+        PAIR_STATES, REFEREE_TO_REFERRER, USER_STATES, VOLUMES, round_to_day,
     },
     anyhow::ensure,
     dango_types::{
         UsdPrice, UsdValue,
+        account_factory::UserIndex,
         perps::{
-            ConditionalOrder, LimitOrConditionalOrder, LimitOrder, LiquidityDepth,
+            ConditionalOrder, FeeShareRatio, LimitOrConditionalOrder, LimitOrder, LiquidityDepth,
             LiquidityDepthResponse, OrderId, PairId, PairParam, PairState, QueryOrderResponse,
-            QueryOrdersByUserResponseItem, UserState,
+            QueryOrdersByUserResponseItem, Referrer, UserState,
         },
     },
     grug::{
@@ -290,4 +291,18 @@ pub fn query_volume(
             Ok(latest.checked_sub(baseline)?)
         },
     }
+}
+
+pub fn query_referrer(
+    storage: &dyn Storage,
+    referee: UserIndex,
+) -> StdResult<Option<Referrer>> {
+    REFEREE_TO_REFERRER.may_load(storage, referee)
+}
+
+pub fn query_fee_share_ratio(
+    storage: &dyn Storage,
+    referrer: UserIndex,
+) -> StdResult<Option<FeeShareRatio>> {
+    FEE_SHARE_RATIO.may_load(storage, referrer)
 }
