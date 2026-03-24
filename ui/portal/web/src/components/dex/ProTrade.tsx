@@ -1,7 +1,6 @@
 import {
   Badge,
   createContext,
-  CursorPagination,
   Modals,
   Spinner,
   Tab,
@@ -14,8 +13,6 @@ import {
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   useConfig,
-  usePublicClient,
-  useAccount,
   useOrderBookState,
   usePerpsUserState,
   useOrdersByUser,
@@ -26,13 +23,10 @@ import {
   tradePairStore,
   tradeInfoStore,
   useTradeCoins,
-  useQueryWithPagination,
 } from "@left-curve/store";
-import { useNavigate } from "@tanstack/react-router";
-
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
-import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
 import { Cell, Table, Tabs } from "@left-curve/applets-kit";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
@@ -41,10 +35,11 @@ import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
 import { TradeHeader } from "./TradeHeader";
 import { ErrorBoundary } from "react-error-boundary";
+import { SpotTradeHistory, PerpsTradeHistory } from "./TradeHistory";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
-import { TimeInForceOption, type OrderId, type PairId, type Trade } from "@left-curve/dango/types";
+import type { OrderId, PairId } from "@left-curve/dango/types";
 
 const [ProTradeProvider, useProTrade] = createContext<{
   controllers: ReturnType<typeof useInputs>;
@@ -611,153 +606,8 @@ const UnifiedOpenOrders: React.FC = () => {
 };
 
 const ProTradeOrdersHistory: React.FC = () => {
-  const navigate = useNavigate();
-  const { settings } = useApp();
-  const { coins } = useConfig();
-  const { account } = useAccount();
-  const publicClient = usePublicClient();
   const mode = tradePairStore((s) => s.mode);
-  const pairId = tradePairStore((s) => s.pairId);
-
-  const { baseCoin } = useTradeCoins({ pairId, mode });
-  const { formatNumberOptions } = settings;
-
-  const history = useQueryWithPagination({
-    enabled: !!account && mode === "spot",
-    queryKey: ["tradeHistory", account?.address as string],
-    queryFn: async () => {
-      if (!account) throw new Error();
-      return await publicClient.queryTrades({ address: account.address });
-    },
-  });
-
-  const { data, pagination, isLoading } = history;
-
-  const columns: TableColumn<Trade> = [
-    {
-      header: m["dex.protrade.tradeHistory.pair"](),
-      cell: ({ row }) => {
-        return (
-          <div className="flex items-center gap-1">
-            <Cell.PairName
-              className="diatype-xs-medium"
-              pairId={{
-                baseDenom: row.original.baseDenom,
-                quoteDenom: row.original.quoteDenom,
-              }}
-            />
-          </div>
-        );
-      },
-    },
-    {
-      header: m["dex.protrade.tradeHistory.direction"](),
-      cell: ({ row }) => (
-        <Cell.OrderDirection
-          text={m["dex.protrade.spot.direction"]({
-            direction: row.original.direction,
-          })}
-          direction={row.original.direction}
-        />
-      ),
-    },
-    {
-      header: m["dex.protrade.history.type"](),
-      cell: ({ row }) => (
-        <Cell.Text
-          text={m["dex.protrade.orderType"]({
-            orderType:
-              row.original.timeInForce === TimeInForceOption.GoodTilCanceled ? "limit" : "market",
-          })}
-        />
-      ),
-    },
-    {
-      id: "size",
-      header: () =>
-        m["dex.protrade.history.size"]({
-          symbol: baseCoin.symbol,
-        }),
-      cell: ({ row }) => {
-        return (
-          <Cell.Number
-            formatOptions={formatNumberOptions}
-            value={calculateTradeSize(
-              row.original,
-              coins.byDenom[row.original.baseDenom].decimals,
-            ).toFixed()}
-          />
-        );
-      },
-    },
-    {
-      header: m["dex.protrade.history.price"](),
-      cell: ({ row }) => (
-        <Cell.Text
-          text={formatNumber(
-            Decimal(row.original.clearingPrice)
-              .times(
-                Decimal(10).pow(
-                  coins.byDenom[row.original.baseDenom].decimals -
-                    coins.byDenom[row.original.quoteDenom].decimals,
-                ),
-              )
-              .toFixed(),
-            formatNumberOptions,
-          )}
-        />
-      ),
-    },
-    {
-      header: "Time",
-      cell: ({ row }) => <Cell.Time date={row.original.createdAt} dateFormat="MM/dd/yy h:mm a" />,
-    },
-  ];
-
-  if (mode === "perps") {
-    return (
-      <EmptyPlaceholder
-        component={m["dex.protrade.history.noOpenOrders"]()}
-        className="h-[3.5rem]"
-      />
-    );
-  }
-
-  return (
-    <Table
-      data={data?.nodes || []}
-      columns={columns}
-      style="simple"
-      onRowClick={(row) =>
-        navigate({ to: "/block/$block", params: { block: row.original.blockHeight.toString() } })
-      }
-      classNames={{
-        row: "h-fit",
-        header: "pt-0",
-        base: "pb-0 max-h-[31vh] overflow-y-scroll",
-        cell: twMerge("diatype-xs-regular py-1", {
-          "group-hover:bg-transparent": !data?.nodes.length,
-        }),
-      }}
-      bottomContent={
-        pagination ? (
-          <CursorPagination
-            {...pagination}
-            isLoading={isLoading}
-            className="flex w-full justify-end gap-2"
-            nextLabel={m["pagination.next"]()}
-            previousLabel={m["pagination.previous"]()}
-          />
-        ) : null
-      }
-      emptyComponent={
-        <EmptyPlaceholder
-          component={m["dex.protrade.history.noOpenOrders"]()}
-          className="h-[3.5rem]"
-        />
-      }
-    />
-  );
+  return mode === "perps" ? <PerpsTradeHistory /> : <SpotTradeHistory />;
 };
 
 export const ProTrade = Object.assign(ProTradeContainer, {
