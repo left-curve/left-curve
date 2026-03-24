@@ -32,7 +32,7 @@ async fn index_perps_events() -> anyhow::Result<()> {
         assert!(!event.data.is_null(), "data should not be null");
     }
 
-    // A fill produces order_persisted (book placement) and order_filled events.
+    // A fill produces order_filled events (one per side).
     let filled: Vec<_> = events
         .iter()
         .filter(|e| e.event_type == "order_filled")

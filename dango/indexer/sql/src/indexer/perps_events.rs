@@ -2,7 +2,7 @@ use {
     crate::{entity, entity::perps_trade::PerpsTrade, error::Error},
     dango_types::{
         config::AppConfig,
-        perps::{Deleveraged, Liquidated, OrderFilled, OrderPersisted, OrderRemoved},
+        perps::{Deleveraged, Liquidated, OrderFilled},
     },
     grug::{
         BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus, EvtCron,
@@ -22,8 +22,6 @@ use {
 
 const PERPS_EVENT_NAMES: &[&str] = &[
     OrderFilled::EVENT_NAME,
-    OrderPersisted::EVENT_NAME,
-    OrderRemoved::EVENT_NAME,
     Liquidated::EVENT_NAME,
     Deleveraged::EVENT_NAME,
 ];
@@ -237,7 +235,7 @@ fn try_build_perps_trade(
     })
 }
 
-/// Extract `user` and `pair_id` from any of the 4 perps event types.
+/// Extract `user` and `pair_id` from any of the 3 perps event types.
 ///
 /// All perps events contain `user: Addr` and `pair_id: PairId` fields,
 /// so we partially deserialize to extract them.
