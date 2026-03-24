@@ -251,6 +251,11 @@ export {
 } from "./hooks/useOats.js";
 
 export {
+  type UseRegisterOatParameters,
+  useRegisterOat,
+} from "./hooks/useRegisterOat.js";
+
+export {
   type UseWeeklyPointsParameters,
   useWeeklyPoints,
 } from "./hooks/useWeeklyPoints.js";

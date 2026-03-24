@@ -7,7 +7,6 @@ import {
   createContext,
 } from "@left-curve/applets-kit";
 import type React from "react";
-import { useState } from "react";
 
 import type { PropsWithChildren } from "react";
 import { PointsHeader } from "./PointsHeader";
@@ -32,14 +31,22 @@ const [PointsCampaignProvider, usePointsCampaign] = createContext<{
   name: "PointsCampaignContext",
 });
 
-const PointsCampaignContainer: React.FC<PropsWithChildren> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState<PointsCampaignTab>("profile");
+type PointsCampaignContainerProps = PropsWithChildren<{
+  activeTab: PointsCampaignTab;
+  onTabChange: (tab: PointsCampaignTab) => void;
+}>;
+
+const PointsCampaignContainer: React.FC<PointsCampaignContainerProps> = ({
+  children,
+  activeTab,
+  onTabChange,
+}) => {
   const { userIndex } = useAccount();
 
   return (
     <UserPointsProvider>
       <ChestOpeningProviderWrapper userIndex={userIndex}>
-        <PointsCampaignProvider value={{ activeTab, setActiveTab }}>
+        <PointsCampaignProvider value={{ activeTab, setActiveTab: onTabChange }}>
           <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
             <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
               {children}
@@ -103,7 +110,7 @@ const RewardsLoot: React.FC = () => {
   const pointsUrl = window.dango.urls.pointsUrl;
   const { openChest } = useChestOpening();
   const { nfts, unopenedBoxes, estimatedVolume } = useBoxes({ pointsUrl, userIndex });
-  const { oatStatuses, oatCount } = useOats({ pointsUrl, userIndex });
+  const { oatStatuses } = useOats({ pointsUrl, userIndex });
 
   return (
     <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-primary-gray rounded-b-xl">
@@ -112,7 +119,7 @@ const RewardsLoot: React.FC = () => {
       </div>
       <BoxesSection unopenedBoxes={unopenedBoxes} onOpenChest={openChest} />
       <NFTsSection nfts={nfts} />
-      <OATsSection oatStatuses={oatStatuses} oatCount={oatCount} />
+      <OATsSection oatStatuses={oatStatuses} />
     </div>
   );
 };

@@ -12,6 +12,12 @@ const FALLBACK_CAMPAIGN_MAP: Record<number, OATType> = {
   4: "hurrah",
 };
 
+/** OAT validity duration in seconds (1 year) */
+const OAT_VALIDITY_DURATION_SECONDS = 365 * 24 * 60 * 60;
+
+/** Points boost percentage per OAT */
+const OAT_POINTS_BOOST = 100;
+
 const campaignNameToOatType = (name: string): OATType | null => {
   const lower = name.toLowerCase();
   if (lower.includes("supporter")) return "supporter";
@@ -24,6 +30,10 @@ const campaignNameToOatType = (name: string): OATType | null => {
 export type OATStatus = {
   type: OATType;
   isLocked: boolean;
+  /** Unix timestamp (seconds) when this OAT expires, undefined if not registered */
+  expiresAt?: number;
+  /** Points boost percentage for this OAT */
+  pointsBoost: number;
 };
 
 export type UseOatsParameters = {
@@ -57,18 +67,28 @@ export function useOats(parameters: UseOatsParameters) {
     return Object.keys(map).length > 0 ? map : FALLBACK_CAMPAIGN_MAP;
   }, [campaigns]);
 
-  const registeredCampaigns = useMemo(
-    () => new Set(registeredOats.map((o) => o.collection_id)),
-    [registeredOats],
-  );
+  const registeredOatsByCampaign = useMemo(() => {
+    const map = new Map<number, { registeredAt: number }>();
+    for (const oat of registeredOats) {
+      map.set(oat.collection_id, { registeredAt: oat.registered_at });
+    }
+    return map;
+  }, [registeredOats]);
 
   const oatStatuses = useMemo(
     (): OATStatus[] =>
-      Object.entries(campaignMap).map(([campaignId, oatType]) => ({
-        type: oatType,
-        isLocked: !registeredCampaigns.has(Number(campaignId)),
-      })),
-    [campaignMap, registeredCampaigns],
+      Object.entries(campaignMap).map(([campaignId, oatType]) => {
+        const registered = registeredOatsByCampaign.get(Number(campaignId));
+        return {
+          type: oatType,
+          isLocked: !registered,
+          expiresAt: registered
+            ? registered.registeredAt + OAT_VALIDITY_DURATION_SECONDS
+            : undefined,
+          pointsBoost: OAT_POINTS_BOOST,
+        };
+      }),
+    [campaignMap, registeredOatsByCampaign],
   );
 
   const isLoading = isLoadingOats || isLoadingCampaigns;

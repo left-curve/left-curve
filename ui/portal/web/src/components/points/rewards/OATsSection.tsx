@@ -1,65 +1,104 @@
-import { Button, IconFlash, IconTimer, useMediaQuery } from "@left-curve/applets-kit";
+import { Button, useMediaQuery } from "@left-curve/applets-kit";
+import { Modals, useApp } from "@left-curve/foundation";
+import { withResolvers } from "@left-curve/dango/utils";
+import { useAccount, useConnectors, useRegisterOat } from "@left-curve/store";
+import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
+import { useState } from "react";
 import { OATCard, type OATType } from "./OATCard";
 
 type OATStatus = {
   type: OATType;
   isLocked: boolean;
+  expiresAt?: number;
+  pointsBoost: number;
 };
 
 type OATsSectionProps = {
   oatStatuses: OATStatus[];
-  oatCount: number;
-  endsIn?: string;
-  onLinkWallet?: () => void;
-  // TODO: fetch oat_multiplier from backend config endpoint when available
-  pointsBoostPerOat?: number;
 };
 
-const DEFAULT_POINTS_BOOST_PER_OAT = 100;
-
-export const OATsSection: React.FC<OATsSectionProps> = ({
-  oatStatuses,
-  oatCount,
-  endsIn = "2 days 21:24:32",
-  onLinkWallet,
-  pointsBoostPerOat = DEFAULT_POINTS_BOOST_PER_OAT,
-}) => {
+export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
   const { isLg } = useMediaQuery();
-  const pointsBoost = oatCount * pointsBoostPerOat;
+  const { showModal, hideModal } = useApp();
+  const connectors = useConnectors();
+  const { userIndex, isConnected } = useAccount();
+  const [isLinking, setIsLinking] = useState(false);
+  const pointsUrl = window.dango.urls.pointsUrl;
+
+  const { registerOat, isLoading: isRegistering } = useRegisterOat({
+    pointsUrl,
+    userIndex,
+    onSuccess: () => {
+      hideModal();
+    },
+    onError: (error) => {
+      console.error("OAT registration failed:", error);
+    },
+  });
+
+  const handleLinkWallet = async () => {
+    if (!userIndex) return;
+
+    setIsLinking(true);
+
+    try {
+      const { promise, resolve: onWalletSelect, reject: onReject } = withResolvers<string>();
+
+      showModal(Modals.WalletSelector, {
+        onWalletSelect,
+        onReject,
+      });
+
+      const walletId = await promise;
+      const connector = connectors.find((c) => c.id === walletId);
+      if (!connector) {
+        onReject();
+        return;
+      }
+
+      // Get provider and request accounts to ensure wallet is connected
+      const provider = await (
+        connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
+      ).getProvider();
+      await provider.request({ method: "eth_requestAccounts" });
+
+      // Register the OAT
+      await registerOat(walletId);
+    } catch (error) {
+      console.error("Wallet linking failed:", error);
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
+  const isButtonLoading = isLinking || isRegistering;
 
   return (
     <div className="flex flex-col gap-4">
       <p className="h3-bold text-ink-primary-900">Boosters</p>
 
-      <div className="flex flex-col lg:flex-row gap-3 md:gap-6">
-        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-surface-tertiary-gray shadow-account-card rounded-full flex-1">
-          <IconFlash className="w-6 h-6 text-primitives-green-light-400" />
-          <p className="diatype-m-regular text-ink-primary-900">
-            <span className="diatype-m-bold">{pointsBoost}%</span> Points Boost
-          </p>
-        </div>
-        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-surface-tertiary-gray shadow-account-card rounded-full flex-1">
-          <IconTimer className="w-6 h-6 text-brand-red-bean" />
-          <p className="diatype-m-regular text-ink-primary-900">
-            Ends in <span className="diatype-m-bold">{endsIn}</span>
-          </p>
-        </div>
-      </div>
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
         {oatStatuses.map((oat) => (
-          <OATCard key={oat.type} type={oat.type} isLocked={oat.isLocked} />
+          <OATCard
+            key={oat.type}
+            type={oat.type}
+            isLocked={oat.isLocked}
+            expiresAt={oat.expiresAt}
+            pointsBoost={oat.pointsBoost}
+          />
         ))}
       </div>
 
       <Button
         size={isLg ? "md" : "lg"}
         variant="primary"
-        onClick={onLinkWallet}
-        className="w-full lg:w-fit"
+        onClick={handleLinkWallet}
+        isLoading={isButtonLoading}
+        disabled={!isConnected}
+        className="w-fit"
       >
-        Link Your EVM Wallet
+        Link EVM Wallet
       </Button>
     </div>
   );
