@@ -492,6 +492,7 @@ fn process_triggered_order(
         &mut user_state,
         &mut maker_states,
         &vault_fees,
+        &volumes,
     )?;
 
     NEXT_ORDER_ID.save(storage, &next_order_id)?;

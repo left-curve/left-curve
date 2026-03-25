@@ -246,7 +246,7 @@ const MAX_REFERRAL_CHAIN_DEPTH: usize = 5;
 ///
 /// Returns the total rebound amount deducted from the vault.
 pub(crate) fn apply_fee_rebounds(
-    storage: &dyn Storage,
+    storage: &mut dyn Storage,
     querier: &QuerierWrapper,
     perps_contract: Addr,
     current_time: Timestamp,
@@ -255,6 +255,7 @@ pub(crate) fn apply_fee_rebounds(
     taker_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
     vault_fees: &BTreeMap<Addr, UsdValue>,
+    volumes: &BTreeMap<Addr, UsdValue>,
 ) -> anyhow::Result<UsdValue> {
     let mut total_vault_deduction = UsdValue::ZERO;
     let mut referrer_settings_cache = BTreeMap::<UserIndex, ReferrerSettings>::new();
@@ -332,6 +333,31 @@ pub(crate) fn apply_fee_rebounds(
             }
         }
 
+        // Payer's trade volume for this fill.
+        let payer_volume = volumes.get(&payer).copied().unwrap_or(UsdValue::ZERO);
+
+        // Update payer's referral data: volume + commission_rebounded.
+        increment_referral_data(
+            storage,
+            payer_index,
+            current_time,
+            payer_volume,
+            referee_rebound,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+        )?;
+
+        // Update first referrer's referral data: referees_volume + referees_commission_rebounded.
+        increment_referral_data(
+            storage,
+            first_referrer,
+            current_time,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            payer_volume,
+            referrer_rebound,
+        )?;
+
         // Walk up the referrer chain (levels 2..=MAX_REFERRAL_CHAIN_DEPTH).
         let mut current_user = first_referrer;
         let mut max_cr = first_cr;
@@ -370,6 +396,17 @@ pub(crate) fn apply_fee_rebounds(
                         )?;
                         total_vault_deduction.checked_add_assign(commission_rebound)?;
                     }
+
+                    // Update upstream referrer's referral data: referees_commission_rebounded only.
+                    increment_referral_data(
+                        storage,
+                        next_referrer,
+                        current_time,
+                        UsdValue::ZERO,
+                        UsdValue::ZERO,
+                        UsdValue::ZERO,
+                        commission_rebound,
+                    )?;
                 }
 
                 max_cr = next_cr;
@@ -443,5 +480,32 @@ fn credit_rebound(
             .margin
             .checked_add_assign(amount)?;
     }
+    Ok(())
+}
+
+/// Update cumulative referral data for a user, merging into today's bucket.
+fn increment_referral_data(
+    storage: &mut dyn Storage,
+    user_index: UserIndex,
+    current_time: Timestamp,
+    volume_delta: UsdValue,
+    commission_delta: UsdValue,
+    referees_volume_delta: UsdValue,
+    referees_commission_delta: UsdValue,
+) -> grug::StdResult<()> {
+    let today = round_to_day(current_time);
+
+    let mut data = load_referral_data(storage, user_index, None)?;
+
+    data.volume.checked_add_assign(volume_delta)?;
+    data.commission_rebounded
+        .checked_add_assign(commission_delta)?;
+    data.referees_volume
+        .checked_add_assign(referees_volume_delta)?;
+    data.referees_commission_rebounded
+        .checked_add_assign(referees_commission_delta)?;
+
+    USER_REFERRAL_DATA.save(storage, (user_index, today), &data)?;
+
     Ok(())
 }

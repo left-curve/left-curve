@@ -136,6 +136,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         &mut user_state,
         &mut maker_states,
         &vault_fees,
+        &volumes,
     )?;
 
     STATE.save(ctx.storage, &state)?;

@@ -104,6 +104,7 @@ pub fn submit_order(
         &mut taker_state,
         &mut maker_states,
         &vault_fees,
+        &volumes,
     )?;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
