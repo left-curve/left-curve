@@ -3,7 +3,7 @@ use {
         Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
         account_factory::UserIndex,
     },
-    grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
+    grug::{Addr, Denom, Duration, Number, Part, Timestamp, Uint64, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
         sync::LazyLock,
@@ -117,6 +117,19 @@ pub struct ReferralParam {
 pub struct ReferrerSettings {
     pub commission_rebound: CommissionReboundRate,
     pub share_ratio: FeeShareRatio,
+}
+
+/// Per-referee statistics tracked from the referrer's perspective.
+#[grug::derive(Serde, Borsh)]
+pub struct RefereeStats {
+    /// Timestamp when the referee registered with the referral.
+    pub registered_at: Timestamp,
+    /// Total trading volume made by the referee (USD).
+    pub volume: UsdValue,
+    /// Total commission rebounded to the referrer from this referee (USD).
+    pub commission_rebounded: UsdValue,
+    /// Timestamp of the last day the referee was active.
+    pub last_day_active: Timestamp,
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
@@ -375,6 +388,8 @@ pub struct UserReferralData {
     pub referees_volume: UsdValue,
     /// Total commission rebounded to this user's referees (cumulative).
     pub referees_commission_rebounded: UsdValue,
+    /// Number of referees that have traded on a specific day.
+    pub active_users: Uint128,
 }
 
 impl UserReferralData {
@@ -390,6 +405,7 @@ impl UserReferralData {
             referees_commission_rebounded: self
                 .referees_commission_rebounded
                 .checked_sub(other.referees_commission_rebounded)?,
+            active_users: self.active_users.saturating_sub(other.active_users),
         })
     }
 }

@@ -1,20 +1,20 @@
 use {
     crate::{
-        FEE_SHARE_RATIO, PARAM, REFEREE_TO_REFERRER, USER_REFERRAL_DATA, USER_STATES,
-        query::query_volume, volume::round_to_day,
+        FEE_SHARE_RATIO, PARAM, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS,
+        USER_REFERRAL_DATA, USER_STATES, query::query_volume, volume::round_to_day,
     },
     anyhow::{bail, ensure},
     dango_types::{
         DangoQuerier, UsdValue,
         account_factory::{self, UserIndex},
         perps::{
-            CommissionReboundRate, FeeShareRatio, Referral, ReferralParam, ReferrerSettings,
-            UserReferralData, UserState,
+            CommissionReboundRate, FeeShareRatio, Referee, RefereeStats, Referral, ReferralParam,
+            Referrer, ReferrerSettings, UserReferralData, UserState,
         },
     },
     grug::{
-        Addr, Bound, MutableCtx, Number, Order as IterationOrder, QuerierExt, QuerierWrapper,
-        Response, Storage, Timestamp,
+        Addr, Bound, Duration, MutableCtx, Number, NumberConst, Order as IterationOrder,
+        QuerierExt, QuerierWrapper, Response, Storage, Timestamp, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -62,6 +62,20 @@ pub fn set_referral(
         }
         Ok(referrer)
     })?;
+
+    // Initialize per-referee statistics for the referrer.
+    REFERRER_TO_REFEREE_STATISTICS.save(ctx.storage, (referrer, referee), &RefereeStats {
+        registered_at: ctx.block.timestamp,
+        volume: UsdValue::ZERO,
+        commission_rebounded: UsdValue::ZERO,
+        last_day_active: Duration::from_nanos(0),
+    })?;
+
+    // Increment the referrer's referee count.
+    let today = round_to_day(ctx.block.timestamp);
+    let mut data = load_referral_data(ctx.storage, referrer, None)?;
+    data.referee_count = data.referee_count.saturating_add(1);
+    USER_REFERRAL_DATA.save(ctx.storage, (referrer, today), &data)?;
 
     Ok(Response::new().add_event(Referral { referrer, referee })?)
 }
@@ -358,6 +372,16 @@ pub(crate) fn apply_fee_rebounds(
             referrer_rebound,
         )?;
 
+        // Update per-referee statistics for the first referrer.
+        update_referee_stats(
+            storage,
+            first_referrer,
+            payer_index,
+            current_time,
+            payer_volume,
+            referrer_rebound,
+        )?;
+
         // Walk up the referrer chain (levels 2..=MAX_REFERRAL_CHAIN_DEPTH).
         let mut current_user = first_referrer;
         let mut max_cr = first_cr;
@@ -506,6 +530,42 @@ fn increment_referral_data(
         .checked_add_assign(referees_commission_delta)?;
 
     USER_REFERRAL_DATA.save(storage, (user_index, today), &data)?;
+
+    Ok(())
+}
+
+/// Update per-referee statistics for a referrer.
+///
+/// Creates the entry on first call (setting `registered_at`), then accumulates
+/// volume and commission, and updates the last active day.
+fn update_referee_stats(
+    storage: &mut dyn Storage,
+    referrer: Referrer,
+    referee: Referee,
+    current_time: Timestamp,
+    volume_delta: UsdValue,
+    commission_delta: UsdValue,
+) -> grug::StdResult<()> {
+    let today = round_to_day(current_time);
+
+    let mut stats = REFERRER_TO_REFEREE_STATISTICS.load(storage, (referrer, referee))?;
+
+    stats.volume.checked_add_assign(volume_delta)?;
+    stats
+        .commission_rebounded
+        .checked_add_assign(commission_delta)?;
+
+    // If this referee hasn't traded today yet, increment the referrer's
+    // daily active users count.
+    if stats.last_day_active != today {
+        stats.last_day_active = today;
+
+        let mut data = load_referral_data(storage, referrer, None)?;
+        data.active_users = data.active_users.checked_add(Uint128::ONE)?;
+        USER_REFERRAL_DATA.save(storage, (referrer, today), &data)?;
+    }
+
+    REFERRER_TO_REFEREE_STATISTICS.save(storage, (referrer, referee), &stats)?;
 
     Ok(())
 }

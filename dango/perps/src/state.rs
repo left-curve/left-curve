@@ -4,7 +4,8 @@ use {
         account_factory::UserIndex,
         perps::{
             ConditionalOrder, ConditionalOrderId, FeeShareRatio, LimitOrder, OrderId, PairId,
-            PairParam, PairState, Param, State, UserReferralData, UserState,
+            PairParam, PairState, Param, Referee, RefereeStats, Referrer, State, UserReferralData,
+            UserState,
         },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
@@ -90,6 +91,22 @@ pub const FEE_SHARE_RATIO: Map<UserIndex, FeeShareRatio> = Map::new("ref_sr");
 /// Cumulative referral data per user, bucketed by day.
 pub const USER_REFERRAL_DATA: Map<(UserIndex, Timestamp), UserReferralData> = Map::new("ref_data");
 
+/// Per-referee statistics from the referrer's perspective, with multi-indexes
+/// for sorted queries by registration date, volume, and commission.
+pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
+    (Referrer, Referee),
+    RefereeStats,
+    ReferrerStatisticsIndex,
+> = IndexedMap::new(
+    "ref_stats",
+    ReferrerStatisticsIndex::new(
+        "ref_stats",
+        "ref_stats__register_at",
+        "ref_stats__volume",
+        "ref_stats__commission",
+    ),
+);
+
 // ----------------------------------- types -----------------------------------
 
 pub type OrderKey = (PairId, UsdPrice, OrderId);
@@ -162,6 +179,40 @@ impl UserStateIndexes<'static> {
                 },
                 pk_namespace,
                 idx_namespace,
+            ),
+        }
+    }
+}
+
+#[grug::index_list((Referrer, Referee), RefereeStats)]
+pub struct ReferrerStatisticsIndex<'a> {
+    pub register_at: MultiIndex<'a, (Referrer, Referee), (Referrer, Timestamp), RefereeStats>,
+    pub volume: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,
+    pub commission: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,
+}
+
+impl ReferrerStatisticsIndex<'static> {
+    pub const fn new(
+        pk_namespace: &'static str,
+        register_at_namespace: &'static str,
+        volume_namespace: &'static str,
+        commission_namespace: &'static str,
+    ) -> Self {
+        ReferrerStatisticsIndex {
+            register_at: MultiIndex::new(
+                |(referrer, _), data| (*referrer, data.registered_at),
+                pk_namespace,
+                register_at_namespace,
+            ),
+            volume: MultiIndex::new(
+                |(referrer, _), data| (*referrer, data.volume),
+                pk_namespace,
+                volume_namespace,
+            ),
+            commission: MultiIndex::new(
+                |(referrer, _), data| (*referrer, data.commission_rebounded),
+                pk_namespace,
+                commission_namespace,
             ),
         }
     }
