@@ -1,4 +1,4 @@
-import { IconFlash, IconTimer, twMerge } from "@left-curve/applets-kit";
+import { IconClock, IconFlash, twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
@@ -53,8 +53,8 @@ export const OATCard: React.FC<OATCardProps> = ({
   return (
     <div
       className={twMerge(
-        "flex flex-col rounded-xl overflow-hidden bg-surface-tertiary-gray shadow-account-card p-2 gap-2",
-        isLocked && "opacity-50",
+        "flex flex-col rounded-xl overflow-hidden bg-surface-secondary-rice border border-outline-primary-gray shadow-account-card p-4 gap-4",
+
         className,
       )}
     >
@@ -62,18 +62,21 @@ export const OATCard: React.FC<OATCardProps> = ({
         <img
           src={imageSrc}
           alt={title}
-          className="w-full aspect-square object-cover select-none drag-none rounded-xl"
+          className={twMerge(
+            "w-full aspect-square object-cover select-none drag-none rounded-xl",
+            isLocked && "opacity-50",
+          )}
         />
       </div>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2 px-2 py-1 bg-surface-disabled-gray rounded-md">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 px-2 py-1 bg-surface-tertiary-gray rounded-md">
           <IconFlash className="w-4 h-4 text-primitives-green-light-400" />
           <span className="diatype-xs-regular text-ink-primary-900">
             {m["points.boosters.pointsBoost"]({ pointsBoost: String(pointsBoost) })}
           </span>
         </div>
-        <div className="flex items-center gap-2 px-2 py-1 bg-surface-disabled-gray rounded-md">
-          <IconTimer className="w-4 h-4 text-brand-red-bean" />
+        <div className="flex items-center gap-2 px-2 py-1 bg-surface-tertiary-gray rounded-md">
+          <IconClock className="w-4 h-4 text-brand-red-bean" />
           <span className="diatype-xs-regular text-ink-primary-900">{expirationDisplay}</span>
         </div>
       </div>

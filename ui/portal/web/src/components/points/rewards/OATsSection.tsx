@@ -100,7 +100,7 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
         onClick={handleLinkWallet}
         isLoading={isButtonLoading}
         isDisabled={!isConnected}
-        className="w-fit"
+        className="w-fit min-w-[8.3125rem]"
       >
         {m["points.boosters.linkEvmWallet"]()}
       </Button>
