@@ -5,6 +5,8 @@ import { fetchCampaigns, fetchUserOats } from "./pointsApi.js";
 
 type OATType = "supporter" | "wizard" | "trader" | "hurrah";
 
+const OAT_ORDER: OATType[] = ["hurrah", "trader", "wizard", "supporter"];
+
 const FALLBACK_CAMPAIGN_MAP: Record<number, OATType> = {
   1: "supporter",
   2: "wizard",
@@ -75,21 +77,22 @@ export function useOats(parameters: UseOatsParameters) {
     return map;
   }, [registeredOats]);
 
-  const oatStatuses = useMemo(
-    (): OATStatus[] =>
-      Object.entries(campaignMap).map(([campaignId, oatType]) => {
-        const registered = registeredOatsByCampaign.get(Number(campaignId));
-        return {
-          type: oatType,
-          isLocked: !registered,
-          expiresAt: registered
-            ? registered.registeredAt + OAT_VALIDITY_DURATION_SECONDS
-            : undefined,
-          pointsBoost: OAT_POINTS_BOOST,
-        };
-      }),
-    [campaignMap, registeredOatsByCampaign],
-  );
+  const oatStatuses = useMemo((): OATStatus[] => {
+    const statuses = Object.entries(campaignMap).map(([campaignId, oatType]) => {
+      const registered = registeredOatsByCampaign.get(Number(campaignId));
+      return {
+        type: oatType,
+        isLocked: !registered,
+        expiresAt: registered
+          ? registered.registeredAt + OAT_VALIDITY_DURATION_SECONDS
+          : undefined,
+        pointsBoost: OAT_POINTS_BOOST,
+      };
+    });
+    return statuses.sort(
+      (a, b) => OAT_ORDER.indexOf(a.type) - OAT_ORDER.indexOf(b.type),
+    );
+  }, [campaignMap, registeredOatsByCampaign]);
 
   const isLoading = isLoadingOats || isLoadingCampaigns;
 

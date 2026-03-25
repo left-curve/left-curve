@@ -1106,6 +1106,7 @@
     },
     "boosters": {
       "title": "Boosters",
+      "description": "A limited-time points multiplier to reward early testnet users.",
       "linkEvmWallet": "Link EVM Wallet",
       "pointsBoost": "+{pointsBoost}% Points",
       "oats": {
