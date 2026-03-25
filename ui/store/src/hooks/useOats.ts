@@ -14,11 +14,11 @@ const FALLBACK_CAMPAIGN_MAP: Record<number, OATType> = {
   4: "hurrah",
 };
 
-/** OAT validity duration in seconds (1 year) */
-const OAT_VALIDITY_DURATION_SECONDS = 365 * 24 * 60 * 60;
-
 /** Points boost percentage per OAT */
 const OAT_POINTS_BOOST = 100;
+
+/** OAT validity duration in seconds (4 weeks, aligned with backend oat_window) */
+const OAT_VALIDITY_DURATION_SECONDS = 28 * 24 * 60 * 60;
 
 const campaignNameToOatType = (name: string): OATType | null => {
   const lower = name.toLowerCase();

@@ -11,6 +11,7 @@ import { OATCard, type OATType } from "./OATCard";
 type OATStatus = {
   type: OATType;
   isLocked: boolean;
+  /** Unix timestamp (seconds) when this OAT expires */
   expiresAt?: number;
   pointsBoost: number;
 };

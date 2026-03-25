@@ -1,4 +1,4 @@
-import { IconClock, IconFlash, twMerge } from "@left-curve/applets-kit";
+import { formatDate, IconClock, IconFlash, twMerge, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
@@ -18,17 +18,6 @@ const OATTitles: Record<OATType, () => string> = {
   supporter: () => m["points.boosters.oats.supporter"](),
 };
 
-/**
- * Format a Unix timestamp (seconds) to MM/DD/YYYY
- */
-function formatExpirationDate(timestamp: number): string {
-  const date = new Date(timestamp * 1000);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${month}/${day}/${year}`;
-}
-
 type OATCardProps = {
   type: OATType;
   isLocked?: boolean;
@@ -46,9 +35,13 @@ export const OATCard: React.FC<OATCardProps> = ({
   pointsBoost = 100,
   className,
 }) => {
+  const { settings } = useApp();
+  const { dateFormat } = settings;
   const title = OATTitles[type]();
   const imageSrc = OATImages[type];
-  const expirationDisplay = expiresAt ? formatExpirationDate(expiresAt) : "--";
+  const expirationDisplay = expiresAt
+    ? formatDate(new Date(expiresAt * 1000), dateFormat)
+    : "--";
 
   return (
     <div
