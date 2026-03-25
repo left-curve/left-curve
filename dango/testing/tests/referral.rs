@@ -1,11 +1,19 @@
 use {
     dango_testing::{Factory, Preset, TestAccount, TestOption, setup_test_naive},
     dango_types::{
-        Dimensionless, UsdValue,
+        Dimensionless, Quantity, UsdPrice, UsdValue,
         account_factory::{self, RegisterUserData},
-        perps::{self, FeeShareRatio},
+        constants::usdc,
+        oracle::{self, PriceSource},
+        perps::{
+            self, CommissionReboundRate, FeeShareRatio, Referee, ReferrerSettings,
+            ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData,
+        },
     },
-    grug::{Addr, Addressable, Coins, HashExt, QuerierExt, ResultExt, Signer, TxOutcome},
+    grug::{
+        Addr, Addressable, Coins, HashExt, NumberConst, Order as IterationOrder, QuerierExt,
+        ResultExt, Signer, Timestamp, TxOutcome, Udec128, Uint128, btree_map,
+    },
     grug_app::NaiveProposalPreparer,
 };
 
@@ -277,12 +285,10 @@ fn modify_share_ratio() {
 
     // Verify the stored ratio.
     assert_eq!(
-        suite
-            .query_wasm_smart(contracts.perps, perps::QueryFeeShareRatioRequest {
-                referrer: 1
-            },)
-            .should_succeed(),
-        Some(Dimensionless::new_percent(20)),
+        query_referral_settings(&suite, contracts.perps, 1)
+            .unwrap()
+            .share_ratio,
+        Dimensionless::new_percent(20),
     );
 
     // Try to lower the share ratio — should fail.
@@ -304,12 +310,10 @@ fn modify_share_ratio() {
     .should_succeed();
 
     assert_eq!(
-        suite
-            .query_wasm_smart(contracts.perps, perps::QueryFeeShareRatioRequest {
-                referrer: 1
-            },)
-            .should_succeed(),
-        Some(Dimensionless::new_percent(50)),
+        query_referral_settings(&suite, contracts.perps, 1)
+            .unwrap()
+            .share_ratio,
+        Dimensionless::new_percent(50),
     );
 }
 
@@ -349,6 +353,324 @@ fn set_share_ratio_requires_volume() {
     .should_fail_with_error("insufficient perps volume to become a referrer");
 }
 
+/// Commission rebound override: only owner can set, overrides volume tiers,
+/// removing the override falls back to volume-based calculation.
+#[test]
+fn commission_rebound_override() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    // Configure commission rebound tiers.
+    let mut param = suite
+        .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
+        .should_succeed();
+
+    param.referral.commission_rebound_default = CommissionReboundRate::new_percent(10);
+    param.referral.commission_rebound_by_volume = btree_map! {
+        UsdValue::new_int(100) => CommissionReboundRate::new_percent(20),
+    };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param,
+                pair_params: Default::default(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+
+    // User1 becomes a referrer.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(20),
+    )
+    .should_succeed();
+
+    // User2 sets User1 as referrer.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Default commission rebound is 10%.
+    let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
+    assert_eq!(
+        settings.commission_rebound,
+        CommissionReboundRate::new_percent(10)
+    );
+
+    // Non-owner cannot set override.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+                user: 1,
+                commission_rebound: Some(CommissionReboundRate::new_percent(50)),
+            }),
+            Coins::new(),
+        )
+        .should_fail_with_error("you don't have the right");
+
+    // Owner sets override to 50%.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+                user: 1,
+                commission_rebound: Some(CommissionReboundRate::new_percent(50)),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
+    assert_eq!(
+        settings.commission_rebound,
+        CommissionReboundRate::new_percent(50)
+    );
+
+    // Trade to generate volume past the 100 USD tier.
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+
+    // Override still applies (ignores volume tier).
+    let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
+    assert_eq!(
+        settings.commission_rebound,
+        CommissionReboundRate::new_percent(50)
+    );
+
+    // Owner removes override.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+                user: 1,
+                commission_rebound: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Falls back to volume-based tier (>= 100 → 20%).
+    let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
+    assert_eq!(
+        settings.commission_rebound,
+        CommissionReboundRate::new_percent(20)
+    );
+}
+
+/// Query per-referee statistics sorted by volume.
+#[test]
+fn referrer_stats() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000);
+
+    // User1 becomes a referrer.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(20),
+    )
+    .should_succeed();
+
+    // User2 and User3 set User1 as referrer.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 3,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User2 trades (volume = 1 * 2000 = $2,000).
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+
+    // User3 trades more (volume = 2 * 2000 = $4,000).
+    // Need user3 as taker — swap user1 as maker, user3 as taker.
+    place_ask_order(&mut suite, contracts.perps, &mut accounts.user1, 2_000, 2);
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 2);
+
+    // Query stats sorted by volume descending.
+    let stats: Vec<(Referee, perps::RefereeStats)> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                order: IterationOrder::Descending,
+                limit: None,
+                index: ReferrerStatsOrderIndex::Volume { start_after: None },
+            },
+        })
+        .should_succeed();
+
+    assert_eq!(stats.len(), 2);
+    // User3 has more volume, should be first in descending order.
+    assert_eq!(stats[0].0, 3);
+    assert_eq!(stats[1].0, 2);
+
+    // Query ascending.
+    let stats: Vec<(u32, perps::RefereeStats)> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                order: IterationOrder::Ascending,
+                limit: None,
+                index: ReferrerStatsOrderIndex::Volume { start_after: None },
+            },
+        })
+        .should_succeed();
+
+    assert_eq!(stats[0].0, 2);
+    assert_eq!(stats[1].0, 3);
+
+    let user2_volume = stats[0].1.volume;
+    let user3_volume = stats[1].1.volume;
+
+    // start_after: skip user3's volume in descending order → only user2 remains.
+    let stats: Vec<(Referee, perps::RefereeStats)> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                order: IterationOrder::Descending,
+                limit: None,
+                index: ReferrerStatsOrderIndex::Volume {
+                    start_after: Some(user3_volume),
+                },
+            },
+        })
+        .should_succeed();
+
+    assert_eq!(stats.len(), 1);
+    assert_eq!(stats[0].0, 2);
+    assert_eq!(stats[0].1.volume, user2_volume);
+
+    // limit: only return 1 result in descending order → user3 (highest volume).
+    let stats: Vec<(Referee, perps::RefereeStats)> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                order: IterationOrder::Descending,
+                limit: Some(1),
+                index: ReferrerStatsOrderIndex::Volume { start_after: None },
+            },
+        })
+        .should_succeed();
+
+    assert_eq!(stats.len(), 1);
+    assert_eq!(stats[0].0, 3);
+}
+
+/// Active users count increments once per referee per day.
+#[test]
+fn active_referral() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000);
+
+    // User1 becomes a referrer.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(20),
+    )
+    .should_succeed();
+
+    // User2 and User3 set User1 as referrer.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 3,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User2 trades — active_users should be 1.
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+
+    let data = query_referral_data(&suite, contracts.perps, 1, None);
+    assert_eq!(data.active_users, Uint128::new(1));
+
+    // User2 trades again same day — active_users still 1.
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+
+    let data = query_referral_data(&suite, contracts.perps, 1, None);
+    assert_eq!(data.active_users, Uint128::new(1));
+
+    // User3 trades — active_users should be 2.
+    place_ask_order(&mut suite, contracts.perps, &mut accounts.user1, 2_000, 1);
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 1);
+
+    let data = query_referral_data(&suite, contracts.perps, 1, None);
+    assert_eq!(data.active_users, Uint128::new(2));
+
+    // Next day, User2 trades — active_users should be 3 (cumulative).
+    suite.block_time = grug::Duration::from_days(1);
+    suite.make_empty_block();
+
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+
+    let data = query_referral_data(&suite, contracts.perps, 1, None);
+    assert_eq!(data.active_users, Uint128::new(3));
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -365,4 +687,129 @@ fn set_fee_share_ratio(
         &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetFeeShareRatio { share_ratio: ratio }),
         Coins::new(),
     )
+}
+
+fn register_oracle_prices(
+    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    accounts: &mut dango_testing::TestAccounts,
+    contracts: &dango_genesis::Contracts,
+    eth_price: u128,
+) {
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: usdc::DECIMAL as u8,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+                dango_testing::perps::pair_id() => PriceSource::Fixed {
+                    humanized_price: Udec128::new(eth_price),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+fn deposit_margin(
+    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    perps: Addr,
+    user: &mut dyn Signer,
+    usd_amount: u128,
+) {
+    let amount = Uint128::new(usd_amount * 1_000_000);
+    suite
+        .execute(
+            user,
+            perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), amount).unwrap(),
+        )
+        .should_succeed();
+}
+
+fn place_ask_order(
+    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    perps: Addr,
+    user: &mut dyn Signer,
+    price: u128,
+    size: u128,
+) {
+    suite
+        .execute(
+            user,
+            perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: dango_testing::perps::pair_id(),
+                size: Quantity::new_int(-(size as i128)),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(price as i128),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+fn place_market_buy(
+    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    perps: Addr,
+    user: &mut dyn Signer,
+    size: u128,
+) {
+    suite
+        .execute(
+            user,
+            perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: dango_testing::perps::pair_id(),
+                size: Quantity::new_int(size as i128),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+/// Place a limit ask (user1) then a market buy (user2) to produce a fill.
+fn create_perps_fill(
+    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    accounts: &mut dango_testing::TestAccounts,
+    perps: Addr,
+    price: u128,
+    size: u128,
+) {
+    place_ask_order(suite, perps, &mut accounts.user1, price, size);
+    place_market_buy(suite, perps, &mut accounts.user2, size);
+}
+
+fn query_referral_settings(
+    suite: &dango_testing::TestSuite<NaiveProposalPreparer>,
+    perps: Addr,
+    user: u32,
+) -> Option<ReferrerSettings> {
+    suite
+        .query_wasm_smart(perps, perps::QueryReferralSettingsRequest { user })
+        .should_succeed()
+}
+
+fn query_referral_data(
+    suite: &dango_testing::TestSuite<NaiveProposalPreparer>,
+    perps: Addr,
+    user: u32,
+    since: Option<Timestamp>,
+) -> UserReferralData {
+    suite
+        .query_wasm_smart(perps, perps::QueryReferralDataRequest { user, since })
+        .should_succeed()
 }
