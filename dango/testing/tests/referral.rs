@@ -900,6 +900,84 @@ fn commission_rebound_margins() {
     assert_eq!(post_referral_data[0], initial_referral_data[0]);
 }
 
+/// Referee count increments when referral relationships are set.
+#[test]
+fn referee_count() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    // User1 becomes a referrer.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(20),
+    )
+    .should_succeed();
+
+    // Initially, referee_count is 0.
+    let data = query_referral_data(&suite, contracts.perps, 1, None);
+    assert_eq!(data.referee_count, 0);
+
+    // User2 sets User1 as referrer → referee_count = 1.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let data = query_referral_data(&suite, contracts.perps, 1, None);
+    assert_eq!(data.referee_count, 1);
+
+    // User3 also sets User1 as referrer → referee_count = 2.
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 3,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let data = query_referral_data(&suite, contracts.perps, 1, None);
+    assert_eq!(data.referee_count, 2);
+
+    // User4 sets User2 as referrer → User1's count stays 2, User2's count = 1.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user2,
+        Dimensionless::new_percent(20),
+    )
+    .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user4,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 2,
+                referee: 4,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let data_user1 = query_referral_data(&suite, contracts.perps, 1, None);
+    assert_eq!(data_user1.referee_count, 2);
+
+    let data_user2 = query_referral_data(&suite, contracts.perps, 2, None);
+    assert_eq!(data_user2.referee_count, 1);
+}
+
 /// Active users count increments once per referee per day.
 #[test]
 fn active_referral() {
