@@ -94,12 +94,12 @@ Subscriptions (real-time data) use WebSocket with the `graphql-ws` protocol.
 
 List queries use **cursor-based pagination** (Relay Connection specification).
 
-| Parameter | Type     | Description                         |
-| --------- | -------- | ----------------------------------- |
-| `first`   | `Int`    | Return the first N items            |
-| `after`   | `String` | Cursor — return items after this    |
-| `last`    | `Int`    | Return the last N items             |
-| `before`  | `String` | Cursor — return items before this   |
+| Parameter | Type     | Description                               |
+| --------- | -------- | ----------------------------------------- |
+| `first`   | `Int`    | Return the first N items                  |
+| `after`   | `String` | Cursor — return items after this          |
+| `last`    | `Int`    | Return the last N items                   |
+| `before`  | `String` | Cursor — return items before this         |
 | `sortBy`  | `Enum`   | `BLOCK_HEIGHT_ASC` or `BLOCK_HEIGHT_DESC` |
 
 **Response shape:**
@@ -144,13 +144,13 @@ Every write operation is wrapped in a signed **transaction** (`Tx`):
 }
 ```
 
-| Field        | Type            | Description                                               |
-| ------------ | --------------- | --------------------------------------------------------- |
-| `sender`     | `Addr`          | Account address sending the transaction                   |
-| `gas_limit`  | `u64`           | Maximum gas units for execution                           |
-| `msgs`       | `[Message]`     | Non-empty list of messages to execute atomically          |
-| `data`       | `Metadata`      | Replay protection metadata (see [2.2](#22-metadata))      |
-| `credential` | `Credential`    | Cryptographic proof of sender authorization               |
+| Field        | Type         | Description                                          |
+| ------------ | ------------ | ---------------------------------------------------- |
+| `sender`     | `Addr`       | Account address sending the transaction              |
+| `gas_limit`  | `u64`        | Maximum gas units for execution                      |
+| `msgs`       | `[Message]`  | Non-empty list of messages to execute atomically     |
+| `data`       | `Metadata`   | Replay protection metadata (see [2.2](#22-metadata)) |
+| `credential` | `Credential` | Cryptographic proof of sender authorization          |
 
 Messages execute **atomically** — either all succeed or all fail.
 
@@ -167,11 +167,11 @@ The `data` field contains replay protection metadata:
 }
 ```
 
-| Field        | Type               | Description                                                     |
-| ------------ | ------------------ | --------------------------------------------------------------- |
-| `user_index` | `u32`              | The user index that owns the sender account                     |
-| `chain_id`   | `String`           | Chain identifier (prevents cross-chain replay)                  |
-| `nonce`      | `u32`              | Replay protection nonce                                         |
+| Field        | Type                | Description                                                       |
+| ------------ | ------------------- | ----------------------------------------------------------------- |
+| `user_index` | `u32`               | The user index that owns the sender account                       |
+| `chain_id`   | `String`            | Chain identifier (prevents cross-chain replay)                    |
+| `nonce`      | `u32`               | Replay protection nonce                                           |
 | `expiry`     | `Timestamp \| null` | Optional expiration (nanoseconds since epoch); `null` = no expiry |
 
 **Nonce semantics.** Dango uses **unordered nonces** with a sliding window of 20. The account tracks the 20 most recently seen nonces. A transaction is accepted if its nonce is newer than the oldest seen nonce and has not been used before. This means transactions may arrive out of order without being rejected. SDK implementations should track the next available nonce client-side by querying the account's seen nonces and choosing the next integer above the maximum.
@@ -199,10 +199,10 @@ The primary message type for interacting with contracts is `execute`:
 }
 ```
 
-| Field      | Type   | Description                                                                  |
-| ---------- | ------ | ---------------------------------------------------------------------------- |
-| `contract` | `Addr` | Target contract address                                                      |
-| `msg`      | `JSON` | Contract-specific execute message (snake_case keys)                          |
+| Field      | Type    | Description                                                                |
+| ---------- | ------- | -------------------------------------------------------------------------- |
+| `contract` | `Addr`  | Target contract address                                                    |
+| `msg`      | `JSON`  | Contract-specific execute message (snake_case keys)                        |
 | `funds`    | `Coins` | Tokens to send with the message: `{"<denom>": "<amount>"}` or `{}` if none |
 
 The `funds` field is a map of denomination to amount string. For example, depositing 1000 USDC:
@@ -292,11 +292,11 @@ Session keys allow delegated signing without requiring the master key for every 
 }
 ```
 
-| Field                | Type                 | Description                                           |
-| -------------------- | -------------------- | ----------------------------------------------------- |
-| `session_info`       | `SessionInfo`        | Session key public key + expiration                   |
-| `session_signature`  | `ByteArray<64>`      | SignDoc signed by the session key (hex-encoded)        |
-| `authorization`      | `StandardCredential` | SessionInfo signed by the user's master key           |
+| Field               | Type                 | Description                                     |
+| ------------------- | -------------------- | ----------------------------------------------- |
+| `session_info`      | `SessionInfo`        | Session key public key + expiration             |
+| `session_signature` | `ByteArray<64>`      | SignDoc signed by the session key (hex-encoded) |
+| `authorization`     | `StandardCredential` | SessionInfo signed by the user's master key     |
 
 ### 2.6 SignDoc
 
@@ -451,12 +451,12 @@ query {
 }
 ```
 
-| Address             | Contract                             |
-| ------------------- | ------------------------------------ |
-| `account_factory`   | User profiles, accounts, and keys    |
-| `perps`             | Perpetual futures exchange           |
-| `oracle`            | Price oracle                         |
-| `dex`               | Spot DEX                             |
+| Address           | Contract                          |
+| ----------------- | --------------------------------- |
+| `account_factory` | User profiles, accounts, and keys |
+| `perps`           | Perpetual futures exchange        |
+| `oracle`          | Price oracle                      |
+| `dex`             | Spot DEX                          |
 
 ### 3.2 Register user
 
@@ -485,12 +485,12 @@ Create a new user profile with an initial key and master account. This is a two-
 }
 ```
 
-| Field       | Type        | Description                                                              |
-| ----------- | ----------- | ------------------------------------------------------------------------ |
-| `key`       | `Key`       | The user's initial public key (see [10.3](#103-enums))                   |
-| `key_hash`  | `Hash256`   | Client-chosen hash identifying this key                                  |
-| `seed`      | `u32`       | Arbitrary number for address variety                                     |
-| `signature` | `Signature` | Signature over `{"chain_id": "dango-1"}` proving key ownership           |
+| Field       | Type        | Description                                                    |
+| ----------- | ----------- | -------------------------------------------------------------- |
+| `key`       | `Key`       | The user's initial public key (see [10.3](#103-enums))         |
+| `key_hash`  | `Hash256`   | Client-chosen hash identifying this key                        |
+| `seed`      | `u32`       | Arbitrary number for address variety                           |
+| `signature` | `Signature` | Signature over `{"chain_id": "dango-1"}` proving key ownership |
 
 The `funds` must meet the `minimum_deposit` from the app config. A master account is created automatically and returned via events.
 
@@ -750,19 +750,19 @@ query {
 }
 ```
 
-| Field                      | Type            | Description                                                    |
-| -------------------------- | --------------- | -------------------------------------------------------------- |
-| `tick_size`                | `UsdPrice`      | Minimum price increment for limit orders                       |
-| `min_order_size`           | `UsdValue`      | Minimum notional value (reduce-only exempt)                    |
-| `max_abs_oi`               | `Quantity`      | Maximum open interest per side                                 |
-| `max_abs_funding_rate`     | `FundingRate`   | Daily funding rate cap                                         |
-| `initial_margin_ratio`     | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage)                 |
-| `maintenance_margin_ratio` | `Dimensionless` | Margin to stay open (liquidation threshold)                    |
-| `impact_size`              | `UsdValue`      | Notional for impact price calculation                          |
-| `vault_liquidity_weight`   | `Dimensionless` | Vault allocation weight for this pair                          |
-| `vault_half_spread`        | `Dimensionless` | Half the vault's bid-ask spread                                |
-| `vault_max_quote_size`     | `Quantity`      | Maximum vault resting size per side                            |
-| `bucket_sizes`             | `[UsdPrice]`    | Price bucket granularities for depth queries                   |
+| Field                      | Type            | Description                                   |
+| -------------------------- | --------------- | --------------------------------------------- |
+| `tick_size`                | `UsdPrice`      | Minimum price increment for limit orders      |
+| `min_order_size`           | `UsdValue`      | Minimum notional value (reduce-only exempt)   |
+| `max_abs_oi`               | `Quantity`      | Maximum open interest per side                |
+| `max_abs_funding_rate`     | `FundingRate`   | Daily funding rate cap                        |
+| `initial_margin_ratio`     | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage) |
+| `maintenance_margin_ratio` | `Dimensionless` | Margin to stay open (liquidation threshold)   |
+| `impact_size`              | `UsdValue`      | Notional for impact price calculation         |
+| `vault_liquidity_weight`   | `Dimensionless` | Vault allocation weight for this pair         |
+| `vault_half_spread`        | `Dimensionless` | Half the vault's bid-ask spread               |
+| `vault_max_quote_size`     | `Quantity`      | Maximum vault resting size per side           |
+| `bucket_sizes`             | `[UsdPrice]`    | Price bucket granularities for depth queries  |
 
 For the relationship between margin ratios and leverage, see [Risk §2](6-risk.md).
 
@@ -790,11 +790,11 @@ For the relationship between margin ratios and leverage, see [Risk §2](6-risk.m
 }
 ```
 
-| Field              | Type             | Description                                 |
-| ------------------ | ---------------- | ------------------------------------------- |
-| `long_oi`          | `Quantity`       | Total long open interest                    |
-| `short_oi`         | `Quantity`       | Total short open interest                   |
-| `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator              |
+| Field              | Type             | Description                    |
+| ------------------ | ---------------- | ------------------------------ |
+| `long_oi`          | `Quantity`       | Total long open interest       |
+| `short_oi`         | `Quantity`       | Total short open interest      |
+| `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator |
 
 For funding mechanics, see [Funding](3-funding.md).
 
@@ -815,12 +815,12 @@ For funding mechanics, see [Funding](3-funding.md).
 }
 ```
 
-| Field                | Type       | Description                                  |
-| -------------------- | ---------- | -------------------------------------------- |
-| `last_funding_time`  | `Timestamp` | Last funding collection time                |
-| `vault_share_supply` | `Uint128`  | Total vault share tokens                     |
-| `insurance_fund`     | `UsdValue` | Insurance fund balance                       |
-| `treasury`           | `UsdValue` | Accumulated protocol fees                    |
+| Field                | Type        | Description                  |
+| -------------------- | ----------- | ---------------------------- |
+| `last_funding_time`  | `Timestamp` | Last funding collection time |
+| `vault_share_supply` | `Uint128`   | Total vault share tokens     |
+| `insurance_fund`     | `UsdValue`  | Insurance fund balance       |
+| `treasury`           | `UsdValue`  | Accumulated protocol fees    |
 
 ### 4.4 Global parameters
 
@@ -847,20 +847,20 @@ For funding mechanics, see [Funding](3-funding.md).
 }
 ```
 
-| Field                    | Type                              | Description                                                     |
-| ------------------------ | --------------------------------- | --------------------------------------------------------------- |
-| `max_unlocks`            | `usize`                           | Max concurrent vault unlock requests per user                  |
-| `max_open_orders`        | `usize`                           | Max resting limit orders per user (all pairs)                  |
-| `max_conditional_orders` | `usize`                           | Max TP/SL orders per user (all pairs)                          |
-| `base_maker_fee_rate`    | `Dimensionless`                   | Maker fee when no volume tier qualifies                        |
-| `base_taker_fee_rate`    | `Dimensionless`                   | Taker fee when no volume tier qualifies                        |
-| `tiered_maker_fee_rate`  | `Map<UsdValue, Dimensionless>`    | Volume-tiered maker fees (threshold → rate)                    |
-| `tiered_taker_fee_rate`  | `Map<UsdValue, Dimensionless>`    | Volume-tiered taker fees (threshold → rate)                    |
-| `protocol_fee_rate`      | `Dimensionless`                   | Fraction of trading fees routed to treasury                    |
-| `liquidation_fee_rate`   | `Dimensionless`                   | Insurance fund fee on liquidations                             |
-| `funding_period`         | `Duration`                        | Interval between funding collections (nanoseconds)             |
-| `vault_total_weight`     | `Dimensionless`                   | Sum of all pairs' vault liquidity weights                      |
-| `vault_cooldown_period`  | `Duration`                        | Waiting time before vault withdrawal release (nanoseconds)     |
+| Field                    | Type                           | Description                                                |
+| ------------------------ | ------------------------------ | ---------------------------------------------------------- |
+| `max_unlocks`            | `usize`                        | Max concurrent vault unlock requests per user              |
+| `max_open_orders`        | `usize`                        | Max resting limit orders per user (all pairs)              |
+| `max_conditional_orders` | `usize`                        | Max TP/SL orders per user (all pairs)                      |
+| `base_maker_fee_rate`    | `Dimensionless`                | Maker fee when no volume tier qualifies                    |
+| `base_taker_fee_rate`    | `Dimensionless`                | Taker fee when no volume tier qualifies                    |
+| `tiered_maker_fee_rate`  | `Map<UsdValue, Dimensionless>` | Volume-tiered maker fees (threshold → rate)                |
+| `tiered_taker_fee_rate`  | `Map<UsdValue, Dimensionless>` | Volume-tiered taker fees (threshold → rate)                |
+| `protocol_fee_rate`      | `Dimensionless`                | Fraction of trading fees routed to treasury                |
+| `liquidation_fee_rate`   | `Dimensionless`                | Insurance fund fee on liquidations                         |
+| `funding_period`         | `Duration`                     | Interval between funding collections (nanoseconds)         |
+| `vault_total_weight`     | `Dimensionless`                | Sum of all pairs' vault liquidity weights                  |
+| `vault_cooldown_period`  | `Duration`                     | Waiting time before vault withdrawal release (nanoseconds) |
 
 For fee mechanics, see [Order matching §8](2-order-matching.md#8-trading-fees).
 
@@ -885,11 +885,11 @@ query {
 }
 ```
 
-| Parameter     | Type       | Description                                              |
-| ------------- | ---------- | -------------------------------------------------------- |
-| `pair_id`     | `PairId`   | Trading pair                                             |
+| Parameter     | Type       | Description                                               |
+| ------------- | ---------- | --------------------------------------------------------- |
+| `pair_id`     | `PairId`   | Trading pair                                              |
 | `bucket_size` | `UsdPrice` | Price aggregation granularity (must be in `bucket_sizes`) |
-| `limit`       | `u32?`     | Max number of price levels per side                      |
+| `limit`       | `u32?`     | Max number of price levels per side                       |
 
 **Response:**
 
@@ -908,10 +908,10 @@ query {
 
 Each level contains:
 
-| Field      | Type       | Description                            |
-| ---------- | ---------- | -------------------------------------- |
-| `size`     | `Quantity` | Absolute order size in the bucket      |
-| `notional` | `UsdValue` | USD notional (size × price)            |
+| Field      | Type       | Description                       |
+| ---------- | ---------- | --------------------------------- |
+| `size`     | `Quantity` | Absolute order size in the bucket |
+| `notional` | `UsdValue` | USD notional (size × price)       |
 
 ### 4.6 24h statistics (indexer)
 
@@ -943,11 +943,11 @@ query {
 }
 ```
 
-| Field            | Type         | Description                                     |
-| ---------------- | ------------ | ----------------------------------------------- |
-| `currentPrice`   | `BigDecimal` | Current price (nullable)                        |
-| `price24HAgo`    | `BigDecimal` | Price 24 hours ago (nullable)                   |
-| `volume24H`      | `BigDecimal` | 24h trading volume in quote asset               |
+| Field            | Type         | Description                                        |
+| ---------------- | ------------ | -------------------------------------------------- |
+| `currentPrice`   | `BigDecimal` | Current price (nullable)                           |
+| `price24HAgo`    | `BigDecimal` | Price 24 hours ago (nullable)                      |
+| `volume24H`      | `BigDecimal` | 24h trading volume in quote asset                  |
 | `priceChange24H` | `BigDecimal` | 24h price change percentage (e.g. `5.25` = +5.25%) |
 
 ### 4.7 Historical candles (indexer)
@@ -982,31 +982,31 @@ query {
 }
 ```
 
-| Parameter     | Type             | Description                          |
-| ------------- | ---------------- | ------------------------------------ |
-| `pairId`      | `String!`        | Trading pair (e.g. `"perp/btcusd"`)  |
-| `interval`    | `CandleInterval!` | Candle interval                     |
-| `laterThan`   | `DateTime`       | Candles after this time (inclusive)   |
-| `earlierThan` | `DateTime`       | Candles before this time (exclusive)  |
+| Parameter     | Type              | Description                          |
+| ------------- | ----------------- | ------------------------------------ |
+| `pairId`      | `String!`         | Trading pair (e.g. `"perp/btcusd"`)  |
+| `interval`    | `CandleInterval!` | Candle interval                      |
+| `laterThan`   | `DateTime`        | Candles after this time (inclusive)  |
+| `earlierThan` | `DateTime`        | Candles before this time (exclusive) |
 
 **CandleInterval values:** `ONE_SECOND`, `ONE_MINUTE`, `FIVE_MINUTES`, `FIFTEEN_MINUTES`, `ONE_HOUR`, `FOUR_HOURS`, `ONE_DAY`, `ONE_WEEK`.
 
 **PerpsCandle fields:**
 
-| Field            | Type         | Description                          |
-| ---------------- | ------------ | ------------------------------------ |
-| `open`           | `BigDecimal` | Opening price                        |
-| `high`           | `BigDecimal` | Highest price                        |
-| `low`            | `BigDecimal` | Lowest price                         |
-| `close`          | `BigDecimal` | Closing price                        |
-| `volume`         | `BigDecimal` | Volume in base units                 |
-| `volumeUsd`      | `BigDecimal` | Volume in USD                        |
-| `timeStart`      | `String`     | Period start (ISO 8601)              |
-| `timeStartUnix`  | `Int`        | Period start (Unix timestamp)        |
-| `timeEnd`        | `String`     | Period end (ISO 8601)                |
-| `timeEndUnix`    | `Int`        | Period end (Unix timestamp)          |
-| `minBlockHeight` | `Int`        | First block in this candle           |
-| `maxBlockHeight` | `Int`        | Last block in this candle            |
+| Field            | Type         | Description                   |
+| ---------------- | ------------ | ----------------------------- |
+| `open`           | `BigDecimal` | Opening price                 |
+| `high`           | `BigDecimal` | Highest price                 |
+| `low`            | `BigDecimal` | Lowest price                  |
+| `close`          | `BigDecimal` | Closing price                 |
+| `volume`         | `BigDecimal` | Volume in base units          |
+| `volumeUsd`      | `BigDecimal` | Volume in USD                 |
+| `timeStart`      | `String`     | Period start (ISO 8601)       |
+| `timeStartUnix`  | `Int`        | Period start (Unix timestamp) |
+| `timeEnd`        | `String`     | Period end (ISO 8601)         |
+| `timeEndUnix`    | `Int`        | Period end (Unix timestamp)   |
+| `minBlockHeight` | `Int`        | First block in this candle    |
+| `maxBlockHeight` | `Int`        | Last block in this candle     |
 
 ---
 
@@ -1045,30 +1045,30 @@ query {
 }
 ```
 
-| Field                     | Type                       | Description                                |
-| ------------------------- | -------------------------- | ------------------------------------------ |
-| `margin`                  | `UsdValue`                 | Deposited margin (USD)                     |
-| `vault_shares`            | `Uint128`                  | Vault liquidity shares owned               |
-| `positions`               | `Map<PairId, Position>`    | Open positions by pair                     |
-| `unlocks`                 | `[Unlock]`                 | Pending vault withdrawals                  |
-| `reserved_margin`         | `UsdValue`                 | Margin reserved for resting limit orders   |
-| `open_order_count`        | `usize`                    | Number of resting limit orders             |
-| `conditional_order_count` | `usize`                    | Number of TP/SL orders                     |
+| Field                     | Type                    | Description                              |
+| ------------------------- | ----------------------- | ---------------------------------------- |
+| `margin`                  | `UsdValue`              | Deposited margin (USD)                   |
+| `vault_shares`            | `Uint128`               | Vault liquidity shares owned             |
+| `positions`               | `Map<PairId, Position>` | Open positions by pair                   |
+| `unlocks`                 | `[Unlock]`              | Pending vault withdrawals                |
+| `reserved_margin`         | `UsdValue`              | Margin reserved for resting limit orders |
+| `open_order_count`        | `usize`                 | Number of resting limit orders           |
+| `conditional_order_count` | `usize`                 | Number of TP/SL orders                   |
 
 **Position:**
 
-| Field                    | Type             | Description                                 |
-| ------------------------ | ---------------- | ------------------------------------------- |
+| Field                    | Type             | Description                                       |
+| ------------------------ | ---------------- | ------------------------------------------------- |
 | `size`                   | `Quantity`       | Position size (positive = long, negative = short) |
-| `entry_price`            | `UsdPrice`       | Average entry price                         |
-| `entry_funding_per_unit` | `FundingPerUnit` | Funding accumulator at last modification    |
+| `entry_price`            | `UsdPrice`       | Average entry price                               |
+| `entry_funding_per_unit` | `FundingPerUnit` | Funding accumulator at last modification          |
 
 **Unlock:**
 
-| Field               | Type        | Description                            |
-| ------------------- | ----------- | -------------------------------------- |
-| `end_time`          | `Timestamp` | When cooldown completes                |
-| `amount_to_release` | `UsdValue`  | USD value to release                   |
+| Field               | Type        | Description             |
+| ------------------- | ----------- | ----------------------- |
+| `end_time`          | `Timestamp` | When cooldown completes |
+| `amount_to_release` | `UsdValue`  | USD value to release    |
 
 Returns `null` if the user has no state.
 
@@ -1152,10 +1152,10 @@ Returns `null` if the order does not exist.
 { "volume": { "user": "0x1234...abcd", "since": null } }
 ```
 
-| Parameter | Type             | Description                                          |
-| --------- | ---------------- | ---------------------------------------------------- |
-| `user`    | `Addr`           | Account address                                      |
-| `since`   | `Timestamp?`     | Start time (nanoseconds); `null` for lifetime volume |
+| Parameter | Type         | Description                                          |
+| --------- | ------------ | ---------------------------------------------------- |
+| `user`    | `Addr`       | Account address                                      |
+| `since`   | `Timestamp?` | Start time (nanoseconds); `null` for lifetime volume |
 
 Returns a `UsdValue` string (e.g. `"1250000.000000"`).
 
@@ -1187,12 +1187,12 @@ query {
 }
 ```
 
-| Parameter   | Type     | Description                                  |
-| ----------- | -------- | -------------------------------------------- |
-| `userAddr`  | `String` | Filter by user address                       |
-| `eventType` | `String` | Filter by event type (see [§9](#9-events-reference)) |
-| `pairId`    | `String` | Filter by trading pair                       |
-| `blockHeight` | `Int`  | Filter by block height                       |
+| Parameter     | Type     | Description                                          |
+| ------------- | -------- | ---------------------------------------------------- |
+| `userAddr`    | `String` | Filter by user address                               |
+| `eventType`   | `String` | Filter by event type (see [§9](#9-events-reference)) |
+| `pairId`      | `String` | Filter by trading pair                               |
+| `blockHeight` | `Int`    | Filter by block height                               |
 
 The `data` field contains the event-specific payload as JSON. For example, an `order_filled` event:
 
@@ -1246,9 +1246,9 @@ Withdraw USD from the trading margin account:
 }
 ```
 
-| Field    | Type       | Description                   |
-| -------- | ---------- | ----------------------------- |
-| `amount` | `UsdValue` | USD amount to withdraw        |
+| Field    | Type       | Description            |
+| -------- | ---------- | ---------------------- |
+| `amount` | `UsdValue` | USD amount to withdraw |
 
 The USD amount is converted to USDC at the current oracle price (floor-rounded) and transferred to the sender.
 
@@ -1275,12 +1275,12 @@ Buy or sell at the best available prices with a slippage tolerance:
 }
 ```
 
-| Field          | Type            | Description                                                      |
-| -------------- | --------------- | ---------------------------------------------------------------- |
-| `pair_id`      | `PairId`        | Trading pair (e.g. `"perp/btcusd"`)                              |
-| `size`         | `Quantity`      | Contract size — **positive = buy, negative = sell**               |
-| `max_slippage` | `Dimensionless` | Maximum slippage as a fraction of oracle price (0.01 = 1%)       |
-| `reduce_only`  | `bool`          | If `true`, only the position-closing portion executes            |
+| Field          | Type            | Description                                                |
+| -------------- | --------------- | ---------------------------------------------------------- |
+| `pair_id`      | `PairId`        | Trading pair (e.g. `"perp/btcusd"`)                        |
+| `size`         | `Quantity`      | Contract size — **positive = buy, negative = sell**        |
+| `max_slippage` | `Dimensionless` | Maximum slippage as a fraction of oracle price (0.01 = 1%) |
+| `reduce_only`  | `bool`          | If `true`, only the position-closing portion executes      |
 
 Market orders execute immediately (IOC behavior). Any unfilled remainder is discarded. If nothing fills, the transaction reverts.
 
@@ -1314,11 +1314,11 @@ Place a resting order on the book:
 }
 ```
 
-| Field         | Type       | Description                                                            |
-| ------------- | ---------- | ---------------------------------------------------------------------- |
-| `limit_price` | `UsdPrice` | Limit price — must be aligned to `tick_size`                           |
-| `post_only`   | `bool`     | If `true`, rejected if it would match immediately (maker-only)         |
-| `reduce_only` | `bool`     | If `true`, only position-closing portion is kept                       |
+| Field         | Type       | Description                                                    |
+| ------------- | ---------- | -------------------------------------------------------------- |
+| `limit_price` | `UsdPrice` | Limit price — must be aligned to `tick_size`                   |
+| `post_only`   | `bool`     | If `true`, rejected if it would match immediately (maker-only) |
+| `reduce_only` | `bool`     | If `true`, only position-closing portion is kept               |
 
 Limit orders are GTC (good-till-cancelled). The matching portion fills immediately; any unfilled remainder is stored on the book. Margin is reserved for the unfilled portion.
 
@@ -1374,20 +1374,20 @@ Place a take-profit or stop-loss order that triggers when the oracle price cross
 }
 ```
 
-| Field               | Type               | Description                                                      |
-| ------------------- | ------------------ | ---------------------------------------------------------------- |
-| `pair_id`           | `PairId`           | Trading pair                                                     |
-| `size`              | `Quantity`         | Size to close — sign must oppose the position                    |
-| `trigger_price`     | `UsdPrice`         | Oracle price that activates this order                           |
-| `trigger_direction` | `TriggerDirection` | `"above"` or `"below"` (see below)                              |
-| `max_slippage`      | `Dimensionless`    | Slippage tolerance for the market order at trigger               |
+| Field               | Type               | Description                                        |
+| ------------------- | ------------------ | -------------------------------------------------- |
+| `pair_id`           | `PairId`           | Trading pair                                       |
+| `size`              | `Quantity`         | Size to close — sign must oppose the position      |
+| `trigger_price`     | `UsdPrice`         | Oracle price that activates this order             |
+| `trigger_direction` | `TriggerDirection` | `"above"` or `"below"` (see below)                 |
+| `max_slippage`      | `Dimensionless`    | Slippage tolerance for the market order at trigger |
 
 **Trigger direction:**
 
-| Direction | Triggers when                           | Use case                        |
-| --------- | --------------------------------------- | ------------------------------- |
-| `above`   | oracle_price >= trigger_price           | Take-profit for longs, stop-loss for shorts |
-| `below`   | oracle_price <= trigger_price           | Stop-loss for longs, take-profit for shorts |
+| Direction | Triggers when                 | Use case                                    |
+| --------- | ----------------------------- | ------------------------------------------- |
+| `above`   | oracle_price >= trigger_price | Take-profit for longs, stop-loss for shorts |
+| `below`   | oracle_price <= trigger_price | Stop-loss for longs, take-profit for shorts |
 
 Conditional orders are always **reduce-only** with zero reserved margin. When triggered, they execute as market orders.
 
@@ -1551,20 +1551,20 @@ subscription {
 
 **Behavior:** On connection, cached recent trades are replayed first, then new trades stream in real-time.
 
-| Field          | Type     | Description                                 |
-| -------------- | -------- | ------------------------------------------- |
-| `orderId`      | `String` | Order ID that produced this fill            |
-| `pairId`       | `String` | Trading pair                                |
-| `user`         | `String` | Account address                             |
-| `fillPrice`    | `String` | Execution price                             |
-| `fillSize`     | `String` | Filled size (positive = buy, negative = sell) |
-| `closingSize`  | `String` | Portion that closed existing position       |
-| `openingSize`  | `String` | Portion that opened new position            |
-| `realizedPnl`  | `String` | PnL realized from the closing portion       |
-| `fee`          | `String` | Trading fee charged                         |
-| `createdAt`    | `String` | Timestamp (ISO 8601)                        |
-| `blockHeight`  | `Int`    | Block in which the trade occurred           |
-| `tradeIdx`     | `Int`    | Index within the block                      |
+| Field         | Type     | Description                                   |
+| ------------- | -------- | --------------------------------------------- |
+| `orderId`     | `String` | Order ID that produced this fill              |
+| `pairId`      | `String` | Trading pair                                  |
+| `user`        | `String` | Account address                               |
+| `fillPrice`   | `String` | Execution price                               |
+| `fillSize`    | `String` | Filled size (positive = buy, negative = sell) |
+| `closingSize` | `String` | Portion that closed existing position         |
+| `openingSize` | `String` | Portion that opened new position              |
+| `realizedPnl` | `String` | PnL realized from the closing portion         |
+| `fee`         | `String` | Trading fee charged                           |
+| `createdAt`   | `String` | Timestamp (ISO 8601)                          |
+| `blockHeight` | `Int`    | Block in which the trade occurred             |
+| `tradeIdx`    | `Int`    | Index within the block                        |
 
 ### 8.3 Contract query polling
 
@@ -1587,10 +1587,10 @@ subscription {
 }
 ```
 
-| Parameter       | Type             | Default | Description                            |
-| --------------- | ---------------- | ------- | -------------------------------------- |
-| `request`       | `GrugQueryInput` | —       | Any valid `queryApp` request           |
-| `blockInterval` | `Int`            | `10`    | Push updates every N blocks            |
+| Parameter       | Type             | Default | Description                  |
+| --------------- | ---------------- | ------- | ---------------------------- |
+| `request`       | `GrugQueryInput` | —       | Any valid `queryApp` request |
+| `blockInterval` | `Int`            | `10`    | Push updates every N blocks  |
 
 Common use cases:
 
@@ -1640,13 +1640,13 @@ subscription {
 }
 ```
 
-| Filter field | Type       | Description                                          |
-| ------------ | ---------- | ---------------------------------------------------- |
-| `type`       | `String`   | Event type name                                      |
-| `data`       | `[FilterData]` | Conditions on the event's JSON data              |
-| `path`       | `[String]` | JSON path to the field                               |
-| `checkMode`  | `CheckValue` | `EQUAL` (exact match) or `CONTAINS` (substring)   |
-| `value`      | `[JSON]`   | Values to match against                              |
+| Filter field | Type           | Description                                     |
+| ------------ | -------------- | ----------------------------------------------- |
+| `type`       | `String`       | Event type name                                 |
+| `data`       | `[FilterData]` | Conditions on the event's JSON data             |
+| `path`       | `[String]`     | JSON path to the field                          |
+| `checkMode`  | `CheckValue`   | `EQUAL` (exact match) or `CONTAINS` (substring) |
+| `value`      | `[JSON]`       | Values to match against                         |
 
 ---
 
@@ -1656,54 +1656,54 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Margin events
 
-| Event       | Fields             | Description            |
-| ----------- | ------------------ | ---------------------- |
-| `deposited` | `user`, `amount`   | Margin deposited       |
-| `withdrew`  | `user`, `amount`   | Margin withdrawn       |
+| Event       | Fields           | Description      |
+| ----------- | ---------------- | ---------------- |
+| `deposited` | `user`, `amount` | Margin deposited |
+| `withdrew`  | `user`, `amount` | Margin withdrawn |
 
 ### Vault events
 
-| Event                 | Fields                                       | Description                            |
-| --------------------- | -------------------------------------------- | -------------------------------------- |
-| `liquidity_added`     | `user`, `amount`, `shares_minted`            | LP deposited to vault                  |
-| `liquidity_unlocking` | `user`, `amount`, `shares_burned`, `end_time` | LP withdrawal initiated (cooldown)    |
-| `liquidity_released`  | `user`, `amount`                             | Cooldown completed, funds released     |
+| Event                 | Fields                                        | Description                        |
+| --------------------- | --------------------------------------------- | ---------------------------------- |
+| `liquidity_added`     | `user`, `amount`, `shares_minted`             | LP deposited to vault              |
+| `liquidity_unlocking` | `user`, `amount`, `shares_burned`, `end_time` | LP withdrawal initiated (cooldown) |
+| `liquidity_released`  | `user`, `amount`                              | Cooldown completed, funds released |
 
 ### Order events
 
-| Event              | Fields                                                                                        | Description                    |
-| ------------------ | --------------------------------------------------------------------------------------------- | ------------------------------ |
-| `order_filled`     | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee` | Order partially or fully filled |
-| `order_persisted`  | `order_id`, `pair_id`, `user`, `limit_price`, `size`                                         | Limit order placed on book     |
-| `order_removed`    | `order_id`, `pair_id`, `user`, `reason`                                                      | Order removed from book        |
+| Event             | Fields                                                                                                          | Description                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee` | Order partially or fully filled |
+| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`                                                            | Limit order placed on book      |
+| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`                                                                         | Order removed from book         |
 
 ### Conditional order events
 
-| Event                        | Fields                                                                       | Description                    |
-| ---------------------------- | ---------------------------------------------------------------------------- | ------------------------------ |
-| `conditional_order_placed`   | `order_id`, `pair_id`, `user`, `trigger_price`, `trigger_direction`, `size`, `max_slippage` | TP/SL order created |
-| `conditional_order_triggered`| `order_id`, `pair_id`, `user`, `trigger_price`, `oracle_price`               | TP/SL triggered by price move  |
-| `conditional_order_removed`  | `order_id`, `pair_id`, `user`, `reason`                                      | TP/SL removed                  |
+| Event                         | Fields                                                                                      | Description                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------- |
+| `conditional_order_placed`    | `order_id`, `pair_id`, `user`, `trigger_price`, `trigger_direction`, `size`, `max_slippage` | TP/SL order created           |
+| `conditional_order_triggered` | `order_id`, `pair_id`, `user`, `trigger_price`, `oracle_price`                              | TP/SL triggered by price move |
+| `conditional_order_removed`   | `order_id`, `pair_id`, `user`, `reason`                                                     | TP/SL removed                 |
 
 ### Liquidation events
 
-| Event             | Fields                                               | Description                            |
-| ----------------- | ---------------------------------------------------- | -------------------------------------- |
-| `liquidated`      | `user`, `pair_id`, `adl_size`, `adl_price`           | Position liquidated in a pair          |
-| `deleveraged`     | `user`, `pair_id`, `closing_size`, `fill_price`, `realized_pnl` | Counter-party hit by ADL    |
-| `bad_debt_covered` | `liquidated_user`, `amount`, `insurance_fund_remaining` | Insurance fund absorbed bad debt    |
+| Event              | Fields                                                          | Description                      |
+| ------------------ | --------------------------------------------------------------- | -------------------------------- |
+| `liquidated`       | `user`, `pair_id`, `adl_size`, `adl_price`                      | Position liquidated in a pair    |
+| `deleveraged`      | `user`, `pair_id`, `closing_size`, `fill_price`, `realized_pnl` | Counter-party hit by ADL         |
+| `bad_debt_covered` | `liquidated_user`, `amount`, `insurance_fund_remaining`         | Insurance fund absorbed bad debt |
 
 ### ReasonForOrderRemoval
 
-| Value                    | Description                                          |
-| ------------------------ | ---------------------------------------------------- |
-| `filled`                 | Order fully filled                                   |
-| `canceled`               | User voluntarily canceled                            |
-| `position_closed`        | Position was closed (conditional orders only)        |
-| `self_trade_prevention`  | Order crossed user's own order on the opposite side  |
-| `liquidated`             | User was liquidated                                  |
-| `deleveraged`            | User was hit by auto-deleveraging                    |
-| `slippage_exceeded`      | Conditional order triggered but could not fill within slippage |
+| Value                   | Description                                                    |
+| ----------------------- | -------------------------------------------------------------- |
+| `filled`                | Order fully filled                                             |
+| `canceled`              | User voluntarily canceled                                      |
+| `position_closed`       | Position was closed (conditional orders only)                  |
+| `self_trade_prevention` | Order crossed user's own order on the opposite side            |
+| `liquidated`            | User was liquidated                                            |
+| `deleveraged`           | User was hit by auto-deleveraging                              |
+| `slippage_exceeded`     | Conditional order triggered but could not fill within slippage |
 
 For liquidation and ADL mechanics, see [Liquidation & ADL](4-liquidation-and-adl.md).
 
@@ -1715,37 +1715,37 @@ For liquidation and ADL mechanics, see [Liquidation & ADL](4-liquidation-and-adl
 
 All numeric types are **signed fixed-point decimals with 6 decimal places** (`Dec128_6`), serialized as strings:
 
-| Type alias      | Dimension               | Example usage                              | Example value      |
-| --------------- | ----------------------- | ------------------------------------------ | ------------------ |
-| `Dimensionless` | (pure scalar)           | Fee rates, margin ratios, slippage         | `"0.050000"`       |
-| `Quantity`      | quantity                | Position size, order size, OI              | `"-0.500000"`      |
-| `UsdValue`      | usd                     | Margin, PnL, notional, fees               | `"10000.000000"`   |
-| `UsdPrice`      | usd / quantity          | Oracle price, limit price, entry price     | `"65000.000000"`   |
-| `FundingPerUnit` | usd / quantity         | Cumulative funding accumulator             | `"0.000123"`       |
-| `FundingRate`   | per day                 | Funding rate cap                           | `"0.000500"`       |
+| Type alias       | Dimension      | Example usage                          | Example value    |
+| ---------------- | -------------- | -------------------------------------- | ---------------- |
+| `Dimensionless`  | (pure scalar)  | Fee rates, margin ratios, slippage     | `"0.050000"`     |
+| `Quantity`       | quantity       | Position size, order size, OI          | `"-0.500000"`    |
+| `UsdValue`       | usd            | Margin, PnL, notional, fees            | `"10000.000000"` |
+| `UsdPrice`       | usd / quantity | Oracle price, limit price, entry price | `"65000.000000"` |
+| `FundingPerUnit` | usd / quantity | Cumulative funding accumulator         | `"0.000123"`     |
+| `FundingRate`    | per day        | Funding rate cap                       | `"0.000500"`     |
 
 Additional integer types:
 
-| Type      | Encoding      | Description                       |
-| --------- | ------------- | --------------------------------- |
-| `Uint128` | String        | Large integer (e.g. vault shares) |
-| `u64`     | Number or String | Gas limit, timestamps           |
-| `u32`     | Number        | User index, account index, nonce  |
+| Type      | Encoding         | Description                       |
+| --------- | ---------------- | --------------------------------- |
+| `Uint128` | String           | Large integer (e.g. vault shares) |
+| `u64`     | Number or String | Gas limit, timestamps             |
+| `u32`     | Number           | User index, account index, nonce  |
 
 ### 10.2 Identifiers
 
-| Type              | Format                      | Example                                      |
-| ----------------- | --------------------------- | -------------------------------------------- |
-| `PairId`          | `perp/<base><quote>`        | `"perp/btcusd"`, `"perp/ethusd"`             |
-| `OrderId`         | `Uint64` (string)           | `"42"`                                       |
-| `ConditionalOrderId` | `Uint64` (shared counter) | `"43"`                                      |
-| `Addr`            | Hex address                 | `"0x1234...abcd"`                             |
-| `Hash256`         | 64-char hex                 | `"a1b2c3d4e5f6..."`                          |
-| `UserIndex`       | `u32`                       | `0`                                          |
-| `AccountIndex`    | `u32`                       | `1`                                          |
-| `Username`        | 1–15 chars, `[a-z0-9_]`    | `"alice"`                                    |
-| `Timestamp`       | Nanoseconds since epoch (`u64`) | `"1700000000000000000"`                  |
-| `Duration`        | Nanoseconds (`u64`)         | `"3600000000000"` (1 hour)                   |
+| Type                 | Format                          | Example                          |
+| -------------------- | ------------------------------- | -------------------------------- |
+| `PairId`             | `perp/<base><quote>`            | `"perp/btcusd"`, `"perp/ethusd"` |
+| `OrderId`            | `Uint64` (string)               | `"42"`                           |
+| `ConditionalOrderId` | `Uint64` (shared counter)       | `"43"`                           |
+| `Addr`               | Hex address                     | `"0x1234...abcd"`                |
+| `Hash256`            | 64-char hex                     | `"a1b2c3d4e5f6..."`              |
+| `UserIndex`          | `u32`                           | `0`                              |
+| `AccountIndex`       | `u32`                           | `1`                              |
+| `Username`           | 1–15 chars, `[a-z0-9_]`         | `"alice"`                        |
+| `Timestamp`          | Nanoseconds since epoch (`u64`) | `"1700000000000000000"`          |
+| `Duration`           | Nanoseconds (`u64`)             | `"3600000000000"` (1 hour)       |
 
 ### 10.3 Enums
 
@@ -1754,6 +1754,7 @@ Additional integer types:
 ```json
 { "market": { "max_slippage": "0.010000" } }
 ```
+
 ```json
 { "limit": { "limit_price": "65000.000000", "post_only": false } }
 ```
@@ -1770,6 +1771,7 @@ Additional integer types:
 ```json
 { "one": "42" }
 ```
+
 ```json
 "all"
 ```
@@ -1813,60 +1815,61 @@ Additional integer types:
 
 **Position:**
 
-| Field                    | Type             | Description                          |
-| ------------------------ | ---------------- | ------------------------------------ |
-| `size`                   | `Quantity`       | Positive = long, negative = short    |
-| `entry_price`            | `UsdPrice`       | Average entry price                  |
-| `entry_funding_per_unit` | `FundingPerUnit` | Funding accumulator at last update   |
+| Field                    | Type             | Description                        |
+| ------------------------ | ---------------- | ---------------------------------- |
+| `size`                   | `Quantity`       | Positive = long, negative = short  |
+| `entry_price`            | `UsdPrice`       | Average entry price                |
+| `entry_funding_per_unit` | `FundingPerUnit` | Funding accumulator at last update |
 
 **Unlock:**
 
-| Field               | Type        | Description                  |
-| ------------------- | ----------- | ---------------------------- |
-| `end_time`          | `Timestamp` | When cooldown completes      |
-| `amount_to_release` | `UsdValue`  | USD value to release         |
+| Field               | Type        | Description             |
+| ------------------- | ----------- | ----------------------- |
+| `end_time`          | `Timestamp` | When cooldown completes |
+| `amount_to_release` | `UsdValue`  | USD value to release    |
 
 **QueryOrderResponse:**
 
-| Field        | Type                       | Description                   |
-| ------------ | -------------------------- | ----------------------------- |
-| `user`       | `Addr`                     | Order owner                   |
-| `pair_id`    | `PairId`                   | Trading pair                  |
-| `size`       | `Quantity`                 | Order size                    |
-| `kind`       | `LimitOrConditionalOrder`  | Order type and parameters     |
-| `created_at` | `Timestamp`                | Creation time                 |
+| Field        | Type                      | Description               |
+| ------------ | ------------------------- | ------------------------- |
+| `user`       | `Addr`                    | Order owner               |
+| `pair_id`    | `PairId`                  | Trading pair              |
+| `size`       | `Quantity`                | Order size                |
+| `kind`       | `LimitOrConditionalOrder` | Order type and parameters |
+| `created_at` | `Timestamp`               | Creation time             |
 
 **LimitOrConditionalOrder:**
 
 ```json
 { "limit": { "limit_price": "65000.000000", "reduce_only": false, "reserved_margin": "1575.000000" } }
 ```
+
 ```json
 { "conditional": { "trigger_price": "70000.000000", "trigger_direction": "above" } }
 ```
 
 **LiquidityDepthResponse:**
 
-| Field  | Type                             | Description                |
-| ------ | -------------------------------- | -------------------------- |
-| `bids` | `Map<UsdPrice, LiquidityDepth>` | Bid-side depth by price    |
-| `asks` | `Map<UsdPrice, LiquidityDepth>` | Ask-side depth by price    |
+| Field  | Type                            | Description             |
+| ------ | ------------------------------- | ----------------------- |
+| `bids` | `Map<UsdPrice, LiquidityDepth>` | Bid-side depth by price |
+| `asks` | `Map<UsdPrice, LiquidityDepth>` | Ask-side depth by price |
 
 **LiquidityDepth:**
 
-| Field      | Type       | Description                      |
-| ---------- | ---------- | -------------------------------- |
-| `size`     | `Quantity` | Absolute order size in bucket    |
-| `notional` | `UsdValue` | USD notional (size × price)      |
+| Field      | Type       | Description                   |
+| ---------- | ---------- | ----------------------------- |
+| `size`     | `Quantity` | Absolute order size in bucket |
+| `notional` | `UsdValue` | USD notional (size × price)   |
 
 **User** (account factory):
 
-| Field      | Type                          | Description                         |
-| ---------- | ----------------------------- | ----------------------------------- |
-| `index`    | `UserIndex`                   | User's numerical index              |
-| `name`     | `Username`                    | User's username                     |
-| `accounts` | `Map<AccountIndex, Addr>`     | Accounts owned (index → address)    |
-| `keys`     | `Map<Hash256, Key>`           | Associated keys (hash → key)        |
+| Field      | Type                      | Description                      |
+| ---------- | ------------------------- | -------------------------------- |
+| `index`    | `UserIndex`               | User's numerical index           |
+| `name`     | `Username`                | User's username                  |
+| `accounts` | `Map<AccountIndex, Addr>` | Accounts owned (index → address) |
+| `keys`     | `Map<Hash256, Key>`       | Associated keys (hash → key)     |
 
 **Account:**
 
