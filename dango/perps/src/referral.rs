@@ -180,7 +180,7 @@ pub(crate) fn retrieve_user_index(
 
 /// Determine the commission rebound rate for a referrer based on their
 /// direct referees' 30-day rolling trading volume against configurable tiers.
-/// N.B. This function assume the user is a valid referrer (has set a fee share ratio).
+/// N.B. This function assumes the user is a valid referrer (has set a fee share ratio).
 pub(crate) fn calculate_commission_rebound(
     storage: &dyn Storage,
     referrer: Referrer,
@@ -245,7 +245,7 @@ fn load_referral_data(
         .map(|opt| opt.map(|(_, data)| data).unwrap_or_default())
 }
 
-/// Resolve the master account for an user.
+/// Resolve the master account for a user.
 ///
 /// Returns `None` if the query fails.
 pub(crate) fn retrieve_master_account(
@@ -482,7 +482,7 @@ pub(crate) fn apply_fee_rebounds(
 }
 
 /// Look up or compute referrer settings for a user, with caching.
-/// N.B. This function assume the user is a valid referrer (has set a fee share ratio).
+/// N.B. This function assumes the user is a valid referrer (has set a fee share ratio).
 fn compute_referrer_settings(
     storage: &dyn Storage,
     user: UserIndex,
@@ -565,8 +565,9 @@ fn increment_referral_data(
 
 /// Update per-referee statistics for a referrer.
 ///
-/// Creates the entry on first call (setting `registered_at`), then accumulates
-/// volume and commission, and updates the last active day.
+/// The entry must already exist (initialized in `set_referral`).
+/// Accumulates volume and commission, and increments the referrer's daily
+/// active users count on the first trade of each day.
 fn update_referee_stats(
     storage: &mut dyn Storage,
     referrer: Referrer,
