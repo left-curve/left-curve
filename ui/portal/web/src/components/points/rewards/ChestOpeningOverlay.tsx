@@ -1,7 +1,7 @@
 import { Button } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type NFTItem, NFTCarousel } from "./NFTCarousel";
 import { NFTResult } from "./NFTResult";
 
@@ -9,6 +9,7 @@ type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 
 type ChestOpeningOverlayProps = {
   variant: BoxVariant;
+  loot: string | null;
   onClose: () => void;
   currentFrame: number;
   animationFrames: string[] | null;
@@ -25,7 +26,7 @@ const CHEST_ASSETS: Record<BoxVariant, string> = {
 const FLASH_IMAGE = "/images/points/flash.png";
 const FLASH_IMAGE2 = "/images/points/flash2.png";
 
-const MOCK_NFTS: NFTItem[] = [
+const ALL_NFTS: NFTItem[] = [
   { id: "common", rarity: "common", label: "Common", imageSrc: "/images/points/nft/common.png" },
   {
     id: "uncommon",
@@ -34,7 +35,7 @@ const MOCK_NFTS: NFTItem[] = [
     imageSrc: "/images/points/nft/uncommon.png",
   },
   { id: "epic", rarity: "epic", label: "Epic", imageSrc: "/images/points/nft/epic.png" },
-  { id: "golden", rarity: "golden", label: "Golden", imageSrc: "/images/points/nft/mythic.png" },
+  { id: "mythic", rarity: "mythic", label: "Mythic", imageSrc: "/images/points/nft/mythic.png" },
   {
     id: "legendary",
     rarity: "legendary",
@@ -48,6 +49,7 @@ type Phase = "chest" | "carousel" | "spinning" | "result";
 
 export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   variant,
+  loot,
   onClose,
   currentFrame,
   animationFrames,
@@ -61,6 +63,12 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   const hasAnimation = animationFrames !== null;
   const totalFrames = animationFrames?.length ?? 1;
   const animationProgress = hasAnimation ? currentFrame / totalFrames : 0;
+
+  const targetNFT = useMemo(() => {
+    if (!loot) return ALL_NFTS[0];
+    const lootKey = loot.toLowerCase();
+    return ALL_NFTS.find((nft) => nft.rarity === lootKey) ?? ALL_NFTS[0];
+  }, [loot]);
 
   useEffect(() => {
     if (phase === "chest" && hasAnimation && animationFrames) {
@@ -83,10 +91,9 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   }, [phase, hasAnimation]);
 
   const handleSpin = useCallback(() => {
-    const randomIndex = Math.floor(Math.random() * MOCK_NFTS.length);
-    setWinningNFT(MOCK_NFTS[randomIndex]);
+    setWinningNFT(targetNFT);
     setPhase("spinning");
-  }, []);
+  }, [targetNFT]);
 
   const handleSpinComplete = useCallback(() => {
     setPhase("result");
@@ -182,7 +189,7 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
             </motion.p>
 
             <NFTCarousel
-              nfts={MOCK_NFTS}
+              nfts={ALL_NFTS}
               isSpinning={phase === "spinning"}
               targetNFT={winningNFT}
               onSpinComplete={handleSpinComplete}

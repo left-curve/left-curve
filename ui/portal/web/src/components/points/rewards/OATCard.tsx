@@ -1,60 +1,78 @@
-import { IconLock, twMerge } from "@left-curve/applets-kit";
+import { formatDate, IconClock, IconFlash, twMerge, useApp } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
 export type OATType = "hurrah" | "trader" | "wizard" | "supporter";
 
-const OATConfig: Record<
-  OATType,
-  {
-    title: string;
-    imageSrc: string;
-  }
-> = {
-  hurrah: {
-    title: "The Last Hurrah",
-    imageSrc: "/images/points/oats/hurrah.png",
-  },
-  trader: {
-    title: "Testnet Trader",
-    imageSrc: "/images/points/oats/trader.png",
-  },
-  wizard: {
-    title: "Testnet Wizard",
-    imageSrc: "/images/points/oats/wizard.png",
-  },
-  supporter: {
-    title: "Early Supporter",
-    imageSrc: "/images/points/oats/supporter.png",
-  },
+const OATImages: Record<OATType, string> = {
+  hurrah: "/images/points/oats/hurrah.png",
+  trader: "/images/points/oats/trader.png",
+  wizard: "/images/points/oats/wizard.png",
+  supporter: "/images/points/oats/supporter.png",
+};
+
+const OATTitles: Record<OATType, () => string> = {
+  hurrah: () => m["points.boosters.oats.hurrah"](),
+  trader: () => m["points.boosters.oats.trader"](),
+  wizard: () => m["points.boosters.oats.wizard"](),
+  supporter: () => m["points.boosters.oats.supporter"](),
 };
 
 type OATCardProps = {
   type: OATType;
   isLocked?: boolean;
+  /** Unix timestamp (seconds) when this OAT expires */
+  expiresAt?: number;
+  /** Points boost percentage */
+  pointsBoost?: number;
   className?: string;
 };
 
-export const OATCard: React.FC<OATCardProps> = ({ type, isLocked = false, className }) => {
-  const { title, imageSrc } = OATConfig[type];
+export const OATCard: React.FC<OATCardProps> = ({
+  type,
+  isLocked = false,
+  expiresAt,
+  pointsBoost = 100,
+  className,
+}) => {
+  const { settings } = useApp();
+  const { dateFormat } = settings;
+  const title = OATTitles[type]();
+  const imageSrc = OATImages[type];
+  const expirationDisplay = expiresAt
+    ? formatDate(new Date(expiresAt * 1000), dateFormat)
+    : "--";
 
   return (
     <div
       className={twMerge(
-        "relative rounded-xl overflow-hidden aspect-square",
-        isLocked && "opacity-70",
+        "flex flex-col rounded-xl overflow-hidden bg-surface-secondary-rice border border-outline-primary-gray shadow-account-card p-4 gap-4",
+
         className,
       )}
     >
-      <img
-        src={imageSrc}
-        alt={title}
-        className="w-full h-full object-cover select-none drag-none"
-      />
-      {isLocked && (
-        <div className="flex items-center justify-center rounded-full bg-surface-tertiary-gray absolute bottom-3 right-3 w-8 h-8 z-10">
-          <IconLock className="w-6 h-6 text-utility-warning-600" />
+      <div className="relative">
+        <img
+          src={imageSrc}
+          alt={title}
+          className={twMerge(
+            "w-full aspect-square object-cover select-none drag-none rounded-xl",
+            isLocked && "opacity-50",
+          )}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 px-2 py-1 bg-surface-tertiary-gray rounded-md">
+          <IconFlash className="w-6 h-6 text-primitives-green-light-400" />
+          <span className="diatype-xs-regular text-ink-primary-900">
+            {m["points.boosters.pointsBoost"]({ pointsBoost: String(pointsBoost) })}
+          </span>
         </div>
-      )}
+        <div className="flex items-center gap-2 px-2 py-1 bg-surface-tertiary-gray rounded-md">
+          <IconClock className="w-6 h-6 text-fg-primary-red" />
+          <span className="diatype-xs-regular text-ink-primary-900">{expirationDisplay}</span>
+        </div>
+      </div>
     </div>
   );
 };

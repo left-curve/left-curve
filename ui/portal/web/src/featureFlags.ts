@@ -1,5 +1,6 @@
 const FEATURE_IDS = [
   "points",
+  "referral",
   "stopLoss",
   "triggerOrders",
   "orderTimestamp",

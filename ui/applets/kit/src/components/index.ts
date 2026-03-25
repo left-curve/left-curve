@@ -83,6 +83,7 @@ export { IconLogOut } from "./icons/IconLogOut";
 export { IconKey } from "./icons/IconKey";
 export { IconClose } from "./icons/IconClose";
 export { IconCloseCircle } from "./icons/IconCloseCircle";
+export { IconClock } from "./icons/IconClock";
 export { IconStar } from "./icons/IconStar";
 export { IconEmptyStar } from "./icons/IconEmptyStar";
 export { IconCheckedCircle } from "./icons/IconCheckedCircle";
