@@ -7,6 +7,8 @@ import {
   liquidityDepthStore,
   useLiquidityDepthState,
   useLiveTradesState,
+  useLivePerpsTradesState,
+  livePerpsTradesStore,
   useOrderBookState,
   useCurrentPrice,
   useTradeCoins,
@@ -293,23 +295,93 @@ type LiveTradesProps = {
   mode: "spot" | "perps";
 };
 
-const LiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin, pairId, mode }) => {
+const LiveTrades: React.FC<LiveTradesProps> = (props) => {
+  return props.mode === "perps" ? <PerpsLiveTrades {...props} /> : <SpotLiveTrades {...props} />;
+};
+
+const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, pairId }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
   const { is3XlTall } = useMediaQuery();
   const { timeFormat } = settings;
-  const { liveTradesStore } = useLiveTradesState({ pairId });
+  const { coins } = useConfig();
+
+  const perpsPairId = useMemo(() => {
+    const baseSymbol = coins.byDenom[pairId.baseDenom]?.symbol;
+    const quoteSymbol = coins.byDenom[pairId.quoteDenom]?.symbol ?? "USD";
+    return baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
+  }, [pairId, coins]);
+
+  useLivePerpsTradesState({ pairId: perpsPairId, subscribe: !!perpsPairId });
+
+  const livePerps = livePerpsTradesStore((s) => s.trades);
+  const perpsTrades = useDeferredValue(livePerps);
+
+  return (
+    <div
+      className={twMerge(
+        "flex gap-2 flex-col items-center justify-start lg:max-h-[38.75rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4",
+        is3XlTall && "max-h-[15rem] min-h-[15rem] 4xl:max-h-[20rem] 4xl:min-h-[20rem]",
+      )}
+    >
+      <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
+        <p>{m["dex.protrade.history.price"]()}</p>
+        <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
+        <p className="text-end">{m["dex.protrade.history.time"]()}</p>
+      </div>
+      <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
+        {perpsTrades.length ? (
+          perpsTrades.map((trade, index) => {
+            const isLong = Number(trade.fillSize) > 0;
+            return (
+              <div
+                key={`${trade.orderId}-${trade.tradeIdx}-${index}`}
+                onClick={() => navigate({ to: `/block/${trade.blockHeight}` })}
+                className="grid grid-cols-3 diatype-xs-medium text-ink-secondary-700 w-full cursor-pointer group relative"
+              >
+                <div
+                  className={twMerge(
+                    "z-10",
+                    isLong ? "text-utility-success-600" : "text-utility-error-600",
+                  )}
+                >
+                  <FormattedNumber
+                    number={trade.fillPrice}
+                    formatOptions={{ minimumTotalDigits: 8 }}
+                  />
+                </div>
+                <div className="text-center z-10 flex gap-1 justify-center">
+                  <FormattedNumber
+                    number={Math.abs(Number(trade.fillSize)).toString()}
+                    formatOptions={{ maximumTotalDigits: 5, minimumTotalDigits: 5 }}
+                  />
+                </div>
+                <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
+                  <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
+                  <IconLink className="w-3 h-3 min-h-3 min-w-3" />
+                </div>
+                <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
+              </div>
+            );
+          })
+        ) : (
+          <Spinner fullContainer size="md" color="pink" />
+        )}
+      </div>
+    </div>
+  );
+};
+
+const SpotLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin, pairId }) => {
+  const { navigate } = useRouter();
+  const { settings } = useApp();
+  const { is3XlTall } = useMediaQuery();
+  const { timeFormat } = settings;
+
+  const { liveTradesStore } = useLiveTradesState({ pairId, subscribe: true });
 
   const liveTrades = liveTradesStore((s) => s.trades);
   const trades = useDeferredValue(liveTrades);
-
-  if (mode === "perps") {
-    return (
-      <div className="flex items-center justify-center h-full min-h-[10rem] px-4">
-        <p className="diatype-m-regular text-ink-tertiary-500">Perps live trades available soon</p>
-      </div>
-    );
-  }
 
   return (
     <div
