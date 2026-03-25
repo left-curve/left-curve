@@ -113,7 +113,8 @@ pub struct ReferralParam {
 }
 
 /// Referrer settings for a referrer.
-#[derive(Clone, Copy)]
+#[grug::derive(Serde)]
+#[derive(Copy)]
 pub struct ReferrerSettings {
     pub commission_rebound: CommissionReboundRate,
     pub share_ratio: FeeShareRatio,
@@ -130,6 +131,22 @@ pub struct RefereeStats {
     pub commission_rebounded: UsdValue,
     /// Timestamp of the last day the referee was active.
     pub last_day_active: Timestamp,
+}
+
+/// Ordering options for querying per-referee statistics.
+#[grug::derive(Serde)]
+pub struct ReferrerStatsOrderBy {
+    pub order: grug::Order,
+    pub limit: Option<u32>,
+    pub index: ReferrerStatsOrderIndex,
+}
+
+/// Which index to use when querying per-referee statistics.
+#[grug::derive(Serde)]
+pub enum ReferrerStatsOrderIndex {
+    Commission { start_after: Option<UsdValue> },
+    RegisterAt { start_after: Option<Timestamp> },
+    Volume { start_after: Option<UsdValue> },
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
@@ -661,9 +678,24 @@ pub enum QueryMsg {
     #[returns(Option<Referrer>)]
     Referrer { referee: UserIndex },
 
-    /// Query the fee share ratio of a given referrer.
-    #[returns(Option<FeeShareRatio>)]
-    FeeShareRatio { referrer: UserIndex },
+    /// Query referral data for a user.
+    /// `since: None` -> lifetime data. `since: Some(ts)` -> data since ts.
+    #[returns(UserReferralData)]
+    ReferralData {
+        user: UserIndex,
+        since: Option<Timestamp>,
+    },
+
+    /// Query per-referee statistics for a referrer, with ordering and pagination.
+    #[returns(Vec<(Referee, RefereeStats)>)]
+    ReferrerToRefereeStats {
+        referrer: Referrer,
+        order_by: ReferrerStatsOrderBy,
+    },
+
+    /// Return the referral settings if the user is a referrer. Otherwise, return None.
+    #[returns(Option<ReferrerSettings>)]
+    ReferralSettings { user: UserIndex },
 }
 
 #[grug::derive(Serde)]

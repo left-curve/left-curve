@@ -232,8 +232,16 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query::query_referrer(ctx.storage, referee)?;
             res.to_json_value()
         },
-        QueryMsg::FeeShareRatio { referrer } => {
-            let res = query::query_fee_share_ratio(ctx.storage, referrer)?;
+        QueryMsg::ReferralData { user, since } => {
+            let res = query::query_referral_data(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferrerToRefereeStats { referrer, order_by } => {
+            let res = query::query_referrer_to_referee_stats(ctx, referrer, order_by)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralSettings { user } => {
+            let res = query::query_referral_settings(ctx, user)?;
             res.to_json_value()
         },
     }
