@@ -9,8 +9,6 @@ There are two query surfaces:
 
 Both surfaces share the same endpoint. All write operations (orders, deposits, account creation) go through the `broadcastTxSync` GraphQL mutation.
 
----
-
 ## 1. Transport
 
 ### 1.1 HTTP
@@ -117,8 +115,6 @@ List queries use **cursor-based pagination** (Relay Connection specification).
 ```
 
 Use `first` + `after` for forward pagination, `last` + `before` for backward.
-
----
 
 ## 2. Authentication and transactions
 
@@ -413,8 +409,6 @@ mutation BroadcastTx($tx: Tx!) {
 
 The mutation returns the transaction outcome as JSON.
 
----
-
 ## 3. Account management
 
 Dango uses **smart accounts** instead of externally-owned accounts (EOAs). A user profile is identified by a `UserIndex` and may own multiple subaccounts (up to 5). Keys are associated with the user profile, not individual accounts.
@@ -704,8 +698,6 @@ query {
 ```
 
 Filter by `userIndex` to get all accounts for a specific user, or by `address` for a specific account.
-
----
 
 ## 4. Market data
 
@@ -1008,8 +1000,6 @@ query {
 | `minBlockHeight` | `Int`        | First block in this candle    |
 | `maxBlockHeight` | `Int`        | Last block in this candle     |
 
----
-
 ## 5. User state and orders
 
 ### 5.1 User state
@@ -1209,8 +1199,6 @@ The `data` field contains the event-specific payload as JSON. For example, an `o
   "fee": "6.500000"
 }
 ```
-
----
 
 ## 6. Trading operations
 
@@ -1433,8 +1421,6 @@ Force-close all positions of an undercollateralized user. This message can be se
 
 The transaction reverts if the user is not below the maintenance margin. Unfilled positions are ADL'd against counter-parties at the bankruptcy price. For mechanics, see [Liquidation & ADL](4-liquidation-and-adl.md).
 
----
-
 ## 7. Vault operations
 
 The counterparty vault provides liquidity for the exchange. Users can deposit margin into the vault to earn trading fees, and withdraw with a cooldown period.
@@ -1492,8 +1478,6 @@ Request a withdrawal from the vault (initiates cooldown):
 | `shares_to_burn` | `Uint128` | Number of shares to burn |
 
 Shares are burned immediately. The corresponding USD value enters a cooldown queue. After `vault_cooldown_period` elapses, funds are automatically credited back to the user's trading margin.
-
----
 
 ## 8. Real-time subscriptions
 
@@ -1648,8 +1632,6 @@ subscription {
 | `checkMode`  | `CheckValue`   | `EQUAL` (exact match) or `CONTAINS` (substring) |
 | `value`      | `[JSON]`       | Values to match against                         |
 
----
-
 ## 9. Events reference
 
 The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history-indexer)) or streamed via the `events` subscription ([§8.5](#85-event-stream)).
@@ -1706,8 +1688,6 @@ The perps contract emits the following events. These can be queried via `perpsEv
 | `slippage_exceeded`     | Conditional order triggered but could not fill within slippage |
 
 For liquidation and ADL mechanics, see [Liquidation & ADL](4-liquidation-and-adl.md).
-
----
 
 ## 10. Types reference
 
