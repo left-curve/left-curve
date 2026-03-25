@@ -1,7 +1,8 @@
 use {
     crate::{
-        FEE_SHARE_RATIO, PARAM, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS,
-        USER_REFERRAL_DATA, USER_STATES, query::query_volume, volume::round_to_day,
+        COMMISSION_REBOUND_OVERRIDES, FEE_SHARE_RATIO, PARAM, REFEREE_TO_REFERRER,
+        REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, query::query_volume,
+        volume::round_to_day,
     },
     anyhow::{bail, ensure},
     dango_types::{
@@ -100,16 +101,19 @@ pub fn set_fee_share_ratio(
 
     let user_index = account.owner;
 
-    // The caller must have enough lifetime perps volume to become a referrer.
-    let param = PARAM.load(ctx.storage)?;
-    let volume = query_volume(ctx.storage, ctx.sender, None)?;
+    // Users with a commission rebound override bypass the volume requirement.
+    // Otherwise, the caller must have enough lifetime perps volume.
+    if !COMMISSION_REBOUND_OVERRIDES.has(ctx.storage, user_index) {
+        let param = PARAM.load(ctx.storage)?;
+        let volume = query_volume(ctx.storage, ctx.sender, None)?;
 
-    ensure!(
-        volume >= param.referral.volume_to_be_referrer,
-        "insufficient perps volume to become a referrer (required: {}, current: {})",
-        param.referral.volume_to_be_referrer,
-        volume,
-    );
+        ensure!(
+            volume >= param.referral.volume_to_be_referrer,
+            "insufficient perps volume to become a referrer (required: {}, current: {})",
+            param.referral.volume_to_be_referrer,
+            volume,
+        );
+    }
 
     // If already set, the new ratio must be >= the existing one.
     if let Some(existing) = FEE_SHARE_RATIO.may_load(ctx.storage, user_index)? {
@@ -120,6 +124,27 @@ pub fn set_fee_share_ratio(
     }
 
     FEE_SHARE_RATIO.save(ctx.storage, user_index, &share_ratio)?;
+
+    Ok(Response::new())
+}
+
+/// Set or remove a commission rebound override for a user.
+///
+/// Only callable by the chain owner.
+pub fn set_commission_rebound_override(
+    ctx: MutableCtx,
+    user: UserIndex,
+    commission_rebound: Option<CommissionReboundRate>,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    match commission_rebound {
+        Some(rate) => COMMISSION_REBOUND_OVERRIDES.save(ctx.storage, user, &rate)?,
+        None => COMMISSION_REBOUND_OVERRIDES.remove(ctx.storage, user),
+    }
 
     Ok(Response::new())
 }
@@ -158,10 +183,15 @@ pub(crate) fn retrieve_user_index(
 /// N.B. This function assume the user is a valid referrer (has set a fee share ratio).
 pub(crate) fn calculate_commission_rebound(
     storage: &dyn Storage,
-    referrer: UserIndex,
+    referrer: Referrer,
     block_timestamp: Timestamp,
     referral_param: &ReferralParam,
 ) -> grug::StdResult<CommissionReboundRate> {
+    // If the referrer has a custom override, use it directly.
+    if let Some(override_rate) = COMMISSION_REBOUND_OVERRIDES.may_load(storage, referrer)? {
+        return Ok(override_rate);
+    }
+
     let today = round_to_day(block_timestamp);
     let lookback_start = today.saturating_sub(grug::Duration::from_days(REBOUND_LOOKBACK_DAYS));
 

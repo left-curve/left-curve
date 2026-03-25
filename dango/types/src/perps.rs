@@ -580,6 +580,14 @@ pub enum ReferralMsg {
     /// the referrer gives back to the referee.
     /// Can only increase (never decrease) once set.
     SetFeeShareRatio { share_ratio: FeeShareRatio },
+
+    /// Set or remove a commission rebound override for a user.
+    /// Only callable by the chain owner.
+    /// Pass `None` to remove the override.
+    SetCommissionReboundOverride {
+        user: UserIndex,
+        commission_rebound: Option<CommissionReboundRate>,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]

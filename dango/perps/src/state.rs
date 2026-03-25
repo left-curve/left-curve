@@ -3,9 +3,9 @@ use {
         Quantity, UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
-            ConditionalOrder, ConditionalOrderId, FeeShareRatio, LimitOrder, OrderId, PairId,
-            PairParam, PairState, Param, Referee, RefereeStats, Referrer, State, UserReferralData,
-            UserState,
+            CommissionReboundRate, ConditionalOrder, ConditionalOrderId, FeeShareRatio, LimitOrder,
+            OrderId, PairId, PairParam, PairState, Param, Referee, RefereeStats, Referrer, State,
+            UserReferralData, UserState,
         },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
@@ -87,6 +87,11 @@ pub const REFEREE_TO_REFERRER: Map<UserIndex, UserIndex> = Map::new("ref_r");
 
 /// Maps a referrer to their fee share ratio.
 pub const FEE_SHARE_RATIO: Map<UserIndex, FeeShareRatio> = Map::new("ref_sr");
+
+/// Per-user commission rebound override. If set, this value is used instead of
+/// the volume-based tier calculation.
+pub const COMMISSION_REBOUND_OVERRIDES: Map<UserIndex, CommissionReboundRate> =
+    Map::new("ref_cr_override");
 
 /// Cumulative referral data per user, bucketed by day.
 pub const USER_REFERRAL_DATA: Map<(UserIndex, Timestamp), UserReferralData> = Map::new("ref_data");
