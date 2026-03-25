@@ -70,13 +70,13 @@ export const OATCard: React.FC<OATCardProps> = ({
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 px-2 py-1 bg-surface-tertiary-gray rounded-md">
-          <IconFlash className="w-4 h-4 text-primitives-green-light-400" />
+          <IconFlash className="w-6 h-6 text-primitives-green-light-400" />
           <span className="diatype-xs-regular text-ink-primary-900">
             {m["points.boosters.pointsBoost"]({ pointsBoost: String(pointsBoost) })}
           </span>
         </div>
         <div className="flex items-center gap-2 px-2 py-1 bg-surface-tertiary-gray rounded-md">
-          <IconClock className="w-4 h-4 text-brand-red-bean" />
+          <IconClock className="w-6 h-6 text-fg-primary-red" />
           <span className="diatype-xs-regular text-ink-primary-900">{expirationDisplay}</span>
         </div>
       </div>
