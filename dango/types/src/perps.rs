@@ -42,6 +42,10 @@ pub type Referee = UserIndex;
 /// Uses `Dimensionless` (a value in the range appropriate for ratios).
 pub type FeeShareRatio = Dimensionless;
 
+/// Commission rebound rate — the fraction of the vault fee rebounded to
+/// referee + referrer when a user with an active referral trades.
+pub type CommissionReboundRate = Dimensionless;
+
 #[grug::derive(Serde)]
 #[derive(Copy)]
 pub enum OrderKind {
@@ -98,6 +102,21 @@ pub struct ReferralParam {
     /// Minimum lifetime perps trading volume a user must have
     /// before they can become a referrer by setting a fee share ratio.
     pub volume_to_be_referrer: UsdValue,
+
+    /// Default commission rebound rate applied when no volume tier qualifies.
+    pub commission_rebound_default: CommissionReboundRate,
+
+    /// Volume-tiered commission rebound rates. Key = minimum 30-day referees
+    /// volume threshold; value = commission rebound rate.
+    /// Highest qualifying tier wins.
+    pub commission_rebound_by_volume: BTreeMap<UsdValue, CommissionReboundRate>,
+}
+
+/// Referrer settings for a referrer.
+#[derive(Clone, Copy)]
+pub struct ReferrerSettings {
+    pub commission_rebound: CommissionReboundRate,
+    pub share_ratio: FeeShareRatio,
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
@@ -337,6 +356,42 @@ pub struct Unlock {
     /// The USD value to be released once cooldown completes. Token conversion
     /// happens at claim time using the current oracle price.
     pub amount_to_release: UsdValue,
+}
+
+/// Cumulative referral data for a user, bucketed by day.
+///
+/// Each day-bucket stores running totals that can be differenced to compute
+/// rolling-window values (e.g. 30-day referees volume).
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct UserReferralData {
+    /// The user's own trading volume (cumulative).
+    pub volume: UsdValue,
+    /// Total commission rebounded to this user (cumulative).
+    pub commission_rebounded: UsdValue,
+    /// Number of direct referees this user has.
+    pub referee_count: u32,
+    /// Total trading volume of this user's direct referees (cumulative).
+    pub referees_volume: UsdValue,
+    /// Total commission rebounded to this user's referees (cumulative).
+    pub referees_commission_rebounded: UsdValue,
+}
+
+impl UserReferralData {
+    /// Element-wise subtraction for rolling window calculations.
+    pub fn checked_sub(&self, other: &Self) -> grug::StdResult<Self> {
+        Ok(Self {
+            volume: self.volume.checked_sub(other.volume)?,
+            commission_rebounded: self
+                .commission_rebounded
+                .checked_sub(other.commission_rebounded)?,
+            referee_count: self.referee_count.saturating_sub(other.referee_count),
+            referees_volume: self.referees_volume.checked_sub(other.referees_volume)?,
+            referees_commission_rebounded: self
+                .referees_commission_rebounded
+                .checked_sub(other.referees_commission_rebounded)?,
+        })
+    }
 }
 
 /// A resting limit order, waiting to be fulfilled.

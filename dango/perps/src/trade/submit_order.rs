@@ -15,6 +15,7 @@ use {
         },
         price::may_invert_price,
         query::query_volume,
+        referral::apply_fee_rebounds,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -62,29 +63,48 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (maker_states, order_mutations, order_to_store, next_order_id, index_updates, volumes) =
-        _submit_order(
-            ctx.storage,
-            ctx.sender,
-            ctx.contract,
-            ctx.block.timestamp,
-            &mut oracle_querier,
-            &param,
-            &mut state,
-            &pair_id,
-            &pair_param,
-            &mut pair_state,
-            &mut taker_state,
-            oracle_price,
-            size,
-            kind,
-            reduce_only,
-            &mut events,
-        )?;
+    let (
+        mut maker_states,
+        order_mutations,
+        order_to_store,
+        next_order_id,
+        index_updates,
+        volumes,
+        vault_fees,
+    ) = _submit_order(
+        ctx.storage,
+        ctx.sender,
+        ctx.contract,
+        ctx.block.timestamp,
+        &mut oracle_querier,
+        &param,
+        &mut state,
+        &pair_id,
+        &pair_param,
+        &mut pair_state,
+        &mut taker_state,
+        oracle_price,
+        size,
+        kind,
+        reduce_only,
+        &mut events,
+    )?;
 
     // ------------------------ 3. Apply state changes -------------------------
 
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
+
+    apply_fee_rebounds(
+        ctx.storage,
+        &ctx.querier,
+        ctx.contract,
+        ctx.block.timestamp,
+        &param.referral,
+        ctx.sender,
+        &mut taker_state,
+        &mut maker_states,
+        &vault_fees,
+    )?;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
@@ -257,6 +277,7 @@ pub(crate) fn _submit_order(
     OrderId,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, UsdValue>,
 )> {
     // -------------- Step 1. Check minimum order size -------------------------
 
@@ -316,6 +337,7 @@ pub(crate) fn _submit_order(
             Some(order_to_store),
             taker_order_id + OrderId::ONE,
             Vec::new(),
+            BTreeMap::new(),
             BTreeMap::new(),
         ));
     }
@@ -412,7 +434,7 @@ pub(crate) fn _submit_order(
             .unwrap_or_default()
     });
 
-    settle_pnls(
+    let vault_fees = settle_pnls(
         contract,
         param,
         state,
@@ -430,6 +452,7 @@ pub(crate) fn _submit_order(
         next_order_id,
         index_updates,
         volumes,
+        vault_fees,
     ))
 }
 
@@ -807,7 +830,9 @@ pub fn settle_fill(
 /// - `maker_states[*].margin` — adjusted by PnL and fees (including the vault's
 ///   `UserState`).
 ///
-/// Returns: `()` — all side effects are applied in-place.
+/// Returns: per-user vault fees — the portion of each user's trading fee that
+/// went to the vault, excluding the protocol treasury's share. Keyed by the
+/// fee-paying user's address.
 pub fn settle_pnls(
     contract: Addr,
     param: &Param,
@@ -817,13 +842,15 @@ pub fn settle_pnls(
     maker_states: &mut BTreeMap<Addr, UserState>,
     pnls: BTreeMap<Addr, UsdValue>,
     fees: BTreeMap<Addr, UsdValue>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<BTreeMap<Addr, UsdValue>> {
     debug_assert!(
         !maker_states.contains_key(&taker),
         "taker must not be in maker_states — self-trade prevention violated"
     );
 
     // ------------------------------ Settle fees ------------------------------
+
+    let mut vault_fees = BTreeMap::new();
 
     for (user, fee) in fees {
         if fee.is_zero() || user == contract {
@@ -854,6 +881,8 @@ pub fn settle_pnls(
                 .margin
                 .checked_sub_assign(fee)?;
         }
+
+        vault_fees.insert(user, vault_fee);
     }
 
     // ------------------------------ Settle PnLs ------------------------------
@@ -874,7 +903,7 @@ pub fn settle_pnls(
         }
     }
 
-    Ok(())
+    Ok(vault_fees)
 }
 
 /// Validate and store a post-only limit order. Rejects if the limit price

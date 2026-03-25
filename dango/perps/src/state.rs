@@ -4,7 +4,7 @@ use {
         account_factory::UserIndex,
         perps::{
             ConditionalOrder, ConditionalOrderId, FeeShareRatio, LimitOrder, OrderId, PairId,
-            PairParam, PairState, Param, State, UserState,
+            PairParam, PairState, Param, State, UserReferralData, UserState,
         },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
@@ -86,6 +86,9 @@ pub const REFEREE_TO_REFERRER: Map<UserIndex, UserIndex> = Map::new("ref_r");
 
 /// Maps a referrer to their fee share ratio.
 pub const FEE_SHARE_RATIO: Map<UserIndex, FeeShareRatio> = Map::new("ref_sr");
+
+/// Cumulative referral data per user, bucketed by day.
+pub const USER_REFERRAL_DATA: Map<(UserIndex, Timestamp), UserReferralData> = Map::new("ref_data");
 
 // ----------------------------------- types -----------------------------------
 

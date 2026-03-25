@@ -293,10 +293,7 @@ pub fn query_volume(
     }
 }
 
-pub fn query_referrer(
-    storage: &dyn Storage,
-    referee: UserIndex,
-) -> StdResult<Option<Referrer>> {
+pub fn query_referrer(storage: &dyn Storage, referee: UserIndex) -> StdResult<Option<Referrer>> {
     REFEREE_TO_REFERRER.may_load(storage, referee)
 }
 

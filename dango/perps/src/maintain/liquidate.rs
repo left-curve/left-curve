@@ -12,6 +12,7 @@ use {
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
         price::may_invert_price,
+        referral::apply_fee_rebounds,
         state::{LONGS, SHORTS},
         trade::{
             _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
@@ -106,7 +107,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------------- 5. Business logic ---------------------------
 
-    let (maker_states, order_mutations, index_updates, volumes) = _liquidate(
+    let (mut maker_states, order_mutations, index_updates, volumes, vault_fees) = _liquidate(
         ctx.storage,
         user,
         ctx.contract,
@@ -124,6 +125,18 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // --------------------- 6. Apply state changes ----------------------------
 
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
+
+    apply_fee_rebounds(
+        ctx.storage,
+        &ctx.querier,
+        ctx.contract,
+        ctx.block.timestamp,
+        &param.referral,
+        user,
+        &mut user_state,
+        &mut maker_states,
+        &vault_fees,
+    )?;
 
     STATE.save(ctx.storage, &state)?;
 
@@ -249,6 +262,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// - Maker `UserState`s to persist (includes any book makers and ADL counter-parties).
 /// - Order mutations to apply.
 /// - Position index updates to apply.
+/// - Per-user volumes.
+/// - Per-user vault fees (from `settle_pnls`).
 fn _liquidate(
     storage: &dyn Storage,
     user: Addr,
@@ -273,6 +288,7 @@ fn _liquidate(
         Quantity,
     )>,
     Vec<PositionIndexUpdate>,
+    BTreeMap<Addr, UsdValue>,
     BTreeMap<Addr, UsdValue>,
 )> {
     // -------------------- Step 1: Assert liquidatable -------------------------
@@ -344,7 +360,7 @@ fn _liquidate(
             .unwrap_or_default()
     });
 
-    settle_pnls(
+    let vault_fees = settle_pnls(
         contract,
         param,
         state,
@@ -403,6 +419,7 @@ fn _liquidate(
         all_order_mutations,
         all_index_updates,
         all_volumes,
+        vault_fees,
     ))
 }
 
