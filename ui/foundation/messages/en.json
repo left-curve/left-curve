@@ -1109,6 +1109,12 @@
       "description": "A limited-time points multiplier to reward early testnet users.",
       "linkEvmWallet": "Link EVM Wallet",
       "pointsBoost": "+{pointsBoost}% Points",
+      "toast": {
+        "successTitle": "Wallet Linked",
+        "successDescription": "Your EVM wallet has been linked successfully.",
+        "errorTitle": "Linking Failed",
+        "errorDescription": "Failed to link your EVM wallet. Please try again."
+      },
       "oats": {
         "hurrah": "The Last Hurrah",
         "trader": "Testnet Trader",

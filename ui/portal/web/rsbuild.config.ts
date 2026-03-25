@@ -125,7 +125,7 @@ const envConfig = `window.dango = ${JSON.stringify(
           faucetUrl: `http://localhost:${PORT}/faucet`,
           questUrl: `http://localhost:${PORT}/quest`,
           upUrl: `http://localhost:${PORT}/up`,
-          pointsUrl: `http://localhost:${PORT}/points`,
+          pointsUrl: `http://localhost:${PORT}/points-api`,
         }
       : urls,
     banner,

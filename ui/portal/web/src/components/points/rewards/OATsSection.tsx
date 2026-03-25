@@ -1,4 +1,4 @@
-import { Button, useMediaQuery } from "@left-curve/applets-kit";
+import { Button, toast, useMediaQuery } from "@left-curve/applets-kit";
 import { Modals, useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { withResolvers } from "@left-curve/dango/utils";
@@ -32,9 +32,17 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
     userIndex,
     onSuccess: () => {
       hideModal();
+      toast.success({
+        title: m["points.boosters.toast.successTitle"](),
+        description: m["points.boosters.toast.successDescription"](),
+      });
     },
     onError: (error) => {
       console.error("OAT registration failed:", error);
+      toast.error({
+        title: m["points.boosters.toast.errorTitle"](),
+        description: m["points.boosters.toast.errorDescription"](),
+      });
     },
   });
 
