@@ -1218,7 +1218,7 @@ Deposit USDC into the trading margin account:
 }
 ```
 
-The deposited USDC is converted to USD at a fixed rate of $1 per unit and credited to `user_state.margin`. In this example, `1000000000` base units = 1,000 USDC = $1,000.
+The deposited USDC is converted to USD at a fixed rate of \$1 per unit and credited to `user_state.margin`. In this example, `1000000000` base units = 1,000 USDC = \$1,000.
 
 ### 6.2 Withdraw margin
 
