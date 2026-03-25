@@ -479,6 +479,7 @@ pub struct InstantiateMsg {
 }
 
 #[grug::derive(Serde)]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     /// Messages for contract maintenance (owner/admin).
     Maintain(MaintainerMsg),
@@ -494,6 +495,7 @@ pub enum ExecuteMsg {
 }
 
 #[grug::derive(Serde)]
+#[allow(clippy::large_enum_variant)]
 pub enum MaintainerMsg {
     /// Update global and/or per-pair parameters.
     /// Only callable by the chain owner (or GENESIS_SENDER during instantiation).
@@ -583,6 +585,7 @@ pub enum VaultMsg {
 }
 
 #[grug::derive(Serde)]
+#[allow(clippy::enum_variant_names)]
 pub enum ReferralMsg {
     /// Register a referral relationship between a referrer and a referee.
     /// Called by the account factory during user registration, or by the

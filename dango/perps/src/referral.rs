@@ -361,20 +361,19 @@ pub(crate) fn apply_fee_rebounds(
         }
 
         // Credit the first referrer.
-        if referrer_rebound.is_non_zero() {
-            if let Some(referrer_addr) =
+        if referrer_rebound.is_non_zero()
+            && let Some(referrer_addr) =
                 retrieve_master_account(querier, first_referrer, account_factory)
-            {
-                credit_rebound(
-                    storage,
-                    taker,
-                    taker_state,
-                    maker_states,
-                    referrer_addr,
-                    referrer_rebound,
-                )?;
-                total_vault_deduction.checked_add_assign(referrer_rebound)?;
-            }
+        {
+            credit_rebound(
+                storage,
+                taker,
+                taker_state,
+                maker_states,
+                referrer_addr,
+                referrer_rebound,
+            )?;
+            total_vault_deduction.checked_add_assign(referrer_rebound)?;
         }
 
         // Payer's trade volume for this fill.
