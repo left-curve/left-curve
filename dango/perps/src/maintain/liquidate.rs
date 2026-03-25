@@ -547,11 +547,17 @@ fn execute_close_schedule(
             closed_notional
                 .checked_add_assign(adl_size.checked_abs()?.checked_mul(oracle_price)?)?;
 
+            // Compute the liquidated user's realized PnL from ADL fills as the
+            // delta in accumulated PnL since the pre-ADL snapshot.
+            let user_pnl_after = all_pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
+            let adl_realized_pnl = user_pnl_after.checked_sub(user_pnl_snapshot)?;
+
             events.push(Liquidated {
                 user,
                 pair_id: pair_id.clone(),
                 adl_size,
                 adl_price: Some(adl_price),
+                adl_realized_pnl,
             })?;
 
             #[cfg(feature = "metrics")]
@@ -568,6 +574,7 @@ fn execute_close_schedule(
                 pair_id: pair_id.clone(),
                 adl_size: Quantity::ZERO,
                 adl_price: None,
+                adl_realized_pnl: UsdValue::ZERO,
             })?;
         }
     }

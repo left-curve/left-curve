@@ -99,6 +99,7 @@ export type LiquidatedData = {
   pair_id: string;
   adl_size: string;
   adl_price: string | null;
+  adl_realized_pnl: string;
 };
 
 export type DeleveragedData = {
