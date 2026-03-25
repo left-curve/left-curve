@@ -6,8 +6,8 @@ use {
         constants::usdc,
         oracle::{self, PriceSource},
         perps::{
-            self, CommissionReboundRate, FeeShareRatio, Referee, ReferrerSettings,
-            ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData,
+            self, CommissionReboundRate, FeeShareRatio, QueryParamRequest, Referee,
+            ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData,
         },
     },
     grug::{
@@ -526,7 +526,13 @@ fn referrer_stats() {
 
     // User3 trades more (volume = 2 * 2000 = $4,000).
     // Need user3 as taker — swap user1 as maker, user3 as taker.
-    place_ask_order(&mut suite, contracts.perps, &mut accounts.user1, 2_000, 2);
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        UsdPrice::new_int(2_000),
+        2,
+    );
     place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 2);
 
     // Query stats sorted by volume descending.
@@ -598,6 +604,302 @@ fn referrer_stats() {
     assert_eq!(stats[0].0, 3);
 }
 
+/// Verify that fee rebounds are correctly credited to margins across a
+/// multi-level referral chain (up to MAX_REFERRAL_CHAIN_DEPTH = 5).
+///
+/// Chain: user1 ← user2 ← user3 ← user4 ← user5 ← user6 ← user7
+///
+/// Commission rebound overrides:
+///   user6 = 10%, user5 = 20%, user4 = 20%, user3 = 10%, user2 = 60%
+///
+/// When user7 trades (notional = $2,000, fee = $2, vault_fee = $2):
+///   - user7 (referee):      vault_fee × 10% × 20% = $0.04
+///   - user6 (1st referrer): vault_fee × 10% × 80% = $0.16
+///   - user5 (2nd referrer): vault_fee × (20% - 10%) = $0.20 (marginal)
+///   - user4 (3rd referrer): 20% ≤ max(20%) → $0
+///   - user3 (4th referrer): 10% < max(20%) → $0
+///   - user2 (5th referrer): vault_fee × (60% - 20%) = $0.80 (marginal)
+///   - user1 (6th referrer): outside chain depth → $0
+#[test]
+fn commission_rebound_margins() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    let params = suite
+        .query_wasm_smart(contracts.perps, QueryParamRequest {})
+        .unwrap();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    // Deposit margin for user8 (maker) and all referee/referrer users.
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user5, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user6, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user7, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000);
+
+    // All users become referrers with 20% share ratio.
+    for user in [
+        &mut accounts.user1 as &mut dyn Signer,
+        &mut accounts.user2,
+        &mut accounts.user3,
+        &mut accounts.user4,
+        &mut accounts.user5,
+        &mut accounts.user6,
+    ] {
+        set_fee_share_ratio(
+            &mut suite,
+            contracts.perps,
+            user,
+            Dimensionless::new_percent(20),
+        )
+        .should_succeed();
+    }
+
+    // Build referral chain: user1 ← user2 ← user3 ← user4 ← user5 ← user6 ← user7.
+    for (referrer, referee) in [(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7)] {
+        let sender: &mut dyn Signer = match referee {
+            2 => &mut accounts.user2,
+            3 => &mut accounts.user3,
+            4 => &mut accounts.user4,
+            5 => &mut accounts.user5,
+            6 => &mut accounts.user6,
+            7 => &mut accounts.user7,
+            _ => unreachable!(),
+        };
+        suite
+            .execute(
+                sender,
+                contracts.perps,
+                &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral { referrer, referee }),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Set commission rebound overrides (owner-only).
+    for (user, rate) in [(6, 10), (5, 20), (4, 20), (3, 10), (2, 60)] {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.perps,
+                &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+                    user,
+                    commission_rebound: Some(CommissionReboundRate::new_percent(rate)),
+                }),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Record initial margins and referral data.
+    let initial_margins: Vec<UsdValue> = [
+        accounts.user1.address(),
+        accounts.user2.address(),
+        accounts.user3.address(),
+        accounts.user4.address(),
+        accounts.user5.address(),
+        accounts.user6.address(),
+        accounts.user7.address(),
+    ]
+    .iter()
+    .map(|addr| {
+        suite
+            .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+                user: *addr,
+            })
+            .should_succeed()
+            .map(|s: perps::UserState| s.margin)
+            .unwrap_or(UsdValue::ZERO)
+    })
+    .collect();
+
+    let initial_referral_data: Vec<UserReferralData> = (1..=7)
+        .map(|i| query_referral_data(&suite, contracts.perps, i, None))
+        .collect();
+
+    // User7 trades: user8 places ask (maker), user7 buys (taker).
+    // Notional = 1 × $2,000 = $2,000. Fee = $2,000 × 0.1% = $2.
+    let price = UsdPrice::new_int(2_000);
+    let size = 1;
+    let trade_value = price.checked_mul(Quantity::new_int(size)).unwrap();
+    place_ask_order(&mut suite, contracts.perps, &mut accounts.user8, price, 1);
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user7, 1);
+
+    // Read post-trade margins.
+    let post_margins: Vec<UsdValue> = [
+        accounts.user1.address(),
+        accounts.user2.address(),
+        accounts.user3.address(),
+        accounts.user4.address(),
+        accounts.user5.address(),
+        accounts.user6.address(),
+        accounts.user7.address(),
+    ]
+    .iter()
+    .map(|addr| {
+        suite
+            .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+                user: *addr,
+            })
+            .should_succeed()
+            .map(|s: perps::UserState| s.margin)
+            .unwrap_or(UsdValue::ZERO)
+    })
+    .collect();
+
+    // vault_fee = trade_value * taker_fee = $2.00
+    let vault_fee = trade_value.checked_mul(params.base_taker_fee_rate).unwrap();
+
+    assert_eq!(vault_fee, UsdValue::new_int(2));
+
+    // User7 (referee, index 6): gets vault_fee × 10% × 20% = $0.04
+    let referee_rebound = vault_fee
+        .checked_mul(CommissionReboundRate::new_percent(10))
+        .unwrap()
+        .checked_mul(Dimensionless::new_percent(20))
+        .unwrap();
+    assert_eq!(referee_rebound, UsdValue::new_percent(4));
+
+    // User6 (1st referrer, index 5): gets vault_fee × 10% × 80% = $0.16
+    let referrer_rebound = vault_fee
+        .checked_mul(CommissionReboundRate::new_percent(10))
+        .unwrap()
+        .checked_sub(referee_rebound)
+        .unwrap();
+    assert_eq!(referrer_rebound, UsdValue::new_percent(16)); // $0.16
+
+    // User5 (2nd referrer, index 4): marginal = 20% - 10% = 10% → $0.20
+    let user5_rebound = vault_fee
+        .checked_mul(CommissionReboundRate::new_percent(10))
+        .unwrap();
+    assert_eq!(user5_rebound, UsdValue::new_percent(20)); // $0.20
+
+    // User4 (3rd referrer, index 3): 20% ≤ max(20%) → $0
+    // User3 (4th referrer, index 2): 10% < max(20%) → $0
+
+    // User2 (5th referrer, index 1): marginal = 60% - 20% = 40% → $0.80
+    let user2_rebound = vault_fee
+        .checked_mul(CommissionReboundRate::new_percent(40))
+        .unwrap();
+    assert_eq!(user2_rebound, UsdValue::new_percent(80)); // $0.80
+
+    // User1 (6th referrer, index 0): outside MAX_REFERRAL_CHAIN_DEPTH → $0
+
+    // Verify margin changes for each user.
+    // User7 paid fee ($2) but got referee_rebound ($0.04). Also has position change.
+
+    assert_eq!(
+        post_margins[6],
+        initial_margins[6]
+            .checked_add(referee_rebound)
+            .unwrap()
+            .checked_sub(vault_fee)
+            .unwrap()
+    );
+
+    // User6: margin increased by referrer_rebound.
+    assert_eq!(
+        post_margins[5].checked_sub(initial_margins[5]).unwrap(),
+        referrer_rebound,
+    );
+
+    // User5: margin increased by marginal rebound.
+    assert_eq!(
+        post_margins[4].checked_sub(initial_margins[4]).unwrap(),
+        user5_rebound,
+    );
+
+    // User4: no change.
+    assert_eq!(post_margins[3], initial_margins[3]);
+
+    // User3: no change.
+    assert_eq!(post_margins[2], initial_margins[2]);
+
+    // User2: margin increased by marginal rebound.
+    assert_eq!(
+        post_margins[1].checked_sub(initial_margins[1]).unwrap(),
+        user2_rebound,
+    );
+
+    // User1 (6th referrer): outside chain depth → no margin change.
+    assert_eq!(post_margins[0], initial_margins[0]);
+
+    // Verify referral data updates.
+    let post_referral_data: Vec<UserReferralData> = (1..=7)
+        .map(|i| query_referral_data(&suite, contracts.perps, i, None))
+        .collect();
+
+    // User7 (payer): volume increased, commission_rebounded increased.
+    assert_eq!(
+        post_referral_data[6].volume,
+        initial_referral_data[6]
+            .volume
+            .checked_add(trade_value)
+            .unwrap()
+    );
+    assert_eq!(
+        post_referral_data[6].commission_rebounded,
+        initial_referral_data[6]
+            .commission_rebounded
+            .checked_add(referee_rebound)
+            .unwrap()
+    );
+
+    // User6 (1st referrer): referees_volume += trade_value, referees_commission_rebounded += referrer_rebound.
+    assert_eq!(
+        post_referral_data[5].referees_volume,
+        initial_referral_data[5]
+            .referees_volume
+            .checked_add(trade_value)
+            .unwrap()
+    );
+    assert_eq!(
+        post_referral_data[5].referees_commission_rebounded,
+        initial_referral_data[5]
+            .referees_commission_rebounded
+            .checked_add(referrer_rebound)
+            .unwrap()
+    );
+
+    // User5 (2nd referrer): referees_volume unchanged, referees_commission_rebounded += user5_rebound.
+    assert_eq!(
+        post_referral_data[4].referees_volume,
+        initial_referral_data[4].referees_volume
+    );
+    assert_eq!(
+        post_referral_data[4].referees_commission_rebounded,
+        initial_referral_data[4]
+            .referees_commission_rebounded
+            .checked_add(user5_rebound)
+            .unwrap()
+    );
+
+    // User4 (3rd): no referral data change.
+    assert_eq!(post_referral_data[3], initial_referral_data[3]);
+
+    // User3 (4th): no referral data change.
+    assert_eq!(post_referral_data[2], initial_referral_data[2]);
+
+    // User2 (5th referrer): referees_volume unchanged, referees_commission_rebounded += user2_rebound.
+    assert_eq!(
+        post_referral_data[1].referees_volume,
+        initial_referral_data[1].referees_volume
+    );
+    assert_eq!(
+        post_referral_data[1].referees_commission_rebounded,
+        initial_referral_data[1]
+            .referees_commission_rebounded
+            .checked_add(user2_rebound)
+            .unwrap()
+    );
+
+    // User1 (6th): no referral data change (outside chain depth).
+    assert_eq!(post_referral_data[0], initial_referral_data[0]);
+}
+
 /// Active users count increments once per referee per day.
 #[test]
 fn active_referral() {
@@ -655,7 +957,13 @@ fn active_referral() {
     assert_eq!(data.active_users, Uint128::new(1));
 
     // User3 trades — active_users should be 2.
-    place_ask_order(&mut suite, contracts.perps, &mut accounts.user1, 2_000, 1);
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        UsdPrice::new_int(2_000),
+        1,
+    );
     place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
@@ -737,7 +1045,7 @@ fn place_ask_order(
     suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
     perps: Addr,
     user: &mut dyn Signer,
-    price: u128,
+    price: UsdPrice,
     size: u128,
 ) {
     suite
@@ -748,7 +1056,7 @@ fn place_ask_order(
                 pair_id: dango_testing::perps::pair_id(),
                 size: Quantity::new_int(-(size as i128)),
                 kind: perps::OrderKind::Limit {
-                    limit_price: UsdPrice::new_int(price as i128),
+                    limit_price: price,
                     post_only: true,
                 },
                 reduce_only: false,
@@ -789,7 +1097,13 @@ fn create_perps_fill(
     price: u128,
     size: u128,
 ) {
-    place_ask_order(suite, perps, &mut accounts.user1, price, size);
+    place_ask_order(
+        suite,
+        perps,
+        &mut accounts.user1,
+        UsdPrice::new_int(price as i128),
+        size,
+    );
     place_market_buy(suite, perps, &mut accounts.user2, size);
 }
 
