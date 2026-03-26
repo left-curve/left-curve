@@ -62,7 +62,7 @@ Three fee rates apply globally (not per-pair):
 ### 2.1 Sizing principles
 
 - **Taker fee** should exceed the typical half-spread of the most liquid pair so the vault earns positive expected value on every fill against a taker.
-- **Maker fee** can be zero or slightly positive. A zero maker fee attracts resting liquidity; a negative maker fee (rebate) is not currently supported.
+- **Maker fee** can be zero, slightly positive, or negative (rebate). A zero maker fee attracts resting liquidity; a negative maker fee pays the maker on every fill. The absolute value of the maker fee rate must not exceed the taker fee rate, otherwise the exchange loses money on each trade.
 - **Liquidation fee** must satisfy the invariant in [§1.3](#13-invariants). It should be large enough to fund the insurance pool but small enough that a liquidated user retains some margin when possible.
 
 ### 2.2 Industry benchmarks
