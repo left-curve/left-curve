@@ -172,7 +172,7 @@ The `data` field contains authentication metadata:
 | `nonce`      | `u32`               | Replay protection nonce                                           |
 | `expiry`     | `Timestamp \| null` | Optional expiration (nanoseconds since epoch); `null` = no expiry |
 
-**Nonce semantics.** Dango uses **unordered nonces** with a sliding window of 20. The account tracks the 20 most recently seen nonces. A transaction is accepted if its nonce is newer than the oldest seen nonce and has not been used before. This means transactions may arrive out of order without being rejected. SDK implementations should track the next available nonce client-side by querying the account's seen nonces and choosing the next integer above the maximum.
+**Nonce semantics:** Dango uses **unordered nonces** with a sliding window of 20, similar to [the approach used by Hyperliquid](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/nonces-and-api-wallets#hyperliquid-nonces). The account tracks the 20 most recently seen nonces. A transaction is accepted if its nonce is newer than the oldest seen nonce, has not been used before, and not greater than newest seen nonce + 100. This means transactions may arrive out of order without being rejected. SDK implementations should track the next available nonce client-side by querying the account's seen nonces and choosing the next integer above the maximum.
 
 ### 2.3 Message format
 
