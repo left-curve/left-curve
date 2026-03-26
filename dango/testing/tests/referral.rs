@@ -317,6 +317,30 @@ fn modify_share_ratio() {
     );
 }
 
+/// Fee share ratio cannot exceed the maximum (50%).
+#[test]
+fn share_ratio_exceeds_max_fails() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    // 51% should fail.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(51),
+    )
+    .should_fail_with_error("fee share ratio cannot exceed");
+
+    // 50% should succeed.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(50),
+    )
+    .should_succeed();
+}
+
 /// Setting the fee share ratio requires sufficient perps trading volume
 /// when `volume_to_be_referrer` is non-zero.
 #[test]

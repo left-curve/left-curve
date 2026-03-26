@@ -91,6 +91,12 @@ pub fn set_fee_share_ratio(
     ctx: MutableCtx,
     share_ratio: FeeShareRatio,
 ) -> anyhow::Result<Response> {
+    // Share ratio must not exceed the maximum.
+    ensure!(
+        share_ratio <= MAX_FEE_SHARE_RATIO,
+        "fee share ratio cannot exceed {MAX_FEE_SHARE_RATIO}"
+    );
+
     // Look up the caller's user index via the account factory.
     let account_factory = ctx.querier.query_account_factory()?;
 
@@ -151,6 +157,9 @@ pub fn set_commission_rebound_override(
 }
 
 // -------------------------------- Fee rebound helpers --------------------------------
+
+/// Maximum fee share ratio a referrer can set.
+const MAX_FEE_SHARE_RATIO: FeeShareRatio = FeeShareRatio::new_percent(50);
 
 /// Number of days in the rolling window for referees volume tiers.
 const REBOUND_LOOKBACK_DAYS: u128 = 30;
