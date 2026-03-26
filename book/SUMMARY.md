@@ -8,6 +8,7 @@
 - [Liquidation & ADL](perps/4-liquidation-and-adl.md)
 - [Vault](perps/5-vault.md)
 - [Risk](perps/6-risk.md)
+- [API reference](perps/7-api.md)
 
 ---
 
