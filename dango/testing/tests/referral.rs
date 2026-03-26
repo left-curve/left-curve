@@ -353,6 +353,136 @@ fn set_share_ratio_requires_volume() {
     .should_fail_with_error("insufficient perps volume to become a referrer");
 }
 
+/// When `referral.active` is false, no fee rebounds are applied.
+#[test]
+fn referral_active_flag() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000);
+
+    // User1 becomes a referrer, User2 is the referee.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(50),
+    )
+    .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Set commission rebound override so we know the exact rebound amount.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+                user: 1,
+                commission_rebound: Some(CommissionReboundRate::new_percent(50)),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Disable referral system.
+    let mut param: perps::Param = suite
+        .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
+        .should_succeed();
+
+    param.referral.active = false;
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: param.clone(),
+                pair_params: Default::default(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Record initial margins.
+    let user1_margin_before = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .map(|s: perps::UserState| s.margin)
+        .unwrap();
+
+    // Trade: user8 places ask, user2 buys.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user8,
+        UsdPrice::new_int(2_000),
+        1,
+    );
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user2, 1);
+
+    // User1 (referrer) should NOT have received any rebound.
+    let user1_margin_after = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .map(|s: perps::UserState| s.margin)
+        .unwrap();
+
+    assert_eq!(user1_margin_before, user1_margin_after);
+
+    // Re-enable referral system.
+    param.referral.active = true;
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param,
+                pair_params: Default::default(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trade again.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user8,
+        UsdPrice::new_int(2_000),
+        1,
+    );
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user2, 1);
+
+    // User1 (referrer) should now have received a rebound.
+    let user1_margin_final: UsdValue = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .map(|s: perps::UserState| s.margin)
+        .unwrap();
+
+    assert!(user1_margin_final > user1_margin_after);
+}
+
 /// Commission rebound override: only owner can set, overrides volume tiers,
 /// removing the override falls back to volume-based calculation.
 #[test]

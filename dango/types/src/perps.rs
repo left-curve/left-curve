@@ -99,6 +99,10 @@ pub enum TriggerDirection {
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct ReferralParam {
+    /// Whether the referral fee rebound system is active.
+    /// When false, `apply_fee_rebounds` is skipped entirely.
+    pub active: bool,
+
     /// Minimum lifetime perps trading volume a user must have
     /// before they can become a referrer by setting a fee share ratio.
     pub volume_to_be_referrer: UsdValue,

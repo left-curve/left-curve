@@ -287,8 +287,6 @@ const MAX_REFERRAL_CHAIN_DEPTH: usize = 5;
 ///
 /// All individual rebounds are credited to the corresponding user's margin
 /// and the total is deducted from the vault (contract) margin.
-///
-/// Returns the total rebound amount deducted from the vault.
 pub(crate) fn apply_fee_rebounds(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
@@ -300,7 +298,11 @@ pub(crate) fn apply_fee_rebounds(
     maker_states: &mut BTreeMap<Addr, UserState>,
     vault_fees: &BTreeMap<Addr, UsdValue>,
     volumes: &BTreeMap<Addr, UsdValue>,
-) -> anyhow::Result<UsdValue> {
+) -> anyhow::Result<()> {
+    if !referral_param.active {
+        return Ok(());
+    }
+
     let mut total_vault_deduction = UsdValue::ZERO;
     let mut referrer_settings_cache = BTreeMap::<UserIndex, ReferrerSettings>::new();
     let mut addr_to_user_index_cache = BTreeMap::<Addr, Option<UserIndex>>::new();
@@ -478,7 +480,7 @@ pub(crate) fn apply_fee_rebounds(
             .checked_sub_assign(total_vault_deduction)?;
     }
 
-    Ok(total_vault_deduction)
+    Ok(())
 }
 
 /// Look up or compute referrer settings for a user, with caching.
