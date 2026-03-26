@@ -894,7 +894,45 @@ Each level contains:
 | `size`     | `Quantity` | Absolute order size in the bucket |
 | `notional` | `UsdValue` | USD notional (size × price)       |
 
-### 4.6 Historical candles
+### 4.6 Pair statistics
+
+**All pairs:**
+
+```graphql
+query {
+  allPerpsPairStats {
+    pairId
+    currentPrice
+    price24HAgo
+    volume24H
+    priceChange24H
+  }
+}
+```
+
+**Single pair:**
+
+```graphql
+query {
+  perpsPairStats(pairId: "perp/btcusd") {
+    pairId
+    currentPrice
+    price24HAgo
+    volume24H
+    priceChange24H
+  }
+}
+```
+
+| Field            | Type          | Description                                        |
+| ---------------- | ------------- | -------------------------------------------------- |
+| `pairId`         | `String!`     | Pair identifier                                    |
+| `currentPrice`   | `BigDecimal`  | Current price (nullable)                           |
+| `price24HAgo`    | `BigDecimal`  | Price 24 hours ago (nullable)                      |
+| `volume24H`      | `BigDecimal!` | 24h trading volume in USD                          |
+| `priceChange24H` | `BigDecimal`  | 24h price change percentage (e.g. `5.25` = +5.25%) |
+
+### 4.7 Historical candles
 
 ```graphql
 query {
@@ -1558,7 +1596,7 @@ subscription {
 }
 ```
 
-Pushes updated candle data as new trades occur. Fields match the `PerpsCandle` type in [§4.6](#46-historical-candles).
+Pushes updated candle data as new trades occur. Fields match the `PerpsCandle` type in [§4.7](#47-historical-candles).
 
 ### 8.2 Perps trades
 
