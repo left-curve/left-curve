@@ -12,7 +12,7 @@ pub mod transaction;
 pub const MAX_PAST_BLOCKS: usize = 100;
 
 #[derive(MergedSubscription, Default)]
-pub struct Subscription(
+pub struct IndexerSubscription(
     BlockSubscription,
     TransactionSubscription,
     MessageSubscription,
