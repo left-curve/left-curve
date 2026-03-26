@@ -61,14 +61,15 @@
     "oat_window": "4weeks",
     "perps_expression": "1 + max(0.0, math::log10(x))",
     "epoch_perps_share": "750000",
-    "epoch_vault_points": "250000"
+    "epoch_vault_points": "250000",
+    "leaderboard_timeframes": [1, 2, 4]
   },
   "http_url": "https://api-testnet.dango.zone",
   "httpd": {
     "register_cache_delta": "1m",
     "rest_url": "0.0.0.0:8080"
   },
-  "log_level": "info",
+  "log_level": "debug",
   "referral": {
     "direct_share": "0.2",
     "indirect_share": "0.05"
