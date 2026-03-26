@@ -13,6 +13,7 @@ import {
   twMerge,
   useApp,
 } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   useAccount,
   useReferrer,
@@ -113,8 +114,8 @@ export const AffiliateStats: React.FC = () => {
 
   // Progress bar labels
   const progressLeftLabel = isConnected
-    ? `${formatUSD(remaining)} volume until Tier 2`
-    : "You are not logged in.";
+    ? m["referral.stats.volumeUntilTier2"]({ amount: formatUSD(remaining) })
+    : m["referral.stats.notLoggedIn"]();
   const progressRightLabel = `$${(targetVolume / 1000).toFixed(0)}K`;
 
   return (
@@ -135,7 +136,7 @@ export const AffiliateStats: React.FC = () => {
                 />
               )}
             </div>
-            <p className="text-ink-tertiary-500 diatype-m-medium">Commission Rate (You/ Referee)</p>
+            <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.commissionRate"]()}</p>
           </div>
           <div className="flex flex-col items-center">
             {isLoading ? (
@@ -145,7 +146,7 @@ export const AffiliateStats: React.FC = () => {
                 {isConnected ? formatUSD(totalCommission) : "--"}
               </p>
             )}
-            <p className="text-ink-tertiary-500 diatype-m-medium">Total Commission Points</p>
+            <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.totalCommissionPoints"]()}</p>
           </div>
           <div className="flex flex-col items-center lg:items-end">
             {isLoading ? (
@@ -155,7 +156,7 @@ export const AffiliateStats: React.FC = () => {
                 {isConnected ? formatUSD(totalVolume) : "--"}
               </p>
             )}
-            <p className="text-ink-tertiary-500 diatype-m-medium">Total Referral Volume</p>
+            <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.totalReferralVolume"]()}</p>
           </div>
         </div>
 
@@ -173,7 +174,7 @@ export const AffiliateStats: React.FC = () => {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
-              <p className="text-ink-tertiary-500 diatype-m-medium">Total Referees</p>
+              <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.totalReferees"]()}</p>
               {isLoading ? (
                 <Skeleton className="w-12 h-6" />
               ) : (
@@ -183,7 +184,7 @@ export const AffiliateStats: React.FC = () => {
               )}
             </div>
             <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
-              <p className="text-ink-tertiary-500 diatype-m-medium">Total Active Referees</p>
+              <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.totalActiveReferees"]()}</p>
               {isLoading ? (
                 <Skeleton className="w-12 h-6" />
               ) : (
@@ -197,7 +198,7 @@ export const AffiliateStats: React.FC = () => {
           {isUnlocked ? (
             <div className="flex flex-col lg:flex-row gap-4">
               <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
-                <p className="text-ink-tertiary-500 diatype-m-medium">My Referral Link</p>
+                <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.myReferralLink"]()}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-ink-primary-900 diatype-m-bold">{truncatedLink}</p>
                   <TextCopy
@@ -207,7 +208,7 @@ export const AffiliateStats: React.FC = () => {
                 </div>
               </div>
               <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
-                <p className="text-ink-tertiary-500 diatype-m-medium">My Referral Code</p>
+                <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.myReferralCode"]()}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-ink-primary-900 diatype-m-bold">{referralCode}</p>
                   <TextCopy copyText={referralCode} className="w-5 h-5 text-ink-tertiary-500" />
@@ -220,20 +221,19 @@ export const AffiliateStats: React.FC = () => {
               <div className="relative z-10 flex flex-col gap-4 lg:max-w-sm">
                 <div className="flex flex-col gap-2">
                   <h3 className="display-heading-xs text-ink-primary-900 max-w-sm">
-                    Unlock your referral code with $10k volume!
+                    {m["referral.affiliateSection.unlockTitle"]()}
                   </h3>
                   <p className="text-ink-tertiary-500 diatype-m-regular max-w-sm">
-                    Invite your friends and earn up to{" "}
-                    <span className="text-utility-success-500 font-bold">30%</span> commission.
+                    {m["referral.affiliateSection.unlockDescription"]({ percent: "30%" })}
                   </p>
                 </div>
                 {isConnected ? (
                   <Button variant="primary" size="sm">
-                    Trade now
+                    {m["referral.affiliateSection.tradeNow"]()}
                   </Button>
                 ) : (
                   <Button variant="primary" size="sm" onClick={() => showModal(Modals.Login)}>
-                    Log In
+                    {m["referral.affiliateSection.logIn"]()}
                   </Button>
                 )}
               </div>
@@ -294,7 +294,7 @@ export const TraderStats: React.FC = () => {
               {isConnected ? formatPercent(rebateRate) : "--"}
             </p>
           )}
-          <p className="text-ink-tertiary-500 diatype-m-medium">Rebate Rate</p>
+          <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.rebateRate"]()}</p>
         </div>
         <div className="flex flex-col items-center">
           {isLoading ? (
@@ -304,7 +304,7 @@ export const TraderStats: React.FC = () => {
               {isConnected ? formatUSD(totalRebates) : "--"}
             </p>
           )}
-          <p className="text-ink-tertiary-500 diatype-m-medium">Total Rebates</p>
+          <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.totalRebates"]()}</p>
         </div>
         <div className="flex flex-col items-center lg:items-end">
           {isLoading ? (
@@ -314,7 +314,7 @@ export const TraderStats: React.FC = () => {
               {isConnected ? formatUSD(totalVolume) : "--"}
             </p>
           )}
-          <p className="text-ink-tertiary-500 diatype-m-medium">Total Trading Volume</p>
+          <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.stats.totalTradingVolume"]()}</p>
         </div>
       </div>
 
@@ -322,7 +322,7 @@ export const TraderStats: React.FC = () => {
         <div className="w-full rounded-xl bg-surface-tertiary-gray px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <IconUser className="w-5 h-5 text-primitives-blue-light-400" />
-            <p className="text-ink-primary-900 diatype-m-medium">Your Referrer</p>
+            <p className="text-ink-primary-900 diatype-m-medium">{m["referral.stats.yourReferrer"]()}</p>
           </div>
           {isLoading ? (
             <Skeleton className="w-20 h-6" />
@@ -337,28 +337,27 @@ export const TraderStats: React.FC = () => {
             <div className="relative z-10 flex flex-col gap-8 lg:max-w-sm">
               <div className="flex flex-col gap-2">
                 <h3 className="display-heading-xs text-ink-primary-900 max-w-sm">
-                  Refer friends and unlock more rewards together!
+                  {m["referral.traderSection.referTitle"]()}
                 </h3>
                 <p className="text-ink-tertiary-500 diatype-m-regular max-w-sm">
-                  Get up to <span className="text-utility-success-500 font-bold">15%</span> fee
-                  rebates by submitting your friend's referral code!
+                  {m["referral.traderSection.referDescription"]({ percent: "15%" })}
                 </p>
               </div>
               {isConnected ? (
                 <Input
-                  label="Referral Code"
+                  label={m["referral.traderSection.referralCodeLabel"]()}
                   value={referralCodeInput}
                   onChange={(e) => setReferralCodeInput(e.target.value)}
-                  placeholder="Enter your friend's referral code"
+                  placeholder={m["referral.traderSection.referralCodePlaceholder"]()}
                   endContent={
                     <Button variant="link" className="p-0">
-                      Submit
+                      {m["referral.traderSection.submit"]()}
                     </Button>
                   }
                 />
               ) : (
                 <Button variant="primary" size="sm" onClick={() => showModal(Modals.Login)}>
-                  Log In
+                  {m["referral.affiliateSection.logIn"]()}
                 </Button>
               )}
             </div>
@@ -386,10 +385,10 @@ export const ReferralStats: React.FC<ReferralStatsProps> = ({ mode, onModeChange
         >
           <Tab title="affiliate">
             <span className="flex items-center gap-2">
-              Affiliate <Badge text="Tier 1" color="rice" />
+              {m["referral.affiliate"]()} <Badge text="Tier 1" color="rice" />
             </span>
           </Tab>
-          <Tab title="trader">Trader</Tab>
+          <Tab title="trader">{m["referral.trader"]()}</Tab>
         </Tabs>
       </div>
 

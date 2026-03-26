@@ -1,5 +1,6 @@
 import { Cell, Skeleton, Table } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useReferralConfig } from "@left-curve/store";
 import type React from "react";
 import { useMemo } from "react";
@@ -106,19 +107,19 @@ export const CommissionRates: React.FC = () => {
 
   const columns: TableColumn<CommissionTier> = [
     {
-      header: "Tier",
+      header: m["referral.commission.columns.tier"](),
       cell: ({ row }) => <Cell.Text text={row.original.tier} />,
     },
     {
-      header: "Trading Volume",
+      header: m["referral.commission.columns.tradingVolume"](),
       cell: ({ row }) => <Cell.Text text={row.original.tradingVolume} />,
     },
     {
-      header: "30-day Referral Volume",
+      header: m["referral.commission.columns.thirtyDayReferralVolume"](),
       cell: ({ row }) => <Cell.Text text={row.original.thirtyDayReferralVolume} />,
     },
     {
-      header: "Commission",
+      header: m["referral.commission.columns.commission"](),
       cell: ({ row }) => <Cell.Text text={row.original.commission} />,
     },
   ];
@@ -128,7 +129,7 @@ export const CommissionRates: React.FC = () => {
   if (isLoading) {
     return (
       <div className="w-full flex flex-col gap-4">
-        <h3 className="exposure-m-italic text-ink-primary-900">Commission Rates</h3>
+        <h3 className="exposure-m-italic text-ink-primary-900">{m["referral.commission.title"]()}</h3>
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="w-full h-12" />
@@ -140,7 +141,7 @@ export const CommissionRates: React.FC = () => {
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <h3 className="exposure-m-italic text-ink-primary-900">Commission Rates</h3>
+      <h3 className="exposure-m-italic text-ink-primary-900">{m["referral.commission.title"]()}</h3>
       <Table
         data={commissionTiers}
         columns={columns}
