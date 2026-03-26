@@ -8,376 +8,170 @@ import {
   IconTheme,
   IconTime,
   IconWorld,
-  Select,
   Tab,
   Tabs,
   useApp,
-  useMediaQuery,
   useTheme,
 } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { getLocale, locales, setLocale } from "@left-curve/foundation/paraglide/runtime.js";
 
-import { useRef } from "react";
+import { SettingSelect } from "./SettingSelect";
 
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 import type React from "react";
-import type { AppState, SelectRef } from "@left-curve/applets-kit";
+import type { AppState } from "@left-curve/applets-kit";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <div className="rounded-xl bg-surface-secondary-rice shadow-account-card flex flex-col w-full px-2 py-2">
+    <div className="rounded-xl bg-surface-secondary-rice shadow-account-card flex flex-col w-full px-2 py-2 ">
       {children}
     </div>
   );
 };
 
 const LanguageSection: React.FC = () => {
-  const { isMd } = useMediaQuery();
-  const selectRef = useRef<SelectRef>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  if (isMd) {
-    return (
-      <div
-        ref={containerRef}
-        className="flex items-center justify-between px-2 py-2 rounded-md cursor-pointer hover:bg-surface-tertiary-rice transition-all"
-        onClick={() => selectRef.current?.toggle()}
-      >
-        <p className="flex items-center justify-center gap-2">
-          <IconLanguage className="text-ink-tertiary-500" />
-          <span className="diatype-m-bold text-ink-secondary-700">{m["settings.language"]()}</span>
-        </p>
-        <Select
-          ref={selectRef}
-          containerRef={containerRef}
-          value={getLocale()}
-          onChange={(key) => setLocale(key as (typeof locales)[number])}
-        >
-          {locales.map((locale) => (
-            <Select.Item key={locale} value={locale}>
-              {m["settings.languages"]({ language: locale })}
-            </Select.Item>
-          ))}
-        </Select>
-      </div>
-    );
-  }
+  const options = locales.map((locale) => ({
+    value: locale,
+    label: m["settings.languages"]({ language: locale }),
+  }));
 
   return (
-    <div className="flex items-center justify-between px-2 py-2 rounded-md">
-      <p className="flex items-center justify-center gap-2">
-        <IconLanguage className="text-ink-tertiary-500" />
-        <span className="diatype-m-bold text-ink-secondary-700">{m["settings.language"]()}</span>
-      </p>
-      <Select
-        value={getLocale()}
-        onChange={(key) => setLocale(key as (typeof locales)[number])}
-      >
-        {locales.map((locale) => (
-          <Select.Item key={locale} value={locale}>
-            {m["settings.languages"]({ language: locale })}
-          </Select.Item>
-        ))}
-      </Select>
-    </div>
+    <SettingSelect
+      value={getLocale()}
+      onChange={(key) => setLocale(key as (typeof locales)[number])}
+      options={options}
+      icon={<IconLanguage className="text-ink-tertiary-500" />}
+      label={m["settings.language"]()}
+    />
   );
 };
 
 const ChartEngineSection: React.FC = () => {
-  const { isMd } = useMediaQuery();
   const { settings, changeSettings } = useApp();
-  const selectRef = useRef<SelectRef>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const { chart } = settings;
 
-  if (isMd) {
-    return (
-      <div
-        ref={containerRef}
-        className="flex items-center justify-between px-2 py-2 rounded-md cursor-pointer hover:bg-surface-tertiary-rice transition-all"
-        onClick={() => selectRef.current?.toggle()}
-      >
-        <p className="flex items-center justify-center gap-2">
-          <IconDepth className="text-ink-tertiary-500" />
-          <span className="diatype-m-bold text-ink-secondary-700">{m["settings.chart"]()}</span>
-        </p>
-        <Select
-          ref={selectRef}
-          containerRef={containerRef}
-          value={chart}
-          onChange={(c) => changeSettings({ chart: c as "tradingview" })}
-        >
-          {["tradingview"].map((c) => (
-            <Select.Item key={c} value={c}>
-              {m["settings.chartEngines"]({ chart: c })}
-            </Select.Item>
-          ))}
-        </Select>
-      </div>
-    );
-  }
+  const options = ["tradingview"].map((c) => ({
+    value: c,
+    label: m["settings.chartEngines"]({ chart: c }),
+  }));
 
   return (
-    <div className="flex items-center justify-between px-2 py-2 rounded-md">
-      <p className="flex items-center justify-center gap-2">
-        <IconDepth className="text-ink-tertiary-500" />
-        <span className="diatype-m-bold text-ink-secondary-700">{m["settings.chart"]()}</span>
-      </p>
-      <Select
-        value={chart}
-        onChange={(c) => changeSettings({ chart: c as "tradingview" })}
-      >
-        {["tradingview"].map((c) => (
-          <Select.Item key={c} value={c}>
-            {m["settings.chartEngines"]({ chart: c })}
-          </Select.Item>
-        ))}
-      </Select>
-    </div>
+    <SettingSelect
+      value={chart}
+      onChange={(c) => changeSettings({ chart: c as "tradingview" })}
+      options={options}
+      icon={<IconDepth className="text-ink-tertiary-500" />}
+      label={m["settings.chart"]()}
+    />
   );
 };
 
 const FormatNumberSection: React.FC = () => {
-  const { isMd } = useMediaQuery();
   const { settings, changeSettings } = useApp();
   const { formatNumberOptions } = settings;
-  const selectRef = useRef<SelectRef>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const currentValue = formatNumberOptions?.mask.toString() || "1";
 
-  if (isMd) {
-    return (
-      <div
-        ref={containerRef}
-        className="flex items-center justify-between px-2 py-2 rounded-md cursor-pointer hover:bg-surface-tertiary-rice transition-all"
-        onClick={() => selectRef.current?.toggle()}
-      >
-        <p className="flex items-center justify-center gap-2">
-          <IconFormatNumber className="text-ink-tertiary-500" />
-          <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.number"]()}</span>
-        </p>
-        <Select
-          ref={selectRef}
-          containerRef={containerRef}
-          value={currentValue}
-          onChange={(key) =>
-            changeSettings({
-              formatNumberOptions: {
-                ...formatNumberOptions,
-                mask: Number(key) as FormatNumberOptions["mask"],
-              },
-            })
-          }
-        >
-          <Select.Item value="1">1,234.00</Select.Item>
-          <Select.Item value="2">1.234,00</Select.Item>
-          <Select.Item value="3">1234,00</Select.Item>
-          <Select.Item value="4">1 234,00</Select.Item>
-        </Select>
-      </div>
-    );
-  }
+  const options = [
+    { value: "1", label: "1,234.56" },
+    { value: "2", label: "1.234,56" },
+    { value: "3", label: "1234,56" },
+    { value: "4", label: "1 234,56" },
+  ];
 
   return (
-    <div className="flex items-center justify-between px-2 py-2 rounded-md">
-      <p className="flex items-center justify-center gap-2">
-        <IconFormatNumber className="text-ink-tertiary-500" />
-        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.number"]()}</span>
-      </p>
-      <Select
-        value={currentValue}
-        onChange={(key) =>
-          changeSettings({
-            formatNumberOptions: {
-              ...formatNumberOptions,
-              mask: Number(key) as FormatNumberOptions["mask"],
-            },
-          })
-        }
-      >
-        <Select.Item value="1">1,234.00</Select.Item>
-        <Select.Item value="2">1.234,00</Select.Item>
-        <Select.Item value="3">1234,00</Select.Item>
-        <Select.Item value="4">1 234,00</Select.Item>
-      </Select>
-    </div>
+    <SettingSelect
+      value={currentValue}
+      onChange={(key) =>
+        changeSettings({
+          formatNumberOptions: {
+            ...formatNumberOptions,
+            mask: Number(key) as FormatNumberOptions["mask"],
+          },
+        })
+      }
+      options={options}
+      icon={<IconFormatNumber className="text-ink-tertiary-500" />}
+      label={m["settings.number"]()}
+    />
   );
 };
 
 const TimeFormatSection: React.FC = () => {
-  const { isMd } = useMediaQuery();
   const { settings, changeSettings } = useApp();
   const { timeFormat } = settings;
-  const selectRef = useRef<SelectRef>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  if (isMd) {
-    return (
-      <div
-        ref={containerRef}
-        className="flex items-center justify-between px-2 py-2 rounded-md cursor-pointer hover:bg-surface-tertiary-rice transition-all"
-        onClick={() => selectRef.current?.toggle()}
-      >
-        <p className="flex items-center justify-center gap-2">
-          <IconTime className="text-ink-tertiary-500" />
-          <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.time"]()}</span>
-        </p>
-        <Select
-          ref={selectRef}
-          containerRef={containerRef}
-          value={timeFormat}
-          onChange={(key) =>
-            changeSettings({
-              timeFormat: key as AppState["settings"]["timeFormat"],
-            })
-          }
-        >
-          <Select.Item value="hh:mm a">9:18 PM</Select.Item>
-          <Select.Item value="hh:mm aaa">9:18 pm</Select.Item>
-          <Select.Item value="HH:mm">21:18</Select.Item>
-        </Select>
-      </div>
-    );
-  }
+  const options = [
+    { value: "hh:mm a", label: "9:18 PM" },
+    { value: "hh:mm aaa", label: "9:18 pm" },
+    { value: "HH:mm", label: "21:18" },
+  ];
 
   return (
-    <div className="flex items-center justify-between px-2 py-2 rounded-md">
-      <p className="flex items-center justify-center gap-2">
-        <IconTime className="text-ink-tertiary-500" />
-        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.time"]()}</span>
-      </p>
-      <Select
-        value={timeFormat}
-        onChange={(key) =>
-          changeSettings({
-            timeFormat: key as AppState["settings"]["timeFormat"],
-          })
-        }
-      >
-        <Select.Item value="hh:mm a">9:18 PM</Select.Item>
-        <Select.Item value="hh:mm aaa">9:18 pm</Select.Item>
-        <Select.Item value="HH:mm">21:18</Select.Item>
-      </Select>
-    </div>
+    <SettingSelect
+      value={timeFormat}
+      onChange={(key) =>
+        changeSettings({
+          timeFormat: key as AppState["settings"]["timeFormat"],
+        })
+      }
+      options={options}
+      icon={<IconTime className="text-ink-tertiary-500" />}
+      label={m["settings.time"]()}
+    />
   );
 };
 
 const DateFormatSection: React.FC = () => {
-  const { isMd } = useMediaQuery();
   const { settings, changeSettings } = useApp();
   const { dateFormat } = settings;
-  const selectRef = useRef<SelectRef>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  if (isMd) {
-    return (
-      <div
-        ref={containerRef}
-        className="flex items-center justify-between px-2 py-2 rounded-md cursor-pointer hover:bg-surface-tertiary-rice transition-all"
-        onClick={() => selectRef.current?.toggle()}
-      >
-        <p className="flex items-center justify-center gap-2">
-          <IconCalendar className="text-ink-tertiary-500" />
-          <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.date"]()}</span>
-        </p>
-        <Select
-          ref={selectRef}
-          containerRef={containerRef}
-          value={dateFormat}
-          onChange={(key) =>
-            changeSettings({
-              dateFormat: key as AppState["settings"]["dateFormat"],
-            })
-          }
-        >
-          <Select.Item value="MM/dd/yyyy">08/29/2025</Select.Item>
-          <Select.Item value="dd/MM/yyyy">29/08/2025</Select.Item>
-          <Select.Item value="yyyy/MM/dd">2025/08/29</Select.Item>
-        </Select>
-      </div>
-    );
-  }
+  const options = [
+    { value: "MM/dd/yyyy", label: "08/29/2025" },
+    { value: "dd/MM/yyyy", label: "29/08/2025" },
+    { value: "yyyy/MM/dd", label: "2025/08/29" },
+    { value: "dd MMM yyyy", label: "16 Sep 2025" },
+  ];
 
   return (
-    <div className="flex items-center justify-between px-2 py-2 rounded-md">
-      <p className="flex items-center justify-center gap-2">
-        <IconCalendar className="text-ink-tertiary-500" />
-        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.date"]()}</span>
-      </p>
-      <Select
-        value={dateFormat}
-        onChange={(key) =>
-          changeSettings({
-            dateFormat: key as AppState["settings"]["dateFormat"],
-          })
-        }
-      >
-        <Select.Item value="MM/dd/yyyy">08/29/2025</Select.Item>
-        <Select.Item value="dd/MM/yyyy">29/08/2025</Select.Item>
-        <Select.Item value="yyyy/MM/dd">2025/08/29</Select.Item>
-      </Select>
-    </div>
+    <SettingSelect
+      value={dateFormat}
+      onChange={(key) =>
+        changeSettings({
+          dateFormat: key as AppState["settings"]["dateFormat"],
+        })
+      }
+      options={options}
+      icon={<IconCalendar className="text-ink-tertiary-500" />}
+      label={m["settings.date"]()}
+    />
   );
 };
 
 const TimeZoneSection: React.FC = () => {
-  const { isMd } = useMediaQuery();
   const { settings, changeSettings } = useApp();
   const { timeZone } = settings;
-  const selectRef = useRef<SelectRef>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  if (isMd) {
-    return (
-      <div
-        ref={containerRef}
-        className="flex items-center justify-between px-2 py-2 rounded-md cursor-pointer hover:bg-surface-tertiary-rice transition-all"
-        onClick={() => selectRef.current?.toggle()}
-      >
-        <p className="flex items-center justify-center gap-2">
-          <IconWorld className="text-ink-tertiary-500" />
-          <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.timeZone"]()}</span>
-        </p>
-        <Select
-          ref={selectRef}
-          containerRef={containerRef}
-          value={timeZone}
-          onChange={(key) =>
-            changeSettings({
-              timeZone: key as AppState["settings"]["timeZone"],
-            })
-          }
-        >
-          <Select.Item value="utc">UTC</Select.Item>
-          <Select.Item value="local">Local</Select.Item>
-        </Select>
-      </div>
-    );
-  }
+  const options = [
+    { value: "utc", label: "UTC" },
+    { value: "local", label: "Local" },
+  ];
 
   return (
-    <div className="flex items-center justify-between px-2 py-2 rounded-md">
-      <p className="flex items-center justify-center gap-2">
-        <IconWorld className="text-ink-tertiary-500" />
-        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.timeZone"]()}</span>
-      </p>
-      <Select
-        value={timeZone}
-        onChange={(key) =>
-          changeSettings({
-            timeZone: key as AppState["settings"]["timeZone"],
-          })
-        }
-      >
-        <Select.Item value="utc">UTC</Select.Item>
-        <Select.Item value="local">Local</Select.Item>
-      </Select>
-    </div>
+    <SettingSelect
+      value={timeZone}
+      onChange={(key) =>
+        changeSettings({
+          timeZone: key as AppState["settings"]["timeZone"],
+        })
+      }
+      options={options}
+      icon={<IconWorld className="text-ink-tertiary-500" />}
+      label={m["settings.timeZone"]()}
+    />
   );
 };
 
