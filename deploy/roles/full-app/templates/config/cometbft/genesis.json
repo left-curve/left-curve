@@ -897,6 +897,11 @@
               "max_open_orders": 100,
               "max_unlocks": 10,
               "protocol_fee_rate": "0",
+              "referral": {
+                "commission_rebound_by_volume": {},
+                "commission_rebound_default": "0",
+                "volume_to_be_referrer": "0"
+              },
               "tiered_maker_fee_rate": {},
               "tiered_taker_fee_rate": {},
               "vault_cooldown_period": "86400",
