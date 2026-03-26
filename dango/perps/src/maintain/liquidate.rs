@@ -126,14 +126,14 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
 
+    maker_states.insert(user, user_state);
+
     apply_fee_rebounds(
         ctx.storage,
         &ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
         &param.referral,
-        user,
-        &mut user_state,
         &mut maker_states,
         &vault_fees,
         &volumes,
@@ -145,17 +145,11 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         PAIR_STATES.save(ctx.storage, pair_id, pair_state)?;
     }
 
-    if user_state.is_empty() {
-        USER_STATES.remove(ctx.storage, user)?;
-    } else {
-        USER_STATES.save(ctx.storage, user, &user_state)?;
-    }
-
-    for (addr, maker_state) in &maker_states {
-        if maker_state.is_empty() {
+    for (addr, user_state) in &maker_states {
+        if user_state.is_empty() {
             USER_STATES.remove(ctx.storage, *addr)?;
         } else {
-            USER_STATES.save(ctx.storage, *addr, maker_state)?;
+            USER_STATES.save(ctx.storage, *addr, user_state)?;
         }
     }
 

@@ -482,14 +482,14 @@ fn process_triggered_order(
     // Apply state changes (same pattern as submit_order's section 3).
     flush_volumes(storage, current_time, &volumes)?;
 
+    maker_states.insert(order.user, user_state);
+
     apply_fee_rebounds(
         storage,
         querier,
         contract,
         current_time,
         &param.referral,
-        order.user,
-        &mut user_state,
         &mut maker_states,
         &vault_fees,
         &volumes,
@@ -497,10 +497,8 @@ fn process_triggered_order(
 
     NEXT_ORDER_ID.save(storage, &next_order_id)?;
 
-    USER_STATES.save(storage, order.user, &user_state)?;
-
-    for (addr, maker_state) in &maker_states {
-        USER_STATES.save(storage, *addr, maker_state)?;
+    for (addr, user_state) in &maker_states {
+        USER_STATES.save(storage, *addr, user_state)?;
     }
 
     apply_position_index_updates(storage, &index_updates)?;

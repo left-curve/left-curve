@@ -94,14 +94,14 @@ pub fn submit_order(
 
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
 
+    maker_states.insert(ctx.sender, taker_state);
+
     apply_fee_rebounds(
         ctx.storage,
         &ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
         &param.referral,
-        ctx.sender,
-        &mut taker_state,
         &mut maker_states,
         &vault_fees,
         &volumes,
@@ -113,10 +113,8 @@ pub fn submit_order(
 
     PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
 
-    USER_STATES.save(ctx.storage, ctx.sender, &taker_state)?;
-
-    for (addr, maker_state) in &maker_states {
-        USER_STATES.save(ctx.storage, *addr, maker_state)?;
+    for (addr, user_state) in &maker_states {
+        USER_STATES.save(ctx.storage, *addr, user_state)?;
     }
 
     apply_position_index_updates(ctx.storage, &index_updates)?;

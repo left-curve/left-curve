@@ -293,9 +293,7 @@ pub(crate) fn apply_fee_rebounds(
     perps_contract: Addr,
     current_time: Timestamp,
     referral_param: &ReferralParam,
-    taker: Addr,
-    taker_state: &mut UserState,
-    maker_states: &mut BTreeMap<Addr, UserState>,
+    user_states: &mut BTreeMap<Addr, UserState>,
     vault_fees: &BTreeMap<Addr, UsdValue>,
     volumes: &BTreeMap<Addr, UsdValue>,
 ) -> anyhow::Result<()> {
@@ -351,14 +349,7 @@ pub(crate) fn apply_fee_rebounds(
 
         // Credit the referee.
         if referee_rebound.is_non_zero() {
-            credit_rebound(
-                storage,
-                taker,
-                taker_state,
-                maker_states,
-                payer,
-                referee_rebound,
-            )?;
+            credit_rebound(storage, user_states, payer, referee_rebound)?;
             total_vault_deduction.checked_add_assign(referee_rebound)?;
         }
 
@@ -367,14 +358,7 @@ pub(crate) fn apply_fee_rebounds(
             && let Some(referrer_addr) =
                 retrieve_master_account(querier, first_referrer, account_factory)
         {
-            credit_rebound(
-                storage,
-                taker,
-                taker_state,
-                maker_states,
-                referrer_addr,
-                referrer_rebound,
-            )?;
+            credit_rebound(storage, user_states, referrer_addr, referrer_rebound)?;
             total_vault_deduction.checked_add_assign(referrer_rebound)?;
         }
 
@@ -441,14 +425,7 @@ pub(crate) fn apply_fee_rebounds(
                     if let Some(addr) =
                         retrieve_master_account(querier, next_referrer, account_factory)
                     {
-                        credit_rebound(
-                            storage,
-                            taker,
-                            taker_state,
-                            maker_states,
-                            addr,
-                            commission_rebound,
-                        )?;
+                        credit_rebound(storage, user_states, addr, commission_rebound)?;
                         total_vault_deduction.checked_add_assign(commission_rebound)?;
                     }
 
@@ -473,9 +450,9 @@ pub(crate) fn apply_fee_rebounds(
 
     // Deduct the total rebound from the vault margin.
     if total_vault_deduction.is_non_zero() {
-        maker_states
+        user_states
             .get_mut(&perps_contract)
-            .expect("vault must be in maker_states for fee rebound settlement")
+            .expect("vault must be in user_states for fee rebound settlement")
             .margin
             .checked_sub_assign(total_vault_deduction)?;
     }
@@ -511,30 +488,24 @@ fn compute_referrer_settings(
 
 /// Credit a fee rebound to a user's margin.
 ///
-/// If the recipient is the taker, credits `taker_state`; otherwise loads or
-/// reuses the entry in `maker_states`.
+/// If the recipient is already in `user_states`, credits directly; otherwise
+/// loads from storage and inserts.
 fn credit_rebound(
     storage: &dyn Storage,
-    taker: Addr,
-    taker_state: &mut UserState,
-    maker_states: &mut BTreeMap<Addr, UserState>,
+    user_states: &mut BTreeMap<Addr, UserState>,
     recipient: Addr,
     amount: UsdValue,
 ) -> anyhow::Result<()> {
-    if recipient == taker {
-        taker_state.margin.checked_add_assign(amount)?;
-    } else {
-        maker_states
-            .entry(recipient)
-            .or_insert_with(|| {
-                USER_STATES
-                    .may_load(storage, recipient)
-                    .unwrap()
-                    .unwrap_or_default()
-            })
-            .margin
-            .checked_add_assign(amount)?;
-    }
+    user_states
+        .entry(recipient)
+        .or_insert_with(|| {
+            USER_STATES
+                .may_load(storage, recipient)
+                .unwrap()
+                .unwrap_or_default()
+        })
+        .margin
+        .checked_add_assign(amount)?;
     Ok(())
 }
 
