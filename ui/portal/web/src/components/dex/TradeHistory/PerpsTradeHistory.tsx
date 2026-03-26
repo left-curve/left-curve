@@ -34,6 +34,7 @@ function getPerpsEventPrice(eventType: string, data: PerpsEvent["data"]): string
 
 function getPerpsEventPnl(eventType: string, data: PerpsEvent["data"]): string | null {
   if (eventType === "order_filled") return (data as OrderFilledData).realized_pnl;
+  if (eventType === "liquidated") return (data as LiquidatedData).adl_realized_pnl;
   if (eventType === "deleveraged") return (data as DeleveragedData).realized_pnl;
   return null;
 }
