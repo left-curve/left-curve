@@ -19,16 +19,6 @@ type LeagueConfig = {
   maxPercentile: number;
 };
 
-/**
- * User leagues based on percentile of points holders:
- * - Wood: bottom 30%
- * - Iron: next 25% (30-55%)
- * - Gold: next 18% (55-73%)
- * - Platinum: next 12% (73-85%)
- * - Diamond: next 8% (85-93%)
- * - Master: next 5% (93-98%)
- * - Grandmaster: top 2% (98-100%)
- */
 const LEAGUE_CONFIG: LeagueConfig[] = [
   { key: "wood", label: "Wood", minPercentile: 0, maxPercentile: 30 },
   { key: "iron", label: "Iron", minPercentile: 30, maxPercentile: 55 },
