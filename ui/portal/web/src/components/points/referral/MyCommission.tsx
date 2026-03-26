@@ -44,9 +44,6 @@ type RebateRow = {
   date: string;
 };
 
-/**
- * Format a number as USD currency
- */
 const formatUSD = (value: number | string): string => {
   const num = typeof value === "string" ? Number(value) : value;
   if (Number.isNaN(num)) return "$0.00";
@@ -58,9 +55,6 @@ const formatUSD = (value: number | string): string => {
   }).format(num);
 };
 
-/**
- * Format a timestamp as a date string
- */
 const formatDate = (timestamp: number): string => {
   return new Date(timestamp * 1000).toLocaleDateString("en-US", {
     year: "numeric",
@@ -80,26 +74,23 @@ const CommissionTable: React.FC = () => {
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Use weekly points to get commission history by week
   const { weeklyPoints, isLoading } = useWeeklyPoints({
     pointsUrl: "", // Will be set by the hook from config
     userIndex,
   });
 
-  // Transform weekly points to commission rows
   const commissionData = useMemo<CommissionRow[]>(() => {
     if (!weeklyPoints) return [];
 
     return Object.entries(weeklyPoints).map(([week, points]) => {
       const weekNumber = Number.parseInt(week, 10);
-      // Approximate date from week number (assuming epoch start)
       const weekDate = new Date();
       weekDate.setDate(weekDate.getDate() - 7 * (52 - weekNumber));
 
       return {
         myCommission: formatUSD(points.referral),
-        referralVolume: "-", // TODO: Get from contract when available
-        activeUsers: "-", // TODO: Get from contract when available
+        referralVolume: "-",
+        activeUsers: "-",
         date: weekDate.toLocaleDateString("en-US"),
       };
     });
@@ -165,15 +156,13 @@ const MyRefereesTable: React.FC = () => {
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Fetch referee stats from contract
   const { referees, isLoading } = useRefereeStats({
     referrerIndex: userIndex,
   });
 
-  // Transform referee stats to table rows
   const refereeData = useMemo<RefereeRow[]>(() => {
     return referees.map((referee: RefereeStats) => ({
-      userName: `#${referee.user_index}`, // Display user index (could be enhanced with username lookup)
+      userName: `#${referee.user_index}`,
       totalVolume: formatUSD(referee.volume),
       totalCommission: formatUSD(referee.commission),
       date: formatDate(referee.registered_at),
@@ -262,20 +251,16 @@ const RebateTable: React.FC = () => {
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Get user's trading volume
   const { volume, isLoading } = useUserVolume({
     userIndex,
     days: 30,
   });
 
-  // TODO: Get actual rebate data from contract when available
-  // For now, show a placeholder message
   const rebateData = useMemo<RebateRow[]>(() => {
-    // Placeholder - will be populated when contract provides rebate history
     if (volume && volume > 0) {
       return [
         {
-          rebates: "$0.00", // TODO: Get from contract
+          rebates: "$0.00",
           tradingVolume: formatUSD(volume),
           date: new Date().toLocaleDateString("en-US"),
         },

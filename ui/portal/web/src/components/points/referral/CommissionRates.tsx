@@ -12,15 +12,10 @@ type CommissionTier = {
   commission: string;
 };
 
-/**
- * Format a volume value for display
- * Converts from microunits to human readable format
- */
 const formatVolume = (value: string): string => {
   const num = Number(value);
   if (Number.isNaN(num) || num === 0) return "0";
 
-  // Convert from microunits (1e-6) to base units
   const baseValue = num / 1_000_000;
 
   if (baseValue >= 1_000_000_000) {
@@ -35,16 +30,12 @@ const formatVolume = (value: string): string => {
   return `~$${baseValue.toLocaleString()}`;
 };
 
-/**
- * Format a percentage (e.g., "0.2" -> "20%")
- */
 const formatPercent = (value: string): string => {
   const num = Number(value);
   if (Number.isNaN(num)) return "0%";
   return `${(num * 100).toFixed(0)}%`;
 };
 
-// Default tiers to show while loading or if config is not available
 const DEFAULT_TIERS: CommissionTier[] = [
   {
     tier: "Tier 1",
@@ -76,13 +67,11 @@ export const CommissionRates: React.FC = () => {
   const { isConnected } = useAccount();
   const { config, isLoading } = useReferralConfig();
 
-  // Transform config tiers to display format
   const commissionTiers = useMemo<CommissionTier[]>(() => {
     if (!config?.tiers || config.tiers.length === 0) {
       return DEFAULT_TIERS;
     }
 
-    // Create Tier 1 with default commission (no volume requirement)
     const tiers: CommissionTier[] = [
       {
         tier: "Tier 1",
@@ -92,7 +81,6 @@ export const CommissionRates: React.FC = () => {
       },
     ];
 
-    // Add tiers from config
     config.tiers.forEach((tier, index) => {
       tiers.push({
         tier: `Tier ${index + 2}`,

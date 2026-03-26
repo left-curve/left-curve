@@ -36,9 +36,6 @@ type ReferralStatsProps = {
 const UNLOCK_VOLUME = 10000;
 const TIER_2_VOLUME = 100000;
 
-/**
- * Format a number as USD currency
- */
 const formatUSD = (value: number | string): string => {
   const num = typeof value === "string" ? Number(value) : value;
   if (Number.isNaN(num)) return "$0.00";
@@ -50,9 +47,6 @@ const formatUSD = (value: number | string): string => {
   }).format(num);
 };
 
-/**
- * Format a percentage (e.g., "0.1" -> "10%")
- */
 const formatPercent = (value: string | undefined): string => {
   if (!value) return "0%";
   const num = Number(value);
@@ -60,9 +54,6 @@ const formatPercent = (value: string | undefined): string => {
   return `${(num * 100).toFixed(0)}%`;
 };
 
-/**
- * Truncate a URL for display
- */
 const truncateUrl = (url: string, maxLength = 20): string => {
   if (url.length <= maxLength) return url;
   const start = url.slice(0, maxLength - 5);
@@ -74,7 +65,6 @@ export const AffiliateStats: React.FC = () => {
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Fetch real data from contract (only when connected)
   const { volume, isLoading: volumeLoading } = useUserVolume({
     userIndex,
     days: 30,
@@ -88,31 +78,26 @@ export const AffiliateStats: React.FC = () => {
 
   const isLoading = isConnected && (volumeLoading || dataLoading || settingsLoading);
 
-  // Derive values from fetched data
   const currentVolume = volume ?? 0;
   const isUnlocked = isConnected && currentVolume >= UNLOCK_VOLUME;
   const targetVolume = isUnlocked ? TIER_2_VOLUME : UNLOCK_VOLUME;
   const progress = isConnected ? Math.min((currentVolume / targetVolume) * 100, 100) : 0;
   const remaining = Math.max(targetVolume - currentVolume, 0);
 
-  // Referral code and link derived from user index
   const referralCode = getReferralCode(userIndex);
   const referralLink = getReferralLink(userIndex);
   const truncatedLink = truncateUrl(referralLink);
 
-  // Commission rates from settings
   const commissionRate = settings?.commission_rebound ?? "0";
   const shareRatio = settings?.share_ratio ?? "0";
   const rateDisplay = isConnected
     ? `${formatPercent(commissionRate)} / ${formatPercent(shareRatio)}`
     : "-- / --";
 
-  // Referral data
   const totalCommission = referralData?.commission ?? "0";
   const totalVolume = referralData?.volume ?? "0";
   const totalReferees = referralData?.active_referees ?? 0;
 
-  // Progress bar labels
   const progressLeftLabel = isConnected
     ? m["referral.stats.volumeUntilTier2"]({ amount: formatUSD(remaining) })
     : m["referral.stats.notLoggedIn"]();
@@ -256,7 +241,6 @@ export const TraderStats: React.FC = () => {
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Fetch referrer and volume data (only when connected)
   const { referrer, hasReferrer, isLoading: referrerLoading } = useReferrer({
     userIndex,
   });
@@ -271,16 +255,11 @@ export const TraderStats: React.FC = () => {
 
   const isLoading = isConnected && (referrerLoading || volumeLoading || settingsLoading);
 
-  // Rebate rate from referrer's settings (share_ratio is what referee gets)
   const rebateRate = settings?.share_ratio ?? "0";
-  // TODO: Get actual rebate totals from contract when available
   const totalRebates = "0";
   const totalVolume = volume ?? 0;
 
-  // Display referrer as user index (could be enhanced to show username)
   const referrerDisplay = referrer ? `#${referrer}` : "";
-
-  // Show the "no referrer" section when not connected or when connected but has no referrer
   const showNoReferrerSection = !isConnected || !hasReferrer;
 
   return (
