@@ -1,4 +1,4 @@
-use crate::{entities::pair_price::PairPrice, error::Result};
+use crate::{entities::perps_pair_price::PerpsPairPrice, error::Result};
 #[cfg(feature = "async-graphql")]
 use {
     crate::{context::Context, entities::graphql_decimal::GraphqlBigDecimal},
@@ -9,11 +9,11 @@ use {
     serde::Deserialize,
 };
 
-/// Helper struct for fetching a single price value from ClickHouse.
+/// Helper struct for fetching a single close price from ClickHouse.
 #[cfg(feature = "async-graphql")]
 #[derive(Debug, Row, Deserialize)]
-struct PriceRow {
-    clearing_price: u128,
+struct CloseRow {
+    close: u128,
 }
 
 /// Helper struct for fetching volume sum from ClickHouse.
@@ -23,49 +23,37 @@ struct VolumeRow {
     total_volume: u128,
 }
 
-/// Represents 24h statistics for a trading pair.
+/// Represents 24h statistics for a perps trading pair.
 /// Fields are fetched lazily when requested via GraphQL.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(complex))]
-#[cfg_attr(feature = "async-graphql", graphql(name = "PairStats"))]
-pub struct PairStats {
-    #[cfg_attr(feature = "async-graphql", graphql(name = "quoteDenom"))]
-    pub quote_denom: String,
-    #[cfg_attr(feature = "async-graphql", graphql(name = "baseDenom"))]
-    pub base_denom: String,
+#[cfg_attr(feature = "async-graphql", graphql(name = "PerpsPairStats"))]
+pub struct PerpsPairStats {
+    #[cfg_attr(feature = "async-graphql", graphql(name = "pairId"))]
+    pub pair_id: String,
 }
 
-impl PairStats {
-    /// Creates a new PairStats for the given trading pair.
-    pub fn new(base_denom: String, quote_denom: String) -> Self {
-        Self {
-            base_denom,
-            quote_denom,
-        }
+impl PerpsPairStats {
+    /// Creates a new PerpsPairStats for the given pair.
+    pub fn new(pair_id: String) -> Self {
+        Self { pair_id }
     }
 
-    /// Fetches all trading pairs.
+    /// Fetches all perps trading pairs.
     pub async fn fetch_all(clickhouse_client: &clickhouse::Client) -> Result<Vec<Self>> {
-        let pairs = PairPrice::all_pairs(clickhouse_client).await?;
+        let pair_ids = PerpsPairPrice::all_pair_ids(clickhouse_client).await?;
 
-        let results = pairs
-            .into_iter()
-            .map(|pair| PairStats::new(pair.base_denom.to_string(), pair.quote_denom.to_string()))
-            .collect();
+        let results = pair_ids.into_iter().map(PerpsPairStats::new).collect();
 
         Ok(results)
     }
 }
 
 #[cfg(feature = "async-graphql")]
-impl PairStats {
-    /// Helper struct for checking existence.
-    async fn pair_exists(
-        clickhouse_client: &clickhouse::Client,
-        base_denom: &str,
-        quote_denom: &str,
-    ) -> Result<bool> {
+impl PerpsPairStats {
+    /// Checks if the pair exists in the database.
+    pub async fn exists(clickhouse_client: &clickhouse::Client, pair_id: &str) -> Result<bool> {
         #[derive(Debug, Row, Deserialize)]
         struct ExistsRow {
             #[allow(dead_code)]
@@ -74,123 +62,106 @@ impl PairStats {
 
         let query = r#"
             SELECT 1 as exists
-            FROM pair_prices
-            WHERE base_denom = ? AND quote_denom = ?
+            FROM perps_pair_prices
+            WHERE pair_id = ?
             LIMIT 1
         "#;
 
         let exists: Option<ExistsRow> = clickhouse_client
             .query(query)
-            .bind(base_denom)
-            .bind(quote_denom)
+            .bind(pair_id)
             .fetch_optional()
             .await?;
 
         Ok(exists.is_some())
     }
 
-    /// Checks if the pair exists in the database.
-    pub async fn exists(
-        clickhouse_client: &clickhouse::Client,
-        base_denom: &str,
-        quote_denom: &str,
-    ) -> Result<bool> {
-        Self::pair_exists(clickhouse_client, base_denom, quote_denom).await
-    }
-
-    /// Fetches the current price for the pair.
+    /// Fetches the current (latest) close price for the pair.
     async fn fetch_current_price(
         clickhouse_client: &clickhouse::Client,
-        base_denom: &str,
-        quote_denom: &str,
+        pair_id: &str,
     ) -> Result<Option<u128>> {
         let query = r#"
-            SELECT clearing_price
-            FROM pair_prices
-            WHERE base_denom = ? AND quote_denom = ?
+            SELECT close
+            FROM perps_pair_prices
+            WHERE pair_id = ?
             ORDER BY block_height DESC
             LIMIT 1
         "#;
 
-        let result: Option<PriceRow> = clickhouse_client
+        let result: Option<CloseRow> = clickhouse_client
             .query(query)
-            .bind(base_denom)
-            .bind(quote_denom)
+            .bind(pair_id)
             .fetch_optional()
             .await?;
 
-        Ok(result.map(|row| row.clearing_price))
+        Ok(result.map(|row| row.close))
     }
 
-    /// Fetches the price from ~24h ago for the pair.
+    /// Fetches the close price from ~24h ago for the pair.
     async fn fetch_price_24h_ago(
         clickhouse_client: &clickhouse::Client,
-        base_denom: &str,
-        quote_denom: &str,
+        pair_id: &str,
     ) -> Result<Option<u128>> {
         let time_24h_ago = Utc::now() - Duration::hours(24);
 
         let query = r#"
-            SELECT clearing_price
-            FROM pair_prices
-            WHERE base_denom = ? AND quote_denom = ?
+            SELECT close
+            FROM perps_pair_prices
+            WHERE pair_id = ?
               AND created_at <= toDateTime64(?, 6)
             ORDER BY created_at DESC
             LIMIT 1
         "#;
 
-        let result: Option<PriceRow> = clickhouse_client
+        let result: Option<CloseRow> = clickhouse_client
             .query(query)
-            .bind(base_denom)
-            .bind(quote_denom)
+            .bind(pair_id)
             .bind(time_24h_ago.timestamp())
             .fetch_optional()
             .await?;
 
         // If no price from 24h ago, use the earliest available price
         if let Some(row) = result {
-            return Ok(Some(row.clearing_price));
+            return Ok(Some(row.close));
         }
 
         // Get the earliest price if no data from 24h ago
         let earliest_query = r#"
-            SELECT clearing_price
-            FROM pair_prices
-            WHERE base_denom = ? AND quote_denom = ?
+            SELECT close
+            FROM perps_pair_prices
+            WHERE pair_id = ?
             ORDER BY block_height ASC
             LIMIT 1
         "#;
 
-        let earliest: Option<PriceRow> = clickhouse_client
+        let earliest: Option<CloseRow> = clickhouse_client
             .query(earliest_query)
-            .bind(base_denom)
-            .bind(quote_denom)
+            .bind(pair_id)
             .fetch_optional()
             .await?;
 
-        Ok(earliest.map(|row| row.clearing_price))
+        Ok(earliest.map(|row| row.close))
     }
 
-    /// Fetches the 24h volume in quote asset for the pair.
-    /// Uses trades to capture all fills across the rolling 24h window.
+    /// Fetches the 24h volume in USD for the pair.
+    /// Uses `volume_usd` from `perps_pair_prices` which is already aggregated per block.
     async fn fetch_volume_24h(
         clickhouse_client: &clickhouse::Client,
-        base_denom: &str,
-        quote_denom: &str,
+        pair_id: &str,
     ) -> Result<u128> {
         let time_24h_ago = Utc::now() - Duration::hours(24);
 
         let query = r#"
-            SELECT sum(filled_quote) as total_volume
-            FROM trades
-            WHERE base_denom = ? AND quote_denom = ?
+            SELECT sum(volume_usd) as total_volume
+            FROM perps_pair_prices
+            WHERE pair_id = ?
               AND created_at >= toDateTime64(?, 6)
         "#;
 
         let result: Option<VolumeRow> = clickhouse_client
             .query(query)
-            .bind(base_denom)
-            .bind(quote_denom)
+            .bind(pair_id)
             .bind(time_24h_ago.timestamp())
             .fetch_optional()
             .await?;
@@ -201,8 +172,8 @@ impl PairStats {
 
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
-impl PairStats {
-    /// Current price as a BigDecimal with 24 decimal places (fetched lazily)
+impl PerpsPairStats {
+    /// Current close price as a BigDecimal with 6 decimal places (fetched lazily)
     async fn current_price(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -210,17 +181,15 @@ impl PairStats {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
-        let price =
-            Self::fetch_current_price(clickhouse_client, &self.base_denom, &self.quote_denom)
-                .await?;
+        let price = Self::fetch_current_price(clickhouse_client, &self.pair_id).await?;
 
         Ok(price.map(|p| {
             let bigint = BigInt::from(p);
-            BigDecimal::new(bigint, 24).normalized().into()
+            BigDecimal::new(bigint, 6).normalized().into()
         }))
     }
 
-    /// Price from 24 hours ago as a BigDecimal with 24 decimal places (fetched lazily)
+    /// Close price from 24 hours ago as a BigDecimal with 6 decimal places (fetched lazily)
     async fn price_24h_ago(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -228,17 +197,15 @@ impl PairStats {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
-        let price =
-            Self::fetch_price_24h_ago(clickhouse_client, &self.base_denom, &self.quote_denom)
-                .await?;
+        let price = Self::fetch_price_24h_ago(clickhouse_client, &self.pair_id).await?;
 
         Ok(price.map(|p| {
             let bigint = BigInt::from(p);
-            BigDecimal::new(bigint, 24).normalized().into()
+            BigDecimal::new(bigint, 6).normalized().into()
         }))
     }
 
-    /// 24h volume in quote asset as a BigDecimal with 6 decimal places (fetched lazily)
+    /// 24h volume in USD as a BigDecimal with 6 decimal places (fetched lazily)
     async fn volume_24h(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -246,8 +213,7 @@ impl PairStats {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
-        let volume =
-            Self::fetch_volume_24h(clickhouse_client, &self.base_denom, &self.quote_denom).await?;
+        let volume = Self::fetch_volume_24h(clickhouse_client, &self.pair_id).await?;
 
         let bigint = BigInt::from(volume);
         Ok(BigDecimal::new(bigint, 6).normalized().into())
@@ -263,12 +229,8 @@ impl PairStats {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
-        let current_price =
-            Self::fetch_current_price(clickhouse_client, &self.base_denom, &self.quote_denom)
-                .await?;
-        let price_24h_ago =
-            Self::fetch_price_24h_ago(clickhouse_client, &self.base_denom, &self.quote_denom)
-                .await?;
+        let current_price = Self::fetch_current_price(clickhouse_client, &self.pair_id).await?;
+        let price_24h_ago = Self::fetch_price_24h_ago(clickhouse_client, &self.pair_id).await?;
 
         let (current, old) = match (current_price, price_24h_ago) {
             (Some(c), Some(o)) => (c, o),
@@ -280,8 +242,8 @@ impl PairStats {
         }
 
         // Calculate price change percentage using BigDecimal for precision
-        let current_bd = BigDecimal::new(BigInt::from(current), 24);
-        let old_bd = BigDecimal::new(BigInt::from(old), 24);
+        let current_bd = BigDecimal::new(BigInt::from(current), 6);
+        let old_bd = BigDecimal::new(BigInt::from(old), 6);
 
         // (current - old) / old * 100
         let change = (current_bd - &old_bd) / old_bd * BigDecimal::from(100);

@@ -239,6 +239,18 @@ generate_types! {
         path: "src/schemas/queries/allPairStats.graphql",
     },
     {
+        name: PerpsPairStats,
+        path: "src/schemas/queries/perpsPairStats.graphql",
+    },
+    {
+        name: PerpsPairStatsPartial,
+        path: "src/schemas/queries/perpsPairStatsPartial.graphql",
+    },
+    {
+        name: AllPerpsPairStats,
+        path: "src/schemas/queries/allPerpsPairStats.graphql",
+    },
+    {
         name: QueryStatus,
         path: "src/schemas/queries/queryStatus.graphql",
     }

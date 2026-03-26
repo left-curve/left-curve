@@ -2,8 +2,7 @@
 use {
     crate::entities::graphql_decimal::GraphqlBigDecimal,
     async_graphql::{ComplexObject, SimpleObject},
-    bigdecimal::BigDecimal,
-    bigdecimal::num_bigint::BigInt,
+    bigdecimal::{BigDecimal, num_bigint::BigInt},
     grug::Inner,
     grug::Timestamp,
 };
