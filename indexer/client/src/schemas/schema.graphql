@@ -288,8 +288,8 @@ A scalar that can represent any JSON value.
 scalar JSON
 
 enum KeyType {
-	SECP_25_6R_1
-	SECP_25_6K_1
+	SECP256R1
+	SECP256K1
 	ETHEREUM
 }
 
