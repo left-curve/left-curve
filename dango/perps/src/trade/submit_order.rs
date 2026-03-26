@@ -104,7 +104,7 @@ pub fn submit_order(
         ctx.block.timestamp,
         &param.referral,
         &mut maker_states,
-        &fee_breakdowns,
+        fee_breakdowns,
         &volumes,
     )?;
 

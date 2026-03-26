@@ -491,7 +491,7 @@ fn process_triggered_order(
         current_time,
         &param.referral,
         &mut maker_states,
-        &fee_breakdowns,
+        fee_breakdowns,
         &volumes,
     )?;
 

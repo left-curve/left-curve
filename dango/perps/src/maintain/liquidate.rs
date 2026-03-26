@@ -135,7 +135,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         ctx.block.timestamp,
         &param.referral,
         &mut maker_states,
-        &fee_breakdowns,
+        fee_breakdowns,
         &volumes,
     )?;
 

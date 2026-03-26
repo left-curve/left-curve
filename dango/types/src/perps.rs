@@ -96,7 +96,7 @@ pub enum TriggerDirection {
 }
 
 /// Per-user fee breakdown after splitting between protocol treasury and vault.
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub struct FeeBreakdown {
     /// Portion of the fee routed to the protocol treasury.
     pub protocol_fee: UsdValue,

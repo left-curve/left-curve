@@ -294,7 +294,7 @@ pub(crate) fn apply_fee_rebounds(
     current_time: Timestamp,
     referral_param: &ReferralParam,
     user_states: &mut BTreeMap<Addr, UserState>,
-    fee_breakdowns: &BTreeMap<Addr, FeeBreakdown>,
+    fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
     volumes: &BTreeMap<Addr, UsdValue>,
 ) -> anyhow::Result<()> {
     if !referral_param.active {
@@ -307,7 +307,7 @@ pub(crate) fn apply_fee_rebounds(
 
     let account_factory = querier.query_account_factory()?;
 
-    for (&payer, &fee_breakdown) in fee_breakdowns {
+    for (payer, fee_breakdown) in fee_breakdowns {
         let vault_fee = fee_breakdown.vault_fee;
         if vault_fee.is_zero() || payer == perps_contract {
             continue;
