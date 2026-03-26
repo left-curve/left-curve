@@ -13,7 +13,7 @@ Internal logics of the perps contract use USD amounts exclusively. Token convers
 
 The user sends settlement currency as attached funds. The perps contract:
 
-1. Values the settlement currency at a fixed **\\$1 per unit** (no oracle lookup).
+1. Values the settlement currency at a fixed **\$1 per unit** (no oracle lookup).
 2. Converts the token amount to USD: $\mathtt{depositValue} = \mathtt{amount} \times 1$.
 3. Increment `userState.margin` by $\mathtt{depositValue}$.
 
@@ -26,7 +26,7 @@ The user specifies how much USD margin to withdraw. The perps contract:
 1. Computes $\mathtt{availableMargin}$ (see [§8](#8-available-margin)), clamped to zero.
 2. Ensures the requested amount does not exceed $\mathtt{availableMargin}$.
 3. Deducts the amount from `userState.margin`.
-4. Converts USD to settlement currency tokens at the fixed \\$1 rate (floor-rounded to base units).
+4. Converts USD to settlement currency tokens at the fixed \$1 rate (floor-rounded to base units).
 5. Transfers the tokens to the user.
 
 ## 4. Equity

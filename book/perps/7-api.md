@@ -5,7 +5,7 @@ This chapter documents the complete API for the Dango perpetual futures exchange
 There are two query surfaces:
 
 - **On-chain queries** — read contract state directly via the `queryApp` GraphQL field. Returns the latest finalized state.
-- **Indexer queries** — read historical and aggregated data (trade history, candlesticks, 24h stats) via dedicated GraphQL fields backed by a time-series database.
+- **Indexer queries** — read historical and aggregated data (trade history, candlesticks) via dedicated GraphQL fields backed by a time-series database.
 
 Both surfaces share the same endpoint. All write operations (orders, deposits, account creation) go through the `broadcastTxSync` GraphQL mutation.
 
@@ -642,7 +642,7 @@ Returns: `[<User>, ...]`
 { "next_user_index": {} }
 ```
 
-Returns: `u32` (e.g. `42`) — the index that will be assigned to the next registered user.
+Returns: `u32` (e.g. `42`) — the next index to be assigned. Note: this reflects current state and may change before the client's transaction is processed if another user registers first. The actual assigned index is confirmed in the transaction events.
 
 **Next account index:**
 
@@ -650,7 +650,7 @@ Returns: `u32` (e.g. `42`) — the index that will be assigned to the next regis
 { "next_account_index": {} }
 ```
 
-Returns: `u32` (e.g. `85`) — the index that will be assigned to the next created account.
+Returns: `u32` (e.g. `85`) — the next account index to be assigned. Same caveat as above: the value may change between query and transaction execution.
 
 ### 3.8 Query user (indexer)
 
@@ -905,44 +905,7 @@ Each level contains:
 | `size`     | `Quantity` | Absolute order size in the bucket |
 | `notional` | `UsdValue` | USD notional (size × price)       |
 
-### 4.6 24h statistics (indexer)
-
-**All pairs:**
-
-```graphql
-query {
-  allPairStats {
-    baseDenom
-    quoteDenom
-    currentPrice
-    price24HAgo
-    volume24H
-    priceChange24H
-  }
-}
-```
-
-**Single pair:**
-
-```graphql
-query {
-  pairStats(baseDenom: "perp/btcusd", quoteDenom: "uusdc") {
-    currentPrice
-    price24HAgo
-    volume24H
-    priceChange24H
-  }
-}
-```
-
-| Field            | Type         | Description                                        |
-| ---------------- | ------------ | -------------------------------------------------- |
-| `currentPrice`   | `BigDecimal` | Current price (nullable)                           |
-| `price24HAgo`    | `BigDecimal` | Price 24 hours ago (nullable)                      |
-| `volume24H`      | `BigDecimal` | 24h trading volume in quote asset                  |
-| `priceChange24H` | `BigDecimal` | 24h price change percentage (e.g. `5.25` = +5.25%) |
-
-### 4.7 Historical candles (indexer)
+### 4.6 Historical candles (indexer)
 
 ```graphql
 query {
@@ -1508,7 +1471,7 @@ subscription {
 }
 ```
 
-Pushes updated candle data as new trades occur. Fields match the `PerpsCandle` type in [§4.7](#47-historical-candles-indexer).
+Pushes updated candle data as new trades occur. Fields match the `PerpsCandle` type in [§4.6](#46-historical-candles-indexer).
 
 ### 8.2 Perps trades
 
