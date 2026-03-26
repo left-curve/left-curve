@@ -3,7 +3,10 @@ use {
         Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
         account_factory::UserIndex,
     },
-    grug::{Addr, Denom, Duration, Number, Part, Timestamp, Uint64, Uint128},
+    grug::{
+        Addr, Denom, Duration, MathResult, Number, Order as IterationOrder, Part, Timestamp,
+        Uint64, Uint128,
+    },
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
         sync::LazyLock,
@@ -100,6 +103,7 @@ pub enum TriggerDirection {
 pub struct FeeBreakdown {
     /// Portion of the fee routed to the protocol treasury.
     pub protocol_fee: UsdValue,
+
     /// Portion of the fee credited to the vault.
     pub vault_fee: UsdValue,
 }
@@ -138,10 +142,13 @@ pub struct ReferrerSettings {
 pub struct RefereeStats {
     /// Timestamp when the referee registered with the referral.
     pub registered_at: Timestamp,
+
     /// Total trading volume made by the referee (USD).
     pub volume: UsdValue,
+
     /// Total commission received by the referrer from this referee (USD).
     pub commission_received: UsdValue,
+
     /// Timestamp of the last day the referee was active.
     pub last_day_active: Timestamp,
 }
@@ -149,7 +156,7 @@ pub struct RefereeStats {
 /// Ordering options for querying per-referee statistics.
 #[grug::derive(Serde)]
 pub struct ReferrerStatsOrderBy {
-    pub order: grug::Order,
+    pub order: IterationOrder,
     pub limit: Option<u32>,
     pub index: ReferrerStatsOrderIndex,
 }
@@ -410,21 +417,26 @@ pub struct Unlock {
 pub struct UserReferralData {
     /// The user's own trading volume (cumulative).
     pub volume: UsdValue,
+
     /// Total commission received by this user (cumulative).
     pub commission_received: UsdValue,
+
     /// Number of direct referees this user has.
     pub referee_count: u32,
+
     /// Total trading volume of this user's direct referees (cumulative).
     pub referees_volume: UsdValue,
+
     /// Total commission distributed from this user's referees (cumulative).
     pub referees_commission_distributed: UsdValue,
+
     /// Number of referees that have traded on a specific day.
     pub active_users: Uint128,
 }
 
 impl UserReferralData {
     /// Element-wise subtraction for rolling window calculations.
-    pub fn checked_sub(&self, other: &Self) -> grug::StdResult<Self> {
+    pub fn checked_sub(&self, other: &Self) -> MathResult<Self> {
         Ok(Self {
             volume: self.volume.checked_sub(other.volume)?,
             commission_received: self
@@ -479,6 +491,7 @@ pub struct ConditionalOrder {
 pub enum CancelOrderRequest {
     /// Cancel a single order by ID.
     One(OrderId),
+
     /// Cancel all orders associated with the sender.
     All,
 }
@@ -601,21 +614,26 @@ pub enum VaultMsg {
 #[allow(clippy::enum_variant_names)]
 pub enum ReferralMsg {
     /// Register a referral relationship between a referrer and a referee.
+    ///
     /// Called by the account factory during user registration, or by the
-    /// referee themselves.
+    /// referee himself.
     SetReferral {
         referrer: UserIndex,
         referee: UserIndex,
     },
 
     /// Set or update the fee share ratio for the calling referrer.
-    /// The share ratio determines what fraction of the commission
-    /// the referrer gives back to the referee.
+    ///
+    /// The share ratio determines what fraction of the commission the referrer
+    /// gives back to the referee.
+    ///
     /// Can only increase (never decrease) once set.
     SetFeeShareRatio { share_ratio: FeeShareRatio },
 
     /// Set or remove a commission rate override for a user.
+    ///
     /// Only callable by the chain owner.
+    ///
     /// Pass `None` to remove the override.
     SetCommissionRateOverride {
         user: UserIndex,
@@ -1022,10 +1040,13 @@ pub struct BadDebtCovered {
 pub struct FeeDistributed {
     /// User index of the fee payer.
     pub payer: UserIndex,
+
     /// Protocol treasury portion of the fee.
     pub protocol_fee: UsdValue,
+
     /// Vault portion of the fee (before commissions).
     pub vault_fee: UsdValue,
+
     /// Commission amounts per chain level: [payer, 1st referrer, 2nd, ...].
     pub commissions: Vec<UsdValue>,
 }
