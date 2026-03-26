@@ -1,6 +1,6 @@
 import { Cell, Skeleton, Table } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
-import { useReferralConfig } from "@left-curve/store";
+import { useAccount, useReferralConfig } from "@left-curve/store";
 import type React from "react";
 import { useMemo } from "react";
 
@@ -72,6 +72,7 @@ const DEFAULT_TIERS: CommissionTier[] = [
 ];
 
 export const CommissionRates: React.FC = () => {
+  const { isConnected } = useAccount();
   const { config, isLoading } = useReferralConfig();
 
   // Transform config tiers to display format
@@ -121,6 +122,8 @@ export const CommissionRates: React.FC = () => {
       cell: ({ row }) => <Cell.Text text={row.original.commission} />,
     },
   ];
+
+  if (!isConnected) return null;
 
   if (isLoading) {
     return (

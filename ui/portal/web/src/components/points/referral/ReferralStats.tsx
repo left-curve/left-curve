@@ -70,10 +70,10 @@ const truncateUrl = (url: string, maxLength = 20): string => {
 
 export const AffiliateStats: React.FC = () => {
   const { showModal } = useApp();
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Fetch real data from contract
+  // Fetch real data from contract (only when connected)
   const { volume, isLoading: volumeLoading } = useUserVolume({
     userIndex,
     days: 30,
@@ -85,13 +85,13 @@ export const AffiliateStats: React.FC = () => {
     userIndex,
   });
 
-  const isLoading = volumeLoading || dataLoading || settingsLoading;
+  const isLoading = isConnected && (volumeLoading || dataLoading || settingsLoading);
 
   // Derive values from fetched data
   const currentVolume = volume ?? 0;
-  const isUnlocked = currentVolume >= UNLOCK_VOLUME;
+  const isUnlocked = isConnected && currentVolume >= UNLOCK_VOLUME;
   const targetVolume = isUnlocked ? TIER_2_VOLUME : UNLOCK_VOLUME;
-  const progress = Math.min((currentVolume / targetVolume) * 100, 100);
+  const progress = isConnected ? Math.min((currentVolume / targetVolume) * 100, 100) : 0;
   const remaining = Math.max(targetVolume - currentVolume, 0);
 
   // Referral code and link derived from user index
@@ -102,12 +102,20 @@ export const AffiliateStats: React.FC = () => {
   // Commission rates from settings
   const commissionRate = settings?.commission_rebound ?? "0";
   const shareRatio = settings?.share_ratio ?? "0";
-  const rateDisplay = `${formatPercent(commissionRate)} / ${formatPercent(shareRatio)}`;
+  const rateDisplay = isConnected
+    ? `${formatPercent(commissionRate)} / ${formatPercent(shareRatio)}`
+    : "-- / --";
 
   // Referral data
   const totalCommission = referralData?.commission ?? "0";
   const totalVolume = referralData?.volume ?? "0";
   const totalReferees = referralData?.active_referees ?? 0;
+
+  // Progress bar labels
+  const progressLeftLabel = isConnected
+    ? `${formatUSD(remaining)} volume until Tier 2`
+    : "You are not logged in.";
+  const progressRightLabel = `$${(targetVolume / 1000).toFixed(0)}K`;
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -120,10 +128,12 @@ export const AffiliateStats: React.FC = () => {
               ) : (
                 <p className="text-primitives-warning-500 h3-bold">{rateDisplay}</p>
               )}
-              <IconEdit
-                className="w-6 h-6 text-fg-secondary-500 mb-1 hover:text-ink-secondary-blue cursor-pointer"
-                onClick={() => showModal(Modals.EditCommissionRate)}
-              />
+              {isConnected && (
+                <IconEdit
+                  className="w-6 h-6 text-fg-secondary-500 mb-1 hover:text-ink-secondary-blue cursor-pointer"
+                  onClick={() => showModal(Modals.EditCommissionRate)}
+                />
+              )}
             </div>
             <p className="text-ink-tertiary-500 diatype-m-medium">Commission Rate (You/ Referee)</p>
           </div>
@@ -131,15 +141,19 @@ export const AffiliateStats: React.FC = () => {
             {isLoading ? (
               <Skeleton className="w-24 h-8" />
             ) : (
-              <p className="text-ink-primary-900 h3-bold">{formatUSD(totalCommission)}</p>
+              <p className="text-ink-primary-900 h3-bold">
+                {isConnected ? formatUSD(totalCommission) : "--"}
+              </p>
             )}
-            <p className="text-ink-tertiary-500 diatype-m-medium">Total Commission</p>
+            <p className="text-ink-tertiary-500 diatype-m-medium">Total Commission Points</p>
           </div>
           <div className="flex flex-col items-center lg:items-end">
             {isLoading ? (
               <Skeleton className="w-24 h-8" />
             ) : (
-              <p className="text-primitives-warning-500 h3-bold">{formatUSD(totalVolume)}</p>
+              <p className="text-primitives-warning-500 h3-bold">
+                {isConnected ? formatUSD(totalVolume) : "--"}
+              </p>
             )}
             <p className="text-ink-tertiary-500 diatype-m-medium">Total Referral Volume</p>
           </div>
@@ -147,8 +161,8 @@ export const AffiliateStats: React.FC = () => {
 
         <ProgressBar
           progress={progress}
-          leftLabel={`${formatUSD(remaining)} volume until Tier 2`}
-          rightLabel={`$${(targetVolume / 1000).toFixed(0)}K`}
+          leftLabel={progressLeftLabel}
+          rightLabel={progressRightLabel}
           thumbSrc="/images/points/pointBarThumb.png"
           classNames={{
             leftLabel: "diatype-s-medium",
@@ -163,7 +177,9 @@ export const AffiliateStats: React.FC = () => {
               {isLoading ? (
                 <Skeleton className="w-12 h-6" />
               ) : (
-                <p className="text-ink-primary-900 diatype-m-bold">{totalReferees}</p>
+                <p className="text-ink-primary-900 diatype-m-bold">
+                  {isConnected ? totalReferees : "--"}
+                </p>
               )}
             </div>
             <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
@@ -171,7 +187,9 @@ export const AffiliateStats: React.FC = () => {
               {isLoading ? (
                 <Skeleton className="w-12 h-6" />
               ) : (
-                <p className="text-ink-primary-900 diatype-m-bold">{totalReferees}</p>
+                <p className="text-ink-primary-900 diatype-m-bold">
+                  {isConnected ? totalReferees : "--"}
+                </p>
               )}
             </div>
           </div>
@@ -209,9 +227,15 @@ export const AffiliateStats: React.FC = () => {
                     <span className="text-utility-success-500 font-bold">30%</span> commission.
                   </p>
                 </div>
-                <Button variant="primary" size="sm">
-                  Trade now
-                </Button>
+                {isConnected ? (
+                  <Button variant="primary" size="sm">
+                    Trade now
+                  </Button>
+                ) : (
+                  <Button variant="primary" size="sm" onClick={() => showModal(Modals.Login)}>
+                    Log In
+                  </Button>
+                )}
               </div>
               <img
                 src="/images/points/referral-banner.png"
@@ -227,11 +251,12 @@ export const AffiliateStats: React.FC = () => {
 };
 
 export const TraderStats: React.FC = () => {
+  const { showModal } = useApp();
   const [referralCodeInput, setReferralCodeInput] = useState("");
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Fetch referrer and volume data
+  // Fetch referrer and volume data (only when connected)
   const { referrer, hasReferrer, isLoading: referrerLoading } = useReferrer({
     userIndex,
   });
@@ -244,7 +269,7 @@ export const TraderStats: React.FC = () => {
     enabled: hasReferrer,
   });
 
-  const isLoading = referrerLoading || volumeLoading || settingsLoading;
+  const isLoading = isConnected && (referrerLoading || volumeLoading || settingsLoading);
 
   // Rebate rate from referrer's settings (share_ratio is what referee gets)
   const rebateRate = settings?.share_ratio ?? "0";
@@ -255,14 +280,19 @@ export const TraderStats: React.FC = () => {
   // Display referrer as user index (could be enhanced to show username)
   const referrerDisplay = referrer ? `#${referrer}` : "";
 
+  // Show the "no referrer" section when not connected or when connected but has no referrer
+  const showNoReferrerSection = !isConnected || !hasReferrer;
+
   return (
-    <div className={twMerge("w-full flex flex-col gap-6", !hasReferrer && "pb-[153px] lg:pb-0")}>
+    <div className={twMerge("w-full flex flex-col gap-6", showNoReferrerSection && "pb-[153px] lg:pb-0")}>
       <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-between">
         <div className="flex flex-col items-center lg:items-start">
           {isLoading ? (
             <Skeleton className="w-16 h-8" />
           ) : (
-            <p className="text-utility-warning-600 h3-bold">{formatPercent(rebateRate)}</p>
+            <p className="text-utility-warning-600 h3-bold">
+              {isConnected ? formatPercent(rebateRate) : "--"}
+            </p>
           )}
           <p className="text-ink-tertiary-500 diatype-m-medium">Rebate Rate</p>
         </div>
@@ -270,7 +300,9 @@ export const TraderStats: React.FC = () => {
           {isLoading ? (
             <Skeleton className="w-24 h-8" />
           ) : (
-            <p className="text-utility-warning-600 h3-bold">{formatUSD(totalRebates)}</p>
+            <p className="text-utility-warning-600 h3-bold">
+              {isConnected ? formatUSD(totalRebates) : "--"}
+            </p>
           )}
           <p className="text-ink-tertiary-500 diatype-m-medium">Total Rebates</p>
         </div>
@@ -278,13 +310,15 @@ export const TraderStats: React.FC = () => {
           {isLoading ? (
             <Skeleton className="w-24 h-8" />
           ) : (
-            <p className="text-utility-warning-600 h3-bold">{formatUSD(totalVolume)}</p>
+            <p className="text-utility-warning-600 h3-bold">
+              {isConnected ? formatUSD(totalVolume) : "--"}
+            </p>
           )}
           <p className="text-ink-tertiary-500 diatype-m-medium">Total Trading Volume</p>
         </div>
       </div>
 
-      {hasReferrer ? (
+      {isConnected && hasReferrer ? (
         <div className="w-full rounded-xl bg-surface-tertiary-gray px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <IconUser className="w-5 h-5 text-primitives-blue-light-400" />
@@ -310,17 +344,23 @@ export const TraderStats: React.FC = () => {
                   rebates by submitting your friend's referral code!
                 </p>
               </div>
-              <Input
-                label="Referral Code"
-                value={referralCodeInput}
-                onChange={(e) => setReferralCodeInput(e.target.value)}
-                placeholder="Enter your friend's referral code"
-                endContent={
-                  <Button variant="link" className="p-0">
-                    Submit
-                  </Button>
-                }
-              />
+              {isConnected ? (
+                <Input
+                  label="Referral Code"
+                  value={referralCodeInput}
+                  onChange={(e) => setReferralCodeInput(e.target.value)}
+                  placeholder="Enter your friend's referral code"
+                  endContent={
+                    <Button variant="link" className="p-0">
+                      Submit
+                    </Button>
+                  }
+                />
+              ) : (
+                <Button variant="primary" size="sm" onClick={() => showModal(Modals.Login)}>
+                  Log In
+                </Button>
+              )}
             </div>
             <img
               src="/images/characters/friends.svg"

@@ -9,12 +9,7 @@ import {
   twMerge,
 } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
-import {
-  useAccount,
-  useRefereeStats,
-  useWeeklyPoints,
-  useUserVolume,
-} from "@left-curve/store";
+import { useAccount, useRefereeStats, useWeeklyPoints, useUserVolume } from "@left-curve/store";
 import type { RefereeStats } from "@left-curve/store";
 import type React from "react";
 import { Suspense, lazy, useMemo, useState } from "react";
@@ -73,9 +68,15 @@ const formatDate = (timestamp: number): string => {
   });
 };
 
+const NotConnectedMessage: React.FC = () => (
+  <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
+    <p className="text-ink-tertiary-500 diatype-m-medium">Log in to view your data</p>
+  </div>
+);
+
 const CommissionTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
   // Use weekly points to get commission history by week
@@ -92,7 +93,7 @@ const CommissionTable: React.FC = () => {
       const weekNumber = Number.parseInt(week, 10);
       // Approximate date from week number (assuming epoch start)
       const weekDate = new Date();
-      weekDate.setDate(weekDate.getDate() - (7 * (52 - weekNumber)));
+      weekDate.setDate(weekDate.getDate() - 7 * (52 - weekNumber));
 
       return {
         myCommission: formatUSD(points.referral),
@@ -121,6 +122,10 @@ const CommissionTable: React.FC = () => {
       cell: ({ row }) => <Cell.Text text={row.original.date} />,
     },
   ];
+
+  if (!isConnected) {
+    return <NotConnectedMessage />;
+  }
 
   if (isLoading) {
     return (
@@ -156,7 +161,7 @@ const CommissionTable: React.FC = () => {
 
 const MyRefereesTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
   // Fetch referee stats from contract
@@ -207,6 +212,10 @@ const MyRefereesTable: React.FC = () => {
     },
   ];
 
+  if (!isConnected) {
+    return <NotConnectedMessage />;
+  }
+
   if (isLoading) {
     return (
       <div className="p-4 bg-surface-primary-gray">
@@ -249,7 +258,7 @@ const MyRefereesTable: React.FC = () => {
 
 const RebateTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
   // Get user's trading volume
@@ -297,6 +306,10 @@ const RebateTable: React.FC = () => {
       ),
     },
   ];
+
+  if (!isConnected) {
+    return <NotConnectedMessage />;
+  }
 
   if (isLoading) {
     return (
@@ -349,10 +362,13 @@ type MyCommissionProps = {
 };
 
 export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
+  const { isConnected } = useAccount();
   const [affiliateTab, setAffiliateTab] = useState<CommissionTab>("my-commission");
   const [traderTab, setTraderTab] = useState<RebateTab>("my-rebates");
   const [chartMetric, setChartMetric] = useState<ChartMetric>("commission");
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("7D");
+
+  if (!isConnected) return;
 
   const isAffiliate = mode === "affiliate";
   const showStatisticsSelects =
