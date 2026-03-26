@@ -46,10 +46,7 @@ impl PerpsPairStats {
     pub async fn fetch_all(clickhouse_client: &clickhouse::Client) -> Result<Vec<Self>> {
         let pair_ids = PerpsPairPrice::all_pair_ids(clickhouse_client).await?;
 
-        let results = pair_ids
-            .into_iter()
-            .map(PerpsPairStats::new)
-            .collect();
+        let results = pair_ids.into_iter().map(PerpsPairStats::new).collect();
 
         Ok(results)
     }
@@ -58,10 +55,7 @@ impl PerpsPairStats {
 #[cfg(feature = "async-graphql")]
 impl PerpsPairStats {
     /// Checks if the pair exists in the database.
-    pub async fn exists(
-        clickhouse_client: &clickhouse::Client,
-        pair_id: &str,
-    ) -> Result<bool> {
+    pub async fn exists(clickhouse_client: &clickhouse::Client, pair_id: &str) -> Result<bool> {
         #[derive(Debug, Row, Deserialize)]
         struct ExistsRow {
             #[allow(dead_code)]
@@ -237,10 +231,8 @@ impl PerpsPairStats {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
-        let current_price =
-            Self::fetch_current_price(clickhouse_client, &self.pair_id).await?;
-        let price_24h_ago =
-            Self::fetch_price_24h_ago(clickhouse_client, &self.pair_id).await?;
+        let current_price = Self::fetch_current_price(clickhouse_client, &self.pair_id).await?;
+        let price_24h_ago = Self::fetch_price_24h_ago(clickhouse_client, &self.pair_id).await?;
 
         let (current, old) = match (current_price, price_24h_ago) {
             (Some(c), Some(o)) => (c, o),

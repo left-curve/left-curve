@@ -40,7 +40,9 @@ async fn query_perps_pair_stats() -> anyhow::Result<()> {
                 )
                 .await?;
 
-                let data = response.data.expect("Expected perpsPairStats response data");
+                let data = response
+                    .data
+                    .expect("Expected perpsPairStats response data");
                 let stats = data
                     .perps_pair_stats
                     .expect("Expected perps pair stats to be returned");
@@ -89,14 +91,13 @@ async fn query_perps_pair_stats_nonexistent_pair() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response =
-                    call_graphql_query::<_, perps_pair_stats_partial::ResponseData>(
-                        dango_httpd_context.clone(),
-                        PerpsPairStatsPartial::build_query(perps_pair_stats_partial::Variables {
-                            pair_id: "perp/nonexistent".to_string(),
-                        }),
-                    )
-                    .await?;
+                let response = call_graphql_query::<_, perps_pair_stats_partial::ResponseData>(
+                    dango_httpd_context.clone(),
+                    PerpsPairStatsPartial::build_query(perps_pair_stats_partial::Variables {
+                        pair_id: "perp/nonexistent".to_string(),
+                    }),
+                )
+                .await?;
 
                 let data = response
                     .data
@@ -182,14 +183,13 @@ async fn query_perps_pair_stats_partial_fields() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response =
-                    call_graphql_query::<_, perps_pair_stats_partial::ResponseData>(
-                        dango_httpd_context.clone(),
-                        PerpsPairStatsPartial::build_query(perps_pair_stats_partial::Variables {
-                            pair_id: pair.to_string(),
-                        }),
-                    )
-                    .await?;
+                let response = call_graphql_query::<_, perps_pair_stats_partial::ResponseData>(
+                    dango_httpd_context.clone(),
+                    PerpsPairStatsPartial::build_query(perps_pair_stats_partial::Variables {
+                        pair_id: pair.to_string(),
+                    }),
+                )
+                .await?;
 
                 let data = response
                     .data
@@ -212,8 +212,8 @@ async fn query_perps_pair_stats_partial_fields() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn query_perps_pair_stats_formats_small_prices_without_scientific_notation(
-) -> anyhow::Result<()> {
+async fn query_perps_pair_stats_formats_small_prices_without_scientific_notation()
+-> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -274,7 +274,9 @@ async fn query_perps_pair_stats_formats_small_prices_without_scientific_notation
                 )
                 .await?;
 
-                let data = response.data.expect("Expected perpsPairStats response data");
+                let data = response
+                    .data
+                    .expect("Expected perpsPairStats response data");
                 let stats = data
                     .perps_pair_stats
                     .expect("Expected perps pair stats to be returned");
