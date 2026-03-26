@@ -11,7 +11,7 @@ use {
         },
     },
     grug::{
-        Addr, Addressable, Coins, HashExt, NumberConst, Order as IterationOrder, QuerierExt,
+        Addr, Addressable, Coins, HashExt, NumberConst, Op, Order as IterationOrder, QuerierExt,
         ResultExt, Signer, Timestamp, TxOutcome, Udec128, Uint128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
@@ -415,7 +415,7 @@ fn referral_active_flag() {
             contracts.perps,
             &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                 user: 1,
-                commission_rate: Some(CommissionRate::new_percent(50)),
+                commission_rate: Op::Insert(CommissionRate::new_percent(50)),
             }),
             Coins::new(),
         )
@@ -572,7 +572,7 @@ fn commission_rate_override() {
             contracts.perps,
             &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                 user: 1,
-                commission_rate: Some(CommissionRate::new_percent(50)),
+                commission_rate: Op::Insert(CommissionRate::new_percent(50)),
             }),
             Coins::new(),
         )
@@ -585,7 +585,7 @@ fn commission_rate_override() {
             contracts.perps,
             &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                 user: 1,
-                commission_rate: Some(CommissionRate::new_percent(50)),
+                commission_rate: Op::Insert(CommissionRate::new_percent(50)),
             }),
             Coins::new(),
         )
@@ -608,7 +608,7 @@ fn commission_rate_override() {
             contracts.perps,
             &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                 user: 1,
-                commission_rate: None,
+                commission_rate: Op::Delete,
             }),
             Coins::new(),
         )
@@ -829,7 +829,7 @@ fn commission_rate_margins() {
                 contracts.perps,
                 &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                     user,
-                    commission_rate: Some(CommissionRate::new_percent(rate)),
+                    commission_rate: Op::Insert(CommissionRate::new_percent(rate)),
                 }),
                 Coins::new(),
             )

@@ -4,7 +4,7 @@ use {
         account_factory::UserIndex,
     },
     grug::{
-        Addr, Denom, Duration, MathResult, Number, Order as IterationOrder, Part, Timestamp,
+        Addr, Denom, Duration, MathResult, Number, Op, Order as IterationOrder, Part, Timestamp,
         Uint64, Uint128,
     },
     std::{
@@ -634,10 +634,10 @@ pub enum ReferralMsg {
     ///
     /// Only callable by the chain owner.
     ///
-    /// Pass `None` to remove the override.
+    /// Use `Op::Insert` to set, `Op::Delete` to remove.
     SetCommissionRateOverride {
         user: UserIndex,
-        commission_rate: Option<CommissionRate>,
+        commission_rate: Op<CommissionRate>,
     },
 }
 

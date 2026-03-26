@@ -14,7 +14,7 @@ use {
         },
     },
     grug::{
-        Addr, Bound, Duration, EventBuilder, MutableCtx, Number, NumberConst,
+        Addr, Bound, Duration, EventBuilder, MutableCtx, Number, NumberConst, Op,
         Order as IterationOrder, QuerierExt, QuerierWrapper, Response, Storage, Timestamp, Uint128,
     },
     std::collections::BTreeMap,
@@ -140,7 +140,7 @@ pub fn set_fee_share_ratio(
 pub fn set_commission_rate_override(
     ctx: MutableCtx,
     user: UserIndex,
-    commission_rate: Option<CommissionRate>,
+    commission_rate: Op<CommissionRate>,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
@@ -148,8 +148,8 @@ pub fn set_commission_rate_override(
     );
 
     match commission_rate {
-        Some(rate) => COMMISSION_RATE_OVERRIDES.save(ctx.storage, user, &rate)?,
-        None => COMMISSION_RATE_OVERRIDES.remove(ctx.storage, user),
+        Op::Insert(rate) => COMMISSION_RATE_OVERRIDES.save(ctx.storage, user, &rate)?,
+        Op::Delete => COMMISSION_RATE_OVERRIDES.remove(ctx.storage, user),
     }
 
     Ok(Response::new())
