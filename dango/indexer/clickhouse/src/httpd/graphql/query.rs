@@ -10,4 +10,10 @@ pub mod perps_pair_stats;
 pub mod trade;
 
 #[derive(MergedObject, Default)]
-pub struct Query(CandleQuery, TradeQuery, PairStatsQuery, PerpsCandleQuery, PerpsPairStatsQuery);
+pub struct Query(
+    CandleQuery,
+    TradeQuery,
+    PairStatsQuery,
+    PerpsCandleQuery,
+    PerpsPairStatsQuery,
+);
