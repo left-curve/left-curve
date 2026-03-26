@@ -1,13 +1,6 @@
 # API Reference
 
-This chapter documents the complete API for the Dango perpetual futures exchange. It is intended as a standalone reference for building SDKs and trading systems. All interactions with the chain go through a single **GraphQL endpoint** that supports queries, mutations, and WebSocket subscriptions.
-
-There are two query surfaces:
-
-- **On-chain queries** — read contract state directly via the `queryApp` GraphQL field. Returns the latest finalized state.
-- **Indexer queries** — read historical and aggregated data (trade history, candlesticks) via dedicated GraphQL fields backed by a time-series database.
-
-Both surfaces share the same endpoint. All write operations (orders, deposits, account creation) go through the `broadcastTxSync` GraphQL mutation.
+This chapter documents the complete API for the Dango perpetual futures exchange. All interactions with the chain go through a single **GraphQL endpoint** that supports queries, mutations, and WebSocket subscriptions.
 
 ## 1. Transport
 
@@ -15,7 +8,7 @@ Both surfaces share the same endpoint. All write operations (orders, deposits, a
 
 All queries and mutations use a standard GraphQL POST request.
 
-**Endpoint:** `https://<host>/graphql`
+**Endpoint:** See [§11. Constants](#11-constants).
 
 **Headers:**
 
@@ -56,18 +49,19 @@ curl -X POST https://<host>/graphql \
 }
 ```
 
-A **GraphiQL** playground is available at the same URL via HTTP GET.
-
 ### 1.2 WebSocket
 
 Subscriptions (real-time data) use WebSocket with the `graphql-ws` protocol.
 
-**Endpoint:** `wss://<host>/graphql`
+**Endpoint:** See [§11. Constants](#11-constants).
 
 **Connection handshake:**
 
 ```json
-{"type": "connection_init", "payload": {}}
+{
+  "type": "connection_init",
+  "payload": {}
+}
 ```
 
 **Subscribe:**
@@ -85,7 +79,15 @@ Subscriptions (real-time data) use WebSocket with the `graphql-ws` protocol.
 **Messages arrive as:**
 
 ```json
-{"id": "1", "type": "next", "payload": {"data": {"perpsTrades": { ... }}}}
+{
+  "id": "1",
+  "type": "next",
+  "payload": {
+    "data": {
+      "perpsTrades": { ... }
+    }
+  }
+}
 ```
 
 ### 1.3 Pagination
@@ -129,7 +131,7 @@ Every write operation is wrapped in a signed **transaction** (`Tx`):
   "msgs": [
     {
       "execute": {
-        "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
+        "contract": "PERPS_CONTRACT",
         "msg": { ... },
         "funds": {}
       }
@@ -140,19 +142,19 @@ Every write operation is wrapped in a signed **transaction** (`Tx`):
 }
 ```
 
-| Field        | Type         | Description                                          |
-| ------------ | ------------ | ---------------------------------------------------- |
-| `sender`     | `Addr`       | Account address sending the transaction              |
-| `gas_limit`  | `u64`        | Maximum gas units for execution                      |
-| `msgs`       | `[Message]`  | Non-empty list of messages to execute atomically     |
-| `data`       | `Metadata`   | Replay protection metadata (see [2.2](#22-metadata)) |
-| `credential` | `Credential` | Cryptographic proof of sender authorization          |
+| Field        | Type         | Description                                        |
+| ------------ | ------------ | -------------------------------------------------- |
+| `sender`     | `Addr`       | Account address sending the transaction            |
+| `gas_limit`  | `u64`        | Maximum gas units for execution                    |
+| `msgs`       | `[Message]`  | Non-empty list of messages to execute atomically   |
+| `data`       | `Metadata`   | Authentication metadata (see [§2.2](#22-metadata)) |
+| `credential` | `Credential` | Cryptographic proof of sender authorization        |
 
 Messages execute **atomically** — either all succeed or all fail.
 
 ### 2.2 Metadata
 
-The `data` field contains replay protection metadata:
+The `data` field contains authentication metadata:
 
 ```json
 {
@@ -179,13 +181,17 @@ The primary message type for interacting with contracts is `execute`:
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
+    "contract": "PERPS_CONTRACT",
     "msg": {
       "trade": {
         "submit_order": {
           "pair_id": "perp/btcusd",
           "size": "0.100000",
-          "kind": { "market": { "max_slippage": "0.010000" } },
+          "kind": {
+            "market": {
+              "max_slippage": "0.010000"
+            }
+          },
           "reduce_only": false
         }
       }
@@ -204,10 +210,14 @@ The primary message type for interacting with contracts is `execute`:
 The `funds` field is a map of denomination to amount string. For example, depositing 1000 USDC:
 
 ```json
-"funds": { "usdc": "1000000000" }
+{
+  "funds": {
+    "bridge/usdc": "1000000000"
+  }
+}
 ```
 
-USDC uses **6 decimal places** in its base unit (1 USDC = `1000000` base units).
+USDC uses **6 decimal places** in its base unit (1 USDC = `1000000` base units). All bridged tokens use the `bridge/` prefix.
 
 ### 2.4 Signing methods
 
@@ -326,11 +336,11 @@ The full transaction lifecycle:
 
 1. **Compose messages** — build the contract execute message(s).
 2. **Fetch metadata** — query chain ID, account's user_index, and next available nonce.
-3. **Simulate** — send an `UnsignedTx` to estimate gas (see [2.8](#28-gas-estimation)).
+3. **Simulate** — send an `UnsignedTx` to estimate gas (see [§2.8](#28-gas-estimation)).
 4. **Set gas limit** — use the simulation result, adding ~770,000 for signature verification overhead.
 5. **Build SignDoc** — assemble `{sender, gas_limit, messages, data}`.
 6. **Sign** — sign the SignDoc with the chosen method.
-7. **Broadcast** — submit the signed `Tx` via `broadcastTxSync` (see [2.9](#29-broadcasting)).
+7. **Broadcast** — submit the signed `Tx` via `broadcastTxSync` (see [§2.9](#29-broadcasting)).
 
 ### 2.8 Gas estimation
 
@@ -351,9 +361,15 @@ query Simulate($tx: UnsignedTx!) {
     "msgs": [
       {
         "execute": {
-          "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-          "msg": { "trade": { "deposit": {} } },
-          "funds": { "usdc": "1000000000" }
+          "contract": "PERPS_CONTRACT",
+          "msg": {
+            "trade": {
+              "deposit": {}
+            }
+          },
+          "funds": {
+            "bridge/usdc": "1000000000"
+          }
         }
       }
     ],
@@ -375,7 +391,9 @@ query Simulate($tx: UnsignedTx!) {
     "simulate": {
       "gas_limit": null,
       "gas_used": 750000,
-      "result": { "ok": [ ... ] }
+      "result": {
+        "ok": [ ... ]
+      }
     }
   }
 }
@@ -401,8 +419,18 @@ mutation BroadcastTx($tx: Tx!) {
     "sender": "0x1234...abcd",
     "gas_limit": 1500000,
     "msgs": [ ... ],
-    "data": { "user_index": 0, "chain_id": "dango-1", "nonce": 42, "expiry": null },
-    "credential": { "standard": { "key_hash": "...", "signature": { ... } } }
+    "data": {
+      "user_index": 0,
+      "chain_id": "dango-1",
+      "nonce": 42,
+      "expiry": null
+    },
+    "credential": {
+      "standard": {
+        "key_hash": "...",
+        "signature": { ... }
+      }
+    }
   }
 }
 ```
@@ -413,56 +441,27 @@ The mutation returns the transaction outcome as JSON.
 
 Dango uses **smart accounts** instead of externally-owned accounts (EOAs). A user profile is identified by a `UserIndex` and may own multiple subaccounts (up to 5). Keys are associated with the user profile, not individual accounts.
 
-### 3.1 Contract address discovery
-
-Query the chain's app config to discover contract addresses:
-
-```graphql
-query {
-  queryApp(request: { appConfig: {} })
-}
-```
-
-**Response (abbreviated):**
-
-```json
-{
-  "data": {
-    "queryApp": {
-      "addresses": {
-        "account_factory": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
-        "perps": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-        "oracle": "0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d",
-        "dex": "0xda32476efe31e535207f0ad690d337a4ebf54a22",
-        "gateway": "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1",
-        "taxman": "0xda70a9c1417aee00f960fe896add9d571f9c365b"
-      },
-      "minimum_deposit": [{ "denom": "usdc", "amount": "10000000" }],
-      "maker_fee_rate": "0.002500",
-      "taker_fee_rate": "0.004000"
-    }
-  }
-}
-```
-
-| Address           | Contract                          |
-| ----------------- | --------------------------------- |
-| `account_factory` | User profiles, accounts, and keys |
-| `perps`           | Perpetual futures exchange        |
-| `oracle`          | Price oracle                      |
-| `dex`             | Spot DEX                          |
-
-### 3.2 Register user
+### 3.1 Register user
 
 Create a new user profile with an initial key and master account. This is a two-step process: first, send an initial deposit to the account factory; then call `register_user`.
+
+```graphql
+mutation BroadcastTx($tx: Tx!) {
+  broadcastTxSync(tx: $tx)
+}
+```
+
+The `execute` message inside the transaction:
 
 ```json
 {
   "execute": {
-    "contract": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
+    "contract": "ACCOUNT_FACTORY_CONTRACT",
     "msg": {
       "register_user": {
-        "key": { "secp256r1": "02abc123...33bytes_hex" },
+        "key": {
+          "secp256r1": "02abc123...33bytes_hex"
+        },
         "key_hash": "a1b2c3d4...64hex",
         "seed": 12345,
         "signature": {
@@ -474,29 +473,33 @@ Create a new user profile with an initial key and master account. This is a two-
         }
       }
     },
-    "funds": { "usdc": "10000000" }
+    "funds": {
+      "bridge/usdc": "10000000"
+    }
   }
 }
 ```
 
 | Field       | Type        | Description                                                    |
 | ----------- | ----------- | -------------------------------------------------------------- |
-| `key`       | `Key`       | The user's initial public key (see [10.3](#103-enums))         |
+| `key`       | `Key`       | The user's initial public key (see [§10.3](#103-enums))        |
 | `key_hash`  | `Hash256`   | Client-chosen hash identifying this key                        |
 | `seed`      | `u32`       | Arbitrary number for address variety                           |
 | `signature` | `Signature` | Signature over `{"chain_id": "dango-1"}` proving key ownership |
 
-The `funds` must meet the `minimum_deposit` from the app config. A master account is created automatically and returned via events.
+The `funds` must include a minimum deposit. A master account is created automatically and returned via events.
 
-### 3.3 Register subaccount
+### 3.2 Register subaccount
 
 Create an additional account for an existing user (maximum 5 accounts per user):
 
 ```json
 {
   "execute": {
-    "contract": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
-    "msg": { "register_account": {} },
+    "contract": "ACCOUNT_FACTORY_CONTRACT",
+    "msg": {
+      "register_account": {}
+    },
     "funds": {}
   }
 }
@@ -504,7 +507,7 @@ Create an additional account for an existing user (maximum 5 accounts per user):
 
 Must be sent from an existing account owned by the user.
 
-### 3.4 Update key
+### 3.3 Update key
 
 Associate or disassociate a key with the user profile.
 
@@ -513,11 +516,15 @@ Associate or disassociate a key with the user profile.
 ```json
 {
   "execute": {
-    "contract": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
+    "contract": "ACCOUNT_FACTORY_CONTRACT",
     "msg": {
       "update_key": {
         "key_hash": "a1b2c3d4...64hex",
-        "key": { "set": { "secp256k1": "03def456...33bytes_hex" } }
+        "key": {
+          "insert": {
+            "secp256k1": "03def456...33bytes_hex"
+          }
+        }
       }
     },
     "funds": {}
@@ -530,11 +537,11 @@ Associate or disassociate a key with the user profile.
 ```json
 {
   "execute": {
-    "contract": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
+    "contract": "ACCOUNT_FACTORY_CONTRACT",
     "msg": {
       "update_key": {
         "key_hash": "a1b2c3d4...64hex",
-        "key": "unset"
+        "key": "delete"
       }
     },
     "funds": {}
@@ -542,15 +549,17 @@ Associate or disassociate a key with the user profile.
 }
 ```
 
-### 3.5 Update username
+### 3.4 Update username
 
 Set the user's human-readable username (one-time operation):
 
 ```json
 {
   "execute": {
-    "contract": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
-    "msg": { "update_username": "alice" },
+    "contract": "ACCOUNT_FACTORY_CONTRACT",
+    "msg": {
+      "update_username": "alice"
+    },
     "funds": {}
   }
 }
@@ -558,101 +567,9 @@ Set the user's human-readable username (one-time operation):
 
 Username rules: 1–15 characters, lowercase `a-z`, digits `0-9`, and underscore `_` only.
 
-### 3.6 Query user (on-chain)
+The username is cosmetic only — used for human-readable display on the frontend. It is not used in any business logic of the exchange.
 
-**By index:**
-
-```graphql
-query {
-  queryApp(request: {
-    wasmSmart: {
-      contract: "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
-      msg: { user: { index: 0 } }
-    }
-  })
-}
-```
-
-**By username:**
-
-```graphql
-query {
-  queryApp(request: {
-    wasmSmart: {
-      contract: "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
-      msg: { user: { name: "alice" } }
-    }
-  })
-}
-```
-
-**Response:**
-
-```json
-{
-  "index": 0,
-  "name": "alice",
-  "accounts": {
-    "0": "0x1234...abcd",
-    "1": "0x5678...ef01"
-  },
-  "keys": {
-    "a1b2c3d4...64hex": { "secp256r1": "02abc123...33bytes_hex" }
-  }
-}
-```
-
-### 3.7 Query users and accounts (on-chain)
-
-**Enumerate users (paginated):**
-
-```json
-{ "users": { "start_after": null, "limit": 10 } }
-```
-
-Returns: `{ "<user_index>": <User>, ... }`
-
-**Query account by address:**
-
-```json
-{ "account": { "address": "0x1234...abcd" } }
-```
-
-Returns: `{ "index": 0, "owner": 0 }`
-
-**Enumerate accounts (paginated):**
-
-```json
-{ "accounts": { "start_after": null, "limit": 10 } }
-```
-
-Returns: `{ "<address>": { "index": <n>, "owner": <user_index> }, ... }`
-
-**Find user by key hash** (useful if the user forgot their username):
-
-```json
-{ "forgot_username": { "key_hash": "a1b2c3d4...64hex", "start_after": null, "limit": 10 } }
-```
-
-Returns: `[<User>, ...]`
-
-**Next user index** (useful for tracking registration count):
-
-```json
-{ "next_user_index": {} }
-```
-
-Returns: `u32` (e.g. `42`) — the next index to be assigned. Note: this reflects current state and may change before the client's transaction is processed if another user registers first. The actual assigned index is confirmed in the transaction events.
-
-**Next account index:**
-
-```json
-{ "next_account_index": {} }
-```
-
-Returns: `u32` (e.g. `85`) — the next account index to be assigned. Same caveat as above: the value may change between query and transaction execution.
-
-### 3.8 Query user (indexer)
+### 3.5 Query user
 
 ```graphql
 query {
@@ -679,7 +596,7 @@ query {
 
 The `keyType` enum values are: `SECP_25_6R_1`, `SECP_25_6K_1`, `ETHEREUM`.
 
-### 3.9 Query accounts (indexer)
+### 3.6 Query accounts
 
 ```graphql
 query {
@@ -690,9 +607,14 @@ query {
       createdBlockHeight
       createdTxHash
       createdAt
-      users { userIndex }
+      users {
+        userIndex
+      }
     }
-    pageInfo { hasNextPage endCursor }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
   }
 }
 ```
@@ -701,123 +623,19 @@ Filter by `userIndex` to get all accounts for a specific user, or by `address` f
 
 ## 4. Market data
 
-All on-chain queries in this section use the `queryApp` field targeting the perps contract at `0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69`.
-
-### 4.1 Pair parameters
-
-**All pairs:**
+### 4.1 Global parameters
 
 ```graphql
 query {
   queryApp(request: {
     wasmSmart: {
-      contract: "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-      msg: { pair_params: { start_after: null, limit: 30 } }
+      contract: "PERPS_CONTRACT",
+      msg: {
+        param: {}
+      }
     }
   })
 }
-```
-
-**Single pair:**
-
-```json
-{ "pair_param": { "pair_id": "perp/btcusd" } }
-```
-
-**Response (single pair):**
-
-```json
-{
-  "tick_size": "1.000000",
-  "min_order_size": "10.000000",
-  "max_abs_oi": "1000000.000000",
-  "max_abs_funding_rate": "0.000500",
-  "initial_margin_ratio": "0.050000",
-  "maintenance_margin_ratio": "0.025000",
-  "impact_size": "10000.000000",
-  "vault_liquidity_weight": "1.000000",
-  "vault_half_spread": "0.001000",
-  "vault_max_quote_size": "50000.000000",
-  "bucket_sizes": ["1.000000", "5.000000", "10.000000"]
-}
-```
-
-| Field                      | Type            | Description                                   |
-| -------------------------- | --------------- | --------------------------------------------- |
-| `tick_size`                | `UsdPrice`      | Minimum price increment for limit orders      |
-| `min_order_size`           | `UsdValue`      | Minimum notional value (reduce-only exempt)   |
-| `max_abs_oi`               | `Quantity`      | Maximum open interest per side                |
-| `max_abs_funding_rate`     | `FundingRate`   | Daily funding rate cap                        |
-| `initial_margin_ratio`     | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage) |
-| `maintenance_margin_ratio` | `Dimensionless` | Margin to stay open (liquidation threshold)   |
-| `impact_size`              | `UsdValue`      | Notional for impact price calculation         |
-| `vault_liquidity_weight`   | `Dimensionless` | Vault allocation weight for this pair         |
-| `vault_half_spread`        | `Dimensionless` | Half the vault's bid-ask spread               |
-| `vault_max_quote_size`     | `Quantity`      | Maximum vault resting size per side           |
-| `bucket_sizes`             | `[UsdPrice]`    | Price bucket granularities for depth queries  |
-
-For the relationship between margin ratios and leverage, see [Risk §2](6-risk.md).
-
-### 4.2 Pair state
-
-**All pairs:**
-
-```json
-{ "pair_states": { "start_after": null, "limit": 30 } }
-```
-
-**Single pair:**
-
-```json
-{ "pair_state": { "pair_id": "perp/btcusd" } }
-```
-
-**Response:**
-
-```json
-{
-  "long_oi": "12500.000000",
-  "short_oi": "10300.000000",
-  "funding_per_unit": "0.000123"
-}
-```
-
-| Field              | Type             | Description                    |
-| ------------------ | ---------------- | ------------------------------ |
-| `long_oi`          | `Quantity`       | Total long open interest       |
-| `short_oi`         | `Quantity`       | Total short open interest      |
-| `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator |
-
-For funding mechanics, see [Funding](3-funding.md).
-
-### 4.3 Global state
-
-```json
-{ "state": {} }
-```
-
-**Response:**
-
-```json
-{
-  "last_funding_time": "1700000000000000000",
-  "vault_share_supply": "500000000",
-  "insurance_fund": "25000.000000",
-  "treasury": "12000.000000"
-}
-```
-
-| Field                | Type        | Description                  |
-| -------------------- | ----------- | ---------------------------- |
-| `last_funding_time`  | `Timestamp` | Last funding collection time |
-| `vault_share_supply` | `Uint128`   | Total vault share tokens     |
-| `insurance_fund`     | `UsdValue`  | Insurance fund balance       |
-| `treasury`           | `UsdValue`  | Accumulated protocol fees    |
-
-### 4.4 Global parameters
-
-```json
-{ "param": {} }
 ```
 
 **Response:**
@@ -856,6 +674,165 @@ For funding mechanics, see [Funding](3-funding.md).
 
 For fee mechanics, see [Order matching §8](2-order-matching.md#8-trading-fees).
 
+### 4.2 Global state
+
+```graphql
+query {
+  queryApp(request: {
+    wasmSmart: {
+      contract: "PERPS_CONTRACT",
+      msg: {
+        state: {}
+      }
+    }
+  })
+}
+```
+
+**Response:**
+
+```json
+{
+  "last_funding_time": "1700000000000000000",
+  "vault_share_supply": "500000000",
+  "insurance_fund": "25000.000000",
+  "treasury": "12000.000000"
+}
+```
+
+| Field                | Type        | Description                  |
+| -------------------- | ----------- | ---------------------------- |
+| `last_funding_time`  | `Timestamp` | Last funding collection time |
+| `vault_share_supply` | `Uint128`   | Total vault share tokens     |
+| `insurance_fund`     | `UsdValue`  | Insurance fund balance       |
+| `treasury`           | `UsdValue`  | Accumulated protocol fees    |
+
+### 4.3 Pair parameters
+
+**All pairs:**
+
+```graphql
+query {
+  queryApp(request: {
+    wasmSmart: {
+      contract: "PERPS_CONTRACT",
+      msg: {
+        pair_params: {
+          start_after: null,
+          limit: 30
+        }
+      }
+    }
+  })
+}
+```
+
+**Single pair:**
+
+```graphql
+query {
+  queryApp(request: {
+    wasmSmart: {
+      contract: "PERPS_CONTRACT",
+      msg: {
+        pair_param: {
+          pair_id: "perp/btcusd"
+        }
+      }
+    }
+  })
+}
+```
+
+**Response (single pair):**
+
+```json
+{
+  "tick_size": "1.000000",
+  "min_order_size": "10.000000",
+  "max_abs_oi": "1000000.000000",
+  "max_abs_funding_rate": "0.000500",
+  "initial_margin_ratio": "0.050000",
+  "maintenance_margin_ratio": "0.025000",
+  "impact_size": "10000.000000",
+  "vault_liquidity_weight": "1.000000",
+  "vault_half_spread": "0.001000",
+  "vault_max_quote_size": "50000.000000",
+  "bucket_sizes": ["1.000000", "5.000000", "10.000000"]
+}
+```
+
+| Field                      | Type            | Description                                   |
+| -------------------------- | --------------- | --------------------------------------------- |
+| `tick_size`                | `UsdPrice`      | Minimum price increment for limit orders      |
+| `min_order_size`           | `UsdValue`      | Minimum notional value (reduce-only exempt)   |
+| `max_abs_oi`               | `Quantity`      | Maximum open interest per side                |
+| `max_abs_funding_rate`     | `FundingRate`   | Daily funding rate cap                        |
+| `initial_margin_ratio`     | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage) |
+| `maintenance_margin_ratio` | `Dimensionless` | Margin to stay open (liquidation threshold)   |
+| `impact_size`              | `UsdValue`      | Notional for impact price calculation         |
+| `vault_liquidity_weight`   | `Dimensionless` | Vault allocation weight for this pair         |
+| `vault_half_spread`        | `Dimensionless` | Half the vault's bid-ask spread               |
+| `vault_max_quote_size`     | `Quantity`      | Maximum vault resting size per side           |
+| `bucket_sizes`             | `[UsdPrice]`    | Price bucket granularities for depth queries  |
+
+For the relationship between margin ratios and leverage, see [Risk §2](6-risk.md).
+
+### 4.4 Pair state
+
+**All pairs:**
+
+```graphql
+query {
+  queryApp(request: {
+    wasmSmart: {
+      contract: "PERPS_CONTRACT",
+      msg: {
+        pair_states: {
+          start_after: null,
+          limit: 30
+        }
+      }
+    }
+  })
+}
+```
+
+**Single pair:**
+
+```graphql
+query {
+  queryApp(request: {
+    wasmSmart: {
+      contract: "PERPS_CONTRACT",
+      msg: {
+        pair_state: {
+          pair_id: "perp/btcusd"
+        }
+      }
+    }
+  })
+}
+```
+
+**Response:**
+
+```json
+{
+  "long_oi": "12500.000000",
+  "short_oi": "10300.000000",
+  "funding_per_unit": "0.000123"
+}
+```
+
+| Field              | Type             | Description                    |
+| ------------------ | ---------------- | ------------------------------ |
+| `long_oi`          | `Quantity`       | Total long open interest       |
+| `short_oi`         | `Quantity`       | Total short open interest      |
+| `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator |
+
+For funding mechanics, see [Funding](3-funding.md).
+
 ### 4.5 Order book depth
 
 Query aggregated order book depth at a given price bucket granularity:
@@ -864,7 +841,7 @@ Query aggregated order book depth at a given price bucket granularity:
 query {
   queryApp(request: {
     wasmSmart: {
-      contract: "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
+      contract: "PERPS_CONTRACT",
       msg: {
         liquidity_depth: {
           pair_id: "perp/btcusd",
@@ -888,12 +865,24 @@ query {
 ```json
 {
   "bids": {
-    "64990.000000": { "size": "12.500000", "notional": "812375.000000" },
-    "64980.000000": { "size": "8.200000", "notional": "532836.000000" }
+    "64990.000000": {
+      "size": "12.500000",
+      "notional": "812375.000000"
+    },
+    "64980.000000": {
+      "size": "8.200000",
+      "notional": "532836.000000"
+    }
   },
   "asks": {
-    "65010.000000": { "size": "10.000000", "notional": "650100.000000" },
-    "65020.000000": { "size": "5.500000", "notional": "357610.000000" }
+    "65010.000000": {
+      "size": "10.000000",
+      "notional": "650100.000000"
+    },
+    "65020.000000": {
+      "size": "5.500000",
+      "notional": "357610.000000"
+    }
   }
 }
 ```
@@ -905,7 +894,7 @@ Each level contains:
 | `size`     | `Quantity` | Absolute order size in the bucket |
 | `notional` | `UsdValue` | USD notional (size × price)       |
 
-### 4.6 Historical candles (indexer)
+### 4.6 Historical candles
 
 ```graphql
 query {
@@ -932,7 +921,10 @@ query {
       minBlockHeight
       maxBlockHeight
     }
-    pageInfo { hasNextPage endCursor }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
   }
 }
 ```
@@ -971,8 +963,12 @@ query {
 query {
   queryApp(request: {
     wasmSmart: {
-      contract: "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-      msg: { user_state: { user: "0x1234...abcd" } }
+      contract: "PERPS_CONTRACT",
+      msg: {
+        user_state: {
+          user: "0x1234...abcd"
+        }
+      }
     }
   })
 }
@@ -1027,8 +1023,20 @@ Returns `null` if the user has no state.
 
 **Enumerate all user states (paginated):**
 
-```json
-{ "user_states": { "start_after": null, "limit": 10 } }
+```graphql
+query {
+  queryApp(request: {
+    wasmSmart: {
+      contract: "PERPS_CONTRACT",
+      msg: {
+        user_states: {
+          start_after: null,
+          limit: 10
+        }
+      }
+    }
+  })
+}
 ```
 
 Returns: `{ "<address>": <UserState>, ... }`
@@ -1037,8 +1045,19 @@ Returns: `{ "<address>": <UserState>, ... }`
 
 Query all resting limit orders and conditional (TP/SL) orders for a user:
 
-```json
-{ "orders_by_user": { "user": "0x1234...abcd" } }
+```graphql
+query {
+  queryApp(request: {
+    wasmSmart: {
+      contract: "PERPS_CONTRACT",
+      msg: {
+        orders_by_user: {
+          user: "0x1234...abcd"
+        }
+      }
+    }
+  })
+}
 ```
 
 **Response:**
@@ -1075,8 +1094,19 @@ The response is a map of `OrderId` → order details. The `kind` field is either
 
 ### 5.3 Single order
 
-```json
-{ "order": { "order_id": "42" } }
+```graphql
+query {
+  queryApp(request: {
+    wasmSmart: {
+      contract: "PERPS_CONTRACT",
+      msg: {
+        order: {
+          order_id: "42"
+        }
+      }
+    }
+  })
+}
 ```
 
 **Response:**
@@ -1101,8 +1131,20 @@ Returns `null` if the order does not exist.
 
 ### 5.4 Trading volume
 
-```json
-{ "volume": { "user": "0x1234...abcd", "since": null } }
+```graphql
+query {
+  queryApp(request: {
+    wasmSmart: {
+      contract: "PERPS_CONTRACT",
+      msg: {
+        volume: {
+          user: "0x1234...abcd",
+          since: null
+        }
+      }
+    }
+  })
+}
 ```
 
 | Parameter | Type         | Description                                          |
@@ -1112,7 +1154,7 @@ Returns `null` if the order does not exist.
 
 Returns a `UsdValue` string (e.g. `"1250000.000000"`).
 
-### 5.5 Trade history (indexer)
+### 5.5 Trade history
 
 Query historical perps events such as fills, liquidations, and order lifecycle:
 
@@ -1135,7 +1177,10 @@ query {
       data
       createdAt
     }
-    pageInfo { hasNextPage endCursor }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
   }
 }
 ```
@@ -1165,7 +1210,7 @@ The `data` field contains the event-specific payload as JSON. For example, an `o
 
 ## 6. Trading operations
 
-All execute messages in this section target the perps contract at `0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69`. Each message is wrapped in a `Tx` as described in [§2](#2-authentication-and-transactions).
+Each message is wrapped in a `Tx` as described in [§2](#2-authentication-and-transactions) and broadcast via `broadcastTxSync`.
 
 ### 6.1 Deposit margin
 
@@ -1174,9 +1219,15 @@ Deposit USDC into the trading margin account:
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-    "msg": { "trade": { "deposit": {} } },
-    "funds": { "usdc": "1000000000" }
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "deposit": {}
+      }
+    },
+    "funds": {
+      "bridge/usdc": "1000000000"
+    }
   }
 }
 ```
@@ -1190,8 +1241,14 @@ Withdraw USD from the trading margin account:
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-    "msg": { "trade": { "withdraw": { "amount": "500.000000" } } },
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "withdraw": {
+          "amount": "500.000000"
+        }
+      }
+    },
     "funds": {}
   }
 }
@@ -1210,13 +1267,17 @@ Buy or sell at the best available prices with a slippage tolerance:
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
+    "contract": "PERPS_CONTRACT",
     "msg": {
       "trade": {
         "submit_order": {
           "pair_id": "perp/btcusd",
           "size": "0.100000",
-          "kind": { "market": { "max_slippage": "0.010000" } },
+          "kind": {
+            "market": {
+              "max_slippage": "0.010000"
+            }
+          },
           "reduce_only": false
         }
       }
@@ -1244,7 +1305,7 @@ Place a resting order on the book:
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
+    "contract": "PERPS_CONTRACT",
     "msg": {
       "trade": {
         "submit_order": {
@@ -1280,8 +1341,14 @@ Limit orders are GTC (good-till-cancelled). The matching portion fills immediate
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-    "msg": { "trade": { "cancel_order": { "one": "42" } } },
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "cancel_order": {
+          "one": "42"
+        }
+      }
+    },
     "funds": {}
   }
 }
@@ -1292,8 +1359,12 @@ Limit orders are GTC (good-till-cancelled). The matching portion fills immediate
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-    "msg": { "trade": { "cancel_order": "all" } },
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "cancel_order": "all"
+      }
+    },
     "funds": {}
   }
 }
@@ -1308,7 +1379,7 @@ Place a take-profit or stop-loss order that triggers when the oracle price cross
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
+    "contract": "PERPS_CONTRACT",
     "msg": {
       "trade": {
         "submit_conditional_order": {
@@ -1349,8 +1420,14 @@ Conditional orders are always **reduce-only** with zero reserved margin. When tr
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-    "msg": { "trade": { "cancel_conditional_order": { "one": "43" } } },
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "cancel_conditional_order": {
+          "one": "43"
+        }
+      }
+    },
     "funds": {}
   }
 }
@@ -1361,8 +1438,12 @@ Conditional orders are always **reduce-only** with zero reserved margin. When tr
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-    "msg": { "trade": { "cancel_conditional_order": "all" } },
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "cancel_conditional_order": "all"
+      }
+    },
     "funds": {}
   }
 }
@@ -1375,8 +1456,14 @@ Force-close all positions of an undercollateralized user. This message can be se
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-    "msg": { "maintain": { "liquidate": { "user": "0x5678...ef01" } } },
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "maintain": {
+        "liquidate": {
+          "user": "0x5678...ef01"
+        }
+      }
+    },
     "funds": {}
   }
 }
@@ -1395,7 +1482,7 @@ Transfer margin from the trading account to the vault:
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
+    "contract": "PERPS_CONTRACT",
     "msg": {
       "vault": {
         "add_liquidity": {
@@ -1423,7 +1510,7 @@ Request a withdrawal from the vault (initiates cooldown):
 ```json
 {
   "execute": {
-    "contract": "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
+    "contract": "PERPS_CONTRACT",
     "msg": {
       "vault": {
         "remove_liquidity": {
@@ -1471,7 +1558,7 @@ subscription {
 }
 ```
 
-Pushes updated candle data as new trades occur. Fields match the `PerpsCandle` type in [§4.6](#46-historical-candles-indexer).
+Pushes updated candle data as new trades occur. Fields match the `PerpsCandle` type in [§4.6](#46-historical-candles).
 
 ### 8.2 Perps trades
 
@@ -1515,15 +1602,19 @@ subscription {
 
 ### 8.3 Contract query polling
 
-Poll any on-chain contract query at a regular block interval:
+Poll any contract query at a regular block interval:
 
 ```graphql
 subscription {
   queryApp(
     request: {
       wasmSmart: {
-        contract: "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69",
-        msg: { user_state: { user: "0x1234...abcd" } }
+        contract: "PERPS_CONTRACT",
+        msg: {
+          user_state: {
+            user: "0x1234...abcd"
+          }
+        }
       }
     },
     blockInterval: 5
@@ -1572,7 +1663,11 @@ subscription {
       {
         type: "order_filled",
         data: [
-          { path: ["user"], checkMode: EQUAL, value: ["0x1234...abcd"] }
+          {
+            path: ["user"],
+            checkMode: EQUAL,
+            value: ["0x1234...abcd"]
+          }
         ]
       }
     ]
@@ -1597,7 +1692,7 @@ subscription {
 
 ## 9. Events reference
 
-The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history-indexer)) or streamed via the `events` subscription ([§8.5](#85-event-stream)).
+The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed via the `events` subscription ([§8.5](#85-event-stream)).
 
 ### Margin events
 
@@ -1634,7 +1729,7 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 | Event              | Fields                                                          | Description                      |
 | ------------------ | --------------------------------------------------------------- | -------------------------------- |
-| `liquidated`       | `user`, `pair_id`, `adl_size`, `adl_price`                      | Position liquidated in a pair    |
+| `liquidated`       | `user`, `pair_id`, `adl_size`, `adl_price`, `adl_realized_pnl`  | Position liquidated in a pair    |
 | `deleveraged`      | `user`, `pair_id`, `closing_size`, `fill_price`, `realized_pnl` | Counter-party hit by ADL         |
 | `bad_debt_covered` | `liquidated_user`, `amount`, `insurance_fund_remaining`         | Insurance fund absorbed bad debt |
 
@@ -1656,7 +1751,7 @@ For liquidation and ADL mechanics, see [Liquidation & ADL](4-liquidation-and-adl
 
 ### 10.1 Numeric types
 
-All numeric types are **signed fixed-point decimals with 6 decimal places** (`Dec128_6`), serialized as strings:
+All numeric types are **signed fixed-point decimals with 6 decimal places**, built on [`dango_types::Number`](https://github.com/left-curve/left-curve/blob/main/dango/types/src/typed_number.rs). They are serialized as strings:
 
 | Type alias       | Dimension      | Example usage                          | Example value    |
 | ---------------- | -------------- | -------------------------------------- | ---------------- |
@@ -1695,24 +1790,38 @@ Additional integer types:
 **OrderKind:**
 
 ```json
-{ "market": { "max_slippage": "0.010000" } }
+{
+  "market": {
+    "max_slippage": "0.010000"
+  }
+}
 ```
 
 ```json
-{ "limit": { "limit_price": "65000.000000", "post_only": false } }
+{
+  "limit": {
+    "limit_price": "65000.000000",
+    "post_only": false
+  }
+}
 ```
 
 **TriggerDirection:**
 
 ```json
 "above"
+```
+
+```json
 "below"
 ```
 
 **CancelOrderRequest:**
 
 ```json
-{ "one": "42" }
+{
+  "one": "42"
+}
 ```
 
 ```json
@@ -1722,16 +1831,42 @@ Additional integer types:
 **Key:**
 
 ```json
-{ "secp256r1": "02abc123...33bytes_hex" }
-{ "secp256k1": "03def456...33bytes_hex" }
-{ "ethereum": "0x1234...abcd" }
+{
+  "secp256r1": "02abc123...33bytes_hex"
+}
+```
+
+```json
+{
+  "secp256k1": "03def456...33bytes_hex"
+}
+```
+
+```json
+{
+  "ethereum": "0x1234...abcd"
+}
 ```
 
 **Credential:**
 
 ```json
-{ "standard": { "key_hash": "...", "signature": { ... } } }
-{ "session": { "session_info": { ... }, "session_signature": "...", "authorization": { ... } } }
+{
+  "standard": {
+    "key_hash": "...",
+    "signature": { ... }
+  }
+}
+```
+
+```json
+{
+  "session": {
+    "session_info": { ... },
+    "session_signature": "...",
+    "authorization": { ... }
+  }
+}
 ```
 
 **CandleInterval** (GraphQL enum):
@@ -1740,9 +1875,9 @@ Additional integer types:
 
 ### 10.4 Response types
 
-**Param** (global parameters) — see [§4.4](#44-global-parameters) for all fields.
+**Param** (global parameters) — see [§4.1](#41-global-parameters) for all fields.
 
-**PairParam** (per-pair parameters) — see [§4.1](#41-pair-parameters) for all fields.
+**PairParam** (per-pair parameters) — see [§4.3](#43-pair-parameters) for all fields.
 
 **PairState:**
 
@@ -1752,7 +1887,7 @@ Additional integer types:
 | `short_oi`         | `Quantity`       | Total short open interest      |
 | `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator |
 
-**State** (global state) — see [§4.3](#43-global-state) for all fields.
+**State** (global state) — see [§4.2](#42-global-state) for all fields.
 
 **UserState** — see [§5.1](#51-user-state) for all fields.
 
@@ -1784,11 +1919,22 @@ Additional integer types:
 **LimitOrConditionalOrder:**
 
 ```json
-{ "limit": { "limit_price": "65000.000000", "reduce_only": false, "reserved_margin": "1575.000000" } }
+{
+  "limit": {
+    "limit_price": "65000.000000",
+    "reduce_only": false,
+    "reserved_margin": "1575.000000"
+  }
+}
 ```
 
 ```json
-{ "conditional": { "trigger_price": "70000.000000", "trigger_direction": "above" } }
+{
+  "conditional": {
+    "trigger_price": "70000.000000",
+    "trigger_direction": "above"
+  }
+}
 ```
 
 **LiquidityDepthResponse:**
@@ -1820,3 +1966,29 @@ Additional integer types:
 | ------- | -------------- | ---------------------- |
 | `index` | `AccountIndex` | Account's unique index |
 | `owner` | `UserIndex`    | Owning user's index    |
+
+## 11. Constants
+
+### Endpoints
+
+| Network | HTTP                                     | WebSocket                              |
+| ------- | ---------------------------------------- | -------------------------------------- |
+| Mainnet | `https://api-mainnet.dango.zone/graphql` | `wss://api-mainnet.dango.zone/graphql` |
+| Testnet | `https://api-testnet.dango.zone/graphql` | `wss://api-testnet.dango.zone/graphql` |
+
+### Chain IDs
+
+| Network | Chain ID          |
+| ------- | ----------------- |
+| Mainnet | `dango-1`         |
+| Testnet | `dango-testnet-1` |
+
+### Contract addresses
+
+These addresses are the same on both mainnet and testnet.
+
+| Name                       | Address                                      |
+| -------------------------- | -------------------------------------------- |
+| `ACCOUNT_FACTORY_CONTRACT` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` |
+| `PERPS_CONTRACT`           | `0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69` |
+| `ORACLE_CONTRACT`          | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` |
