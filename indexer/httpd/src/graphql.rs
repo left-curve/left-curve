@@ -21,7 +21,8 @@ pub mod query;
 pub mod subscription;
 pub mod telemetry;
 
-pub(crate) type AppSchema = Schema<query::Query, mutation::Mutation, subscription::Subscription>;
+pub(crate) type AppSchema =
+    Schema<query::IndexerQuery, mutation::IndexerMutation, subscription::IndexerSubscription>;
 
 pub fn build_schema(app_ctx: Context) -> AppSchema {
     #[cfg(feature = "metrics")]
@@ -73,9 +74,9 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
 
     #[allow(unused_mut)]
     let mut schema_builder = Schema::build(
-        query::Query::default(),
-        mutation::Mutation::default(),
-        subscription::Subscription::default(),
+        query::IndexerQuery::default(),
+        mutation::IndexerMutation::default(),
+        subscription::IndexerSubscription::default(),
     )
     .extension(SentryExtension);
 

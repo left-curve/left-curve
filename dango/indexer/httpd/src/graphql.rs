@@ -4,7 +4,7 @@ use async_graphql::extensions;
 use indexer_httpd::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
 use {
     async_graphql::{Schema, dataloader::DataLoader},
-    indexer_httpd::graphql::{mutation::Mutation, telemetry::SentryExtension},
+    indexer_httpd::graphql::{mutation::IndexerMutation, telemetry::SentryExtension},
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
         event_transaction::EventTransactionDataLoader,
@@ -19,7 +19,7 @@ use {
 pub mod query;
 pub mod subscription;
 
-pub(crate) type AppSchema = Schema<Query, Mutation, Subscription>;
+pub(crate) type AppSchema = Schema<Query, IndexerMutation, Subscription>;
 
 pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
     #[cfg(feature = "metrics")]
@@ -80,7 +80,7 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
     #[allow(unused_mut)]
     let mut schema_builder = Schema::build(
         Query::default(),
-        Mutation::default(),
+        IndexerMutation::default(),
         Subscription::default(),
     )
     .extension(SentryExtension);

@@ -8,7 +8,7 @@ pub mod perps_candle;
 pub mod trade;
 
 #[derive(MergedSubscription, Default)]
-pub struct Subscription(
+pub struct ClickhouseSubscription(
     CandleSubscription,
     TradeSubscription,
     PerpsCandleSubscription,

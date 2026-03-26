@@ -282,6 +282,15 @@ enum FlatCommitmentStatus {
 
 scalar GrugQueryInput
 
+type IndexerMutation {
+	broadcastTxSync(
+		"""
+		Transaction as JSON
+		"""
+		tx: Tx!
+	): JSON!
+}
+
 """
 A scalar that can represent any JSON value.
 """
@@ -338,15 +347,6 @@ type MessageEdge {
 enum MessageSortBy {
 	BLOCK_HEIGHT_ASC
 	BLOCK_HEIGHT_DESC
-}
-
-type Mutation {
-	broadcastTxSync(
-		"""
-		Transaction as JSON
-		"""
-		tx: Tx!
-	): JSON!
 }
 
 """
@@ -662,27 +662,6 @@ type Query {
 		"""
 		last: Int,		sortBy: EventSortBy
 	): EventConnection!
-	"""
-	Get paginated transfers
-	"""
-	transfers(
-		"""
-		Cursor based pagination
-		"""
-		after: String,
-		"""
-		Cursor based pagination
-		"""
-		before: String,
-		"""
-		Cursor based pagination
-		"""
-		first: Int,
-		"""
-		Cursor based pagination
-		"""
-		last: Int,		sortBy: TransferSortBy,		blockHeight: Int,		fromAddress: String,		toAddress: String,		userIndex: Int
-	): TransferConnection!
 	queryApp(
 		"""
 		Request as JSON
@@ -702,29 +681,6 @@ type Query {
 		"""
 		tx: UnsignedTx!
 	): JSON!
-	"""
-	Get paginated accounts.
-	"""
-	accounts(
-		"""
-		Cursor based pagination
-		"""
-		after: String,
-		"""
-		Cursor based pagination
-		"""
-		before: String,
-		"""
-		Cursor based pagination
-		"""
-		first: Int,
-		"""
-		Cursor based pagination
-		"""
-		last: Int,		sortBy: AccountSortBy,		blockHeight: Int,		userIndex: Int,		address: String
-	): AccountConnection!
-	user(userIndex: Int!): User
-	users(after: String, before: String, first: Int, last: Int, blockHeight: Int, publicKey: String, publicKeyHash: String): UserConnection!
 	"""
 	Get paginated candles
 	"""
@@ -827,6 +783,50 @@ type Query {
 	"""
 	allPerpsPairStats: [PerpsPairStats!]!
 	"""
+	Get paginated transfers
+	"""
+	transfers(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: TransferSortBy,		blockHeight: Int,		fromAddress: String,		toAddress: String,		userIndex: Int
+	): TransferConnection!
+	"""
+	Get paginated accounts.
+	"""
+	accounts(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: AccountSortBy,		blockHeight: Int,		userIndex: Int,		address: String
+	): AccountConnection!
+	user(userIndex: Int!): User
+	users(after: String, before: String, first: Int, last: Int, blockHeight: Int, publicKey: String, publicKeyHash: String): UserConnection!
+	"""
 	Get paginated perps events
 	"""
 	perpsEvents(
@@ -891,30 +891,11 @@ type Store {
 }
 
 type Subscription {
-	accounts(userIndex: Int, sinceBlockHeight: Int): [Account!]!
-	transfers(address: String, userIndex: Int, sinceBlockHeight: Int): [Transfer!]!
 	block: Block!
 	transactions(sinceBlockHeight: Int): [Transaction!]!
 	messages(sinceBlockHeight: Int): [Message!]!
 	events(sinceBlockHeight: Int, filter: [Filter!]): [Event!]!
 	eventByAddresses(addresses: [String!]!, sinceBlockHeight: Int): [Event!]!
-	"""
-	Get candles for a given base and quote denom, interval
-	"""
-	candles(baseDenom: String!, quoteDenom: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [Candle!]!
-	"""
-	Get all trades, this will not include past trades but only new ones since you subscribed.
-	"""
-	trades(baseDenom: String!, quoteDenom: String!): Trade!
-	"""
-	Get perps candles for a given pair_id and interval
-	"""
-	perpsCandles(pairId: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [PerpsCandle!]!
-	"""
-	Stream real-time perps trades for a given pair.
-	Returns cached recent trades first, then streams new trades as they occur.
-	"""
-	perpsTrades(pairId: String!): PerpsTrade!
 	queryApp(
 		"""
 		Request as JSON
@@ -941,6 +922,25 @@ type Subscription {
 		"""
 		blockInterval: Int! = 10
 	): Status!
+	"""
+	Get candles for a given base and quote denom, interval
+	"""
+	candles(baseDenom: String!, quoteDenom: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [Candle!]!
+	"""
+	Get all trades, this will not include past trades but only new ones since you subscribed.
+	"""
+	trades(baseDenom: String!, quoteDenom: String!): Trade!
+	"""
+	Get perps candles for a given pair_id and interval
+	"""
+	perpsCandles(pairId: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [PerpsCandle!]!
+	accounts(userIndex: Int, sinceBlockHeight: Int): [Account!]!
+	transfers(address: String, userIndex: Int, sinceBlockHeight: Int): [Transfer!]!
+	"""
+	Stream real-time perps trades for a given pair.
+	Returns cached recent trades first, then streams new trades as they occur.
+	"""
+	perpsTrades(pairId: String!): PerpsTrade!
 }
 
 enum TimeInForce {
@@ -1202,6 +1202,6 @@ Provides a scalar specification URL for specifying the behavior of custom scalar
 directive @specifiedBy(url: String!) on SCALAR
 schema {
 	query: Query
-	mutation: Mutation
+	mutation: IndexerMutation
 	subscription: Subscription
 }

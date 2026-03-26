@@ -10,7 +10,7 @@ pub mod perps_pair_stats;
 pub mod trade;
 
 #[derive(MergedObject, Default)]
-pub struct Query(
+pub struct ClickhouseQuery(
     CandleQuery,
     TradeQuery,
     PairStatsQuery,
