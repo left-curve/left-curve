@@ -48,7 +48,7 @@ const UsernameSection: React.FC = () => {
         </div>
       </div>
       <div
-        className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-end md:justify-center gap-1"
+        className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] flex items-center justify-end md:justify-center gap-1"
         onClick={() => allowEdit && showModal(Modals.EditUsername)}
       >
         <p>{username}</p>
@@ -86,7 +86,7 @@ const UserStatusSection: React.FC = () => {
           </>
         )}
       </div>
-      <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-end md:justify-center gap-1">
+      <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] flex items-center justify-end md:justify-center gap-1">
         <p>
           {m["settings.session.accountStatus"]({ status: userStatus ? userStatus : "inactive" })}
         </p>
@@ -101,7 +101,7 @@ const RemainingTimeSection: React.FC = () => {
 
   return (
     <div className="flex items-start justify-between rounded-md gap-8 px-2">
-      <div className="flex flex-col gap-2 md:gap-0 w-full">
+      <div className="flex flex-col w-full">
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 items-center">
             <IconTimer className="text-ink-tertiary-500" />
@@ -133,7 +133,7 @@ const NetworkSection: React.FC = () => {
               {m["settings.session.network.title"]()}
             </span>
           </div>
-          <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-end md:justify-center">
+          <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] flex items-center justify-end md:justify-center">
             {chain.name}
           </div>
         </div>

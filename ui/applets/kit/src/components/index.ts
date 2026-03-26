@@ -7,7 +7,7 @@ export { Badge } from "./Badge";
 export { IconButton, type IconButtonProps } from "./IconButton";
 export { Spinner } from "./Spinner";
 export { QRCode } from "./QRCode";
-export { Select, type SelectProps } from "./Select";
+export { Select, type SelectProps, type SelectRef } from "./Select";
 export { CoinSelector, type CoinSelectorProps } from "./CoinSelector";
 export { NetworkSelector, type NetworkSelectorProps } from "./NetworkSelector";
 export { TruncateText } from "./TruncateText";
