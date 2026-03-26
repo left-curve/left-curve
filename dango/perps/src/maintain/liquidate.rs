@@ -12,7 +12,7 @@ use {
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
         price::may_invert_price,
-        referral::apply_fee_rebounds,
+        referral::apply_fee_commissions,
         state::{LONGS, SHORTS},
         trade::{
             _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
@@ -128,7 +128,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     maker_states.insert(user, user_state);
 
-    apply_fee_rebounds(
+    apply_fee_commissions(
         ctx.storage,
         &ctx.querier,
         ctx.contract,

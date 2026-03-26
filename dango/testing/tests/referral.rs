@@ -6,8 +6,8 @@ use {
         constants::usdc,
         oracle::{self, PriceSource},
         perps::{
-            self, CommissionReboundRate, FeeShareRatio, QueryParamRequest, Referee,
-            ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData,
+            self, CommissionRate, FeeShareRatio, QueryParamRequest, Referee, ReferrerSettings,
+            ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData,
         },
     },
     grug::{
@@ -377,7 +377,7 @@ fn set_share_ratio_requires_volume() {
     .should_fail_with_error("insufficient perps volume to become a referrer");
 }
 
-/// When `referral.active` is false, no fee rebounds are applied.
+/// When `referral.active` is false, no fee commissions are applied.
 #[test]
 fn referral_active_flag() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
@@ -408,14 +408,14 @@ fn referral_active_flag() {
         )
         .should_succeed();
 
-    // Set commission rebound override so we know the exact rebound amount.
+    // Set commission rate override so we know the exact commission amount.
     suite
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                 user: 1,
-                commission_rebound: Some(CommissionReboundRate::new_percent(50)),
+                commission_rate: Some(CommissionRate::new_percent(50)),
             }),
             Coins::new(),
         )
@@ -459,7 +459,7 @@ fn referral_active_flag() {
     );
     place_market_buy(&mut suite, contracts.perps, &mut accounts.user2, 1);
 
-    // User1 (referrer) should NOT have received any rebound.
+    // User1 (referrer) should NOT have received any commission.
     let user1_margin_after = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
@@ -495,7 +495,7 @@ fn referral_active_flag() {
     );
     place_market_buy(&mut suite, contracts.perps, &mut accounts.user2, 1);
 
-    // User1 (referrer) should now have received a rebound.
+    // User1 (referrer) should now have received a commission.
     let user1_margin_final: UsdValue = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
@@ -507,20 +507,20 @@ fn referral_active_flag() {
     assert!(user1_margin_final > user1_margin_after);
 }
 
-/// Commission rebound override: only owner can set, overrides volume tiers,
+/// Commission rate override: only owner can set, overrides volume tiers,
 /// removing the override falls back to volume-based calculation.
 #[test]
-fn commission_rebound_override() {
+fn commission_rate_override() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    // Configure commission rebound tiers.
+    // Configure commission rate tiers.
     let mut param = suite
         .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
         .should_succeed();
 
-    param.referral.commission_rebound_default = CommissionReboundRate::new_percent(10);
-    param.referral.commission_rebound_by_volume = btree_map! {
-        UsdValue::new_int(100) => CommissionReboundRate::new_percent(20),
+    param.referral.commission_rate_default = CommissionRate::new_percent(10);
+    param.referral.commission_rates_by_volume = btree_map! {
+        UsdValue::new_int(100) => CommissionRate::new_percent(20),
     };
 
     suite
@@ -561,21 +561,18 @@ fn commission_rebound_override() {
         )
         .should_succeed();
 
-    // Default commission rebound is 10%.
+    // Default commission rate is 10%.
     let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
-    assert_eq!(
-        settings.commission_rebound,
-        CommissionReboundRate::new_percent(10)
-    );
+    assert_eq!(settings.commission_rate, CommissionRate::new_percent(10));
 
     // Non-owner cannot set override.
     suite
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                 user: 1,
-                commission_rebound: Some(CommissionReboundRate::new_percent(50)),
+                commission_rate: Some(CommissionRate::new_percent(50)),
             }),
             Coins::new(),
         )
@@ -586,38 +583,32 @@ fn commission_rebound_override() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                 user: 1,
-                commission_rebound: Some(CommissionReboundRate::new_percent(50)),
+                commission_rate: Some(CommissionRate::new_percent(50)),
             }),
             Coins::new(),
         )
         .should_succeed();
 
     let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
-    assert_eq!(
-        settings.commission_rebound,
-        CommissionReboundRate::new_percent(50)
-    );
+    assert_eq!(settings.commission_rate, CommissionRate::new_percent(50));
 
     // Trade to generate volume past the 100 USD tier.
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
 
     // Override still applies (ignores volume tier).
     let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
-    assert_eq!(
-        settings.commission_rebound,
-        CommissionReboundRate::new_percent(50)
-    );
+    assert_eq!(settings.commission_rate, CommissionRate::new_percent(50));
 
     // Owner removes override.
     suite
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                 user: 1,
-                commission_rebound: None,
+                commission_rate: None,
             }),
             Coins::new(),
         )
@@ -625,10 +616,7 @@ fn commission_rebound_override() {
 
     // Falls back to volume-based tier (>= 100 → 20%).
     let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
-    assert_eq!(
-        settings.commission_rebound,
-        CommissionReboundRate::new_percent(20)
-    );
+    assert_eq!(settings.commission_rate, CommissionRate::new_percent(20));
 }
 
 /// Query per-referee statistics sorted by volume.
@@ -758,12 +746,12 @@ fn referrer_stats() {
     assert_eq!(stats[0].0, 3);
 }
 
-/// Verify that fee rebounds are correctly credited to margins across a
+/// Verify that fee commissions are correctly credited to margins across a
 /// multi-level referral chain (up to MAX_REFERRAL_CHAIN_DEPTH = 5).
 ///
 /// Chain: user1 ← user2 ← user3 ← user4 ← user5 ← user6 ← user7
 ///
-/// Commission rebound overrides:
+/// Commission rate overrides:
 ///   user6 = 10%, user5 = 20%, user4 = 20%, user3 = 10%, user2 = 60%
 ///
 /// When user7 trades (notional = $2,000, fee = $2, vault_fee = $2):
@@ -775,7 +763,7 @@ fn referrer_stats() {
 ///   - user2 (5th referrer): vault_fee × (60% - 20%) = $0.80 (marginal)
 ///   - user1 (6th referrer): outside chain depth → $0
 #[test]
-fn commission_rebound_margins() {
+fn commission_rate_margins() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     let params = suite
@@ -833,15 +821,15 @@ fn commission_rebound_margins() {
             .should_succeed();
     }
 
-    // Set commission rebound overrides (owner-only).
+    // Set commission rate overrides (owner-only).
     for (user, rate) in [(6, 10), (5, 20), (4, 20), (3, 10), (2, 60)] {
         suite
             .execute(
                 &mut accounts.owner,
                 contracts.perps,
-                &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionReboundOverride {
+                &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
                     user,
-                    commission_rebound: Some(CommissionReboundRate::new_percent(rate)),
+                    commission_rate: Some(CommissionRate::new_percent(rate)),
                 }),
                 Coins::new(),
             )
@@ -910,60 +898,60 @@ fn commission_rebound_margins() {
     assert_eq!(vault_fee, UsdValue::new_int(2));
 
     // User7 (referee, index 6): gets vault_fee × 10% × 20% = $0.04
-    let referee_rebound = vault_fee
-        .checked_mul(CommissionReboundRate::new_percent(10))
+    let referee_share = vault_fee
+        .checked_mul(CommissionRate::new_percent(10))
         .unwrap()
         .checked_mul(Dimensionless::new_percent(20))
         .unwrap();
-    assert_eq!(referee_rebound, UsdValue::new_percent(4));
+    assert_eq!(referee_share, UsdValue::new_percent(4));
 
     // User6 (1st referrer, index 5): gets vault_fee × 10% × 80% = $0.16
-    let referrer_rebound = vault_fee
-        .checked_mul(CommissionReboundRate::new_percent(10))
+    let referrer_commission = vault_fee
+        .checked_mul(CommissionRate::new_percent(10))
         .unwrap()
-        .checked_sub(referee_rebound)
+        .checked_sub(referee_share)
         .unwrap();
-    assert_eq!(referrer_rebound, UsdValue::new_percent(16)); // $0.16
+    assert_eq!(referrer_commission, UsdValue::new_percent(16)); // $0.16
 
     // User5 (2nd referrer, index 4): marginal = 20% - 10% = 10% → $0.20
-    let user5_rebound = vault_fee
-        .checked_mul(CommissionReboundRate::new_percent(10))
+    let user5_commission = vault_fee
+        .checked_mul(CommissionRate::new_percent(10))
         .unwrap();
-    assert_eq!(user5_rebound, UsdValue::new_percent(20)); // $0.20
+    assert_eq!(user5_commission, UsdValue::new_percent(20)); // $0.20
 
     // User4 (3rd referrer, index 3): 20% ≤ max(20%) → $0
     // User3 (4th referrer, index 2): 10% < max(20%) → $0
 
     // User2 (5th referrer, index 1): marginal = 60% - 20% = 40% → $0.80
-    let user2_rebound = vault_fee
-        .checked_mul(CommissionReboundRate::new_percent(40))
+    let user2_commission = vault_fee
+        .checked_mul(CommissionRate::new_percent(40))
         .unwrap();
-    assert_eq!(user2_rebound, UsdValue::new_percent(80)); // $0.80
+    assert_eq!(user2_commission, UsdValue::new_percent(80)); // $0.80
 
     // User1 (6th referrer, index 0): outside MAX_REFERRAL_CHAIN_DEPTH → $0
 
     // Verify margin changes for each user.
-    // User7 paid fee ($2) but got referee_rebound ($0.04). Also has position change.
+    // User7 paid fee ($2) but got referee_share ($0.04). Also has position change.
 
     assert_eq!(
         post_margins[6],
         initial_margins[6]
-            .checked_add(referee_rebound)
+            .checked_add(referee_share)
             .unwrap()
             .checked_sub(vault_fee)
             .unwrap()
     );
 
-    // User6: margin increased by referrer_rebound.
+    // User6: margin increased by referrer_commission.
     assert_eq!(
         post_margins[5].checked_sub(initial_margins[5]).unwrap(),
-        referrer_rebound,
+        referrer_commission,
     );
 
-    // User5: margin increased by marginal rebound.
+    // User5: margin increased by marginal commission.
     assert_eq!(
         post_margins[4].checked_sub(initial_margins[4]).unwrap(),
-        user5_rebound,
+        user5_commission,
     );
 
     // User4: no change.
@@ -972,10 +960,10 @@ fn commission_rebound_margins() {
     // User3: no change.
     assert_eq!(post_margins[2], initial_margins[2]);
 
-    // User2: margin increased by marginal rebound.
+    // User2: margin increased by marginal commission.
     assert_eq!(
         post_margins[1].checked_sub(initial_margins[1]).unwrap(),
-        user2_rebound,
+        user2_commission,
     );
 
     // User1 (6th referrer): outside chain depth → no margin change.
@@ -986,7 +974,7 @@ fn commission_rebound_margins() {
         .map(|i| query_referral_data(&suite, contracts.perps, i, None))
         .collect();
 
-    // User7 (payer): volume increased, commission_rebounded increased.
+    // User7 (payer): volume increased, commission_received increased.
     assert_eq!(
         post_referral_data[6].volume,
         initial_referral_data[6]
@@ -995,14 +983,14 @@ fn commission_rebound_margins() {
             .unwrap()
     );
     assert_eq!(
-        post_referral_data[6].commission_rebounded,
+        post_referral_data[6].commission_received,
         initial_referral_data[6]
-            .commission_rebounded
-            .checked_add(referee_rebound)
+            .commission_received
+            .checked_add(referee_share)
             .unwrap()
     );
 
-    // User6 (1st referrer): referees_volume += trade_value, referees_commission_rebounded += referrer_rebound.
+    // User6 (1st referrer): referees_volume += trade_value, referees_commission_distributed += referrer_commission.
     assert_eq!(
         post_referral_data[5].referees_volume,
         initial_referral_data[5]
@@ -1011,23 +999,23 @@ fn commission_rebound_margins() {
             .unwrap()
     );
     assert_eq!(
-        post_referral_data[5].referees_commission_rebounded,
+        post_referral_data[5].referees_commission_distributed,
         initial_referral_data[5]
-            .referees_commission_rebounded
-            .checked_add(referrer_rebound)
+            .referees_commission_distributed
+            .checked_add(referrer_commission)
             .unwrap()
     );
 
-    // User5 (2nd referrer): referees_volume unchanged, referees_commission_rebounded += user5_rebound.
+    // User5 (2nd referrer): referees_volume unchanged, referees_commission_distributed += user5_commission.
     assert_eq!(
         post_referral_data[4].referees_volume,
         initial_referral_data[4].referees_volume
     );
     assert_eq!(
-        post_referral_data[4].referees_commission_rebounded,
+        post_referral_data[4].referees_commission_distributed,
         initial_referral_data[4]
-            .referees_commission_rebounded
-            .checked_add(user5_rebound)
+            .referees_commission_distributed
+            .checked_add(user5_commission)
             .unwrap()
     );
 
@@ -1037,16 +1025,16 @@ fn commission_rebound_margins() {
     // User3 (4th): no referral data change.
     assert_eq!(post_referral_data[2], initial_referral_data[2]);
 
-    // User2 (5th referrer): referees_volume unchanged, referees_commission_rebounded += user2_rebound.
+    // User2 (5th referrer): referees_volume unchanged, referees_commission_distributed += user2_commission.
     assert_eq!(
         post_referral_data[1].referees_volume,
         initial_referral_data[1].referees_volume
     );
     assert_eq!(
-        post_referral_data[1].referees_commission_rebounded,
+        post_referral_data[1].referees_commission_distributed,
         initial_referral_data[1]
-            .referees_commission_rebounded
-            .checked_add(user2_rebound)
+            .referees_commission_distributed
+            .checked_add(user2_commission)
             .unwrap()
     );
 

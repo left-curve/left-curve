@@ -15,7 +15,7 @@ use {
         },
         price::may_invert_price,
         query::query_volume,
-        referral::apply_fee_rebounds,
+        referral::apply_fee_commissions,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -97,7 +97,7 @@ pub fn submit_order(
 
     maker_states.insert(ctx.sender, taker_state);
 
-    apply_fee_rebounds(
+    apply_fee_commissions(
         ctx.storage,
         &ctx.querier,
         ctx.contract,

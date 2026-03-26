@@ -3,7 +3,7 @@ use {
         Quantity, UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
-            CommissionReboundRate, ConditionalOrder, ConditionalOrderId, FeeShareRatio, LimitOrder,
+            CommissionRate, ConditionalOrder, ConditionalOrderId, FeeShareRatio, LimitOrder,
             OrderId, PairId, PairParam, PairState, Param, Referee, RefereeStats, Referrer, State,
             UserReferralData, UserState,
         },
@@ -88,10 +88,9 @@ pub const REFEREE_TO_REFERRER: Map<UserIndex, UserIndex> = Map::new("ref_r");
 /// Maps a referrer to their fee share ratio.
 pub const FEE_SHARE_RATIO: Map<UserIndex, FeeShareRatio> = Map::new("ref_sr");
 
-/// Per-user commission rebound override. If set, this value is used instead of
+/// Per-user commission rate override. If set, this value is used instead of
 /// the volume-based tier calculation.
-pub const COMMISSION_REBOUND_OVERRIDES: Map<UserIndex, CommissionReboundRate> =
-    Map::new("ref_cr_override");
+pub const COMMISSION_RATE_OVERRIDES: Map<UserIndex, CommissionRate> = Map::new("ref_cr_override");
 
 /// Cumulative referral data per user, bucketed by day.
 pub const USER_REFERRAL_DATA: Map<(UserIndex, Timestamp), UserReferralData> = Map::new("ref_data");
@@ -215,7 +214,7 @@ impl ReferrerStatisticsIndex<'static> {
                 volume_namespace,
             ),
             commission: MultiIndex::new(
-                |(referrer, _), data| (*referrer, data.commission_rebounded),
+                |(referrer, _), data| (*referrer, data.commission_received),
                 pk_namespace,
                 commission_namespace,
             ),

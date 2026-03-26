@@ -899,8 +899,8 @@
               "protocol_fee_rate": "0",
               "referral": {
                 "active": true,
-                "commission_rebound_by_volume": {},
-                "commission_rebound_default": "0",
+                "commission_rates_by_volume": {},
+                "commission_rate_default": "0",
                 "volume_to_be_referrer": "0"
               },
               "tiered_maker_fee_rate": {},

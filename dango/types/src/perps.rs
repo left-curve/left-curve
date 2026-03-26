@@ -42,9 +42,9 @@ pub type Referee = UserIndex;
 /// Uses `Dimensionless` (a value in the range appropriate for ratios).
 pub type FeeShareRatio = Dimensionless;
 
-/// Commission rebound rate — the fraction of the vault fee rebounded to
-/// referee + referrer when a user with an active referral trades.
-pub type CommissionReboundRate = Dimensionless;
+/// Commission rate — the fraction of the post-protocol-cut fee distributed
+/// to the referral chain when a user with an active referral trades.
+pub type CommissionRate = Dimensionless;
 
 #[grug::derive(Serde)]
 #[derive(Copy)]
@@ -108,28 +108,28 @@ pub struct FeeBreakdown {
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct ReferralParam {
-    /// Whether the referral fee rebound system is active.
-    /// When false, `apply_fee_rebounds` is skipped entirely.
+    /// Whether the referral commission system is active.
+    /// When false, `apply_fee_commissions` is skipped entirely.
     pub active: bool,
 
     /// Minimum lifetime perps trading volume a user must have
     /// before they can become a referrer by setting a fee share ratio.
     pub volume_to_be_referrer: UsdValue,
 
-    /// Default commission rebound rate applied when no volume tier qualifies.
-    pub commission_rebound_default: CommissionReboundRate,
+    /// Default commission rate applied when no volume tier qualifies.
+    pub commission_rate_default: CommissionRate,
 
-    /// Volume-tiered commission rebound rates. Key = minimum 30-day referees
-    /// volume threshold; value = commission rebound rate.
+    /// Volume-tiered commission rates. Key = minimum 30-day referees
+    /// volume threshold; value = commission rate.
     /// Highest qualifying tier wins.
-    pub commission_rebound_by_volume: BTreeMap<UsdValue, CommissionReboundRate>,
+    pub commission_rates_by_volume: BTreeMap<UsdValue, CommissionRate>,
 }
 
 /// Referrer settings for a referrer.
 #[grug::derive(Serde)]
 #[derive(Copy)]
 pub struct ReferrerSettings {
-    pub commission_rebound: CommissionReboundRate,
+    pub commission_rate: CommissionRate,
     pub share_ratio: FeeShareRatio,
 }
 
@@ -140,8 +140,8 @@ pub struct RefereeStats {
     pub registered_at: Timestamp,
     /// Total trading volume made by the referee (USD).
     pub volume: UsdValue,
-    /// Total commission rebounded to the referrer from this referee (USD).
-    pub commission_rebounded: UsdValue,
+    /// Total commission received by the referrer from this referee (USD).
+    pub commission_received: UsdValue,
     /// Timestamp of the last day the referee was active.
     pub last_day_active: Timestamp,
 }
@@ -410,14 +410,14 @@ pub struct Unlock {
 pub struct UserReferralData {
     /// The user's own trading volume (cumulative).
     pub volume: UsdValue,
-    /// Total commission rebounded to this user (cumulative).
-    pub commission_rebounded: UsdValue,
+    /// Total commission received by this user (cumulative).
+    pub commission_received: UsdValue,
     /// Number of direct referees this user has.
     pub referee_count: u32,
     /// Total trading volume of this user's direct referees (cumulative).
     pub referees_volume: UsdValue,
-    /// Total commission rebounded to this user's referees (cumulative).
-    pub referees_commission_rebounded: UsdValue,
+    /// Total commission distributed from this user's referees (cumulative).
+    pub referees_commission_distributed: UsdValue,
     /// Number of referees that have traded on a specific day.
     pub active_users: Uint128,
 }
@@ -427,14 +427,14 @@ impl UserReferralData {
     pub fn checked_sub(&self, other: &Self) -> grug::StdResult<Self> {
         Ok(Self {
             volume: self.volume.checked_sub(other.volume)?,
-            commission_rebounded: self
-                .commission_rebounded
-                .checked_sub(other.commission_rebounded)?,
+            commission_received: self
+                .commission_received
+                .checked_sub(other.commission_received)?,
             referee_count: self.referee_count.saturating_sub(other.referee_count),
             referees_volume: self.referees_volume.checked_sub(other.referees_volume)?,
-            referees_commission_rebounded: self
-                .referees_commission_rebounded
-                .checked_sub(other.referees_commission_rebounded)?,
+            referees_commission_distributed: self
+                .referees_commission_distributed
+                .checked_sub(other.referees_commission_distributed)?,
             active_users: self.active_users.saturating_sub(other.active_users),
         })
     }
@@ -609,17 +609,17 @@ pub enum ReferralMsg {
     },
 
     /// Set or update the fee share ratio for the calling referrer.
-    /// The share ratio determines what fraction of the commission rebound
+    /// The share ratio determines what fraction of the commission
     /// the referrer gives back to the referee.
     /// Can only increase (never decrease) once set.
     SetFeeShareRatio { share_ratio: FeeShareRatio },
 
-    /// Set or remove a commission rebound override for a user.
+    /// Set or remove a commission rate override for a user.
     /// Only callable by the chain owner.
     /// Pass `None` to remove the override.
-    SetCommissionReboundOverride {
+    SetCommissionRateOverride {
         user: UserIndex,
-        commission_rebound: Option<CommissionReboundRate>,
+        commission_rate: Option<CommissionRate>,
     },
 }
 
@@ -1013,21 +1013,21 @@ pub struct BadDebtCovered {
     pub insurance_fund_remaining: UsdValue,
 }
 
-/// Event emitted when referral fee rebounds are applied for a fee-paying user.
+/// Event emitted when referral commissions are distributed for a fee-paying user.
 ///
-/// `rebounds[0]` is the payer (referee), `rebounds[1]` is the first referrer,
-/// and so on up the chain. Zero entries indicate no rebound at that level.
-#[grug::event("fee_rebounded")]
+/// `commissions[0]` is the payer (referee), `commissions[1]` is the first referrer,
+/// and so on up the chain. Zero entries indicate no commission at that level.
+#[grug::event("fee_distributed")]
 #[grug::derive(Serde)]
-pub struct FeeRebounded {
+pub struct FeeDistributed {
     /// User index of the fee payer.
     pub payer: UserIndex,
     /// Protocol treasury portion of the fee.
     pub protocol_fee: UsdValue,
-    /// Vault portion of the fee (before rebounds).
+    /// Vault portion of the fee (before commissions).
     pub vault_fee: UsdValue,
-    /// Rebound amounts per chain level: [payer, 1st referrer, 2nd, ...].
-    pub rebounds: Vec<UsdValue>,
+    /// Commission amounts per chain level: [payer, 1st referrer, 2nd, ...].
+    pub commissions: Vec<UsdValue>,
 }
 
 /// Event indicating a referral relationship has been registered.

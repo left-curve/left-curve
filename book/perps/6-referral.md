@@ -159,7 +159,7 @@ The commission rate $\mathtt{cr}$ for a referrer determines the fraction of the 
 
 ### 6a. Override
 
-The chain owner can set (or remove) a per-user override via `SetCommissionReboundOverride`. When present, this value is used directly, bypassing the volume-tiered lookup. Users with an override also bypass the $\mathtt{volumeToBeReferrer}$ requirement when calling `SetFeeShareRatio`.
+The chain owner can set (or remove) a per-user override via `SetCommissionRateOverride`. When present, this value is used directly, bypassing the volume-tiered lookup. Users with an override also bypass the $\mathtt{volumeToBeReferrer}$ requirement when calling `SetFeeShareRatio`.
 
 ### 6b. Volume-tiered lookup
 
@@ -175,9 +175,9 @@ When no override exists, $\mathtt{cr}$ is derived from the referrer's direct ref
    \mathtt{windowRefereesVolume} = V_{\mathrm{now}} - V_{\mathrm{start}}
    $$
 
-4. Walk the $\mathtt{commissionReboundByVolume}$ map and select the entry with the highest volume threshold $\leq \mathtt{windowRefereesVolume}$.
+4. Walk the $\mathtt{commissionRatesByVolume}$ map and select the entry with the highest volume threshold $\leq \mathtt{windowRefereesVolume}$.
 
-5. If no tier qualifies, use $\mathtt{commissionReboundDefault}$.
+5. If no tier qualifies, use $\mathtt{commissionRateDefault}$.
 
 Cumulative data is bucketed by day (see [§7a](#7a-cumulative-daily-buckets)), so the lookup loads the nearest bucket at or before the start of the window.
 
@@ -187,33 +187,33 @@ Cumulative data is bucketed by day (see [§7a](#7a-cumulative-daily-buckets)), s
 
 Each user has a `UserReferralData` record keyed by (user, day). The day is the block timestamp rounded down to midnight. Fields are cumulative (monotonically increasing), so a rolling window is computed by differencing two buckets.
 
-| Field                           | Type       | Description                                        |
-| ------------------------------- | ---------- | -------------------------------------------------- |
-| `volume`                        | `UsdValue` | User's own cumulative trading volume.              |
-| `commission_rebounded`          | `UsdValue` | Total commission received by this user.            |
-| `referee_count`                 | `u32`      | Number of direct referees.                         |
-| `referees_volume`               | `UsdValue` | Cumulative trading volume of direct referees.      |
-| `referees_commission_rebounded` | `UsdValue` | Total commission distributed from direct referees. |
-| `active_users`                  | `Uint128`  | Cumulative daily active referee count.             |
+| Field                             | Type       | Description                                        |
+| --------------------------------- | ---------- | -------------------------------------------------- |
+| `volume`                          | `UsdValue` | User's own cumulative trading volume.              |
+| `commission_received`             | `UsdValue` | Total commission received by this user.            |
+| `referee_count`                   | `u32`      | Number of direct referees.                         |
+| `referees_volume`                 | `UsdValue` | Cumulative trading volume of direct referees.      |
+| `referees_commission_distributed` | `UsdValue` | Total commission distributed from direct referees. |
+| `active_users`                    | `Uint128`  | Cumulative daily active referee count.             |
 
 When a referred user trades:
 
-- The **referee's** bucket: $\mathtt{volume}$ and $\mathtt{commissionRebounded}$ increment.
-- The **direct referrer's** bucket: $\mathtt{refereesVolume}$ and $\mathtt{refereesCommissionRebounded}$ increment.
-- **Upstream referrers**: only $\mathtt{refereesCommissionRebounded}$ increments (and only if they received a non-zero commission).
+- The **referee's** bucket: $\mathtt{volume}$ and $\mathtt{commissionReceived}$ increment.
+- The **direct referrer's** bucket: $\mathtt{refereesVolume}$ and $\mathtt{refereesCommissionDistributed}$ increment.
+- **Upstream referrers**: only $\mathtt{refereesCommissionDistributed}$ increments (and only if they received a non-zero commission).
 
 ### 7b. Per-referee statistics
 
 For every (referrer, referee) pair, a `RefereeStats` record tracks:
 
-| Field                  | Type        | Description                                        |
-| ---------------------- | ----------- | -------------------------------------------------- |
-| `registered_at`        | `Timestamp` | When the referral was established.                 |
-| `volume`               | `UsdValue`  | Referee's total trading volume.                    |
-| `commission_rebounded` | `UsdValue`  | Commission earned by referrer from this referee.   |
-| `last_day_active`      | `Timestamp` | Last day (rounded to midnight) the referee traded. |
+| Field                 | Type        | Description                                        |
+| --------------------- | ----------- | -------------------------------------------------- |
+| `registered_at`       | `Timestamp` | When the referral was established.                 |
+| `volume`              | `UsdValue`  | Referee's total trading volume.                    |
+| `commission_received` | `UsdValue`  | Commission earned by referrer from this referee.   |
+| `last_day_active`     | `Timestamp` | Last day (rounded to midnight) the referee traded. |
 
-These records are multi-indexed for sorted queries by `registered_at`, `volume`, or `commission_rebounded`.
+These records are multi-indexed for sorted queries by `registered_at`, `volume`, or `commission_received`.
 
 ### 7c. Daily active users
 
@@ -221,12 +221,12 @@ On the first trade of each day by a given referee, the referrer's $\mathtt{activ
 
 ## 8. Parameters
 
-| Field                          | Type                                        | Description                                                                                                                 |
-| ------------------------------ | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `active`                       | `bool`                                      | Master switch. When `false`, referral commissions are skipped entirely.                                                     |
-| `volume_to_be_referrer`        | `UsdValue`                                  | Minimum lifetime trading volume to call `SetFeeShareRatio`. Bypassed for users with a commission rate override.             |
-| `commission_rebound_default`   | `CommissionReboundRate`                     | Fallback commission rate when no volume tier qualifies.                                                                     |
-| `commission_rebound_by_volume` | `BTreeMap<UsdValue, CommissionReboundRate>` | Volume-tiered rates. Key = minimum 30-day referees volume threshold; value = commission rate. Highest qualifying tier wins. |
+| Field                        | Type                                 | Description                                                                                                                 |
+| ---------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `active`                     | `bool`                               | Master switch. When `false`, referral commissions are skipped entirely.                                                     |
+| `volume_to_be_referrer`      | `UsdValue`                           | Minimum lifetime trading volume to call `SetFeeShareRatio`. Bypassed for users with a commission rate override.             |
+| `commission_rate_default`    | `CommissionRate`                     | Fallback commission rate when no volume tier qualifies.                                                                     |
+| `commission_rates_by_volume` | `BTreeMap<UsdValue, CommissionRate>` | Volume-tiered rates. Key = minimum 30-day referees volume threshold; value = commission rate. Highest qualifying tier wins. |
 
 **Constants:**
 
@@ -234,4 +234,4 @@ On the first trade of each day by a given referee, the referrer's $\mathtt{activ
 | -------------------------- | ----- | --------------------------------------------------------------------------- |
 | `MAX_FEE_SHARE_RATIO`      | 50 %  | Maximum share ratio a referrer can set.                                     |
 | `MAX_REFERRAL_CHAIN_DEPTH` | 5     | Maximum levels of upstream referrers walked during commission distribution. |
-| `REBOUND_LOOKBACK_DAYS`    | 30    | Rolling-window length (days) for the volume-tiered commission lookup.       |
+| `COMMISSION_LOOKBACK_DAYS` | 30    | Rolling-window length (days) for the volume-tiered commission lookup.       |

@@ -165,10 +165,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             ReferralMsg::SetFeeShareRatio { share_ratio } => {
                 referral::set_fee_share_ratio(ctx, share_ratio)
             },
-            ReferralMsg::SetCommissionReboundOverride {
+            ReferralMsg::SetCommissionRateOverride {
                 user,
-                commission_rebound,
-            } => referral::set_commission_rebound_override(ctx, user, commission_rebound),
+                commission_rate,
+            } => referral::set_commission_rate_override(ctx, user, commission_rate),
         },
     }
 }

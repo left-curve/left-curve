@@ -1,6 +1,6 @@
 use {
     crate::{
-        COMMISSION_REBOUND_OVERRIDES, FEE_SHARE_RATIO, PARAM, REFEREE_TO_REFERRER,
+        COMMISSION_RATE_OVERRIDES, FEE_SHARE_RATIO, PARAM, REFEREE_TO_REFERRER,
         REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, query::query_volume,
         volume::round_to_day,
     },
@@ -9,9 +9,8 @@ use {
         DangoQuerier, UsdValue,
         account_factory::{self, UserIndex},
         perps::{
-            CommissionReboundRate, FeeBreakdown, FeeRebounded, FeeShareRatio, Referee,
-            RefereeStats, Referral, ReferralParam, Referrer, ReferrerSettings, UserReferralData,
-            UserState,
+            CommissionRate, FeeBreakdown, FeeDistributed, FeeShareRatio, Referee, RefereeStats,
+            Referral, ReferralParam, Referrer, ReferrerSettings, UserReferralData, UserState,
         },
     },
     grug::{
@@ -69,7 +68,7 @@ pub fn set_referral(
     REFERRER_TO_REFEREE_STATISTICS.save(ctx.storage, (referrer, referee), &RefereeStats {
         registered_at: ctx.block.timestamp,
         volume: UsdValue::ZERO,
-        commission_rebounded: UsdValue::ZERO,
+        commission_received: UsdValue::ZERO,
         last_day_active: Duration::from_nanos(0),
     })?;
 
@@ -108,9 +107,9 @@ pub fn set_fee_share_ratio(
 
     let user_index = account.owner;
 
-    // Users with a commission rebound override bypass the volume requirement.
+    // Users with a commission rate override bypass the volume requirement.
     // Otherwise, the caller must have enough lifetime perps volume.
-    if !COMMISSION_REBOUND_OVERRIDES.has(ctx.storage, user_index) {
+    if !COMMISSION_RATE_OVERRIDES.has(ctx.storage, user_index) {
         let param = PARAM.load(ctx.storage)?;
         let volume = query_volume(ctx.storage, ctx.sender, None)?;
 
@@ -135,34 +134,34 @@ pub fn set_fee_share_ratio(
     Ok(Response::new())
 }
 
-/// Set or remove a commission rebound override for a user.
+/// Set or remove a commission rate override for a user.
 ///
 /// Only callable by the chain owner.
-pub fn set_commission_rebound_override(
+pub fn set_commission_rate_override(
     ctx: MutableCtx,
     user: UserIndex,
-    commission_rebound: Option<CommissionReboundRate>,
+    commission_rate: Option<CommissionRate>,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "you don't have the right, O you don't have the right"
     );
 
-    match commission_rebound {
-        Some(rate) => COMMISSION_REBOUND_OVERRIDES.save(ctx.storage, user, &rate)?,
-        None => COMMISSION_REBOUND_OVERRIDES.remove(ctx.storage, user),
+    match commission_rate {
+        Some(rate) => COMMISSION_RATE_OVERRIDES.save(ctx.storage, user, &rate)?,
+        None => COMMISSION_RATE_OVERRIDES.remove(ctx.storage, user),
     }
 
     Ok(Response::new())
 }
 
-// -------------------------------- Fee rebound helpers --------------------------------
+// -------------------------------- Fee commission helpers --------------------------------
 
 /// Maximum fee share ratio a referrer can set.
 const MAX_FEE_SHARE_RATIO: FeeShareRatio = FeeShareRatio::new_percent(50);
 
 /// Number of days in the rolling window for referees volume tiers.
-const REBOUND_LOOKBACK_DAYS: u128 = 30;
+const COMMISSION_LOOKBACK_DAYS: u128 = 30;
 
 /// Resolve an address to a `UserIndex` via the account factory.
 ///
@@ -188,22 +187,22 @@ pub(crate) fn retrieve_user_index(
     }
 }
 
-/// Determine the commission rebound rate for a referrer based on their
+/// Determine the commission rate for a referrer based on their
 /// direct referees' 30-day rolling trading volume against configurable tiers.
 /// N.B. This function assumes the user is a valid referrer (has set a fee share ratio).
-pub(crate) fn calculate_commission_rebound(
+pub(crate) fn calculate_commission_rate(
     storage: &dyn Storage,
     referrer: Referrer,
     block_timestamp: Timestamp,
     referral_param: &ReferralParam,
-) -> grug::StdResult<CommissionReboundRate> {
+) -> grug::StdResult<CommissionRate> {
     // If the referrer has a custom override, use it directly.
-    if let Some(override_rate) = COMMISSION_REBOUND_OVERRIDES.may_load(storage, referrer)? {
+    if let Some(override_rate) = COMMISSION_RATE_OVERRIDES.may_load(storage, referrer)? {
         return Ok(override_rate);
     }
 
     let today = round_to_day(block_timestamp);
-    let lookback_start = today.saturating_sub(grug::Duration::from_days(REBOUND_LOOKBACK_DAYS));
+    let lookback_start = today.saturating_sub(grug::Duration::from_days(COMMISSION_LOOKBACK_DAYS));
 
     // Load the latest cumulative data for the referrer.
     let latest = load_referral_data(storage, referrer, None)?;
@@ -219,18 +218,18 @@ pub(crate) fn calculate_commission_rebound(
 
     // Find the highest qualifying tier.
     Ok(resolve_tiered_rate(
-        referral_param.commission_rebound_default,
-        &referral_param.commission_rebound_by_volume,
+        referral_param.commission_rate_default,
+        &referral_param.commission_rates_by_volume,
         window_referees_volume,
     ))
 }
 
 /// Resolve the highest qualifying rate from a tier map.
 fn resolve_tiered_rate(
-    default: CommissionReboundRate,
-    tiers: &BTreeMap<UsdValue, CommissionReboundRate>,
+    default: CommissionRate,
+    tiers: &BTreeMap<UsdValue, CommissionRate>,
     volume: UsdValue,
-) -> CommissionReboundRate {
+) -> CommissionRate {
     tiers
         .range(..=volume)
         .next_back()
@@ -274,30 +273,30 @@ pub(crate) fn retrieve_master_account(
     }
 }
 
-// -------------------------------- Fee rebound application --------------------------------
+// -------------------------------- Fee commission application --------------------------------
 
 /// Maximum number of referral chain levels to walk when calculating fee
-/// rebounds.
+/// commissions.
 const MAX_REFERRAL_CHAIN_DEPTH: usize = 5;
 
-/// Calculate and apply fee rebounds for all fee-paying users based on the
+/// Calculate and apply fee commissions for all fee-paying users based on the
 /// referral chain.
 ///
-/// Rebates are funded from the vault's share of the fee (the `vault_fees` map).
+/// Commissions are funded from the post-protocol-cut fee.
 /// The protocol treasury is unaffected.
 ///
 /// **Level 1 (direct referrer):**
-///  - Referee (payer) gets `vault_fee × commission_rebound × share_ratio`.
-///  - Referrer gets `vault_fee × commission_rebound × (1 − share_ratio)`.
+///  - Referee (payer) gets `vault_fee × commission_rate × share_ratio`.
+///  - Referrer gets `vault_fee × commission_rate × (1 − share_ratio)`.
 ///
 /// **Levels 2–5 (upstream referrers):**
-///  - Each referrer receives the *marginal* increase in commission rebound:
+///  - Each referrer receives the *marginal* increase in commission rate:
 ///    `vault_fee × (their_cr − max_cr_so_far)` — only when their rate exceeds
 ///    all previous referrers in the chain.
 ///
-/// All individual rebounds are credited to the corresponding user's margin
+/// All individual commissions are credited to the corresponding user's margin
 /// and the total is deducted from the vault (contract) margin.
-pub(crate) fn apply_fee_rebounds(
+pub(crate) fn apply_fee_commissions(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
     perps_contract: Addr,
@@ -348,50 +347,50 @@ pub(crate) fn apply_fee_rebounds(
             &mut referrer_settings_cache,
         )?;
 
-        let first_cr = first_settings.commission_rebound;
+        let first_cr = first_settings.commission_rate;
         let first_sr = first_settings.share_ratio;
 
-        // Referee (payer) gets: vault_fee × commission_rebound × share_ratio.
-        let referee_rebound = vault_fee.checked_mul(first_cr)?.checked_mul(first_sr)?;
+        // Referee (payer) gets: vault_fee × commission_rate × share_ratio.
+        let referee_share = vault_fee.checked_mul(first_cr)?.checked_mul(first_sr)?;
 
-        // First referrer gets: vault_fee × commission_rebound × (1 − share_ratio).
-        let referrer_rebound = vault_fee
+        // First referrer gets: vault_fee × commission_rate × (1 − share_ratio).
+        let referrer_commission = vault_fee
             .checked_mul(first_cr)?
-            .checked_sub(referee_rebound)?;
+            .checked_sub(referee_share)?;
 
-        // Track rebounds per chain level for the event.
-        let mut rebounds = vec![referee_rebound, referrer_rebound];
+        // Track commissions per chain level for the event.
+        let mut commissions = vec![referee_share, referrer_commission];
 
         // Credit the referee.
-        if referee_rebound.is_non_zero() {
-            credit_rebound(storage, user_states, payer, referee_rebound)?;
-            total_vault_deduction.checked_add_assign(referee_rebound)?;
+        if referee_share.is_non_zero() {
+            credit_commission(storage, user_states, payer, referee_share)?;
+            total_vault_deduction.checked_add_assign(referee_share)?;
         }
 
         // Credit the first referrer.
-        if referrer_rebound.is_non_zero()
+        if referrer_commission.is_non_zero()
             && let Some(referrer_addr) =
                 retrieve_master_account(querier, first_referrer, account_factory)
         {
-            credit_rebound(storage, user_states, referrer_addr, referrer_rebound)?;
-            total_vault_deduction.checked_add_assign(referrer_rebound)?;
+            credit_commission(storage, user_states, referrer_addr, referrer_commission)?;
+            total_vault_deduction.checked_add_assign(referrer_commission)?;
         }
 
         // Payer's trade volume for this fill.
         let payer_volume = volumes.get(&payer).copied().unwrap_or(UsdValue::ZERO);
 
-        // Update payer's referral data: volume + commission_rebounded.
+        // Update payer's referral data: volume + commission_received.
         increment_referral_data(
             storage,
             payer_index,
             current_time,
             payer_volume,
-            referee_rebound,
+            referee_share,
             UsdValue::ZERO,
             UsdValue::ZERO,
         )?;
 
-        // Update first referrer's referral data: referees_volume + referees_commission_rebounded.
+        // Update first referrer's referral data: referees_volume + referees_commission_distributed.
         increment_referral_data(
             storage,
             first_referrer,
@@ -399,7 +398,7 @@ pub(crate) fn apply_fee_rebounds(
             UsdValue::ZERO,
             UsdValue::ZERO,
             payer_volume,
-            referrer_rebound,
+            referrer_commission,
         )?;
 
         // Update per-referee statistics for the first referrer.
@@ -409,7 +408,7 @@ pub(crate) fn apply_fee_rebounds(
             payer_index,
             current_time,
             payer_volume,
-            referrer_rebound,
+            referrer_commission,
         )?;
 
         // Walk up the referrer chain (levels 2..=MAX_REFERRAL_CHAIN_DEPTH).
@@ -429,24 +428,24 @@ pub(crate) fn apply_fee_rebounds(
                 &mut referrer_settings_cache,
             )?;
 
-            let next_cr = next_settings.commission_rebound;
+            let next_cr = next_settings.commission_rate;
 
-            // Nth referrer gets the marginal increase in commission rebound.
+            // Nth referrer gets the marginal increase in commission rate.
             if next_cr > max_cr {
                 let marginal = next_cr.checked_sub(max_cr)?;
-                let commission_rebound = vault_fee.checked_mul(marginal)?;
+                let upstream_commission = vault_fee.checked_mul(marginal)?;
 
-                rebounds.push(commission_rebound);
+                commissions.push(upstream_commission);
 
-                if commission_rebound.is_non_zero() {
+                if upstream_commission.is_non_zero() {
                     if let Some(addr) =
                         retrieve_master_account(querier, next_referrer, account_factory)
                     {
-                        credit_rebound(storage, user_states, addr, commission_rebound)?;
-                        total_vault_deduction.checked_add_assign(commission_rebound)?;
+                        credit_commission(storage, user_states, addr, upstream_commission)?;
+                        total_vault_deduction.checked_add_assign(upstream_commission)?;
                     }
 
-                    // Update upstream referrer's referral data: referees_commission_rebounded only.
+                    // Update upstream referrer's referral data: referees_commission_distributed only.
                     increment_referral_data(
                         storage,
                         next_referrer,
@@ -454,31 +453,31 @@ pub(crate) fn apply_fee_rebounds(
                         UsdValue::ZERO,
                         UsdValue::ZERO,
                         UsdValue::ZERO,
-                        commission_rebound,
+                        upstream_commission,
                     )?;
                 }
 
                 max_cr = next_cr;
             } else {
-                rebounds.push(UsdValue::ZERO);
+                commissions.push(UsdValue::ZERO);
             }
 
             current_user = next_referrer;
         }
 
-        events.push(FeeRebounded {
+        events.push(FeeDistributed {
             payer: payer_index,
             protocol_fee: fee_breakdown.protocol_fee,
             vault_fee,
-            rebounds,
+            commissions,
         })?;
     }
 
-    // Deduct the total rebound from the vault margin.
+    // Deduct the total commission from the vault margin.
     if total_vault_deduction.is_non_zero() {
         user_states
             .get_mut(&perps_contract)
-            .expect("vault must be in user_states for fee rebound settlement")
+            .expect("vault must be in user_states for fee commission settlement")
             .margin
             .checked_sub_assign(total_vault_deduction)?;
     }
@@ -499,24 +498,24 @@ fn compute_referrer_settings(
         return Ok(cached);
     }
 
-    let commission_rebound =
-        calculate_commission_rebound(storage, user, block_timestamp, referral_param)?;
+    let commission_rate =
+        calculate_commission_rate(storage, user, block_timestamp, referral_param)?;
 
     let share_ratio = FEE_SHARE_RATIO.load(storage, user)?;
 
     let settings = ReferrerSettings {
-        commission_rebound,
+        commission_rate,
         share_ratio,
     };
     cache.insert(user, settings);
     Ok(settings)
 }
 
-/// Credit a fee rebound to a user's margin.
+/// Credit a fee commission to a user's margin.
 ///
 /// If the recipient is already in `user_states`, credits directly; otherwise
 /// loads from storage and inserts.
-fn credit_rebound(
+fn credit_commission(
     storage: &dyn Storage,
     user_states: &mut BTreeMap<Addr, UserState>,
     recipient: Addr,
@@ -550,11 +549,11 @@ fn increment_referral_data(
     let mut data = load_referral_data(storage, user_index, None)?;
 
     data.volume.checked_add_assign(volume_delta)?;
-    data.commission_rebounded
+    data.commission_received
         .checked_add_assign(commission_delta)?;
     data.referees_volume
         .checked_add_assign(referees_volume_delta)?;
-    data.referees_commission_rebounded
+    data.referees_commission_distributed
         .checked_add_assign(referees_commission_delta)?;
 
     USER_REFERRAL_DATA.save(storage, (user_index, today), &data)?;
@@ -581,7 +580,7 @@ fn update_referee_stats(
 
     stats.volume.checked_add_assign(volume_delta)?;
     stats
-        .commission_rebounded
+        .commission_received
         .checked_add_assign(commission_delta)?;
 
     // If this referee hasn't traded today yet, increment the referrer's

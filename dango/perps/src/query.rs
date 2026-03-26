@@ -2,7 +2,7 @@ use {
     crate::{
         ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS,
         PAIR_STATES, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA,
-        USER_STATES, VOLUMES, referral::calculate_commission_rebound, round_to_day,
+        USER_STATES, VOLUMES, referral::calculate_commission_rate, round_to_day,
     },
     anyhow::ensure,
     dango_types::{
@@ -405,11 +405,11 @@ pub fn query_referral_settings(
     };
 
     let param = crate::PARAM.load(ctx.storage)?;
-    let commission_rebound =
-        calculate_commission_rebound(ctx.storage, user, ctx.block.timestamp, &param.referral)?;
+    let commission_rate =
+        calculate_commission_rate(ctx.storage, user, ctx.block.timestamp, &param.referral)?;
 
     Ok(Some(ReferrerSettings {
-        commission_rebound,
+        commission_rate,
         share_ratio,
     }))
 }

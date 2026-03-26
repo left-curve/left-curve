@@ -7,7 +7,7 @@ use {
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::apply_position_index_updates,
         price::may_invert_price,
-        referral::apply_fee_rebounds,
+        referral::apply_fee_commissions,
         trade::_submit_order,
     },
     dango_oracle::OracleQuerier,
@@ -484,7 +484,7 @@ fn process_triggered_order(
 
     maker_states.insert(order.user, user_state);
 
-    apply_fee_rebounds(
+    apply_fee_commissions(
         storage,
         querier,
         contract,
