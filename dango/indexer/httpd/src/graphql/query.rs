@@ -3,7 +3,7 @@ use {
     async_graphql::MergedObject,
     dango_indexer_clickhouse::httpd::graphql::query::{
         candle::CandleQuery, pair_stats::PairStatsQuery, perps_candle::PerpsCandleQuery,
-        trade::TradeQuery,
+        perps_pair_stats::PerpsPairStatsQuery, trade::TradeQuery,
     },
     grug_httpd::graphql::query::grug::GrugQuery,
     indexer_httpd::graphql::query::{
@@ -33,5 +33,6 @@ pub struct Query(
     TradeQuery,
     PairStatsQuery,
     PerpsCandleQuery,
+    PerpsPairStatsQuery,
     PerpsEventQuery,
 );

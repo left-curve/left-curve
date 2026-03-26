@@ -7,6 +7,7 @@ pub mod pair_price;
 pub mod pair_price_query;
 pub mod pair_stats;
 pub mod perps_candle;
+pub mod perps_pair_stats;
 pub mod perps_candle_query;
 pub mod perps_pair_price;
 pub mod trade;

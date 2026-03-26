@@ -1,0 +1,9 @@
+query PerpsPairStats($pair_id: String!) {
+  perpsPairStats(pairId: $pair_id) {
+    pairId
+    currentPrice
+    price24HAgo
+    volume24H
+    priceChange24H
+  }
+}
