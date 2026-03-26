@@ -2477,7 +2477,7 @@ mod tests {
         let mut state = State::default();
         let mut oq = test_oracle_querier();
 
-        let (maker_states, _, _, ..) = _submit_order(
+        let (maker_states, ..) = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
