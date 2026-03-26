@@ -201,6 +201,14 @@
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
+    "referral": {
+      "id": "referral",
+      "img": "/images/emojis/simple/referral.svg",
+      "title": "Referral",
+      "description": "Invite friends and earn rewards together.",
+      "path": "/referral",
+      "keywords": "referral,invite,friends,commission,affiliate"
+    },
     "devtool": {
       "id": "devtool",
       "img": "/images/emojis/simple/factory-2.svg",
@@ -844,8 +852,8 @@
     "timeZone": "Time Zone",
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
-      "title": "Key Management",
-      "description": "Add or remove keys associated with your user profile. You can log in to Dango with any of these keys.",
+      "title": "Security",
+      "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
       "add": "Add",
       "management": {
         "add": {
@@ -1003,8 +1011,158 @@
       "minimumOrderSize": "Order size too small. Minimum order size is {minOrderSize} {symbol}"
     }
   },
+  "referral": {
+    "welcome": "Welcome to Dango's",
+    "title": "REFERRAL PROGRAM",
+    "readRules": "Read Rules",
+    "affiliate": "Affiliate",
+    "trader": "Trader",
+    "stats": {
+      "commissionRate": "Commission Rate (You/ Referee)",
+      "totalCommissionPoints": "Total Commission Points",
+      "totalReferralVolume": "Total Referral Volume",
+      "totalReferees": "Total Referees",
+      "totalActiveReferees": "Total Active Referees",
+      "myReferralLink": "My Referral Link",
+      "myReferralCode": "My Referral Code",
+      "rebateRate": "Rebate Rate",
+      "totalRebates": "Total Rebates",
+      "totalTradingVolume": "Total Trading Volume",
+      "yourReferrer": "Your Referrer",
+      "notLoggedIn": "You are not logged in.",
+      "volumeUntilTier2": "{amount} volume until Tier 2"
+    },
+    "affiliateSection": {
+      "unlockTitle": "Unlock your referral code with $10k volume!",
+      "unlockDescription": "Invite your friends and earn up to {percent} commission.",
+      "tradeNow": "Trade now",
+      "logIn": "Log In"
+    },
+    "traderSection": {
+      "referTitle": "Refer friends and unlock more rewards together!",
+      "referDescription": "Get up to {percent} fee rebates by submitting your friend's referral code!",
+      "referralCodeLabel": "Referral Code",
+      "referralCodePlaceholder": "Enter your friend's referral code",
+      "submit": "Submit"
+    },
+    "commission": {
+      "title": "Commission Rates",
+      "myCommission": "My Commission",
+      "myReferees": "My Referees",
+      "statistics": "Statistics",
+      "logInToView": "Log in to view your data",
+      "noReferees": "No referees yet",
+      "noRebates": "No rebate history yet",
+      "loadingChart": "Loading chart...",
+      "columns": {
+        "tier": "Tier",
+        "tradingVolume": "Trading Volume",
+        "thirtyDayReferralVolume": "30-day Referral Volume",
+        "commission": "Commission",
+        "myCommission": "My Commission",
+        "referralVolume": "Referral Volume",
+        "activeUsers": "Active Users",
+        "date": "Date",
+        "userName": "User Name",
+        "totalVolume": "Total Volume",
+        "totalCommission": "Total Commission",
+        "dateJoined": "Date Joined"
+      }
+    },
+    "rebate": {
+      "myRebates": "My Rebates",
+      "statistics": "Statistics",
+      "columns": {
+        "rebates": "Rebates",
+        "tradingVolume": "Trading Volume",
+        "date": "Date"
+      }
+    },
+    "period": {
+      "sevenDays": "Period: 7D",
+      "thirtyDays": "Period: 30D",
+      "ninetyDays": "Period: 90D"
+    },
+    "metric": {
+      "commission": "Commission",
+      "volume": "Volume"
+    }
+  },
   "points": {
     "campaign": "Campaign",
+    "header": {
+      "welcome": "Welcome to Dango's",
+      "title": "POINTS PROGRAM",
+      "readRules": "Read Rules",
+      "myPoints": "My points",
+      "myVolume": "My volume",
+      "myRank": "My rank",
+      "points": "Points",
+      "tradingPoints": {
+        "title": "Trading Points",
+        "description": "Points earned from organic trading activity"
+      },
+      "lpPoints": {
+        "title": "LP Points",
+        "description": "Points earned from providing liquidity"
+      },
+      "referralPoints": {
+        "title": "Referral Points",
+        "description": "Points earned from referring other users"
+      }
+    },
+    "tabs": {
+      "profile": "Profile",
+      "rewards": "Rewards"
+    },
+    "profile": {
+      "pointHistory": "Point History",
+      "getStarted": "Get Started!",
+      "loading": "Loading point history...",
+      "noHistory": "No point history yet",
+      "columns": {
+        "action": "Action",
+        "date": "Date",
+        "points": "Points"
+      },
+      "activities": {
+        "provideLiquidity": "Provide Liquidity",
+        "trade": "Trade",
+        "referral": "Referral"
+      },
+      "xPoints": "{points} XPoints"
+    },
+    "rewards": {
+      "boxes": {
+        "title": "My boxes",
+        "open": "Open",
+        "tiers": {
+          "bronze": "Bronze",
+          "silver": "Silver",
+          "gold": "Gold",
+          "crystal": "Crystal"
+        },
+        "tooltips": {
+          "bronze": "Receive a Bronze chest for every $25k volume.",
+          "silver": "Receive a Silver chest for every $100k volume.",
+          "gold": "Receive a Gold chest for every $250k volume.",
+          "crystal": "Receive a Crystal chest for every $500k volume."
+        },
+        "volumeUntilNext": "{amount} volume until next {tier} Box",
+        "notLoggedIn": "You are not logged in."
+      },
+      "nfts": {
+        "title": "My NFTs",
+        "rarities": {
+          "common": "Common",
+          "uncommon": "Uncommon",
+          "rare": "Rare",
+          "epic": "Epic",
+          "legendary": "Legendary",
+          "mythic": "Mythic"
+        }
+      }
+    },
     "referral": {
       "faqs": {
         "title": "FAQs",
@@ -1014,6 +1172,24 @@
         "answer2": "Yes. You will get 1 point for every 5 points earned by your direct referrals, and 1 point for every 20 points earned by your indirect referrals.",
         "question3": "Is there a limit to how much of my commission I can share with my referees?",
         "answer3": "Yes. Referrers cannot share more than 50% of their total commission with their referees."
+      }
+    },
+    "boosters": {
+      "title": "Boosters",
+      "description": "A limited-time points multiplier to reward early testnet users.",
+      "linkEvmWallet": "Link EVM Wallet",
+      "pointsBoost": "+{pointsBoost}% Points",
+      "toast": {
+        "successTitle": "Wallet Linked",
+        "successDescription": "Your EVM wallet has been linked successfully.",
+        "errorTitle": "Linking Failed",
+        "errorDescription": "Failed to link your EVM wallet. Please try again."
+      },
+      "oats": {
+        "hurrah": "The Last Hurrah",
+        "trader": "Testnet Trader",
+        "wizard": "Testnet Wizard",
+        "supporter": "Early Supporter"
       }
     },
     "leagues": {

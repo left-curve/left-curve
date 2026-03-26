@@ -1,4 +1,13 @@
-import { Children, isValidElement, useId, useRef, useState } from "react";
+import {
+  Children,
+  forwardRef,
+  isValidElement,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useClickAway } from "../hooks/useClickAway.js";
 import { createContext, useControlledState } from "@left-curve/foundation";
@@ -12,6 +21,12 @@ import { twMerge } from "@left-curve/foundation";
 import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
+
+export interface SelectRef {
+  toggle: () => void;
+  open: () => void;
+  getIsOpen: () => boolean;
+}
 
 type SelectItemPropsInternal = { value: string; children?: ReactNode };
 
@@ -29,6 +44,7 @@ export interface SelectProps extends VariantProps<typeof selectVariants> {
   label?: string;
   variant?: "boxed" | "plain";
   placeholder?: string;
+  containerRef?: React.RefObject<HTMLElement | null>;
   classNames?: {
     base?: string;
     listboxWrapper?: string;
@@ -41,7 +57,7 @@ export interface SelectProps extends VariantProps<typeof selectVariants> {
   };
 }
 
-const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
+const Root = forwardRef<SelectRef, PropsWithChildren<SelectProps>>((props, ref) => {
   const {
     classNames,
     children,
@@ -52,6 +68,7 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
     variant = "boxed",
     label,
     placeholder,
+    containerRef,
   } = props;
 
   const selectRef = useRef<HTMLDivElement>(null);
@@ -66,10 +83,21 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
     defaultValue,
   );
 
+  useImperativeHandle(ref, () => ({
+    toggle: () => !isDisabled && setIsOpen((prev) => !prev),
+    open: () => !isDisabled && setIsOpen(true),
+    getIsOpen: () => isOpen,
+  }));
+
   const slots = selectVariants({ isDisabled, variant });
   const { base, trigger, listboxWrapper, icon, listBoxContainer } = slots;
 
-  useClickAway(selectRef, () => setIsOpen(false));
+  const ignoreRefs = useMemo(
+    () => (containerRef ? [containerRef] : []),
+    [containerRef],
+  );
+
+  useClickAway(selectRef, () => setIsOpen(false), ["mousedown", "touchstart"], ignoreRefs);
 
   return (
     <Provider value={{ selected, setSelected, slots, classNames }}>
@@ -82,7 +110,10 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
         <div className="relative w-full" ref={selectRef}>
           <button
             type="button"
-            onClick={() => !isDisabled && setIsOpen((prev) => !prev)}
+            onClick={(e) => {
+              e.stopPropagation();
+              !isDisabled && setIsOpen((prev) => !prev);
+            }}
             className={trigger({ className: classNames?.trigger })}
           >
             {placeholder && !selected ? (
@@ -133,7 +164,7 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
       </div>
     </Provider>
   );
-};
+});
 
 type SelectItemProps = {
   value: string;
@@ -227,7 +258,7 @@ const selectVariants = tv({
         listBoxItem:
           "rounded-sm py-2 px-3 text-base diatype-m-medium bg-surface-secondary-rice hover:bg-surface-tertiary-rice",
         trigger:
-          "shadow-account-card bg-surface-secondary-rice h-[46px] px-4 py-3 rounded-md diatype-m-regular gap-3",
+          "shadow-account-card bg-surface-secondary-rice h-[46px] px-4 py-3 rounded-md diatype-m-regular gap-3 md:min-w-[12.375rem]",
       },
       plain: {
         base: "min-w-fit",

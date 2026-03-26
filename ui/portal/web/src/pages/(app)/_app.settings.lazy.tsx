@@ -5,6 +5,7 @@ import { DisplaySection } from "~/components/settings/DisplaySection";
 import { KeyManagementSection } from "~/components/settings/KeyManagementSection";
 import { SessionSection } from "~/components/settings/SessionSection";
 
+import { useAccount } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const Route = createLazyFileRoute("/(app)/_app/settings")({
@@ -12,6 +13,8 @@ export const Route = createLazyFileRoute("/(app)/_app/settings")({
 });
 
 function SettingsApplet() {
+  const { isConnected } = useAccount();
+
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-5 p-4 pt-6 mb-16">
       <MobileTitle title={m["settings.title"]()} />
@@ -28,19 +31,21 @@ function SettingsApplet() {
       <div className="flex flex-col gap-3">
         <h3 className="diatype-lg-bold text-ink-primary-900">{m["settings.display"]()}</h3>
         <DisplaySection>
+          <DisplaySection.Theme />
           <DisplaySection.Language />
           <DisplaySection.FormatNumber />
           <DisplaySection.DateFormat />
           <DisplaySection.TimeFormat />
           <DisplaySection.TimeZone />
           <DisplaySection.ChartEngine />
-          <DisplaySection.Theme />
         </DisplaySection>
       </div>
-      <div className="flex flex-col gap-3">
-        <h3 className="diatype-lg-bold text-ink-primary-900">{m["settings.keyManagement.title"]()}</h3>
-        <KeyManagementSection />
-      </div>
+      {isConnected && (
+        <div className="flex flex-col gap-3">
+          <h3 className="diatype-lg-bold text-ink-primary-900">{m["settings.keyManagement.title"]()}</h3>
+          <KeyManagementSection />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,11 +1,9 @@
-use clickhouse::query::RowCursor;
 #[cfg(feature = "tracing")]
 use itertools::Itertools;
-
 use {
     crate::entities::{CandleInterval, candle::Candle},
     chrono::{DateTime, Utc},
-    clickhouse::Row,
+    clickhouse::{Row, query::RowCursor},
     serde::Deserialize,
 };
 

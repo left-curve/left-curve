@@ -48,11 +48,11 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
       {isLg ? <TestnetBanner /> : null}
 
       <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
-        <Link to="/" className="w-fit">
+        <Link to="/" className="w-fit drag-none">
           <img
             src="/dango-logo.svg"
             alt="dango logo"
-            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card select-none bg-surface-secondary-rice"
+            className="h-11 order-1 cursor-pointer drag-none hidden lg:flex rounded-full shadow-account-card select-none bg-surface-secondary-rice"
           />
         </Link>
         <div

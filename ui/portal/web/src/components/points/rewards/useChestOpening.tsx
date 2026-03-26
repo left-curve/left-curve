@@ -1,7 +1,10 @@
 import { createContext } from "@left-curve/applets-kit";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { type PropsWithChildren, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
+import { type BoxReward, openBox } from "@left-curve/store";
 import { ChestOpeningOverlay } from "./ChestOpeningOverlay";
 
 type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
@@ -16,7 +19,8 @@ const CHEST_ASSETS: Record<BoxVariant, string> = {
 const generateFrames = (variant: string) =>
   Array.from(
     { length: 50 },
-    (_, i) => `/images/points/boxes-animation/${variant}/frame_${String(i + 1).padStart(4, "0")}.webp`,
+    (_, i) =>
+      `/images/points/boxes-animation/${variant}/frame_${String(i + 1).padStart(4, "0")}.webp`,
   );
 
 const ANIMATION_FRAMES: Partial<Record<BoxVariant, string[]>> = {
@@ -71,12 +75,25 @@ type ChestOpeningContextValue = {
   currentVariant: BoxVariant | null;
 };
 
-const [ChestOpeningContextProvider, useChestOpeningContext] = createContext<ChestOpeningContextValue>({
-  name: "ChestOpeningContext",
-});
+const [ChestOpeningContextProvider, useChestOpeningContext] =
+  createContext<ChestOpeningContextValue>({
+    name: "ChestOpeningContext",
+  });
 
-export const ChestOpeningProvider: React.FC<PropsWithChildren> = ({ children }) => {
+type ChestOpeningProviderProps = PropsWithChildren<{
+  userIndex?: number;
+  unopenedBoxes?: Record<string, BoxReward[]>;
+}>;
+
+export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
+  children,
+  userIndex,
+  unopenedBoxes = {},
+}) => {
+  const queryClient = useQueryClient();
+  const pointsUrl = window.dango.urls.pointsUrl;
   const [currentVariant, setCurrentVariant] = useState<BoxVariant | null>(null);
+  const [currentBox, setCurrentBox] = useState<BoxReward | null>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [animationComplete, setAnimationComplete] = useState(false);
   const animationRef = useRef<number | null>(null);
@@ -84,6 +101,14 @@ export const ChestOpeningProvider: React.FC<PropsWithChildren> = ({ children }) 
 
   const isOpen = currentVariant !== null;
   const animationFrames = currentVariant ? (ANIMATION_FRAMES[currentVariant] ?? null) : null;
+
+  const openBoxMutation = useMutation({
+    mutationFn: ({ boxUserIndex, boxId }: { boxUserIndex: number; boxId: string }) =>
+      openBox(pointsUrl, boxUserIndex, boxId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boxes", userIndex] });
+    },
+  });
 
   useEffect(() => {
     prefetchImages();
@@ -128,22 +153,34 @@ export const ChestOpeningProvider: React.FC<PropsWithChildren> = ({ children }) 
     };
   }, [isOpen, animationFrames, animationComplete]);
 
-  const openChest = useCallback((variant: BoxVariant) => {
-    setCurrentFrame(0);
-    setAnimationComplete(false);
-    lastFrameTimeRef.current = 0;
-    setCurrentVariant(variant);
-  }, []);
+  const openChest = useCallback(
+    (variant: BoxVariant) => {
+      const boxes = unopenedBoxes[variant];
+      if (!boxes || boxes.length === 0) return;
+
+      const box = boxes[0];
+      setCurrentBox(box);
+      setCurrentFrame(0);
+      setAnimationComplete(false);
+      lastFrameTimeRef.current = 0;
+      setCurrentVariant(variant);
+    },
+    [unopenedBoxes],
+  );
 
   const closeChest = useCallback(() => {
+    if (currentBox && userIndex) {
+      openBoxMutation.mutate({ boxUserIndex: userIndex, boxId: currentBox.box_id });
+    }
     setCurrentVariant(null);
+    setCurrentBox(null);
     setCurrentFrame(0);
     setAnimationComplete(false);
     lastFrameTimeRef.current = 0;
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
-  }, []);
+  }, [currentBox, userIndex, openBoxMutation]);
 
   const onAnimationComplete = useCallback(() => {
     setAnimationComplete(true);
@@ -163,6 +200,7 @@ export const ChestOpeningProvider: React.FC<PropsWithChildren> = ({ children }) 
         createPortal(
           <ChestOpeningOverlay
             variant={currentVariant!}
+            loot={currentBox?.loot ?? null}
             onClose={closeChest}
             currentFrame={currentFrame}
             animationFrames={animationFrames}

@@ -980,6 +980,9 @@ pub struct Liquidated {
 
     /// Bankruptcy price used for ADL fills, or `None` if no ADL happened.
     pub adl_price: Option<UsdPrice>,
+
+    /// PnL realized by the liquidated user from ADL fills (zero if no ADL).
+    pub adl_realized_pnl: UsdValue,
 }
 
 /// Event indicating a counter-party's position was reduced during ADL.
