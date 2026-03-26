@@ -187,33 +187,33 @@ Cumulative data is bucketed by day (see [§7a](#7a-cumulative-daily-buckets)), s
 
 Each user has a `UserReferralData` record keyed by (user, day). The day is the block timestamp rounded down to midnight. Fields are cumulative (monotonically increasing), so a rolling window is computed by differencing two buckets.
 
-| Field                             | Type       | Description                                        |
-| --------------------------------- | ---------- | -------------------------------------------------- |
-| `volume`                          | `UsdValue` | User's own cumulative trading volume.              |
-| `commission_received`             | `UsdValue` | Total commission received by this user.            |
-| `referee_count`                   | `u32`      | Number of direct referees.                         |
-| `referees_volume`                 | `UsdValue` | Cumulative trading volume of direct referees.      |
-| `referees_commission_distributed` | `UsdValue` | Total commission distributed from direct referees. |
-| `active_users`                    | `Uint128`  | Cumulative daily active referee count.             |
+| Field                             | Type       | Description                                           |
+| --------------------------------- | ---------- | ----------------------------------------------------- |
+| `volume`                          | `UsdValue` | User's own cumulative trading volume.                 |
+| `commission_shared_by_referrer`   | `UsdValue` | Total commission shared by this user's referrer.      |
+| `referee_count`                   | `u32`      | Number of direct referees.                            |
+| `referees_volume`                 | `UsdValue` | Cumulative trading volume of direct referees.         |
+| `commission_earned_from_referees` | `UsdValue` | Total commission earned from direct referees' trades. |
+| `active_users`                    | `Uint128`  | Cumulative daily active referee count.                |
 
 When a referred user trades:
 
-- The **referee's** bucket: $\mathtt{volume}$ and $\mathtt{commissionReceived}$ increment.
-- The **direct referrer's** bucket: $\mathtt{refereesVolume}$ and $\mathtt{refereesCommissionDistributed}$ increment.
-- **Upstream referrers**: only $\mathtt{refereesCommissionDistributed}$ increments (and only if they received a non-zero commission).
+- The **referee's** bucket: $\mathtt{volume}$ and $\mathtt{commissionSharedByReferrer}$ increment.
+- The **direct referrer's** bucket: $\mathtt{refereesVolume}$ and $\mathtt{commissionEarnedFromReferees}$ increment.
+- **Upstream referrers**: only $\mathtt{commissionEarnedFromReferees}$ increments (and only if they received a non-zero commission).
 
 ### 7b. Per-referee statistics
 
 For every (referrer, referee) pair, a `RefereeStats` record tracks:
 
-| Field                 | Type        | Description                                        |
-| --------------------- | ----------- | -------------------------------------------------- |
-| `registered_at`       | `Timestamp` | When the referral was established.                 |
-| `volume`              | `UsdValue`  | Referee's total trading volume.                    |
-| `commission_received` | `UsdValue`  | Commission earned by referrer from this referee.   |
-| `last_day_active`     | `Timestamp` | Last day (rounded to midnight) the referee traded. |
+| Field               | Type        | Description                                        |
+| ------------------- | ----------- | -------------------------------------------------- |
+| `registered_at`     | `Timestamp` | When the referral was established.                 |
+| `volume`            | `UsdValue`  | Referee's total trading volume.                    |
+| `commission_earned` | `UsdValue`  | Commission earned by referrer from this referee.   |
+| `last_day_active`   | `Timestamp` | Last day (rounded to midnight) the referee traded. |
 
-These records are multi-indexed for sorted queries by `registered_at`, `volume`, or `commission_received`.
+These records are multi-indexed for sorted queries by `registered_at`, `volume`, or `commission_earned`.
 
 ### 7c. Daily active users
 

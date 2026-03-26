@@ -146,8 +146,8 @@ pub struct RefereeStats {
     /// Total trading volume made by the referee (USD).
     pub volume: UsdValue,
 
-    /// Total commission received by the referrer from this referee (USD).
-    pub commission_received: UsdValue,
+    /// Total commission earned by the referrer from this referee (USD).
+    pub commission_earned: UsdValue,
 
     /// Timestamp of the last day the referee was active.
     pub last_day_active: Timestamp,
@@ -418,8 +418,8 @@ pub struct UserReferralData {
     /// The user's own trading volume (cumulative).
     pub volume: UsdValue,
 
-    /// Total commission received by this user (cumulative).
-    pub commission_received: UsdValue,
+    /// Total commission shared by this user's referrer (cumulative).
+    pub commission_shared_by_referrer: UsdValue,
 
     /// Number of direct referees this user has.
     pub referee_count: u32,
@@ -428,7 +428,7 @@ pub struct UserReferralData {
     pub referees_volume: UsdValue,
 
     /// Total commission distributed from this user's referees (cumulative).
-    pub referees_commission_distributed: UsdValue,
+    pub commission_earned_from_referees: UsdValue,
 
     /// Number of referees that have traded on a specific day.
     pub active_users: Uint128,
@@ -439,14 +439,14 @@ impl UserReferralData {
     pub fn checked_sub(&self, other: &Self) -> MathResult<Self> {
         Ok(Self {
             volume: self.volume.checked_sub(other.volume)?,
-            commission_received: self
-                .commission_received
-                .checked_sub(other.commission_received)?,
+            commission_shared_by_referrer: self
+                .commission_shared_by_referrer
+                .checked_sub(other.commission_shared_by_referrer)?,
             referee_count: self.referee_count.saturating_sub(other.referee_count),
             referees_volume: self.referees_volume.checked_sub(other.referees_volume)?,
-            referees_commission_distributed: self
-                .referees_commission_distributed
-                .checked_sub(other.referees_commission_distributed)?,
+            commission_earned_from_referees: self
+                .commission_earned_from_referees
+                .checked_sub(other.commission_earned_from_referees)?,
             active_users: self.active_users.saturating_sub(other.active_users),
         })
     }

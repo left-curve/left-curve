@@ -68,7 +68,7 @@ pub fn set_referral(
     REFERRER_TO_REFEREE_STATISTICS.save(ctx.storage, (referrer, referee), &RefereeStats {
         registered_at: ctx.block.timestamp,
         volume: UsdValue::ZERO,
-        commission_received: UsdValue::ZERO,
+        commission_earned: UsdValue::ZERO,
         last_day_active: Duration::from_nanos(0),
     })?;
 
@@ -379,7 +379,7 @@ pub(crate) fn apply_fee_commissions(
         // Payer's trade volume for this fill.
         let payer_volume = volumes.get(&payer).copied().unwrap_or(UsdValue::ZERO);
 
-        // Update payer's referral data: volume + commission_received.
+        // Update payer's referral data: volume + commission_shared_by_referrer.
         increment_referral_data(
             storage,
             payer_index,
@@ -390,7 +390,7 @@ pub(crate) fn apply_fee_commissions(
             UsdValue::ZERO,
         )?;
 
-        // Update first referrer's referral data: referees_volume + referees_commission_distributed.
+        // Update first referrer's referral data: referees_volume + commission_earned_from_referees.
         increment_referral_data(
             storage,
             first_referrer,
@@ -445,7 +445,7 @@ pub(crate) fn apply_fee_commissions(
                         total_vault_deduction.checked_add_assign(upstream_commission)?;
                     }
 
-                    // Update upstream referrer's referral data: referees_commission_distributed only.
+                    // Update upstream referrer's referral data: commission_earned_from_referees only.
                     increment_referral_data(
                         storage,
                         next_referrer,
@@ -540,21 +540,21 @@ fn increment_referral_data(
     user_index: UserIndex,
     current_time: Timestamp,
     volume_delta: UsdValue,
-    commission_delta: UsdValue,
+    commission_shared_delta: UsdValue,
     referees_volume_delta: UsdValue,
-    referees_commission_delta: UsdValue,
+    commission_earned_delta: UsdValue,
 ) -> grug::StdResult<()> {
     let today = round_to_day(current_time);
 
     let mut data = load_referral_data(storage, user_index, None)?;
 
     data.volume.checked_add_assign(volume_delta)?;
-    data.commission_received
-        .checked_add_assign(commission_delta)?;
+    data.commission_shared_by_referrer
+        .checked_add_assign(commission_shared_delta)?;
     data.referees_volume
         .checked_add_assign(referees_volume_delta)?;
-    data.referees_commission_distributed
-        .checked_add_assign(referees_commission_delta)?;
+    data.commission_earned_from_referees
+        .checked_add_assign(commission_earned_delta)?;
 
     USER_REFERRAL_DATA.save(storage, (user_index, today), &data)?;
 
@@ -580,7 +580,7 @@ fn update_referee_stats(
 
     stats.volume.checked_add_assign(volume_delta)?;
     stats
-        .commission_received
+        .commission_earned
         .checked_add_assign(commission_delta)?;
 
     // If this referee hasn't traded today yet, increment the referrer's

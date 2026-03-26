@@ -214,7 +214,7 @@ impl ReferrerStatisticsIndex<'static> {
                 volume_namespace,
             ),
             commission: MultiIndex::new(
-                |(referrer, _), data| (*referrer, data.commission_received),
+                |(referrer, _), data| (*referrer, data.commission_earned),
                 pk_namespace,
                 commission_namespace,
             ),

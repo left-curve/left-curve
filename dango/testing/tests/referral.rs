@@ -974,7 +974,7 @@ fn commission_rate_margins() {
         .map(|i| query_referral_data(&suite, contracts.perps, i, None))
         .collect();
 
-    // User7 (payer): volume increased, commission_received increased.
+    // User7 (payer): volume increased, commission_shared_by_referrer increased.
     assert_eq!(
         post_referral_data[6].volume,
         initial_referral_data[6]
@@ -983,14 +983,14 @@ fn commission_rate_margins() {
             .unwrap()
     );
     assert_eq!(
-        post_referral_data[6].commission_received,
+        post_referral_data[6].commission_shared_by_referrer,
         initial_referral_data[6]
-            .commission_received
+            .commission_shared_by_referrer
             .checked_add(referee_share)
             .unwrap()
     );
 
-    // User6 (1st referrer): referees_volume += trade_value, referees_commission_distributed += referrer_commission.
+    // User6 (1st referrer): referees_volume += trade_value, commission_earned_from_referees += referrer_commission.
     assert_eq!(
         post_referral_data[5].referees_volume,
         initial_referral_data[5]
@@ -999,22 +999,22 @@ fn commission_rate_margins() {
             .unwrap()
     );
     assert_eq!(
-        post_referral_data[5].referees_commission_distributed,
+        post_referral_data[5].commission_earned_from_referees,
         initial_referral_data[5]
-            .referees_commission_distributed
+            .commission_earned_from_referees
             .checked_add(referrer_commission)
             .unwrap()
     );
 
-    // User5 (2nd referrer): referees_volume unchanged, referees_commission_distributed += user5_commission.
+    // User5 (2nd referrer): referees_volume unchanged, commission_earned_from_referees += user5_commission.
     assert_eq!(
         post_referral_data[4].referees_volume,
         initial_referral_data[4].referees_volume
     );
     assert_eq!(
-        post_referral_data[4].referees_commission_distributed,
+        post_referral_data[4].commission_earned_from_referees,
         initial_referral_data[4]
-            .referees_commission_distributed
+            .commission_earned_from_referees
             .checked_add(user5_commission)
             .unwrap()
     );
@@ -1025,15 +1025,15 @@ fn commission_rate_margins() {
     // User3 (4th): no referral data change.
     assert_eq!(post_referral_data[2], initial_referral_data[2]);
 
-    // User2 (5th referrer): referees_volume unchanged, referees_commission_distributed += user2_commission.
+    // User2 (5th referrer): referees_volume unchanged, commission_earned_from_referees += user2_commission.
     assert_eq!(
         post_referral_data[1].referees_volume,
         initial_referral_data[1].referees_volume
     );
     assert_eq!(
-        post_referral_data[1].referees_commission_distributed,
+        post_referral_data[1].commission_earned_from_referees,
         initial_referral_data[1]
-            .referees_commission_distributed
+            .commission_earned_from_referees
             .checked_add(user2_commission)
             .unwrap()
     );
