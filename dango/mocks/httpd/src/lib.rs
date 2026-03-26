@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use {
     anyhow::bail,
     dango_genesis::{Codes, Contracts, GenesisCodes},
