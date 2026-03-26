@@ -446,7 +446,7 @@ fn process_triggered_order(
         next_order_id,
         index_updates,
         volumes,
-        vault_fees,
+        fee_breakdowns,
     ) = match result {
         Err(_) => {
             // Order couldn't fill (slippage exceeded or no liquidity).
@@ -491,7 +491,7 @@ fn process_triggered_order(
         current_time,
         &param.referral,
         &mut maker_states,
-        &vault_fees,
+        &fee_breakdowns,
         &volumes,
     )?;
 

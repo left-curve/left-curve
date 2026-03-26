@@ -22,8 +22,9 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            LimitOrder, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
-            PairParam, PairState, Param, ReasonForOrderRemoval, State, UserState,
+            FeeBreakdown, LimitOrder, OrderFilled, OrderId, OrderKind, OrderPersisted,
+            OrderRemoved, PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State,
+            UserState,
         },
     },
     grug::{
@@ -70,7 +71,7 @@ pub fn submit_order(
         next_order_id,
         index_updates,
         volumes,
-        vault_fees,
+        fee_breakdowns,
     ) = _submit_order(
         ctx.storage,
         ctx.sender,
@@ -103,7 +104,7 @@ pub fn submit_order(
         ctx.block.timestamp,
         &param.referral,
         &mut maker_states,
-        &vault_fees,
+        &fee_breakdowns,
         &volumes,
     )?;
 
@@ -277,7 +278,7 @@ pub(crate) fn _submit_order(
     OrderId,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, FeeBreakdown>,
 )> {
     // -------------- Step 1. Check minimum order size -------------------------
 
@@ -434,7 +435,7 @@ pub(crate) fn _submit_order(
             .unwrap_or_default()
     });
 
-    let vault_fees = settle_pnls(
+    let fee_breakdowns = settle_pnls(
         contract,
         param,
         state,
@@ -452,7 +453,7 @@ pub(crate) fn _submit_order(
         next_order_id,
         index_updates,
         volumes,
-        vault_fees,
+        fee_breakdowns,
     ))
 }
 
@@ -830,9 +831,8 @@ pub fn settle_fill(
 /// - `maker_states[*].margin` — adjusted by PnL and fees (including the vault's
 ///   `UserState`).
 ///
-/// Returns: per-user vault fees — the portion of each user's trading fee that
-/// went to the vault, excluding the protocol treasury's share. Keyed by the
-/// fee-paying user's address.
+/// Returns: per-user fee breakdown — the split between protocol treasury and
+/// vault for each fee-paying user.
 pub fn settle_pnls(
     contract: Addr,
     param: &Param,
@@ -842,7 +842,7 @@ pub fn settle_pnls(
     maker_states: &mut BTreeMap<Addr, UserState>,
     pnls: BTreeMap<Addr, UsdValue>,
     fees: BTreeMap<Addr, UsdValue>,
-) -> anyhow::Result<BTreeMap<Addr, UsdValue>> {
+) -> anyhow::Result<BTreeMap<Addr, FeeBreakdown>> {
     debug_assert!(
         !maker_states.contains_key(&taker),
         "taker must not be in maker_states — self-trade prevention violated"
@@ -850,7 +850,7 @@ pub fn settle_pnls(
 
     // ------------------------------ Settle fees ------------------------------
 
-    let mut vault_fees = BTreeMap::new();
+    let mut fee_breakdowns = BTreeMap::new();
 
     for (user, fee) in fees {
         if fee.is_zero() || user == contract {
@@ -882,7 +882,10 @@ pub fn settle_pnls(
                 .checked_sub_assign(fee)?;
         }
 
-        vault_fees.insert(user, vault_fee);
+        fee_breakdowns.insert(user, FeeBreakdown {
+            protocol_fee,
+            vault_fee,
+        });
     }
 
     // ------------------------------ Settle PnLs ------------------------------
@@ -903,7 +906,7 @@ pub fn settle_pnls(
         }
     }
 
-    Ok(vault_fees)
+    Ok(fee_breakdowns)
 }
 
 /// Validate and store a post-only limit order. Rejects if the limit price

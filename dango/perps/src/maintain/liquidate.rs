@@ -24,8 +24,8 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            BadDebtCovered, Deleveraged, LimitOrder, Liquidated, OrderId, PairId, PairParam,
-            PairState, Param, ReasonForOrderRemoval, State, UserState,
+            BadDebtCovered, Deleveraged, FeeBreakdown, LimitOrder, Liquidated, OrderId, PairId,
+            PairParam, PairState, Param, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
@@ -107,7 +107,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------------- 5. Business logic ---------------------------
 
-    let (mut maker_states, order_mutations, index_updates, volumes, vault_fees) = _liquidate(
+    let (mut maker_states, order_mutations, index_updates, volumes, fee_breakdowns) = _liquidate(
         ctx.storage,
         user,
         ctx.contract,
@@ -135,7 +135,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         ctx.block.timestamp,
         &param.referral,
         &mut maker_states,
-        &vault_fees,
+        &fee_breakdowns,
         &volumes,
     )?;
 
@@ -284,7 +284,7 @@ fn _liquidate(
     )>,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, FeeBreakdown>,
 )> {
     // -------------------- Step 1: Assert liquidatable -------------------------
 
@@ -355,7 +355,7 @@ fn _liquidate(
             .unwrap_or_default()
     });
 
-    let vault_fees = settle_pnls(
+    let fee_breakdowns = settle_pnls(
         contract,
         param,
         state,
@@ -414,7 +414,7 @@ fn _liquidate(
         all_order_mutations,
         all_index_updates,
         all_volumes,
-        vault_fees,
+        fee_breakdowns,
     ))
 }
 

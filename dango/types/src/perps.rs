@@ -95,6 +95,15 @@ pub enum TriggerDirection {
     Below,
 }
 
+/// Per-user fee breakdown after splitting between protocol treasury and vault.
+#[derive(Clone, Copy)]
+pub struct FeeBreakdown {
+    /// Portion of the fee routed to the protocol treasury.
+    pub protocol_fee: UsdValue,
+    /// Portion of the fee credited to the vault.
+    pub vault_fee: UsdValue,
+}
+
 /// Parameters for the referral system.
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]

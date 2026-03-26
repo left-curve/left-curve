@@ -9,8 +9,8 @@ use {
         DangoQuerier, UsdValue,
         account_factory::{self, UserIndex},
         perps::{
-            CommissionReboundRate, FeeShareRatio, Referee, RefereeStats, Referral, ReferralParam,
-            Referrer, ReferrerSettings, UserReferralData, UserState,
+            CommissionReboundRate, FeeBreakdown, FeeShareRatio, Referee, RefereeStats, Referral,
+            ReferralParam, Referrer, ReferrerSettings, UserReferralData, UserState,
         },
     },
     grug::{
@@ -294,7 +294,7 @@ pub(crate) fn apply_fee_rebounds(
     current_time: Timestamp,
     referral_param: &ReferralParam,
     user_states: &mut BTreeMap<Addr, UserState>,
-    vault_fees: &BTreeMap<Addr, UsdValue>,
+    fee_breakdowns: &BTreeMap<Addr, FeeBreakdown>,
     volumes: &BTreeMap<Addr, UsdValue>,
 ) -> anyhow::Result<()> {
     if !referral_param.active {
@@ -307,7 +307,8 @@ pub(crate) fn apply_fee_rebounds(
 
     let account_factory = querier.query_account_factory()?;
 
-    for (&payer, &vault_fee) in vault_fees {
+    for (&payer, &fee_breakdown) in fee_breakdowns {
+        let vault_fee = fee_breakdown.vault_fee;
         if vault_fee.is_zero() || payer == perps_contract {
             continue;
         }
