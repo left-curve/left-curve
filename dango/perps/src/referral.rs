@@ -9,13 +9,14 @@ use {
         DangoQuerier, UsdValue,
         account_factory::{self, UserIndex},
         perps::{
-            CommissionReboundRate, FeeBreakdown, FeeShareRatio, Referee, RefereeStats, Referral,
-            ReferralParam, Referrer, ReferrerSettings, UserReferralData, UserState,
+            CommissionReboundRate, FeeBreakdown, FeeRebounded, FeeShareRatio, Referee,
+            RefereeStats, Referral, ReferralParam, Referrer, ReferrerSettings, UserReferralData,
+            UserState,
         },
     },
     grug::{
-        Addr, Bound, Duration, MutableCtx, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, QuerierWrapper, Response, Storage, Timestamp, Uint128,
+        Addr, Bound, Duration, EventBuilder, MutableCtx, Number, NumberConst,
+        Order as IterationOrder, QuerierExt, QuerierWrapper, Response, Storage, Timestamp, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -296,6 +297,7 @@ pub(crate) fn apply_fee_rebounds(
     user_states: &mut BTreeMap<Addr, UserState>,
     fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
     volumes: &BTreeMap<Addr, UsdValue>,
+    events: &mut EventBuilder,
 ) -> anyhow::Result<()> {
     if !referral_param.active {
         return Ok(());
@@ -347,6 +349,9 @@ pub(crate) fn apply_fee_rebounds(
         let referrer_rebound = vault_fee
             .checked_mul(first_cr)?
             .checked_sub(referee_rebound)?;
+
+        // Track rebounds per chain level for the event.
+        let mut rebounds = vec![referee_rebound, referrer_rebound];
 
         // Credit the referee.
         if referee_rebound.is_non_zero() {
@@ -422,6 +427,8 @@ pub(crate) fn apply_fee_rebounds(
                 let marginal = next_cr.checked_sub(max_cr)?;
                 let commission_rebound = vault_fee.checked_mul(marginal)?;
 
+                rebounds.push(commission_rebound);
+
                 if commission_rebound.is_non_zero() {
                     if let Some(addr) =
                         retrieve_master_account(querier, next_referrer, account_factory)
@@ -443,10 +450,19 @@ pub(crate) fn apply_fee_rebounds(
                 }
 
                 max_cr = next_cr;
+            } else {
+                rebounds.push(UsdValue::ZERO);
             }
 
             current_user = next_referrer;
         }
+
+        events.push(FeeRebounded {
+            payer: payer_index,
+            protocol_fee: fee_breakdown.protocol_fee,
+            vault_fee,
+            rebounds,
+        })?;
     }
 
     // Deduct the total rebound from the vault margin.

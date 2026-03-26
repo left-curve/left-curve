@@ -1010,6 +1010,23 @@ pub struct BadDebtCovered {
     pub insurance_fund_remaining: UsdValue,
 }
 
+/// Event emitted when referral fee rebounds are applied for a fee-paying user.
+///
+/// `rebounds[0]` is the payer (referee), `rebounds[1]` is the first referrer,
+/// and so on up the chain. Zero entries indicate no rebound at that level.
+#[grug::event("fee_rebounded")]
+#[grug::derive(Serde)]
+pub struct FeeRebounded {
+    /// User index of the fee payer.
+    pub payer: UserIndex,
+    /// Protocol treasury portion of the fee.
+    pub protocol_fee: UsdValue,
+    /// Vault portion of the fee (before rebounds).
+    pub vault_fee: UsdValue,
+    /// Rebound amounts per chain level: [payer, 1st referrer, 2nd, ...].
+    pub rebounds: Vec<UsdValue>,
+}
+
 /// Event indicating a referral relationship has been registered.
 #[grug::event("referral_set")]
 #[grug::derive(Serde)]

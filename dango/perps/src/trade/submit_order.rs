@@ -106,6 +106,7 @@ pub fn submit_order(
         &mut maker_states,
         fee_breakdowns,
         &volumes,
+        &mut events,
     )?;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
