@@ -1016,7 +1016,77 @@
     "title": "REFERRAL PROGRAM",
     "readRules": "Read Rules",
     "affiliate": "Affiliate",
-    "trader": "Trader"
+    "trader": "Trader",
+    "stats": {
+      "commissionRate": "Commission Rate (You/ Referee)",
+      "totalCommissionPoints": "Total Commission Points",
+      "totalReferralVolume": "Total Referral Volume",
+      "totalReferees": "Total Referees",
+      "totalActiveReferees": "Total Active Referees",
+      "myReferralLink": "My Referral Link",
+      "myReferralCode": "My Referral Code",
+      "rebateRate": "Rebate Rate",
+      "totalRebates": "Total Rebates",
+      "totalTradingVolume": "Total Trading Volume",
+      "yourReferrer": "Your Referrer",
+      "notLoggedIn": "You are not logged in.",
+      "volumeUntilTier2": "{amount} volume until Tier 2"
+    },
+    "affiliateSection": {
+      "unlockTitle": "Unlock your referral code with $10k volume!",
+      "unlockDescription": "Invite your friends and earn up to {percent} commission.",
+      "tradeNow": "Trade now",
+      "logIn": "Log In"
+    },
+    "traderSection": {
+      "referTitle": "Refer friends and unlock more rewards together!",
+      "referDescription": "Get up to {percent} fee rebates by submitting your friend's referral code!",
+      "referralCodeLabel": "Referral Code",
+      "referralCodePlaceholder": "Enter your friend's referral code",
+      "submit": "Submit"
+    },
+    "commission": {
+      "title": "Commission Rates",
+      "myCommission": "My Commission",
+      "myReferees": "My Referees",
+      "statistics": "Statistics",
+      "logInToView": "Log in to view your data",
+      "noReferees": "No referees yet",
+      "noRebates": "No rebate history yet",
+      "loadingChart": "Loading chart...",
+      "columns": {
+        "tier": "Tier",
+        "tradingVolume": "Trading Volume",
+        "thirtyDayReferralVolume": "30-day Referral Volume",
+        "commission": "Commission",
+        "myCommission": "My Commission",
+        "referralVolume": "Referral Volume",
+        "activeUsers": "Active Users",
+        "date": "Date",
+        "userName": "User Name",
+        "totalVolume": "Total Volume",
+        "totalCommission": "Total Commission",
+        "dateJoined": "Date Joined"
+      }
+    },
+    "rebate": {
+      "myRebates": "My Rebates",
+      "statistics": "Statistics",
+      "columns": {
+        "rebates": "Rebates",
+        "tradingVolume": "Trading Volume",
+        "date": "Date"
+      }
+    },
+    "period": {
+      "sevenDays": "Period: 7D",
+      "thirtyDays": "Period: 30D",
+      "ninetyDays": "Period: 90D"
+    },
+    "metric": {
+      "commission": "Commission",
+      "volume": "Volume"
+    }
   },
   "points": {
     "campaign": "Campaign",

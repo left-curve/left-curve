@@ -12,8 +12,7 @@ type PointsHistoryRow = {
   points: number;
 };
 
-// TODO: make configurable or fetch from backend
-const EVENT_START_EPOCH = 1735689600; // Jan 1, 2025 00:00:00 UTC
+const EVENT_START_EPOCH = 1735689600;
 const SECONDS_PER_WEEK = 604_800;
 
 const getSourceLabel = (source: string): string => {

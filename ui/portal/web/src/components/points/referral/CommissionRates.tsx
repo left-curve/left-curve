@@ -1,6 +1,7 @@
 import { Cell, Skeleton, Table } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
-import { useReferralConfig } from "@left-curve/store";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { useAccount, useReferralConfig } from "@left-curve/store";
 import type React from "react";
 import { useMemo } from "react";
 
@@ -11,15 +12,10 @@ type CommissionTier = {
   commission: string;
 };
 
-/**
- * Format a volume value for display
- * Converts from microunits to human readable format
- */
 const formatVolume = (value: string): string => {
   const num = Number(value);
   if (Number.isNaN(num) || num === 0) return "0";
 
-  // Convert from microunits (1e-6) to base units
   const baseValue = num / 1_000_000;
 
   if (baseValue >= 1_000_000_000) {
@@ -34,16 +30,12 @@ const formatVolume = (value: string): string => {
   return `~$${baseValue.toLocaleString()}`;
 };
 
-/**
- * Format a percentage (e.g., "0.2" -> "20%")
- */
 const formatPercent = (value: string): string => {
   const num = Number(value);
   if (Number.isNaN(num)) return "0%";
   return `${(num * 100).toFixed(0)}%`;
 };
 
-// Default tiers to show while loading or if config is not available
 const DEFAULT_TIERS: CommissionTier[] = [
   {
     tier: "Tier 1",
@@ -72,15 +64,14 @@ const DEFAULT_TIERS: CommissionTier[] = [
 ];
 
 export const CommissionRates: React.FC = () => {
+  const { isConnected } = useAccount();
   const { config, isLoading } = useReferralConfig();
 
-  // Transform config tiers to display format
   const commissionTiers = useMemo<CommissionTier[]>(() => {
     if (!config?.tiers || config.tiers.length === 0) {
       return DEFAULT_TIERS;
     }
 
-    // Create Tier 1 with default commission (no volume requirement)
     const tiers: CommissionTier[] = [
       {
         tier: "Tier 1",
@@ -90,7 +81,6 @@ export const CommissionRates: React.FC = () => {
       },
     ];
 
-    // Add tiers from config
     config.tiers.forEach((tier, index) => {
       tiers.push({
         tier: `Tier ${index + 2}`,
@@ -105,27 +95,29 @@ export const CommissionRates: React.FC = () => {
 
   const columns: TableColumn<CommissionTier> = [
     {
-      header: "Tier",
+      header: m["referral.commission.columns.tier"](),
       cell: ({ row }) => <Cell.Text text={row.original.tier} />,
     },
     {
-      header: "Trading Volume",
+      header: m["referral.commission.columns.tradingVolume"](),
       cell: ({ row }) => <Cell.Text text={row.original.tradingVolume} />,
     },
     {
-      header: "30-day Referral Volume",
+      header: m["referral.commission.columns.thirtyDayReferralVolume"](),
       cell: ({ row }) => <Cell.Text text={row.original.thirtyDayReferralVolume} />,
     },
     {
-      header: "Commission",
+      header: m["referral.commission.columns.commission"](),
       cell: ({ row }) => <Cell.Text text={row.original.commission} />,
     },
   ];
 
+  if (!isConnected) return null;
+
   if (isLoading) {
     return (
       <div className="w-full flex flex-col gap-4">
-        <h3 className="exposure-m-italic text-ink-primary-900">Commission Rates</h3>
+        <h3 className="exposure-m-italic text-ink-primary-900">{m["referral.commission.title"]()}</h3>
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="w-full h-12" />
@@ -137,7 +129,7 @@ export const CommissionRates: React.FC = () => {
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <h3 className="exposure-m-italic text-ink-primary-900">Commission Rates</h3>
+      <h3 className="exposure-m-italic text-ink-primary-900">{m["referral.commission.title"]()}</h3>
       <Table
         data={commissionTiers}
         columns={columns}

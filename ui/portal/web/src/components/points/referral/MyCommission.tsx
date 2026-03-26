@@ -9,12 +9,8 @@ import {
   twMerge,
 } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
-import {
-  useAccount,
-  useRefereeStats,
-  useWeeklyPoints,
-  useUserVolume,
-} from "@left-curve/store";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { useAccount, useRefereeStats, useWeeklyPoints, useUserVolume } from "@left-curve/store";
 import type { RefereeStats } from "@left-curve/store";
 import type React from "react";
 import { Suspense, lazy, useMemo, useState } from "react";
@@ -48,9 +44,6 @@ type RebateRow = {
   date: string;
 };
 
-/**
- * Format a number as USD currency
- */
 const formatUSD = (value: number | string): string => {
   const num = typeof value === "string" ? Number(value) : value;
   if (Number.isNaN(num)) return "$0.00";
@@ -62,9 +55,6 @@ const formatUSD = (value: number | string): string => {
   }).format(num);
 };
 
-/**
- * Format a timestamp as a date string
- */
 const formatDate = (timestamp: number): string => {
   return new Date(timestamp * 1000).toLocaleDateString("en-US", {
     year: "numeric",
@@ -73,31 +63,34 @@ const formatDate = (timestamp: number): string => {
   });
 };
 
+const NotConnectedMessage: React.FC = () => (
+  <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
+    <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.commission.logInToView"]()}</p>
+  </div>
+);
+
 const CommissionTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Use weekly points to get commission history by week
   const { weeklyPoints, isLoading } = useWeeklyPoints({
     pointsUrl: "", // Will be set by the hook from config
     userIndex,
   });
 
-  // Transform weekly points to commission rows
   const commissionData = useMemo<CommissionRow[]>(() => {
     if (!weeklyPoints) return [];
 
     return Object.entries(weeklyPoints).map(([week, points]) => {
       const weekNumber = Number.parseInt(week, 10);
-      // Approximate date from week number (assuming epoch start)
       const weekDate = new Date();
-      weekDate.setDate(weekDate.getDate() - (7 * (52 - weekNumber)));
+      weekDate.setDate(weekDate.getDate() - 7 * (52 - weekNumber));
 
       return {
         myCommission: formatUSD(points.referral),
-        referralVolume: "-", // TODO: Get from contract when available
-        activeUsers: "-", // TODO: Get from contract when available
+        referralVolume: "-",
+        activeUsers: "-",
         date: weekDate.toLocaleDateString("en-US"),
       };
     });
@@ -105,22 +98,26 @@ const CommissionTable: React.FC = () => {
 
   const columns: TableColumn<CommissionRow> = [
     {
-      header: "My Commission",
+      header: m["referral.commission.columns.myCommission"](),
       cell: ({ row }) => <Cell.Text text={row.original.myCommission} />,
     },
     {
-      header: "Referral Volume",
+      header: m["referral.commission.columns.referralVolume"](),
       cell: ({ row }) => <Cell.Text text={row.original.referralVolume} />,
     },
     {
-      header: "Active Users",
+      header: m["referral.commission.columns.activeUsers"](),
       cell: ({ row }) => <Cell.Text text={row.original.activeUsers} />,
     },
     {
-      header: "Date",
+      header: m["referral.commission.columns.date"](),
       cell: ({ row }) => <Cell.Text text={row.original.date} />,
     },
   ];
+
+  if (!isConnected) {
+    return <NotConnectedMessage />;
+  }
 
   if (isLoading) {
     return (
@@ -156,18 +153,16 @@ const CommissionTable: React.FC = () => {
 
 const MyRefereesTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Fetch referee stats from contract
   const { referees, isLoading } = useRefereeStats({
     referrerIndex: userIndex,
   });
 
-  // Transform referee stats to table rows
   const refereeData = useMemo<RefereeRow[]>(() => {
     return referees.map((referee: RefereeStats) => ({
-      userName: `#${referee.user_index}`, // Display user index (could be enhanced with username lookup)
+      userName: `#${referee.user_index}`,
       totalVolume: formatUSD(referee.volume),
       totalCommission: formatUSD(referee.commission),
       date: formatDate(referee.registered_at),
@@ -176,13 +171,13 @@ const MyRefereesTable: React.FC = () => {
 
   const columns: TableColumn<RefereeRow> = [
     {
-      header: "User Name",
+      header: m["referral.commission.columns.userName"](),
       cell: ({ row }) => (
         <Cell.Text className="text-ink-primary-900 diatype-m-medium" text={row.original.userName} />
       ),
     },
     {
-      header: "Total Volume",
+      header: m["referral.commission.columns.totalVolume"](),
       cell: ({ row }) => (
         <Cell.Text
           className="text-ink-primary-900 diatype-m-medium"
@@ -191,7 +186,7 @@ const MyRefereesTable: React.FC = () => {
       ),
     },
     {
-      header: "Total Commission",
+      header: m["referral.commission.columns.totalCommission"](),
       cell: ({ row }) => (
         <Cell.Text
           className="text-ink-primary-900 diatype-m-medium"
@@ -200,12 +195,16 @@ const MyRefereesTable: React.FC = () => {
       ),
     },
     {
-      header: "Date Joined",
+      header: m["referral.commission.columns.dateJoined"](),
       cell: ({ row }) => (
         <Cell.Text className="text-ink-primary-900 diatype-m-medium" text={row.original.date} />
       ),
     },
   ];
+
+  if (!isConnected) {
+    return <NotConnectedMessage />;
+  }
 
   if (isLoading) {
     return (
@@ -222,7 +221,7 @@ const MyRefereesTable: React.FC = () => {
   if (refereeData.length === 0) {
     return (
       <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
-        <p className="text-ink-tertiary-500 diatype-m-medium">No referees yet</p>
+        <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.commission.noReferees"]()}</p>
       </div>
     );
   }
@@ -249,23 +248,19 @@ const MyRefereesTable: React.FC = () => {
 
 const RebateTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  // Get user's trading volume
   const { volume, isLoading } = useUserVolume({
     userIndex,
     days: 30,
   });
 
-  // TODO: Get actual rebate data from contract when available
-  // For now, show a placeholder message
   const rebateData = useMemo<RebateRow[]>(() => {
-    // Placeholder - will be populated when contract provides rebate history
     if (volume && volume > 0) {
       return [
         {
-          rebates: "$0.00", // TODO: Get from contract
+          rebates: "$0.00",
           tradingVolume: formatUSD(volume),
           date: new Date().toLocaleDateString("en-US"),
         },
@@ -276,13 +271,13 @@ const RebateTable: React.FC = () => {
 
   const columns: TableColumn<RebateRow> = [
     {
-      header: "Rebates",
+      header: m["referral.rebate.columns.rebates"](),
       cell: ({ row }) => (
         <Cell.Text className="text-ink-primary-900 diatype-m-medium" text={row.original.rebates} />
       ),
     },
     {
-      header: "Trading Volume",
+      header: m["referral.rebate.columns.tradingVolume"](),
       cell: ({ row }) => (
         <Cell.Text
           className="text-ink-primary-900 diatype-m-medium"
@@ -291,12 +286,16 @@ const RebateTable: React.FC = () => {
       ),
     },
     {
-      header: "Date",
+      header: m["referral.rebate.columns.date"](),
       cell: ({ row }) => (
         <Cell.Text className="text-ink-primary-900 diatype-m-medium" text={row.original.date} />
       ),
     },
   ];
+
+  if (!isConnected) {
+    return <NotConnectedMessage />;
+  }
 
   if (isLoading) {
     return (
@@ -313,7 +312,7 @@ const RebateTable: React.FC = () => {
   if (rebateData.length === 0) {
     return (
       <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
-        <p className="text-ink-tertiary-500 diatype-m-medium">No rebate history yet</p>
+        <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.commission.noRebates"]()}</p>
       </div>
     );
   }
@@ -340,7 +339,7 @@ const RebateTable: React.FC = () => {
 
 const ChartLoading: React.FC = () => (
   <div className="p-4 lg:p-6 bg-surface-primary-gray h-[300px] flex items-center justify-center">
-    <p className="text-ink-tertiary-500 diatype-m-medium">Loading chart...</p>
+    <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.commission.loadingChart"]()}</p>
   </div>
 );
 
@@ -349,10 +348,13 @@ type MyCommissionProps = {
 };
 
 export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
+  const { isConnected } = useAccount();
   const [affiliateTab, setAffiliateTab] = useState<CommissionTab>("my-commission");
   const [traderTab, setTraderTab] = useState<RebateTab>("my-rebates");
   const [chartMetric, setChartMetric] = useState<ChartMetric>("commission");
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("7D");
+
+  if (!isConnected) return;
 
   const isAffiliate = mode === "affiliate";
   const showStatisticsSelects =
@@ -372,9 +374,9 @@ export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
             selectedTab={affiliateTab}
             onTabChange={(value) => setAffiliateTab(value as CommissionTab)}
           >
-            <Tab title="my-commission">My Commission</Tab>
-            <Tab title="my-referees">My Referees</Tab>
-            <Tab title="statistics">Statistics</Tab>
+            <Tab title="my-commission">{m["referral.commission.myCommission"]()}</Tab>
+            <Tab title="my-referees">{m["referral.commission.myReferees"]()}</Tab>
+            <Tab title="statistics">{m["referral.commission.statistics"]()}</Tab>
           </Tabs>
         ) : (
           <Tabs
@@ -382,8 +384,8 @@ export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
             selectedTab={traderTab}
             onTabChange={(value) => setTraderTab(value as RebateTab)}
           >
-            <Tab title="my-rebates">My Rebates</Tab>
-            <Tab title="statistics">Statistics</Tab>
+            <Tab title="my-rebates">{m["referral.rebate.myRebates"]()}</Tab>
+            <Tab title="statistics">{m["referral.rebate.statistics"]()}</Tab>
           </Tabs>
         )}
         {showStatisticsSelects && (
@@ -393,17 +395,17 @@ export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
               onChange={(value) => setChartMetric(value as ChartMetric)}
               classNames={{ trigger: "max-h-[38px]" }}
             >
-              <Select.Item value="commission">Commission</Select.Item>
-              <Select.Item value="volume">Volume</Select.Item>
+              <Select.Item value="commission">{m["referral.metric.commission"]()}</Select.Item>
+              <Select.Item value="volume">{m["referral.metric.volume"]()}</Select.Item>
             </Select>
             <Select
               value={chartPeriod}
               onChange={(value) => setChartPeriod(value as ChartPeriod)}
               classNames={{ trigger: "max-h-[38px]" }}
             >
-              <Select.Item value="7D">Period: 7D</Select.Item>
-              <Select.Item value="30D">Period: 30D</Select.Item>
-              <Select.Item value="90D">Period: 90D</Select.Item>
+              <Select.Item value="7D">{m["referral.period.sevenDays"]()}</Select.Item>
+              <Select.Item value="30D">{m["referral.period.thirtyDays"]()}</Select.Item>
+              <Select.Item value="90D">{m["referral.period.ninetyDays"]()}</Select.Item>
             </Select>
           </div>
         )}
