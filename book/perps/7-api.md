@@ -1232,7 +1232,7 @@ Deposit USDC into the trading margin account:
 }
 ```
 
-The deposited USDC is converted to USD at a fixed rate of \$1 per unit and credited to `user_state.margin`. In this example, `1000000000` base units = 1,000 USDC = \$1,000.
+The deposited USDC is converted to USD at a fixed rate of \$1 per USDC and credited to `user_state.margin`. In this example, `1000000000` base units = 1,000 USDC = \$1,000.
 
 ### 6.2 Withdraw margin
 
@@ -1258,7 +1258,7 @@ Withdraw USD from the trading margin account:
 | -------- | ---------- | ---------------------- |
 | `amount` | `UsdValue` | USD amount to withdraw |
 
-The USD amount is converted to USDC at the current oracle price (floor-rounded) and transferred to the sender.
+The USD amount is converted to USDC at the fixed rate of \$1 per USDC (floor-rounded) and transferred to the sender.
 
 ### 6.3 Submit market order
 
