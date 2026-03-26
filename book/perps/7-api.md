@@ -439,44 +439,44 @@ The mutation returns the transaction outcome as JSON.
 
 ## 3. Account management
 
-Dango uses **smart accounts** instead of externally-owned accounts (EOAs). A user profile is identified by a `UserIndex` and may own multiple subaccounts (up to 5). Keys are associated with the user profile, not individual accounts.
+Dango uses **smart accounts** instead of externally-owned accounts (EOAs). A user profile is identified by a `UserIndex` and may own 1 master account and 0-4 subaccounts. Keys are associated with the user profile, not individual accounts.
 
 ### 3.1 Register user
 
-Create a new user profile with an initial key and master account. This is a two-step process: first, send an initial deposit to the account factory; then call `register_user`.
+Creating a new user profile is a two-step process:
 
-```graphql
-mutation BroadcastTx($tx: Tx!) {
-  broadcastTxSync(tx: $tx)
-}
-```
-
-The `execute` message inside the transaction:
+**Step 1 — Register.** Call `register_user` on the account factory: use the **the account factory address itself as sender**, and `null` for the `data` and `credential` fields.
 
 ```json
 {
-  "execute": {
-    "contract": "ACCOUNT_FACTORY_CONTRACT",
-    "msg": {
-      "register_user": {
-        "key": {
-          "secp256r1": "02abc123...33bytes_hex"
-        },
-        "key_hash": "a1b2c3d4...64hex",
-        "seed": 12345,
-        "signature": {
-          "passkey": {
-            "authenticator_data": "<base64>",
-            "client_data": "<base64>",
-            "sig": "0102...40hex"
+  "sender": "ACCOUNT_FACTORY_CONTRACT",
+  "gas_limit": 1500000,
+  "msgs": [
+    {
+      "execute": {
+        "contract": "ACCOUNT_FACTORY_CONTRACT",
+        "msg": {
+          "register_user": {
+            "key": {
+              "secp256r1": "02abc123...33bytes_hex"
+            },
+            "key_hash": "a1b2c3d4...64hex",
+            "seed": 12345,
+            "signature": {
+              "passkey": {
+                "authenticator_data": "<base64>",
+                "client_data": "<base64>",
+                "sig": "0102...40hex"
+              }
+            }
           }
-        }
+        },
+        "funds": {}
       }
-    },
-    "funds": {
-      "bridge/usdc": "10000000"
     }
-  }
+  ],
+  "data": null,
+  "credential": null
 }
 ```
 
@@ -487,7 +487,9 @@ The `execute` message inside the transaction:
 | `seed`      | `u32`       | Arbitrary number for address variety                           |
 | `signature` | `Signature` | Signature over `{"chain_id": "dango-1"}` proving key ownership |
 
-The `funds` must include a minimum deposit. A master account is created automatically and returned via events.
+A master account is created in the **inactive** state (for the purpose of spam prevention). The new account address is returned in the transaction events.
+
+**Step 2 — Activate.** Send at least the `minimum_deposit` (10 USDC = `10000000` `bridge/usdc` on mainnet) to the new master account address. The transfer can either come from an existing Dango account, or from another chain via Hyperlane bridging. Upon receipt, the account activates itself and becomes ready to use.
 
 ### 3.2 Register subaccount
 
