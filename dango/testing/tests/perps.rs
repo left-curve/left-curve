@@ -1960,6 +1960,164 @@ fn protocol_fee_accumulates_across_fills() {
     );
 }
 
+/// Negative maker fee (rebate): maker is paid on every fill.
+///
+/// | Step | Action                                          | Key numbers                                                        | Assert                                   |
+/// | ---- | ----------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------- |
+/// | 1    | Configure: taker=3 bps, maker=-1 bps, proto=20%| —                                                                  | config accepted                          |
+/// | 2    | Deposit $100,000 each for taker and maker       | —                                                                  | margins = $100,000                       |
+/// | 3    | Maker places post_only ask: 50 ETH @ $2,000    | resting on book                                                    | ask exists                               |
+/// | 4    | Taker market buys 50 ETH                        | notional=$100k, taker fee=$30, maker fee=-$10                      | taker margin=$99,970; maker margin=$100,010 |
+/// | 5    | Check treasury                                  | proto: taker $6 + maker -$2 = $4                                   | treasury=$4                              |
+#[test]
+fn negative_maker_fee_rebate_lifecycle() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Step 1: Configure taker = 3 bps, maker = -1 bps, protocol_fee = 20%.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: Param {
+                    base_taker_fee_rate: Dimensionless::new_raw(300), // 3 bps
+                    base_maker_fee_rate: Dimensionless::new_raw(-100), // -1 bps (rebate)
+                    protocol_fee_rate: Dimensionless::new_percent(20),
+                    ..default_param()
+                },
+                pair_params: btree_map! {
+                    pair.clone() => default_pair_param(),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 2: Deposit $100,000 each for maker (user2) and taker (user1).
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 3: Maker (user2) places post_only ask: sell 50 ETH @ $2,000.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-50),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 4: Taker (user1) market buys 50 ETH.
+    //
+    // Notional = 50 × $2,000 = $100,000
+    // Taker fee = $100,000 × 3 bps = $30
+    // Maker fee = $100,000 × (-1 bps) = -$10 (rebate)
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(50),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 4 assertions: check margins.
+    // -------------------------------------------------------------------------
+
+    // Taker: $100,000 - $30 fee = $99,970.
+    let taker_state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert_eq!(
+        taker_state.margin,
+        UsdValue::new_int(99_970),
+        "taker margin should be $99,970 after paying $30 fee"
+    );
+
+    // Maker: $100,000 + $10 rebate = $100,010.
+    let maker_state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert_eq!(
+        maker_state.margin,
+        UsdValue::new_int(100_010),
+        "maker margin should be $100,010 after receiving $10 rebate"
+    );
+
+    // -------------------------------------------------------------------------
+    // Step 5: Check treasury.
+    //
+    // Protocol fee from taker: $30 × 20% = $6
+    // Protocol fee from maker: -$10 × 20% = -$2
+    // Net treasury = $4
+    // -------------------------------------------------------------------------
+
+    let global_state: perps::State = suite
+        .query_wasm_smart(contracts.perps, perps::QueryStateRequest {})
+        .should_succeed();
+
+    assert_eq!(
+        global_state.treasury,
+        UsdValue::new_int(4),
+        "treasury should be $4 (taker $6 + maker -$2)"
+    );
+}
+
 /// Full lifecycle: deposit → open position → place TP → oracle rises →
 /// cron triggers TP → position closed.
 #[test]

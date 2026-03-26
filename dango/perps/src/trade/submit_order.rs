@@ -2341,6 +2341,197 @@ mod tests {
         assert_eq!(state.treasury, UsdValue::new_int(20));
     }
 
+    // =========== Negative maker fee (rebate) settle_pnls tests ===============
+
+    #[test]
+    fn settle_pnls_negative_maker_fee_rebate() {
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([
+            (CONTRACT, UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
+
+        let pnls = BTreeMap::new();
+        // Taker pays +$50 fee, maker receives -$10 fee (rebate).
+        let fees = BTreeMap::from([
+            (Addr::mock(1), UsdValue::new_int(50)),
+            (Addr::mock(2), UsdValue::new_int(-10)),
+        ]);
+        let mut state = State::default();
+
+        settle_pnls(
+            CONTRACT,
+            &Param::default(), // protocol_fee_rate = 0
+            &mut state,
+            taker,
+            &mut taker_state,
+            &mut maker_states,
+            pnls,
+            fees,
+        )
+        .unwrap();
+
+        // Taker margin decreases by fee.
+        assert_eq!(taker_state.margin, UsdValue::new_int(-50));
+
+        // Maker margin increases (rebate): 0 - (-10) = +10.
+        assert_eq!(maker_states[&Addr::mock(2)].margin, UsdValue::new_int(10));
+
+        // Vault receives net: +50 (from taker) + (-10) (rebate to maker) = +40.
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(40));
+
+        // No protocol fee split → treasury unchanged.
+        assert_eq!(state.treasury, UsdValue::ZERO);
+    }
+
+    #[test]
+    fn settle_pnls_negative_maker_fee_with_protocol_split() {
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let param = Param {
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            ..Default::default()
+        };
+        let mut maker_states = BTreeMap::from([
+            (CONTRACT, UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
+
+        let pnls = BTreeMap::new();
+        // Taker fee = +$30, maker fee = -$10 (rebate).
+        let fees = BTreeMap::from([
+            (Addr::mock(1), UsdValue::new_int(30)),
+            (Addr::mock(2), UsdValue::new_int(-10)),
+        ]);
+        let mut state = State::default();
+
+        settle_pnls(
+            CONTRACT,
+            &param,
+            &mut state,
+            taker,
+            &mut taker_state,
+            &mut maker_states,
+            pnls,
+            fees,
+        )
+        .unwrap();
+
+        // Taker pays full fee.
+        assert_eq!(taker_state.margin, UsdValue::new_int(-30));
+
+        // Maker gets rebate: 0 - (-10) = +10.
+        assert_eq!(maker_states[&Addr::mock(2)].margin, UsdValue::new_int(10));
+
+        // Vault receives:
+        //   from taker: $30 * 80% = $24
+        //   from maker: -$10 * 80% = -$8
+        //   total = $16
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(16));
+
+        // Treasury receives:
+        //   from taker: $30 * 20% = $6
+        //   from maker: -$10 * 20% = -$2
+        //   total = $4
+        assert_eq!(state.treasury, UsdValue::new_int(4));
+    }
+
+    // ====== Negative maker fee: full _submit_order integration ===============
+
+    #[test]
+    fn negative_maker_fee_rebate_on_market_buy() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        // Custom param: taker = 3 bps, maker = -1 bps, protocol = 20%.
+        let param = Param {
+            max_open_orders: 10,
+            base_taker_fee_rate: Dimensionless::new_raw(300), // 3 bps
+            base_maker_fee_rate: Dimensionless::new_raw(-100), // -1 bps
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            ..Default::default()
+        };
+
+        // Manually set up storage (can't use setup_storage which saves test_param).
+        PARAM.save(&mut ctx.storage, &param).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &test_pair_param())
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut state = State::default();
+        let mut oq = test_oracle_querier();
+
+        let (maker_states, _, _, ..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &mut state,
+            &pair_id(),
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Notional = 10 * $50,000 = $500,000.
+        // Taker fee = $500,000 * 3 bps = $150.
+        // Maker fee = $500,000 * (-1 bps) = -$50 (rebate).
+        //
+        // Taker margin: LARGE_COLLATERAL - $150.
+        assert_eq!(
+            taker_state.margin,
+            LARGE_COLLATERAL
+                .checked_sub(UsdValue::new_int(150))
+                .unwrap()
+        );
+
+        // Maker margin: 0 - (-$50) = +$50 (receives rebate).
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::new_int(50));
+
+        // Vault receives:
+        //   taker vault_fee = $150 * 80% = $120
+        //   maker vault_fee = -$50 * 80% = -$40
+        //   total = $80
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(80));
+
+        // Treasury:
+        //   taker protocol_fee = $150 * 20% = $30
+        //   maker protocol_fee = -$50 * 20% = -$10
+        //   total = $20
+        assert_eq!(state.treasury, UsdValue::new_int(20));
+
+        // Positions are correct.
+        let taker_pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(taker_pos.size, Quantity::new_int(10));
+        assert_eq!(taker_pos.entry_price, UsdPrice::new_int(50_000));
+    }
+
     // =================== Post-only order tests ===============================
 
     #[test]

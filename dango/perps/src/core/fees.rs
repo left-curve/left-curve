@@ -106,11 +106,45 @@ mod tests {
         );
     }
 
+    #[test]
+    fn resolve_fee_rate_negative_tier_rate() {
+        // All-negative (rebate) tiers: higher volume → more generous rebate.
+        let base = Dimensionless::new_raw(-100); // -1 bps
+        let tier1_rate = Dimensionless::new_raw(-200); // -2 bps
+        let tier2_rate = Dimensionless::new_raw(-500); // -5 bps
+        let tiers = BTreeMap::from([
+            (UsdValue::new_int(100_000), tier1_rate),
+            (UsdValue::new_int(1_000_000), tier2_rate),
+        ]);
+
+        // Below all tiers → base rebate.
+        assert_eq!(
+            resolve_fee_rate(base, &tiers, UsdValue::new_int(50_000)),
+            base
+        );
+
+        // Between tiers → tier 1 rebate.
+        assert_eq!(
+            resolve_fee_rate(base, &tiers, UsdValue::new_int(500_000)),
+            tier1_rate
+        );
+
+        // Above all tiers → tier 2 (most generous) rebate.
+        assert_eq!(
+            resolve_fee_rate(base, &tiers, UsdValue::new_int(5_000_000)),
+            tier2_rate
+        );
+    }
+
     // (fill_size, exec_price, fee_rate_raw, expected_raw)
     #[test_case(   0,      1,   1_000,          0 ; "zero fill")]
     #[test_case( 100,      1,   1_000,    100_000 ; "simple 0.1 percent fee")]
     #[test_case(-100,      1,   1_000,    100_000 ; "negative fill same result")]
     #[test_case(   1, 50_000,     500, 25_000_000 ; "high exec price")]
+    #[test_case( 100,      1,  -1_000,   -100_000 ; "negative fee rate produces negative fee")]
+    #[test_case(-100,      1,  -1_000,   -100_000 ; "negative fill and negative rate")]
+    #[test_case(   1, 50_000,    -100, -5_000_000 ; "negative 1 bps on high price")]
+    #[test_case( 100,      1,       0,          0 ; "zero fee rate")]
     fn compute_trading_fee_works(
         fill_size: i128,
         exec_price: i128,
