@@ -1,7 +1,6 @@
-import { Badge, Button, ResizerContainer, Tab, Tabs } from "@left-curve/applets-kit";
+import { Badge, Button, ResizerContainer, Tab, Tabs, createContext } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
-import { useState } from "react";
 import type { PropsWithChildren } from "react";
 
 import {
@@ -13,13 +12,31 @@ import {
   type ReferralMode,
 } from "../points/referral";
 
-const ReferralCampaignContainer: React.FC<PropsWithChildren> = ({ children }) => {
+const [ReferralCampaignProvider, useReferralCampaign] = createContext<{
+  activeTab: ReferralMode;
+  setActiveTab: (tab: ReferralMode) => void;
+}>({
+  name: "ReferralCampaignContext",
+});
+
+type ReferralCampaignContainerProps = PropsWithChildren<{
+  activeTab: ReferralMode;
+  onTabChange: (tab: ReferralMode) => void;
+}>;
+
+const ReferralCampaignContainer: React.FC<ReferralCampaignContainerProps> = ({
+  children,
+  activeTab,
+  onTabChange,
+}) => {
   return (
-    <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 lg:p-0 lg:pt-6 lg:pb-20 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
-      <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
-        {children}
+    <ReferralCampaignProvider value={{ activeTab, setActiveTab: onTabChange }}>
+      <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 lg:p-0 lg:pt-6 lg:pb-20 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
+        <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
+          {children}
+        </div>
       </div>
-    </div>
+    </ReferralCampaignProvider>
   );
 };
 
@@ -65,14 +82,14 @@ const TraderSection: React.FC = () => (
 );
 
 const ReferralCampaignContent: React.FC = () => {
-  const [referralMode, setReferralMode] = useState<ReferralMode>("affiliate");
+  const { activeTab, setActiveTab } = useReferralCampaign();
 
   return (
     <div className="flex flex-col w-full gap-8">
       <Tabs
         layoutId="referral-campaign-tabs"
-        selectedTab={referralMode}
-        onTabChange={(value) => setReferralMode(value as ReferralMode)}
+        selectedTab={activeTab}
+        onTabChange={(value) => setActiveTab(value as ReferralMode)}
         fullWidth
       >
         <Tab title="affiliate">
@@ -83,9 +100,9 @@ const ReferralCampaignContent: React.FC = () => {
         <Tab title="trader">{m["referral.trader"]()}</Tab>
       </Tabs>
       <div className="flex flex-col gap-6 w-full">
-        {referralMode === "affiliate" ? <AffiliateSection /> : <TraderSection />}
-        <MyCommission mode={referralMode} />
-        {referralMode === "affiliate" && <ReferralFaqs />}
+        {activeTab === "affiliate" ? <AffiliateSection /> : <TraderSection />}
+        <MyCommission mode={activeTab} />
+        {activeTab === "affiliate" && <ReferralFaqs />}
       </div>
     </div>
   );
