@@ -1,14 +1,24 @@
-export type PointsResponse = {
+export type Points = {
   vault: string;
   perps: string;
   referral: string;
 };
 
-export type WeeklyPointsResponse = Record<string, PointsResponse>;
+export type UserStats = {
+  points: Points;
+  realized_pnl: string;
+  volume: string;
+};
 
 export type LeaderboardEntry = {
   user_index: number;
-  points: PointsResponse;
+  username: string | null;
+  stats: UserStats;
+};
+
+export type UserPoints = {
+  stats: UserStats;
+  rank: number;
 };
 
 export type BoxReward = {
@@ -24,44 +34,44 @@ export type OatEntry = {
   registered_at: number;
 };
 
-export const fetchUserPoints = async (
-  baseUrl: string,
-  userIndex: number,
-): Promise<PointsResponse> => {
-  const res = await fetch(`${baseUrl}/points/${userIndex}`);
-  if (!res.ok) throw new Error(`Failed to fetch points: ${res.status}`);
+export const fetchUserStats = async (baseUrl: string, userIndex: number): Promise<UserPoints> => {
+  const res = await fetch(`${baseUrl}/stats/user/${userIndex}`);
+  if (!res.ok) throw new Error(`Failed to fetch user stats: ${res.status}`);
   return res.json();
 };
 
-export const fetchWeeklyPoints = async (
+export const fetchEpochPoints = async (
   baseUrl: string,
   userIndex: number,
   params?: { min?: number; max?: number },
-): Promise<WeeklyPointsResponse> => {
-  const url = new URL(`${baseUrl}/points/${userIndex}/weekly`);
+): Promise<Record<string, UserStats>> => {
+  const url = new URL(`${baseUrl}/stats/user/${userIndex}/epochs`);
   if (params?.min !== undefined) url.searchParams.set("min", String(params.min));
   if (params?.max !== undefined) url.searchParams.set("max", String(params.max));
   const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Failed to fetch weekly points: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch epoch points: ${res.status}`);
   return res.json();
 };
 
 export const fetchLeaderboard = async (
   baseUrl: string,
-  startAfter?: number,
-): Promise<Record<string, LeaderboardEntry>> => {
-  const url = startAfter
-    ? `${baseUrl}/leaderboard/${startAfter}`
-    : `${baseUrl}/leaderboard`;
-  const res = await fetch(url);
+  params?: { sort?: string; timeframe?: number },
+): Promise<LeaderboardEntry[]> => {
+  const url = new URL(`${baseUrl}/leaderboard`);
+  if (params?.sort) url.searchParams.set("sort", params.sort);
+  if (params?.timeframe !== undefined) url.searchParams.set("timeframe", String(params.timeframe));
+  const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`Failed to fetch leaderboard: ${res.status}`);
   return res.json();
 };
 
-export const fetchUserBoxes = async (
-  baseUrl: string,
-  userIndex: number,
-): Promise<BoxReward[]> => {
+export const fetchTotalUsersWithPoints = async (baseUrl: string): Promise<number> => {
+  const res = await fetch(`${baseUrl}/stats/total-users-with-points`);
+  if (!res.ok) throw new Error(`Failed to fetch total users: ${res.status}`);
+  return res.json();
+};
+
+export const fetchUserBoxes = async (baseUrl: string, userIndex: number): Promise<BoxReward[]> => {
   const res = await fetch(`${baseUrl}/boxes/${userIndex}`);
   if (!res.ok) throw new Error(`Failed to fetch boxes: ${res.status}`);
   return res.json();
@@ -81,17 +91,14 @@ export const openBox = async (
   return res.json();
 };
 
-export const fetchUserOats = async (
-  baseUrl: string,
-  userIndex: number,
-): Promise<OatEntry[]> => {
-  const res = await fetch(`${baseUrl}/oats/${userIndex}`);
+export const fetchUserOats = async (baseUrl: string, userIndex: number): Promise<OatEntry[]> => {
+  const res = await fetch(`${baseUrl}/oat/user/${userIndex}`);
   if (!res.ok) throw new Error(`Failed to fetch OATs: ${res.status}`);
   return res.json();
 };
 
 export const fetchCampaigns = async (baseUrl: string): Promise<[string, number][]> => {
-  const res = await fetch(`${baseUrl}/campaigns`);
+  const res = await fetch(`${baseUrl}/oat/campaigns`);
   if (!res.ok) throw new Error(`Failed to fetch campaigns: ${res.status}`);
   return res.json();
 };
@@ -104,7 +111,7 @@ export const registerOat = async (
     signature: unknown;
   },
 ): Promise<unknown> => {
-  const res = await fetch(`${baseUrl}/register-oat`, {
+  const res = await fetch(`${baseUrl}/oat/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -117,7 +124,7 @@ export const checkOat = async (
   baseUrl: string,
   evmAddress: string,
 ): Promise<Record<number, string>> => {
-  const res = await fetch(`${baseUrl}/check-oat/${evmAddress}`);
+  const res = await fetch(`${baseUrl}/oat/check/${evmAddress}`);
   if (!res.ok) throw new Error(`Failed to check OAT: ${res.status}`);
   return res.json();
 };

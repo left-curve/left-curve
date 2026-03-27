@@ -1113,7 +1113,25 @@
     },
     "tabs": {
       "profile": "Profile",
-      "rewards": "Rewards"
+      "rewards": "Rewards",
+      "leaderboard": "Leaderboard"
+    },
+    "leaderboard": {
+      "columns": {
+        "ranking": "Ranking",
+        "user": "User",
+        "volume": "Volume",
+        "pnl": "PnL",
+        "points": "Points"
+      },
+      "timeframes": {
+        "allTime": "All Time",
+        "oneWeek": "1W",
+        "twoWeeks": "2W",
+        "oneMonth": "1M"
+      },
+      "you": "(You)",
+      "userFallback": "User #{index}"
     },
     "profile": {
       "pointHistory": "Point History",
@@ -1122,15 +1140,17 @@
       "noHistory": "No point history yet",
       "columns": {
         "action": "Action",
+        "epoch": "Epoch",
         "date": "Date",
         "points": "Points"
       },
+      "epochLabel": "Epoch {number}",
       "activities": {
         "provideLiquidity": "Provide Liquidity",
         "trade": "Trade",
         "referral": "Referral"
       },
-      "xPoints": "{points} XPoints"
+      "xPoints": "{points} Points"
     },
     "rewards": {
       "boxes": {

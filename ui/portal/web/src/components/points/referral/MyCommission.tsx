@@ -10,7 +10,7 @@ import {
 } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAccount, useRefereeStats, useWeeklyPoints, useUserVolume } from "@left-curve/store";
+import { useAccount, useRefereeStats, useEpochPoints, useUserVolume } from "@left-curve/store";
 import type { RefereeStats } from "@left-curve/store";
 import type React from "react";
 import { Suspense, lazy, useMemo, useState } from "react";
@@ -74,27 +74,28 @@ const CommissionTable: React.FC = () => {
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  const { weeklyPoints, isLoading } = useWeeklyPoints({
-    pointsUrl: "", // Will be set by the hook from config
+  const pointsUrl = window.dango.urls.pointsUrl;
+  const { epochPoints, isLoading } = useEpochPoints({
+    pointsUrl,
     userIndex,
   });
 
   const commissionData = useMemo<CommissionRow[]>(() => {
-    if (!weeklyPoints) return [];
+    if (!epochPoints) return [];
 
-    return Object.entries(weeklyPoints).map(([week, points]) => {
-      const weekNumber = Number.parseInt(week, 10);
-      const weekDate = new Date();
-      weekDate.setDate(weekDate.getDate() - 7 * (52 - weekNumber));
+    return Object.entries(epochPoints).map(([epoch, stats]) => {
+      const epochNumber = Number.parseInt(epoch, 10);
+      const epochStartTs = 1735689600 + epochNumber * 604_800;
+      const epochDate = new Date(epochStartTs * 1000);
 
       return {
-        myCommission: formatUSD(points.referral),
+        myCommission: formatUSD(stats.points.referral),
         referralVolume: "-",
         activeUsers: "-",
-        date: weekDate.toLocaleDateString("en-US"),
+        date: epochDate.toLocaleDateString("en-US"),
       };
     });
-  }, [weeklyPoints]);
+  }, [epochPoints]);
 
   const columns: TableColumn<CommissionRow> = [
     {

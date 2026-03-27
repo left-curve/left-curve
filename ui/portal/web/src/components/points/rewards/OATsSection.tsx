@@ -84,11 +84,23 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <p className="h4-bold text-ink-primary-900">{m["points.boosters.title"]()}</p>
-        <p className="diatype-m-medium text-ink-tertiary-500">
-          {m["points.boosters.description"]()}
-        </p>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+        <div className="flex flex-col gap-1">
+          <p className="h4-bold text-ink-primary-900">{m["points.boosters.title"]()}</p>
+          <p className="diatype-m-medium text-ink-tertiary-500">
+            {m["points.boosters.description"]()}
+          </p>
+        </div>
+        <Button
+          size={isLg ? "md" : "lg"}
+          variant="primary"
+          onClick={handleLinkWallet}
+          isLoading={isButtonLoading}
+          isDisabled={!isConnected}
+          className="w-fit min-w-[8.3125rem]"
+        >
+          {m["points.boosters.linkEvmWallet"]()}
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
@@ -102,17 +114,6 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
           />
         ))}
       </div>
-
-      <Button
-        size={isLg ? "md" : "lg"}
-        variant="primary"
-        onClick={handleLinkWallet}
-        isLoading={isButtonLoading}
-        isDisabled={!isConnected}
-        className="w-fit min-w-[8.3125rem]"
-      >
-        {m["points.boosters.linkEvmWallet"]()}
-      </Button>
     </div>
   );
 };

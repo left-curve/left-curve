@@ -8,7 +8,7 @@ import { isFeatureEnabled } from "~/featureFlags";
 export const Route = createFileRoute("/(app)/_app/points")({
   component: RouteComponent,
   validateSearch: z.object({
-    tab: z.enum(["profile", "rewards"]).optional().default("profile"),
+    tab: z.enum(["profile", "rewards", "leaderboard"]).optional().default("profile"),
   }),
 });
 
@@ -18,7 +18,7 @@ function RouteComponent() {
 
   if (!isFeatureEnabled("points")) return <NotFound />;
 
-  const handleTabChange = (newTab: "profile" | "rewards") => {
+  const handleTabChange = (newTab: "profile" | "rewards" | "leaderboard") => {
     navigate({ search: { tab: newTab }, replace: true });
   };
 
