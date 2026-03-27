@@ -16,7 +16,7 @@ use {
         state::{LONGS, SHORTS},
         trade::{
             _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
-            settle_pnls,
+            settle_pnls, submit_order::FeeBreakdown,
         },
     },
     anyhow::ensure,
@@ -24,8 +24,8 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            BadDebtCovered, Deleveraged, FeeBreakdown, LimitOrder, Liquidated, OrderId, PairId,
-            PairParam, PairState, Param, ReasonForOrderRemoval, State, UserState,
+            BadDebtCovered, Deleveraged, LimitOrder, Liquidated, OrderId, PairId, PairParam,
+            PairState, Param, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{

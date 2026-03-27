@@ -22,9 +22,8 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            FeeBreakdown, LimitOrder, OrderFilled, OrderId, OrderKind, OrderPersisted,
-            OrderRemoved, PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State,
-            UserState,
+            LimitOrder, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
+            PairParam, PairState, Param, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
@@ -813,6 +812,15 @@ pub fn settle_fill(
     Ok(pnl)
 }
 
+#[derive(Debug)]
+pub(crate) struct FeeBreakdown {
+    /// Portion of the fee routed to the protocol treasury.
+    pub protocol_fee: UsdValue,
+
+    /// Portion of the fee credited to the vault.
+    pub vault_fee: UsdValue,
+}
+
 /// Settle PnLs and fees directly in USD on user margins.
 ///
 /// Two loops:
@@ -831,6 +839,8 @@ pub fn settle_fill(
 /// - `taker_state.margin` — adjusted by the taker's PnL and fees.
 /// - `maker_states[*].margin` — adjusted by PnL and fees (including the vault's
 ///   `UserState`).
+///
+/// Per-user fee breakdown after splitting between protocol treasury and vault.
 ///
 /// Returns: per-user fee breakdown — the split between protocol treasury and
 /// vault for each fee-paying user.

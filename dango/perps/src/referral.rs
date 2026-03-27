@@ -2,15 +2,15 @@ use {
     crate::{
         COMMISSION_RATE_OVERRIDES, FEE_SHARE_RATIO, PARAM, REFEREE_TO_REFERRER,
         REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, query::query_volume,
-        volume::round_to_day,
+        trade::submit_order::FeeBreakdown, volume::round_to_day,
     },
     anyhow::ensure,
     dango_types::{
         DangoQuerier, UsdValue,
         account_factory::{self, UserIndex},
         perps::{
-            CommissionRate, FeeBreakdown, FeeDistributed, FeeShareRatio, Referee, RefereeStats,
-            Referral, ReferralParam, Referrer, ReferrerSettings, UserReferralData, UserState,
+            CommissionRate, FeeDistributed, FeeShareRatio, Referee, RefereeStats, Referral,
+            ReferralParam, Referrer, ReferrerSettings, UserReferralData, UserState,
         },
     },
     grug::{

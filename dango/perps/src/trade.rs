@@ -2,7 +2,7 @@ mod cancel_conditional_order;
 mod cancel_order;
 mod deposit;
 mod submit_conditional_order;
-mod submit_order;
+pub(crate) mod submit_order;
 mod withdraw;
 
 pub use {
