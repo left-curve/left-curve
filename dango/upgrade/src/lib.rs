@@ -42,7 +42,7 @@ pub fn do_upgrade<VM>(
     let mut perps_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, PERPS.inner()]);
 
     // Load the old Param (without `referral` field).
-    let old = legacy::PARAM.load(&mut perps_storage)?;
+    let old = legacy::PARAM.load(&perps_storage)?;
 
     // Save the new Param with default ReferralParam.
     let new = Param {
