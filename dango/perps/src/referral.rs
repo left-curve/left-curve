@@ -171,7 +171,7 @@ const COMMISSION_LOOKBACK_DAYS: u128 = 30;
 /// Returns `None` if the query fails (e.g. address is not a known account,
 /// or the querier is not configured — as in unit tests).
 pub(crate) fn retrieve_user_index(
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     addr: Addr,
     account_factory: Addr,
     cache: &mut BTreeMap<Addr, Option<UserIndex>>,
@@ -259,7 +259,7 @@ fn load_referral_data(
 ///
 /// Returns `None` if the query fails.
 pub(crate) fn retrieve_master_account(
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     user: UserIndex,
     account_factory: Addr,
 ) -> Option<Addr> {
@@ -297,7 +297,7 @@ const MAX_REFERRAL_CHAIN_DEPTH: usize = 5;
 /// and the total is deducted from the vault (contract) margin.
 pub(crate) fn apply_fee_commissions(
     storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     perps_contract: Addr,
     current_time: Timestamp,
     referral_param: &ReferralParam,

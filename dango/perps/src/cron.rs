@@ -20,7 +20,8 @@ use {
         },
     },
     grug::{
-        Addr, EventBuilder, Order as IterationOrder, PrefixBound, StdResult, Storage, Timestamp,
+        Addr, EventBuilder, Order as IterationOrder, PrefixBound, QuerierWrapper, StdResult,
+        Storage, Timestamp,
     },
 };
 #[cfg(feature = "metrics")]
@@ -213,7 +214,7 @@ fn process_funding_for_pair(
 /// iteration so only triggered orders are visited (no full scan).
 pub fn process_conditional_orders(
     storage: &mut dyn Storage,
-    querier: &grug::QuerierWrapper,
+    querier: QuerierWrapper,
     contract: Addr,
     current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
@@ -244,7 +245,7 @@ pub fn process_conditional_orders(
 
 fn process_conditional_orders_for_pair(
     storage: &mut dyn Storage,
-    querier: &grug::QuerierWrapper,
+    querier: QuerierWrapper,
     contract: Addr,
     current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
@@ -332,7 +333,7 @@ fn process_conditional_orders_for_pair(
 /// submit a market order to close.
 fn process_triggered_order(
     storage: &mut dyn Storage,
-    querier: &grug::QuerierWrapper,
+    querier: QuerierWrapper,
     contract: Addr,
     current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,

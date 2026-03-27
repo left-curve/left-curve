@@ -91,7 +91,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_conditional_orders(
         ctx.storage,
-        &ctx.querier,
+        ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
         &mut oracle_querier,

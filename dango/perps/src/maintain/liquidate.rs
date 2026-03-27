@@ -130,7 +130,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     apply_fee_commissions(
         ctx.storage,
-        &ctx.querier,
+        ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
         &param.referral,

@@ -98,7 +98,7 @@ pub fn submit_order(
 
     apply_fee_commissions(
         ctx.storage,
-        &ctx.querier,
+        ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
         &param.referral,
