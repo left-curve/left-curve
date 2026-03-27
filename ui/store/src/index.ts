@@ -240,6 +240,19 @@ export {
 } from "./hooks/usePoints.js";
 
 export {
+  type UseLeaderboardParameters,
+  type LeaderboardSort,
+  type LeaderboardTimeframe,
+  type LeaderboardEntryWithRank,
+  useLeaderboard,
+} from "./hooks/useLeaderboard.js";
+
+export {
+  type UseEpochPointsParameters,
+  useEpochPoints,
+} from "./hooks/useEpochPoints.js";
+
+export {
   type UseBoxesParameters,
   type NFTItem,
   useBoxes,
@@ -256,20 +269,19 @@ export {
   useRegisterOat,
 } from "./hooks/useRegisterOat.js";
 
-export {
-  type UseWeeklyPointsParameters,
-  useWeeklyPoints,
-} from "./hooks/useWeeklyPoints.js";
 
 export {
+  type Points,
+  type UserStats,
+  type UserPoints,
   type PointsResponse,
-  type WeeklyPointsResponse,
   type LeaderboardEntry,
   type BoxReward,
   type OatEntry,
-  fetchUserPoints,
-  fetchWeeklyPoints,
+  fetchUserStats,
+  fetchEpochPoints,
   fetchLeaderboard,
+  fetchTotalUsersWithPoints,
   fetchUserBoxes,
   openBox,
   fetchUserOats,

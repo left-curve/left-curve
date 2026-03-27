@@ -1,8 +1,17 @@
-import { Button, IconGift, IconUser, Tab, Tabs, createContext } from "@left-curve/applets-kit";
+import {
+  Button,
+  IconGift,
+  IconStar,
+  IconUser,
+  Tab,
+  Tabs,
+  createContext,
+} from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
 import type { PropsWithChildren } from "react";
+import { LeaderboardTable } from "./leaderboard";
 import { PointsHeader } from "./PointsHeader";
 import { LigueLevels, PointsProfileTable } from "./profile";
 import {
@@ -16,7 +25,7 @@ import {
 import { UserPointsProvider } from "./useUserPoints";
 import { useAccount, useBoxes, useOats } from "@left-curve/store";
 
-type PointsCampaignTab = "profile" | "rewards";
+type PointsCampaignTab = "profile" | "rewards" | "leaderboard";
 
 const [PointsCampaignProvider, usePointsCampaign] = createContext<{
   activeTab: PointsCampaignTab;
@@ -93,14 +102,9 @@ const ProfileTable: React.FC = () => {
   if (!isConnected) return null;
 
   return (
-    <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
-      <div className="px-6 py-4">
-        <p className="diatype-m-bold text-ink-primary-900">{m["points.profile.pointHistory"]()}</p>
-      </div>
+    <div className="flex flex-col gap-4">
+      <p className="diatype-m-bold text-ink-primary-900">{m["points.profile.pointHistory"]()}</p>
       <PointsProfileTable />
-      <div className="px-6 py-4 flex items-center justify-center">
-        <Button>{m["points.profile.getStarted"]()}</Button>
-      </div>
     </div>
   );
 };
@@ -138,6 +142,17 @@ const RewardsSection: React.FC = () => (
   </div>
 );
 
+const LeaderboardSection: React.FC = () => (
+  <>
+    <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
+      <PointsHeader />
+    </div>
+    <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
+      <LeaderboardTable />
+    </div>
+  </>
+);
+
 const PointsCampaignTabs: React.FC = () => {
   const { activeTab, setActiveTab } = usePointsCampaign();
 
@@ -161,9 +176,16 @@ const PointsCampaignTabs: React.FC = () => {
             {m["points.tabs.rewards"]()}
           </span>
         </Tab>
+        <Tab title="leaderboard">
+          <span className="flex items-center gap-1">
+            <IconStar className="w-4 h-4" />
+            {m["points.tabs.leaderboard"]()}
+          </span>
+        </Tab>
       </Tabs>
       {activeTab === "profile" ? <ProfileSection /> : null}
       {activeTab === "rewards" ? <RewardsSection /> : null}
+      {activeTab === "leaderboard" ? <LeaderboardSection /> : null}
     </div>
   );
 };
