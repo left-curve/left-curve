@@ -40,10 +40,9 @@ pub fn do_upgrade<VM>(
     _block: grug::BlockInfo,
 ) -> AppResult<()> {
     let mut perps_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, PERPS.inner()]);
-    let perps_storage = &mut perps_storage;
 
     // Load the old Param (without `referral` field).
-    let old = legacy::PARAM.load(perps_storage)?;
+    let old = legacy::PARAM.load(&mut perps_storage)?;
 
     // Save the new Param with default ReferralParam.
     let new = Param {
@@ -62,7 +61,7 @@ pub fn do_upgrade<VM>(
         referral: ReferralParam::default(),
     };
 
-    dango_perps::PARAM.save(perps_storage, &new)?;
+    dango_perps::PARAM.save(&mut perps_storage, &new)?;
 
     tracing::info!("Migrated perps Param: added default ReferralParam");
 
