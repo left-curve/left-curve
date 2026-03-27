@@ -1,8 +1,10 @@
 use {
-    super::commission::{calculate_commission_rate, load_referral_data},
     crate::{
         FEE_SHARE_RATIO, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA,
-        USER_STATES, trade::FeeBreakdown, volume::round_to_day,
+        USER_STATES, account_factory,
+        referral::{commission::calculate_commission_rate, load_referral_data},
+        trade::FeeBreakdown,
+        volume::round_to_day,
     },
     dango_types::{
         UsdValue,
@@ -53,7 +55,7 @@ pub fn apply_fee_commissions(
     let mut referrer_settings_cache = BTreeMap::<UserIndex, ReferrerSettings>::new();
     let mut addr_to_user_index_cache = BTreeMap::<Addr, Option<UserIndex>>::new();
 
-    let account_factory = crate::account_factory(querier);
+    let account_factory = account_factory(querier);
 
     for (payer, fee_breakdown) in fee_breakdowns {
         let vault_fee = fee_breakdown.vault_fee;

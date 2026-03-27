@@ -1,6 +1,7 @@
 use {
-    super::commission::MAX_FEE_SHARE_RATIO,
-    crate::{COMMISSION_RATE_OVERRIDES, FEE_SHARE_RATIO, PARAM, query::query_volume},
+    crate::{
+        COMMISSION_RATE_OVERRIDES, FEE_SHARE_RATIO, PARAM, account_factory, query::query_volume,
+    },
     anyhow::ensure,
     dango_types::{
         account_factory::{self},
@@ -8,6 +9,9 @@ use {
     },
     grug::{MutableCtx, QuerierExt, Response},
 };
+
+/// Maximum fee share ratio a referrer can set.
+const MAX_FEE_SHARE_RATIO: FeeShareRatio = FeeShareRatio::new_percent(50);
 
 /// Set or update the fee share ratio for the calling user (referrer).
 ///
@@ -25,7 +29,7 @@ pub fn set_fee_share_ratio(
     );
 
     // Look up the caller's user index via the account factory.
-    let account_factory = crate::account_factory(ctx.querier);
+    let account_factory = account_factory(ctx.querier);
 
     // TODO: refactor to raw query (query_wasm_path).
     let account =

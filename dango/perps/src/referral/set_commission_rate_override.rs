@@ -19,8 +19,12 @@ pub fn set_commission_rate_override(
     );
 
     match commission_rate {
-        Op::Insert(rate) => COMMISSION_RATE_OVERRIDES.save(ctx.storage, user, &rate)?,
-        Op::Delete => COMMISSION_RATE_OVERRIDES.remove(ctx.storage, user),
+        Op::Insert(rate) => {
+            COMMISSION_RATE_OVERRIDES.save(ctx.storage, user, &rate)?;
+        },
+        Op::Delete => {
+            COMMISSION_RATE_OVERRIDES.remove(ctx.storage, user);
+        },
     }
 
     Ok(Response::new())

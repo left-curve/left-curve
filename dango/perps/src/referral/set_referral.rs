@@ -1,8 +1,7 @@
 use {
-    super::commission::load_referral_data,
     crate::{
         FEE_SHARE_RATIO, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA,
-        volume::round_to_day,
+        account_factory, referral::load_referral_data, volume::round_to_day,
     },
     anyhow::ensure,
     dango_types::{
@@ -25,7 +24,7 @@ pub fn set_referral(
     ensure!(referrer != referee, "a user cannot refer themselves");
 
     // Caller must be the account factory or an account owned by the referee.
-    let account_factory = crate::account_factory(ctx.querier);
+    let account_factory = account_factory(ctx.querier);
 
     if ctx.sender != account_factory {
         // If not the account factory, verify the sender is the referee.

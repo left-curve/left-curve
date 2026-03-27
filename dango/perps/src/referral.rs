@@ -11,10 +11,34 @@ pub use {
 };
 
 use {
-    dango_types::account_factory::{self, UserIndex},
-    grug::{Addr, QuerierExt, QuerierWrapper, StorageQuerier},
+    crate::USER_REFERRAL_DATA,
+    dango_types::{
+        account_factory::{self, UserIndex},
+        perps::UserReferralData,
+    },
+    grug::{
+        Addr, Bound, Order as IterationOrder, QuerierExt, QuerierWrapper, StdResult, Storage,
+        StorageQuerier, Timestamp,
+    },
     std::collections::BTreeMap,
 };
+
+/// Load the cumulative referral data for a user with an optional upper bound.
+/// If not specified, return the latest data.
+fn load_referral_data(
+    storage: &dyn Storage,
+    user_index: UserIndex,
+    upper_bound: Option<Timestamp>,
+) -> StdResult<UserReferralData> {
+    let upper = upper_bound.map(Bound::Inclusive);
+
+    USER_REFERRAL_DATA
+        .prefix(user_index)
+        .range(storage, None, upper, IterationOrder::Descending)
+        .next()
+        .transpose()
+        .map(|opt| opt.map(|(_, data)| data).unwrap_or_default())
+}
 
 /// Resolve an address to a `UserIndex` via the account factory.
 ///
