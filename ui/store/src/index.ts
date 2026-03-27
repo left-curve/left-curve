@@ -269,12 +269,10 @@ export {
   useRegisterOat,
 } from "./hooks/useRegisterOat.js";
 
-
 export {
   type Points,
   type UserStats,
   type UserPoints,
-  type PointsResponse,
   type LeaderboardEntry,
   type BoxReward,
   type OatEntry,

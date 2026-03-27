@@ -183,9 +183,15 @@ const PointsCampaignTabs: React.FC = () => {
           </span>
         </Tab>
       </Tabs>
-      {activeTab === "profile" ? <ProfileSection /> : null}
-      {activeTab === "rewards" ? <RewardsSection /> : null}
-      {activeTab === "leaderboard" ? <LeaderboardSection /> : null}
+      <div className={activeTab === "profile" ? "" : "hidden"}>
+        <ProfileSection />
+      </div>
+      <div className={activeTab === "rewards" ? "" : "hidden"}>
+        <RewardsSection />
+      </div>
+      <div className={activeTab === "leaderboard" ? "" : "hidden"}>
+        <LeaderboardSection />
+      </div>
     </div>
   );
 };
