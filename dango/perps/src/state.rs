@@ -105,7 +105,7 @@ pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
     "ref_stats",
     ReferrerStatisticsIndex::new(
         "ref_stats",
-        "ref_stats__register_at",
+        "ref_stats__registered_at",
         "ref_stats__volume",
         "ref_stats__commission",
     ),
@@ -190,7 +190,7 @@ impl UserStateIndexes<'static> {
 
 #[grug::index_list((Referrer, Referee), RefereeStats)]
 pub struct ReferrerStatisticsIndex<'a> {
-    pub register_at: MultiIndex<'a, (Referrer, Referee), (Referrer, Timestamp), RefereeStats>,
+    pub registered_at: MultiIndex<'a, (Referrer, Referee), (Referrer, Timestamp), RefereeStats>,
     pub volume: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,
     pub commission: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,
 }
@@ -198,15 +198,15 @@ pub struct ReferrerStatisticsIndex<'a> {
 impl ReferrerStatisticsIndex<'static> {
     pub const fn new(
         pk_namespace: &'static str,
-        register_at_namespace: &'static str,
+        registered_at_namespace: &'static str,
         volume_namespace: &'static str,
         commission_namespace: &'static str,
     ) -> Self {
         ReferrerStatisticsIndex {
-            register_at: MultiIndex::new(
+            registered_at: MultiIndex::new(
                 |(referrer, _), data| (*referrer, data.registered_at),
                 pk_namespace,
-                register_at_namespace,
+                registered_at_namespace,
             ),
             volume: MultiIndex::new(
                 |(referrer, _), data| (*referrer, data.volume),

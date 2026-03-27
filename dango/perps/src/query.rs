@@ -350,7 +350,7 @@ pub fn query_referrer_to_referee_stats(
         ),
         ReferrerStatsOrderIndex::RegisterAt { start_after } => collect_referee_stats(
             ctx.storage,
-            &REFERRER_TO_REFEREE_STATISTICS.idx.register_at,
+            &REFERRER_TO_REFEREE_STATISTICS.idx.registered_at,
             referrer,
             start_after,
             limit,
