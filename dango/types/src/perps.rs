@@ -716,13 +716,13 @@ pub enum QueryMsg {
     },
 
     /// Query per-referee statistics for a referrer, with ordering and pagination.
-    #[returns(Vec<(Referee, RefereeStats)>)]
+    #[returns(BTreeMap<Referee, RefereeStats>)]
     ReferrerToRefereeStats {
         referrer: Referrer,
         order_by: ReferrerStatsOrderBy,
     },
 
-    /// Return the referral settings if the user is a referrer. Otherwise, return None.
+    /// Return the referral settings if the user is a referrer. Otherwise, return `None`.
     #[returns(Option<ReferrerSettings>)]
     ReferralSettings { user: UserIndex },
 }
@@ -809,8 +809,8 @@ pub struct LiquidityDepthResponse {
 // | `OrderRemoved(Liq.)`     | Yes         | -                    | -                     |
 // | `OrderRemoved(ADL)`      | Yes         | -                    | -                     |
 // | `Liquidated`             | 1 per pair  | -                    | 1 per pair            |
-// | `Deleveraged`            | 1 per ADL'd counter-party         | -                     |
-// | `BadDebtCovered`         | 1 per liquidation (if bad debt)   | -                     |
+// | `Deleveraged`            | 1 per ADL'd counter-party          | -                     |
+// | `BadDebtCovered`         | 1 per liquidation (if bad debt)    | -                     |
 //
 // (*) Off-book fills that realize PnL without emitting `OrderFilled`:
 //

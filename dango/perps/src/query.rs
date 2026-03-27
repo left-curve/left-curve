@@ -12,12 +12,12 @@ use {
             ConditionalOrder, LimitOrConditionalOrder, LimitOrder, LiquidityDepth,
             LiquidityDepthResponse, OrderId, PairId, PairParam, PairState, QueryOrderResponse,
             QueryOrdersByUserResponseItem, Referee, RefereeStats, Referrer, ReferrerSettings,
-            ReferrerStatsOrderIndex, UserReferralData, UserState,
+            ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData, UserState,
         },
     },
     grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, PrefixBound,
-        StdResult, Storage, Timestamp,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, MultiIndex, Order as IterationOrder,
+        PrefixBound, PrimaryKey, StdResult, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -335,8 +335,8 @@ pub fn query_referral_data(
 pub fn query_referrer_to_referee_stats(
     ctx: ImmutableCtx,
     referrer: Referrer,
-    order_by: dango_types::perps::ReferrerStatsOrderBy,
-) -> StdResult<Vec<(Referee, RefereeStats)>> {
+    order_by: ReferrerStatsOrderBy,
+) -> StdResult<BTreeMap<Referee, RefereeStats>> {
     let limit = order_by.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     match order_by.index {
@@ -369,14 +369,14 @@ pub fn query_referrer_to_referee_stats(
 
 fn collect_referee_stats<'a, S>(
     storage: &dyn Storage,
-    index: &grug::MultiIndex<'a, (Referrer, Referee), (Referrer, S), RefereeStats>,
+    index: &MultiIndex<'a, (Referrer, Referee), (Referrer, S), RefereeStats>,
     referrer: Referrer,
     start_after: Option<S>,
     limit: usize,
     order: IterationOrder,
-) -> StdResult<Vec<(Referee, RefereeStats)>>
+) -> StdResult<BTreeMap<Referee, RefereeStats>>
 where
-    S: grug::PrimaryKey,
+    S: PrimaryKey,
 {
     let start_after = start_after.map(PrefixBound::Exclusive);
 
@@ -405,6 +405,7 @@ pub fn query_referral_settings(
     };
 
     let param = crate::PARAM.load(ctx.storage)?;
+
     let commission_rate =
         calculate_commission_rate(ctx.storage, user, ctx.block.timestamp, &param.referral)?;
 
