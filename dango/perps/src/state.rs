@@ -102,12 +102,12 @@ pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
     RefereeStats,
     ReferrerStatisticsIndex,
 > = IndexedMap::new(
-    "ref_stats",
+    "ref_stat",
     ReferrerStatisticsIndex::new(
-        "ref_stats",
-        "ref_stats__registered_at",
-        "ref_stats__volume",
-        "ref_stats__commission",
+        "ref_stat",
+        "ref_stat__registered_at",
+        "ref_stat__volume",
+        "ref_stat__commission",
     ),
 );
 
