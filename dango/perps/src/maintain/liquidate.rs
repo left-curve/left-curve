@@ -12,11 +12,10 @@ use {
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
         price::may_invert_price,
-        referral::apply_fee_commissions,
         state::{LONGS, SHORTS},
         trade::{
-            _cancel_all_conditional_orders, _cancel_all_orders, FeeBreakdown, match_order,
-            settle_fill, settle_pnls,
+            _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
+            settle_pnls,
         },
     },
     anyhow::ensure,
@@ -107,7 +106,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------------- 5. Business logic ---------------------------
 
-    let (mut maker_states, order_mutations, index_updates, volumes, fee_breakdowns) = _liquidate(
+    let (maker_states, order_mutations, index_updates, volumes) = _liquidate(
         ctx.storage,
         user,
         ctx.contract,
@@ -126,31 +125,23 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
 
-    maker_states.insert(user, user_state);
-
-    apply_fee_commissions(
-        ctx.storage,
-        ctx.querier,
-        ctx.contract,
-        ctx.block.timestamp,
-        &param.referral,
-        &mut maker_states,
-        fee_breakdowns,
-        &volumes,
-        &mut events,
-    )?;
-
     STATE.save(ctx.storage, &state)?;
 
     for (pair_id, pair_state) in &pair_states {
         PAIR_STATES.save(ctx.storage, pair_id, pair_state)?;
     }
 
-    for (addr, user_state) in &maker_states {
-        if user_state.is_empty() {
+    if user_state.is_empty() {
+        USER_STATES.remove(ctx.storage, user)?;
+    } else {
+        USER_STATES.save(ctx.storage, user, &user_state)?;
+    }
+
+    for (addr, maker_state) in &maker_states {
+        if maker_state.is_empty() {
             USER_STATES.remove(ctx.storage, *addr)?;
         } else {
-            USER_STATES.save(ctx.storage, *addr, user_state)?;
+            USER_STATES.save(ctx.storage, *addr, maker_state)?;
         }
     }
 
@@ -259,7 +250,6 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// - Order mutations to apply.
 /// - Position index updates to apply.
 /// - Per-user volumes.
-/// - Per-user vault fees (from `settle_pnls`).
 fn _liquidate(
     storage: &dyn Storage,
     user: Addr,
@@ -285,7 +275,6 @@ fn _liquidate(
     )>,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, FeeBreakdown>,
 )> {
     // -------------------- Step 1: Assert liquidatable -------------------------
 
@@ -356,7 +345,9 @@ fn _liquidate(
             .unwrap_or_default()
     });
 
-    let fee_breakdowns = settle_pnls(
+    // Fee breakdowns are ignored during liquidation: trading fees are zero,
+    // and the liquidation fee is routed to the insurance fund separately.
+    let _ = settle_pnls(
         contract,
         param,
         state,
@@ -415,7 +406,6 @@ fn _liquidate(
         all_order_mutations,
         all_index_updates,
         all_volumes,
-        fee_breakdowns,
     ))
 }
 
