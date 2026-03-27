@@ -143,14 +143,14 @@ const RewardsSection: React.FC = () => (
 );
 
 const LeaderboardSection: React.FC = () => (
-  <>
+  <div className="flex flex-col gap-8">
     <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
       <PointsHeader />
     </div>
     <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
       <LeaderboardTable />
     </div>
-  </>
+  </div>
 );
 
 const PointsCampaignTabs: React.FC = () => {
