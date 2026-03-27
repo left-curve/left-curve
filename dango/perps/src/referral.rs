@@ -14,8 +14,8 @@ use {
         },
     },
     grug::{
-        Addr, Bound, Duration, EventBuilder, MutableCtx, Number, NumberConst, Op,
-        Order as IterationOrder, QuerierExt, QuerierWrapper, Response, Storage, Timestamp, Uint128,
+        Addr, Bound, Duration, EventBuilder, MutableCtx, Number, Op, Order as IterationOrder,
+        QuerierExt, QuerierWrapper, Response, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };
