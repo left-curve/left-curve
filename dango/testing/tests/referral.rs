@@ -15,7 +15,6 @@ use {
         ResultExt, Signer, Timestamp, TxOutcome, Udec128, Uint128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
-    std::collections::BTreeMap,
 };
 
 // ---------------------------------------------------------------------------
@@ -679,7 +678,7 @@ fn referrer_stats() {
     place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 2);
 
     // Query stats sorted by volume descending.
-    let stats: BTreeMap<Referee, perps::RefereeStats> = suite
+    let stats: Vec<(Referee, perps::RefereeStats)> = suite
         .query_wasm_smart(contracts.perps, perps::QueryReferrerToRefereeStatsRequest {
             referrer: 1,
             order_by: ReferrerStatsOrderBy {
@@ -691,14 +690,30 @@ fn referrer_stats() {
         .should_succeed();
 
     assert_eq!(stats.len(), 2);
-    assert!(stats.contains_key(&2));
-    assert!(stats.contains_key(&3));
+    // User3 has more volume, should be first in descending order.
+    assert_eq!(stats[0].0, 3);
+    assert_eq!(stats[1].0, 2);
 
-    let user2_volume = stats[&2].volume;
-    let user3_volume = stats[&3].volume;
+    // Query ascending.
+    let stats: Vec<(Referee, perps::RefereeStats)> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryReferrerToRefereeStatsRequest {
+            referrer: 1,
+            order_by: ReferrerStatsOrderBy {
+                order: IterationOrder::Ascending,
+                limit: None,
+                index: ReferrerStatsOrderIndex::Volume { start_after: None },
+            },
+        })
+        .should_succeed();
+
+    assert_eq!(stats[0].0, 2);
+    assert_eq!(stats[1].0, 3);
+
+    let user2_volume = stats[0].1.volume;
+    let user3_volume = stats[1].1.volume;
 
     // start_after: skip user3's volume in descending order → only user2 remains.
-    let stats: BTreeMap<Referee, perps::RefereeStats> = suite
+    let stats: Vec<(Referee, perps::RefereeStats)> = suite
         .query_wasm_smart(contracts.perps, perps::QueryReferrerToRefereeStatsRequest {
             referrer: 1,
             order_by: ReferrerStatsOrderBy {
@@ -712,11 +727,11 @@ fn referrer_stats() {
         .should_succeed();
 
     assert_eq!(stats.len(), 1);
-    assert!(stats.contains_key(&2));
-    assert_eq!(stats[&2].volume, user2_volume);
+    assert_eq!(stats[0].0, 2);
+    assert_eq!(stats[0].1.volume, user2_volume);
 
     // limit: only return 1 result in descending order → user3 (highest volume).
-    let stats: BTreeMap<Referee, perps::RefereeStats> = suite
+    let stats: Vec<(Referee, perps::RefereeStats)> = suite
         .query_wasm_smart(contracts.perps, perps::QueryReferrerToRefereeStatsRequest {
             referrer: 1,
             order_by: ReferrerStatsOrderBy {
@@ -728,7 +743,7 @@ fn referrer_stats() {
         .should_succeed();
 
     assert_eq!(stats.len(), 1);
-    assert!(stats.contains_key(&3));
+    assert_eq!(stats[0].0, 3);
 }
 
 /// Verify that fee commissions are correctly credited to margins across a

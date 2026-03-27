@@ -336,7 +336,7 @@ pub fn query_referrer_to_referee_stats(
     ctx: ImmutableCtx,
     referrer: Referrer,
     order_by: ReferrerStatsOrderBy,
-) -> StdResult<BTreeMap<Referee, RefereeStats>> {
+) -> StdResult<Vec<(Referee, RefereeStats)>> {
     let limit = order_by.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     match order_by.index {
@@ -374,7 +374,7 @@ fn collect_referee_stats<'a, S>(
     start_after: Option<S>,
     limit: usize,
     order: IterationOrder,
-) -> StdResult<BTreeMap<Referee, RefereeStats>>
+) -> StdResult<Vec<(Referee, RefereeStats)>>
 where
     S: PrimaryKey,
 {

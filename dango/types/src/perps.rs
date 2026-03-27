@@ -716,7 +716,7 @@ pub enum QueryMsg {
     },
 
     /// Query per-referee statistics for a referrer, with ordering and pagination.
-    #[returns(BTreeMap<Referee, RefereeStats>)]
+    #[returns(Vec<(Referee, RefereeStats)>)]
     ReferrerToRefereeStats {
         referrer: Referrer,
         order_by: ReferrerStatsOrderBy,
