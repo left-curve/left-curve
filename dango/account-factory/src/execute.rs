@@ -6,8 +6,7 @@ use {
         account,
         account_factory::{
             AccountOwned, AccountRegistered, ExecuteMsg, InstantiateMsg, KeyDisowned, KeyOwned,
-            NewUserSalt, RegisterUserData, Salt, User, UserRegistered, Username,
-            UsernameUpdated,
+            NewUserSalt, RegisterUserData, Salt, User, UserRegistered, Username, UsernameUpdated,
         },
         auth::{Key, Signature},
     },
