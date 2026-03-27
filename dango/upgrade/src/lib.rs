@@ -1,6 +1,6 @@
 use {
     dango_types::perps::{Param, ReferralParam},
-    grug::{Addr, Inner, Item, Storage, addr},
+    grug::{Addr, Inner, Storage, addr},
     grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
 };
 
@@ -34,9 +34,6 @@ mod legacy {
     pub const PARAM: Item<Param> = Item::new("param");
 }
 
-/// New `PARAM` item using the current `Param` type (includes `referral`).
-const PARAM: Item<Param> = Item::new("param");
-
 pub fn do_upgrade<VM>(
     storage: Box<dyn Storage>,
     _vm: VM,
@@ -65,7 +62,7 @@ pub fn do_upgrade<VM>(
         referral: ReferralParam::default(),
     };
 
-    PARAM.save(perps_storage, &new)?;
+    dango_perps::PARAM.save(perps_storage, &new)?;
 
     tracing::info!("Migrated perps Param: added default ReferralParam");
 

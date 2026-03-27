@@ -14,6 +14,7 @@ mod trade;
 mod vault;
 mod volume;
 
+pub use state::PARAM;
 pub(crate) use {querier::*, state::*, volume::*};
 
 use {
