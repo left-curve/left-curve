@@ -14,8 +14,8 @@ use {
         },
     },
     grug::{
-        Addr, Bound, EventBuilder, MutableCtx, Number, Op, Order as IterationOrder, QuerierExt,
-        QuerierWrapper, Response, Storage, Timestamp,
+        Addr, Bound, Duration, EventBuilder, MutableCtx, Number, Op, Order as IterationOrder,
+        QuerierExt, QuerierWrapper, Response, StdResult, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -180,14 +180,12 @@ pub(crate) fn retrieve_user_index(
         return *cached;
     }
 
-    let account = querier.query_wasm_smart(account_factory, account_factory::QueryAccountRequest {
-        address: addr,
-    });
-
-    match account {
-        Ok(account) => Some(account.owner),
-        Err(_) => None,
-    }
+    querier
+        .query_wasm_smart(account_factory, account_factory::QueryAccountRequest {
+            address: addr,
+        })
+        .ok()
+        .map(|account| account.owner)
 }
 
 /// Determine the commission rate for a referrer based on their
@@ -198,14 +196,14 @@ pub(crate) fn calculate_commission_rate(
     referrer: Referrer,
     block_timestamp: Timestamp,
     referral_param: &ReferralParam,
-) -> grug::StdResult<CommissionRate> {
+) -> StdResult<CommissionRate> {
     // If the referrer has a custom override, use it directly.
     if let Some(override_rate) = COMMISSION_RATE_OVERRIDES.may_load(storage, referrer)? {
         return Ok(override_rate);
     }
 
     let today = round_to_day(block_timestamp);
-    let lookback_start = today.saturating_sub(grug::Duration::from_days(COMMISSION_LOOKBACK_DAYS));
+    let lookback_start = today.saturating_sub(Duration::from_days(COMMISSION_LOOKBACK_DAYS));
 
     // Load the latest cumulative data for the referrer.
     let latest = load_referral_data(storage, referrer, None)?;
@@ -246,7 +244,7 @@ fn load_referral_data(
     storage: &dyn Storage,
     user_index: UserIndex,
     upper_bound: Option<Timestamp>,
-) -> grug::StdResult<UserReferralData> {
+) -> StdResult<UserReferralData> {
     let upper = upper_bound.map(Bound::Inclusive);
 
     USER_REFERRAL_DATA
@@ -265,18 +263,16 @@ pub(crate) fn retrieve_master_account(
     user: UserIndex,
     account_factory: Addr,
 ) -> Option<Addr> {
-    let user = querier.query_wasm_smart(
-        account_factory,
-        account_factory::QueryUserRequest(account_factory::UserIndexOrName::Index(user)),
-    );
-
-    match user {
-        Ok(user) => Some(user.master_account()),
-        Err(_) => None,
-    }
+    querier
+        .query_wasm_smart(
+            account_factory,
+            account_factory::QueryUserRequest(account_factory::UserIndexOrName::Index(user)),
+        )
+        .ok()
+        .map(|user| user.master_account())
 }
 
-// -------------------------------- Fee commission application --------------------------------
+// ------------------------ Fee commission application -------------------------
 
 /// Maximum number of referral chain levels to walk when calculating fee
 /// commissions.
@@ -510,7 +506,9 @@ fn compute_referrer_settings(
         commission_rate,
         share_ratio,
     };
+
     cache.insert(user, settings);
+
     Ok(settings)
 }
 
@@ -534,6 +532,7 @@ fn credit_commission(
         })
         .margin
         .checked_add_assign(amount)?;
+
     Ok(())
 }
 
@@ -546,7 +545,7 @@ fn increment_referral_data(
     commission_shared_delta: UsdValue,
     referees_volume_delta: UsdValue,
     commission_earned_delta: UsdValue,
-) -> grug::StdResult<()> {
+) -> StdResult<()> {
     let today = round_to_day(current_time);
 
     let mut data = load_referral_data(storage, user_index, None)?;
@@ -559,9 +558,7 @@ fn increment_referral_data(
     data.commission_earned_from_referees
         .checked_add_assign(commission_earned_delta)?;
 
-    USER_REFERRAL_DATA.save(storage, (user_index, today), &data)?;
-
-    Ok(())
+    USER_REFERRAL_DATA.save(storage, (user_index, today), &data)
 }
 
 /// Update per-referee statistics for a referrer.
@@ -576,7 +573,7 @@ fn update_referee_stats(
     current_time: Timestamp,
     volume_delta: UsdValue,
     commission_delta: UsdValue,
-) -> grug::StdResult<()> {
+) -> StdResult<()> {
     let today = round_to_day(current_time);
 
     let mut stats = REFERRER_TO_REFEREE_STATISTICS.load(storage, (referrer, referee))?;
@@ -593,10 +590,9 @@ fn update_referee_stats(
 
         let mut data = load_referral_data(storage, referrer, None)?;
         data.cumulative_active_referees += 1;
+
         USER_REFERRAL_DATA.save(storage, (referrer, today), &data)?;
     }
 
-    REFERRER_TO_REFEREE_STATISTICS.save(storage, (referrer, referee), &stats)?;
-
-    Ok(())
+    REFERRER_TO_REFEREE_STATISTICS.save(storage, (referrer, referee), &stats)
 }
