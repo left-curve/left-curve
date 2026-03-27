@@ -7,6 +7,7 @@ use {
         account_factory::{
             AccountOwned, AccountRegistered, ExecuteMsg, InstantiateMsg, KeyDisowned, KeyOwned,
             NewUserSalt, RegisterUserData, Salt, User, UserRegistered, Username,
+            UsernameUpdated,
         },
         auth::{Key, Signature},
     },
@@ -348,5 +349,8 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
 
     USERS.save(ctx.storage, user_index, &user)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event(UsernameUpdated {
+        user_index,
+        username,
+    })?)
 }
