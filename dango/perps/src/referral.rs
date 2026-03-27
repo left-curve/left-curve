@@ -584,12 +584,12 @@ fn update_referee_stats(
         .checked_add_assign(commission_delta)?;
 
     // If this referee hasn't traded today yet, increment the referrer's
-    // daily active users count.
+    // daily active direct referees count.
     if stats.last_day_active != today {
         stats.last_day_active = today;
 
         let mut data = load_referral_data(storage, referrer, None)?;
-        data.active_users = data.active_users.checked_add(Uint128::ONE)?;
+        data.cumulative_active_referees += 1;
         USER_REFERRAL_DATA.save(storage, (referrer, today), &data)?;
     }
 

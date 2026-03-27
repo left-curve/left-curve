@@ -1164,19 +1164,19 @@ fn active_referral() {
         )
         .should_succeed();
 
-    // User2 trades — active_users should be 1.
+    // User2 trades — cumulative_active_referees should be 1.
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
-    assert_eq!(data.active_users, Uint128::new(1));
+    assert_eq!(data.cumulative_active_referees, 1);
 
-    // User2 trades again same day — active_users still 1.
+    // User2 trades again same day — cumulative_active_referees still 1.
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
-    assert_eq!(data.active_users, Uint128::new(1));
+    assert_eq!(data.cumulative_active_referees, 1);
 
-    // User3 trades — active_users should be 2.
+    // User3 trades — cumulative_active_referees should be 2.
     place_ask_order(
         &mut suite,
         contracts.perps,
@@ -1187,16 +1187,16 @@ fn active_referral() {
     place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
-    assert_eq!(data.active_users, Uint128::new(2));
+    assert_eq!(data.cumulative_active_referees, 2);
 
-    // Next day, User2 trades — active_users should be 3 (cumulative).
+    // Next day, User2 trades — cumulative_active_referees should be 3 (cumulative).
     suite.block_time = grug::Duration::from_days(1);
     suite.make_empty_block();
 
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
-    assert_eq!(data.active_users, Uint128::new(3));
+    assert_eq!(data.cumulative_active_referees, 3);
 }
 
 // ---------------------------------------------------------------------------

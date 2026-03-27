@@ -430,8 +430,10 @@ pub struct UserReferralData {
     /// Total commission distributed from this user's referees (cumulative).
     pub commission_earned_from_referees: UsdValue,
 
-    /// Number of referees that have traded on a specific day.
-    pub active_users: Uint128,
+    /// Cumulative count of daily active direct referees. Incremented by one
+    /// each time a direct referee trades for the first time on a given day.
+    /// Difference two buckets to get the count for a specific window.
+    pub cumulative_active_referees: u32,
 }
 
 impl UserReferralData {
@@ -447,7 +449,9 @@ impl UserReferralData {
             commission_earned_from_referees: self
                 .commission_earned_from_referees
                 .checked_sub(other.commission_earned_from_referees)?,
-            active_users: self.active_users.saturating_sub(other.active_users),
+            cumulative_active_referees: self
+                .cumulative_active_referees
+                .saturating_sub(other.cumulative_active_referees),
         })
     }
 }

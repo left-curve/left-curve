@@ -187,14 +187,14 @@ Cumulative data is bucketed by day (see [§7a](#7a-cumulative-daily-buckets)), s
 
 Each user has a `UserReferralData` record keyed by (user, day). The day is the block timestamp rounded down to midnight. Fields are cumulative (monotonically increasing), so a rolling window is computed by differencing two buckets.
 
-| Field                             | Type       | Description                                           |
-| --------------------------------- | ---------- | ----------------------------------------------------- |
-| `volume`                          | `UsdValue` | User's own cumulative trading volume.                 |
-| `commission_shared_by_referrer`   | `UsdValue` | Total commission shared by this user's referrer.      |
-| `referee_count`                   | `u32`      | Number of direct referees.                            |
-| `referees_volume`                 | `UsdValue` | Cumulative trading volume of direct referees.         |
-| `commission_earned_from_referees` | `UsdValue` | Total commission earned from direct referees' trades. |
-| `active_users`                    | `Uint128`  | Cumulative daily active referee count.                |
+| Field                             | Type       | Description                                                                                       |
+| --------------------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
+| `volume`                          | `UsdValue` | User's own cumulative trading volume.                                                             |
+| `commission_shared_by_referrer`   | `UsdValue` | Total commission shared by this user's referrer.                                                  |
+| `referee_count`                   | `u32`      | Number of direct referees.                                                                        |
+| `referees_volume`                 | `UsdValue` | Cumulative trading volume of direct referees.                                                     |
+| `commission_earned_from_referees` | `UsdValue` | Total commission earned from direct referees' trades.                                             |
+| `cumulative_active_referees`      | `u32`      | Cumulative count of daily active direct referees. Difference two buckets to get a windowed count. |
 
 When a referred user trades:
 
@@ -215,9 +215,9 @@ For every (referrer, referee) pair, a `RefereeStats` record tracks:
 
 These records are multi-indexed for sorted queries by `registered_at`, `volume`, or `commission_earned`.
 
-### 7c. Daily active users
+### 7c. Daily active direct referees
 
-On the first trade of each day by a given referee, the referrer's $\mathtt{activeUsers}$ field in today's cumulative bucket is incremented. Subsequent trades by the same referee on the same day do not increment it again. This is tracked via the $\mathtt{lastDayActive}$ field on `RefereeStats`: if $\mathtt{lastDayActive} \neq \mathtt{today}$, it is a new active day.
+On the first trade of each day by a given direct referee, the referrer's $\mathtt{cumulativeActiveReferees}$ field in today's cumulative bucket is incremented. Subsequent trades by the same referee on the same day do not increment it again. This is tracked via the $\mathtt{lastDayActive}$ field on `RefereeStats`: if $\mathtt{lastDayActive} \neq \mathtt{today}$, it is a new active day.
 
 ## 8. Parameters
 
