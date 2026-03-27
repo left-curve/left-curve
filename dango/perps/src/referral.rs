@@ -9,8 +9,8 @@ use {
         DangoQuerier, UsdValue,
         account_factory::{self, UserIndex},
         perps::{
-            CommissionRate, FeeDistributed, FeeShareRatio, Referee, RefereeStats, Referral,
-            ReferralParam, Referrer, ReferrerSettings, UserReferralData, UserState,
+            CommissionRate, FeeDistributed, FeeShareRatio, Referee, RefereeStats, ReferralParam,
+            ReferralSet, Referrer, ReferrerSettings, UserReferralData, UserState,
         },
     },
     grug::{
@@ -81,7 +81,7 @@ pub fn set_referral(
         USER_REFERRAL_DATA.save(ctx.storage, (referrer, today), &data)?;
     }
 
-    Ok(Response::new().add_event(Referral { referrer, referee })?)
+    Ok(Response::new().add_event(ReferralSet { referrer, referee })?)
 }
 
 /// Set or update the fee share ratio for the calling user (referrer).

@@ -1049,7 +1049,7 @@ pub struct FeeDistributed {
 /// Event indicating a referral relationship has been registered.
 #[grug::event("referral_set")]
 #[grug::derive(Serde)]
-pub struct Referral {
+pub struct ReferralSet {
     pub referrer: UserIndex,
     pub referee: UserIndex,
 }
