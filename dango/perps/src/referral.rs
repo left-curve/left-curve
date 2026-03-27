@@ -2,7 +2,7 @@ use {
     crate::{
         COMMISSION_RATE_OVERRIDES, FEE_SHARE_RATIO, PARAM, REFEREE_TO_REFERRER,
         REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, query::query_volume,
-        trade::submit_order::FeeBreakdown, volume::round_to_day,
+        trade::FeeBreakdown, volume::round_to_day,
     },
     anyhow::ensure,
     dango_types::{

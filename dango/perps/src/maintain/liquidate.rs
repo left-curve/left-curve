@@ -15,8 +15,8 @@ use {
         referral::apply_fee_commissions,
         state::{LONGS, SHORTS},
         trade::{
-            _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
-            settle_pnls, submit_order::FeeBreakdown,
+            _cancel_all_conditional_orders, _cancel_all_orders, FeeBreakdown, match_order,
+            settle_fill, settle_pnls,
         },
     },
     anyhow::ensure,
