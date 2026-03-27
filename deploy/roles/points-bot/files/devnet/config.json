@@ -1,12 +1,12 @@
 {
   "block_task": {
     "initial_loops": 2,
-    "max_loops": 10,
+    "max_loops": 100,
     "timeout": "30s"
   },
   "bot": {
-    "epoch_duration": "7days",
-    "event_duration": 12,
+    "epoch_duration": "10m",
+    "event_duration": 4320,
     "event_start": {
       "block": 2
     },
@@ -58,18 +58,18 @@
       }
     },
     "oat_multiplier": "1",
-    "oat_window": "4weeks",
+    "oat_window": "2weeks",
     "perps_expression": "1 + max(0.0, math::log10(x))",
     "epoch_perps_share": "750000",
     "epoch_vault_points": "250000",
     "leaderboard_timeframes": [1, 2, 4]
   },
-  "http_url": "https://api-testnet.dango.zone",
+  "http_url": "https://api-devnet.dango.zone",
   "httpd": {
     "register_cache_delta": "1m",
     "rest_url": "0.0.0.0:8080"
   },
-  "log_level": "debug",
+  "log_level": "info",
   "referral": {
     "direct_share": "0.2",
     "indirect_share": "0.05"

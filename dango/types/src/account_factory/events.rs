@@ -1,6 +1,6 @@
 use {
     crate::{
-        account_factory::{AccountIndex, UserIndex},
+        account_factory::{AccountIndex, UserIndex, Username},
         auth::Key,
     },
     grug::{Addr, Hash256},
@@ -47,4 +47,12 @@ pub struct KeyOwned {
 pub struct KeyDisowned {
     pub user_index: UserIndex,
     pub key_hash: Hash256,
+}
+
+/// An event indicating a user has set a custom username.
+#[grug::derive(Serde)]
+#[grug::event("username_updated")]
+pub struct UsernameUpdated {
+    pub user_index: UserIndex,
+    pub username: Username,
 }
