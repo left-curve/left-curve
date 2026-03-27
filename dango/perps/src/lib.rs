@@ -64,6 +64,20 @@ fn oracle(querier: impl DangoQuerier) -> Addr {
     }
 }
 
+#[inline]
+fn account_factory(querier: impl DangoQuerier) -> Addr {
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = querier;
+        grug::addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b")
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        querier.query_account_factory().unwrap()
+    }
+}
+
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     STATE.save(ctx.storage, &State {
