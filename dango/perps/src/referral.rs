@@ -4,7 +4,7 @@ use {
         REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, query::query_volume,
         volume::round_to_day,
     },
-    anyhow::{bail, ensure},
+    anyhow::ensure,
     dango_types::{
         DangoQuerier, UsdValue,
         account_factory::{self, UserIndex},
@@ -14,8 +14,8 @@ use {
         },
     },
     grug::{
-        Addr, Bound, Duration, EventBuilder, MutableCtx, Number, Op, Order as IterationOrder,
-        QuerierExt, QuerierWrapper, Response, Storage, Timestamp,
+        Addr, Bound, EventBuilder, MutableCtx, Number, Op, Order as IterationOrder, QuerierExt,
+        QuerierWrapper, Response, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -57,26 +57,29 @@ pub fn set_referral(
     );
 
     // The referral relationship is immutable once set.
-    REFEREE_TO_REFERRER.may_update(ctx.storage, referee, |existing| {
-        if existing.is_some() {
-            bail!("referee {referee} already has a referrer");
-        }
-        Ok(referrer)
-    })?;
+    ensure!(
+        !REFEREE_TO_REFERRER.has(ctx.storage, referee),
+        "referee {referee} already has a referrer"
+    );
+
+    // Save the referee-to-referrer relation.
+    REFEREE_TO_REFERRER.save(ctx.storage, referee, &referrer)?;
 
     // Initialize per-referee statistics for the referrer.
     REFERRER_TO_REFEREE_STATISTICS.save(ctx.storage, (referrer, referee), &RefereeStats {
         registered_at: ctx.block.timestamp,
-        volume: UsdValue::ZERO,
-        commission_earned: UsdValue::ZERO,
-        last_day_active: Duration::from_nanos(0),
+        ..Default::default()
     })?;
 
     // Increment the referrer's referee count.
-    let today = round_to_day(ctx.block.timestamp);
-    let mut data = load_referral_data(ctx.storage, referrer, None)?;
-    data.referee_count = data.referee_count.saturating_add(1);
-    USER_REFERRAL_DATA.save(ctx.storage, (referrer, today), &data)?;
+    {
+        let today = round_to_day(ctx.block.timestamp);
+
+        let mut data = load_referral_data(ctx.storage, referrer, None)?;
+        data.referee_count += 1;
+
+        USER_REFERRAL_DATA.save(ctx.storage, (referrer, today), &data)?;
+    }
 
     Ok(Response::new().add_event(Referral { referrer, referee })?)
 }

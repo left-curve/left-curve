@@ -139,6 +139,7 @@ pub struct ReferrerSettings {
 
 /// Per-referee statistics tracked from the referrer's perspective.
 #[grug::derive(Serde, Borsh)]
+#[derive(Default)]
 pub struct RefereeStats {
     /// Timestamp when the referee registered with the referral.
     pub registered_at: Timestamp,
