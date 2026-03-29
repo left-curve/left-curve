@@ -1,20 +1,23 @@
 use {
     crate::{
-        ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, DEPTHS, PAIR_PARAMS, PAIR_STATES,
-        USER_STATES, VOLUMES, round_to_day,
+        ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS,
+        PAIR_STATES, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA,
+        USER_STATES, VOLUMES, referral::calculate_commission_rate, round_to_day,
     },
     anyhow::ensure,
     dango_types::{
         UsdPrice, UsdValue,
+        account_factory::UserIndex,
         perps::{
             ConditionalOrder, LimitOrConditionalOrder, LimitOrder, LiquidityDepth,
             LiquidityDepthResponse, OrderId, PairId, PairParam, PairState, QueryOrderResponse,
-            QueryOrdersByUserResponseItem, UserState,
+            QueryOrdersByUserResponseItem, Referee, RefereeStats, Referrer, ReferrerSettings,
+            ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData, UserState,
         },
     },
     grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, StdResult, Storage,
-        Timestamp,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, MultiIndex, Order as IterationOrder,
+        PrefixBound, PrimaryKey, StdResult, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -290,4 +293,124 @@ pub fn query_volume(
             Ok(latest.checked_sub(baseline)?)
         },
     }
+}
+
+pub fn query_referrer(storage: &dyn Storage, referee: UserIndex) -> StdResult<Option<Referrer>> {
+    REFEREE_TO_REFERRER.may_load(storage, referee)
+}
+
+pub fn query_referral_data(
+    ctx: ImmutableCtx,
+    user: UserIndex,
+    since: Option<Timestamp>,
+) -> anyhow::Result<UserReferralData> {
+    let Some(data_now) = USER_REFERRAL_DATA
+        .prefix(user)
+        .values(ctx.storage, None, None, IterationOrder::Descending)
+        .next()
+        .transpose()?
+    else {
+        return Ok(UserReferralData::default());
+    };
+
+    let data_since = if let Some(since) = since {
+        USER_REFERRAL_DATA
+            .prefix(user)
+            .values(
+                ctx.storage,
+                None,
+                Some(Bound::Inclusive(since)),
+                IterationOrder::Descending,
+            )
+            .next()
+            .transpose()?
+            .unwrap_or_default()
+    } else {
+        UserReferralData::default()
+    };
+
+    Ok(data_now.checked_sub(&data_since)?)
+}
+
+pub fn query_referrer_to_referee_stats(
+    ctx: ImmutableCtx,
+    referrer: Referrer,
+    order_by: ReferrerStatsOrderBy,
+) -> StdResult<Vec<(Referee, RefereeStats)>> {
+    let limit = order_by.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    match order_by.index {
+        ReferrerStatsOrderIndex::Commission { start_after } => collect_referee_stats(
+            ctx.storage,
+            &REFERRER_TO_REFEREE_STATISTICS.idx.commission,
+            referrer,
+            start_after,
+            limit,
+            order_by.order,
+        ),
+        ReferrerStatsOrderIndex::RegisterAt { start_after } => collect_referee_stats(
+            ctx.storage,
+            &REFERRER_TO_REFEREE_STATISTICS.idx.registered_at,
+            referrer,
+            start_after,
+            limit,
+            order_by.order,
+        ),
+        ReferrerStatsOrderIndex::Volume { start_after } => collect_referee_stats(
+            ctx.storage,
+            &REFERRER_TO_REFEREE_STATISTICS.idx.volume,
+            referrer,
+            start_after,
+            limit,
+            order_by.order,
+        ),
+    }
+}
+
+fn collect_referee_stats<'a, S>(
+    storage: &dyn Storage,
+    index: &MultiIndex<'a, (Referrer, Referee), (Referrer, S), RefereeStats>,
+    referrer: Referrer,
+    start_after: Option<S>,
+    limit: usize,
+    order: IterationOrder,
+) -> StdResult<Vec<(Referee, RefereeStats)>>
+where
+    S: PrimaryKey,
+{
+    let start_after = start_after.map(PrefixBound::Exclusive);
+
+    let (min, max) = match order {
+        IterationOrder::Ascending => (start_after, None),
+        IterationOrder::Descending => (None, start_after),
+    };
+
+    index
+        .sub_prefix(referrer)
+        .prefix_range(storage, min, max, order)
+        .take(limit)
+        .map(|value| {
+            let ((_, referee), referee_stats) = value?;
+            Ok((referee, referee_stats))
+        })
+        .collect()
+}
+
+pub fn query_referral_settings(
+    ctx: ImmutableCtx,
+    user: UserIndex,
+) -> anyhow::Result<Option<ReferrerSettings>> {
+    let Some(share_ratio) = FEE_SHARE_RATIO.may_load(ctx.storage, user)? else {
+        return Ok(None);
+    };
+
+    let param = crate::PARAM.load(ctx.storage)?;
+
+    let commission_rate =
+        calculate_commission_rate(ctx.storage, user, ctx.block.timestamp, &param.referral)?;
+
+    Ok(Some(ReferrerSettings {
+        commission_rate,
+        share_ratio,
+    }))
 }

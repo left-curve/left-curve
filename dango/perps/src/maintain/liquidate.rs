@@ -249,6 +249,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// - Maker `UserState`s to persist (includes any book makers and ADL counter-parties).
 /// - Order mutations to apply.
 /// - Position index updates to apply.
+/// - Per-user volumes.
 fn _liquidate(
     storage: &dyn Storage,
     user: Addr,
@@ -344,7 +345,9 @@ fn _liquidate(
             .unwrap_or_default()
     });
 
-    settle_pnls(
+    // Fee breakdowns are ignored during liquidation: trading fees are zero,
+    // and the liquidation fee is routed to the insurance fund separately.
+    let _ = settle_pnls(
         contract,
         param,
         state,

@@ -15,6 +15,7 @@ use {
         },
         price::may_invert_price,
         query::query_volume,
+        referral::apply_fee_commissions,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -62,29 +63,50 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (maker_states, order_mutations, order_to_store, next_order_id, index_updates, volumes) =
-        _submit_order(
-            ctx.storage,
-            ctx.sender,
-            ctx.contract,
-            ctx.block.timestamp,
-            &mut oracle_querier,
-            &param,
-            &mut state,
-            &pair_id,
-            &pair_param,
-            &mut pair_state,
-            &mut taker_state,
-            oracle_price,
-            size,
-            kind,
-            reduce_only,
-            &mut events,
-        )?;
+    let (
+        mut maker_states,
+        order_mutations,
+        order_to_store,
+        next_order_id,
+        index_updates,
+        volumes,
+        fee_breakdowns,
+    ) = _submit_order(
+        ctx.storage,
+        ctx.sender,
+        ctx.contract,
+        ctx.block.timestamp,
+        &mut oracle_querier,
+        &param,
+        &mut state,
+        &pair_id,
+        &pair_param,
+        &mut pair_state,
+        &mut taker_state,
+        oracle_price,
+        size,
+        kind,
+        reduce_only,
+        &mut events,
+    )?;
 
     // ------------------------ 3. Apply state changes -------------------------
 
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
+
+    maker_states.insert(ctx.sender, taker_state);
+
+    apply_fee_commissions(
+        ctx.storage,
+        ctx.querier,
+        ctx.contract,
+        ctx.block.timestamp,
+        &param.referral,
+        &mut maker_states,
+        fee_breakdowns,
+        &volumes,
+        &mut events,
+    )?;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
@@ -92,10 +114,8 @@ pub fn submit_order(
 
     PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
 
-    USER_STATES.save(ctx.storage, ctx.sender, &taker_state)?;
-
-    for (addr, maker_state) in &maker_states {
-        USER_STATES.save(ctx.storage, *addr, maker_state)?;
+    for (addr, user_state) in &maker_states {
+        USER_STATES.save(ctx.storage, *addr, user_state)?;
     }
 
     apply_position_index_updates(ctx.storage, &index_updates)?;
@@ -233,6 +253,7 @@ pub fn submit_order(
 ///   `BTreeMap<Addr, UserState>`.
 /// - Order mutations to apply: `Vec<(OrderKey, Option<LimitOrder>)>`.
 /// - GTC order to store: `Option<(stored_price, order_id, LimitOrder)>`.
+#[allow(clippy::type_complexity)]
 pub(crate) fn _submit_order(
     storage: &dyn Storage,
     taker: Addr,
@@ -257,6 +278,7 @@ pub(crate) fn _submit_order(
     OrderId,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, FeeBreakdown>,
 )> {
     // -------------- Step 1. Check minimum order size -------------------------
 
@@ -316,6 +338,7 @@ pub(crate) fn _submit_order(
             Some(order_to_store),
             taker_order_id + OrderId::ONE,
             Vec::new(),
+            BTreeMap::new(),
             BTreeMap::new(),
         ));
     }
@@ -412,7 +435,7 @@ pub(crate) fn _submit_order(
             .unwrap_or_default()
     });
 
-    settle_pnls(
+    let fee_breakdowns = settle_pnls(
         contract,
         param,
         state,
@@ -430,6 +453,7 @@ pub(crate) fn _submit_order(
         next_order_id,
         index_updates,
         volumes,
+        fee_breakdowns,
     ))
 }
 
@@ -788,6 +812,15 @@ pub fn settle_fill(
     Ok(pnl)
 }
 
+#[derive(Debug)]
+pub(crate) struct FeeBreakdown {
+    /// Portion of the fee routed to the protocol treasury.
+    pub protocol_fee: UsdValue,
+
+    /// Portion of the fee credited to the vault.
+    pub vault_fee: UsdValue,
+}
+
 /// Settle PnLs and fees directly in USD on user margins.
 ///
 /// Two loops:
@@ -807,7 +840,10 @@ pub fn settle_fill(
 /// - `maker_states[*].margin` — adjusted by PnL and fees (including the vault's
 ///   `UserState`).
 ///
-/// Returns: `()` — all side effects are applied in-place.
+/// Per-user fee breakdown after splitting between protocol treasury and vault.
+///
+/// Returns: per-user fee breakdown — the split between protocol treasury and
+/// vault for each fee-paying user.
 pub fn settle_pnls(
     contract: Addr,
     param: &Param,
@@ -817,13 +853,15 @@ pub fn settle_pnls(
     maker_states: &mut BTreeMap<Addr, UserState>,
     pnls: BTreeMap<Addr, UsdValue>,
     fees: BTreeMap<Addr, UsdValue>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<BTreeMap<Addr, FeeBreakdown>> {
     debug_assert!(
         !maker_states.contains_key(&taker),
         "taker must not be in maker_states — self-trade prevention violated"
     );
 
     // ------------------------------ Settle fees ------------------------------
+
+    let mut fee_breakdowns = BTreeMap::new();
 
     for (user, fee) in fees {
         if fee.is_zero() || user == contract {
@@ -854,6 +892,11 @@ pub fn settle_pnls(
                 .margin
                 .checked_sub_assign(fee)?;
         }
+
+        fee_breakdowns.insert(user, FeeBreakdown {
+            protocol_fee,
+            vault_fee,
+        });
     }
 
     // ------------------------------ Settle PnLs ------------------------------
@@ -874,7 +917,7 @@ pub fn settle_pnls(
         }
     }
 
-    Ok(())
+    Ok(fee_breakdowns)
 }
 
 /// Validate and store a post-only limit order. Rejects if the limit price

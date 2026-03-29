@@ -31,6 +31,7 @@ fn default_param() -> Param {
         max_conditional_orders: 10,
         funding_period: Duration::from_hours(1),
         vault_total_weight: Dimensionless::ZERO,
+        referral: Default::default(),
     }
 }
 

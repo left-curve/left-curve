@@ -1,189 +1,69 @@
 use {
-    dango_types::{
-        account_factory::{AccountIndex, User, UserIndex, Username},
-        config::AppConfig,
-    },
-    grug::{Addr, Inner, JsonDeExt, JsonSerExt, Order, StdResult, Storage, addr},
-    grug_app::{APP_CONFIG, AppResult, CONTRACT_NAMESPACE, StorageProvider},
-    std::collections::BTreeMap,
+    dango_types::perps::{Param, ReferralParam},
+    grug::{Addr, Inner, Storage, addr},
+    grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
 };
 
-/// Address of the account factory contract.
-const ACCOUNT_FACTORY: Addr = addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b");
+/// Address of the perps contract.
+const PERPS: Addr = addr!("d04b99adca5d3d31a1e7bc72fd606202f1e2fc69");
 
-/// Storage layout of the account factory contract prior to this upgrade.
+/// Old `Param` struct without the `referral` field.
 mod legacy {
     use {
-        borsh::{BorshDeserialize, BorshSerialize},
-        dango_types::{
-            account_factory::{AccountIndex, UserIndex, Username},
-            auth::Key,
-        },
-        grug::{Addr, Hash256, Map},
+        dango_types::{Dimensionless, UsdValue},
+        grug::{Duration, Item},
+        std::collections::BTreeMap,
     };
 
-    pub const CODE_HASHES: Map<u8, Hash256> = Map::new("hash");
-
-    pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
-
-    /// Old `Account` Borsh layout: `u32` index + `u8` enum discriminant + `u32` owner.
-    #[derive(BorshSerialize, BorshDeserialize)]
-    pub struct Account {
-        pub index: AccountIndex,
-        pub params: AccountParams,
+    #[grug::derive(Serde, Borsh)]
+    pub struct Param {
+        pub max_unlocks: usize,
+        pub max_open_orders: usize,
+        pub max_conditional_orders: usize,
+        pub base_maker_fee_rate: Dimensionless,
+        pub base_taker_fee_rate: Dimensionless,
+        pub tiered_maker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
+        pub tiered_taker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
+        pub protocol_fee_rate: Dimensionless,
+        pub liquidation_fee_rate: Dimensionless,
+        pub funding_period: Duration,
+        pub vault_total_weight: Dimensionless,
+        pub vault_cooldown_period: Duration,
     }
 
-    #[derive(BorshSerialize, BorshDeserialize)]
-    pub enum AccountParams {
-        Single { owner: u32 },
-    }
-
-    pub const KEYS: Map<(UserIndex, Hash256), Key> = Map::new("key");
-    pub const USER_NAMES_BY_INDEX: Map<UserIndex, Username> = Map::new("user_names__index");
-
-    // For clearing only — key/value types don't matter.
-    pub const ACCOUNTS_BY_USER: Map<u8, u8> = Map::new("account__user");
-    pub const ACCOUNT_COUNT_BY_USER: Map<u8, u8> = Map::new("account_count");
-    pub const USER_INDEXES_BY_NAME: Map<u8, u8> = Map::new("user_indexes__name");
+    pub const PARAM: Item<Param> = Item::new("param");
 }
 
 pub fn do_upgrade<VM>(
-    mut storage: Box<dyn Storage>,
+    storage: Box<dyn Storage>,
     _vm: VM,
     _block: grug::BlockInfo,
 ) -> AppResult<()> {
-    // ======================== Migrate AppConfig ===============================
-    //
-    // The `perps` field was added to `AppAddresses`. Insert a zero address so
-    // the on-chain JSON deserializes correctly. The oracle guards against
-    // calling a zero perps address.
-    {
-        let mut json = APP_CONFIG.load(&storage)?;
-        let obj = json
-            .as_object_mut()
-            .expect("AppConfig must be a JSON object");
-        let addresses = obj
-            .get_mut("addresses")
-            .expect("AppConfig must have `addresses`")
-            .as_object_mut()
-            .expect("`addresses` must be a JSON object");
+    let mut perps_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, PERPS.inner()]);
 
-        addresses.insert(
-            "perps".to_string(),
-            Addr::ZERO.to_json_value()?.into_inner(),
-        );
+    // Load the old Param (without `referral` field).
+    let old = legacy::PARAM.load(&perps_storage)?;
 
-        // Verify the modified JSON is a valid AppConfig.
-        let _: AppConfig = json.clone().deserialize_json()?;
+    // Save the new Param with default ReferralParam.
+    let new = Param {
+        max_unlocks: old.max_unlocks,
+        max_open_orders: old.max_open_orders,
+        max_conditional_orders: old.max_conditional_orders,
+        base_maker_fee_rate: old.base_maker_fee_rate,
+        base_taker_fee_rate: old.base_taker_fee_rate,
+        tiered_maker_fee_rate: old.tiered_maker_fee_rate,
+        tiered_taker_fee_rate: old.tiered_taker_fee_rate,
+        protocol_fee_rate: old.protocol_fee_rate,
+        liquidation_fee_rate: old.liquidation_fee_rate,
+        funding_period: old.funding_period,
+        vault_total_weight: old.vault_total_weight,
+        vault_cooldown_period: old.vault_cooldown_period,
+        referral: ReferralParam::default(),
+    };
 
-        APP_CONFIG.save(&mut storage, &json)?;
+    dango_perps::PARAM.save(&mut perps_storage, &new)?;
 
-        tracing::info!("Migrated AppConfig: added zero perps address");
-    }
-
-    let mut factory_storage =
-        StorageProvider::new(storage, &[CONTRACT_NAMESPACE, ACCOUNT_FACTORY.inner()]);
-    let factory_storage = &mut factory_storage;
-
-    // ======================== CODE_HASHES → CODE_HASH ========================
-
-    // Load the Single account code hash from the old map (key 0 = AccountType::Single).
-    let code_hash = legacy::CODE_HASHES.load(factory_storage, 0u8)?;
-
-    tracing::info!(%code_hash, "Loaded Single code hash from legacy CODE_HASHES");
-
-    // Clear the old map entries.
-    legacy::CODE_HASHES.clear(factory_storage, None, None);
-
-    // Save to the new Item-based storage.
-    dango_account_factory::CODE_HASH.save(factory_storage, &code_hash)?;
-
-    tracing::info!("Saved code hash to new CODE_HASH item");
-
-    // ======================== Read old Accounts ==============================
-
-    // Load all accounts with the old Borsh layout, group by owner as
-    // BTreeMap<UserIndex, BTreeMap<AccountIndex, Addr>>.
-    let mut accounts_by_user: BTreeMap<UserIndex, BTreeMap<AccountIndex, Addr>> = BTreeMap::new();
-    for entry in legacy::ACCOUNTS.range(factory_storage, None, None, Order::Ascending) {
-        let (addr, old_account) = entry?;
-        let legacy::AccountParams::Single { owner } = old_account.params;
-        accounts_by_user
-            .entry(owner)
-            .or_default()
-            .insert(old_account.index, addr);
-    }
-
-    tracing::info!(
-        num_users = accounts_by_user.len(),
-        "Loaded accounts per user"
-    );
-
-    // ======================== Read old Keys ==================================
-
-    let mut keys_by_user = BTreeMap::new();
-    for entry in legacy::KEYS.range(factory_storage, None, None, Order::Ascending) {
-        let ((user_index, key_hash), key) = entry?;
-        keys_by_user
-            .entry(user_index)
-            .or_insert_with(BTreeMap::new)
-            .insert(key_hash, key);
-    }
-
-    tracing::info!(num_users = keys_by_user.len(), "Loaded keys per user");
-
-    // ======================== Read old usernames ==============================
-
-    let usernames: BTreeMap<UserIndex, Username> = legacy::USER_NAMES_BY_INDEX
-        .range(factory_storage, None, None, Order::Ascending)
-        .collect::<StdResult<_>>()?;
-
-    tracing::info!(num_usernames = usernames.len(), "Loaded usernames");
-
-    // ======================== Build User structs ==============================
-
-    let all_user_indexes: BTreeMap<UserIndex, ()> = keys_by_user
-        .keys()
-        .chain(accounts_by_user.keys())
-        .chain(usernames.keys())
-        .map(|&idx| (idx, ()))
-        .collect();
-
-    tracing::info!(num_users = all_user_indexes.len(), "Building User structs");
-
-    for &user_index in all_user_indexes.keys() {
-        let user = User {
-            index: user_index,
-            name: usernames
-                .get(&user_index)
-                .cloned()
-                .unwrap_or_else(|| Username::default_for_index(user_index)),
-            accounts: accounts_by_user
-                .get(&user_index)
-                .cloned()
-                .unwrap_or_default(),
-            keys: keys_by_user.get(&user_index).cloned().unwrap_or_default(),
-        };
-
-        dango_account_factory::USERS.save(factory_storage, user_index, &user)?;
-    }
-
-    tracing::info!(
-        num_users = all_user_indexes.len(),
-        "Saved User structs to IndexedMap"
-    );
-
-    // ======================== Clear legacy storage ============================
-
-    legacy::CODE_HASHES.clear(factory_storage, None, None);
-    legacy::ACCOUNTS.clear(factory_storage, None, None);
-    legacy::KEYS.clear(factory_storage, None, None);
-    legacy::ACCOUNTS_BY_USER.clear(factory_storage, None, None);
-    legacy::ACCOUNT_COUNT_BY_USER.clear(factory_storage, None, None);
-    legacy::USER_NAMES_BY_INDEX.clear(factory_storage, None, None);
-    legacy::USER_INDEXES_BY_NAME.clear(factory_storage, None, None);
-
-    tracing::info!("Cleared legacy storage namespaces");
+    tracing::info!("Migrated perps Param: added default ReferralParam");
 
     Ok(())
 }

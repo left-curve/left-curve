@@ -1,9 +1,11 @@
 use {
     dango_types::{
         Quantity, UsdPrice, UsdValue,
+        account_factory::UserIndex,
         perps::{
-            ConditionalOrder, ConditionalOrderId, LimitOrder, OrderId, PairId, PairParam,
-            PairState, Param, State, UserState,
+            CommissionRate, ConditionalOrder, ConditionalOrderId, FeeShareRatio, LimitOrder,
+            OrderId, PairId, PairParam, PairState, Param, Referee, RefereeStats, Referrer, State,
+            UserReferralData, UserState,
         },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
@@ -78,6 +80,37 @@ pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 /// Key: (user, day_timestamp). Value: lifetime cumulative USD notional.
 pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
 
+// --------------------------------- referral ----------------------------------
+
+/// Maps a referee to their referrer. Immutable once set.
+pub const REFEREE_TO_REFERRER: Map<UserIndex, UserIndex> = Map::new("ref_r");
+
+/// Maps a referrer to their fee share ratio.
+pub const FEE_SHARE_RATIO: Map<UserIndex, FeeShareRatio> = Map::new("ref_sr");
+
+/// Per-user commission rate override. If set, this value is used instead of
+/// the volume-based tier calculation.
+pub const COMMISSION_RATE_OVERRIDES: Map<UserIndex, CommissionRate> = Map::new("ref_cr_override");
+
+/// Cumulative referral data per user, bucketed by day.
+pub const USER_REFERRAL_DATA: Map<(UserIndex, Timestamp), UserReferralData> = Map::new("ref_data");
+
+/// Per-referee statistics from the referrer's perspective, with multi-indexes
+/// for sorted queries by registration date, volume, and commission.
+pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
+    (Referrer, Referee),
+    RefereeStats,
+    ReferrerStatisticsIndex,
+> = IndexedMap::new(
+    "ref_stat",
+    ReferrerStatisticsIndex::new(
+        "ref_stat",
+        "ref_stat__registered_at",
+        "ref_stat__volume",
+        "ref_stat__commission",
+    ),
+);
+
 // ----------------------------------- types -----------------------------------
 
 pub type OrderKey = (PairId, UsdPrice, OrderId);
@@ -150,6 +183,40 @@ impl UserStateIndexes<'static> {
                 },
                 pk_namespace,
                 idx_namespace,
+            ),
+        }
+    }
+}
+
+#[grug::index_list((Referrer, Referee), RefereeStats)]
+pub struct ReferrerStatisticsIndex<'a> {
+    pub registered_at: MultiIndex<'a, (Referrer, Referee), (Referrer, Timestamp), RefereeStats>,
+    pub volume: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,
+    pub commission: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,
+}
+
+impl ReferrerStatisticsIndex<'static> {
+    pub const fn new(
+        pk_namespace: &'static str,
+        registered_at_namespace: &'static str,
+        volume_namespace: &'static str,
+        commission_namespace: &'static str,
+    ) -> Self {
+        ReferrerStatisticsIndex {
+            registered_at: MultiIndex::new(
+                |(referrer, _), data| (*referrer, data.registered_at),
+                pk_namespace,
+                registered_at_namespace,
+            ),
+            volume: MultiIndex::new(
+                |(referrer, _), data| (*referrer, data.volume),
+                pk_namespace,
+                volume_namespace,
+            ),
+            commission: MultiIndex::new(
+                |(referrer, _), data| (*referrer, data.commission_earned),
+                pk_namespace,
+                commission_namespace,
             ),
         }
     }

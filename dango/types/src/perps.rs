@@ -1,6 +1,12 @@
 use {
-    crate::{Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
-    grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
+    crate::{
+        Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
+        account_factory::UserIndex,
+    },
+    grug::{
+        Addr, Denom, Duration, MathResult, Op, Order as IterationOrder, Part, Timestamp, Uint64,
+        Uint128,
+    },
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
         sync::LazyLock,
@@ -28,6 +34,20 @@ pub type OrderId = Uint64;
 
 /// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
 pub type ConditionalOrderId = OrderId;
+
+/// Type alias for a referrer's user index.
+pub type Referrer = UserIndex;
+
+/// Type alias for a referee's user index.
+pub type Referee = UserIndex;
+
+/// The fee share ratio a referrer gives back to the referee.
+/// Uses `Dimensionless` (a value in the range appropriate for ratios).
+pub type FeeShareRatio = Dimensionless;
+
+/// Commission rate — the fraction of the post-protocol-cut fee distributed
+/// to the referral chain when a user with an active referral trades.
+pub type CommissionRate = Dimensionless;
 
 #[grug::derive(Serde)]
 #[derive(Copy)]
@@ -76,6 +96,68 @@ pub enum TriggerDirection {
 
     /// Trigger when oracle_price <= trigger_price (SL for longs, TP for shorts).
     Below,
+}
+
+/// Parameters for the referral system.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct ReferralParam {
+    /// Whether the referral commission system is active.
+    /// When false, `apply_fee_commissions` is skipped entirely.
+    pub active: bool,
+
+    /// Minimum lifetime perps trading volume a user must have
+    /// before they can become a referrer by setting a fee share ratio.
+    pub volume_to_be_referrer: UsdValue,
+
+    /// Default commission rate applied when no volume tier qualifies.
+    pub commission_rate_default: CommissionRate,
+
+    /// Volume-tiered commission rates. Key = minimum 30-day referees
+    /// volume threshold; value = commission rate.
+    /// Highest qualifying tier wins.
+    pub commission_rates_by_volume: BTreeMap<UsdValue, CommissionRate>,
+}
+
+/// Referrer settings for a referrer.
+#[grug::derive(Serde)]
+#[derive(Copy)]
+pub struct ReferrerSettings {
+    pub commission_rate: CommissionRate,
+    pub share_ratio: FeeShareRatio,
+}
+
+/// Per-referee statistics tracked from the referrer's perspective.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct RefereeStats {
+    /// Timestamp when the referee registered with the referral.
+    pub registered_at: Timestamp,
+
+    /// Total trading volume made by the referee (USD).
+    pub volume: UsdValue,
+
+    /// Total commission earned by the referrer from this referee (USD).
+    pub commission_earned: UsdValue,
+
+    /// Timestamp of the last day the referee was active.
+    pub last_day_active: Timestamp,
+}
+
+/// Ordering options for querying per-referee statistics.
+#[grug::derive(Serde)]
+pub struct ReferrerStatsOrderBy {
+    pub order: IterationOrder,
+    pub limit: Option<u32>,
+    pub index: ReferrerStatsOrderIndex,
+}
+
+/// Which index to use when querying per-referee statistics.
+#[grug::derive(Serde)]
+pub enum ReferrerStatsOrderIndex {
+    Commission { start_after: Option<UsdValue> },
+    RegisterAt { start_after: Option<Timestamp> },
+    Volume { start_after: Option<UsdValue> },
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
@@ -135,6 +217,9 @@ pub struct Param {
     /// submitted, the waiting time that must elapsed before the funds are released
     /// to the liquidity provider.
     pub vault_cooldown_period: Duration,
+
+    /// Referral system parameters.
+    pub referral: ReferralParam,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
@@ -314,6 +399,54 @@ pub struct Unlock {
     pub amount_to_release: UsdValue,
 }
 
+/// Cumulative referral data for a user, bucketed by day.
+///
+/// Each day-bucket stores running totals that can be differenced to compute
+/// rolling-window values (e.g. 30-day referees volume).
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct UserReferralData {
+    /// The user's own trading volume (cumulative).
+    pub volume: UsdValue,
+
+    /// Total commission shared by this user's referrer (cumulative).
+    pub commission_shared_by_referrer: UsdValue,
+
+    /// Number of direct referees this user has.
+    pub referee_count: u32,
+
+    /// Total trading volume of this user's direct referees (cumulative).
+    pub referees_volume: UsdValue,
+
+    /// Total commission distributed from this user's referees (cumulative).
+    pub commission_earned_from_referees: UsdValue,
+
+    /// Cumulative count of daily active direct referees. Incremented by one
+    /// each time a direct referee trades for the first time on a given day.
+    /// Difference two buckets to get the count for a specific window.
+    pub cumulative_active_referees: u32,
+}
+
+impl UserReferralData {
+    /// Element-wise subtraction for rolling window calculations.
+    pub fn checked_sub(&self, other: &Self) -> MathResult<Self> {
+        Ok(Self {
+            volume: self.volume.checked_sub(other.volume)?,
+            commission_shared_by_referrer: self
+                .commission_shared_by_referrer
+                .checked_sub(other.commission_shared_by_referrer)?,
+            referee_count: self.referee_count.saturating_sub(other.referee_count),
+            referees_volume: self.referees_volume.checked_sub(other.referees_volume)?,
+            commission_earned_from_referees: self
+                .commission_earned_from_referees
+                .checked_sub(other.commission_earned_from_referees)?,
+            cumulative_active_referees: self
+                .cumulative_active_referees
+                .saturating_sub(other.cumulative_active_referees),
+        })
+    }
+}
+
 /// A resting limit order, waiting to be fulfilled.
 ///
 /// This struct does not contain the pair ID, order ID, and the limit price,
@@ -353,6 +486,7 @@ pub struct ConditionalOrder {
 pub enum CancelOrderRequest {
     /// Cancel a single order by ID.
     One(OrderId),
+
     /// Cancel all orders associated with the sender.
     All,
 }
@@ -366,6 +500,7 @@ pub struct InstantiateMsg {
 }
 
 #[grug::derive(Serde)]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     /// Messages for contract maintenance (owner/admin).
     Maintain(MaintainerMsg),
@@ -375,9 +510,13 @@ pub enum ExecuteMsg {
 
     /// Messages related to the market making vault.
     Vault(VaultMsg),
+
+    /// Messages related to the referral system.
+    Referral(ReferralMsg),
 }
 
 #[grug::derive(Serde)]
+#[allow(clippy::large_enum_variant)]
 pub enum MaintainerMsg {
     /// Update global and/or per-pair parameters.
     /// Only callable by the chain owner (or GENESIS_SENDER during instantiation).
@@ -466,6 +605,37 @@ pub enum VaultMsg {
     Refresh {},
 }
 
+#[grug::derive(Serde)]
+#[allow(clippy::enum_variant_names)]
+pub enum ReferralMsg {
+    /// Register a referral relationship between a referrer and a referee.
+    ///
+    /// Called by the account factory during user registration, or by the
+    /// referee himself.
+    SetReferral {
+        referrer: UserIndex,
+        referee: UserIndex,
+    },
+
+    /// Set or update the fee share ratio for the calling referrer.
+    ///
+    /// The share ratio determines what fraction of the commission the referrer
+    /// gives back to the referee.
+    ///
+    /// Can only increase (never decrease) once set.
+    SetFeeShareRatio { share_ratio: FeeShareRatio },
+
+    /// Set or remove a commission rate override for a user.
+    ///
+    /// Only callable by the chain owner.
+    ///
+    /// Use `Op::Insert` to set, `Op::Delete` to remove.
+    SetCommissionRateOverride {
+        user: UserIndex,
+        commission_rate: Op<CommissionRate>,
+    },
+}
+
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the global parameters.
@@ -532,6 +702,29 @@ pub enum QueryMsg {
         user: Addr,
         since: Option<Timestamp>,
     },
+
+    /// Query the referrer of a given referee.
+    #[returns(Option<Referrer>)]
+    Referrer { referee: UserIndex },
+
+    /// Query referral data for a user.
+    /// `since: None` -> lifetime data. `since: Some(ts)` -> data since ts.
+    #[returns(UserReferralData)]
+    ReferralData {
+        user: UserIndex,
+        since: Option<Timestamp>,
+    },
+
+    /// Query per-referee statistics for a referrer, with ordering and pagination.
+    #[returns(Vec<(Referee, RefereeStats)>)]
+    ReferrerToRefereeStats {
+        referrer: Referrer,
+        order_by: ReferrerStatsOrderBy,
+    },
+
+    /// Return the referral settings if the user is a referrer. Otherwise, return `None`.
+    #[returns(Option<ReferrerSettings>)]
+    ReferralSettings { user: UserIndex },
 }
 
 #[grug::derive(Serde)]
@@ -616,8 +809,8 @@ pub struct LiquidityDepthResponse {
 // | `OrderRemoved(Liq.)`     | Yes         | -                    | -                     |
 // | `OrderRemoved(ADL)`      | Yes         | -                    | -                     |
 // | `Liquidated`             | 1 per pair  | -                    | 1 per pair            |
-// | `Deleveraged`            | 1 per ADL'd counter-party         | -                     |
-// | `BadDebtCovered`         | 1 per liquidation (if bad debt)   | -                     |
+// | `Deleveraged`            | 1 per ADL'd counter-party          | -                     |
+// | `BadDebtCovered`         | 1 per liquidation (if bad debt)    | -                     |
 //
 // (*) Off-book fills that realize PnL without emitting `OrderFilled`:
 //
@@ -831,4 +1024,32 @@ pub struct BadDebtCovered {
     pub liquidated_user: Addr,
     pub amount: UsdValue,
     pub insurance_fund_remaining: UsdValue,
+}
+
+/// Event emitted when referral commissions are distributed for a fee-paying user.
+///
+/// `commissions[0]` is the payer (referee), `commissions[1]` is the first referrer,
+/// and so on up the chain. Zero entries indicate no commission at that level.
+#[grug::event("fee_distributed")]
+#[grug::derive(Serde)]
+pub struct FeeDistributed {
+    /// User index of the fee payer.
+    pub payer: UserIndex,
+
+    /// Protocol treasury portion of the fee.
+    pub protocol_fee: UsdValue,
+
+    /// Vault portion of the fee (before commissions).
+    pub vault_fee: UsdValue,
+
+    /// Commission amounts per chain level: [payer, 1st referrer, 2nd, ...].
+    pub commissions: Vec<UsdValue>,
+}
+
+/// Event indicating a referral relationship has been registered.
+#[grug::event("referral_set")]
+#[grug::derive(Serde)]
+pub struct ReferralSet {
+    pub referrer: UserIndex,
+    pub referee: UserIndex,
 }

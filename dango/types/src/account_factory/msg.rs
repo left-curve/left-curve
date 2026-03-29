@@ -83,6 +83,9 @@ pub enum ExecuteMsg {
         seed: u32,
         /// A signature over the `RegisterUserData`.
         signature: Signature,
+        /// Optional referrer user index. If provided, a referral relationship
+        /// will be registered in the perps contract.
+        referrer: Option<UserIndex>,
     },
     /// Register a new account for an existing user.
     RegisterAccount {},

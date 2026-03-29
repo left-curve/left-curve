@@ -1,0 +1,68 @@
+use {
+    crate::{
+        COMMISSION_RATE_OVERRIDES, FEE_SHARE_RATIO, PARAM, account_factory, query::query_volume,
+    },
+    anyhow::ensure,
+    dango_types::{
+        account_factory::{self},
+        perps::FeeShareRatio,
+    },
+    grug::{MutableCtx, QuerierExt, Response},
+};
+
+/// Maximum fee share ratio a referrer can set.
+const MAX_FEE_SHARE_RATIO: FeeShareRatio = FeeShareRatio::new_percent(50);
+
+/// Set or update the fee share ratio for the calling user (referrer).
+///
+/// The share ratio can only increase, never decrease, once set.
+/// The caller must have traded at least `volume_to_be_referrer` in lifetime
+/// perps volume.
+pub fn set_fee_share_ratio(
+    ctx: MutableCtx,
+    share_ratio: FeeShareRatio,
+) -> anyhow::Result<Response> {
+    // Share ratio must not exceed the maximum.
+    ensure!(
+        share_ratio <= MAX_FEE_SHARE_RATIO,
+        "fee share ratio cannot exceed {MAX_FEE_SHARE_RATIO}"
+    );
+
+    // Look up the caller's user index via the account factory.
+    let account_factory = account_factory(ctx.querier);
+
+    // TODO: refactor to raw query (query_wasm_path).
+    let account =
+        ctx.querier
+            .query_wasm_smart(account_factory, account_factory::QueryAccountRequest {
+                address: ctx.sender,
+            })?;
+
+    let user_index = account.owner;
+
+    // Users with a commission rate override bypass the volume requirement.
+    // Otherwise, the caller must have enough lifetime perps volume.
+    if !COMMISSION_RATE_OVERRIDES.has(ctx.storage, user_index) {
+        let param = PARAM.load(ctx.storage)?;
+        let volume = query_volume(ctx.storage, ctx.sender, None)?;
+
+        ensure!(
+            volume >= param.referral.volume_to_be_referrer,
+            "insufficient perps volume to become a referrer (required: {}, current: {})",
+            param.referral.volume_to_be_referrer,
+            volume,
+        );
+    }
+
+    // If already set, the new ratio must be >= the existing one.
+    if let Some(existing) = FEE_SHARE_RATIO.may_load(ctx.storage, user_index)? {
+        ensure!(
+            share_ratio >= existing,
+            "fee share ratio can only increase (current: {existing}, proposed: {share_ratio})"
+        );
+    }
+
+    FEE_SHARE_RATIO.save(ctx.storage, user_index, &share_ratio)?;
+
+    Ok(Response::new())
+}

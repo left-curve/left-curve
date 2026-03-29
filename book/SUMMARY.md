@@ -7,8 +7,9 @@
 - [Funding](perps/3-funding.md)
 - [Liquidation & ADL](perps/4-liquidation-and-adl.md)
 - [Vault](perps/5-vault.md)
-- [Risk](perps/6-risk.md)
-- [API reference](perps/7-api.md)
+- [Referral](perps/6-referral.md)
+- [Risk](perps/7-risk.md)
+- [API reference](perps/8-api.md)
 
 ---
 

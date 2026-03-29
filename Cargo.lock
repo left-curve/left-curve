@@ -4279,6 +4279,7 @@ name = "dango-perps"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-account-factory",
  "dango-oracle",
  "dango-types",
  "grug",
@@ -4441,7 +4442,7 @@ name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
  "borsh",
- "dango-account-factory",
+ "dango-perps",
  "dango-types",
  "grug",
  "grug-app",

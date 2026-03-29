@@ -7,6 +7,7 @@ use {
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::apply_position_index_updates,
         price::may_invert_price,
+        referral::apply_fee_commissions,
         trade::_submit_order,
     },
     dango_oracle::OracleQuerier,
@@ -19,7 +20,8 @@ use {
         },
     },
     grug::{
-        Addr, EventBuilder, Order as IterationOrder, PrefixBound, StdResult, Storage, Timestamp,
+        Addr, EventBuilder, Order as IterationOrder, PrefixBound, QuerierWrapper, StdResult,
+        Storage, Timestamp,
     },
 };
 #[cfg(feature = "metrics")]
@@ -212,6 +214,7 @@ fn process_funding_for_pair(
 /// iteration so only triggered orders are visited (no full scan).
 pub fn process_conditional_orders(
     storage: &mut dyn Storage,
+    querier: QuerierWrapper,
     contract: Addr,
     current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
@@ -224,6 +227,7 @@ pub fn process_conditional_orders(
     for pair_id in pair_ids {
         process_conditional_orders_for_pair(
             storage,
+            querier,
             contract,
             current_time,
             oracle_querier,
@@ -241,6 +245,7 @@ pub fn process_conditional_orders(
 
 fn process_conditional_orders_for_pair(
     storage: &mut dyn Storage,
+    querier: QuerierWrapper,
     contract: Addr,
     current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
@@ -268,6 +273,7 @@ fn process_conditional_orders_for_pair(
     for ((trigger_price, order_id), order) in above_triggered {
         process_triggered_order(
             storage,
+            querier,
             contract,
             current_time,
             oracle_querier,
@@ -300,6 +306,7 @@ fn process_conditional_orders_for_pair(
     for ((trigger_price, order_id), order) in below_triggered {
         process_triggered_order(
             storage,
+            querier,
             contract,
             current_time,
             oracle_querier,
@@ -326,6 +333,7 @@ fn process_conditional_orders_for_pair(
 /// submit a market order to close.
 fn process_triggered_order(
     storage: &mut dyn Storage,
+    querier: QuerierWrapper,
     contract: Addr,
     current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
@@ -432,48 +440,67 @@ fn process_triggered_order(
         events,
     );
 
-    let (maker_states, order_mutations, _order_to_store, next_order_id, index_updates, volumes) =
-        match result {
-            Err(_) => {
-                // Order couldn't fill (slippage exceeded or no liquidity).
-                // Cancel it gracefully — don't block other orders.
-                events.push(ConditionalOrderRemoved {
-                    order_id,
-                    pair_id: pair_id.clone(),
-                    user: order.user,
-                    reason: ReasonForOrderRemoval::SlippageExceeded,
-                })?;
+    let (
+        mut maker_states,
+        order_mutations,
+        _order_to_store,
+        next_order_id,
+        index_updates,
+        volumes,
+        fee_breakdowns,
+    ) = match result {
+        Err(_) => {
+            // Order couldn't fill (slippage exceeded or no liquidity).
+            // Cancel it gracefully — don't block other orders.
+            events.push(ConditionalOrderRemoved {
+                order_id,
+                pair_id: pair_id.clone(),
+                user: order.user,
+                reason: ReasonForOrderRemoval::SlippageExceeded,
+            })?;
 
-                if user_state.is_empty() {
-                    USER_STATES.remove(storage, order.user)?;
-                } else {
-                    USER_STATES.save(storage, order.user, &user_state)?;
-                }
+            if user_state.is_empty() {
+                USER_STATES.remove(storage, order.user)?;
+            } else {
+                USER_STATES.save(storage, order.user, &user_state)?;
+            }
 
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::info!(
-                        %order_id,
-                        %pair_id,
-                        user = %order.user,
-                        "Conditional order cancelled: slippage exceeded"
-                    );
-                }
+            #[cfg(feature = "tracing")]
+            {
+                tracing::info!(
+                    %order_id,
+                    %pair_id,
+                    user = %order.user,
+                    "Conditional order cancelled: slippage exceeded"
+                );
+            }
 
-                return Ok(());
-            },
-            Ok(tuple) => tuple,
-        };
+            return Ok(());
+        },
+        Ok(tuple) => tuple,
+    };
 
     // Apply state changes (same pattern as submit_order's section 3).
     flush_volumes(storage, current_time, &volumes)?;
 
+    maker_states.insert(order.user, user_state);
+
+    apply_fee_commissions(
+        storage,
+        querier,
+        contract,
+        current_time,
+        &param.referral,
+        &mut maker_states,
+        fee_breakdowns,
+        &volumes,
+        events,
+    )?;
+
     NEXT_ORDER_ID.save(storage, &next_order_id)?;
 
-    USER_STATES.save(storage, order.user, &user_state)?;
-
-    for (addr, maker_state) in &maker_states {
-        USER_STATES.save(storage, *addr, maker_state)?;
+    for (addr, user_state) in &maker_states {
+        USER_STATES.save(storage, *addr, user_state)?;
     }
 
     apply_position_index_updates(storage, &index_updates)?;

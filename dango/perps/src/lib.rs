@@ -8,11 +8,13 @@ mod position_index;
 mod price;
 mod querier;
 mod query;
+mod referral;
 mod state;
 mod trade;
 mod vault;
 mod volume;
 
+pub use state::PARAM;
 pub(crate) use {querier::*, state::*, volume::*};
 
 use {
@@ -21,7 +23,7 @@ use {
         DangoQuerier, UsdValue,
         perps::{
             CancelOrderRequest, ExecuteMsg, InstantiateMsg, MaintainerMsg, OrderId, QueryMsg,
-            State, TraderMsg, VaultMsg,
+            ReferralMsg, State, TraderMsg, VaultMsg,
         },
     },
     grug::{
@@ -62,6 +64,20 @@ fn oracle(querier: impl DangoQuerier) -> Addr {
     }
 }
 
+#[inline]
+fn account_factory(querier: impl DangoQuerier) -> Addr {
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = querier;
+        grug::addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b")
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        querier.query_account_factory().unwrap()
+    }
+}
+
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     STATE.save(ctx.storage, &State {
@@ -89,6 +105,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_conditional_orders(
         ctx.storage,
+        ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
         &mut oracle_querier,
@@ -156,6 +173,18 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             },
             VaultMsg::Refresh {} => vault::refresh_orders(ctx),
         },
+        ExecuteMsg::Referral(msg) => match msg {
+            ReferralMsg::SetReferral { referrer, referee } => {
+                referral::set_referral(ctx, referrer, referee)
+            },
+            ReferralMsg::SetFeeShareRatio { share_ratio } => {
+                referral::set_fee_share_ratio(ctx, share_ratio)
+            },
+            ReferralMsg::SetCommissionRateOverride {
+                user,
+                commission_rate,
+            } => referral::set_commission_rate_override(ctx, user, commission_rate),
+        },
     }
 }
 
@@ -212,6 +241,22 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Volume { user, since } => {
             let res = query::query_volume(ctx.storage, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::Referrer { referee } => {
+            let res = query::query_referrer(ctx.storage, referee)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralData { user, since } => {
+            let res = query::query_referral_data(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferrerToRefereeStats { referrer, order_by } => {
+            let res = query::query_referrer_to_referee_stats(ctx, referrer, order_by)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralSettings { user } => {
+            let res = query::query_referral_settings(ctx, user)?;
             res.to_json_value()
         },
     }
