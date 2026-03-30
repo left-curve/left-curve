@@ -57,6 +57,65 @@ To deploy the EVM contracts, run the following:
 cargo run -p dango-hyperlane-deployment --bin evm-deploy -- --config config.json --deployments deployments.json
 ```
 
+### Build artifacts
+
+| Contract                    | Repository                                  | Commit    | Solc   | ethVersion | Optimizer             |
+| --------------------------- | ------------------------------------------- | --------- | ------ | ---------- | --------------------- |
+| ProxyAdmin                  | [@openzeppelin/contracts][oz-repo]          | `0a25c19` | 0.8.13 | `london`   | enabled; 200 runs     |
+| TransparentUpgradeableProxy | [@openzeppelin/contracts][oz-repo]          | `0a25c19` | 0.8.13 | `london`   | enabled; 200 runs     |
+| HypNative                   | [hyperlane-xyz/hyperlane-monorepo][hl-repo] | `e657bbc` | 0.8.22 | `paris`    | enabled; 999,999 runs |
+| HypERC20Collateral          | [hyperlane-xyz/hyperlane-monorepo][hl-repo] | `e657bbc` | 0.8.22 | `paris`    | enabled; 999,999 runs |
+| StaticMessageIdMultisigIsm  | [hyperlane-xyz/hyperlane-monorepo][hl-repo] | `e657bbc` | 0.8.22 | `paris`    | enabled; 999,999 runs |
+
+[oz-repo]: https://github.com/OpenZeppelin/openzeppelin-contracts/tree/0a25c1940ca220686588c4af3ec526f725fe2582
+[hl-repo]: https://github.com/hyperlane-xyz/hyperlane-monorepo/tree/e657bbce607e39017add3f68be6e4cd6850981b8
+
+### Addresses
+
+#### Ethereum Mainnet (chain ID: 1)
+
+| Contract                    | Asset | Address                                                                                                                 |
+| --------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------- |
+| ProxyAdmin                  | -     | [`0x613942eff27c6886bb2a33a172cdaf03a009e601`](https://etherscan.io/address/0x613942eff27c6886bb2a33a172cdaf03a009e601) |
+| TransparentUpgradeableProxy | ETH   | [`0x9d259aa1ec7324c7433b89d2935b08c30f3154cb`](https://etherscan.io/address/0x9d259aa1ec7324c7433b89d2935b08c30f3154cb) |
+| HypNative                   | ETH   | [`0x9d0ea335355da17ee89e50df43ab823416cf73d4`](https://etherscan.io/address/0x9d0ea335355da17ee89e50df43ab823416cf73d4) |
+| TransparentUpgradeableProxy | USDC  | [`0xd05909852ae07118857f9d071781671d12c0f36c`](https://etherscan.io/address/0xd05909852ae07118857f9d071781671d12c0f36c) |
+| HypERC20Collateral          | USDC  | [`0xe071653043828c9923c79b04b077358d94fc84f9`](https://etherscan.io/address/0xe071653043828c9923c79b04b077358d94fc84f9) |
+| StaticMessageIdMultisigIsm  | -     | [`0x17972F088Ad3e10C3E15E4960f8547230362C57E`](https://etherscan.io/address/0x17972F088Ad3e10C3E15E4960f8547230362C57E) |
+
+#### Sepolia (chain ID: 11155111)
+
+| Contract                    | Asset | Address                                                                                                                         |
+| --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------- |
+| ProxyAdmin                  | -     | [`0x59cf4f33ce42afa957b93e68031f07bf6d299d60`](https://sepolia.etherscan.io/address/0x59cf4f33ce42afa957b93e68031f07bf6d299d60) |
+| TransparentUpgradeableProxy | ETH   | [`0xe3109f83bef36aece35870ee1b2e07a5dd12cfa9`](https://sepolia.etherscan.io/address/0xe3109f83bef36aece35870ee1b2e07a5dd12cfa9) |
+| HypNative                   | ETH   | [`0xb4513d39e6839bf7c1f01a65e294bab8b16b5887`](https://sepolia.etherscan.io/address/0xb4513d39e6839bf7c1f01a65e294bab8b16b5887) |
+| TransparentUpgradeableProxy | USDC  | [`0x0d8c3516df20cff940e479ea2d8c7d1dd0a706ac`](https://sepolia.etherscan.io/address/0x0d8c3516df20cff940e479ea2d8c7d1dd0a706ac) |
+| HypERC20Collateral          | USDC  | [`0x26bc0e68467d88cedb5a3793618c8f6586512706`](https://sepolia.etherscan.io/address/0x26bc0e68467d88cedb5a3793618c8f6586512706) |
+| StaticMessageIdMultisigIsm  | -     | [`0x08A587C17C1CD3a1BC2220E0808281a143877B70`](https://sepolia.etherscan.io/address/0x08A587C17C1CD3a1BC2220E0808281a143877B70) |
+
+#### Arbitrum One (chain ID: 42161)
+
+| Contract                    | Asset | Address |
+| --------------------------- | ----- | ------- |
+| ProxyAdmin                  | -     | TBD     |
+| TransparentUpgradeableProxy | ETH   | TBD     |
+| HypNative                   | ETH   | TBD     |
+| TransparentUpgradeableProxy | USDC  | TBD     |
+| HypERC20Collateral          | USDC  | TBD     |
+| StaticMessageIdMultisigIsm  | -     | TBD     |
+
+#### Arbitrum Sepolia (chain ID: 421614)
+
+| Contract                    | Asset | Address |
+| --------------------------- | ----- | ------- |
+| ProxyAdmin                  | -     | TBD     |
+| TransparentUpgradeableProxy | ETH   | TBD     |
+| HypNative                   | ETH   | TBD     |
+| TransparentUpgradeableProxy | USDC  | TBD     |
+| HypERC20Collateral          | USDC  | TBD     |
+| StaticMessageIdMultisigIsm  | -     | TBD     |
+
 ## SVM
 
 ### Deploying on SVM
