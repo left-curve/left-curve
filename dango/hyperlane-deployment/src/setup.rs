@@ -84,7 +84,9 @@ pub mod evm {
         let signer = MnemonicBuilder::<English>::default()
             .phrase(&mnemonic)
             .build()
-            .map_err(|_| anyhow::anyhow!("failed to parse EVM_MNEMONIC (check quoting and word validity)"))?;
+            .map_err(|_| {
+                anyhow::anyhow!("failed to parse EVM_MNEMONIC (check quoting and word validity)")
+            })?;
 
         let provider = ProviderBuilder::new()
             .wallet(EthereumWallet::new(signer.clone()))
