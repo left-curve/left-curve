@@ -2,7 +2,7 @@ use {
     crate::{COMMISSION_RATE_OVERRIDES, referral::load_referral_data, round_to_day},
     dango_types::{
         UsdValue,
-        perps::{CommissionRate, ReferralParam, Referrer},
+        perps::{CommissionRate, Param, Referrer},
     },
     grug::{Duration, Number, StdResult, Storage, Timestamp},
 };
@@ -17,7 +17,7 @@ pub fn calculate_commission_rate(
     storage: &dyn Storage,
     referrer: Referrer,
     block_timestamp: Timestamp,
-    referral_param: &ReferralParam,
+    param: &Param,
 ) -> StdResult<CommissionRate> {
     // If the referrer has a custom override, use it directly.
     if let Some(override_rate) = COMMISSION_RATE_OVERRIDES.may_load(storage, referrer)? {
@@ -40,10 +40,7 @@ pub fn calculate_commission_rate(
         .unwrap_or(UsdValue::ZERO);
 
     // Find the highest qualifying tier.
-    Ok(referral_param
-        .commission_rates_by_volume
-        .range(..=window_referees_volume)
-        .next_back()
-        .map(|(_, &rate)| rate)
-        .unwrap_or(referral_param.commission_rate_default))
+    Ok(param
+        .referrer_commission_rates
+        .resolve(window_referees_volume))
 }

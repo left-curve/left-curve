@@ -5,7 +5,7 @@ use {
         core::{
             check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
             compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
-            decompose_fill, execute_fill, is_price_constraint_violated, resolve_fee_rate,
+            decompose_fill, execute_fill, is_price_constraint_violated,
         },
         flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
@@ -101,7 +101,7 @@ pub fn submit_order(
         ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
-        &param.referral,
+        &param,
         &mut maker_states,
         fee_breakdowns,
         &volumes,
@@ -353,11 +353,7 @@ pub(crate) fn _submit_order(
         let taker_fee_rate = {
             let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
             let taker_volume = query_volume(storage, taker, volume_since)?;
-            resolve_fee_rate(
-                param.base_taker_fee_rate,
-                &param.tiered_taker_fee_rate,
-                taker_volume,
-            )
+            param.taker_fee_rates.resolve(taker_volume)
         };
 
         check_margin(
@@ -514,11 +510,7 @@ pub fn match_order(
     let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
     let taker_fee_rate = {
         let taker_volume = query_volume(storage, taker, volume_since)?;
-        resolve_fee_rate(
-            param.base_taker_fee_rate,
-            &param.tiered_taker_fee_rate,
-            taker_volume,
-        )
+        param.taker_fee_rates.resolve(taker_volume)
     };
 
     // Create iterator over the maker side of the order book.
@@ -630,11 +622,7 @@ pub fn match_order(
         // Resolve maker's fee rate based on recent volume.
         let maker_fee_rate = {
             let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
-            resolve_fee_rate(
-                param.base_maker_fee_rate,
-                &param.tiered_maker_fee_rate,
-                maker_volume,
-            )
+            param.maker_fee_rates.resolve(maker_volume)
         };
 
         settle_fill(
@@ -1068,7 +1056,11 @@ mod tests {
     use {
         super::*,
         crate::USER_STATES,
-        dango_types::{Dimensionless, FundingPerUnit, oracle::PrecisionedPrice, perps::Position},
+        dango_types::{
+            Dimensionless, FundingPerUnit,
+            oracle::PrecisionedPrice,
+            perps::{Position, RateSchedule},
+        },
         grug::{Coins, MockContext, Timestamp, Udec128, Uint64, hash_map},
     };
 
@@ -1097,8 +1089,10 @@ mod tests {
     fn test_param() -> Param {
         Param {
             max_open_orders: 10,
-            base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
-            base_maker_fee_rate: Dimensionless::ZERO,
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(1), // 0.1%
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
@@ -2491,8 +2485,14 @@ mod tests {
         // Custom param: taker = 3 bps, maker = -1 bps, protocol = 20%.
         let param = Param {
             max_open_orders: 10,
-            base_taker_fee_rate: Dimensionless::new_raw(300), // 3 bps
-            base_maker_fee_rate: Dimensionless::new_raw(-100), // -1 bps
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(300), // 3 bps
+                ..Default::default()
+            },
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(-100), // -1 bps
+                ..Default::default()
+            },
             protocol_fee_rate: Dimensionless::new_percent(20),
             ..Default::default()
         };

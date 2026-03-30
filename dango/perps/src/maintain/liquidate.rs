@@ -24,7 +24,7 @@ use {
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
             BadDebtCovered, Deleveraged, LimitOrder, Liquidated, OrderId, PairId, PairParam,
-            PairState, Param, ReasonForOrderRemoval, State, UserState,
+            PairState, Param, RateSchedule, ReasonForOrderRemoval, State, UserState,
         },
     },
     grug::{
@@ -443,10 +443,8 @@ fn execute_close_schedule(
 )> {
     // Zero-fee param for liquidation fills.
     let liq_param = Param {
-        base_taker_fee_rate: Dimensionless::ZERO,
-        base_maker_fee_rate: Dimensionless::ZERO,
-        tiered_taker_fee_rate: BTreeMap::new(),
-        tiered_maker_fee_rate: BTreeMap::new(),
+        maker_fee_rates: RateSchedule::default(),
+        taker_fee_rates: RateSchedule::default(),
         ..param.clone()
     };
 
@@ -787,8 +785,14 @@ mod tests {
 
     fn default_param() -> Param {
         Param {
-            base_taker_fee_rate: Dimensionless::new_permille(10), // 1%
-            base_maker_fee_rate: Dimensionless::new_permille(10), // 1%
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
             liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
             max_open_orders: 100,
             ..Default::default()

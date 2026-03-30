@@ -9,7 +9,7 @@ use {
     dango_types::{
         UsdValue,
         account_factory::UserIndex,
-        perps::{FeeDistributed, Referee, ReferralParam, Referrer, ReferrerSettings, UserState},
+        perps::{FeeDistributed, Param, Referee, Referrer, ReferrerSettings, UserState},
     },
     grug::{Addr, EventBuilder, QuerierWrapper, StdResult, Storage, Timestamp},
     std::collections::BTreeMap,
@@ -41,13 +41,13 @@ pub fn apply_fee_commissions(
     querier: QuerierWrapper,
     perps_contract: Addr,
     current_time: Timestamp,
-    referral_param: &ReferralParam,
+    param: &Param,
     user_states: &mut BTreeMap<Addr, UserState>,
     fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
     volumes: &BTreeMap<Addr, UsdValue>,
     events: &mut EventBuilder,
 ) -> StdResult<()> {
-    if !referral_param.active {
+    if !param.referral_active {
         return Ok(());
     }
 
@@ -83,7 +83,7 @@ pub fn apply_fee_commissions(
             storage,
             first_referrer,
             current_time,
-            referral_param,
+            param,
             &mut referrer_settings_cache,
         )?;
 
@@ -164,7 +164,7 @@ pub fn apply_fee_commissions(
                 storage,
                 next_referrer,
                 current_time,
-                referral_param,
+                param,
                 &mut referrer_settings_cache,
             )?;
 
@@ -231,15 +231,14 @@ fn compute_referrer_settings(
     storage: &dyn Storage,
     user: UserIndex,
     block_timestamp: Timestamp,
-    referral_param: &ReferralParam,
+    param: &Param,
     cache: &mut BTreeMap<UserIndex, ReferrerSettings>,
 ) -> StdResult<ReferrerSettings> {
     if let Some(&cached) = cache.get(&user) {
         return Ok(cached);
     }
 
-    let commission_rate =
-        calculate_commission_rate(storage, user, block_timestamp, referral_param)?;
+    let commission_rate = calculate_commission_rate(storage, user, block_timestamp, param)?;
 
     let share_ratio = FEE_SHARE_RATIO.load(storage, user)?;
 

@@ -98,25 +98,30 @@ pub enum TriggerDirection {
     Below,
 }
 
-/// Parameters for the referral system.
+/// A base rate with optional volume-tiered overrides.
+///
+/// The highest qualifying tier (by volume threshold) wins;
+/// if no tier is met, the base rate applies.
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
-pub struct ReferralParam {
-    /// Whether the referral commission system is active.
-    /// When false, `apply_fee_commissions` is skipped entirely.
-    pub active: bool,
+pub struct RateSchedule {
+    /// The rate applied when no volume tier qualifies.
+    pub base: Dimensionless,
 
-    /// Minimum lifetime perps trading volume a user must have
-    /// before they can become a referrer by setting a fee share ratio.
-    pub volume_to_be_referrer: UsdValue,
+    /// Volume-tiered rates. Key = minimum USD volume threshold;
+    /// value = rate. Highest qualifying tier wins.
+    pub tiers: BTreeMap<UsdValue, Dimensionless>,
+}
 
-    /// Default commission rate applied when no volume tier qualifies.
-    pub commission_rate_default: CommissionRate,
-
-    /// Volume-tiered commission rates. Key = minimum 30-day referees
-    /// volume threshold; value = commission rate.
-    /// Highest qualifying tier wins.
-    pub commission_rates_by_volume: BTreeMap<UsdValue, CommissionRate>,
+impl RateSchedule {
+    /// Resolve the applicable rate for the given volume.
+    pub fn resolve(&self, volume: UsdValue) -> Dimensionless {
+        self.tiers
+            .range(..=volume)
+            .next_back()
+            .map(|(_, &rate)| rate)
+            .unwrap_or(self.base)
+    }
 }
 
 /// Referrer settings for a referrer.
@@ -175,19 +180,13 @@ pub struct Param {
     /// across all trading pairs.
     pub max_conditional_orders: usize,
 
-    /// Base fee charged to makers, used when no volume tier qualifies.
-    pub base_maker_fee_rate: Dimensionless,
+    /// Volume-tiered maker fee rates. Highest qualifying tier wins;
+    /// base rate applies when no tier is met.
+    pub maker_fee_rates: RateSchedule,
 
-    /// Base fee charged to takers, used when no volume tier qualifies.
-    pub base_taker_fee_rate: Dimensionless,
-
-    /// Volume-tiered maker fee rates. Key = minimum recent USD volume
-    /// threshold; value = fee rate. Highest qualifying tier wins.
-    pub tiered_maker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
-
-    /// Volume-tiered taker fee rates. Key = minimum recent USD volume
-    /// threshold; value = fee rate. Highest qualifying tier wins.
-    pub tiered_taker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
+    /// Volume-tiered taker fee rates. Highest qualifying tier wins;
+    /// base rate applies when no tier is met.
+    pub taker_fee_rates: RateSchedule,
 
     /// Fraction of each trading fee routed to the protocol treasury.
     /// The remainder (1 − `protocol_fee_rate`) stays with the vault.
@@ -218,8 +217,17 @@ pub struct Param {
     /// to the liquidity provider.
     pub vault_cooldown_period: Duration,
 
-    /// Referral system parameters.
-    pub referral: ReferralParam,
+    /// Whether the referral commission system is active.
+    /// When false, `apply_fee_commissions` is skipped entirely.
+    pub referral_active: bool,
+
+    /// Minimum lifetime perps trading volume a user must have
+    /// before they can become a referrer by setting a fee share ratio.
+    pub min_referrer_volume: UsdValue,
+
+    /// Volume-tiered referrer commission rates. Highest qualifying tier wins;
+    /// base rate applies when no tier is met.
+    pub referrer_commission_rates: RateSchedule,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
@@ -1052,4 +1060,92 @@ pub struct FeeDistributed {
 pub struct ReferralSet {
     pub referrer: UserIndex,
     pub referee: UserIndex,
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {super::*, std::collections::BTreeMap};
+
+    #[test]
+    fn resolve_empty_tiers() {
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::new(),
+        };
+        assert_eq!(
+            schedule.resolve(UsdValue::new_int(1_000_000)),
+            schedule.base
+        );
+    }
+
+    #[test]
+    fn resolve_below_all_thresholds() {
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), Dimensionless::new_raw(800)),
+                (UsdValue::new_int(1_000_000), Dimensionless::new_raw(500)),
+            ]),
+        };
+        assert_eq!(schedule.resolve(UsdValue::new_int(50_000)), schedule.base);
+    }
+
+    #[test]
+    fn resolve_between_thresholds() {
+        let tier1_rate = Dimensionless::new_raw(800);
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), tier1_rate),
+                (UsdValue::new_int(1_000_000), Dimensionless::new_raw(500)),
+            ]),
+        };
+        assert_eq!(schedule.resolve(UsdValue::new_int(500_000)), tier1_rate);
+    }
+
+    #[test]
+    fn resolve_above_all_thresholds() {
+        let top_rate = Dimensionless::new_raw(500);
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), Dimensionless::new_raw(800)),
+                (UsdValue::new_int(1_000_000), top_rate),
+            ]),
+        };
+        assert_eq!(schedule.resolve(UsdValue::new_int(5_000_000)), top_rate);
+    }
+
+    #[test]
+    fn resolve_exactly_at_threshold() {
+        let tier1_rate = Dimensionless::new_raw(800);
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), tier1_rate),
+                (UsdValue::new_int(1_000_000), Dimensionless::new_raw(500)),
+            ]),
+        };
+        assert_eq!(schedule.resolve(UsdValue::new_int(100_000)), tier1_rate);
+    }
+
+    #[test]
+    fn resolve_negative_tier_rate() {
+        let base = Dimensionless::new_raw(-100); // -1 bps
+        let tier1_rate = Dimensionless::new_raw(-200); // -2 bps
+        let tier2_rate = Dimensionless::new_raw(-500); // -5 bps
+        let schedule = RateSchedule {
+            base,
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), tier1_rate),
+                (UsdValue::new_int(1_000_000), tier2_rate),
+            ]),
+        };
+
+        assert_eq!(schedule.resolve(UsdValue::new_int(50_000)), base);
+        assert_eq!(schedule.resolve(UsdValue::new_int(500_000)), tier1_rate);
+        assert_eq!(schedule.resolve(UsdValue::new_int(5_000_000)), tier2_rate);
+    }
 }
