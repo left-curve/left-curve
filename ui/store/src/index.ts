@@ -174,6 +174,14 @@ export {
 } from "./hooks/usePairStats.js";
 
 export {
+  type UsePerpsPairStatsParameters,
+  type UseAllPerpsPairStatsParameters,
+  type NormalizedPerpsPairStats,
+  usePerpsPairStats,
+  useAllPerpsPairStats,
+} from "./hooks/usePerpsPairStats.js";
+
+export {
   type UseBridgeStateParameters,
   useBridgeState,
 } from "./hooks/useBridgeState.js";
