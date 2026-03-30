@@ -87,6 +87,9 @@ stop-points-bot network:
 drop-db-points-bot network:
   ansible-playbook drop-db-points-bot.yml -e '{"points_bot_networks": ["{{network}}"]}' --limit points-bot-{{network}}
 
+drop-db-full-points-bot network:
+  ansible-playbook drop-db-points-bot.yml -e '{"points_bot_networks": ["{{network}}"], "drop_db_full": true}' --limit points-bot-{{network}}
+
 delete-points-bot network:
   ansible-playbook delete-points-bot.yml -e '{"points_bot_networks": ["{{network}}"]}' --limit points-bot-{{network}}
 
