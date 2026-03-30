@@ -490,7 +490,7 @@ fn process_triggered_order(
         querier,
         contract,
         current_time,
-        &param,
+        param,
         &mut maker_states,
         fee_breakdowns,
         &volumes,
