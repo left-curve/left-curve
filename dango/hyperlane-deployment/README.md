@@ -59,7 +59,7 @@ cargo run -p dango-hyperlane-deployment --bin evm-deploy -- --config config.json
 
 ### Build artifacts
 
-| Contract                    | Repository                                  | Commit    | Solc   | ethVersion | Optimizer             |
+| Contract                    | Repository                                  | Commit    | Solc   | evmVersion | Optimizer             |
 | --------------------------- | ------------------------------------------- | --------- | ------ | ---------- | --------------------- |
 | ProxyAdmin                  | [@openzeppelin/contracts][oz-repo]          | `0a25c19` | 0.8.13 | `london`   | enabled; 200 runs     |
 | TransparentUpgradeableProxy | [@openzeppelin/contracts][oz-repo]          | `0a25c19` | 0.8.13 | `london`   | enabled; 200 runs     |
