@@ -1,9 +1,12 @@
 import {
   useAllPairStats,
+  useAllPerpsPairStats,
   useFavPairs,
   usePrices,
   perpsOrderBookStore,
   tradePairStore,
+  toPerpsPairId,
+  useConfig,
 } from "@left-curve/store";
 import {
   Badge,
@@ -70,7 +73,9 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
   const { formatNumberOptions } = settings;
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const { favPairs } = useFavPairs();
+  const { coins } = useConfig();
   const { statsByPair } = useAllPairStats();
+  const { statsByPairId: perpStatsByPairId } = useAllPerpsPairStats();
 
   const activePerpsPrice = perpsOrderBookStore((s) => s.currentPrice);
   const activePairId = tradePairStore((s) => s.pairId);
@@ -78,8 +83,15 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
 
   const data = useMemo(() => [...rows], [rows, favPairs]);
 
-  const getPairStats = (row: SearchTokenRow) =>
-    statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
+  const getPairStats = (row: SearchTokenRow) => {
+    if (row.mode === "perps") {
+      const baseSymbol = coins.byDenom[row.pairId.baseDenom]?.symbol;
+      const quoteSymbol = coins.byDenom[row.pairId.quoteDenom]?.symbol ?? "USD";
+      const perpsPairId = baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
+      return perpsPairId ? perpStatsByPairId[perpsPairId] : undefined;
+    }
+    return statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
+  };
 
   const columns: TableColumn<SearchTokenRow> = [
     {

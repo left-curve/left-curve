@@ -54,6 +54,17 @@ export {
 } from "./queries/perpsEvents.js";
 
 export {
+  type GetPerpsPairStatsParameters,
+  type GetPerpsPairStatsReturnType,
+  getPerpsPairStats,
+} from "./queries/getPerpsPairStats.js";
+
+export {
+  type GetAllPerpsPairStatsReturnType,
+  getAllPerpsPairStats,
+} from "./queries/getAllPerpsPairStats.js";
+
+export {
   type DepositMarginParameters,
   type DepositMarginReturnType,
   depositMargin,

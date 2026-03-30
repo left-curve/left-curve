@@ -454,3 +454,11 @@ export type PairStats = {
   volume24H: string;
   priceChange24H: Option<string>;
 };
+
+export type PerpsPairStats = {
+  pairId: string;
+  currentPrice: Option<string>;
+  price24HAgo: Option<string>;
+  volume24H: string;
+  priceChange24H: Option<string>;
+};
