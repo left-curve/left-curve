@@ -1086,7 +1086,24 @@
     "metric": {
       "commission": "Commission",
       "volume": "Volume"
-    }
+    },
+    "editCommission": {
+      "title": "Edit Commission Rate",
+      "description": "Adjust how much of your commission you share with referees. The share ratio can only be increased and cannot exceed 50%.",
+      "yourRate": "Your commission rate:",
+      "commissionRateLabel": "Commission rate (tier-based)",
+      "readOnly": "read-only",
+      "refereeReceives": "Referee receives",
+      "errorDecrease": "Share ratio can only be increased, not decreased.",
+      "errorExceedsMax": "Cannot share more than 50% with referees.",
+      "saving": "Saving...",
+      "save": "Save"
+    },
+    "chart": {
+      "loading": "Loading...",
+      "noData": "No data available"
+    },
+    "submitting": "..."
   },
   "points": {
     "campaign": "Campaign",
