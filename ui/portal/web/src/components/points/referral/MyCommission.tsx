@@ -10,8 +10,8 @@ import {
 } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAccount, useRefereeStats, useEpochPoints, useUserVolume } from "@left-curve/store";
-import type { RefereeStats } from "@left-curve/store";
+import { useAccount, useRefereeStats, useEpochPoints, useReferralData } from "@left-curve/store";
+import type { RefereeStatsWithUser } from "@left-curve/store";
 import type React from "react";
 import { Suspense, lazy, useMemo, useState } from "react";
 import type { ReferralMode } from "./ReferralStats";
@@ -162,11 +162,11 @@ const MyRefereesTable: React.FC = () => {
   });
 
   const refereeData = useMemo<RefereeRow[]>(() => {
-    return referees.map((referee: RefereeStats) => ({
-      userName: `#${referee.user_index}`,
+    return referees.map((referee: RefereeStatsWithUser) => ({
+      userName: `#${referee.userIndex}`,
       totalVolume: formatUSD(referee.volume),
-      totalCommission: formatUSD(referee.commission),
-      date: formatDate(referee.registered_at),
+      totalCommission: formatUSD(referee.commissionEarned),
+      date: formatDate(referee.registeredAt),
     }));
   }, [referees]);
 
@@ -252,23 +252,23 @@ const RebateTable: React.FC = () => {
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  const { volume, isLoading } = useUserVolume({
-    userIndex,
-    days: 30,
-  });
+  const { referralData, isLoading } = useReferralData({ userIndex });
 
   const rebateData = useMemo<RebateRow[]>(() => {
-    if (volume && volume > 0) {
+    const volume = Number(referralData?.volume ?? "0");
+    const rebates = referralData?.commissionSharedByReferrer ?? "0";
+
+    if (volume > 0 || Number(rebates) > 0) {
       return [
         {
-          rebates: "$0.00",
+          rebates: formatUSD(rebates),
           tradingVolume: formatUSD(volume),
           date: new Date().toLocaleDateString("en-US"),
         },
       ];
     }
     return [];
-  }, [volume]);
+  }, [referralData]);
 
   const columns: TableColumn<RebateRow> = [
     {

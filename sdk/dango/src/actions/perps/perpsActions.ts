@@ -74,6 +74,18 @@ import {
   cancelPerpsOrder,
 } from "./mutations/cancelOrder.js";
 
+import {
+  type SetReferralParameters,
+  type SetReferralReturnType,
+  setReferral,
+} from "./mutations/setReferral.js";
+
+import {
+  type SetFeeShareRatioParameters,
+  type SetFeeShareRatioReturnType,
+  setFeeShareRatio,
+} from "./mutations/setFeeShareRatio.js";
+
 export type PerpsQueryActions = {
   getPerpsUserState: (args: GetPerpsUserStateParameters) => GetPerpsUserStateReturnType;
   getPerpsOrdersByUser: (args: GetPerpsOrdersByUserParameters) => GetPerpsOrdersByUserReturnType;
@@ -107,6 +119,8 @@ export type PerpsMutationActions = {
   withdrawMargin: (args: WithdrawMarginParameters) => WithdrawMarginReturnType;
   submitPerpsOrder: (args: SubmitPerpsOrderParameters) => SubmitPerpsOrderReturnType;
   cancelPerpsOrder: (args: CancelPerpsOrderParameters) => CancelPerpsOrderReturnType;
+  setReferral: (args: SetReferralParameters) => SetReferralReturnType;
+  setFeeShareRatio: (args: SetFeeShareRatioParameters) => SetFeeShareRatioReturnType;
 };
 
 export function perpsMutationActions<transport extends Transport = Transport>(
@@ -117,5 +131,7 @@ export function perpsMutationActions<transport extends Transport = Transport>(
     withdrawMargin: (args) => withdrawMargin(client, args),
     submitPerpsOrder: (args) => submitPerpsOrder(client, args),
     cancelPerpsOrder: (args) => cancelPerpsOrder(client, args),
+    setReferral: (args) => setReferral(client, args),
+    setFeeShareRatio: (args) => setFeeShareRatio(client, args),
   };
 }

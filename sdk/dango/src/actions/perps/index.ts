@@ -76,3 +76,15 @@ export {
   type CancelPerpsOrderReturnType,
   cancelPerpsOrder,
 } from "./mutations/cancelOrder.js";
+
+export {
+  type SetReferralParameters,
+  type SetReferralReturnType,
+  setReferral,
+} from "./mutations/setReferral.js";
+
+export {
+  type SetFeeShareRatioParameters,
+  type SetFeeShareRatioReturnType,
+  setFeeShareRatio,
+} from "./mutations/setFeeShareRatio.js";

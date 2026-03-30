@@ -7,22 +7,23 @@ import {
 import type {
   UserReferralData,
   RefereeStats,
-  ReferralSettings,
-  ReferralConfig,
-  RefereeStatsOrderBy,
+  RefereeStatsWithUser,
+  ReferrerSettings,
+  ReferralParams,
+  ReferrerStatsOrderBy,
 } from "../types/referral.js";
 
 /**
- * Query the taxman contract
+ * Query the perps contract via wasmSmart.
  */
-async function queryTaxman<T>(
+async function queryPerps<T>(
   client: PublicClient,
-  taxmanAddress: string,
+  perpsAddress: string,
   msg: Json,
 ): Promise<T> {
   const request = snakeCaseJsonSerialization<QueryRequest>({
     wasmSmart: {
-      contract: taxmanAddress,
+      contract: perpsAddress,
       msg,
     },
   });
@@ -33,103 +34,84 @@ async function queryTaxman<T>(
 }
 
 /**
- * Query the referrer of a user
- * Returns the referrer's user_index or null if no referrer
+ * Query the referrer of a user (referee).
+ * Returns the referrer's user_index or null if no referrer.
  */
 export async function queryReferrer(
   client: PublicClient,
-  taxmanAddress: string,
+  perpsAddress: string,
   userIndex: number,
 ): Promise<number | null> {
-  return queryTaxman<number | null>(client, taxmanAddress, {
-    referrer: { user: userIndex },
+  return queryPerps<number | null>(client, perpsAddress, {
+    referrer: { referee: userIndex },
   });
 }
 
 /**
- * Query referral data for a user (as a referrer)
- * Returns cumulative volume, commission, and active referee count
+ * Query referral data for a user.
+ * Returns cumulative volume, commissions, referee counts, etc.
  */
 export async function queryReferralData(
   client: PublicClient,
-  taxmanAddress: string,
+  perpsAddress: string,
   userIndex: number,
   since?: number,
 ): Promise<UserReferralData> {
-  return queryTaxman<UserReferralData>(client, taxmanAddress, {
+  return queryPerps<UserReferralData>(client, perpsAddress, {
     referralData: { user: userIndex, since },
   });
 }
 
 /**
- * Query list of referees for a referrer
- * Returns stats for each referee including volume and commission
+ * Query per-referee statistics for a referrer.
+ * Rust returns `Vec<(Referee, RefereeStats)>` — we flatten the tuples.
  */
 export async function queryRefereeStats(
   client: PublicClient,
-  taxmanAddress: string,
+  perpsAddress: string,
   referrerIndex: number,
-  orderBy?: RefereeStatsOrderBy,
-): Promise<RefereeStats[]> {
-  return queryTaxman<RefereeStats[]>(client, taxmanAddress, {
+  orderBy: ReferrerStatsOrderBy,
+): Promise<RefereeStatsWithUser[]> {
+  const raw = await queryPerps<Array<[number, RefereeStats]>>(client, perpsAddress, {
     referrerToRefereeStats: { referrer: referrerIndex, orderBy },
   });
+
+  return raw.map(([userIndex, stats]) => ({ ...stats, userIndex }));
 }
 
 /**
- * Query referral settings for a referrer
- * Returns commission rebound rate and share ratio
+ * Query referral settings for a user.
+ * Returns null if the user is not a referrer.
  */
 export async function queryReferralSettings(
   client: PublicClient,
-  taxmanAddress: string,
+  perpsAddress: string,
   userIndex: number,
-): Promise<ReferralSettings> {
-  return queryTaxman<ReferralSettings>(client, taxmanAddress, {
+): Promise<ReferrerSettings | null> {
+  return queryPerps<ReferrerSettings | null>(client, perpsAddress, {
     referralSettings: { user: userIndex },
   });
 }
 
 /**
- * Query trading volume for a user
- * This uses the existing VolumeByUser query on taxman
+ * Query referral params from the perps Param query.
+ * Extracts referral-related fields from the full Param struct.
  */
-export async function queryUserVolume(
+export async function queryReferralParams(
   client: PublicClient,
-  taxmanAddress: string,
-  userIndex: number,
-  since?: number,
-): Promise<string> {
-  return queryTaxman<string>(client, taxmanAddress, {
-    volumeByUser: { user: userIndex, since },
-  });
-}
-
-/**
- * Query the referral config from taxman
- * Returns system-wide referral settings including tiers
- */
-export async function queryReferralConfig(
-  client: PublicClient,
-  taxmanAddress: string,
-): Promise<ReferralConfig> {
-  // The referral config is part of the taxman config
-  const config = await queryTaxman<{ referral?: ReferralConfig }>(client, taxmanAddress, {
-    config: {},
+  perpsAddress: string,
+): Promise<ReferralParams> {
+  const param = await queryPerps<{
+    referralActive: boolean;
+    minReferrerVolume: string;
+    referrerCommissionRates: ReferralParams["referrerCommissionRates"];
+  }>(client, perpsAddress, {
+    param: {},
   });
 
-  // Return default config if referral config is not available
-  if (!config.referral) {
-    return {
-      default_commission_rebound: "0.1",
-      tiers: [
-        { min_volume: "10000000", commission_rebound: "0.2" },
-        { min_volume: "100000000", commission_rebound: "0.3" },
-        { min_volume: "1000000000", commission_rebound: "0.4" },
-      ],
-      max_share_ratio: "0.5",
-    };
-  }
-
-  return config.referral;
+  return {
+    referralActive: param.referralActive,
+    minReferrerVolume: param.minReferrerVolume,
+    referrerCommissionRates: param.referrerCommissionRates,
+  };
 }

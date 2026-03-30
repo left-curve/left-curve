@@ -293,14 +293,16 @@ export {
   type UseReferralDataParameters,
   type UseRefereeStatsParameters,
   type UseReferralSettingsParameters,
-  type UseUserVolumeParameters,
-  type UseReferralConfigParameters,
+  type UseReferralParamsParameters,
+  type UseSetReferralParameters,
+  type UseSetFeeShareRatioParameters,
   useReferrer,
   useReferralData,
   useRefereeStats,
   useReferralSettings,
-  useUserVolume,
-  useReferralConfig,
+  useReferralParams,
+  useSetReferral,
+  useSetFeeShareRatio,
   getReferralCode,
   getReferralLink,
 } from "./hooks/useReferral.js";
@@ -308,9 +310,12 @@ export {
 export type {
   UserReferralData,
   RefereeStats,
-  ReferralSettings,
-  ReferralConfig,
-  RefereeStatsOrderBy,
+  RefereeStatsWithUser,
+  ReferrerSettings,
+  ReferralParams,
+  RateSchedule,
+  ReferrerStatsOrderBy,
+  ReferrerStatsOrderIndex,
 } from "./types/referral.js";
 
 export {
@@ -318,8 +323,7 @@ export {
   queryReferralData,
   queryRefereeStats,
   queryReferralSettings,
-  queryUserVolume,
-  queryReferralConfig,
+  queryReferralParams,
 } from "./hooks/referralApi.js";
 
 export { rehydrate } from "./rehydrate.js";
