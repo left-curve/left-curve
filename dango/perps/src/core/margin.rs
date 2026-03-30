@@ -289,7 +289,7 @@ mod tests {
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
-            perps::{PairParam, PairState, Param, Position},
+            perps::{PairParam, PairState, Param, Position, RateSchedule},
         },
         grug::{Timestamp, Udec128, btree_map, hash_map},
         std::collections::HashMap,
@@ -1113,7 +1113,10 @@ mod tests {
     fn margin_check_full_fill_fails() {
         let pair_id: PairId = "perp/btcusd".parse().unwrap();
         let param = Param {
-            base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(1), // 0.1%
+                ..Default::default()
+            },
             ..Default::default()
         };
         let taker_state = UserState {
@@ -1145,7 +1148,7 @@ mod tests {
             &pair_id,
             &perp_querier,
             &taker_state,
-            param.base_taker_fee_rate,
+            param.taker_fee_rates.base,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
         );

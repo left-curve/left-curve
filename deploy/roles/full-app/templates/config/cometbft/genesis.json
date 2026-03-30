@@ -889,22 +889,26 @@
               }
             },
             "param": {
-              "base_maker_fee_rate": "0",
-              "base_taker_fee_rate": "0.001",
               "funding_period": "3600",
               "liquidation_fee_rate": "0.01",
+              "maker_fee_rates": {
+                "base": "0",
+                "tiers": {}
+              },
               "max_conditional_orders": 10,
               "max_open_orders": 100,
               "max_unlocks": 10,
+              "min_referrer_volume": "0",
               "protocol_fee_rate": "0",
-              "referral": {
-                "active": true,
-                "commission_rates_by_volume": {},
-                "commission_rate_default": "0",
-                "volume_to_be_referrer": "0"
+              "referral_active": true,
+              "referrer_commission_rates": {
+                "base": "0",
+                "tiers": {}
               },
-              "tiered_maker_fee_rate": {},
-              "tiered_taker_fee_rate": {},
+              "taker_fee_rates": {
+                "base": "0.001",
+                "tiers": {}
+              },
               "vault_cooldown_period": "86400",
               "vault_total_weight": "0"
             }

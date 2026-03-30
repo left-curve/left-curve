@@ -407,7 +407,7 @@ pub fn query_referral_settings(
     let param = crate::PARAM.load(ctx.storage)?;
 
     let commission_rate =
-        calculate_commission_rate(ctx.storage, user, ctx.block.timestamp, &param.referral)?;
+        calculate_commission_rate(ctx.storage, user, ctx.block.timestamp, &param)?;
 
     Ok(Some(ReferrerSettings {
         commission_rate,

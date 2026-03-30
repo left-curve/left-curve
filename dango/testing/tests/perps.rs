@@ -19,10 +19,10 @@ use {
 /// Return the genesis-default global params (mirrors `PerpsOption::preset_test()`).
 fn default_param() -> Param {
     Param {
-        base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
-        base_maker_fee_rate: Dimensionless::ZERO,
-        tiered_taker_fee_rate: BTreeMap::new(),
-        tiered_maker_fee_rate: BTreeMap::new(),
+        taker_fee_rates: perps::RateSchedule {
+            base: Dimensionless::new_permille(1), // 0.1%
+            ..Default::default()
+        },
         protocol_fee_rate: Dimensionless::ZERO,
         liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
         vault_cooldown_period: Duration::from_days(1),
@@ -30,8 +30,7 @@ fn default_param() -> Param {
         max_open_orders: 100,
         max_conditional_orders: 10,
         funding_period: Duration::from_hours(1),
-        vault_total_weight: Dimensionless::ZERO,
-        referral: Default::default(),
+        ..Default::default()
     }
 }
 
@@ -1988,8 +1987,14 @@ fn negative_maker_fee_rebate_lifecycle() {
             contracts.perps,
             &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
                 param: Param {
-                    base_taker_fee_rate: Dimensionless::new_raw(300), // 3 bps
-                    base_maker_fee_rate: Dimensionless::new_raw(-100), // -1 bps (rebate)
+                    taker_fee_rates: perps::RateSchedule {
+                        base: Dimensionless::new_raw(300), // 3 bps
+                        ..Default::default()
+                    },
+                    maker_fee_rates: perps::RateSchedule {
+                        base: Dimensionless::new_raw(-100), // -1 bps (rebate)
+                        ..Default::default()
+                    },
                     protocol_fee_rate: Dimensionless::new_percent(20),
                     ..default_param()
                 },

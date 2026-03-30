@@ -35,10 +35,7 @@ use {
     },
     hyperlane_types::isms::multisig::ValidatorSet,
     pyth_types::constants::LAZER_TRUSTED_SIGNER,
-    std::{
-        collections::{BTreeMap, BTreeSet},
-        str::FromStr,
-    },
+    std::{collections::BTreeSet, str::FromStr},
 };
 
 /// Describing a data that has a preset value for testing purposes.
@@ -636,10 +633,10 @@ impl Preset for PerpsOption {
         let pair_id: Denom = "perp/ethusd".parse().unwrap();
         PerpsOption {
             param: perps::Param {
-                base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
-                base_maker_fee_rate: Dimensionless::ZERO,
-                tiered_taker_fee_rate: BTreeMap::new(),
-                tiered_maker_fee_rate: BTreeMap::new(),
+                taker_fee_rates: perps::RateSchedule {
+                    base: Dimensionless::new_permille(1), // 0.1%
+                    ..Default::default()
+                },
                 protocol_fee_rate: Dimensionless::ZERO,
                 liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
                 vault_cooldown_period: Duration::from_days(1),
@@ -647,11 +644,8 @@ impl Preset for PerpsOption {
                 max_open_orders: 100,
                 max_conditional_orders: 10,
                 funding_period: Duration::from_hours(1),
-                vault_total_weight: Dimensionless::ZERO,
-                referral: perps::ReferralParam {
-                    active: true,
-                    ..Default::default()
-                },
+                referral_active: true,
+                ..Default::default()
             },
             pair_params: btree_map! {
                 pair_id => PairParam {

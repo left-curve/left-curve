@@ -221,12 +221,13 @@ On the first trade of each day by a given direct referee, the referrer's $\matht
 
 ## 8. Parameters
 
-| Field                        | Type                                 | Description                                                                                                                 |
-| ---------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `active`                     | `bool`                               | Master switch. When `false`, referral commissions are skipped entirely.                                                     |
-| `volume_to_be_referrer`      | `UsdValue`                           | Minimum lifetime trading volume to call `SetFeeShareRatio`. Bypassed for users with a commission rate override.             |
-| `commission_rate_default`    | `CommissionRate`                     | Fallback commission rate when no volume tier qualifies.                                                                     |
-| `commission_rates_by_volume` | `BTreeMap<UsdValue, CommissionRate>` | Volume-tiered rates. Key = minimum 30-day referees volume threshold; value = commission rate. Highest qualifying tier wins. |
+These fields are part of the top-level `Param` struct (not a separate nested struct):
+
+| Field                      | Type           | Description                                                                                                                 |
+| -------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `referral_active`          | `bool`         | Master switch. When `false`, referral commissions are skipped entirely.                                                     |
+| `min_referrer_volume`      | `UsdValue`     | Minimum lifetime trading volume to call `SetFeeShareRatio`. Bypassed for users with a commission rate override.             |
+| `referrer_commission_rates`| `RateSchedule` | Volume-tiered commission rates. `base` = fallback rate; `tiers` = map of 30-day referees volume threshold → rate. Highest qualifying tier wins. |
 
 **Constants:**
 

@@ -353,7 +353,7 @@ fn set_share_ratio_requires_volume() {
         .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
         .should_succeed();
 
-    param.referral.volume_to_be_referrer = UsdValue::new_int(10_000);
+    param.min_referrer_volume = UsdValue::new_int(10_000);
 
     suite
         .execute(
@@ -426,7 +426,7 @@ fn referral_active_flag() {
         .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
         .should_succeed();
 
-    param.referral.active = false;
+    param.referral_active = false;
 
     suite
         .execute(
@@ -471,7 +471,7 @@ fn referral_active_flag() {
     assert_eq!(user1_margin_before, user1_margin_after);
 
     // Re-enable referral system.
-    param.referral.active = true;
+    param.referral_active = true;
 
     suite
         .execute(
@@ -518,9 +518,11 @@ fn commission_rate_override() {
         .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
         .should_succeed();
 
-    param.referral.commission_rate_default = CommissionRate::new_percent(10);
-    param.referral.commission_rates_by_volume = btree_map! {
-        UsdValue::new_int(100) => CommissionRate::new_percent(20),
+    param.referrer_commission_rates = perps::RateSchedule {
+        base: CommissionRate::new_percent(10),
+        tiers: btree_map! {
+            UsdValue::new_int(100) => CommissionRate::new_percent(20),
+        },
     };
 
     suite
@@ -893,7 +895,9 @@ fn commission_rate_margins() {
     .collect();
 
     // vault_fee = trade_value * taker_fee = $2.00
-    let vault_fee = trade_value.checked_mul(params.base_taker_fee_rate).unwrap();
+    let vault_fee = trade_value
+        .checked_mul(params.taker_fee_rates.base)
+        .unwrap();
 
     assert_eq!(vault_fee, UsdValue::new_int(2));
 

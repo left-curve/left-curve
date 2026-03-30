@@ -47,9 +47,9 @@ pub fn set_fee_share_ratio(
         let volume = query_volume(ctx.storage, ctx.sender, None)?;
 
         ensure!(
-            volume >= param.referral.volume_to_be_referrer,
+            volume >= param.min_referrer_volume,
             "insufficient perps volume to become a referrer (required: {}, current: {})",
-            param.referral.volume_to_be_referrer,
+            param.min_referrer_volume,
             volume,
         );
     }
