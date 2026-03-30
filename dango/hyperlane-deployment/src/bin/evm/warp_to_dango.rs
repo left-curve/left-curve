@@ -16,6 +16,7 @@ use {
         providers::Provider,
         rpc::types::TransactionRequest,
     },
+    clap::Parser,
     dango_hyperlane_deployment::{
         config::{self, evm::WarpRouteType},
         contract_bindings::{hyp_erc20::HypERC20, ism::TokenRouter},
@@ -33,18 +34,25 @@ const WARP_ROUTE_PROXY_ADDRESS: Address = address!("0xab4d0e03d8ee1daf635826f200
 
 const DANGO_RECIPIENT: Addr = addr!("a20a0e1a71b82d50fc046bc6e3178ad0154fd184");
 
-const EVM_NETWORK: &str = "11155111";
+#[derive(Parser)]
+#[command(name = "evm_warp_to_dango")]
+struct Args {
+    #[arg(long)]
+    config: String,
+    #[arg(long)]
+    deployments: String,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
-    let config = config::load_config()?;
-    let deployments = config::load_deployments()?;
-    let evm_config = config.evm.get(EVM_NETWORK).unwrap();
-    let evm_deployment = deployments.evm.get(EVM_NETWORK).ok_or_else(|| {
-        anyhow::anyhow!("No deployment for EVM network '{EVM_NETWORK}' found in deployments.json")
-    })?;
+    let args = Args::parse();
+
+    let config = config::load_config_from_path(&args.config)?;
+    let deployments = config::load_deployments_from_path(&args.deployments)?;
+    let evm_config = &config.evm;
+    let evm_deployment = &deployments.evm;
 
     let mut maybe_warp_route = None;
     for (warp_route_type, warp_route_deployment) in evm_deployment.warp_routes.iter() {

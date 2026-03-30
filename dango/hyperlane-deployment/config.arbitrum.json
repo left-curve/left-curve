@@ -1,0 +1,56 @@
+{
+  "dango": {
+    "api_url": "https://api-mainnet.dango.zone/",
+    "chain_id": "dango-1",
+    "isms": [
+      [
+        42161,
+        {
+          "validators": [
+            "4d966438fe9e2b1e7124c87bbb90cb4f0f6c59a1",
+            "5450447aee7b544c462c9352bef7cad049b0c2dc",
+            "4f977a59fdc2d9e39f6d780a84d5b4add1495a36",
+            "57ddf0cd46f31ead8084069ce481507f4305c716",
+            "de6c50c3e49852dd9fe0388166ebc1ba39ad8505"
+          ],
+          "threshold": 3
+        }
+      ]
+    ]
+  },
+  "evm": {
+    "chain_id": 42161,
+    "infura_rpc_url": "https://arbitrum-mainnet.infura.io/v3/",
+    "hyperlane_deployments": {
+      "static_message_id_multisig_ism_factory": "0x12Df53079d399a47e9E730df095b712B0FDFA791",
+      "mailbox": "0x979Ca5202784112f4738403dBec5D0F3B9daabB9"
+    },
+    "hyperlane_domain": 42161,
+    "hyperlane_protocol_fee": 0,
+    "ism": {
+      "static_message_id_multisig_ism": {
+        "validators": [
+          "0x2F3bC8d740dBfC310D78124db8476040F9Cd7357",
+          "0x2cc539a1383128Ab0e2007D24543445A665B1947",
+          "0xb45dea8d034AfD3A9753732cAe9eFE15B7f97Fd0",
+          "0xCC315d2c581315D5961bdaFd1944B3b4c7DbAC57"
+        ],
+        "threshold": 3
+      }
+    },
+    "warp_routes": [
+      {
+        "warp_route_type": "native",
+        "symbol": "eth"
+      },
+      {
+        "warp_route_type": {
+          "erc20_collateral": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+        },
+        "symbol": "usdc"
+      }
+    ],
+    "multi_sig_address": "0xec16b574ddf7c1b1039aad3b7c170408b7aaa4ac",
+    "chain_name": "arbitrum"
+  }
+}

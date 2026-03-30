@@ -8,18 +8,12 @@ use {
     },
     alloy::primitives::Address,
     serde::{Deserialize, Serialize},
-    std::collections::BTreeMap,
 };
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
     pub dango: DangoConfig,
-    pub evm: BTreeMap<String, EVMConfig>,
-}
-
-pub fn load_config() -> anyhow::Result<Config> {
-    let config_path = format!("{}/config.json", env!("CARGO_MANIFEST_DIR"));
-    load_config_from_path(&config_path)
+    pub evm: EVMConfig,
 }
 
 pub fn load_config_from_path(config_path: &str) -> anyhow::Result<Config> {
@@ -27,13 +21,6 @@ pub fn load_config_from_path(config_path: &str) -> anyhow::Result<Config> {
     let config: Config = serde_json::from_str(&config)?;
 
     Ok(config)
-}
-
-pub fn save_config(config: &Config) -> anyhow::Result<()> {
-    let config_path = format!("{}/config.json", env!("CARGO_MANIFEST_DIR"));
-    let config_json = serde_json::to_string_pretty(config)?;
-    std::fs::write(config_path, config_json)?;
-    Ok(())
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -49,14 +36,9 @@ pub struct EVMWarpRouteDeployment {
     pub symbol: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Deployments {
-    pub evm: BTreeMap<String, EVMDeployment>,
-}
-
-pub fn load_deployments() -> anyhow::Result<Deployments> {
-    let deployments_path = format!("{}/deployments.json", env!("CARGO_MANIFEST_DIR"));
-    load_deployments_from_path(&deployments_path)
+    pub evm: EVMDeployment,
 }
 
 pub fn load_deployments_from_path(deployments_path: &str) -> anyhow::Result<Deployments> {
@@ -64,11 +46,6 @@ pub fn load_deployments_from_path(deployments_path: &str) -> anyhow::Result<Depl
     let deployments: Deployments = serde_json::from_str(&deployments)?;
 
     Ok(deployments)
-}
-
-pub fn save_deployments(deployments: &Deployments) -> anyhow::Result<()> {
-    let deployments_path = format!("{}/deployments.json", env!("CARGO_MANIFEST_DIR"));
-    save_deployments_to_path(deployments, &deployments_path)
 }
 
 pub fn save_deployments_to_path(
@@ -93,7 +70,8 @@ mod tests {
 
     #[test]
     fn test_load_config() {
-        load_config().unwrap();
+        let config_path = format!("{}/config.ethereum.json", env!("CARGO_MANIFEST_DIR"));
+        load_config_from_path(&config_path).unwrap();
     }
 
     #[test]
@@ -109,7 +87,8 @@ mod tests {
 
     #[test]
     fn test_load_deployments() {
-        let deployments = load_deployments().unwrap();
+        let deployments_path = format!("{}/deployments.ethereum.json", env!("CARGO_MANIFEST_DIR"));
+        let deployments = load_deployments_from_path(&deployments_path).unwrap();
         println!("deployments = {deployments:?}");
     }
 }

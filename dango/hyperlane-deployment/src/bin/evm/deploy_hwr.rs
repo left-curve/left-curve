@@ -10,6 +10,7 @@
 //! ```
 
 use {
+    clap::Parser,
     dango_hyperlane_deployment::{
         config::{
             self,
@@ -27,24 +28,31 @@ const WARP_ROUTE_TYPE: WarpRouteType = WarpRouteType::Native;
 // The symbol to use as subdenom for the token on Dango.
 const SYMBOL: &str = "sepoliaETH";
 
-const EVM_NETWORK: &str = "11155111";
+#[derive(Parser)]
+#[command(name = "evm_deploy_hwr_sepolia")]
+struct Args {
+    #[arg(long)]
+    config: String,
+    #[arg(long)]
+    deployments: String,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
-    let mut config = config::load_config()?;
-    let mut deployments = config::load_deployments()?;
+    let args = Args::parse();
+
+    let config = config::load_config_from_path(&args.config)?;
+    let deployments = config::load_deployments_from_path(&args.deployments).ok();
 
     let (dango_client, ..) = setup::setup_dango(&config.dango).await?;
 
-    let evm_config = config.evm.get_mut(EVM_NETWORK).unwrap();
+    let evm_config = &config.evm;
     let (provider, owner) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
-    let maybe_deployment = deployments.evm.get(EVM_NETWORK);
-
-    let mut evm_deployment = match maybe_deployment {
-        Some(deployment) => deployment.clone(),
+    let mut evm_deployment = match deployments.as_ref() {
+        Some(d) => d.evm.clone(),
         None => {
             let proxy_admin_address = deploy_proxy_admin(&provider).await?;
             config::EVMDeployment {
@@ -78,14 +86,12 @@ async fn main() -> anyhow::Result<()> {
     )
     .await?;
 
-    // Update the deployments with the new deployment
-    deployments
-        .evm
-        .insert(EVM_NETWORK.to_string(), evm_deployment);
-
     // Save the updated deployments
+    let updated = config::Deployments {
+        evm: evm_deployment,
+    };
     println!("Saving updated deployments...");
-    config::save_deployments(&deployments)?;
+    config::save_deployments_to_path(&updated, &args.deployments)?;
 
     println!("Done!");
 

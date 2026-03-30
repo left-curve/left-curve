@@ -25,9 +25,6 @@ struct Args {
     /// Path to the deployments file
     #[arg(long)]
     deployments: String,
-    /// The EVM chain ID to transfer ownership on
-    #[arg(long)]
-    chain_id: String,
     /// The new owner address (overrides multi_sig_address from config if provided)
     #[arg(long)]
     new_owner: Option<Address>,
@@ -42,14 +39,8 @@ async fn main() -> anyhow::Result<()> {
     let config = config::load_config_from_path(&args.config)?;
     let deployments = config::load_deployments_from_path(&args.deployments)?;
 
-    let evm_config = config
-        .evm
-        .get(&args.chain_id)
-        .ok_or_else(|| anyhow::anyhow!("EVM config not found for chain_id: {}", args.chain_id))?;
-
-    let evm_deployment = deployments.evm.get(&args.chain_id).ok_or_else(|| {
-        anyhow::anyhow!("EVM deployment not found for chain_id: {}", args.chain_id)
-    })?;
+    let evm_config = &config.evm;
+    let evm_deployment = &deployments.evm;
 
     let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 
@@ -67,8 +58,8 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     println!(
-        "Successfully transferred ProxyAdmin ownership to {} on chain {}",
-        new_owner, args.chain_id
+        "Successfully transferred ProxyAdmin ownership to {} on chain '{}'",
+        new_owner, evm_config.chain_name
     );
 
     Ok(())

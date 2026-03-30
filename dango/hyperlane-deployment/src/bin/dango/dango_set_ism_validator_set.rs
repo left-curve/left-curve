@@ -1,21 +1,24 @@
 use {
-    anyhow::anyhow,
+    clap::Parser,
     dango_hyperlane_deployment::{config, dango, setup},
     dotenvy::dotenv,
 };
 
-const REMOTE_CHAIN_ID: &str = "11155111";
+#[derive(Parser)]
+#[command(name = "dango_set_ism_validator_set")]
+struct Args {
+    #[arg(long)]
+    config: String,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
-    let config = config::load_config()?;
+    let args = Args::parse();
 
-    let evm_config = config
-        .evm
-        .get(REMOTE_CHAIN_ID)
-        .ok_or_else(|| anyhow!("EVM config not found for chain ID `{REMOTE_CHAIN_ID}`"))?;
+    let config = config::load_config_from_path(&args.config)?;
+    let evm_config = &config.evm;
 
     let (dango_client, mut dango_owner) = setup::setup_dango(&config.dango).await?;
 

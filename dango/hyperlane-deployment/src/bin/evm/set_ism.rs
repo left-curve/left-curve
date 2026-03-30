@@ -1,5 +1,4 @@
-//! This script deploys the `HypNativeMetadata` contract as an upgradeable proxy
-//! on Sepolia, configure the router, and sends 100 wei to a recipient on Dango.
+//! This script updates the ISM on a deployed warp route.
 //!
 //! Prerequisite: create a `.env` file at the repository root, with the
 //! following content:
@@ -10,6 +9,7 @@
 //! ```
 
 use {
+    clap::Parser,
     dango_hyperlane_deployment::{
         config::{self},
         contract_bindings::hyp_native::HypNative,
@@ -19,17 +19,26 @@ use {
     dotenvy::dotenv,
 };
 
-const EVM_NETWORK: &str = "11155111";
+#[derive(Parser)]
+#[command(name = "evm_set_ism")]
+struct Args {
+    #[arg(long)]
+    config: String,
+    #[arg(long)]
+    deployments: String,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
-    let config = config::load_config()?;
-    let evm_config = config.evm.get(EVM_NETWORK).unwrap();
+    let args = Args::parse();
 
-    let deployments = config::load_deployments()?;
-    let evm_deployment = deployments.evm.get(EVM_NETWORK).unwrap();
+    let config = config::load_config_from_path(&args.config)?;
+    let evm_config = &config.evm;
+
+    let deployments = config::load_deployments_from_path(&args.deployments)?;
+    let evm_deployment = &deployments.evm;
 
     let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
 

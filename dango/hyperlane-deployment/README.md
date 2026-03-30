@@ -48,13 +48,19 @@ To rebuild the EVM contracts from source, run the following.
 
 Before you can run the deployment scripts make sure you have the correct environment variables set. See the EVM section of `dango/hyperlane-deployment/env.example`.
 
-The deployment scripts are located in the `dango/hyperlane-deployment/src/bin/evm/` directory. Use the `dango/hyperlane-deployment/config.json` file to configure the deployment.
-The main script is `deploy.rs`. It deploys the Hyperlane Routes that are configured in the config file.
+The deployment scripts are located in the `dango/hyperlane-deployment/src/bin/evm/` directory. Each chain has its own config and deployments file:
 
-To deploy the EVM contracts, run the following:
+| Chain | Config | Deployments |
+| --- | --- | --- |
+| Ethereum Mainnet | `config.ethereum.json` | `deployments.ethereum.json` |
+| Sepolia | `config.ethereum-testnet.json` | `deployments.ethereum-testnet.json` |
+| Arbitrum One | `config.arbitrum.json` | `deployments.arbitrum.json` |
+| Arbitrum Sepolia | `config.arbitrum-testnet.json` | `deployments.arbitrum-testnet.json` |
+
+The main script is `deploy.rs`. It deploys the Hyperlane Routes configured in a single-chain config file. To deploy, run:
 
 ```bash
-cargo run -p dango-hyperlane-deployment --bin evm-deploy -- --config config.json --deployments deployments.json
+cargo run -p dango-hyperlane-deployment --bin evm-deploy -- --config <config-file> --deployments <deployments-file>
 ```
 
 ### Build artifacts

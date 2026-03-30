@@ -1,0 +1,52 @@
+{
+  "dango": {
+    "api_url": "https://api-testnet.dango.zone/",
+    "isms": [
+      [
+        11155111,
+        {
+          "validators": [
+            "b22b65f202558adf86a8bb2847b76ae1036686a5",
+            "469f0940684d147defc44f3647146cb90dd0bc8e",
+            "d3c75dcf15056012a4d74c483a0c6ea11d8c2b83"
+          ],
+          "threshold": 2
+        }
+      ]
+    ]
+  },
+  "evm": {
+    "chain_id": 11155111,
+    "infura_rpc_url": "https://sepolia.infura.io/v3/",
+    "hyperlane_deployments": {
+      "static_message_id_multisig_ism_factory": "0xfeb9585b2f948c1ed74034205a7439261a9d27dd",
+      "mailbox": "0xffaef09b3cd11d9b20d1a19becca54eec2884766"
+    },
+    "hyperlane_domain": 11155111,
+    "hyperlane_protocol_fee": 1,
+    "ism": {
+      "static_message_id_multisig_ism": {
+        "validators": [
+          "0x6603760598E4aAc3E9D47569cc3A7024cDa7003a",
+          "0xf8E81626772C4f6e43e3F4cd9eAac1bC5D23a16f",
+          "0x77302BB386b258BA1422bAe9edB5a22EA733D4d4"
+        ],
+        "threshold": 1
+      }
+    },
+    "warp_routes": [
+      {
+        "warp_route_type": "native",
+        "symbol": "eth"
+      },
+      {
+        "warp_route_type": {
+          "erc20_collateral": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238"
+        },
+        "symbol": "usdc"
+      }
+    ],
+    "multi_sig_address": null,
+    "chain_name": "ethereum-testnet"
+  }
+}

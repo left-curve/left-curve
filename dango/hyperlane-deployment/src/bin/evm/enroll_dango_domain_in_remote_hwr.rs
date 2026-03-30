@@ -15,12 +15,13 @@ use {
     dotenvy::dotenv,
 };
 
-const EVM_NETWORK: &str = "11155111";
-
 #[derive(Parser)]
 #[command(name = "evm_enroll_dango_domain")]
 #[command(about = "Enrolls the Dango domain in a remote Hyperlane Warp Route")]
 struct Args {
+    /// Path to the config file
+    #[arg(long)]
+    config: String,
     /// The address of the warp route proxy contract
     #[arg(long)]
     warp_route_address: Address,
@@ -33,8 +34,8 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     // Load config
-    let config = config::load_config()?;
-    let evm_config = config.evm.get(EVM_NETWORK).unwrap();
+    let config = config::load_config_from_path(&args.config)?;
+    let evm_config = &config.evm;
 
     // Setup Ethereum provider
     let (provider, _) = setup::evm::setup_ethereum_provider(&evm_config.infura_rpc_url)?;
