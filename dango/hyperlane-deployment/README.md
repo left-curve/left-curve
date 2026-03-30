@@ -50,11 +50,11 @@ Before you can run the deployment scripts make sure you have the correct environ
 
 The deployment scripts are located in the `dango/hyperlane-deployment/src/bin/evm/` directory. Each chain has its own config and deployments file:
 
-| Chain | Config | Deployments |
-| --- | --- | --- |
-| Ethereum Mainnet | `config.ethereum.json` | `deployments.ethereum.json` |
-| Sepolia | `config.ethereum-testnet.json` | `deployments.ethereum-testnet.json` |
-| Arbitrum One | `config.arbitrum.json` | `deployments.arbitrum.json` |
+| Chain            | Config                         | Deployments                         |
+| ---------------- | ------------------------------ | ----------------------------------- |
+| Ethereum Mainnet | `config.ethereum.json`         | `deployments.ethereum.json`         |
+| Sepolia          | `config.ethereum-testnet.json` | `deployments.ethereum-testnet.json` |
+| Arbitrum One     | `config.arbitrum.json`         | `deployments.arbitrum.json`         |
 | Arbitrum Sepolia | `config.arbitrum-testnet.json` | `deployments.arbitrum-testnet.json` |
 
 The main script is `deploy.rs`. It deploys the Hyperlane Routes configured in a single-chain config file. To deploy, run:
@@ -113,14 +113,14 @@ cargo run -p dango-hyperlane-deployment --bin evm-deploy -- --config <config-fil
 
 #### Arbitrum Sepolia (chain ID: 421614)
 
-| Contract                    | Asset | Address |
-| --------------------------- | ----- | ------- |
-| ProxyAdmin                  | -     | TBD     |
-| TransparentUpgradeableProxy | ETH   | TBD     |
-| HypNative                   | ETH   | TBD     |
-| TransparentUpgradeableProxy | USDC  | TBD     |
-| HypERC20Collateral          | USDC  | TBD     |
-| StaticMessageIdMultisigIsm  | -     | TBD     |
+| Contract                    | Asset | Address                                                                                                                        |
+| --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------ |
+| ProxyAdmin                  | -     | [`0xd4C7A71aa0ccaC0528b6335DBD46C48Eb919A912`](https://sepolia.arbiscan.io/address/0xd4C7A71aa0ccaC0528b6335DBD46C48Eb919A912) |
+| TransparentUpgradeableProxy | ETH   | [`0xC7E1c8115132815baC654c30714b1d7fb53d8268`](https://sepolia.arbiscan.io/address/0xC7E1c8115132815baC654c30714b1d7fb53d8268) |
+| HypNative                   | ETH   | [`0xc7f6a60557a9E6D2B1106757022E183E3d97afaE`](https://sepolia.arbiscan.io/address/0xc7f6a60557a9E6D2B1106757022E183E3d97afaE) |
+| TransparentUpgradeableProxy | USDC  | [`0xa2427E955f2002b5a3BcCCd0b49598a676A30bdC`](https://sepolia.arbiscan.io/address/0xa2427E955f2002b5a3BcCCd0b49598a676A30bdC) |
+| HypERC20Collateral          | USDC  | [`0x924256Fe08496aE19D5048aE6474d383538Ea4D3`](https://sepolia.arbiscan.io/address/0x924256Fe08496aE19D5048aE6474d383538Ea4D3) |
+| StaticMessageIdMultisigIsm  | -     | [`0xf5Caa4440B5Ce23f75bEde4852Bc2694e8572508`](https://sepolia.arbiscan.io/address/0xf5Caa4440B5Ce23f75bEde4852Bc2694e8572508) |
 
 ## SVM
 

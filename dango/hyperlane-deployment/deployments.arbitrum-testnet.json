@@ -1,0 +1,25 @@
+{
+  "evm": {
+    "proxy_admin_address": "0xd4c7a71aa0ccac0528b6335dbd46c48eb919a912",
+    "warp_routes": [
+      [
+        "native",
+        {
+          "address": "0xc7f6a60557a9e6d2b1106757022e183e3d97afae",
+          "proxy_address": "0xc7e1c8115132815bac654c30714b1d7fb53d8268",
+          "symbol": "eth"
+        }
+      ],
+      [
+        {
+          "erc20_collateral": "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"
+        },
+        {
+          "address": "0x924256fe08496ae19d5048ae6474d383538ea4d3",
+          "proxy_address": "0xa2427e955f2002b5a3bcccd0b49598a676a30bdc",
+          "symbol": "usdc"
+        }
+      ]
+    ]
+  }
+}
