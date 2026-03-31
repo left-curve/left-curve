@@ -1,11 +1,4 @@
 ---
-- name: Remove config.json if Docker created it as a directory
-  file:
-    path: "{{ deployment_dir }}/perps-bot/config.json"
-    state: absent
-  become: true
-  when: inventory_hostname == perps_bot_host
-
 - name: Create perps-bot config directory
   file:
     path: "{{ deployment_dir }}/perps-bot"
