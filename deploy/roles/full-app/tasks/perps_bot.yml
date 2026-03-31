@@ -3,6 +3,7 @@
   file:
     path: "{{ deployment_dir }}/perps-bot/config.json"
     state: absent
+  become: true
   when: inventory_hostname == perps_bot_host
 
 - name: Create perps-bot config directory
