@@ -12,11 +12,10 @@ import type Privy from "@privy-io/js-sdk-core";
 import type { OAuthProviderType } from "@privy-io/js-sdk-core";
 
 type SocialCredentialProps = {
-  signup?: boolean;
   onAuth: () => Promise<void>;
 };
 
-export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, signup }) => {
+export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth }) => {
   const { toast } = useApp();
   const connectors = useConnectors();
   const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
@@ -25,7 +24,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
     mutationFn: async (provider: OAuthProviderType) => {
       const { url } = await connector.privy.auth.oauth.generateURL(
         provider,
-        `${window.location.origin}/?auth_callback=${signup ? "signup" : "signin"}`,
+        `${window.location.origin}/?auth_callback=auth`,
       );
       window.location.href = url;
     },
@@ -39,7 +38,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
         status,
         provider,
         undefined,
-        signup ? "login-or-sign-up" : "no-signup",
+        "login-or-sign-up",
         {
           embedded: {
             ethereum: {

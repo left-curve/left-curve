@@ -81,7 +81,11 @@
           "action=signup": "Register with Passkey"
         }
       }
-    ]
+    ],
+    "welcomeToDango": "Welcome to Dango",
+    "connectWithPasskey": "Connect with Passkey",
+    "connectWallet": "Connect Wallet",
+    "createNewAccount": "Create new account"
   },
   "statusBadge": {
     "status": "Status",
@@ -428,6 +432,19 @@
     "enterYou": "Enter your",
     "enterYourEmail": "Enter your email",
     "requetFromFaucet": "Request Funds from Faucet",
+    "createYourAccount": "Create Your Account",
+    "noAccountFound": "We didn't find an account for {identifier}, so we'll create one for you.",
+    "passkeyChoice": {
+      "title": "Choose how to continue",
+      "description": "Passkey uses Face ID or your fingerprint. No password, no seed phrase.",
+      "createNew": "Create New Passkey",
+      "useExisting": "Use Existing Passkey"
+    },
+    "passkeyError": {
+      "title": "No Passkey found",
+      "description": "No Passkey is found in your keychain, or you have rejected the operation. If you do not have an account yet, click the button below to create one."
+    },
+    "referralCode": "Referral code",
     "errors": {
       "invalidVerificationCode": "Invalid verification code",
       "userNotFound": "This email account is not bound to any account",
