@@ -1,0 +1,14 @@
+---
+- name: Create perps-bot config directory
+  file:
+    path: "{{ deployment_dir }}/perps-bot"
+    state: directory
+    mode: '0755'
+  when: inventory_hostname == perps_bot_host
+
+- name: Copy perps-bot config
+  copy:
+    src: "perps-bot/{{ dango_network }}/config.json"
+    dest: "{{ deployment_dir }}/perps-bot/config.json"
+    mode: '0644'
+  when: inventory_hostname == perps_bot_host

@@ -49,6 +49,8 @@
 - import_tasks: check_cometbft_sync.yml
 - import_tasks: dex_bot.yml
   when: dex_bot_enabled
+- import_tasks: perps_bot.yml
+  when: perps_bot_enabled
 - import_tasks: check_container_healthy.yml
 - import_tasks: resume_kuma.yml
   when: system_wide_directories
