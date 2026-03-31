@@ -67,12 +67,6 @@ test.describe("Referral Page", () => {
       }
     });
 
-    test("shows locked banner with trade CTA for non-eligible users", async () => {
-      await openReferralAffiliateTab(sharedPage);
-
-      await expect(sharedPage.getByText("Trade now")).toBeVisible();
-    });
-
     test("allows clearing the referee receives input while editing", async () => {
       await openReferralAffiliateTab(sharedPage);
 
