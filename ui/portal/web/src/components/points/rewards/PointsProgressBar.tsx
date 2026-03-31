@@ -88,8 +88,8 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
       leftLabel={remainingLabel}
       rightLabel={nextTargetLabel}
       thumbSrc="/images/points/pointBarThumb.png"
-      endImageSrc="/images/points/boxes/silver.png"
-      endImageAlt="Silver chest"
+      endImageSrc={`/images/points/boxes/${tier.key}.png`}
+      endImageAlt={`${tierLabel} chest`}
       className={className}
     />
   );
