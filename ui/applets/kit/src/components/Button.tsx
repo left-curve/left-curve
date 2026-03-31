@@ -115,26 +115,31 @@ const buttonVariants = tv(
     compoundVariants: [
       {
         variant: "primary",
+        isDisabled: false,
         class:
           "bg-primitives-red-light-400 hover:bg-primitives-red-light-600 text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#F575893D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "secondary",
+        isDisabled: false,
         class:
           "bg-surface-primary-blue hover:bg-surface-secondary-blue text-ink-secondary-blue focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary",
+        isDisabled: false,
         class:
           "bg-surface-button-green hover:bg-surface-button-green-hover text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary-red",
+        isDisabled: false,
         class:
           "bg-surface-primary-red hover:bg-surface-secondary-red text-ink-tertiary-red focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "link",
+        isDisabled: false,
         class:
           "bg-transparent hover:text-primitives-blue-light-600 text-ink-secondary-blue focus:bg-surface-primary-blue focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
       },
@@ -166,6 +171,7 @@ const buttonVariants = tv(
       },
       {
         variant: "utility",
+        isDisabled: false,
         class:
           "bg-surface-quaternary-rice hover:bg-surface-quaternary-rice-hover text-ink-secondary-rice focus:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] data-[status=active]:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
