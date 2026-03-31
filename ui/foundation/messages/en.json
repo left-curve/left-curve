@@ -330,14 +330,13 @@
     "user": {
       "title": "User Profile",
       "stats": {
-        "totalDebt": "Total Debt",
         "totalAssets": "Total Assets",
-        "totalAccounts": "Total Accounts",
-        "dateJoined": "Date Joined"
+        "totalAccounts": "Total Accounts"
       },
       "accounts": "Accounts",
       "accountNumber": "Account #{index}",
       "active": "Active",
+      "inactive": "Inactive",
       "tabs": {
         "assets": "Assets",
         "transactions": "Transactions"

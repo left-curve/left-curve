@@ -137,6 +137,12 @@ export {
 } from "./hooks/explorer/useExplorerContract.js";
 export { useExplorerTransactionsBySender } from "./hooks/explorer/useExplorerTransactionsBySender.js";
 export {
+  useExplorerUser,
+  type AccountWithDetails,
+  type ExplorerUserData,
+} from "./hooks/explorer/useExplorerUser.js";
+export { useExplorerUserTransactions } from "./hooks/explorer/useExplorerUserTransactions.js";
+export {
   parseExplorerErrorMessage,
   type ParsedExplorerError,
 } from "./hooks/explorer/parseExplorerErrorMessage.js";
