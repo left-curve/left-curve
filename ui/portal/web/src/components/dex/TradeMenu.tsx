@@ -417,6 +417,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return Decimal(size).div(currentPrice).toFixed(6);
   }, [size, isBaseSize, currentPrice]);
 
+  const queryClient = useQueryClient();
+  const { account } = useAccount();
+
   const submission = usePerpsSubmission({
     perpsPairId,
     action,
@@ -425,6 +428,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     priceValue,
     controllers,
     onError,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+    },
   });
 
   const feesDisplay = useMemo(() => {
