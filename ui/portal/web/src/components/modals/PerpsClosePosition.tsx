@@ -39,6 +39,7 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(
         },
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ["prices"] });
+          queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
           hideModal();
         },
       },
