@@ -1,3 +1,5 @@
+//! Reference: <https://docs.pyth.network/price-feeds/pro/price-feed-ids>
+
 use {
     crate::PythLazerSubscriptionDetails,
     pyth_lazer_protocol::{api::Channel, time::FixedRate},
@@ -54,6 +56,11 @@ pub const DOGE_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetai
 
 pub const ETH_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
     id: 2,
+    channel: Channel::RealTime,
+};
+
+pub const HYPE_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 110,
     channel: Channel::RealTime,
 };
 

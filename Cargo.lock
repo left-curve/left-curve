@@ -4331,6 +4331,7 @@ dependencies = [
  "indexer-client",
  "indexer-sql",
  "num-format",
+ "pyth-types",
  "tokio",
  "tracing",
 ]
