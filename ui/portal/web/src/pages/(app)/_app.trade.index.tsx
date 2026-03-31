@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 export const Route = createFileRoute("/(app)/_app/trade/")({
   beforeLoad: async ({ context }) => {
     const { config } = context;
-    const isDevnet = config.chain.id === "dev-9";
+    const isDevnet = config.chain.name === "Devnet";
 
     throw redirect({
       to: "/trade/$pairSymbols",
