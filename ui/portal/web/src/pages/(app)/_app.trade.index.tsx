@@ -4,7 +4,8 @@ export const Route = createFileRoute("/(app)/_app/trade/")({
   beforeLoad: async () => {
     throw redirect({
       to: "/trade/$pairSymbols",
-      params: { pairSymbols: "ETH-USDC" },
+      params: { pairSymbols: "BTC-USD" },
+      search: { type: "perps" },
     });
   },
 });
