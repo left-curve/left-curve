@@ -18,6 +18,7 @@ export const InputSizeWithMax: React.FC<{
   label?: string;
   minSizeAmount?: number;
   minSizeMessage?: string;
+  hideMaxControls?: boolean;
 }> = ({
   isDisabled,
   maxSizeAmount,
@@ -30,6 +31,7 @@ export const InputSizeWithMax: React.FC<{
   label = "Size",
   minSizeAmount,
   minSizeMessage,
+  hideMaxControls,
 }) => (
   <Input
     placeholder="0"
@@ -49,27 +51,29 @@ export const InputSizeWithMax: React.FC<{
     classNames={{
       base: "z-20",
       inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px]",
-      inputParent: "h-[34px] h3-medium",
-      input: "!h3-medium",
+      inputParent: "h-[34px] diatype-lg-medium min-w-0",
+      input: "!diatype-lg-medium",
     }}
     startText="right"
     startContent={startContent}
     endContent={endContent}
     insideBottomComponent={
-      <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular pl-4">
-        <div className="flex items-center gap-2">
-          <FormattedNumber number={availableAmount} />
-          <Button
-            type="button"
-            variant="tertiary-red"
-            size="xs"
-            className="py-[2px] px-[6px] cursor-pointer"
-            onClick={() => setValue("size", maxSizeAmount.toString())}
-          >
-            {m["common.max"]()}
-          </Button>
+      hideMaxControls ? undefined : (
+        <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular pl-4">
+          <div className="flex items-center gap-2">
+            <FormattedNumber number={availableAmount} />
+            <Button
+              type="button"
+              variant="tertiary-red"
+              size="xs"
+              className="py-[2px] px-[6px] cursor-pointer"
+              onClick={() => setValue("size", maxSizeAmount.toString())}
+            >
+              {m["common.max"]()}
+            </Button>
+          </div>
         </div>
-      </div>
+      )
     }
   />
 );

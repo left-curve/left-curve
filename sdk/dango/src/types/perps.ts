@@ -44,18 +44,25 @@ export type PerpsPairState = {
   fundingPerUnit: string;
 };
 
+export type RateSchedule = {
+  base: string;
+  tiers: Record<string, string>;
+};
+
 export type PerpsParam = {
   maxUnlocks: number;
   maxOpenOrders: number;
-  baseMakerFeeRate: string;
-  baseTakerFeeRate: string;
-  tieredMakerFeeRate: Record<string, string>;
-  tieredTakerFeeRate: Record<string, string>;
+  maxConditionalOrders: number;
+  makerFeeRates: RateSchedule;
+  takerFeeRates: RateSchedule;
   protocolFeeRate: string;
   liquidationFeeRate: string;
   fundingPeriod: number;
   vaultTotalWeight: string;
   vaultCooldownPeriod: number;
+  referralActive: boolean;
+  minReferrerVolume: string;
+  referrerCommissionRates: RateSchedule;
 };
 
 export type PerpsState = {

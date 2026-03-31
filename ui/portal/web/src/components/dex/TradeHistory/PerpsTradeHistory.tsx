@@ -60,7 +60,10 @@ export const PerpsTradeHistory: React.FC = () => {
   const columns: TableColumn<PerpsEvent> = [
     {
       header: m["dex.protrade.tradeHistory.pair"](),
-      cell: ({ row }) => <Cell.Text text={row.original.pairId} className="diatype-xs-medium" />,
+      cell: ({ row }) => {
+        const pair = row.original.pairId.replace("perp/", "").replace("usd", "/USD").toUpperCase();
+        return <Cell.Text text={pair} className="diatype-xs-medium" />;
+      },
     },
     {
       header: m["dex.protrade.history.type"](),
@@ -69,15 +72,15 @@ export const PerpsTradeHistory: React.FC = () => {
       ),
     },
     {
-      header: "Side",
+      header: "Direction",
       cell: ({ row }) => {
         const size = getPerpsEventSize(row.original.eventType, row.original.data);
         if (!size) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
-        const isLong = !size.startsWith("-");
+        const isBuy = !size.startsWith("-");
         return (
           <Cell.Text
-            text={isLong ? "Long" : "Short"}
-            className={isLong ? "text-green-500" : "text-red-500"}
+            text={isBuy ? "Buy" : "Sell"}
+            className={isBuy ? "text-green-500" : "text-red-500"}
           />
         );
       },
@@ -88,7 +91,12 @@ export const PerpsTradeHistory: React.FC = () => {
         const size = getPerpsEventSize(row.original.eventType, row.original.data);
         if (!size) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
         const abs = size.startsWith("-") ? size.slice(1) : size;
-        return <Cell.Number formatOptions={formatNumberOptions} value={abs} />;
+        const baseSymbol = row.original.pairId.replace("perp/", "").replace("usd", "").toUpperCase();
+        return (
+          <Cell.Text
+            text={`${formatNumber(abs, formatNumberOptions)} ${baseSymbol}`}
+          />
+        );
       },
     },
     {
