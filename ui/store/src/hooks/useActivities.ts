@@ -63,13 +63,7 @@ export function useActivities() {
     {
       enabled: Boolean(username),
       initialValue: {},
-      version: 0.2,
-      migrations: {
-        0.1: (prev: Record<Username, ActivityRecord[]>) => {
-          if (chain.id === "dango-1") return prev;
-          return {};
-        },
-      },
+      version: 0.1,
     },
   );
 
