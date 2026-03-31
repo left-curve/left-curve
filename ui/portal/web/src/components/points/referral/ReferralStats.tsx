@@ -251,7 +251,7 @@ export const AffiliateStats: React.FC = () => {
               </p>
             )}
             <p className="text-ink-tertiary-500 diatype-m-medium">
-              {m["referral.stats.totalCommissionPoints"]()}
+              {m["referral.stats.totalCommission"]()}
             </p>
           </div>
           <div className="flex flex-col items-center lg:items-end">

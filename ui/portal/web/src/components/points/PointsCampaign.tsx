@@ -83,7 +83,12 @@ const PointsCampaignHeader: React.FC = () => (
         {m["points.header.title"]()}
       </h1>
     </div>
-    <Button variant="utility">{m["points.header.readRules"]()}</Button>
+    <Button
+      variant="utility"
+      onClick={() => window.open("https://dango-4.gitbook.io/dango-docs/points")}
+    >
+      {m["points.header.readRules"]()}
+    </Button>
   </div>
 );
 

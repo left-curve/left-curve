@@ -13,6 +13,9 @@ import type {
   OrderCanceledEvent,
   OrderCreatedEvent,
   OrderFilledEvent,
+  OrderFilledData,
+  LiquidatedData,
+  DeleveragedData,
   UID,
   Username,
 } from "@left-curve/dango/types";
@@ -32,6 +35,9 @@ export type Activities = {
   orderCreated: OrderCreatedEvent;
   orderCanceled: OrderCanceledEvent;
   orderFilled: OrderFilledEvent;
+  perpOrderFilled: OrderFilledData;
+  perpLiquidated: LiquidatedData;
+  perpDeleveraged: DeleveragedData;
 };
 
 export type ActivityRecord<key extends keyof Activities = keyof Activities> = {
@@ -49,7 +55,7 @@ export function useActivities() {
   const queryClient = useQueryClient();
   const { username = "", accounts, account, refreshUserStatus, userStatus } = useAccount();
   const { refetch: refetchBalances } = useBalances({ address: account?.address });
-  const { subscriptions } = useConfig();
+  const { subscriptions, chain } = useConfig();
   const userAddresses = useMemo(() => (accounts ? accounts.map((a) => a.address) : []), [accounts]);
 
   const [allActivities, setAllActivities] = useStorage<Record<Username, ActivityRecord[]>>(
@@ -183,7 +189,16 @@ export function useActivities() {
 
                 return { data: details, type: "transfer" as const };
               }
-              case "order_filled":
+              case "order_filled": {
+                queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
+                queryClient.invalidateQueries({ queryKey: ["tradeHistory", account?.address] });
+                refetchBalances();
+                const isPerps = "pair_id" in (data as Record<string, unknown>);
+                return {
+                  data: data as Activities[keyof Activities],
+                  type: (isPerps ? "perpOrderFilled" : "orderFilled") as keyof Activities,
+                };
+              }
               case "order_created":
               case "order_canceled": {
                 queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
@@ -192,6 +207,20 @@ export function useActivities() {
                 return {
                   data: data as Activities[keyof Activities],
                   type: snakeToCamel(type) as keyof Activities,
+                };
+              }
+              case "liquidated": {
+                refetchBalances();
+                return {
+                  data: data as Activities["perpLiquidated"],
+                  type: "perpLiquidated" as const,
+                };
+              }
+              case "deleveraged": {
+                refetchBalances();
+                return {
+                  data: data as Activities["perpDeleveraged"],
+                  type: "perpDeleveraged" as const,
                 };
               }
             }
