@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "fs-extra";
@@ -135,6 +136,8 @@ const envConfig = `window.dango = ${JSON.stringify(
   2,
 )};`;
 
+const configHash = crypto.createHash("md5").update(envConfig).digest("hex").slice(0, 8);
+
 const copyPattern = [];
 
 if (fs.existsSync(tradingViewPath)) {
@@ -203,8 +206,9 @@ export default defineConfig({
   html: {
     template: "public/index.html",
     title: "",
-    tags:
-      environment === "test" || environment === "dev"
+    tags: [
+      { tag: "script", attrs: { src: `/static/js/config.js?v=${configHash}` }, append: false },
+      ...(environment === "test" || environment === "dev"
         ? [
             { tag: "script", attrs: { src: "https://cdn.jsdelivr.net/npm/eruda" } },
             {
@@ -212,7 +216,8 @@ export default defineConfig({
               children: "if (window.innerWidth <= 1024) { eruda.init(); }",
             },
           ]
-        : [],
+        : []),
+    ],
   },
   performance: {
     prefetch: {
