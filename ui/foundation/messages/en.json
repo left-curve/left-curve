@@ -326,6 +326,25 @@
         "admin": "Admin:",
         "balances": "Balances:"
       }
+    },
+    "user": {
+      "title": "User Profile",
+      "stats": {
+        "totalAssets": "Total Assets",
+        "totalAccounts": "Total Accounts"
+      },
+      "accounts": "Accounts",
+      "accountNumber": "Account #{index}",
+      "active": "Active",
+      "inactive": "Inactive",
+      "tabs": {
+        "assets": "Assets",
+        "transactions": "Transactions"
+      },
+      "notFound": {
+        "title": "User Not Found",
+        "description": "The user {username} could not be found."
+      }
     }
   },
   "appUpdate": {
