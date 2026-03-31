@@ -81,7 +81,11 @@
           "action=signup": "Register with Passkey"
         }
       }
-    ]
+    ],
+    "welcomeToDango": "Welcome to Dango",
+    "connectWithPasskey": "Connect with Passkey",
+    "connectWallet": "Connect Wallet",
+    "createNewUser": "Create New User"
   },
   "statusBadge": {
     "status": "Status",
@@ -392,7 +396,7 @@
     "sentVerificationCode": "We've sent a verification code to ",
     "usernamesFound": "Usernames found",
     "connectWalletToContinue": "Connect your wallet to continue",
-    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "chooseCredential": "Select any username linked to your credentials below",
     "noUsernamesFound": "No usernames found",
     "noUsernameMessage": "We could not find any username associated with the credential you connected.",
     "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
@@ -447,6 +451,19 @@
     "enterYou": "Enter your",
     "enterYourEmail": "Enter your email",
     "requetFromFaucet": "Request Funds from Faucet",
+    "createYourAccount": "Create Your Account",
+    "noAccountFound": "We didn't find an account for {identifier}, so we'll create one for you.",
+    "passkeyChoice": {
+      "title": "Choose how to continue",
+      "description": "Passkey uses Face ID or your fingerprint. No password, no seed phrase.",
+      "createNew": "Create New Passkey",
+      "useExisting": "Use Existing Passkey"
+    },
+    "passkeyError": {
+      "title": "No Passkey found",
+      "description": "No Passkey is found in your keychain, or you have rejected the operation. If you do not have an account yet, click the button below to create one."
+    },
+    "referralCode": "Referral code",
     "errors": {
       "invalidVerificationCode": "Invalid verification code",
       "userNotFound": "This email account is not bound to any account",
@@ -463,10 +480,14 @@
       "title": "Activate Account",
       "description": "Your account is almost ready!",
       "description2": "Activate it by making your first deposit.",
-      "cta": "Deposit now"
+      "cta": "Deposit & Get Started",
+      "usernameTitle": "Your username is {username}",
+      "usernameDescription": "You can change this username anytime in the settings.",
+      "depositCardTitle": "Deposit $10 to activate",
+      "depositCardDescription": "A minimum deposit of $10 is required to start using Dango."
     },
     "createAccount": "Create Account",
-    "doThisLater": "Do this later",
+    "doThisLater": "I'll do this later",
     "alreadyHaveAccount": "Already have an account?",
     "carousel": {
       "title": [

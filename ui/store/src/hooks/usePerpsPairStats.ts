@@ -89,8 +89,7 @@ export function useAllPerpsPairStats(parameters: UseAllPerpsPairStatsParameters 
   });
 
   const statsByPairId = useMemo(
-    () =>
-      Object.fromEntries((query.data ?? []).map((stats) => [stats.pairId, stats])),
+    () => Object.fromEntries((query.data ?? []).map((stats) => [stats.pairId, stats])),
     [query.data],
   );
 

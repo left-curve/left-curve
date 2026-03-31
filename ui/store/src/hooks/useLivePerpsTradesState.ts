@@ -14,8 +14,7 @@ export type UseLivePerpsTradesStoreState = {
 
 export const livePerpsTradesStore = create<UseLivePerpsTradesStoreState>((set, get) => ({
   trades: [],
-  addTrades: (trades) =>
-    set((state) => ({ trades: [...trades, ...state.trades].slice(0, 50) })),
+  addTrades: (trades) => set((state) => ({ trades: [...trades, ...state.trades].slice(0, 50) })),
   getTrades: () => get().trades,
   clearTrades: () => set(() => ({ trades: [] })),
 }));

@@ -203,6 +203,12 @@ export {
 } from "./hooks/useSigninState.js";
 
 export {
+  type UseAuthStateParameters,
+  type AuthScreen,
+  useAuthState,
+} from "./hooks/useAuthState.js";
+
+export {
   useSearchBar,
   type UseSearchBarParameters,
   type SearchBarResult,

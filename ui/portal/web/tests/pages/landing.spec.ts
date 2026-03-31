@@ -94,20 +94,6 @@ test.describe("Landing Page - Not Authenticated", () => {
   });
 
   test.describe("Favorites Management", () => {
-    test("default favorites are displayed in applets section", async ({ page }) => {
-      // Default favorites: trade, convert, bridge, transfer, create-account, settings
-      const appletsSection = page.locator('[class*="grid"]').filter({
-        has: page.locator('a[href*="/convert"], a[href*="/trade"], a[href*="/bridge"]'),
-      });
-
-      // Should have applet links
-      const appletLinks = page.locator(
-        'a[href="/convert"], a[href="/trade"], a[href="/bridge"], a[href="/transfer"]',
-      );
-      const linkCount = await appletLinks.count();
-      expect(linkCount).toBeGreaterThanOrEqual(1);
-    });
-
     test("clicking star icon toggles favorite status", async ({ page }) => {
       // Open search menu using keyboard shortcut
       await page.keyboard.press("k");

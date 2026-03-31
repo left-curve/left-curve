@@ -16,11 +16,7 @@ import type {
 /**
  * Query the perps contract via wasmSmart.
  */
-async function queryPerps<T>(
-  client: PublicClient,
-  perpsAddress: string,
-  msg: Json,
-): Promise<T> {
+async function queryPerps<T>(client: PublicClient, perpsAddress: string, msg: Json): Promise<T> {
   const request = snakeCaseJsonSerialization<QueryRequest>({
     wasmSmart: {
       contract: perpsAddress,
