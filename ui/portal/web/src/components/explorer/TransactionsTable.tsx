@@ -4,7 +4,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Cell, CursorPagination, Table } from "@left-curve/applets-kit";
 
-import type { TableColumn } from "@left-curve/applets-kit";
+import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { IndexedTransaction } from "@left-curve/dango/types";
 
 type TransactionsTableProps = {
@@ -16,11 +16,13 @@ type TransactionsTableProps = {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   };
+  classNames?: TableClassNames;
 };
 
 export const TransactionsTable: React.FC<TransactionsTableProps> = ({
   transactions,
   pagination,
+  classNames,
 }) => {
   const navigate = useNavigate();
 
@@ -80,6 +82,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
     <Table
       data={transactions}
       columns={columns}
+      classNames={classNames}
       bottomContent={
         pagination ? (
           <CursorPagination
