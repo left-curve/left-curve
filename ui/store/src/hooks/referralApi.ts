@@ -58,7 +58,7 @@ export async function queryReferralData(
   since?: number,
 ): Promise<UserReferralData> {
   return queryPerps<UserReferralData>(client, perpsAddress, {
-    referralData: { user: userIndex, since },
+    referralData: { user: userIndex, since: since != null ? String(since) : undefined },
   });
 }
 

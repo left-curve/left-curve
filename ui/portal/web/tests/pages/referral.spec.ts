@@ -67,13 +67,11 @@ test.describe("Referral Page", () => {
       }
     });
 
-    test("keeps referral credentials hidden for users below Tier 2", async () => {
+    test("shows referral credentials for tier-one eligible users", async () => {
       await openReferralAffiliateTab(sharedPage);
 
-      await expect(sharedPage.getByAltText("Referral banner")).toBeVisible();
-      await expect(getLockedBannerButton(sharedPage)).toHaveText(/trade now/i);
-      await expect(sharedPage.getByText("My Referral Link", { exact: true })).toHaveCount(0);
-      await expect(sharedPage.getByText("My Referral Code", { exact: true })).toHaveCount(0);
+      await expect(sharedPage.getByText("My Referral Link", { exact: true })).toBeVisible();
+      await expect(sharedPage.getByText("My Referral Code", { exact: true })).toBeVisible();
     });
 
     test("allows clearing the referee receives input while editing", async () => {

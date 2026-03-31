@@ -1030,6 +1030,9 @@
       "totalTradingVolume": "Total Trading Volume",
       "yourReferrer": "Your Referrer",
       "notLoggedIn": "You are not logged in.",
+      "volumeUntilTier1": "{amount} volume until Tier 1",
+      "volumeUntilNextTier": "{amount} volume until {tier}",
+      "maxTierReached": "Max tier reached",
       "volumeUntilTier2": "{amount} volume until Tier 2"
     },
     "affiliateSection": {

@@ -25,7 +25,7 @@ import {
   getReferralLink,
 } from "@left-curve/store";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type ReferralMode = "affiliate" | "trader";
 
@@ -58,6 +58,28 @@ const truncateUrl = (url: string, maxLength = 20): string => {
   return `${start}...`;
 };
 
+const COMMISSION_LOOKBACK_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * Given sorted tier thresholds and the current 30-day rolling referees volume,
+ * return the current tier number (0 = base, 1 = first tier, etc.)
+ * and the next tier's volume threshold (or null if at max tier).
+ */
+function resolveTier(
+  sortedThresholds: number[],
+  rollingRefereesVolume: number,
+): { currentTier: number; nextTierVolume: number | null } {
+  let currentTier = 0;
+  for (let i = 0; i < sortedThresholds.length; i++) {
+    if (rollingRefereesVolume >= sortedThresholds[i]) {
+      currentTier = i + 1;
+    } else {
+      return { currentTier, nextTierVolume: sortedThresholds[i] };
+    }
+  }
+  return { currentTier, nextTierVolume: null };
+}
+
 type AffiliateLockedBannerProps = {
   isConnected: boolean;
   onLogin: () => void;
@@ -80,11 +102,11 @@ const AffiliateLockedBanner: React.FC<AffiliateLockedBannerProps> = ({
         </p>
       </div>
       {isConnected ? (
-        <Button variant="primary" size="sm" onClick={onTrade}>
+        <Button variant="primary" onClick={onTrade}>
           {m["referral.affiliateSection.tradeNow"]()}
         </Button>
       ) : (
-        <Button variant="primary" size="sm" onClick={onLogin}>
+        <Button variant="primary" onClick={onLogin}>
           {m["referral.affiliateSection.logIn"]()}
         </Button>
       )}
@@ -118,44 +140,65 @@ export const AffiliateStats: React.FC = () => {
   const { referralData, isLoading: dataLoading } = useReferralData({
     userIndex,
   });
+
+  // 30-day lookback for rolling referees volume (used for tier progression).
+  const since30d = useMemo(() => Math.floor(Date.now() / 1000) - COMMISSION_LOOKBACK_SECONDS, []);
+  const { referralData: referralData30d, isLoading: data30dLoading } = useReferralData({
+    userIndex,
+    since: since30d,
+    enabled: isConnected,
+  });
+
   const { settings, isLoading: settingsLoading } = useReferralSettings({
     userIndex,
   });
   const { referralParams, isLoading: paramsLoading } = useReferralParams();
 
-  const isLoading = isConnected && (dataLoading || settingsLoading || paramsLoading);
-
   const minReferrerVolume = Number(referralParams?.minReferrerVolume ?? "10000");
   const currentVolume = Number(referralData?.volume ?? "0");
   const isTierOneEligible = isConnected && currentVolume >= minReferrerVolume;
 
-  // Progress toward becoming a referrer or reaching Tier 2.
-  const tierTwoVolume = referralParams?.referrerCommissionRates.tiers
-    ? (Object.keys(referralParams.referrerCommissionRates.tiers)
-        .map((value) => Number(value))
-        .filter((value) => !Number.isNaN(value))
-        .sort((a, b) => a - b)[0] ?? 100000)
-    : 100000;
-  const targetVolume = isTierOneEligible ? tierTwoVolume : minReferrerVolume;
-  const progressValue = isTierOneEligible
-    ? Number(referralData?.refereesVolume ?? "0")
-    : currentVolume;
-  const progress = isConnected ? Math.min((progressValue / targetVolume) * 100, 100) : 0;
-  const remaining = Math.max(targetVolume - progressValue, 0);
+  const isLoading =
+    isConnected &&
+    (dataLoading || settingsLoading || paramsLoading || (isTierOneEligible && data30dLoading));
+
+  // Sorted tier thresholds from referral params.
+  const sortedThresholds = useMemo(() => {
+    const tiers = referralParams?.referrerCommissionRates.tiers;
+    if (!tiers) return [];
+    return Object.keys(tiers)
+      .map((v) => Number(v))
+      .filter((v) => !Number.isNaN(v))
+      .sort((a, b) => a - b);
+  }, [referralParams]);
+
+  // 30-day rolling referees volume for tier calculation.
+  const rollingRefereesVolume = Number(referralData30d?.refereesVolume ?? "0");
+
+  const { currentTier, nextTierVolume } = useMemo(
+    () => resolveTier(sortedThresholds, rollingRefereesVolume),
+    [sortedThresholds, rollingRefereesVolume],
+  );
+
+  // Progress bar: pre-Tier 1 = lifetime volume toward minReferrerVolume,
+  // post-Tier 1 = 30-day rolling referees volume toward next tier.
+  const targetVolume = isTierOneEligible ? nextTierVolume : minReferrerVolume;
+  const progressValue = isTierOneEligible ? rollingRefereesVolume : currentVolume;
+  const progress =
+    isConnected && targetVolume
+      ? Math.min((progressValue / targetVolume) * 100, 100)
+      : isConnected && isTierOneEligible && !targetVolume
+        ? 100
+        : 0;
+  const remaining = targetVolume ? Math.max(targetVolume - progressValue, 0) : 0;
 
   const referralCode = getReferralCode(userIndex);
   const referralLink = getReferralLink(userIndex);
   const truncatedLink = truncateUrl(referralLink);
 
   const commissionRate = settings?.commissionRate ?? "0";
-  const commissionRateValue = Number(commissionRate);
   const shareRatio = settings?.shareRatio ?? "0";
-  const baseCommissionRate = Number(referralParams?.referrerCommissionRates.base ?? "0");
-  const canShowReferralCredentials =
-    isConnected &&
-    !Number.isNaN(commissionRateValue) &&
-    !Number.isNaN(baseCommissionRate) &&
-    commissionRateValue > baseCommissionRate;
+
   const rateDisplay = isConnected
     ? `${formatPercent(commissionRate)} / ${formatPercent(shareRatio)}`
     : "-- / --";
@@ -165,10 +208,17 @@ export const AffiliateStats: React.FC = () => {
   const totalReferees = referralData?.refereeCount ?? 0;
   const activeReferees = referralData?.cumulativeActiveReferees ?? 0;
 
+  // Tier 1 label key = "Tier 1", next tier label = "Tier N+1".
+  const tierLabel = `Tier ${currentTier + 1}`;
+
   const progressLeftLabel = isConnected
-    ? m["referral.stats.volumeUntilTier2"]({ amount: formatUSD(remaining) })
+    ? isTierOneEligible
+      ? nextTierVolume
+        ? m["referral.stats.volumeUntilNextTier"]({ amount: formatUSD(remaining), tier: tierLabel })
+        : m["referral.stats.maxTierReached"]()
+      : m["referral.stats.volumeUntilTier1"]({ amount: formatUSD(remaining) })
     : m["referral.stats.notLoggedIn"]();
-  const progressRightLabel = `$${(targetVolume / 1000).toFixed(0)}K`;
+  const progressRightLabel = targetVolume ? `$${(targetVolume / 1000).toFixed(0)}K` : "";
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -259,7 +309,7 @@ export const AffiliateStats: React.FC = () => {
 
           {isLoading ? (
             <AffiliateCredentialsLoading />
-          ) : canShowReferralCredentials ? (
+          ) : isTierOneEligible ? (
             <div className="flex flex-col lg:flex-row gap-4">
               <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
                 <p className="text-ink-tertiary-500 diatype-m-medium">
@@ -451,6 +501,41 @@ export const TraderStats: React.FC = () => {
 };
 
 export const ReferralStats: React.FC<ReferralStatsProps> = ({ mode, onModeChange }) => {
+  const { account, isConnected } = useAccount();
+  const userIndex = account?.index;
+
+  const { referralData } = useReferralData({ userIndex });
+  const { referralParams } = useReferralParams();
+
+  const since30d = useMemo(() => Math.floor(Date.now() / 1000) - COMMISSION_LOOKBACK_SECONDS, []);
+  const { referralData: referralData30d } = useReferralData({
+    userIndex,
+    since: since30d,
+    enabled: isConnected,
+  });
+
+  const minReferrerVolume = Number(referralParams?.minReferrerVolume ?? "10000");
+  const currentVolume = Number(referralData?.volume ?? "0");
+  const isTierOneEligible = isConnected && currentVolume >= minReferrerVolume;
+
+  const sortedThresholds = useMemo(() => {
+    const tiers = referralParams?.referrerCommissionRates.tiers;
+    if (!tiers) return [];
+    return Object.keys(tiers)
+      .map((v) => Number(v))
+      .filter((v) => !Number.isNaN(v))
+      .sort((a, b) => a - b);
+  }, [referralParams]);
+
+  const rollingRefereesVolume = Number(referralData30d?.refereesVolume ?? "0");
+  const { currentTier } = useMemo(
+    () => resolveTier(sortedThresholds, rollingRefereesVolume),
+    [sortedThresholds, rollingRefereesVolume],
+  );
+
+  // Tier 0 = not yet eligible; Tier 1+ = base + higher tiers.
+  const tierBadgeText = isTierOneEligible ? `Tier ${currentTier + 1}` : null;
+
   return (
     <div className="flex flex-col gap-4 w-full">
       <div className="flex justify-center">
@@ -462,7 +547,8 @@ export const ReferralStats: React.FC<ReferralStatsProps> = ({ mode, onModeChange
         >
           <Tab title="affiliate">
             <span className="flex items-center gap-2">
-              {m["referral.affiliate"]()} <Badge text="Tier 1" color="rice" />
+              {m["referral.affiliate"]()}{" "}
+              {tierBadgeText && <Badge text={tierBadgeText} color="rice" />}
             </span>
           </Tab>
           <Tab title="trader">{m["referral.trader"]()}</Tab>
