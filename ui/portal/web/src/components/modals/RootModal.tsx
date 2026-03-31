@@ -240,6 +240,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.ActivateAccount]: {
+    component: lazy(() =>
+      import("./ActivateAccount").then(({ ActivateAccount }) => ({
+        default: ActivateAccount,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {

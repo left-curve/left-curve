@@ -1,7 +1,8 @@
 import { Modals, twMerge, useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { useAccount } from "@left-curve/store";
 import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute, useRouter, useSearch } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 import { StatusBadge } from "~/components/foundation/StatusBadge";
@@ -46,6 +47,8 @@ function LayoutApp() {
   const { isLg } = useMediaQuery();
   const router = useRouter();
   const { isSidebarVisible } = useApp();
+  const { isConnected, userStatus } = useAccount();
+  const prevIsConnected = useRef(false);
 
   const isProSwap = useMemo(() => {
     return router.state.location.pathname.includes("trade");
@@ -54,11 +57,24 @@ function LayoutApp() {
   const { socketId } = useSearch({ strict: false });
 
   useEffect(() => {
+    if (isConnected && !prevIsConnected.current && userStatus && userStatus !== "active") {
+      showModal(Modals.ActivateAccount);
+    }
+    prevIsConnected.current = isConnected;
+  }, [isConnected, userStatus]);
+
+  useEffect(() => {
     if (socketId) showModal(Modals.SignWithDesktopFromNativeCamera, { socketId });
     const params = new URLSearchParams(window.location.search);
     const authCallback = params.get("auth_callback");
     const ref = params.get("ref");
-    if (authCallback) showModal(Modals.Authenticate, { referrer: ref ? Number.parseInt(ref, 10) : undefined });
+    if (authCallback) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("auth_callback");
+      url.searchParams.delete("ref");
+      window.history.replaceState({}, "", url.pathname + (url.search || ""));
+      showModal(Modals.Authenticate, { referrer: ref ? Number.parseInt(ref, 10) : undefined });
+    }
   }, []);
 
   useEffect(() => {

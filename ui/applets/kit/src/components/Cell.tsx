@@ -21,6 +21,7 @@ import { format } from "date-fns";
 
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { AnyCoin } from "@left-curve/store/types";
+import { memo } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
@@ -343,7 +344,7 @@ type CellPairNameWithFavProps = {
   className?: string;
 };
 
-const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, className }) => {
+const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type, className }) => {
   const { coins } = useConfig();
   const { baseDenom, quoteDenom } = pairId;
   const baseCoin = coins.byDenom[baseDenom];
@@ -380,7 +381,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );
-};
+});
 
 export const Cell = Object.assign(Container, {
   Age,

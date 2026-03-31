@@ -18,7 +18,7 @@ import {
   Table,
   useApp,
 } from "@left-curve/applets-kit";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -31,7 +31,7 @@ const PerpsPairNameWithFav: React.FC<{
   baseCoin: { symbol: string; logoURI?: string };
   quoteCoin: { symbol: string };
   pairKey: string;
-}> = ({ baseCoin, quoteCoin, pairKey }) => {
+}> = memo(({ baseCoin, quoteCoin, pairKey }) => {
   const { toggleFavPair, hasFavPair } = useFavPairs();
   const isFav = hasFavPair(pairKey);
 
@@ -56,7 +56,7 @@ const PerpsPairNameWithFav: React.FC<{
       <Badge text="Perp" color="green" size="s" />
     </div>
   );
-};
+});
 
 type SearchTokenTableProps = {
   classNames?: TableClassNames;

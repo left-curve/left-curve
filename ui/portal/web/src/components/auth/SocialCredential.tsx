@@ -68,6 +68,13 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth }) =>
     const oauthCode = params.get("privy_oauth_code");
     const oauthProvider = params.get("privy_oauth_provider");
     if (!oauthCode || !oauthState || !oauthProvider) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("privy_oauth_state");
+    url.searchParams.delete("privy_oauth_code");
+    url.searchParams.delete("privy_oauth_provider");
+    window.history.replaceState({}, "", url.pathname + (url.search || ""));
+
     handleAuth.mutate({
       code: oauthCode,
       status: oauthState,

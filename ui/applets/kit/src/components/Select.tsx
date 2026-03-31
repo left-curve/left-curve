@@ -92,10 +92,7 @@ const Root = forwardRef<SelectRef, PropsWithChildren<SelectProps>>((props, ref) 
   const slots = selectVariants({ isDisabled, variant });
   const { base, trigger, listboxWrapper, icon, listBoxContainer } = slots;
 
-  const ignoreRefs = useMemo(
-    () => (containerRef ? [containerRef] : []),
-    [containerRef],
-  );
+  const ignoreRefs = useMemo(() => (containerRef ? [containerRef] : []), [containerRef]);
 
   useClickAway(selectRef, () => setIsOpen(false), ["mousedown", "touchstart"], ignoreRefs);
 

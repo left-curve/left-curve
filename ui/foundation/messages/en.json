@@ -85,7 +85,7 @@
     "welcomeToDango": "Welcome to Dango",
     "connectWithPasskey": "Connect with Passkey",
     "connectWallet": "Connect Wallet",
-    "createNewAccount": "Create new account"
+    "createNewUser": "Create New User"
   },
   "statusBadge": {
     "status": "Status",
@@ -377,7 +377,7 @@
     "sentVerificationCode": "We've sent a verification code to ",
     "usernamesFound": "Usernames found",
     "connectWalletToContinue": "Connect your wallet to continue",
-    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "chooseCredential": "Select any username linked to your credentials below",
     "noUsernamesFound": "No usernames found",
     "noUsernameMessage": "We could not find any username associated with the credential you connected.",
     "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
@@ -461,10 +461,14 @@
       "title": "Activate Account",
       "description": "Your account is almost ready!",
       "description2": "Activate it by making your first deposit.",
-      "cta": "Deposit now"
+      "cta": "Deposit & Get Started",
+      "usernameTitle": "Your username is {username}",
+      "usernameDescription": "You can change this username anytime in the settings.",
+      "depositCardTitle": "Deposit $10 to activate",
+      "depositCardDescription": "A minimum deposit of $10 is required to start using Dango."
     },
     "createAccount": "Create Account",
-    "doThisLater": "Do this later",
+    "doThisLater": "I'll do this later",
     "alreadyHaveAccount": "Already have an account?",
     "carousel": {
       "title": [

@@ -83,15 +83,11 @@ export function useOats(parameters: UseOatsParameters) {
       return {
         type: oatType,
         isLocked: !registered,
-        expiresAt: registered
-          ? registered.registeredAt + OAT_VALIDITY_DURATION_SECONDS
-          : undefined,
+        expiresAt: registered ? registered.registeredAt + OAT_VALIDITY_DURATION_SECONDS : undefined,
         pointsBoost: OAT_POINTS_BOOST,
       };
     });
-    return statuses.sort(
-      (a, b) => OAT_ORDER.indexOf(a.type) - OAT_ORDER.indexOf(b.type),
-    );
+    return statuses.sort((a, b) => OAT_ORDER.indexOf(a.type) - OAT_ORDER.indexOf(b.type));
   }, [campaignMap, registeredOatsByCampaign]);
 
   const isLoading = isLoadingOats || isLoadingCampaigns;

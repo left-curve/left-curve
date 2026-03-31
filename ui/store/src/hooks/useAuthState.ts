@@ -21,8 +21,7 @@ export type AuthScreen =
   | "passkey-choice"
   | "passkey-error"
   | "create-account"
-  | "account-picker"
-  | "deposit";
+  | "account-picker";
 
 export type UseAuthStateParameters = {
   session: boolean;
@@ -124,14 +123,6 @@ export function useAuthState(parameters: UseAuthStateParameters) {
         return;
       }
 
-      if (users.length === 1) {
-        // Single account — auto-login
-        setAuthData({ users, connectorId, keyHash, signingSession });
-        await loginUser(users[0].index, connector, keyHash, signingSession);
-        return;
-      }
-
-      // Multiple accounts — show picker
       setAuthData({ users, connectorId, keyHash, key, signingSession, identifier });
       setScreen("account-picker");
     },
@@ -180,12 +171,6 @@ export function useAuthState(parameters: UseAuthStateParameters) {
       if (users.length === 0) {
         setAuthData((prev) => ({ ...prev, keyHash, signingSession }));
         setScreen("passkey-error");
-        return;
-      }
-
-      if (users.length === 1) {
-        setAuthData({ users, connectorId: "passkey", keyHash, signingSession });
-        await loginUser(users[0].index, connector, keyHash, signingSession);
         return;
       }
 
@@ -248,7 +233,6 @@ export function useAuthState(parameters: UseAuthStateParameters) {
         referrer,
       });
 
-      // After registration, login
       if (session) {
         const signingSession = await createSessionKey(
           { connector, expireAt: Date.now() + expiration },
@@ -259,21 +243,21 @@ export function useAuthState(parameters: UseAuthStateParameters) {
           keyHash: signingSession.keyHash,
         });
 
-        const userIndex = users[users.length - 1].index;
+        const newUser = users[users.length - 1];
         setSession(signingSession);
 
         await connector.connect({
-          userIndex,
+          userIndex: newUser.index,
           chainId,
           keyHash: signingSession.keyHash,
         });
       } else {
         const resolvedKeyHash = await connector.getKeyHash();
         const users = await publicClient.forgotUsername({ keyHash: resolvedKeyHash });
-        const userIndex = users[users.length - 1].index;
+        const newUser = users[users.length - 1];
 
         await connector.connect({
-          userIndex,
+          userIndex: newUser.index,
           chainId,
           keyHash: resolvedKeyHash,
         });
@@ -303,9 +287,13 @@ export function useAuthState(parameters: UseAuthStateParameters) {
       let keyHash: KeyHash;
 
       if (connectorId === "passkey") {
-        const result = await connector.createNewKey!();
-        key = result.key;
-        keyHash = result.keyHash;
+        // Passkeys can't re-export the public key; retrieve it from on-chain user data
+        const existingKeyHash = authData.keyHash;
+        if (!existingKeyHash) throw new Error("error: missing key hash");
+        const user = authData.users.find((u) => u.keys[existingKeyHash]);
+        if (!user) throw new Error("error: key not found on chain");
+        key = user.keys[existingKeyHash];
+        keyHash = existingKeyHash;
       } else {
         const provider = await (
           connector as unknown as { getProvider: () => Promise<EIP1193Provider> }

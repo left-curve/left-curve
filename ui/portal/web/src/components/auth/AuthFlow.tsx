@@ -74,7 +74,6 @@ const ScreenRouter: React.FC = () => {
     "passkey-error": PasskeyErrorScreen,
     "create-account": CreateAccountScreen,
     "account-picker": AccountPickerScreen,
-    deposit: DepositScreen,
   };
 
   const Screen = screens[screen];
@@ -113,7 +112,7 @@ const WelcomeScreen: React.FC = () => {
             fullWidth
             variant="secondary"
             className="gap-2"
-            onClick={() => setScreen("passkey-choice")}
+            onClick={() => authenticate.mutateAsync("passkey")}
           >
             <IconKey className="w-6 h-6" />
             <p>{m["common.connectWithPasskey"]()}</p>
@@ -287,6 +286,11 @@ const PasskeyErrorScreen: React.FC = () => {
   );
 };
 
+const truncateIdentifier = (id: string) => {
+  if (id.length > 20) return `${id.slice(0, 6)}...${id.slice(-4)}`;
+  return id;
+};
+
 const CreateAccountScreen: React.FC = () => {
   const { createAccount, identifier, referrer, setReferrer, setScreen } = useAuth();
   const { settings, changeSettings } = useApp();
@@ -300,7 +304,7 @@ const CreateAccountScreen: React.FC = () => {
         <div className="flex flex-col gap-3">
           <h1 className="h2-heavy">{m["auth.createYourAccount"]()}</h1>
           <p className="text-ink-tertiary-500 diatype-m-medium">
-            {m["auth.noAccountFound"]({ identifier: identifier || "" })}
+            {m["auth.noAccountFound"]({ identifier: truncateIdentifier(identifier || "") })}
           </p>
         </div>
       </div>
@@ -314,10 +318,7 @@ const CreateAccountScreen: React.FC = () => {
           {m["common.continue"]()}
         </Button>
 
-        <ExpandOptions
-          showOptionText={m["signin.advancedOptions"]()}
-          defaultOpen={hasReferrer}
-        >
+        <ExpandOptions showOptionText={m["signin.advancedOptions"]()} defaultOpen={hasReferrer}>
           <div className="flex items-center gap-2 flex-col w-full">
             <Input
               fullWidth
@@ -355,9 +356,7 @@ const AccountPickerScreen: React.FC = () => {
         <DangoLogo className="h-[60px]" />
         <div className="flex flex-col gap-3">
           <h1 className="h2-heavy">{m["signin.usernamesFound"]()}</h1>
-          <p className="text-ink-tertiary-500 diatype-m-medium">
-            {m["signin.chooseCredential"]()}
-          </p>
+          <p className="text-ink-tertiary-500 diatype-m-medium">{m["signin.chooseCredential"]()}</p>
         </div>
       </div>
 
@@ -373,7 +372,7 @@ const AccountPickerScreen: React.FC = () => {
           onClick={() => createNewWithExistingKey.mutateAsync()}
           isLoading={createNewWithExistingKey.isPending}
         >
-          {m["common.createNewAccount"]()}
+          {m["common.createNewUser"]()}
         </Button>
 
         <Button
@@ -389,26 +388,3 @@ const AccountPickerScreen: React.FC = () => {
   );
 };
 
-const DepositScreen: React.FC = () => {
-  const { navigate } = useApp();
-
-  return (
-    <div className="flex flex-col gap-6 w-full items-center">
-      <div className="flex items-center flex-col gap-5">
-        <img
-          src="/images/account-creation/deposit.svg"
-          alt="deposit-bag"
-          className="w-[60px] h-[60px]"
-        />
-        <h2 className="h4-bold text-ink-secondary-700">{m["signup.deposit.title"]()}</h2>
-        <div className="flex flex-col w-full items-center gap-1">
-          <p className="diatype-m-regular">{m["signup.deposit.description"]()}</p>
-          <p className="diatype-m-regular">{m["signup.deposit.description2"]()}</p>
-        </div>
-      </div>
-      <Button className="min-w-[11.25rem]" onClick={() => navigate("/bridge")}>
-        {m["signup.deposit.cta"]()}
-      </Button>
-    </div>
-  );
-};
