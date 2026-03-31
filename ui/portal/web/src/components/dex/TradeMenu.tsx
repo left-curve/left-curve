@@ -468,9 +468,21 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return isBaseSize ? minNotional / currentPrice : minNotional;
   }, [perpsPairParam, isBaseSize, currentPrice]);
 
+  const currentPositionSize = position?.size ?? "0";
+
   return (
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
       <div className="w-full flex flex-col gap-4 px-4">
+        <div className="flex flex-col gap-2">
+          <InfoRow
+            label="Available to Trade"
+            value={`${formatNumber(availableMargin.toFixed(2), formatNumberOptions)} USDC`}
+          />
+          <InfoRow
+            label="Current Position"
+            value={`${formatNumber(currentPositionSize, formatNumberOptions)} ${baseCoin.symbol}`}
+          />
+        </div>
         <InputSizeWithMax
           isDisabled={!isConnected || submission.isPending}
           maxSizeAmount={maxSizeAmount}
@@ -569,26 +581,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             label="Account Equity"
             value={`$${formatNumber(accountEquity, formatNumberOptions)}`}
           />
-          <InfoRow
-            label="Available Margin"
-            value={`$${formatNumber(availableMargin.toFixed(2), formatNumberOptions)}`}
-          />
           <InfoRow label="Max Leverage" value={`${maxLeverage}x`} />
-          {position ? (
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Current Position</p>
-              <p
-                className={twMerge(
-                  "diatype-xs-medium",
-                  Number(unrealizedPnl) >= 0
-                    ? "text-utility-success-600"
-                    : "text-utility-error-600",
-                )}
-              >
-                {position.size} {baseCoin.symbol}
-              </p>
-            </div>
-          ) : null}
           <div className="flex items-center justify-between gap-2">
             <p className="diatype-xs-regular text-ink-tertiary-500">Unrealized PnL</p>
             <p
