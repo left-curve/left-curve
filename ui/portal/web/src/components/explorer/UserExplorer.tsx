@@ -1,4 +1,5 @@
-import { Badge, Tab, Tabs, TruncateText, twMerge } from "@left-curve/applets-kit";
+import { Badge, Tabs, TruncateText, twMerge } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext, useState } from "react";
 
@@ -9,10 +10,6 @@ import { TransactionsTable } from "./TransactionsTable";
 import type { Coins, IndexedTransaction } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
-
-// ============================================================================
-// Mock Data Types
-// ============================================================================
 
 type MockUserProfile = {
   username: string;
@@ -30,10 +27,6 @@ type MockAccount = {
   index: number;
   balance: string;
 };
-
-// ============================================================================
-// Mock Data
-// ============================================================================
 
 const mockUserProfile: MockUserProfile = {
   username: "larry.user",
@@ -136,10 +129,6 @@ const mockTransactions: IndexedTransaction[] = [
   },
 ];
 
-// ============================================================================
-// Context
-// ============================================================================
-
 type UserExplorerContextType = {
   username: string;
   profile: MockUserProfile | null;
@@ -159,16 +148,11 @@ const useUserExplorer = () => {
   return context;
 };
 
-// ============================================================================
-// Root Container
-// ============================================================================
-
 type UserExplorerProps = {
   username: string;
 };
 
 const Root: React.FC<PropsWithChildren<UserExplorerProps>> = ({ username, children }) => {
-  // In real implementation, this would fetch user data from API
   const profile = mockUserProfile;
   const accounts = mockAccounts;
   const balances = mockBalances;
@@ -190,10 +174,6 @@ const Root: React.FC<PropsWithChildren<UserExplorerProps>> = ({ username, childr
   );
 };
 
-// ============================================================================
-// Header Component
-// ============================================================================
-
 const StatItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="flex flex-col">
     <p className="diatype-m-medium text-ink-tertiary-500">{label}</p>
@@ -208,7 +188,6 @@ const Header: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row gap-4">
-      {/* Left Container: Avatar + Username + Badge */}
       <div className="flex items-start gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card min-h-[10rem] md:min-w-[21.7rem]">
         <img src={profile.avatar} alt="avatar" className="w-16 h-16 rounded-lg object-cover" />
         <div className="flex flex-col gap-1">
@@ -217,26 +196,18 @@ const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Container: Total Value + Stats */}
       <div className="flex-1 flex flex-col justify-between gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card min-h-[10rem]">
-        {/* Total Value - top */}
         <p className="h3-bold text-ink-primary-900">{profile.totalValue}</p>
-
-        {/* Stats row - bottom */}
         <div className="flex flex-wrap gap-6 justify-between">
-          <StatItem label="Total Debt" value={profile.totalDebt} />
-          <StatItem label="Total Assets" value={profile.totalAssets} />
-          <StatItem label="Total Accounts" value={String(profile.totalAccounts)} />
-          <StatItem label="Date Joined" value={profile.dateJoined} />
+          <StatItem label={m["explorer.user.stats.totalDebt"]()} value={profile.totalDebt} />
+          <StatItem label={m["explorer.user.stats.totalAssets"]()} value={profile.totalAssets} />
+          <StatItem label={m["explorer.user.stats.totalAccounts"]()} value={String(profile.totalAccounts)} />
+          <StatItem label={m["explorer.user.stats.dateJoined"]()} value={profile.dateJoined} />
         </div>
       </div>
     </div>
   );
 };
-
-// ============================================================================
-// Stacked Account Card
-// ============================================================================
 
 type StackedAccountCardProps = {
   account: MockAccount;
@@ -258,7 +229,7 @@ const StackedAccountCard: React.FC<StackedAccountCardProps> = ({ account, isFirs
       <div className="flex items-start justify-between relative z-10">
         <div className="flex flex-col">
           <p className="exposure-m-italic capitalize text-ink-tertiary-500">
-            Account #{account.index}
+            {m["explorer.user.accountNumber"]({ index: account.index })}
           </p>
           <TruncateText
             text={account.address}
@@ -269,16 +240,12 @@ const StackedAccountCard: React.FC<StackedAccountCardProps> = ({ account, isFirs
         </div>
         <div className="flex flex-col gap-1 items-end">
           <p className="diatype-m-bold text-ink-tertiary-500">{account.balance}</p>
-          <Badge text="Active" color="blue" className="h-fit capitalize" size="s" />
+          <Badge text={m["explorer.user.active"]()} color="blue" className="h-fit capitalize" size="s" />
         </div>
       </div>
     </div>
   );
 };
-
-// ============================================================================
-// Accounts Stack
-// ============================================================================
 
 const AccountsStack: React.FC = () => {
   const { accounts } = useUserExplorer();
@@ -286,7 +253,7 @@ const AccountsStack: React.FC = () => {
 
   return (
     <div className="flex flex-col">
-      <h4 className="h4-bold text-ink-primary-900 mb-[2.22rem]">Accounts</h4>
+      <h4 className="h4-bold text-ink-primary-900 mb-[2.22rem]">{m["explorer.user.accounts"]()}</h4>
       <div className="flex flex-col">
         {accounts.map((account, index) => (
           <StackedAccountCard
@@ -301,40 +268,36 @@ const AccountsStack: React.FC = () => {
   );
 };
 
-// ============================================================================
-// Content Component (Two-column layout)
-// ============================================================================
-
 const Content: React.FC = () => {
   const { profile, balances, transactions, isLoading } = useUserExplorer();
-  const [activeTab, setActiveTab] = useState<string>("Assets");
+  const tabAssets = m["explorer.user.tabs.assets"]();
+  const tabTransactions = m["explorer.user.tabs.transactions"]();
+  const [activeTab, setActiveTab] = useState<string>(tabAssets);
 
   if (isLoading || !profile) return null;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card">
-      {/* LEFT: Stacked Account Cards */}
       <div className="w-full max-w-[22.5rem] md:max-w-[20.5rem] flex-shrink-0">
         <AccountsStack />
       </div>
 
-      {/* RIGHT: Tabs Content */}
       <div className="flex-1 flex flex-col gap-4 min-w-0">
         <Tabs
           layoutId="user-explorer-tabs"
           selectedTab={activeTab}
           onTabChange={(tab) => setActiveTab(tab)}
-          keys={["Assets", "Transactions"]}
+          keys={[tabAssets, tabTransactions]}
         />
 
         <div className="max-w-full overflow-x-auto scrollbar-none">
-          {activeTab === "Assets" && (
+          {activeTab === tabAssets && (
             <AssetsTable
               balances={balances}
               classNames={{ base: "p-0 shadow-none bg-transparent" }}
             />
           )}
-          {activeTab === "Transactions" && (
+          {activeTab === tabTransactions && (
             <TransactionsTable
               transactions={transactions}
               classNames={{ base: "p-0 shadow-none bg-transparent" }}
@@ -346,10 +309,6 @@ const Content: React.FC = () => {
   );
 };
 
-// ============================================================================
-// NotFound Component
-// ============================================================================
-
 const NotFound: React.FC = () => {
   const { username, profile, isLoading } = useUserExplorer();
 
@@ -359,19 +318,17 @@ const NotFound: React.FC = () => {
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center">
-          <h3 className="exposure-m-italic text-ink-secondary-700">User Not Found</h3>
+          <h3 className="exposure-m-italic text-ink-secondary-700">
+            {m["explorer.user.notFound.title"]()}
+          </h3>
           <p className="diatype-m-medium max-w-[42.5rem] text-center text-ink-tertiary-500">
-            The user <span className="underline">{username}</span> could not be found.
+            {m["explorer.user.notFound.description"]({ username })}
           </p>
         </div>
       </HeaderExplorer>
     </div>
   );
 };
-
-// ============================================================================
-// Export Compound Component
-// ============================================================================
 
 export const UserExplorer = Object.assign(Root, {
   Header,
