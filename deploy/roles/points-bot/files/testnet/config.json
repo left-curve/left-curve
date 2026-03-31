@@ -8,9 +8,9 @@
     "epoch_duration": "10m",
     "event_duration": 4320,
     "event_start": {
-      "block": 1829000
+      "block": 18290000
     },
-    "from_block": 1828000,
+    "from_block": 18280000,
     "loot_tables": {
       "25000": {
         "chest": "bronze",
