@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { useMutation } from "@tanstack/react-query";
 
 import {
   Button,
@@ -8,13 +9,34 @@ import {
   IconUser,
   useApp,
 } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store";
+import { useAccount, useBalances, useConfig } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const ActivateAccount = forwardRef<unknown>((_props, _ref) => {
-  const { hideModal, navigate } = useApp();
-  const { username } = useAccount();
+  const { hideModal, navigate, toast } = useApp();
+  const { username, account, refreshUserStatus } = useAccount();
+  const { chain } = useConfig();
+  const { data: balances, refetch: refetchBalances } = useBalances({
+    address: account?.address,
+  });
+
+  const isMainnet = chain.id === "dango-1";
+  const hasBalance = balances && Object.keys(balances).length > 0;
+
+  const { mutate: claimFaucet, isPending } = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${window.dango.urls.faucetUrl}/${account!.address}?skip_check=true`);
+      if (!res.ok) throw new Error(await res.text());
+    },
+    onSuccess: () => {
+      refreshUserStatus?.();
+      refetchBalances();
+    },
+    onError: (err) => {
+      toast.error({ title: m["common.error"](), description: err.message });
+    },
+  });
 
   return (
     <div className="flex flex-col justify-start items-center bg-surface-primary-rice text-ink-primary-900 md:border border-outline-secondary-gray rounded-xl relative px-6 py-8 md:py-6 md:pt-6 gap-6 md:w-[30rem] md:h-fit">
@@ -49,29 +71,59 @@ export const ActivateAccount = forwardRef<unknown>((_props, _ref) => {
           </div>
         </div>
 
-        <div className="flex items-start gap-3 p-4 bg-surface-quaternary-green/40 rounded-xl">
-          <div className="h-10 w-10 shrink-0 rounded-full bg-surface-quaternary-green flex items-center justify-center">
-            <span className="text-lg">💰</span>
+        {isMainnet ? (
+          <div className="flex items-start gap-3 p-4 bg-surface-quaternary-green/40 rounded-xl">
+            <div className="h-10 w-10 shrink-0 rounded-full bg-surface-quaternary-green flex items-center justify-center">
+              <span className="text-lg">💰</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <p className="diatype-m-bold">{m["signup.deposit.depositCardTitle"]()}</p>
+              <p className="diatype-sm-regular text-ink-tertiary-500">
+                {m["signup.deposit.depositCardDescription"]()}
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <p className="diatype-m-bold">{m["signup.deposit.depositCardTitle"]()}</p>
-            <p className="diatype-sm-regular text-ink-tertiary-500">
-              {m["signup.deposit.depositCardDescription"]()}
-            </p>
+        ) : !hasBalance ? (
+          <div className="flex items-start gap-3 p-4 bg-surface-quaternary-green/40 rounded-xl">
+            <div className="h-10 w-10 shrink-0 rounded-full bg-surface-quaternary-green flex items-center justify-center">
+              <span className="text-lg">🚰</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <p className="diatype-m-bold">{m["signup.faucet.cardTitle"]()}</p>
+              <p className="diatype-sm-regular text-ink-tertiary-500">
+                {m["signup.faucet.cardDescription"]()}
+              </p>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
       <div className="flex flex-col items-center gap-3 w-full">
-        <Button
-          fullWidth
-          onClick={() => {
-            hideModal();
-            navigate("/bridge");
-          }}
-        >
-          {m["signup.deposit.cta"]()}
-        </Button>
+        {isMainnet ? (
+          <Button
+            fullWidth
+            onClick={() => {
+              hideModal();
+              navigate("/bridge");
+            }}
+          >
+            {m["signup.deposit.cta"]()}
+          </Button>
+        ) : hasBalance ? (
+          <Button
+            fullWidth
+            onClick={() => {
+              hideModal();
+              navigate("/settings");
+            }}
+          >
+            {m["signup.faucet.changeUsername"]()}
+          </Button>
+        ) : (
+          <Button fullWidth disabled={isPending} onClick={() => claimFaucet()}>
+            {isPending ? m["signup.faucet.claiming"]() : m["signup.faucet.cta"]()}
+          </Button>
+        )}
         <Button variant="link" onClick={hideModal}>
           <p className="italic">{m["signup.doThisLater"]()}</p>
         </Button>

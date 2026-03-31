@@ -1,5 +1,5 @@
 import { Modals, twMerge, useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store";
+import { useAccount, useBalances, useConfig } from "@left-curve/store";
 import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute, useRouter, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -47,8 +47,10 @@ function LayoutApp() {
   const { isLg } = useMediaQuery();
   const router = useRouter();
   const { isSidebarVisible } = useApp();
-  const { isConnected, userStatus } = useAccount();
-  const prevIsConnected = useRef(false);
+  const { isConnected, userStatus, account } = useAccount();
+  const { chain } = useConfig();
+  const { data: balances } = useBalances({ address: account?.address });
+  const modalShowed = useRef(false);
 
   const isProSwap = useMemo(() => {
     return router.state.location.pathname.includes("trade");
@@ -57,11 +59,19 @@ function LayoutApp() {
   const { socketId } = useSearch({ strict: false });
 
   useEffect(() => {
-    if (isConnected && !prevIsConnected.current && userStatus && userStatus !== "active") {
+    if (!isConnected) modalShowed.current = false;
+    if (!isConnected || modalShowed.current) return;
+
+    const isMainnet = chain.id === "dango-1";
+    const needsActivation = isMainnet
+      ? userStatus && userStatus !== "active"
+      : balances && Object.keys(balances).length === 0;
+
+    if (needsActivation) {
+      modalShowed.current = true;
       showModal(Modals.ActivateAccount);
     }
-    prevIsConnected.current = isConnected;
-  }, [isConnected, userStatus]);
+  }, [isConnected, userStatus, balances, chain.id]);
 
   useEffect(() => {
     if (socketId) showModal(Modals.SignWithDesktopFromNativeCamera, { socketId });

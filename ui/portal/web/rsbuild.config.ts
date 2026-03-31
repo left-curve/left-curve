@@ -94,7 +94,7 @@ const urls = {
     pointsUrl: "https://points-devnet.dango.zone",
   },
   test: {
-    faucetUrl: "https://faucet-testnet-ovh2.dango.zone/mint",
+    faucetUrl: "https://faucet-testnet-hetzner4.dango.zone/mint",
     questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
     pointsUrl: "https://points-testnet.dango.zone",
