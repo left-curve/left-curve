@@ -36,14 +36,14 @@ const PerpsPairNameWithFav: React.FC<{
   const isFav = hasFavPair(pairKey);
 
   return (
-    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
+    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2">
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           toggleFavPair(pairKey);
         }}
-        className="focus:outline-none"
+        className="focus:outline-none flex-shrink-0"
       >
         {isFav ? (
           <IconStar className="w-4 h-4 text-fg-primary-700" />
@@ -51,8 +51,8 @@ const PerpsPairNameWithFav: React.FC<{
           <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
         )}
       </button>
-      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5" />
-      <p className="min-w-[4.5rem]">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5 flex-shrink-0" />
+      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       <Badge text="Perp" color="green" size="s" />
     </div>
   );
