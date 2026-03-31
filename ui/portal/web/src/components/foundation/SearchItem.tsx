@@ -4,7 +4,7 @@ import { useFavApplets } from "@left-curve/store";
 import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import type { Account, Address, ContractInfo } from "@left-curve/dango/types";
+import type { Account, Address, ContractInfo, User } from "@left-curve/dango/types";
 import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
 import type { MouseEvent, PropsWithChildren } from "react";
 
@@ -202,6 +202,34 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
   );
 };
 
+type SearchUserItemProps = {
+  user: User;
+};
+
+const UserItem: React.FC<SearchUserItemProps> = ({ user }) => {
+  const accountCount = Object.keys(user.accounts).length;
+
+  return (
+    <motion.div
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
+      variants={childVariants}
+      key={user.name}
+    >
+      <div className="flex items-center gap-4">
+        <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
+          <img src="/images/avatar.png" alt="user" className="w-12 h-12 rounded-lg" />
+        </div>
+        <div className="flex flex-col">
+          <p className="flex gap-2 diatype-m-medium">{user.name}</p>
+          <p className="diatype-sm-regular text-ink-tertiary-500">
+            {accountCount} {accountCount === 1 ? "account" : "accounts"}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const ExportComponent = Object.assign(Root, {
   Applet: AppletItem,
   Asset: AssetItem,
@@ -209,6 +237,7 @@ const ExportComponent = Object.assign(Root, {
   Transaction: TransactionItem,
   Account: AccountItem,
   Contract: ContractItem,
+  User: UserItem,
 });
 
 export { ExportComponent as SearchItem };

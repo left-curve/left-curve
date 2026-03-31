@@ -198,7 +198,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({
   allApplets,
 }) => {
   const navigate = useNavigate();
-  const { applets, block, txs, account, contracts } = searchResult;
+  const { applets, block, txs, account, contracts, user } = searchResult;
 
   return (
     <AnimatePresence mode="wait" custom={isVisible}>
@@ -300,6 +300,18 @@ const Body: React.FC<SearchMenuBodyProps> = ({
                     onSelect={() => [navigate({ to: `/account/${account.address}` }), hideMenu()]}
                   >
                     <SearchItem.Account account={account} />
+                  </Command.Item>
+                </Command.Group>
+              ) : null}
+              {user ? (
+                <Command.Group heading="Users">
+                  <Command.Item
+                    key={user.name}
+                    value={user.name}
+                    className="group"
+                    onSelect={() => [navigate({ to: `/user/${user.name}` }), hideMenu()]}
+                  >
+                    <SearchItem.User user={user} />
                   </Command.Item>
                 </Command.Group>
               ) : null}
