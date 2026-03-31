@@ -45,10 +45,12 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
   useEffect(() => {
     if (!hasLoaded) return;
 
-    localStorage.setItem(
-      "tradingview.time_hours_format",
-      timeFormat.includes("a") ? "12-hours" : "24-hours",
-    );
+    try {
+      localStorage.setItem(
+        "tradingview.time_hours_format",
+        timeFormat.includes("a") ? "12-hours" : "24-hours",
+      );
+    } catch {};
 
     const toolbar_bg = theme === "dark" ? "#2d2c2a" : "#FFFCF6";
     const textColor = theme === "dark" ? "#FFFCF6" : "#2E2521";
