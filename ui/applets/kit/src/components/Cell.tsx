@@ -328,11 +328,11 @@ const PairName: React.FC<CellPairNameProps> = ({ pairId, type, className }) => {
   return (
     <div
       className={twMerge(
-        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2",
         className,
       )}
     >
-      <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );
@@ -358,7 +358,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type
   return (
     <div
       className={twMerge(
-        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2",
         className,
       )}
     >
@@ -368,7 +368,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type
           e.stopPropagation();
           toggleFavPair(pairSymbols);
         }}
-        className="focus:outline-none"
+        className="focus:outline-none flex-shrink-0"
       >
         {isFav ? (
           <IconStar className="w-4 h-4 text-fg-primary-700" />
@@ -376,8 +376,8 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type
           <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
         )}
       </button>
-      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5" />
-      <p className="min-w-[4.5rem]">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5 flex-shrink-0" />
+      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );
