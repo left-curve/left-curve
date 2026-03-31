@@ -6,9 +6,17 @@
     mode: '0755'
   when: inventory_hostname == perps_bot_host
 
+- name: Check if network-specific perps-bot config exists
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ role_path }}/files/perps-bot/{{ dango_network }}/config.json"
+  register: perps_bot_config
+  when: inventory_hostname == perps_bot_host
+
 - name: Copy perps-bot config
   copy:
-    src: "perps-bot/{{ dango_network }}/config.json"
+    src: "perps-bot/{{ dango_network if perps_bot_config.stat.exists else 'devnet' }}/config.json"
     dest: "{{ deployment_dir }}/perps-bot/config.json"
     mode: '0644'
   when: inventory_hostname == perps_bot_host
