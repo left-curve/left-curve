@@ -48,12 +48,12 @@
       "500000": {
         "chest": "crystal",
         "drop_rate": [
+          ["5", "common"],
+          ["10", "uncommon"],
           ["25", "rare"],
           ["25", "epic"],
           ["25", "legendary"],
-          ["10", "uncommon"],
-          ["10", "mythic"],
-          ["5", "common"]
+          ["10", "mythic"]
         ]
       }
     },
