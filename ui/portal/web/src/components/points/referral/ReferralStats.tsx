@@ -142,10 +142,7 @@ export const AffiliateStats: React.FC = () => {
   });
 
   // 30-day lookback for rolling referees volume (used for tier progression).
-  const since30d = useMemo(
-    () => Math.floor(Date.now() / 1000) - COMMISSION_LOOKBACK_SECONDS,
-    [],
-  );
+  const since30d = useMemo(() => Math.floor(Date.now() / 1000) - COMMISSION_LOOKBACK_SECONDS, []);
   const { referralData: referralData30d, isLoading: data30dLoading } = useReferralData({
     userIndex,
     since: since30d,
@@ -157,11 +154,13 @@ export const AffiliateStats: React.FC = () => {
   });
   const { referralParams, isLoading: paramsLoading } = useReferralParams();
 
-  const isLoading = isConnected && (dataLoading || data30dLoading || settingsLoading || paramsLoading);
-
   const minReferrerVolume = Number(referralParams?.minReferrerVolume ?? "10000");
   const currentVolume = Number(referralData?.volume ?? "0");
   const isTierOneEligible = isConnected && currentVolume >= minReferrerVolume;
+
+  const isLoading =
+    isConnected &&
+    (dataLoading || settingsLoading || paramsLoading || (isTierOneEligible && data30dLoading));
 
   // Sorted tier thresholds from referral params.
   const sortedThresholds = useMemo(() => {
@@ -185,11 +184,12 @@ export const AffiliateStats: React.FC = () => {
   // post-Tier 1 = 30-day rolling referees volume toward next tier.
   const targetVolume = isTierOneEligible ? nextTierVolume : minReferrerVolume;
   const progressValue = isTierOneEligible ? rollingRefereesVolume : currentVolume;
-  const progress = isConnected && targetVolume
-    ? Math.min((progressValue / targetVolume) * 100, 100)
-    : isConnected && isTierOneEligible && !targetVolume
-      ? 100
-      : 0;
+  const progress =
+    isConnected && targetVolume
+      ? Math.min((progressValue / targetVolume) * 100, 100)
+      : isConnected && isTierOneEligible && !targetVolume
+        ? 100
+        : 0;
   const remaining = targetVolume ? Math.max(targetVolume - progressValue, 0) : 0;
 
   const referralCode = getReferralCode(userIndex);
@@ -218,9 +218,7 @@ export const AffiliateStats: React.FC = () => {
         : m["referral.stats.maxTierReached"]()
       : m["referral.stats.volumeUntilTier1"]({ amount: formatUSD(remaining) })
     : m["referral.stats.notLoggedIn"]();
-  const progressRightLabel = targetVolume
-    ? `$${(targetVolume / 1000).toFixed(0)}K`
-    : "";
+  const progressRightLabel = targetVolume ? `$${(targetVolume / 1000).toFixed(0)}K` : "";
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -509,10 +507,7 @@ export const ReferralStats: React.FC<ReferralStatsProps> = ({ mode, onModeChange
   const { referralData } = useReferralData({ userIndex });
   const { referralParams } = useReferralParams();
 
-  const since30d = useMemo(
-    () => Math.floor(Date.now() / 1000) - COMMISSION_LOOKBACK_SECONDS,
-    [],
-  );
+  const since30d = useMemo(() => Math.floor(Date.now() / 1000) - COMMISSION_LOOKBACK_SECONDS, []);
   const { referralData: referralData30d } = useReferralData({
     userIndex,
     since: since30d,
