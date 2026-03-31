@@ -50,7 +50,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
         "tradingview.time_hours_format",
         timeFormat.includes("a") ? "12-hours" : "24-hours",
       );
-    } catch {};
+    } catch {}
 
     const toolbar_bg = theme === "dark" ? "#2d2c2a" : "#FFFCF6";
     const textColor = theme === "dark" ? "#FFFCF6" : "#2E2521";
@@ -86,7 +86,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
         foregroundColor: "#F9A9B2",
       },
       time_frames: [],
-      enabled_features: ["seconds_resolution"],
+      enabled_features: ["seconds_resolution", "iframe_loading_same_origin"],
       disabled_features: [
         "legend_inplace_edit",
         "display_market_status",
