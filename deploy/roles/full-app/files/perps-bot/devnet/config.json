@@ -1,0 +1,16 @@
+{
+  "http_url": "http://dango:8080",
+  "app_settings": {
+    "sleep": "3s",
+    "max_slippage": 0.01,
+    "margin_usage": 0.005,
+    "liquidity_sleep": "5s",
+    "mint": {
+      "margin_threshold": 1000,
+      "faucet_url": "http://faucet-bot:8082"
+    },
+    "vault": {
+      "amount": 5000
+    }
+  }
+}

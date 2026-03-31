@@ -289,6 +289,20 @@ services:
       # start_period: 10s
 {% endif %}
 
+{% if perps_bot_enabled and inventory_hostname == perps_bot_host %}
+  perps-bot:
+    image: ghcr.io/left-curve/bots/perps:${PERPS_BOT_TAG:-latest}
+    labels:
+      <<: *common-labels
+      service_name: "perps_bot"
+    depends_on:
+      dango:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - ./perps-bot/config.json:/root/.dango-perps/config.json
+{% endif %}
+
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-latest}
     restart: unless-stopped
