@@ -210,10 +210,14 @@ export default defineConfig({
       { tag: "script", attrs: { src: `/static/js/config.js?v=${configHash}` }, append: false },
       ...(environment === "test" || environment === "dev"
         ? [
-            { tag: "script", attrs: { src: "https://cdn.jsdelivr.net/npm/eruda" } },
             {
               tag: "script",
-              children: "if (window.innerWidth <= 1024) { eruda.init(); }",
+              children: `if (new URLSearchParams(window.location.search).has("debug")) {
+                            var s = document.createElement("script");
+                            s.src = "https://cdn.jsdelivr.net/npm/eruda";
+                            s.onload = function () { eruda.init(); };
+                            document.head.appendChild(s);
+                  }`,
             },
           ]
         : []),
