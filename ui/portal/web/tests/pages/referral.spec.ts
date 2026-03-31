@@ -67,11 +67,10 @@ test.describe("Referral Page", () => {
       }
     });
 
-    test("shows referral credentials for tier-one eligible users", async () => {
+    test("shows locked banner with trade CTA for non-eligible users", async () => {
       await openReferralAffiliateTab(sharedPage);
 
-      await expect(sharedPage.getByText("My Referral Link", { exact: true })).toBeVisible();
-      await expect(sharedPage.getByText("My Referral Code", { exact: true })).toBeVisible();
+      await expect(sharedPage.getByText("Trade now")).toBeVisible();
     });
 
     test("allows clearing the referee receives input while editing", async () => {
