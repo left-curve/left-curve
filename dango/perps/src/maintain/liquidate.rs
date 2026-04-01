@@ -13,18 +13,16 @@ use {
         },
         price::may_invert_price,
         state::{LONGS, SHORTS},
-        trade::{
-            _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
-            settle_pnls,
-        },
+        trade::{_cancel_all_orders, match_order, settle_fill, settle_pnls},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            BadDebtCovered, Deleveraged, LimitOrder, Liquidated, OrderId, PairId, PairParam,
-            PairState, Param, RateSchedule, ReasonForOrderRemoval, State, UserState,
+            BadDebtCovered, ConditionalOrderRemoved, Deleveraged, LimitOrder, Liquidated, OrderId,
+            PairId, PairParam, PairState, Param, RateSchedule, ReasonForOrderRemoval, State,
+            TriggerDirection, UserState,
         },
     },
     grug::{
@@ -70,8 +68,27 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         ReasonForOrderRemoval::Liquidated,
     )?;
 
-    let cond_events =
-        _cancel_all_conditional_orders(ctx.storage, user, ReasonForOrderRemoval::Liquidated)?;
+    // Emit ConditionalOrderRemoved events for embedded conditional orders.
+    // The conditional orders themselves will be removed when the positions are
+    // closed during liquidation.
+    for (pair_id, position) in &user_state.positions {
+        if position.conditional_order_above.is_some() {
+            events.push(ConditionalOrderRemoved {
+                pair_id: pair_id.clone(),
+                user,
+                trigger_direction: TriggerDirection::Above,
+                reason: ReasonForOrderRemoval::Liquidated,
+            })?;
+        }
+        if position.conditional_order_below.is_some() {
+            events.push(ConditionalOrderRemoved {
+                pair_id: pair_id.clone(),
+                user,
+                trigger_direction: TriggerDirection::Below,
+                reason: ReasonForOrderRemoval::Liquidated,
+            })?;
+        }
+    }
 
     // ------------------- 3. Load pair params and states ---------------------
 
@@ -228,9 +245,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         }
     }
 
-    Ok(Response::new()
-        .add_events(events)?
-        .add_events(cond_events)?)
+    Ok(Response::new().add_events(events)?)
 }
 
 /// Mutates:
@@ -836,6 +851,8 @@ mod tests {
             size: Quantity::new_int(size),
             entry_price: UsdPrice::new_int(entry_price),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
 
         USER_STATES.save(storage, user, &user_state).unwrap();

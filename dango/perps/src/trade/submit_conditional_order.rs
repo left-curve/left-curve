@@ -1,5 +1,5 @@
 use {
-    crate::{CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, USER_STATES},
+    crate::{NEXT_ORDER_ID, USER_STATES},
     anyhow::{anyhow, ensure},
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
@@ -7,7 +7,7 @@ use {
             ConditionalOrder, ConditionalOrderId, ConditionalOrderPlaced, PairId, TriggerDirection,
         },
     },
-    grug::{MutableCtx, NumberConst, Order as IterationOrder, Response},
+    grug::{MutableCtx, NumberConst, Response},
 };
 
 pub fn submit_conditional_order(
@@ -18,7 +18,7 @@ pub fn submit_conditional_order(
     trigger_direction: TriggerDirection,
     max_slippage: Dimensionless,
 ) -> anyhow::Result<Response> {
-    let user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
+    let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
     // -------------------------------- Checks ---------------------------------
 
@@ -47,57 +47,43 @@ pub fn submit_conditional_order(
         "conditional order size exceeds position size"
     );
 
+    let slot_occupied = match trigger_direction {
+        TriggerDirection::Above => position.conditional_order_above.is_some(),
+        TriggerDirection::Below => position.conditional_order_below.is_some(),
+    };
+
     ensure!(
-        {
-            let map = match trigger_direction {
-                TriggerDirection::Above => &CONDITIONAL_ABOVE,
-                TriggerDirection::Below => &CONDITIONAL_BELOW,
-            };
-
-            let has_existing = map
-                .idx
-                .user
-                .prefix(ctx.sender)
-                .range(ctx.storage, None, None, IterationOrder::Ascending)
-                .any(|res| res.map(|((pid, ..), _)| pid == pair_id).unwrap_or(false));
-
-            !has_existing
-        },
+        !slot_occupied,
         "conditional order already exists for pair {pair_id}"
     );
 
     // ----------------------------- State changes -----------------------------
 
-    // Assign order ID.
+    // Assign order ID and increment.
     let order_id = NEXT_ORDER_ID.load(ctx.storage)?;
-
-    // Create the order.
-    // For BELOW orders, invert the trigger_price in the storage key so that
-    // ascending iteration yields highest-real-trigger-price first (the order
-    // crossed earliest as price fell) with FIFO tiebreaker on order_id.
-    let stored_price = match trigger_direction {
-        TriggerDirection::Above => trigger_price,
-        TriggerDirection::Below => !trigger_price,
-    };
-    let key = (pair_id.clone(), stored_price, order_id);
-    let order = ConditionalOrder {
-        user: ctx.sender,
-        size,
-        trigger_price,
-        trigger_direction,
-        max_slippage,
-        created_at: ctx.block.timestamp,
-    };
-
     NEXT_ORDER_ID.save(ctx.storage, &(order_id + ConditionalOrderId::ONE))?;
 
+    let conditional_order = ConditionalOrder {
+        order_id,
+        size,
+        trigger_price,
+        max_slippage,
+    };
+
+    // Set the field on the position.
+    let position = user_state
+        .positions
+        .get_mut(&pair_id)
+        .ok_or_else(|| anyhow!("no position in pair {pair_id}"))?;
+
     match trigger_direction {
-        TriggerDirection::Above => CONDITIONAL_ABOVE.save(ctx.storage, key, &order)?,
-        TriggerDirection::Below => CONDITIONAL_BELOW.save(ctx.storage, key, &order)?,
+        TriggerDirection::Above => position.conditional_order_above = Some(conditional_order),
+        TriggerDirection::Below => position.conditional_order_below = Some(conditional_order),
     }
 
+    USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
+
     Ok(Response::new().add_event(ConditionalOrderPlaced {
-        order_id,
         pair_id,
         user: ctx.sender,
         trigger_price,
@@ -113,7 +99,7 @@ pub fn submit_conditional_order(
 mod tests {
     use {
         super::*,
-        crate::{CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, PARAM, USER_STATES},
+        crate::{NEXT_ORDER_ID, PARAM, USER_STATES},
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             perps::{OrderId, Param, Position, TriggerDirection, UserState},
@@ -133,6 +119,8 @@ mod tests {
             size: Quantity::new_int(size),
             entry_price: UsdPrice::new_int(2_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         }
     }
 
@@ -141,6 +129,8 @@ mod tests {
             size: Quantity::new_int(-size),
             entry_price: UsdPrice::new_int(2_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         }
     }
 
@@ -181,13 +171,14 @@ mod tests {
         )
         .should_succeed();
 
-        // Order stored in CONDITIONAL_ABOVE.
-        let order = CONDITIONAL_ABOVE
-            .idx
-            .order_id
-            .may_load(&ctx.storage, Uint64::ONE)
-            .unwrap();
-        assert!(order.is_some());
+        // Order stored in position's conditional_order_above field.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_above.is_some());
+        let order = position.conditional_order_above.as_ref().unwrap();
+        assert_eq!(order.order_id, Uint64::ONE);
+        assert_eq!(order.size, Quantity::new_int(-5));
+        assert_eq!(order.trigger_price, UsdPrice::new_int(2_500));
 
         // Next order ID incremented.
         let next_id = NEXT_ORDER_ID.load(&ctx.storage).unwrap();
@@ -215,12 +206,11 @@ mod tests {
         )
         .should_succeed();
 
-        let order = CONDITIONAL_BELOW
-            .idx
-            .order_id
-            .may_load(&ctx.storage, Uint64::ONE)
-            .unwrap();
-        assert!(order.is_some());
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_below.is_some());
+        let order = position.conditional_order_below.as_ref().unwrap();
+        assert_eq!(order.order_id, Uint64::ONE);
     }
 
     #[test]
@@ -244,12 +234,11 @@ mod tests {
         )
         .should_succeed();
 
-        let order = CONDITIONAL_BELOW
-            .idx
-            .order_id
-            .may_load(&ctx.storage, Uint64::ONE)
-            .unwrap();
-        assert!(order.is_some());
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_below.is_some());
+        let order = position.conditional_order_below.as_ref().unwrap();
+        assert_eq!(order.order_id, Uint64::ONE);
     }
 
     #[test]
@@ -396,22 +385,18 @@ mod tests {
         )
         .should_succeed();
 
-        // Both orders exist.
-        assert!(
-            CONDITIONAL_ABOVE
-                .idx
-                .order_id
-                .may_load(&ctx.storage, Uint64::ONE)
-                .unwrap()
-                .is_some()
-        );
-        assert!(
-            CONDITIONAL_BELOW
-                .idx
-                .order_id
-                .may_load(&ctx.storage, Uint64::new(2))
-                .unwrap()
-                .is_some()
-        );
+        // Both orders exist on the position.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+
+        assert!(position.conditional_order_above.is_some());
+        let above = position.conditional_order_above.as_ref().unwrap();
+        assert_eq!(above.order_id, Uint64::ONE);
+        assert_eq!(above.trigger_price, UsdPrice::new_int(2_500));
+
+        assert!(position.conditional_order_below.is_some());
+        let below = position.conditional_order_below.as_ref().unwrap();
+        assert_eq!(below.order_id, Uint64::new(2));
+        assert_eq!(below.trigger_price, UsdPrice::new_int(1_800));
     }
 }

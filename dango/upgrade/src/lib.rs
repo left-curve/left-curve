@@ -1,9 +1,12 @@
 use {
     dango_types::{
-        Dimensionless, UsdValue,
+        Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
         perps::{self, RateSchedule},
     },
-    grug::{Addr, BlockInfo, Duration, Map, Order as IterationOrder, StdResult, Storage, Uint128},
+    grug::{
+        Addr, BlockInfo, Duration, Map, Order as IterationOrder, StdResult, Storage, Uint128,
+        increment_last_byte,
+    },
     grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
     std::collections::{BTreeMap, VecDeque},
 };
@@ -35,13 +38,20 @@ mod legacy {
         pub referrer_commission_rates: RateSchedule,
     }
 
-    /// The UserState struct before the upgrade, which contains the
-    /// `conditional_order_count` field as its last field.
+    /// The Position struct before the upgrade (3 fields, no conditional orders).
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct Position {
+        pub size: Quantity,
+        pub entry_price: UsdPrice,
+        pub entry_funding_per_unit: FundingPerUnit,
+    }
+
+    /// The UserState struct before the upgrade.
     #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
     pub struct UserState {
         pub margin: UsdValue,
         pub vault_shares: Uint128,
-        pub positions: BTreeMap<perps::PairId, perps::Position>,
+        pub positions: BTreeMap<perps::PairId, Position>,
         pub unlocks: VecDeque<perps::Unlock>,
         pub reserved_margin: UsdValue,
         pub open_order_count: usize,
@@ -82,20 +92,27 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
 
     tracing::info!("Migrated Param (removed max_conditional_orders)");
 
-    // 2. Cancel all existing TP/SL orders by wiping the CONDITIONAL_ABOVE and
-    //    CONDITIONAL_BELOW indexed maps (primary + all indexes).
-    dango_perps::CONDITIONAL_ABOVE.clear_all(&mut perps_storage);
-    dango_perps::CONDITIONAL_BELOW.clear_all(&mut perps_storage);
+    // 2. Wipe old CONDITIONAL_ABOVE/BELOW maps via raw remove_range.
+    //    These maps no longer exist as IndexedMap constants, so we clear them
+    //    by their storage namespace prefixes.
+    //    Namespaces: "conda", "conda__id", "conda__user", "condb", "condb__id", "condb__user"
+    for ns in &[
+        b"conda" as &[u8],
+        b"conda__id",
+        b"conda__user",
+        b"condb",
+        b"condb__id",
+        b"condb__user",
+    ] {
+        let max = increment_last_byte(ns.to_vec());
+        perps_storage.remove_range(Some(ns), Some(&max));
+    }
 
     tracing::info!("Wiped all conditional orders");
 
-    // 3. Migrate UserState records: read with legacy layout (6 fields including
-    //    conditional_order_count), convert to new layout (5 fields), save back.
-    //
-    //    Using Map<Addr, T> with namespace "us" reads/writes the same primary
-    //    entries as the IndexedMap. The index (earliest_unlock_end_time) is
-    //    computed from the unlocks field which is unchanged, so index entries
-    //    remain valid.
+    // 3. Migrate UserState records: read with legacy layout, convert to new
+    //    layout (drop conditional_order_count, add conditional_order fields to
+    //    Position).
     let all_users = legacy::USER_STATES
         .range(&perps_storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
@@ -103,10 +120,24 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     let new_user_states: Map<Addr, perps::UserState> = Map::new("us");
 
     for (addr, old_us) in all_users {
+        let new_positions = old_us
+            .positions
+            .into_iter()
+            .map(|(pair_id, old_pos)| {
+                (pair_id, perps::Position {
+                    size: old_pos.size,
+                    entry_price: old_pos.entry_price,
+                    entry_funding_per_unit: old_pos.entry_funding_per_unit,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                })
+            })
+            .collect();
+
         let new_us = perps::UserState {
             margin: old_us.margin,
             vault_shares: old_us.vault_shares,
-            positions: old_us.positions,
+            positions: new_positions,
             unlocks: old_us.unlocks,
             reserved_margin: old_us.reserved_margin,
             open_order_count: old_us.open_order_count,
@@ -114,7 +145,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
         new_user_states.save(&mut perps_storage, addr, &new_us)?;
     }
 
-    tracing::info!("Migrated UserState records (removed conditional_order_count)");
+    tracing::info!("Migrated UserState records");
 
     Ok(())
 }

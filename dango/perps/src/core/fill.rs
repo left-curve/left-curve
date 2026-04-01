@@ -116,6 +116,8 @@ fn apply_opening(
             size: opening_size,
             entry_price: fill_price,
             entry_funding_per_unit: pair_state.funding_per_unit,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
     }
 
@@ -196,6 +198,8 @@ mod tests {
             size: Quantity::new_int(size),
             entry_price: UsdPrice::new_int(entry_price),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
         UserState {
             positions,
@@ -418,6 +422,8 @@ mod tests {
             size: Quantity::new_int(10),
             entry_price: UsdPrice::new_int(50_000),
             entry_funding_per_unit: FundingPerUnit::ZERO, // entered at 0
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
         let mut user_state = UserState {
             positions,
