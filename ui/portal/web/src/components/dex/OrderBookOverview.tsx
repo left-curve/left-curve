@@ -18,6 +18,7 @@ import {
   toPerpsPairId,
   usePerpsOrderBookState,
   perpsOrderBookStore,
+  useStorage,
 } from "@left-curve/store";
 import { calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
 
@@ -222,10 +223,17 @@ const OrderBook: React.FC<OrderBookProps> = ({
 }) => {
   const bucketSizeCoin = liquidityDepthStore((s) => s.bucketSizeCoin);
   const setBucketSizeCoin = liquidityDepthStore((s) => s.setBucketSizeCoin);
+  const [perpsDisplayModeRaw, setPerpsDisplayMode] = useStorage<"base" | "quote">(
+    "perps-order-book-display-mode",
+    { initialValue: "base" },
+  );
+  const perpsDisplayMode = perpsDisplayModeRaw === "quote" ? "quote" : "base";
 
   const bucketSizeSymbol =
     mode === "perps"
-      ? baseCoin.symbol
+      ? perpsDisplayMode === "quote"
+        ? "USD"
+        : baseCoin.symbol
       : bucketSizeCoin === "base"
         ? baseCoin.symbol
         : quoteCoin.symbol;
@@ -259,6 +267,17 @@ const OrderBook: React.FC<OrderBookProps> = ({
             <Select.Item value={quoteCoin.symbol}>{quoteCoin.symbol}</Select.Item>
           </Select>
         )}
+        {mode === "perps" && (
+          <Select
+            value={perpsDisplayMode}
+            onChange={(key) => setPerpsDisplayMode(key as "base" | "quote")}
+            variant="plain"
+            classNames={{ listboxWrapper: "right-0 left-auto" }}
+          >
+            <Select.Item value="base">{baseCoin.symbol}</Select.Item>
+            <Select.Item value="quote">USD</Select.Item>
+          </Select>
+        )}
       </div>
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2 px-4">
         <p className="order-2 lg:order-none text-end lg:text-start">
@@ -283,6 +302,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
         quote={quoteCoin}
         onSelectPrice={(price) => controllers.setValue("price", price)}
         mode={mode}
+        displayMode={perpsDisplayMode}
       />
     </div>
   );
@@ -452,6 +472,7 @@ type LiquidityDepthProps = {
   quote: AnyCoin;
   onSelectPrice: (price: string) => void;
   mode: "spot" | "perps";
+  displayMode: "base" | "quote";
 };
 
 const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
@@ -462,6 +483,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   quote,
   onSelectPrice,
   mode,
+  displayMode,
 }) => {
   const { isLg } = useMediaQuery();
   const { liquidityDepthStore } = useLiquidityDepthState({
@@ -477,8 +499,8 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   const liquidityDepth = useMemo(() => {
     if (mode === "spot") return spotDepth.liquidityDepth;
     if (!perpsDepthData) return null;
-    return perpsLiquidityDepthMapper(perpsDepthData, bucketRecords);
-  }, [mode, spotDepth.liquidityDepth, perpsDepthData, bucketRecords]);
+    return perpsLiquidityDepthMapper(perpsDepthData, bucketRecords, displayMode);
+  }, [mode, spotDepth.liquidityDepth, perpsDepthData, bucketRecords, displayMode]);
 
   if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
 
@@ -591,6 +613,7 @@ function perpsLiquidityDepthMapper(
     asks: Record<string, { size: string; notional: string }>;
   },
   bucketRecords: number,
+  displayMode: "base" | "quote",
 ) {
   function mapSide(
     entries: Record<string, { size: string; notional: string }>,
@@ -606,10 +629,11 @@ function perpsLiquidityDepthMapper(
     let highestSize = "0";
     const records: { price: string; size: string; total: string }[] = [];
 
-    for (const [price, { size }] of sorted) {
-      total = Decimal(total).plus(size).toFixed();
-      records.push({ price, size, total });
-      if (Decimal(size).gt(highestSize)) highestSize = size;
+    for (const [price, { size, notional }] of sorted) {
+      const value = displayMode === "quote" ? notional : size;
+      total = Decimal(total).plus(value).toFixed();
+      records.push({ price, size: value, total });
+      if (Decimal(value).gt(highestSize)) highestSize = value;
     }
 
     return { records, highestSize };
