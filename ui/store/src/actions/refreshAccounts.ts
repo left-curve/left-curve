@@ -32,13 +32,22 @@ export async function refreshAccounts<config extends Config>(
   config.setState((x) => {
     const connector = x.connectors.get(connectorUId);
     if (!connector) return x;
+
+    const updatedAccounts = Object.entries(user.accounts).map(([accountIndex, address]) =>
+      toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
+    );
+
+    const currentAccountAddress = connector.account?.address;
+    const updatedAccount = currentAccountAddress
+      ? updatedAccounts.find((acc) => acc.address === currentAccountAddress)
+      : updatedAccounts[0];
+
     return {
       ...x,
       connectors: new Map(x.connectors).set(connectorUId, {
         ...connector,
-        accounts: Object.entries(user.accounts).map(([accountIndex, address]) =>
-          toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
-        ),
+        accounts: updatedAccounts,
+        account: updatedAccount ?? connector.account,
       }),
     };
   });

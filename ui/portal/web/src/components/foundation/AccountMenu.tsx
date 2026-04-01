@@ -133,7 +133,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
   if (!account) return null;
 
   return (
-    <div className="w-full flex items-center flex-col gap-6 relative md:pt-4 flex-1 h-full">
+    <div className="w-full flex items-center flex-col gap-6 relative md:pt-4 flex-1 h-full min-h-0">
       <div className="flex flex-col w-full items-center gap-5">
         {backAllowed ? (
           <div className="w-full flex gap-2">
@@ -164,7 +164,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
 
       <AnimatePresence mode="wait">
         <motion.div
-          className="h-full w-full"
+          className="h-full w-full min-h-0"
           key={isAccountSelectorActive ? "selector" : "assets"}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -259,7 +259,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   }, [activeTab, markAllSeen]);
 
   return (
-    <div className="flex flex-col w-full gap-6 items-center h-full">
+    <div className="flex flex-col w-full gap-6 items-center h-full min-h-0">
       <div className="md:self-end flex gap-2 items-center justify-center w-full px-4">
         <Button
           fullWidth
@@ -308,19 +308,21 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           </Tab>
         </Tabs>
       </div>
-      <div className="px-4 py-0 w-full">
-        <Button
-          variant="secondary"
-          size="md"
-          fullWidth
-          onClick={() => [navigate({ to: "/transfer", search: { action: "spot-perp" } }), setSidebarVisibility(false)]}
-        >
-          {m["accountMenu.spotPerp"]()}
-        </Button>
-      </div>
+      {activeTab === "wallet" && (
+        <div className="px-4 py-0 w-full">
+          <Button
+            variant="secondary"
+            size="md"
+            fullWidth
+            onClick={() => [navigate({ to: "/transfer", search: { action: "spot-perp" } }), setSidebarVisibility(false)]}
+          >
+            {m["accountMenu.spotPerp"]()}
+          </Button>
+        </div>
+      )}
       <motion.div
         key={activeTab}
-        className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full"
+        className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full min-h-0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -354,7 +356,7 @@ export const WalletTab: React.FC = () => {
   }, [balances, calculateBalance]);
 
   return (
-    <div className="flex flex-col gap-3 w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none">
+    <div className="flex flex-col gap-3 w-full items-center">
       <div className="flex flex-col w-full">
         <SectionHeader title={m["accountMenu.perpAccount"]()} />
         <AssetCard.Perp amount={perpsState?.margin ?? "0"} />

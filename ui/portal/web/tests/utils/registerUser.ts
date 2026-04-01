@@ -11,11 +11,12 @@ export interface RegisterUserOptions {
  * This utility handles the full registration flow:
  * 1. Injects the mock wallet
  * 2. Navigates to the app
- * 3. Opens the login modal and switches to registration
+ * 3. Opens the auth modal
  * 4. Connects with the mock wallet
- * 5. Closes the account activation modal
+ * 5. Creates account or picks an existing one
+ * 6. Dismisses any post-login modals
  *
- * After this function completes, the user is logged in but with an inactive account.
+ * After this function completes, the user is logged in.
  */
 export async function registerUser(page: Page, options: RegisterUserOptions = {}): Promise<void> {
   // Inject the mock wallet before navigation
@@ -27,41 +28,45 @@ export async function registerUser(page: Page, options: RegisterUserOptions = {}
   // Click on login button in the header
   await page.locator("[dng-connect-button]").click();
 
-  // Wait for the modal to appear and click "Register"
-  await page.getByText("Register").click();
-
-  // Click "Connect wallet" button
-  await page.getByText("Connect wallet").click();
+  // Click "Connect Wallet" on the welcome screen
+  await page.getByText("Connect Wallet", { exact: true }).click();
 
   // Select "Mock E2E Wallet" from the wallet list
   await page.getByText("Mock E2E Wallet").click();
 
-  // Wait for registration to complete.
-  // Depending on timing/backend state, UI may show either:
-  // 1) "Log In" button (then user clicks it), or
-  // 2) directly "Activate Account" modal.
+  // After wallet authentication, the flow shows either:
+  // 1) "create-account" screen (new wallet) with a "Continue" button, or
+  // 2) "account-picker" screen (existing wallet) with username list.
   const modal = page.locator(".fixed.z-\\[60\\]");
-  const loginButton = modal.getByRole("button", { name: "Log In" });
-  const activateHeading = page.getByRole("heading", { name: "Activate Account" });
+  const continueButton = modal.getByRole("button", { name: "Continue" });
+  const usernamesHeading = modal.getByRole("heading", { name: "Usernames found" });
 
-  const registrationOutcome = await Promise.race([
-    loginButton.waitFor({ state: "visible", timeout: 30_000 }).then(() => "login"),
-    activateHeading.waitFor({ state: "visible", timeout: 30_000 }).then(() => "activate"),
+  const authOutcome = await Promise.race([
+    continueButton.waitFor({ state: "visible", timeout: 30_000 }).then(() => "create"),
+    usernamesHeading.waitFor({ state: "visible", timeout: 30_000 }).then(() => "pick"),
   ]);
 
-  if (registrationOutcome === "login") {
-    await loginButton.click();
-    await activateHeading.waitFor({ state: "visible" });
+  if (authOutcome === "create") {
+    // New wallet — create account
+    await continueButton.click();
+  } else {
+    // Existing wallet — select the first username (JS click to bypass viewport scroll issues)
+    await modal.locator('img[alt="username"]').first().dispatchEvent("click");
   }
 
-  // At this point, Activate Account modal should be visible.
-  await activateHeading.waitFor({ state: "visible" });
+  // Wait for login to complete (header shows account info)
+  await page.locator("[dng-connect-button]").filter({ hasText: /Account #/ }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
 
-  // Close the modal by clicking the close button (X icon in top right)
-  // The close button is inside the modal, after the content
-  const closeButton = modal.locator("button").last();
-  await closeButton.click();
-
-  // Wait for modal to close
-  await activateHeading.waitFor({ state: "hidden" });
+  // Auto-dismiss ActivateAccount modal whenever it appears.
+  // The modal re-triggers on every full navigation (page.goto) because the
+  // React ref that guards it resets on remount, so a one-time check is not enough.
+  await page.addLocatorHandler(
+    page.getByRole("heading", { name: "Activate Account" }),
+    async () => {
+      await page.getByText("do this later", { exact: false }).click();
+    },
+  );
 }

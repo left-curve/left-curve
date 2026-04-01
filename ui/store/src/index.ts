@@ -137,6 +137,12 @@ export {
 } from "./hooks/explorer/useExplorerContract.js";
 export { useExplorerTransactionsBySender } from "./hooks/explorer/useExplorerTransactionsBySender.js";
 export {
+  useExplorerUser,
+  type AccountWithDetails,
+  type ExplorerUserData,
+} from "./hooks/explorer/useExplorerUser.js";
+export { useExplorerUserTransactions } from "./hooks/explorer/useExplorerUserTransactions.js";
+export {
   parseExplorerErrorMessage,
   type ParsedExplorerError,
 } from "./hooks/explorer/parseExplorerErrorMessage.js";
@@ -158,7 +164,6 @@ export { useSpotSubmission } from "./hooks/useSpotSubmission.js";
 export { usePerpsSubmission } from "./hooks/usePerpsSubmission.js";
 export { useSpotMaxSize } from "./hooks/useSpotMaxSize.js";
 export { usePerpsMaxSize } from "./hooks/usePerpsMaxSize.js";
-export { useErrorHandler } from "./hooks/useErrorHandler.js";
 
 export {
   type UsePoolLiquidityStateParameters,
@@ -195,6 +200,12 @@ export {
   type UseSigninStateParameters,
   useSigninState,
 } from "./hooks/useSigninState.js";
+
+export {
+  type UseAuthStateParameters,
+  type AuthScreen,
+  useAuthState,
+} from "./hooks/useAuthState.js";
 
 export {
   useSearchBar,

@@ -3,16 +3,17 @@ import { Button, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
 
 export const PerpsCloseOrder = forwardRef<void, { orderId: string }>(({ orderId }) => {
   const { hideModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
+  const queryClient = useQueryClient();
   const { isPending, mutateAsync: cancelOrder } = useSubmitTx({
     submission: {
       success: m["dex.protrade.allOrdersCancelled"](),
-      error: m["errors.failureRequest"](),
     },
     mutation: {
       mutationFn: async () => {
@@ -23,6 +24,7 @@ export const PerpsCloseOrder = forwardRef<void, { orderId: string }>(({ orderId 
         });
       },
       onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
         hideModal();
       },
     },

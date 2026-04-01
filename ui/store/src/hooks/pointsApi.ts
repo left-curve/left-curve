@@ -31,7 +31,8 @@ export type BoxReward = {
 export type OatEntry = {
   collection_id: number;
   token_id: string;
-  registered_at: number;
+  /** Seconds with nanosecond decimal precision, serialized as a string by the backend (e.g. "1743460800.000000000") */
+  registered_at: string;
 };
 
 export const fetchUserStats = async (baseUrl: string, userIndex: number): Promise<UserPoints> => {

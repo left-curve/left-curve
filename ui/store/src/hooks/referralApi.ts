@@ -16,11 +16,7 @@ import type {
 /**
  * Query the perps contract via wasmSmart.
  */
-async function queryPerps<T>(
-  client: PublicClient,
-  perpsAddress: string,
-  msg: Json,
-): Promise<T> {
+async function queryPerps<T>(client: PublicClient, perpsAddress: string, msg: Json): Promise<T> {
   const request = snakeCaseJsonSerialization<QueryRequest>({
     wasmSmart: {
       contract: perpsAddress,
@@ -58,7 +54,7 @@ export async function queryReferralData(
   since?: number,
 ): Promise<UserReferralData> {
   return queryPerps<UserReferralData>(client, perpsAddress, {
-    referralData: { user: userIndex, since },
+    referralData: { user: userIndex, since: since != null ? String(since) : undefined },
   });
 }
 

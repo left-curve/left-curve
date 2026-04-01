@@ -100,7 +100,7 @@ deploy_user="deploy"
 100.107.248.71 # ovh2
 
 [points-bot-testnet]
-100.107.248.71 # ovh2 TODO: change it according to the new server
+100.90.163.19  # hetzner2
 
 [points-bot-mainnet]
 100.107.248.71 # ovh2 TODO: change it according to the new server

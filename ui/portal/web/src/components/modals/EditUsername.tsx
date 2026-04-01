@@ -12,6 +12,7 @@ import {
   Spinner,
   useApp,
   useInputs,
+  WarningContainer,
 } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, usePublicClient, useSigningClient, useSubmitTx } from "@left-curve/store";
@@ -77,13 +78,11 @@ export const EditUsername = forwardRef((_props, _ref) => {
       >
         <IconClose />
       </IconButton>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-4">
         <h2 className="text-ink-primary-900 h4-bold w-full">
           {m["settings.session.username.editUsername"]()}
         </h2>
-        <p className="text-ink-tertiary-500 diatype-sm-regular">
-          {m["settings.session.username.editDescription"]()}
-        </p>
+        <WarningContainer description={m["settings.session.username.editDescription"]()} />
       </div>
       <form
         className="flex flex-col gap-6"

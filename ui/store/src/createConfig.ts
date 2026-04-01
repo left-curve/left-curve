@@ -10,12 +10,7 @@ import { createMipdStore } from "./mipd.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type {
-  Client,
-  Denom,
-  PublicClient,
-  Transport,
-} from "@left-curve/dango/types";
+import type { Client, Denom, PublicClient, Transport } from "@left-curve/dango/types";
 
 import { subscriptionsStore } from "./subscriptions.js";
 import type { AnyCoin } from "./types/coin.js";

@@ -150,6 +150,7 @@ export type {
 } from "./dex.js";
 
 export type {
+  RateSchedule,
   PerpsUserState,
   PerpsPosition,
   PerpsUnlock,

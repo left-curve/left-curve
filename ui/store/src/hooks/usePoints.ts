@@ -38,9 +38,7 @@ export function usePoints(parameters: UsePointsParameters) {
     const rank = data?.rank ?? 0;
 
     const percentile =
-      rank > 0 && totalUsers > 0
-        ? Math.min(((totalUsers - rank + 1) / totalUsers) * 100, 100)
-        : 0;
+      rank > 0 && totalUsers > 0 ? Math.min(((totalUsers - rank + 1) / totalUsers) * 100, 100) : 0;
 
     return { points, lpPoints, tradingPoints, referralPoints, volume, rank, percentile };
   }, [userStatsQuery.data, totalUsersQuery.data]);

@@ -30,6 +30,7 @@ export const Modals = {
   PerpsCloseOrder: "perps-close-order",
   PerpsCloseAll: "perps-close-all",
   PerpsClosePosition: "perps-close-position",
+  ActivateAccount: "activate-account",
 };
 
 export type ModalRef = {

@@ -26,6 +26,8 @@
 # Always resolve digests to fill in any images not verified by cosign
 # This ensures all images are pinned to immutable digests
 - import_tasks: resolve_digests.yml
+- import_tasks: perps_bot.yml
+  when: perps_bot_enabled
 - import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
 - import_tasks: update_traefik.yml

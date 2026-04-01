@@ -11,12 +11,11 @@ type UsePerpsSubmissionParameters = {
   sizeValue: string;
   priceValue: string;
   controllers: { reset: () => void };
-  onError: (error: unknown) => void;
   onSuccess?: () => void;
 };
 
 export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
-  const { perpsPairId, action, operation, sizeValue, priceValue, controllers, onError, onSuccess } =
+  const { perpsPairId, action, operation, sizeValue, priceValue, controllers, onSuccess } =
     parameters;
 
   const { account } = useAccount();
@@ -43,7 +42,6 @@ export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
           reduceOnly: false,
         });
       },
-      onError,
       onSuccess: () => {
         controllers.reset();
         onSuccess?.();

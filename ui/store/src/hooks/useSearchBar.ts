@@ -14,6 +14,7 @@ import type {
   ContractInfo,
   IndexedBlock,
   IndexedTransaction,
+  User,
 } from "@left-curve/dango/types";
 
 export type UseSearchBarParameters = {
@@ -28,6 +29,7 @@ export type SearchBarResult = {
   applets: AppletMetadata[];
   contracts: (ContractInfo & { address: Address })[];
   account?: Account;
+  user?: User;
 };
 
 export function useSearchBar(parameters: UseSearchBarParameters) {
@@ -51,6 +53,7 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
       applets: Object.values(applets.filter((applet) => favApplets.includes(applet.id))),
       contracts: allContracts,
       account: undefined,
+      user: undefined,
     }),
     [applets, favApplets, allContracts],
   );
@@ -135,9 +138,18 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
           })(),
         );
       } else {
-        // search for username
-        promises.push((async () => {})());
-        // search for tokens
+        promises.push(
+          (async () => {
+            try {
+              const user = await client.getUser({ userIndexOrName: { name: searchText } });
+              if (user) {
+                setSearchResult({ user });
+              }
+            } catch {
+              setSearchResult({ user: undefined });
+            }
+          })(),
+        );
       }
 
       return await Promise.allSettled(promises);

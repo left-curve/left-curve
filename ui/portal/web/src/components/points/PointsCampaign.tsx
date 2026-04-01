@@ -20,9 +20,8 @@ import {
   NFTsSection,
   OATsSection,
   PointsProgressBar,
-  useChestOpening,
 } from "./rewards";
-import { UserPointsProvider } from "./useUserPoints";
+import { UserPointsProvider, useUserPoints } from "./useUserPoints";
 import { useAccount, useBoxes, useOats } from "@left-curve/store";
 
 type PointsCampaignTab = "profile" | "rewards" | "leaderboard";
@@ -83,7 +82,12 @@ const PointsCampaignHeader: React.FC = () => (
         {m["points.header.title"]()}
       </h1>
     </div>
-    <Button variant="utility">{m["points.header.readRules"]()}</Button>
+    <Button
+      variant="utility"
+      onClick={() => window.open("https://dango-4.gitbook.io/dango-docs/points")}
+    >
+      {m["points.header.readRules"]()}
+    </Button>
   </div>
 );
 
@@ -112,16 +116,16 @@ const ProfileTable: React.FC = () => {
 const RewardsLoot: React.FC = () => {
   const { userIndex } = useAccount();
   const pointsUrl = window.dango.urls.pointsUrl;
-  const { openChest } = useChestOpening();
-  const { nfts, unopenedBoxes, estimatedVolume } = useBoxes({ pointsUrl, userIndex });
+  const { nfts, unopenedBoxes } = useBoxes({ pointsUrl, userIndex });
   const { oatStatuses } = useOats({ pointsUrl, userIndex });
+  const { volume } = useUserPoints();
 
   return (
     <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-primary-gray rounded-b-xl">
       <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl shadow-account-card">
-        <PointsProgressBar currentVolume={estimatedVolume} />
+        <PointsProgressBar currentVolume={volume} />
       </div>
-      <BoxesSection unopenedBoxes={unopenedBoxes} onOpenChest={openChest} />
+      <BoxesSection unopenedBoxes={unopenedBoxes} />
       <NFTsSection nfts={nfts} />
       <OATsSection oatStatuses={oatStatuses} />
     </div>
