@@ -224,7 +224,7 @@ export default defineConfig({
     ],
   },
   performance: {
-    prefetch: {
+    preload: {
       type: "all-assets",
       include: [/.*\.woff2$/],
     },
@@ -278,6 +278,35 @@ export default defineConfig({
                 },
                 (assets) => {
                   assets["static/js/config.js"] = new rspack.sources.RawSource(envConfig);
+                },
+              );
+            });
+          },
+        },
+        {
+          apply(compiler: Rspack.Compiler) {
+            compiler.hooks.thisCompilation.tap("FontDisplayPlugin", (compilation) => {
+              compilation.hooks.processAssets.tap(
+                {
+                  name: "FontDisplayPlugin",
+                  stage: rspack.Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE_SIZE + 1,
+                },
+                (assets) => {
+                  for (const [name, asset] of Object.entries(assets)) {
+                    if (!name.endsWith(".css")) continue;
+                    const source = asset.source().toString();
+                    if (!source.includes("@font-face")) continue;
+                    const updated = source.replace(
+                      /@font-face\{([^}]*)\}/g,
+                      (match, body) => {
+                        if (body.includes("font-display")) return match;
+                        return `@font-face{${body};font-display:swap}`;
+                      },
+                    );
+                    if (updated !== source) {
+                      assets[name] = new rspack.sources.RawSource(updated);
+                    }
+                  }
                 },
               );
             });
