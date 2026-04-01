@@ -48,8 +48,11 @@ function extractErrorMessage(err: unknown): string | undefined {
 }
 
 function parseContractError(raw: string): string | null {
+  const logMatch = raw.match(/log:\s*(.+)$/);
+  const payload = logMatch?.[1] ?? raw;
+
   try {
-    const parsed = JSON.parse(raw) as { error?: string; backtrace?: string };
+    const parsed = JSON.parse(payload) as { error?: string; backtrace?: string };
     if (typeof parsed.error === "string") {
       const match = parsed.error.match(/msg:\s*(.*?)$/);
       return match?.[1]?.trim() || parsed.error;
@@ -132,13 +135,16 @@ export function useSubmitTx<
             const parsed = parseTxError(error);
             subscriptions.emit({ key: "submitTx" }, { status: "error", ...parsed });
           } else {
-            subscriptions.emit({
-              key: "submitTx",
-            }, {
-              status: "error",
-              title: "Error",
-              description: "Transaction submission aborted.",
-            });
+            subscriptions.emit(
+              {
+                key: "submitTx",
+              },
+              {
+                status: "error",
+                title: "Error",
+                description: "Transaction submission aborted.",
+              },
+            );
           }
 
           throw error || new Error("Transaction submission aborted.");
