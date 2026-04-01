@@ -17,7 +17,6 @@ import type {
   LiquidatedData,
   DeleveragedData,
   UID,
-  Username,
 } from "@left-curve/dango/types";
 import { useBalances } from "./useBalances.js";
 
@@ -53,44 +52,48 @@ export type ActivityRecord<key extends keyof Activities = keyof Activities> = {
 
 export function useActivities() {
   const queryClient = useQueryClient();
-  const { username = "", accounts, account, refreshUserStatus, userStatus } = useAccount();
+  const { userIndex, accounts, account, refreshUserStatus, userStatus } = useAccount();
   const { refetch: refetchBalances } = useBalances({ address: account?.address });
-  const { subscriptions, chain } = useConfig();
+  const { subscriptions } = useConfig();
   const userAddresses = useMemo(() => (accounts ? accounts.map((a) => a.address) : []), [accounts]);
 
-  const [allActivities, setAllActivities] = useStorage<Record<Username, ActivityRecord[]>>(
+  const existUserIndex = userIndex !== undefined;
+
+  const [allActivities, setAllActivities] = useStorage<Record<number, ActivityRecord[]>>(
     "app.activities",
     {
-      enabled: Boolean(username),
+      enabled: existUserIndex,
       initialValue: {},
-      version: 0.1,
+      version: 0.2,
     },
   );
 
   const userActivities = useMemo(
-    () => (allActivities[username] || []).filter((n) => !n.isHidden),
-    [allActivities, username],
+    () => (existUserIndex ? allActivities[userIndex] || [] : []).filter((n) => !n.isHidden),
+    [allActivities, existUserIndex, userIndex],
   );
 
   const totalActivities = userActivities.length;
 
   const addActivityRecord = useCallback(
     (activity: ActivityRecord) => {
+      if (!existUserIndex) return;
       setAllActivities((activities) => {
-        const previousUserActivities = activities[username] || [];
+        const previousUserActivities = activities[userIndex] || [];
         return {
           ...activities,
-          [username]: [...previousUserActivities, activity],
+          [userIndex]: [...previousUserActivities, activity],
         };
       });
     },
-    [username],
+    [userIndex],
   );
 
   const deleteActivityRecord = useCallback(
     (id: UID) => {
+      if (!existUserIndex) return;
       setAllActivities((activities) => {
-        const previousUserActivities = activities[username] || [];
+        const previousUserActivities = activities[userIndex] || [];
         const activityIndex = previousUserActivities.findIndex((n) => n.id === id);
         if (activityIndex === -1) return activities;
         previousUserActivities[activityIndex] = {
@@ -99,11 +102,11 @@ export function useActivities() {
         };
         return {
           ...activities,
-          [username]: previousUserActivities,
+          [userIndex]: previousUserActivities,
         };
       });
     },
-    [username],
+    [userIndex],
   );
 
   const unseenCount = useMemo(
@@ -112,16 +115,17 @@ export function useActivities() {
   );
 
   const markAllSeen = useCallback(() => {
+    if (!existUserIndex) return;
     setAllActivities((activities) => {
-      const updated = (activities[username] || []).map((a) => ({ ...a, seen: true }));
-      return { ...activities, [username]: updated };
+      const updated = (activities[userIndex] || []).map((a) => ({ ...a, seen: true }));
+      return { ...activities, [userIndex]: updated };
     });
-  }, [username]);
+  }, [userIndex]);
 
   const hasActivities = totalActivities > 0;
 
   const startActivities = useCallback(() => {
-    if (!account || !username) return;
+    if (!account || !existUserIndex) return;
 
     const lastKnownBlockHeight = userActivities.reduce(
       (max, activity) => Math.max(max, activity.blockHeight),
@@ -245,7 +249,7 @@ export function useActivities() {
       unsubscribeEvents();
       unsubscribeAccount();
     };
-  }, [addActivityRecord, userActivities, username, accounts, account, userAddresses, userStatus]);
+  }, [addActivityRecord, userActivities, userIndex, accounts, account, userAddresses, userStatus]);
 
   return {
     startActivities,
