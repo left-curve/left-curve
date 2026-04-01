@@ -25,23 +25,18 @@ const TIERS: Tier[] = [
   { key: "crystal", threshold: 500000 },
 ];
 
-const getNextTier = (currentVolume: number) => {
-  let start = 0;
+const REWARD_STEP = TIERS[0]?.threshold ?? 1;
 
-  for (const tier of TIERS) {
-    if (currentVolume < tier.threshold) {
-      return { tier, target: tier.threshold, start };
-    }
-    start = tier.threshold;
-  }
+const getNextReward = (currentVolume: number) => {
+  const normalizedVolume = Math.max(currentVolume, 0);
+  const target = (Math.floor(normalizedVolume / REWARD_STEP) + 1) * REWARD_STEP;
+  const tier = [...TIERS].reverse().find(({ threshold }) => target % threshold === 0) ?? TIERS[0];
 
-  const tier = TIERS[TIERS.length - 1];
-  const cycleSize = tier.threshold;
-  const cycleIndex = Math.floor(currentVolume / cycleSize);
-  const startCycle = cycleIndex * cycleSize;
-  const target = startCycle + cycleSize;
-
-  return { tier, target, start: startCycle };
+  return {
+    tier,
+    target,
+    start: Math.max(target - REWARD_STEP, 0),
+  };
 };
 
 type PointsProgressBarProps = {
@@ -57,7 +52,7 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const { tier, target, start } = getNextTier(Math.max(currentVolume, 0));
+  const { tier, target, start } = getNextReward(currentVolume);
   const remaining = Math.max(target - currentVolume, 0);
   const segmentSize = Math.max(target - start, 1);
   const progress = Math.min(Math.max((currentVolume - start) / segmentSize, 0), 1) * 100;
@@ -88,8 +83,8 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
       leftLabel={remainingLabel}
       rightLabel={nextTargetLabel}
       thumbSrc="/images/points/pointBarThumb.png"
-      endImageSrc="/images/points/boxes/silver.png"
-      endImageAlt="Silver chest"
+      endImageSrc={`/images/points/boxes/${tier.key}.png`}
+      endImageAlt={`${tierLabel} chest`}
       className={className}
     />
   );

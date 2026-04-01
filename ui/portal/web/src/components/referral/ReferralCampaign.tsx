@@ -48,7 +48,12 @@ const ReferralCampaignHeader: React.FC = () => (
         {m["referral.title"]()}
       </h1>
     </div>
-    <Button variant="utility">{m["referral.readRules"]()}</Button>
+    <Button
+      variant="utility"
+      onClick={() => window.open("https://dango-4.gitbook.io/dango-docs/referral-system")}
+    >
+      {m["referral.readRules"]()}
+    </Button>
   </div>
 );
 

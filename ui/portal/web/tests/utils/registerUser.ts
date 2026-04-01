@@ -60,10 +60,13 @@ export async function registerUser(page: Page, options: RegisterUserOptions = {}
     timeout: 30_000,
   });
 
-  // Dismiss ActivateAccount modal if it appeared
-  const activateHeading = page.getByRole("heading", { name: "Activate Account" });
-  if (await activateHeading.isVisible()) {
-    await page.getByText("do this later", { exact: false }).click();
-    await activateHeading.waitFor({ state: "hidden" });
-  }
+  // Auto-dismiss ActivateAccount modal whenever it appears.
+  // The modal re-triggers on every full navigation (page.goto) because the
+  // React ref that guards it resets on remount, so a one-time check is not enough.
+  await page.addLocatorHandler(
+    page.getByRole("heading", { name: "Activate Account" }),
+    async () => {
+      await page.getByText("do this later", { exact: false }).click();
+    },
+  );
 }

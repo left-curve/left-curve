@@ -486,6 +486,13 @@
       "depositCardTitle": "Deposit $10 to activate",
       "depositCardDescription": "A minimum deposit of $10 is required to start using Dango."
     },
+    "faucet": {
+      "cardTitle": "Claim test tokens",
+      "cardDescription": "Get free test tokens to start exploring Dango.",
+      "cta": "Claim Tokens",
+      "claiming": "Claiming...",
+      "changeUsername": "Change Username"
+    },
     "createAccount": "Create Account",
     "doThisLater": "I'll do this later",
     "alreadyHaveAccount": "Already have an account?",
@@ -640,6 +647,16 @@
             }
           }
         ]
+      },
+      "perpOrderFilled": {
+        "title": "Perps order filled",
+        "atPrice": "at price "
+      },
+      "perpLiquidated": {
+        "title": "Position liquidated"
+      },
+      "perpDeleveraged": {
+        "title": "Position auto-deleveraged"
       },
       "modal": {
         "blockHeight": "Block Height",
@@ -1059,7 +1076,7 @@
     "trader": "Trader",
     "stats": {
       "commissionRate": "Commission Rate (You/ Referee)",
-      "totalCommissionPoints": "Total Commission Points",
+      "totalCommission": "Total Commission",
       "totalReferralVolume": "Total Referral Volume",
       "totalReferees": "Total Referees",
       "totalActiveReferees": "Total Active Referees",
@@ -1216,6 +1233,7 @@
       "boxes": {
         "title": "My boxes",
         "open": "Open",
+        "openAll": "Open All",
         "tiers": {
           "bronze": "Bronze",
           "silver": "Silver",

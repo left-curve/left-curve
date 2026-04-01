@@ -149,7 +149,7 @@ const SearchMenu: React.FC = () => {
                     className="flex absolute w-full h-full bg-transparent left-0 rounded-md cursor-text gap-1 items-center pl-9 pt-1 diatype-m-regular"
                     onClick={() => (isSearchBarVisible ? hideMenu() : openMenu())}
                   >
-                    <span>{m["searchBar.placeholder.title"]()}</span>{" "}
+                    <span className="whitespace-nowrap">{m["searchBar.placeholder.title"]()}</span>{" "}
                     <TextLoop
                       texts={[
                         m["searchBar.placeholder.transactions"](),

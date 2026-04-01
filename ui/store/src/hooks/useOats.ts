@@ -72,7 +72,7 @@ export function useOats(parameters: UseOatsParameters) {
   const registeredOatsByCampaign = useMemo(() => {
     const map = new Map<number, { registeredAt: number }>();
     for (const oat of registeredOats) {
-      map.set(oat.collection_id, { registeredAt: oat.registered_at });
+      map.set(oat.collection_id, { registeredAt: Number.parseFloat(String(oat.registered_at)) });
     }
     return map;
   }, [registeredOats]);

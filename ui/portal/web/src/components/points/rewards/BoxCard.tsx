@@ -9,6 +9,7 @@ import {
 } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
+import { useChestOpening } from "./useChestOpening";
 
 export type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 
@@ -59,19 +60,17 @@ type BoxCardProps = {
   variant: BoxVariant;
   quantity: number;
   className?: string;
-  onClick?: () => void;
-  /** When true, shows locked state regardless of quantity (e.g., user not logged in) */
   isUserLocked?: boolean;
 };
 
 export const BoxCard: React.FC<BoxCardProps> = ({
   className,
-  onClick,
   quantity,
   variant,
   isUserLocked = false,
 }) => {
   const { isLg } = useMediaQuery();
+  const { openChest, openAllChests } = useChestOpening();
   const { badgeColor, imageShadow } = VariantConfig[variant];
   const label = VariantLabels[variant]();
   const tooltip = VariantTooltips[variant]();
@@ -80,7 +79,12 @@ export const BoxCard: React.FC<BoxCardProps> = ({
 
   const handleClick = () => {
     if (isLocked) return;
-    onClick?.();
+    openChest(variant);
+  };
+
+  const handleOpenAllClick = () => {
+    if (isLocked) return;
+    openAllChests(variant);
   };
 
   return (
@@ -120,15 +124,26 @@ export const BoxCard: React.FC<BoxCardProps> = ({
           </p>
         )}
       </div>
-      <Button
-        size={isLg ? "md" : "sm"}
-        className="px-8 lg:px-10"
-        variant="primary"
-        isDisabled={isLocked}
-        onClick={handleClick}
-      >
-        {m["points.rewards.boxes.open"]()}
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button
+          size={isLg ? "md" : "sm"}
+          className="px-8 lg:px-10"
+          variant="primary"
+          isDisabled={isLocked}
+          onClick={handleClick}
+        >
+          {m["points.rewards.boxes.open"]()}
+        </Button>
+        <Button
+          size={isLg ? "md" : "sm"}
+          className="px-6 lg:px-8"
+          variant="tertiary"
+          isDisabled={isLocked || quantity <= 1}
+          onClick={handleOpenAllClick}
+        >
+          {m["points.rewards.boxes.openAll"]()}
+        </Button>
+      </div>
     </div>
   );
 };

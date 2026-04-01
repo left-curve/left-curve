@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "fs-extra";
@@ -94,7 +95,7 @@ const urls = {
     pointsUrl: "https://points-devnet.dango.zone",
   },
   test: {
-    faucetUrl: "https://faucet-testnet-ovh2.dango.zone/mint",
+    faucetUrl: "https://faucet-testnet-hetzner4.dango.zone/mint",
     questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
     pointsUrl: "https://points-testnet.dango.zone",
@@ -134,6 +135,8 @@ const envConfig = `window.dango = ${JSON.stringify(
   null,
   2,
 )};`;
+
+const configHash = crypto.createHash("md5").update(envConfig).digest("hex").slice(0, 8);
 
 const copyPattern = [];
 
@@ -203,16 +206,22 @@ export default defineConfig({
   html: {
     template: "public/index.html",
     title: "",
-    tags:
-      environment === "test" || environment === "dev"
+    tags: [
+      { tag: "script", attrs: { src: `/static/js/config.js?v=${configHash}` }, append: false },
+      ...(environment === "test" || environment === "dev"
         ? [
-            { tag: "script", attrs: { src: "https://cdn.jsdelivr.net/npm/eruda" } },
             {
               tag: "script",
-              children: "if (window.innerWidth <= 1024) { eruda.init(); }",
+              children: `if (new URLSearchParams(window.location.search).has("debug")) {
+                            var s = document.createElement("script");
+                            s.src = "https://cdn.jsdelivr.net/npm/eruda";
+                            s.onload = function () { eruda.init(); };
+                            document.head.appendChild(s);
+                  }`,
             },
           ]
-        : [],
+        : []),
+    ],
   },
   performance: {
     prefetch: {

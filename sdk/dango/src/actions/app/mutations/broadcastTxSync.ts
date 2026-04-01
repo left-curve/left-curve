@@ -85,7 +85,8 @@ export async function broadcastTxSync<transport extends Transport>(
   const { code, log } = result;
 
   if (code === 1) {
-    throw new Error(`failed to broadcast tx! code: ${code}, log: ${log}`);
+    const logStr = typeof log === "string" ? log : JSON.stringify(log);
+    throw new Error(`failed to broadcast tx! code: ${code}, log: ${logStr}`);
   }
 
   await withRetry(
