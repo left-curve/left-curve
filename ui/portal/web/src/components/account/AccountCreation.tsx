@@ -89,7 +89,6 @@ export const Deposit: React.FC = () => {
     },
     submission: {
       success: m["accountCreation.accountCreated"](),
-      error: m["signup.errors.couldntCompleteRequest"](),
     },
     mutation: {
       invalidateKeys: [["quests", userIndex]],

@@ -14,7 +14,6 @@ export const PerpsCloseOrder = forwardRef<void, { orderId: string }>(({ orderId 
   const { isPending, mutateAsync: cancelOrder } = useSubmitTx({
     submission: {
       success: m["dex.protrade.allOrdersCancelled"](),
-      error: m["errors.failureRequest"](),
     },
     mutation: {
       mutationFn: async () => {

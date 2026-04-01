@@ -138,7 +138,6 @@ const TransferSend: React.FC = () => {
   >({
     submission: {
       success: m["sendAndReceive.sendSuccessfully"](),
-      error: m["transfer.error.description"](),
     },
     mutation: {
       mutationFn: async ({ address, amount }, { abort }) => {
@@ -291,7 +290,6 @@ const TransferSpotPerp: React.FC = () => {
       success: isSpotToPerp
         ? m["transfer.spotPerp.depositSuccess"]()
         : m["transfer.spotPerp.withdrawSuccess"](),
-      error: m["transfer.error.description"](),
     },
     mutation: {
       mutationFn: async ({ amount }) => {

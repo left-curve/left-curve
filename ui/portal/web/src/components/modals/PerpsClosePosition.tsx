@@ -24,7 +24,6 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(
     const { isPending, mutateAsync: closePosition } = useSubmitTx({
       submission: {
         success: "Position closed successfully",
-        error: "Failed to close position",
       },
       mutation: {
         mutationFn: async () => {

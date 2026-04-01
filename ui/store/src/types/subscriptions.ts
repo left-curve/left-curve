@@ -81,12 +81,12 @@ export type SubscriptionSchema = [
   {
     key: "submitTx";
     params?: undefined;
-    listener: <T>(event: {
-      isSubmitting: boolean;
-      isSuccess?: boolean;
-      message?: string;
-      data?: T;
-    }) => void;
+    listener: <T>(
+      event:
+        | { status: "pending" }
+        | { status: "success"; data: T; message?: string }
+        | { status: "error"; title: string; description: string },
+    ) => void;
   },
   {
     key: "queryApp";

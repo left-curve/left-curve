@@ -11,7 +11,6 @@ import {
   usePerpsMaxSize,
   useSpotSubmission,
   usePerpsSubmission,
-  useErrorHandler,
   perpsUserStateStore,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -107,18 +106,13 @@ export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
 };
 
 const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
-  const { settings, toast } = useApp();
+  const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { isConnected } = useAccount();
   const { data: appConfig } = useAppConfig();
   const { getPrice, isFetched } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const queryClient = useQueryClient();
   const { account } = useAccount();
-  const onError = useErrorHandler({
-    toast: toast.error,
-    title: m["dex.protrade.orderFailed"](),
-    fallbackMessage: m["errors.failureRequest"](),
-  });
 
   const pairId = tradePairStore((s) => s.pairId);
   const action = tradeInfoStore((s) => s.action);
@@ -191,7 +185,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     amount,
     priceValue,
     controllers,
-    onError,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
       queryClient.invalidateQueries({ queryKey: ["tradeHistory", account?.address] });
@@ -295,14 +288,9 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
 const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { isConnected } = useAccount();
-  const { settings, toast } = useApp();
+  const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions, refetchInterval: 10_000 });
-  const onError = useErrorHandler({
-    toast: toast.error,
-    title: m["dex.protrade.orderFailed"](),
-    fallbackMessage: m["errors.failureRequest"](),
-  });
 
   const pairId = tradePairStore((s) => s.pairId);
   const action = tradeInfoStore((s) => s.action);
@@ -427,7 +415,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     sizeValue,
     priceValue,
     controllers,
-    onError,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
     },
