@@ -11,6 +11,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
 import type { PropsWithChildren } from "react";
+import { MobileTitle } from "../foundation/MobileTitle";
 import { LeaderboardTable } from "./leaderboard";
 import { PointsHeader } from "./PointsHeader";
 import { LigueLevels, PointsProfileTable } from "./profile";
@@ -50,6 +51,7 @@ const PointsCampaignContainer: React.FC<PointsCampaignContainerProps> = ({
       <ChestOpeningProviderWrapper userIndex={userIndex}>
         <PointsCampaignProvider value={{ activeTab, setActiveTab: onTabChange }}>
           <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 lg:p-0 lg:pt-6 lg:pb-20 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
+            <MobileTitle title={m["points.mobileTitle"]()} />
             <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
               {children}
             </div>
