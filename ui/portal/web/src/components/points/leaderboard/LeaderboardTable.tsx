@@ -59,10 +59,8 @@ export const LeaderboardTable: React.FC = () => {
   const rows = useMemo((): LeaderboardRow[] => {
     const result: LeaderboardRow[] = [];
 
-    // Always show the current user at the top
     if (userIndex) {
       if (pinnedUser) {
-        // User is in the leaderboard results - use their rank for current sort criteria
         result.push({
           ranking: pinnedUser.originalRank,
           user: formatUsername(pinnedUser.username, pinnedUser.user_index),
@@ -73,7 +71,6 @@ export const LeaderboardTable: React.FC = () => {
           isPinned: true,
         });
       } else {
-        // User is NOT in the leaderboard results - show with null ranking
         result.push({
           ranking: null,
           user: formatUsername(username ?? null, userIndex),

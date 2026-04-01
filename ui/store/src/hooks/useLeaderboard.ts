@@ -41,7 +41,6 @@ export function useLeaderboard(parameters: UseLeaderboardParameters) {
 
     const pinnedUser = ranked.find((e) => e.user_index === userIndex) ?? null;
 
-    // Don't filter out the current user - they should appear both pinned and in their normal position
     const sorted = sortDirection === "asc" ? [...ranked].reverse() : ranked;
 
     const start = (page - 1) * PAGE_SIZE;
