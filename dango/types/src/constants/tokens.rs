@@ -39,6 +39,10 @@ define_denom! {
     btc  => 8,
     doge => 8,
     eth  => 18,
+    // HYPE has 8 decimals in HyperCore, 18 decimals in HyperEVM.
+    // We do not support bridging spot HYPE anyways, so what we use here doesn't matter.
+    // But ideally we support HyperCore, so putting 8 here for now.
+    hype => 8,
     ltc  => 8,
     sol  => 9,
     usdc => 6,
@@ -59,7 +63,7 @@ macro_rules! define_perp_denom {
             pub const DECIMAL: u32 = $decimal;
         }
     };
-    ($($name:ident, $subdenom:literal => $decimal:expr);*) => {
+    ($($name:ident, $subdenom:literal => $decimal:expr),*) => {
         $(
             define_perp_denom!($name, $subdenom => $decimal);
         )*
@@ -67,5 +71,8 @@ macro_rules! define_perp_denom {
 }
 
 define_perp_denom! {
-    perp_eth, "ethusd" => eth::DECIMAL
+    perp_btc,  "btcusd"  => btc::DECIMAL,
+    perp_eth,  "ethusd"  => eth::DECIMAL,
+    perp_sol,  "solusd"  => sol::DECIMAL,
+    perp_hype, "hypeusd" => hype::DECIMAL
 }

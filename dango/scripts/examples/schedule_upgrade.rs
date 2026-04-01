@@ -15,10 +15,10 @@ struct MessageBuilder;
 impl dango_scripts::MessageBuilder for MessageBuilder {
     async fn build_message(_client: &HttpClient) -> anyhow::Result<Message> {
         Ok(Message::upgrade(
-            3961000,
-            "0.3.0",
-            Some("v0.3.0"),
-            Some("https://github.com/left-curve/left-curve/releases/tag/v0.3.0"),
+            15260000,
+            "0.5.0",
+            Some("v0.5.0"),
+            Some("https://github.com/left-curve/left-curve/releases/tag/v0.5.0"),
         ))
     }
 }
