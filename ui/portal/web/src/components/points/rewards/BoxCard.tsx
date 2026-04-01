@@ -9,6 +9,7 @@ import {
 } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
+import { useChestOpening } from "./useChestOpening";
 
 export type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 
@@ -59,20 +60,17 @@ type BoxCardProps = {
   variant: BoxVariant;
   quantity: number;
   className?: string;
-  onClick?: () => void;
-  onOpenAll?: () => void;
   isUserLocked?: boolean;
 };
 
 export const BoxCard: React.FC<BoxCardProps> = ({
   className,
-  onClick,
-  onOpenAll,
   quantity,
   variant,
   isUserLocked = false,
 }) => {
   const { isLg } = useMediaQuery();
+  const { openChest, openAllChests } = useChestOpening();
   const { badgeColor, imageShadow } = VariantConfig[variant];
   const label = VariantLabels[variant]();
   const tooltip = VariantTooltips[variant]();
@@ -81,12 +79,12 @@ export const BoxCard: React.FC<BoxCardProps> = ({
 
   const handleClick = () => {
     if (isLocked) return;
-    onClick?.();
+    openChest(variant);
   };
 
   const handleOpenAllClick = () => {
     if (isLocked) return;
-    onOpenAll?.();
+    openAllChests(variant);
   };
 
   return (
