@@ -39,9 +39,12 @@ export const OATCard: React.FC<OATCardProps> = ({
   const { dateFormat } = settings;
   const title = OATTitles[type]();
   const imageSrc = OATImages[type];
-  const expirationDisplay = expiresAt
-    ? formatDate(new Date(expiresAt * 1000), dateFormat)
-    : "--";
+  const expirationDisplay = (() => {
+    if (!expiresAt || !Number.isFinite(expiresAt)) return "--";
+    const date = new Date(expiresAt * 1000);
+    if (Number.isNaN(date.getTime())) return "--";
+    return formatDate(date, dateFormat);
+  })();
 
   return (
     <div
