@@ -332,6 +332,22 @@ pub fn query_referral_data(
     Ok(data_now.checked_sub(&data_since)?)
 }
 
+pub fn query_referral_data_entries(
+    ctx: ImmutableCtx,
+    user: UserIndex,
+    start_after: Option<Timestamp>,
+    limit: Option<u32>,
+) -> StdResult<Vec<(Timestamp, UserReferralData)>> {
+    let max = start_after.map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    USER_REFERRAL_DATA
+        .prefix(user)
+        .range(ctx.storage, None, max, IterationOrder::Descending)
+        .take(limit)
+        .collect()
+}
+
 pub fn query_referrer_to_referee_stats(
     ctx: ImmutableCtx,
     referrer: Referrer,
