@@ -2512,6 +2512,23 @@ fn liquidation_cancels_conditional_orders() {
         )
         .should_succeed();
 
+    // Verify both conditional orders were placed.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    let pos = state.positions.get(&pair).expect("should have position");
+    assert!(
+        pos.conditional_order_above.is_some(),
+        "should have TP (above) conditional order"
+    );
+    assert!(
+        pos.conditional_order_below.is_some(),
+        "should have SL (below) conditional order"
+    );
+
     // Step 4: Oracle drops to $1,450.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
 
