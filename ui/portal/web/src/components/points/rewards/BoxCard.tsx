@@ -60,13 +60,14 @@ type BoxCardProps = {
   quantity: number;
   className?: string;
   onClick?: () => void;
-  /** When true, shows locked state regardless of quantity (e.g., user not logged in) */
+  onOpenAll?: () => void;
   isUserLocked?: boolean;
 };
 
 export const BoxCard: React.FC<BoxCardProps> = ({
   className,
   onClick,
+  onOpenAll,
   quantity,
   variant,
   isUserLocked = false,
@@ -81,6 +82,11 @@ export const BoxCard: React.FC<BoxCardProps> = ({
   const handleClick = () => {
     if (isLocked) return;
     onClick?.();
+  };
+
+  const handleOpenAllClick = () => {
+    if (isLocked) return;
+    onOpenAll?.();
   };
 
   return (
@@ -120,15 +126,26 @@ export const BoxCard: React.FC<BoxCardProps> = ({
           </p>
         )}
       </div>
-      <Button
-        size={isLg ? "md" : "sm"}
-        className="px-8 lg:px-10"
-        variant="primary"
-        isDisabled={isLocked}
-        onClick={handleClick}
-      >
-        {m["points.rewards.boxes.open"]()}
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button
+          size={isLg ? "md" : "sm"}
+          className="px-8 lg:px-10"
+          variant="primary"
+          isDisabled={isLocked}
+          onClick={handleClick}
+        >
+          {m["points.rewards.boxes.open"]()}
+        </Button>
+        <Button
+          size={isLg ? "md" : "sm"}
+          className="px-6 lg:px-8"
+          variant="tertiary"
+          isDisabled={isLocked || quantity <= 1}
+          onClick={handleOpenAllClick}
+        >
+          {m["points.rewards.boxes.openAll"]()}
+        </Button>
+      </div>
     </div>
   );
 };
