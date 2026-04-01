@@ -1233,6 +1233,7 @@
       "boxes": {
         "title": "My boxes",
         "open": "Open",
+        "openAll": "Open All",
         "tiers": {
           "bronze": "Bronze",
           "silver": "Silver",
