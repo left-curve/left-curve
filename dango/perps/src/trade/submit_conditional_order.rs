@@ -48,13 +48,11 @@ pub fn submit_conditional_order(
         );
     }
 
-    let slot_occupied = match trigger_direction {
-        TriggerDirection::Above => position.conditional_order_above.is_some(),
-        TriggerDirection::Below => position.conditional_order_below.is_some(),
-    };
-
     ensure!(
-        !slot_occupied,
+        match trigger_direction {
+            TriggerDirection::Above => position.conditional_order_above.is_none(),
+            TriggerDirection::Below => position.conditional_order_below.is_none(),
+        },
         "conditional order already exists for pair {pair_id}"
     );
 
@@ -176,6 +174,7 @@ mod tests {
         let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let position = user_state.positions.get(&pair_id()).unwrap();
         assert!(position.conditional_order_above.is_some());
+
         let order = position.conditional_order_above.as_ref().unwrap();
         assert_eq!(order.order_id, Uint64::ONE);
         assert_eq!(order.size, Some(Quantity::new_int(-5)));
@@ -210,6 +209,7 @@ mod tests {
         let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let position = user_state.positions.get(&pair_id()).unwrap();
         assert!(position.conditional_order_below.is_some());
+
         let order = position.conditional_order_below.as_ref().unwrap();
         assert_eq!(order.order_id, Uint64::ONE);
     }
@@ -238,6 +238,7 @@ mod tests {
         let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let position = user_state.positions.get(&pair_id()).unwrap();
         assert!(position.conditional_order_below.is_some());
+
         let order = position.conditional_order_below.as_ref().unwrap();
         assert_eq!(order.order_id, Uint64::ONE);
     }
@@ -388,9 +389,10 @@ mod tests {
 
         // Both orders exist on the position.
         let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        let position = user_state.positions.get(&pair_id()).unwrap();
 
+        let position = user_state.positions.get(&pair_id()).unwrap();
         assert!(position.conditional_order_above.is_some());
+
         let above = position.conditional_order_above.as_ref().unwrap();
         assert_eq!(above.order_id, Uint64::ONE);
         assert_eq!(above.trigger_price, UsdPrice::new_int(2_500));
