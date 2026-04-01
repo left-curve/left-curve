@@ -68,11 +68,10 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         ReasonForOrderRemoval::Liquidated,
     )?;
 
-    // Emit ConditionalOrderRemoved events for embedded conditional orders.
-    // The conditional orders themselves will be removed when the positions are
-    // closed during liquidation.
-    for (pair_id, position) in &user_state.positions {
-        if position.conditional_order_above.is_some() {
+    // Cancel all embedded conditional orders. Positions may survive partial
+    // liquidation, so we must explicitly clear the fields.
+    for (pair_id, position) in &mut user_state.positions {
+        if position.conditional_order_above.take().is_some() {
             events.push(ConditionalOrderRemoved {
                 pair_id: pair_id.clone(),
                 user,
@@ -80,7 +79,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
                 reason: ReasonForOrderRemoval::Liquidated,
             })?;
         }
-        if position.conditional_order_below.is_some() {
+        if position.conditional_order_below.take().is_some() {
             events.push(ConditionalOrderRemoved {
                 pair_id: pair_id.clone(),
                 user,

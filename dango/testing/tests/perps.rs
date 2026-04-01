@@ -2260,8 +2260,12 @@ fn conditional_order_tp_triggers_on_price_rise() {
         state.margin
     );
 
-    // Step 10: Conditional orders should be gone (position is closed, so no
-    // conditional_order_above/below to check — absence of position is sufficient).
+    // Step 10: Position is closed, so conditional orders are gone with it.
+    // Verify no positions remain (and thus no conditional orders).
+    assert!(
+        state.positions.is_empty(),
+        "all positions should be gone after TP triggered"
+    );
 }
 
 /// SL triggers on price drop: deposit → buy → place SL → oracle drops →
@@ -2376,6 +2380,11 @@ fn conditional_order_sl_triggers_on_price_drop() {
     assert!(
         !state.positions.contains_key(&pair),
         "position should be closed after SL triggered"
+    );
+    // Position closed → conditional orders are gone with it.
+    assert!(
+        state.positions.is_empty(),
+        "all positions should be gone after SL triggered"
     );
 
     // Margin started at $9,990 (after $10 fee), loss of $1,000, minus close fee.
@@ -2546,11 +2555,7 @@ fn liquidation_cancels_conditional_orders() {
         .should_succeed();
 
     // Step 7: Verify state after liquidation.
-    // Liquidation may be partial, so the position may still exist (just reduced).
-    // When a position is fully closed (removed), conditional orders are gone with it.
-    // When a position survives (partial liquidation), conditional orders may still
-    // be attached. The key assertion is that limit orders were canceled.
-    let _state: Option<UserState> = suite
+    let state: Option<UserState> = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
@@ -2568,7 +2573,20 @@ fn liquidation_cancels_conditional_orders() {
         "all limit orders should be canceled after liquidation"
     );
 
-    // If the position was fully closed, conditional orders are implicitly gone.
+    // Conditional orders should be gone: if position was fully closed, they
+    // disappeared with it; if partially liquidated, they were cleared.
+    if let Some(ref st) = state {
+        for (pid, pos) in &st.positions {
+            assert!(
+                pos.conditional_order_above.is_none(),
+                "conditional_order_above should be None for pair {pid} after liquidation"
+            );
+            assert!(
+                pos.conditional_order_below.is_none(),
+                "conditional_order_below should be None for pair {pid} after liquidation"
+            );
+        }
+    }
 }
 
 /// BELOW conditional orders store `!trigger_price` (bitwise-inverted) in the
@@ -2790,6 +2808,11 @@ fn conditional_orders_follow_price_time_priority() {
         !state_user1.positions.contains_key(&pair),
         "User1 position should be closed after SL triggered"
     );
+    // Position closed → conditional orders gone with it.
+    assert!(
+        state_user1.positions.is_empty(),
+        "User1 should have no positions (and thus no conditional orders)"
+    );
 
     let state_user3: UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
@@ -2802,6 +2825,11 @@ fn conditional_orders_follow_price_time_priority() {
         !state_user3.positions.contains_key(&pair),
         "User3 position should be closed after SL triggered"
     );
+    assert!(
+        state_user3.positions.is_empty(),
+        "User3 should have no positions (and thus no conditional orders)"
+    );
+
     // User1 got the better fill ($1,790) so should have more margin than User3
     // who got the worse fill ($1,770). Both started with the same deposit and
     // position, so the ~$100 PnL difference should be reflected in margins.
