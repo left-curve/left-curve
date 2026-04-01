@@ -1069,6 +1069,7 @@
     }
   },
   "referral": {
+    "mobileTitle": "Referral Program",
     "welcome": "Welcome to Dango's",
     "title": "REFERRAL PROGRAM",
     "readRules": "Read Rules",
@@ -1166,6 +1167,7 @@
     "submitting": "..."
   },
   "points": {
+    "mobileTitle": "Points",
     "campaign": "Campaign",
     "header": {
       "welcome": "Welcome to Dango's",
