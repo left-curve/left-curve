@@ -263,7 +263,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <TradeSubmitButton
           action={action}
           label={`${m["dex.protrade.spot.triggerAction"]({ action })} ${baseCoin.symbol}`}
-          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0))}
+          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0)) || !!inputs.size?.error}
           isPending={submission.isPending}
           onSubmit={() => submission.mutateAsync()}
         />
@@ -555,7 +555,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <TradeSubmitButton
           action={action}
           label={`${action === "buy" ? "Buy" : "Sell"} ${baseCoin.symbol}`}
-          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0))}
+          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0)) || !!inputs.size?.error}
           isPending={submission.isPending}
           onSubmit={() => submission.mutateAsync()}
         />
