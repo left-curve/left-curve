@@ -160,9 +160,11 @@ export const PointsProfileTable: React.FC = () => {
           {totalPages > 1 ? (
             <Pagination totalPages={totalPages} currentPage={page} onPageChange={setPage} />
           ) : null}
-          <div className="px-6 py-4 flex items-center justify-center">
-            <Button onClick={() => navigate({ to: "/trade" })}>{m["points.profile.getStarted"]()}</Button>
-          </div>
+          {allRows.length === 0 && (
+            <div className="px-6 py-4 flex items-center justify-center">
+              <Button onClick={() => navigate({ to: "/trade" })}>{m["points.profile.getStarted"]()}</Button>
+            </div>
+          )}
         </div>
       }
     />
