@@ -308,16 +308,18 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           </Tab>
         </Tabs>
       </div>
-      <div className="px-4 py-0 w-full">
-        <Button
-          variant="secondary"
-          size="md"
-          fullWidth
-          onClick={() => [navigate({ to: "/transfer", search: { action: "spot-perp" } }), setSidebarVisibility(false)]}
-        >
-          {m["accountMenu.spotPerp"]()}
-        </Button>
-      </div>
+      {activeTab === "wallet" && (
+        <div className="px-4 py-0 w-full">
+          <Button
+            variant="secondary"
+            size="md"
+            fullWidth
+            onClick={() => [navigate({ to: "/transfer", search: { action: "spot-perp" } }), setSidebarVisibility(false)]}
+          >
+            {m["accountMenu.spotPerp"]()}
+          </Button>
+        </div>
+      )}
       <motion.div
         key={activeTab}
         className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full min-h-0"
