@@ -27,6 +27,10 @@ import type React from "react";
 
 import type { SearchTokenRow } from "./SearchToken";
 
+const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
+  <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
+));
+
 const PerpsPairNameWithFav: React.FC<{
   baseCoin: { symbol: string; logoURI?: string };
   quoteCoin: { symbol: string };
@@ -51,7 +55,7 @@ const PerpsPairNameWithFav: React.FC<{
           <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
         )}
       </button>
-      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5 flex-shrink-0" />
+      <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
       <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       <Badge text="Perp" color="green" size="s" />
     </div>

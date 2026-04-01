@@ -29,6 +29,10 @@ import { PairAssets } from "./PairAssets";
 import { IconStar } from "./icons/IconStar";
 import { IconEmptyStar } from "./icons/IconEmptyStar";
 
+const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
+  <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
+));
+
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
 };
@@ -376,7 +380,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type
           <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
         )}
       </button>
-      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5 flex-shrink-0" />
+      <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
       <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
