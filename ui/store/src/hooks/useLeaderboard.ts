@@ -40,16 +40,15 @@ export function useLeaderboard(parameters: UseLeaderboardParameters) {
     const ranked = raw.map((e, i) => ({ ...e, originalRank: i + 1 }));
 
     const pinnedUser = ranked.find((e) => e.user_index === userIndex) ?? null;
-    const filtered = userIndex ? ranked.filter((e) => e.user_index !== userIndex) : ranked;
 
-    const sorted = sortDirection === "asc" ? [...filtered].reverse() : filtered;
+    const sorted = sortDirection === "asc" ? [...ranked].reverse() : ranked;
 
     const start = (page - 1) * PAGE_SIZE;
     const entries = sorted.slice(start, start + PAGE_SIZE);
     const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
 
     return { entries, pinnedUser, totalPages };
-  }, [leaderboardQuery.data, userIndex, sortDirection, page]);
+  }, [leaderboardQuery.data, userIndex, sortDirection, page, sort]);
 
   const handleSortChange = (newSort: LeaderboardSort) => {
     if (newSort === sort) {

@@ -10,7 +10,7 @@ import type React from "react";
 import { useUserPoints } from "../useUserPoints";
 
 type LeaderboardRow = {
-  ranking: number;
+  ranking: number | null;
   user: string;
   volume: number;
   pnl: number;
@@ -38,9 +38,9 @@ function formatUsername(username: string | null, userIndex: number): string {
 }
 
 export const LeaderboardTable: React.FC = () => {
-  const { userIndex } = useAccount();
+  const { userIndex, username } = useAccount();
   const pointsUrl = window.dango.urls.pointsUrl;
-  const { rank: userRank } = useUserPoints();
+  const { points: userPoints, volume: userVolume, pnl: userPnl } = useUserPoints();
 
   const {
     entries,
@@ -59,32 +59,45 @@ export const LeaderboardTable: React.FC = () => {
   const rows = useMemo((): LeaderboardRow[] => {
     const result: LeaderboardRow[] = [];
 
-    if (pinnedUser && userIndex) {
-      result.push({
-        ranking: userRank,
-        user: formatUsername(pinnedUser.username, pinnedUser.user_index),
-        volume: Number(pinnedUser.stats.volume),
-        pnl: Number(pinnedUser.stats.realized_pnl),
-        points: totalPoints(pinnedUser.stats.points),
-        isCurrentUser: true,
-        isPinned: true,
-      });
+    if (userIndex) {
+      if (pinnedUser) {
+        result.push({
+          ranking: pinnedUser.originalRank,
+          user: formatUsername(pinnedUser.username, pinnedUser.user_index),
+          volume: Number(pinnedUser.stats.volume),
+          pnl: Number(pinnedUser.stats.realized_pnl),
+          points: totalPoints(pinnedUser.stats.points),
+          isCurrentUser: true,
+          isPinned: true,
+        });
+      } else {
+        result.push({
+          ranking: null,
+          user: formatUsername(username ?? null, userIndex),
+          volume: userVolume,
+          pnl: userPnl,
+          points: userPoints,
+          isCurrentUser: true,
+          isPinned: true,
+        });
+      }
     }
 
     for (const entry of entries) {
+      const isCurrentUser = entry.user_index === userIndex;
       result.push({
         ranking: entry.originalRank,
         user: formatUsername(entry.username, entry.user_index),
         volume: Number(entry.stats.volume),
         pnl: Number(entry.stats.realized_pnl),
         points: totalPoints(entry.stats.points),
-        isCurrentUser: false,
+        isCurrentUser,
         isPinned: false,
       });
     }
 
     return result;
-  }, [entries, pinnedUser, userIndex, userRank]);
+  }, [entries, pinnedUser, userIndex, username, userVolume, userPnl, userPoints]);
 
   const columns: TableColumn<LeaderboardRow> = [
     {
@@ -93,7 +106,7 @@ export const LeaderboardTable: React.FC = () => {
       enableSorting: false,
       cell: ({ row }) => (
         <Cell.Text
-          text={String(row.original.ranking)}
+          text={row.original.ranking !== null ? String(row.original.ranking) : "-"}
           className={row.original.isPinned ? "font-bold" : ""}
         />
       ),
@@ -155,7 +168,7 @@ export const LeaderboardTable: React.FC = () => {
   ];
 
   return (
-    <div className="p-4 lg:p-8 flex flex-col gap-4">
+    <div className="p-4 lg:p-8 flex flex-col gap-4 min-h-[45.5rem]">
       <Tabs
         layoutId="leaderboard-timeframe-tabs"
         selectedTab={String(timeframe ?? "all")}
@@ -180,6 +193,11 @@ export const LeaderboardTable: React.FC = () => {
           row: "border-b border-outline-secondary-gray",
           cell: "px-6 py-4",
         }}
+        emptyComponent={
+          <div className="flex items-center justify-center py-16">
+            <p className="text-ink-tertiary-500 diatype-m-medium">No data available</p>
+          </div>
+        }
         bottomContent={
           totalPages > 1 ? (
             <Pagination totalPages={totalPages} currentPage={page} onPageChange={setPage} />
