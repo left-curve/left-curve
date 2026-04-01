@@ -1,6 +1,6 @@
 use {
     dango_types::config::AppConfig,
-    grug::{Addr, Message, QueryClientExt, addr},
+    grug::{Addr, Duration, Message, QueryClientExt, addr},
     indexer_client::HttpClient,
 };
 
@@ -17,6 +17,11 @@ struct MessageBuilder;
 #[async_trait::async_trait]
 impl dango_scripts::MessageBuilder for MessageBuilder {
     async fn build_message(client: &HttpClient) -> anyhow::Result<Message> {
+        // Add the perps contract to cronjobs.
+        let mut cfg = client.query_config(None).await?;
+        cfg.cronjobs.insert(PERPS_ADDRESS, Duration::ZERO);
+
+        // Add the perps contract to address book.
         let mut app_cfg = client.query_app_config::<AppConfig>(None).await?;
         app_cfg.addresses.perps = PERPS_ADDRESS;
 
