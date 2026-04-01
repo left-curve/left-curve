@@ -164,7 +164,6 @@ export { useSpotSubmission } from "./hooks/useSpotSubmission.js";
 export { usePerpsSubmission } from "./hooks/usePerpsSubmission.js";
 export { useSpotMaxSize } from "./hooks/useSpotMaxSize.js";
 export { usePerpsMaxSize } from "./hooks/usePerpsMaxSize.js";
-export { useErrorHandler } from "./hooks/useErrorHandler.js";
 
 export {
   type UsePoolLiquidityStateParameters,

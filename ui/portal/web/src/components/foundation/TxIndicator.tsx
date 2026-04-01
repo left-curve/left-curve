@@ -20,7 +20,7 @@ const Indicators = {
 };
 
 export const TxIndicator: React.FC<TxIndicatorProps> = ({ icon }) => {
-  const { subscriptions } = useApp();
+  const { subscriptions, toast } = useApp();
   const [isSubmittingTx, setIsSubmittingTx] = useState(false);
   const [indicator, setIndicator] = useState<keyof typeof Indicators>("spinner");
 
@@ -28,15 +28,21 @@ export const TxIndicator: React.FC<TxIndicatorProps> = ({ icon }) => {
 
   useEffect(() => {
     const unsubscribe = subscriptions.subscribe("submitTx", {
-      listener: ({ isSubmitting, isSuccess }) => {
-        if (isSubmitting) {
-          setIndicator("spinner");
-          setIsSubmittingTx(isSubmitting);
-        } else {
-          setIndicator(isSuccess ? "success" : "error");
-          setTimeout(() => {
-            setIsSubmittingTx(false);
-          }, 1500);
+      listener: (event) => {
+        switch (event.status) {
+          case "pending":
+            setIndicator("spinner");
+            setIsSubmittingTx(true);
+            break;
+          case "success":
+            setIndicator("success");
+            setTimeout(() => setIsSubmittingTx(false), 1500);
+            break;
+          case "error":
+            setIndicator("error");
+            toast.error({ title: event.title, description: event.description });
+            setTimeout(() => setIsSubmittingTx(false), 1500);
+            break;
         }
       },
     });

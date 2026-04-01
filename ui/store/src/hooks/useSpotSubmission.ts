@@ -19,7 +19,6 @@ type UseSpotSubmissionParameters = {
   amount: { base: string; quote: string };
   priceValue: string;
   controllers: { reset: () => void; setValue: (name: string, value: string) => void };
-  onError: (error: unknown) => void;
   onSuccess?: () => void;
 };
 
@@ -34,7 +33,6 @@ export function useSpotSubmission(parameters: UseSpotSubmissionParameters) {
     amount,
     priceValue,
     controllers,
-    onError,
     onSuccess,
   } = parameters;
 
@@ -79,7 +77,6 @@ export function useSpotSubmission(parameters: UseSpotSubmissionParameters) {
           funds: { [availableCoin.denom]: orderAmount },
         });
       },
-      onError,
       onSuccess: () => {
         controllers.reset();
         onSuccess?.();
