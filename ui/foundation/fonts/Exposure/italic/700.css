@@ -2,7 +2,6 @@
   font-family: 'Exposure';
   font-style: italic;
   font-weight: 700;
-  font-display: swap;
   src: url(../files/Exposure-30-Italic-205TF.woff2) format('woff2'),
     url(../files/Exposure-30-Italic-205TF.woff) format('woff');
 }
