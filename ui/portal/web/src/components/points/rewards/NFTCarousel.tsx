@@ -6,7 +6,7 @@ export type NFTItem = {
   id: string;
   rarity: string;
   label: string;
-  imageSrc: string;
+  frameSrc: string;
 };
 
 type NFTCarouselProps = {
@@ -14,15 +14,6 @@ type NFTCarouselProps = {
   isSpinning: boolean;
   targetNFT: NFTItem | null;
   onSpinComplete: () => void;
-};
-
-const RARITY_COLORS: Record<string, { bg: string; text: string }> = {
-  common: { bg: "bg-[#A8C686]", text: "text-[#2D3A1F]" },
-  uncommon: { bg: "bg-[#E8A0A0]", text: "text-[#4A2020]" },
-  epic: { bg: "bg-[#7BA3C9]", text: "text-[#1F2D3A]" },
-  golden: { bg: "bg-[#D4A84B]", text: "text-[#3A2D1F]" },
-  legendary: { bg: "bg-[#C9A0E8]", text: "text-[#3A1F4A]" },
-  rare: { bg: "bg-[#A0A0E8]", text: "text-[#1F1F4A]" },
 };
 
 const CARD_WIDTH_MOBILE = 232;
@@ -45,8 +36,6 @@ type NFTCardProps = {
 };
 
 const NFTCard: React.FC<NFTCardProps> = ({ nft, index, motionX, itemTotalWidth }) => {
-  const colors = RARITY_COLORS[nft.rarity] || RARITY_COLORS.common;
-
   const cardPosition = index * itemTotalWidth;
 
   const rotation = useTransform(motionX, (x) => {
@@ -75,20 +64,12 @@ const NFTCard: React.FC<NFTCardProps> = ({ nft, index, motionX, itemTotalWidth }
         transformOrigin: `center calc(100% + ${ROTATION_PIVOT_DISTANCE}px)`,
       }}
     >
-      <div
-        className={`absolute right-0 top-0 z-20 px-3 py-1 rounded-tr-lg rounded-bl-lg ${colors.bg} ${colors.text} diatype-xs-bold shadow-md`}
-      >
-        {nft.label}
-      </div>
-
-      <div className="w-full h-[284px] lg:h-[391px] rounded-2xl overflow-hidden bg-[#2a2520] border border-[#3a352f] shadow-xl">
-        <div className="w-full h-full flex items-center justify-center p-6 bg-gradient-to-b from-[#2a2520] to-[#1a1714]">
-          <img
-            src={nft.imageSrc}
-            alt={nft.label}
-            className="w-full h-full object-contain [filter:drop-shadow(0px_4px_30px_rgba(227,189,102,0.4))]"
-          />
-        </div>
+      <div className="w-full h-[284px] lg:h-[374px] rounded-2xl overflow-hidden shadow-xl">
+        <img
+          src={nft.frameSrc}
+          alt={nft.label}
+          className="w-full h-full object-cover"
+        />
       </div>
     </motion.div>
   );
@@ -209,7 +190,7 @@ export const NFTCarousel: React.FC<NFTCarouselProps> = ({
 
   return (
     <div className="relative flex flex-col items-center w-screen -mx-4 overflow-x-clip overflow-y-visible">
-      <div className="relative z-20 top-6">
+      <div className="relative z-20 top-8">
         <img src="/images/points/carousel-union.png" alt="" className="w-8 h-auto" />
       </div>
 
@@ -236,7 +217,7 @@ export const NFTCarousel: React.FC<NFTCarouselProps> = ({
         </div>
       </div>
 
-      <div className="relative z-20 bottom-6">
+      <div className="relative z-20 bottom-8">
         <img src="/images/points/carousel-union.png" alt="" className="w-8 h-auto rotate-180" />
       </div>
 
