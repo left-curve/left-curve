@@ -140,9 +140,10 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const sizeCoin = sizeCoinDenom === baseCoin.denom ? baseCoin : quoteCoin;
   const availableCoin = action === "buy" ? quoteCoin : baseCoin;
 
-  const { register, setValue, inputs } = controllers;
+  const { register, setValue, inputs, errors } = controllers;
   const size = inputs.size?.value || "0";
   const priceValue = inputs.price?.value || "0";
+  const hasErrors = Object.keys(errors).length > 0;
 
   const maxSizeAmount = useSpotMaxSize({
     availableCoin,
@@ -263,7 +264,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <TradeSubmitButton
           action={action}
           label={`${m["dex.protrade.spot.triggerAction"]({ action })} ${baseCoin.symbol}`}
-          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0)) || !!inputs.size?.error}
+          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0)) || hasErrors}
           isPending={submission.isPending}
           onSubmit={() => submission.mutateAsync()}
         />
@@ -374,9 +375,10 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const [tpslEnabled, setTpslEnabled] = useState(false);
 
-  const { register, setValue, inputs } = controllers;
+  const { register, setValue, inputs, errors } = controllers;
   const size = inputs.size?.value || "0";
   const priceValue = inputs.price?.value || "0";
+  const hasErrors = Object.keys(errors).length > 0;
 
   const changeSizeCoin = useCallback((denom: string) => {
     setSizeCoinDenom(denom);
@@ -555,7 +557,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <TradeSubmitButton
           action={action}
           label={`${action === "buy" ? "Buy" : "Sell"} ${baseCoin.symbol}`}
-          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0)) || !!inputs.size?.error}
+          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0)) || hasErrors}
           isPending={submission.isPending}
           onSubmit={() => submission.mutateAsync()}
         />
