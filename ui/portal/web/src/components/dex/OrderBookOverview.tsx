@@ -18,6 +18,7 @@ import {
   toPerpsPairId,
   usePerpsOrderBookState,
   perpsOrderBookStore,
+  useStorage,
 } from "@left-curve/store";
 import { calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
 
@@ -222,11 +223,15 @@ const OrderBook: React.FC<OrderBookProps> = ({
 }) => {
   const bucketSizeCoin = liquidityDepthStore((s) => s.bucketSizeCoin);
   const setBucketSizeCoin = liquidityDepthStore((s) => s.setBucketSizeCoin);
-  const [displayMode, setDisplayMode] = useState<"asset" | "usd">("asset");
+  const [perpsDisplayModeRaw, setPerpsDisplayMode] = useStorage<"base" | "quote">(
+    "perps-order-book-display-mode",
+    { initialValue: "base" },
+  );
+  const perpsDisplayMode = perpsDisplayModeRaw === "quote" ? "quote" : "base";
 
   const bucketSizeSymbol =
     mode === "perps"
-      ? displayMode === "usd"
+      ? perpsDisplayMode === "quote"
         ? "USD"
         : baseCoin.symbol
       : bucketSizeCoin === "base"
@@ -264,13 +269,13 @@ const OrderBook: React.FC<OrderBookProps> = ({
         )}
         {mode === "perps" && (
           <Select
-            value={displayMode}
-            onChange={(key) => setDisplayMode(key as "asset" | "usd")}
+            value={perpsDisplayMode}
+            onChange={(key) => setPerpsDisplayMode(key as "base" | "quote")}
             variant="plain"
             classNames={{ listboxWrapper: "right-0 left-auto" }}
           >
-            <Select.Item value="asset">{baseCoin.symbol}</Select.Item>
-            <Select.Item value="usd">USD</Select.Item>
+            <Select.Item value="base">{baseCoin.symbol}</Select.Item>
+            <Select.Item value="quote">USD</Select.Item>
           </Select>
         )}
       </div>
@@ -297,7 +302,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
         quote={quoteCoin}
         onSelectPrice={(price) => controllers.setValue("price", price)}
         mode={mode}
-        displayMode={displayMode}
+        displayMode={perpsDisplayMode}
       />
     </div>
   );
@@ -467,7 +472,7 @@ type LiquidityDepthProps = {
   quote: AnyCoin;
   onSelectPrice: (price: string) => void;
   mode: "spot" | "perps";
-  displayMode: "asset" | "usd";
+  displayMode: "base" | "quote";
 };
 
 const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
@@ -608,7 +613,7 @@ function perpsLiquidityDepthMapper(
     asks: Record<string, { size: string; notional: string }>;
   },
   bucketRecords: number,
-  displayMode: "asset" | "usd",
+  displayMode: "base" | "quote",
 ) {
   function mapSide(
     entries: Record<string, { size: string; notional: string }>,
@@ -625,7 +630,7 @@ function perpsLiquidityDepthMapper(
     const records: { price: string; size: string; total: string }[] = [];
 
     for (const [price, { size, notional }] of sorted) {
-      const value = displayMode === "usd" ? notional : size;
+      const value = displayMode === "quote" ? notional : size;
       total = Decimal(total).plus(value).toFixed();
       records.push({ price, size: value, total });
       if (Decimal(value).gt(highestSize)) highestSize = value;
