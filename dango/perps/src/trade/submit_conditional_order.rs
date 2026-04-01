@@ -13,7 +13,7 @@ use {
 pub fn submit_conditional_order(
     ctx: MutableCtx,
     pair_id: PairId,
-    size: Quantity,
+    size: Option<Quantity>,
     trigger_price: UsdPrice,
     trigger_direction: TriggerDirection,
     max_slippage: Dimensionless,
@@ -23,29 +23,30 @@ pub fn submit_conditional_order(
     // -------------------------------- Checks ---------------------------------
 
     // 1. User must have an open position in this pair.
-    // 2. Size sign must oppose the position sign (reduce-only).
-    // 3. |size| must not exceed |position.size|.
-    // 4. Must not already have a conditional order of the same direction for this pair.
+    // 2. If size is specified: sign must oppose position, |size| <= |position.size|.
+    // 3. Must not already have a conditional order of the same direction for this pair.
 
     let position = user_state
         .positions
         .get(&pair_id)
         .ok_or_else(|| anyhow!("no position in pair {pair_id}"))?;
 
-    ensure!(
-        (size.is_negative() && position.size.is_positive())
-            || (size.is_positive() && position.size.is_negative()),
-        "size must oppose position direction"
-    );
+    if let Some(size) = size {
+        ensure!(
+            (size.is_negative() && position.size.is_positive())
+                || (size.is_positive() && position.size.is_negative()),
+            "size must oppose position direction"
+        );
 
-    ensure!(
-        {
-            let abs_size = size.checked_abs()?;
-            let abs_pos_size = position.size.checked_abs()?;
-            abs_size <= abs_pos_size
-        },
-        "conditional order size exceeds position size"
-    );
+        ensure!(
+            {
+                let abs_size = size.checked_abs()?;
+                let abs_pos_size = position.size.checked_abs()?;
+                abs_size <= abs_pos_size
+            },
+            "conditional order size exceeds position size"
+        );
+    }
 
     let slot_occupied = match trigger_direction {
         TriggerDirection::Above => position.conditional_order_above.is_some(),
@@ -164,7 +165,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -177,7 +178,7 @@ mod tests {
         assert!(position.conditional_order_above.is_some());
         let order = position.conditional_order_above.as_ref().unwrap();
         assert_eq!(order.order_id, Uint64::ONE);
-        assert_eq!(order.size, Quantity::new_int(-5));
+        assert_eq!(order.size, Some(Quantity::new_int(-5)));
         assert_eq!(order.trigger_price, UsdPrice::new_int(2_500));
 
         // Next order ID incremented.
@@ -199,7 +200,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-10),
+            Some(Quantity::new_int(-10)),
             UsdPrice::new_int(1_800),
             TriggerDirection::Below,
             Dimensionless::new_percent(2),
@@ -227,7 +228,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(5),
+            Some(Quantity::new_int(5)),
             UsdPrice::new_int(1_500),
             TriggerDirection::Below,
             Dimensionless::new_percent(1),
@@ -256,7 +257,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(5),
+            Some(Quantity::new_int(5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -275,7 +276,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -299,7 +300,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -322,7 +323,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -333,7 +334,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-3),
+            Some(Quantity::new_int(-3)),
             UsdPrice::new_int(3_000),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -344,7 +345,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(1_800),
             TriggerDirection::Below,
             Dimensionless::new_percent(2),
@@ -367,7 +368,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -378,7 +379,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-10),
+            Some(Quantity::new_int(-10)),
             UsdPrice::new_int(1_800),
             TriggerDirection::Below,
             Dimensionless::new_percent(2),

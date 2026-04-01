@@ -2190,7 +2190,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-10),
+                size: Some(Quantity::new_int(-10)),
                 trigger_price: UsdPrice::new_int(2_500),
                 trigger_direction: perps::TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
@@ -2334,7 +2334,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_800),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -2479,7 +2479,7 @@ fn liquidation_cancels_conditional_orders() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(2_500),
                 trigger_direction: perps::TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
@@ -2494,7 +2494,7 @@ fn liquidation_cancels_conditional_orders() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_500),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -2692,7 +2692,7 @@ fn conditional_orders_follow_price_time_priority() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_900),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -2711,7 +2711,7 @@ fn conditional_orders_follow_price_time_priority() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_800),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -2976,7 +2976,7 @@ fn conditional_order_failure_does_not_block_others() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_900),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -2996,7 +2996,7 @@ fn conditional_order_failure_does_not_block_others() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(5),
+                size: Some(Quantity::new_int(5)),
                 trigger_price: UsdPrice::new_int(1_800),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),

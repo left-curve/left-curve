@@ -386,10 +386,16 @@ fn process_triggered_order(
 
     let should_cancel = match (&order, position_size) {
         (Some(ord), Some(pos_size)) => {
-            // Position flipped: the conditional order's size no longer reduces.
+            // If size is specified, check for position flip.
             // E.g. order.size is negative (close long) but position is now short.
-            (ord.size.is_negative() && pos_size.is_negative())
-                || (ord.size.is_positive() && pos_size.is_positive())
+            match ord.size {
+                Some(size) => {
+                    (size.is_negative() && pos_size.is_negative())
+                        || (size.is_positive() && pos_size.is_positive())
+                },
+                // size = None means "close entire position" — never flipped.
+                None => false,
+            }
         },
         _ => true,
     };
@@ -424,18 +430,24 @@ fn process_triggered_order(
     let order = order.unwrap();
     let position_size = position_size.unwrap();
 
-    // Auto-resize: clamp |order.size| to |position.size|.
-    let abs_order_size = order.size.checked_abs()?;
-    let abs_pos_size = position_size.checked_abs()?;
-    let clamped_size = if abs_order_size > abs_pos_size {
-        // Preserve the sign of order.size but clamp the magnitude.
-        if order.size.is_negative() {
-            abs_pos_size.checked_neg()?
-        } else {
-            abs_pos_size
-        }
-    } else {
-        order.size
+    // Compute the closing size.
+    // If size is None, close the entire position (negate position size).
+    // If size is Some, clamp |order.size| to |position.size|.
+    let clamped_size = match order.size {
+        None => position_size.checked_neg()?,
+        Some(size) => {
+            let abs_order_size = size.checked_abs()?;
+            let abs_pos_size = position_size.checked_abs()?;
+            if abs_order_size > abs_pos_size {
+                if size.is_negative() {
+                    abs_pos_size.checked_neg()?
+                } else {
+                    abs_pos_size
+                }
+            } else {
+                size
+            }
+        },
     };
 
     events.push(ConditionalOrderTriggered {

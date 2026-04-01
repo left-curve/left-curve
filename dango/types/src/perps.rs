@@ -476,9 +476,10 @@ pub struct ConditionalOrder {
     /// Internal ID for price-time priority tiebreaking during cron execution.
     pub order_id: ConditionalOrderId,
 
-    /// Size to close (sign must oppose the position: negative for closing longs,
-    /// positive for closing shorts). Always reduce-only.
-    pub size: Quantity,
+    /// Size to close. If `Some`, the sign must oppose the position (negative for
+    /// closing longs, positive for closing shorts). If `None`, closes the entire
+    /// position at trigger time.
+    pub size: Option<Quantity>,
 
     /// Oracle price that activates this order.
     pub trigger_price: UsdPrice,
@@ -593,7 +594,8 @@ pub enum TraderMsg {
     /// market order at trigger time.
     SubmitConditionalOrder {
         pair_id: PairId,
-        size: Quantity,
+        /// If `None`, closes the entire position at trigger time.
+        size: Option<Quantity>,
         trigger_price: UsdPrice,
         trigger_direction: TriggerDirection,
         max_slippage: Dimensionless,
@@ -930,7 +932,7 @@ pub struct ConditionalOrderPlaced {
     pub user: Addr,
     pub trigger_price: UsdPrice,
     pub trigger_direction: TriggerDirection,
-    pub size: Quantity,
+    pub size: Option<Quantity>,
     pub max_slippage: Dimensionless,
 }
 

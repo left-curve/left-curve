@@ -163,7 +163,7 @@ mod tests {
     fn make_conditional_order(order_id: u64, size: i128, trigger_price: i128) -> ConditionalOrder {
         ConditionalOrder {
             order_id: Uint64::new(order_id),
-            size: Quantity::new_int(size),
+            size: Some(Quantity::new_int(size)),
             trigger_price: UsdPrice::new_int(trigger_price),
             max_slippage: Dimensionless::new_percent(1),
         }
