@@ -176,10 +176,6 @@ pub struct Param {
     /// trading pairs.
     pub max_open_orders: usize,
 
-    /// Maximum number of conditional (TP/SL) orders a single user may have
-    /// across all trading pairs.
-    pub max_conditional_orders: usize,
-
     /// Volume-tiered maker fee rates. Highest qualifying tier wins;
     /// base rate applies when no tier is met.
     pub maker_fee_rates: RateSchedule,
@@ -369,9 +365,6 @@ pub struct UserState {
 
     /// Number of resting limit orders the user currently has on the book.
     pub open_order_count: usize,
-
-    /// Number of conditional (TP/SL) orders the user currently has.
-    pub conditional_order_count: usize,
 }
 
 impl UserState {

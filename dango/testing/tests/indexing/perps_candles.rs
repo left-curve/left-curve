@@ -625,7 +625,6 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
                     vault_cooldown_period: Duration::from_days(1),
                     max_unlocks: 10,
                     max_open_orders: 100,
-                    max_conditional_orders: 100,
                     funding_period: Duration::from_hours(1),
                     ..Default::default()
                 },

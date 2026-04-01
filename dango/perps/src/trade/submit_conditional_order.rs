@@ -1,5 +1,5 @@
 use {
-    crate::{CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, PARAM, USER_STATES},
+    crate::{CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, USER_STATES},
     anyhow::{anyhow, ensure},
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
@@ -7,7 +7,7 @@ use {
             ConditionalOrder, ConditionalOrderId, ConditionalOrderPlaced, PairId, TriggerDirection,
         },
     },
-    grug::{MutableCtx, NumberConst, Response},
+    grug::{MutableCtx, NumberConst, Order as IterationOrder, Response},
 };
 
 pub fn submit_conditional_order(
@@ -18,15 +18,14 @@ pub fn submit_conditional_order(
     trigger_direction: TriggerDirection,
     max_slippage: Dimensionless,
 ) -> anyhow::Result<Response> {
-    let param = PARAM.load(ctx.storage)?;
-    let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
+    let user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
     // -------------------------------- Checks ---------------------------------
 
     // 1. User must have an open position in this pair.
     // 2. Size sign must oppose the position sign (reduce-only).
     // 3. |size| must not exceed |position.size|.
-    // 4. Must not exceed max conditional orders.
+    // 4. Must not already have a conditional order of the same direction for this pair.
 
     let position = user_state
         .positions
@@ -49,17 +48,28 @@ pub fn submit_conditional_order(
     );
 
     ensure!(
-        user_state.conditional_order_count < param.max_conditional_orders,
-        "maximum conditional orders reached"
+        {
+            let map = match trigger_direction {
+                TriggerDirection::Above => &CONDITIONAL_ABOVE,
+                TriggerDirection::Below => &CONDITIONAL_BELOW,
+            };
+
+            let has_existing = map
+                .idx
+                .user
+                .prefix(ctx.sender)
+                .range(ctx.storage, None, None, IterationOrder::Ascending)
+                .any(|res| res.map(|((pid, ..), _)| pid == pair_id).unwrap_or(false));
+
+            !has_existing
+        },
+        "conditional order already exists for pair {pair_id}"
     );
 
     // ----------------------------- State changes -----------------------------
 
     // Assign order ID.
     let order_id = NEXT_ORDER_ID.load(ctx.storage)?;
-
-    // Increment the user's conditional order count.
-    user_state.conditional_order_count += 1;
 
     // Create the order.
     // For BELOW orders, invert the trigger_price in the storage key so that
@@ -80,8 +90,6 @@ pub fn submit_conditional_order(
     };
 
     NEXT_ORDER_ID.save(ctx.storage, &(order_id + ConditionalOrderId::ONE))?;
-
-    USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
 
     match trigger_direction {
         TriggerDirection::Above => CONDITIONAL_ABOVE.save(ctx.storage, key, &order)?,
@@ -147,12 +155,7 @@ mod tests {
     }
 
     fn init_storage(storage: &mut dyn Storage, user_state: UserState) {
-        PARAM
-            .save(storage, &Param {
-                max_conditional_orders: 2,
-                ..Default::default()
-            })
-            .unwrap();
+        PARAM.save(storage, &Param::default()).unwrap();
         NEXT_ORDER_ID.save(storage, &OrderId::ONE).unwrap();
         USER_STATES.save(storage, USER, &user_state).unwrap();
     }
@@ -185,10 +188,6 @@ mod tests {
             .may_load(&ctx.storage, Uint64::ONE)
             .unwrap();
         assert!(order.is_some());
-
-        // User state updated.
-        let state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        assert_eq!(state.conditional_order_count, 1);
 
         // Next order ID incremented.
         let next_id = NEXT_ORDER_ID.load(&ctx.storage).unwrap();
@@ -320,15 +319,17 @@ mod tests {
     }
 
     #[test]
-    fn p7_reject_max_count() {
+    fn p7_reject_duplicate_direction() {
         let mut ctx = MockContext::new()
             .with_sender(USER)
             .with_funds(Coins::default());
 
-        let mut us = user_state_with_position(long_position(10));
-        us.conditional_order_count = 2; // already at max (max_conditional_orders=2)
-        init_storage(&mut ctx.storage, us);
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
 
+        // First Above order — should succeed.
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
@@ -337,7 +338,29 @@ mod tests {
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
         )
-        .should_fail_with_error("maximum conditional orders");
+        .should_succeed();
+
+        // Second Above order for same pair — should fail.
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Quantity::new_int(-3),
+            UsdPrice::new_int(3_000),
+            TriggerDirection::Above,
+            Dimensionless::new_percent(1),
+        )
+        .should_fail_with_error("already exists");
+
+        // Below order for same pair — should succeed (different direction).
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Quantity::new_int(-5),
+            UsdPrice::new_int(1_800),
+            TriggerDirection::Below,
+            Dimensionless::new_percent(2),
+        )
+        .should_succeed();
     }
 
     #[test]
@@ -373,7 +396,22 @@ mod tests {
         )
         .should_succeed();
 
-        let state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        assert_eq!(state.conditional_order_count, 2);
+        // Both orders exist.
+        assert!(
+            CONDITIONAL_ABOVE
+                .idx
+                .order_id
+                .may_load(&ctx.storage, Uint64::ONE)
+                .unwrap()
+                .is_some()
+        );
+        assert!(
+            CONDITIONAL_BELOW
+                .idx
+                .order_id
+                .may_load(&ctx.storage, Uint64::new(2))
+                .unwrap()
+                .is_some()
+        );
     }
 }

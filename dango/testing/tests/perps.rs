@@ -28,7 +28,6 @@ fn default_param() -> Param {
         vault_cooldown_period: Duration::from_days(1),
         max_unlocks: 10,
         max_open_orders: 100,
-        max_conditional_orders: 10,
         funding_period: Duration::from_hours(1),
         ..Default::default()
     }
@@ -2234,14 +2233,6 @@ fn conditional_order_tp_triggers_on_price_rise() {
         "should have exactly 1 conditional order"
     );
 
-    let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed()
-        .unwrap();
-    assert_eq!(state.conditional_order_count, 1);
-
     // Step 6: Bidder (user2) places bid: 10 ETH @ $2,500.
     suite
         .execute(
@@ -2278,7 +2269,6 @@ fn conditional_order_tp_triggers_on_price_rise() {
         !state.positions.contains_key(&pair),
         "position should be closed after TP triggered"
     );
-    assert_eq!(state.conditional_order_count, 0);
 
     // PnL should be positive: 10 * ($2,500 - $2,000) = +$5,000 (minus fees).
     // Margin started at $9,980, so should be > $14,000.
@@ -2418,7 +2408,6 @@ fn conditional_order_sl_triggers_on_price_drop() {
         !state.positions.contains_key(&pair),
         "position should be closed after SL triggered"
     );
-    assert_eq!(state.conditional_order_count, 0);
 
     // Margin started at $9,990 (after $10 fee), loss of $1,000, minus close fee.
     // Should be roughly $8,980.
@@ -2545,14 +2534,6 @@ fn liquidation_cancels_conditional_orders() {
         )
         .should_succeed();
 
-    let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed()
-        .unwrap();
-    assert_eq!(state.conditional_order_count, 2);
-
     // Step 4: Oracle drops to $1,450.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
 
@@ -2598,18 +2579,6 @@ fn liquidation_cancels_conditional_orders() {
     // Step 7: Verify conditional orders are canceled.
     // Note: liquidation may be partial, so the position may still exist
     // (just reduced). The key assertion is that conditional orders were canceled.
-    let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed()
-        .unwrap();
-
-    assert_eq!(
-        state.conditional_order_count, 0,
-        "conditional orders should be canceled by liquidation"
-    );
-
     // Conditional orders should be gone from storage.
     let all_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
@@ -2846,10 +2815,6 @@ fn conditional_orders_follow_price_time_priority() {
         !state_user1.positions.contains_key(&pair),
         "User1 position should be closed after SL triggered"
     );
-    assert_eq!(
-        state_user1.conditional_order_count, 0,
-        "User1 should have 0 conditional orders"
-    );
 
     let state_user3: UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
@@ -2862,11 +2827,6 @@ fn conditional_orders_follow_price_time_priority() {
         !state_user3.positions.contains_key(&pair),
         "User3 position should be closed after SL triggered"
     );
-    assert_eq!(
-        state_user3.conditional_order_count, 0,
-        "User3 should have 0 conditional orders"
-    );
-
     // User1 got the better fill ($1,790) so should have more margin than User3
     // who got the worse fill ($1,770). Both started with the same deposit and
     // position, so the ~$100 PnL difference should be reflected in margins.
@@ -3122,10 +3082,6 @@ fn conditional_order_failure_does_not_block_others() {
         Quantity::new_int(5),
         "User1 should still be 5 ETH long (sell had no liquidity)"
     );
-    assert_eq!(
-        state_user1.conditional_order_count, 0,
-        "User1 SL should be cancelled, not stuck retrying"
-    );
 
     // User3: position closed (short covered), conditional order consumed.
     let state_user3: UserState = suite
@@ -3139,11 +3095,6 @@ fn conditional_order_failure_does_not_block_others() {
         !state_user3.positions.contains_key(&pair),
         "User3 short should be closed (buy filled against ask @ $1,800)"
     );
-    assert_eq!(
-        state_user3.conditional_order_count, 0,
-        "User3 should have 0 conditional orders"
-    );
-
     // Both users' conditional order queries should return empty.
     let orders_user1: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {

@@ -16,6 +16,7 @@ use {
         price::may_invert_price,
         query::query_volume,
         referral::apply_fee_commissions,
+        trade::_cancel_conditional_orders_for_pair,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -95,6 +96,26 @@ pub fn submit_order(
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
 
     maker_states.insert(ctx.sender, taker_state);
+
+    // Cancel conditional orders for users whose positions were fully closed or
+    // flipped. Partial closes keep TP/SL active (they auto-resize on trigger).
+    for update in &index_updates {
+        let should_cancel = match (&update.old_entry, &update.new_entry) {
+            (Some(_), None) => true,
+            (Some((_, was_long)), Some((_, is_long))) if was_long != is_long => true,
+            _ => false,
+        };
+
+        if should_cancel {
+            _cancel_conditional_orders_for_pair(
+                ctx.storage,
+                update.user,
+                &update.pair_id,
+                ReasonForOrderRemoval::PositionClosed,
+                &mut events,
+            )?;
+        }
+    }
 
     apply_fee_commissions(
         ctx.storage,

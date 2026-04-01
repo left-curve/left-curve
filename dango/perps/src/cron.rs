@@ -8,7 +8,7 @@ use {
         position_index::apply_position_index_updates,
         price::may_invert_price,
         referral::apply_fee_commissions,
-        trade::_submit_order,
+        trade::{_cancel_conditional_orders_for_pair, _submit_order},
     },
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -271,6 +271,8 @@ fn process_conditional_orders_for_pair(
         .collect::<StdResult<Vec<_>>>()?;
 
     for ((trigger_price, order_id), order) in above_triggered {
+        CONDITIONAL_ABOVE.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
+
         process_triggered_order(
             storage,
             querier,
@@ -287,8 +289,6 @@ fn process_conditional_orders_for_pair(
             oracle_price,
             events,
         )?;
-
-        CONDITIONAL_ABOVE.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
     }
 
     // BELOW orders: trigger when oracle_price <= trigger_price.
@@ -304,6 +304,8 @@ fn process_conditional_orders_for_pair(
         .collect::<StdResult<Vec<_>>>()?;
 
     for ((trigger_price, order_id), order) in below_triggered {
+        CONDITIONAL_BELOW.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
+
         process_triggered_order(
             storage,
             querier,
@@ -320,8 +322,6 @@ fn process_conditional_orders_for_pair(
             oracle_price,
             events,
         )?;
-
-        CONDITIONAL_BELOW.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
     }
 
     PAIR_STATES.save(storage, pair_id, &pair_state)?;
@@ -350,9 +350,6 @@ fn process_triggered_order(
     let mut user_state = USER_STATES
         .may_load(storage, order.user)?
         .unwrap_or_default();
-
-    // Decrement conditional order count.
-    user_state.conditional_order_count = user_state.conditional_order_count.saturating_sub(1);
 
     // Check if the user still has a position in this pair.
     let position = user_state.positions.get(pair_id);
@@ -484,6 +481,26 @@ fn process_triggered_order(
     flush_volumes(storage, current_time, &volumes)?;
 
     maker_states.insert(order.user, user_state);
+
+    // Cancel sibling conditional orders for users whose positions were fully
+    // closed or flipped by this triggered order.
+    for update in &index_updates {
+        let should_cancel = match (&update.old_entry, &update.new_entry) {
+            (Some(_), None) => true,
+            (Some((_, was_long)), Some((_, is_long))) if was_long != is_long => true,
+            _ => false,
+        };
+
+        if should_cancel {
+            _cancel_conditional_orders_for_pair(
+                storage,
+                update.user,
+                &update.pair_id,
+                ReasonForOrderRemoval::PositionClosed,
+                events,
+            )?;
+        }
+    }
 
     apply_fee_commissions(
         storage,

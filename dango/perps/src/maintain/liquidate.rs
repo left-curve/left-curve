@@ -70,12 +70,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         ReasonForOrderRemoval::Liquidated,
     )?;
 
-    let cond_events = _cancel_all_conditional_orders(
-        ctx.storage,
-        user,
-        &mut user_state,
-        ReasonForOrderRemoval::Liquidated,
-    )?;
+    let cond_events =
+        _cancel_all_conditional_orders(ctx.storage, user, ReasonForOrderRemoval::Liquidated)?;
 
     // ------------------- 3. Load pair params and states ---------------------
 

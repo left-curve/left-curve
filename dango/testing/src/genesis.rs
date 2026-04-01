@@ -642,7 +642,6 @@ impl Preset for PerpsOption {
                 vault_cooldown_period: Duration::from_days(1),
                 max_unlocks: 10,
                 max_open_orders: 100,
-                max_conditional_orders: 10,
                 funding_period: Duration::from_hours(1),
                 referral_active: true,
                 ..Default::default()

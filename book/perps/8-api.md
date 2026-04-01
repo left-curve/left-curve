@@ -646,7 +646,6 @@ query {
 {
   "max_unlocks": 5,
   "max_open_orders": 50,
-  "max_conditional_orders": 20,
   "maker_fee_rates": {
     "base": "0.000000",
     "tiers": {}
@@ -673,7 +672,6 @@ query {
 | -------------------------- | -------------- | ---------------------------------------------------------- |
 | `max_unlocks`              | `usize`        | Max concurrent vault unlock requests per user              |
 | `max_open_orders`          | `usize`        | Max resting limit orders per user (all pairs)              |
-| `max_conditional_orders`   | `usize`        | Max TP/SL orders per user (all pairs)                      |
 | `maker_fee_rates`          | `RateSchedule` | Volume-tiered maker fee rates                              |
 | `taker_fee_rates`          | `RateSchedule` | Volume-tiered taker fee rates                              |
 | `protocol_fee_rate`        | `Dimensionless`| Fraction of trading fees routed to treasury                |
@@ -1042,8 +1040,7 @@ query {
   },
   "unlocks": [],
   "reserved_margin": "500.000000",
-  "open_order_count": 2,
-  "conditional_order_count": 1
+  "open_order_count": 2
 }
 ```
 
@@ -1055,7 +1052,6 @@ query {
 | `unlocks`                 | `[Unlock]`              | Pending vault withdrawals                |
 | `reserved_margin`         | `UsdValue`              | Margin reserved for resting limit orders |
 | `open_order_count`        | `usize`                 | Number of resting limit orders           |
-| `conditional_order_count` | `usize`                 | Number of TP/SL orders                   |
 
 **Position:**
 

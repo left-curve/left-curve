@@ -14,7 +14,7 @@ mod trade;
 mod vault;
 mod volume;
 
-pub use state::PARAM;
+pub use state::{CONDITIONAL_ABOVE, CONDITIONAL_BELOW, PARAM};
 pub(crate) use {querier::*, state::*, volume::*};
 
 use {
