@@ -35,12 +35,13 @@ export function usePoints(parameters: UsePointsParameters) {
     const referralPoints = parseUdec(data?.stats.points.referral ?? "0");
     const points = lpPoints + tradingPoints + referralPoints;
     const volume = parseUdec(data?.stats.volume ?? "0");
+    const pnl = parseUdec(data?.stats.realized_pnl ?? "0");
     const rank = data?.rank ?? 0;
 
     const percentile =
       rank > 0 && totalUsers > 0 ? Math.min(((totalUsers - rank + 1) / totalUsers) * 100, 100) : 0;
 
-    return { points, lpPoints, tradingPoints, referralPoints, volume, rank, percentile };
+    return { points, lpPoints, tradingPoints, referralPoints, volume, pnl, rank, percentile };
   }, [userStatsQuery.data, totalUsersQuery.data]);
 
   return {
