@@ -6,13 +6,35 @@ import type { NFTItem } from "./NFTCarousel";
 type NFTResultProps = {
   nft: NFTItem;
   onContinue: () => void;
+  isOpenAllMode?: boolean;
+  currentBoxIndex?: number;
+  totalBoxesToOpen?: number;
+  onNext?: () => void;
 };
 
-export const NFTResult: React.FC<NFTResultProps> = ({ nft, onContinue }) => {
+export const NFTResult: React.FC<NFTResultProps> = ({
+  nft,
+  onContinue,
+  isOpenAllMode = false,
+  currentBoxIndex = 0,
+  totalBoxesToOpen = 1,
+  onNext,
+}) => {
   const handleShareToX = () => {
     const text = `I just won a ${nft.label} NFT on Dango!`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
+  };
+
+  const isLastBox = currentBoxIndex >= totalBoxesToOpen - 1;
+  const showNextButton = isOpenAllMode && !isLastBox;
+
+  const handleButtonClick = () => {
+    if (showNextButton && onNext) {
+      onNext();
+    } else {
+      onContinue();
+    }
   };
 
   return (
@@ -38,27 +60,33 @@ export const NFTResult: React.FC<NFTResultProps> = ({ nft, onContinue }) => {
 
       <div className="p-6 flex flex-col items-center gap-4">
         <motion.div
-          className="w-full aspect-square max-w-[240px] lg:max-w-[280px] rounded-xl overflow-hidden bg-[#2a2520] flex items-center justify-center p-4"
+          className="w-full max-w-[280px] lg:max-w-[320px] aspect-[320/374] rounded-xl overflow-hidden"
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
         >
           <img
-            src={nft.imageSrc}
+            src={nft.frameSrc}
             alt={nft.label}
             crossOrigin="anonymous"
-            className="w-full h-full object-contain [filter:drop-shadow(0px_4px_40px_rgba(227,189,102,0.5))]"
+            className="w-full h-full object-cover"
           />
         </motion.div>
+
+        {isOpenAllMode && (
+          <p className="diatype-m-medium text-white/80">
+            {currentBoxIndex + 1}/{totalBoxesToOpen}
+          </p>
+        )}
       </div>
 
       <div className="px-6 pb-6 flex flex-col gap-3">
         <Button
           variant="secondary"
           className="w-full"
-          onClick={onContinue}
+          onClick={handleButtonClick}
         >
-          Done
+          {showNextButton ? "Next" : "Done"}
         </Button>
 
         <button

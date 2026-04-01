@@ -36,13 +36,13 @@ const FRAME_DURATION = 1000 / ANIMATION_FPS;
 const FLASH_IMAGE = "/images/points/flash.png";
 const FLASH_IMAGE2 = "/images/points/flash2.png";
 
-const NFT_IMAGES = [
-  "/images/points/nft/common.png",
-  "/images/points/nft/uncommon.png",
-  "/images/points/nft/epic.png",
-  "/images/points/nft/mythic.png",
-  "/images/points/nft/legendary.png",
-  "/images/points/nft/rare.png",
+const NFT_FRAMES = [
+  "/images/points/nft/frame-common.png",
+  "/images/points/nft/frame-uncommon.png",
+  "/images/points/nft/frame-rare.png",
+  "/images/points/nft/frame-epic.png",
+  "/images/points/nft/frame-legendary.png",
+  "/images/points/nft/frame-mythic.png",
 ];
 
 const prefetchedImages: HTMLImageElement[] = [];
@@ -54,7 +54,7 @@ const prefetchImages = () => {
     ...Object.values(CHEST_ASSETS),
     FLASH_IMAGE,
     FLASH_IMAGE2,
-    ...NFT_IMAGES,
+    ...NFT_FRAMES,
     ...Object.values(ANIMATION_FRAMES).flat(),
   ];
 
@@ -70,9 +70,13 @@ const prefetchImages = () => {
 
 type ChestOpeningContextValue = {
   openChest: (variant: BoxVariant) => void;
+  openAllChests: (variant: BoxVariant) => void;
   closeChest: () => void;
   isOpen: boolean;
   currentVariant: BoxVariant | null;
+  isOpenAllMode: boolean;
+  currentBoxIndex: number;
+  totalBoxesToOpen: number;
 };
 
 const [ChestOpeningContextProvider, useChestOpeningContext] =
@@ -98,6 +102,12 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
   const [animationComplete, setAnimationComplete] = useState(false);
   const animationRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
+
+  // Open All mode state
+  const [isOpenAllMode, setIsOpenAllMode] = useState(false);
+  const [currentBoxIndex, setCurrentBoxIndex] = useState(0);
+  const [totalBoxesToOpen, setTotalBoxesToOpen] = useState(1);
+  const [boxesToOpen, setBoxesToOpen] = useState<BoxReward[]>([]);
 
   const isOpen = currentVariant !== null;
   const animationFrames = currentVariant ? (ANIMATION_FRAMES[currentVariant] ?? null) : null;
@@ -164,23 +174,82 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
       setAnimationComplete(false);
       lastFrameTimeRef.current = 0;
       setCurrentVariant(variant);
+      setIsOpenAllMode(false);
+      setCurrentBoxIndex(0);
+      setTotalBoxesToOpen(1);
+      setBoxesToOpen([]);
     },
     [unopenedBoxes],
   );
 
-  const closeChest = useCallback(() => {
+  const openAllChests = useCallback(
+    (variant: BoxVariant) => {
+      const boxes = unopenedBoxes[variant];
+      if (!boxes || boxes.length === 0) return;
+
+      setBoxesToOpen([...boxes]);
+      setTotalBoxesToOpen(boxes.length);
+      setCurrentBoxIndex(0);
+      setIsOpenAllMode(true);
+
+      const box = boxes[0];
+      setCurrentBox(box);
+      setCurrentFrame(0);
+      setAnimationComplete(false);
+      lastFrameTimeRef.current = 0;
+      setCurrentVariant(variant);
+    },
+    [unopenedBoxes],
+  );
+
+  const openNextBox = useCallback(() => {
+    if (!isOpenAllMode || !currentVariant) return;
+
+    // Mark current box as opened
     if (currentBox && userIndex) {
       openBoxMutation.mutate({ boxUserIndex: userIndex, boxId: currentBox.box_id });
     }
-    setCurrentVariant(null);
-    setCurrentBox(null);
+
+    const nextIndex = currentBoxIndex + 1;
+    if (nextIndex >= boxesToOpen.length) {
+      // No more boxes, close
+      closeChestInternal();
+      return;
+    }
+
+    // Open next box
+    setCurrentBoxIndex(nextIndex);
+    const nextBox = boxesToOpen[nextIndex];
+    setCurrentBox(nextBox);
     setCurrentFrame(0);
     setAnimationComplete(false);
     lastFrameTimeRef.current = 0;
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
-  }, [currentBox, userIndex, openBoxMutation]);
+  }, [isOpenAllMode, currentVariant, currentBox, userIndex, currentBoxIndex, boxesToOpen, openBoxMutation]);
+
+  const closeChestInternal = useCallback(() => {
+    setCurrentVariant(null);
+    setCurrentBox(null);
+    setCurrentFrame(0);
+    setAnimationComplete(false);
+    lastFrameTimeRef.current = 0;
+    setIsOpenAllMode(false);
+    setCurrentBoxIndex(0);
+    setTotalBoxesToOpen(1);
+    setBoxesToOpen([]);
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+  }, []);
+
+  const closeChest = useCallback(() => {
+    if (currentBox && userIndex) {
+      openBoxMutation.mutate({ boxUserIndex: userIndex, boxId: currentBox.box_id });
+    }
+    closeChestInternal();
+  }, [currentBox, userIndex, openBoxMutation, closeChestInternal]);
 
   const onAnimationComplete = useCallback(() => {
     setAnimationComplete(true);
@@ -190,9 +259,13 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
     <ChestOpeningContextProvider
       value={{
         openChest,
+        openAllChests,
         closeChest,
         isOpen,
         currentVariant,
+        isOpenAllMode,
+        currentBoxIndex,
+        totalBoxesToOpen,
       }}
     >
       {children}
@@ -205,6 +278,10 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
             currentFrame={currentFrame}
             animationFrames={animationFrames}
             onAnimationComplete={onAnimationComplete}
+            isOpenAllMode={isOpenAllMode}
+            currentBoxIndex={currentBoxIndex}
+            totalBoxesToOpen={totalBoxesToOpen}
+            onNext={openNextBox}
           />,
           document.body,
         )}
