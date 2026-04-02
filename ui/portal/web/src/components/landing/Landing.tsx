@@ -205,7 +205,7 @@ const SectionCommunity: React.FC = () => {
               </Button>
               <Button
                 as="a"
-                href="https://discord.gg/4uB9UDzYhz"
+                href="https://discord.gg/BWJtyySxBM"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="gap-0"

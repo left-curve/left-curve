@@ -51,5 +51,5 @@ Most chains compete on speed (TPS). Dango competes on **product design** — spe
 ---
 
 > - [Follow us on Twitter](https://x.com/dango)
-> - [Join our Discord server](https://discord.gg/NaSZhRTwjp)
+> - [Join our Discord server](https://discord.gg/BWJtyySxBM)
 > - [Check out source code on GitHub](https://github.com/left-curve/left-curve)
