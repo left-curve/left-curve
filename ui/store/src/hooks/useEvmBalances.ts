@@ -11,6 +11,13 @@ export type UseEvmBalancesParameters = {
   address?: Address;
 };
 
+const infuraUrl = {
+  "1": "https://mainnet.infura.io/v3/00f81bbb13ef4da997f6351b8146807e",
+  "11155111": "https://sepolia.infura.io/v3/2de96f6db6d34eccaa8935cabb9b29c8",
+  "8453": "base",
+  "42161": "arbitrum",
+};
+
 export function useEvmBalances(parameters: UseEvmBalancesParameters) {
   const { chain, address } = parameters;
 
@@ -23,7 +30,9 @@ export function useEvmBalances(parameters: UseEvmBalancesParameters) {
 
       const evmClient = createPublicClient({
         chain: chain as Chain,
-        transport: http(undefined, { batch: true }),
+        transport: http(infuraUrl[chain.id], {
+          batch: true,
+        }),
       });
 
       const nativeBalance = await evmClient.getBalance({ address });
