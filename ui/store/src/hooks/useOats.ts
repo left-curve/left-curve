@@ -5,7 +5,7 @@ import { fetchCampaigns, fetchUserOats } from "./pointsApi.js";
 
 type OATType = "supporter" | "wizard" | "trader" | "hurrah";
 
-const OAT_ORDER: OATType[] = ["hurrah", "trader", "wizard", "supporter"];
+const OAT_ORDER: OATType[] = ["supporter", "wizard", "trader", "hurrah"];
 
 const FALLBACK_CAMPAIGN_MAP: Record<number, OATType> = {
   1: "supporter",
