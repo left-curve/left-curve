@@ -20,7 +20,6 @@ fn param() -> Param {
     Param {
         max_unlocks: 5,
         max_open_orders: 20,
-        max_conditional_orders: 10,
         maker_fee_rates: RateSchedule {
             base: Dimensionless::new_raw(100), // 0.01%  (1.0 bp)
             tiers: btree_map! {
