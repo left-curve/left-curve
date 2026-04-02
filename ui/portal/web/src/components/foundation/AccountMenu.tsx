@@ -361,6 +361,9 @@ export const WalletTab: React.FC = () => {
         <SectionHeader title={m["accountMenu.perpAccount"]()} />
         <AssetCard.Perp amount={perpsState?.margin ?? "0"} />
       </div>
+      <div className="w-full px-4">
+        <div className="w-full h-px bg-outline-secondary-gray" />
+      </div>
       <div className="flex flex-col w-full">
         <SectionHeader title={m["accountMenu.spotAccount"]()} />
         {sortedBalances.length > 0 ? (
