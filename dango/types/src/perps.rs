@@ -742,6 +742,20 @@ pub enum QueryMsg {
         since: Option<Timestamp>,
     },
 
+    /// Query multiple cumulative referral data snapshots for a user,
+    /// paginated by day-bucket in reverse chronological order. Returns raw
+    /// cumulative entries (no delta computation), useful for charting
+    /// historical referral activity.
+    /// `start_after` — exclusive lower bound for descending iteration;
+    /// entries strictly older than this timestamp are returned.
+    /// `limit` — max entries to return (defaults to `DEFAULT_PAGE_LIMIT`).
+    #[returns(Vec<(Timestamp, UserReferralData)>)]
+    ReferralDataEntries {
+        user: UserIndex,
+        start_after: Option<Timestamp>,
+        limit: Option<u32>,
+    },
+
     /// Query per-referee statistics for a referrer, with ordering and pagination.
     #[returns(Vec<(Referee, RefereeStats)>)]
     ReferrerToRefereeStats {
