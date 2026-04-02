@@ -1,21 +1,22 @@
 use {
     crate::{
-        ASKS, BIDS, NEXT_ORDER_ID, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-        USER_STATES, VOLUME_LOOKBACK,
+        VOLUME_LOOKBACK,
         core::{
             check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
             compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
             decompose_fill, execute_fill, is_price_constraint_violated,
         },
-        flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
         price::may_invert_price,
+        querier::NoCachePerpQuerier,
         query::query_volume,
         referral::apply_fee_commissions,
+        state::{ASKS, BIDS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+        volume::flush_volumes,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -801,7 +802,7 @@ pub fn settle_fill(
 }
 
 #[derive(Debug)]
-pub(crate) struct FeeBreakdown {
+pub struct FeeBreakdown {
     /// Portion of the fee routed to the protocol treasury.
     pub protocol_fee: UsdValue,
 

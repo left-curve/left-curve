@@ -5,13 +5,12 @@ mod set_fee_share_ratio;
 mod set_referral;
 
 pub use {
-    apply_fee_commissions::apply_fee_commissions, commission::calculate_commission_rate,
-    set_commission_rate_override::set_commission_rate_override,
-    set_fee_share_ratio::set_fee_share_ratio, set_referral::set_referral,
+    apply_fee_commissions::*, commission::*, set_commission_rate_override::*,
+    set_fee_share_ratio::*, set_referral::*,
 };
 
 use {
-    crate::USER_REFERRAL_DATA,
+    crate::state::USER_REFERRAL_DATA,
     dango_types::{
         account_factory::{self, UserIndex},
         perps::UserReferralData,

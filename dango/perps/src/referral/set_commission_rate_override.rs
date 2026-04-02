@@ -1,5 +1,5 @@
 use {
-    crate::COMMISSION_RATE_OVERRIDES,
+    crate::state::COMMISSION_RATE_OVERRIDES,
     anyhow::ensure,
     dango_types::{account_factory::UserIndex, perps::CommissionRate},
     grug::{MutableCtx, Op, QuerierExt, Response},

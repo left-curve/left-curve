@@ -1,7 +1,7 @@
 use {
     crate::{
-        NoCachePerpQuerier,
         core::{compute_maintenance_margin, compute_user_equity},
+        querier::NoCachePerpQuerier,
     },
     dango_oracle::OracleQuerier,
     dango_types::{

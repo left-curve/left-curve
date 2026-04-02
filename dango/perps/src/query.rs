@@ -1,8 +1,11 @@
 use {
     crate::{
-        ASKS, BIDS, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS, PAIR_STATES, REFEREE_TO_REFERRER,
-        REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, VOLUMES,
-        referral::calculate_commission_rate, round_to_day,
+        referral::calculate_commission_rate,
+        state::{
+            ASKS, BIDS, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS, PAIR_STATES, REFEREE_TO_REFERRER,
+            REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, VOLUMES,
+        },
+        volume::round_to_day,
     },
     anyhow::ensure,
     dango_types::{

@@ -1,7 +1,12 @@
 use {
     crate::{
-        FEE_SHARE_RATIO, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA,
-        account_factory, referral::load_referral_data, volume::round_to_day,
+        account_factory,
+        referral::load_referral_data,
+        state::{
+            FEE_SHARE_RATIO, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS,
+            USER_REFERRAL_DATA,
+        },
+        volume::round_to_day,
     },
     anyhow::ensure,
     dango_types::{

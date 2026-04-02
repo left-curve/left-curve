@@ -1,7 +1,9 @@
 use {
     crate::{
-        ASKS, BIDS, OrderKey, PAIR_PARAMS, liquidity_depth::decrease_liquidity_depths,
-        price::may_invert_price, trade::update_user_state_with,
+        liquidity_depth::decrease_liquidity_depths,
+        price::may_invert_price,
+        state::{ASKS, BIDS, OrderKey, PAIR_PARAMS},
+        trade::update_user_state_with,
     },
     anyhow::{anyhow, ensure},
     dango_types::perps::{

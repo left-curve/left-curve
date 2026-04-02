@@ -111,7 +111,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
             referrer_commission_rates: old_param.referrer_commission_rates,
         };
 
-        dango_perps::PARAM.save(&mut perps_storage, &new_param)?;
+        dango_perps::state::PARAM.save(&mut perps_storage, &new_param)?;
 
         tracing::info!("Migrated Param (removed max_conditional_orders)");
     }
@@ -175,6 +175,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
                 reserved_margin: old_us.reserved_margin,
                 open_order_count: old_us.open_order_count,
             };
+
             new_user_states.save(&mut perps_storage, addr, &new_us)?;
         }
 
@@ -198,7 +199,8 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
                 funding_per_unit: old_ps.funding_per_unit,
                 funding_rate: FundingRate::ZERO,
             };
-            dango_perps::PAIR_STATES.save(&mut perps_storage, pair_id, &new_ps)?;
+
+            dango_perps::state::PAIR_STATES.save(&mut perps_storage, pair_id, &new_ps)?;
         }
 
         tracing::info!("Migrated {} PairState records", all_pairs.len());

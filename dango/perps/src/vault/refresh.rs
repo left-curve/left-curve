@@ -1,8 +1,14 @@
 use {
     crate::{
-        ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
-        USER_STATES, core::compute_vault_quotes, liquidity_depth::increase_liquidity_depths,
-        oracle, price::may_invert_price, trade::_cancel_all_orders,
+        core::compute_vault_quotes,
+        liquidity_depth::increase_liquidity_depths,
+        oracle,
+        price::may_invert_price,
+        state::{
+            ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
+            USER_STATES,
+        },
+        trade::_cancel_all_orders,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,

@@ -1,5 +1,5 @@
 use {
-    crate::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM},
+    crate::state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM},
     anyhow::ensure,
     dango_types::perps::{PairParam, PairState, Param},
     grug::{Denom, GENESIS_SENDER, MutableCtx, QuerierExt, Response},

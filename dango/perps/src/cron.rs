@@ -1,13 +1,21 @@
+#[cfg(feature = "metrics")]
+use {
+    crate::{core::compute_user_equity, querier::NoCachePerpQuerier},
+    std::time::Instant,
+};
 use {
     crate::{
-        ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{compute_funding_delta, compute_impact_price, compute_premium},
-        flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::apply_position_index_updates,
         price::may_invert_price,
         referral::apply_fee_commissions,
+        state::{
+            ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
+            USER_STATES,
+        },
         trade::_submit_order,
+        volume::flush_volumes,
     },
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -22,11 +30,6 @@ use {
         Addr, EventBuilder, NumberConst, Order as IterationOrder, PrefixBound, QuerierWrapper,
         StdResult, Storage, Timestamp, Uint64,
     },
-};
-#[cfg(feature = "metrics")]
-use {
-    crate::{NoCachePerpQuerier, core::compute_user_equity},
-    std::time::Instant,
 };
 
 /// Pop matured unlocks from each user and credit the released USD value back

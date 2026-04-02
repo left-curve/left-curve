@@ -1,5 +1,5 @@
 use {
-    crate::{NoCachePerpQuerier, core::compute_trading_fee},
+    crate::{core::compute_trading_fee, querier::NoCachePerpQuerier},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
