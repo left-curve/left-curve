@@ -1,30 +1,28 @@
 use {
     crate::{
-        ASKS, BIDS, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{
             compute_bankruptcy_price, compute_close_schedule, compute_maintenance_margin,
             compute_user_equity, is_liquidatable,
         },
-        flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
         price::may_invert_price,
-        state::{LONGS, SHORTS},
-        trade::{
-            _cancel_all_conditional_orders, _cancel_all_orders, match_order, settle_fill,
-            settle_pnls,
-        },
+        querier::NoCachePerpQuerier,
+        state::{ASKS, BIDS, LONGS, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE, USER_STATES},
+        trade::{_cancel_all_orders, match_order, settle_fill, settle_pnls},
+        volume::flush_volumes,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            BadDebtCovered, Deleveraged, LimitOrder, Liquidated, OrderId, PairId, PairParam,
-            PairState, Param, ReasonForOrderRemoval, State, UserState,
+            BadDebtCovered, ConditionalOrderRemoved, Deleveraged, LimitOrder, Liquidated, OrderId,
+            PairId, PairParam, PairState, Param, RateSchedule, ReasonForOrderRemoval, State,
+            TriggerDirection, UserState,
         },
     },
     grug::{
@@ -70,12 +68,26 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         ReasonForOrderRemoval::Liquidated,
     )?;
 
-    let cond_events = _cancel_all_conditional_orders(
-        ctx.storage,
-        user,
-        &mut user_state,
-        ReasonForOrderRemoval::Liquidated,
-    )?;
+    // Cancel all embedded conditional orders. Positions may survive partial
+    // liquidation, so we must explicitly clear the fields.
+    for (pair_id, position) in &mut user_state.positions {
+        if position.conditional_order_above.take().is_some() {
+            events.push(ConditionalOrderRemoved {
+                pair_id: pair_id.clone(),
+                user,
+                trigger_direction: TriggerDirection::Above,
+                reason: ReasonForOrderRemoval::Liquidated,
+            })?;
+        }
+        if position.conditional_order_below.take().is_some() {
+            events.push(ConditionalOrderRemoved {
+                pair_id: pair_id.clone(),
+                user,
+                trigger_direction: TriggerDirection::Below,
+                reason: ReasonForOrderRemoval::Liquidated,
+            })?;
+        }
+    }
 
     // ------------------- 3. Load pair params and states ---------------------
 
@@ -232,9 +244,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         }
     }
 
-    Ok(Response::new()
-        .add_events(events)?
-        .add_events(cond_events)?)
+    Ok(Response::new().add_events(events)?)
 }
 
 /// Mutates:
@@ -249,6 +259,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 /// - Maker `UserState`s to persist (includes any book makers and ADL counter-parties).
 /// - Order mutations to apply.
 /// - Position index updates to apply.
+/// - Per-user volumes.
 fn _liquidate(
     storage: &dyn Storage,
     user: Addr,
@@ -344,7 +355,9 @@ fn _liquidate(
             .unwrap_or_default()
     });
 
-    settle_pnls(
+    // Fee breakdowns are ignored during liquidation: trading fees are zero,
+    // and the liquidation fee is routed to the insurance fund separately.
+    let _ = settle_pnls(
         contract,
         param,
         state,
@@ -440,10 +453,8 @@ fn execute_close_schedule(
 )> {
     // Zero-fee param for liquidation fills.
     let liq_param = Param {
-        base_taker_fee_rate: Dimensionless::ZERO,
-        base_maker_fee_rate: Dimensionless::ZERO,
-        tiered_taker_fee_rate: BTreeMap::new(),
-        tiered_maker_fee_rate: BTreeMap::new(),
+        maker_fee_rates: RateSchedule::default(),
+        taker_fee_rates: RateSchedule::default(),
         ..param.clone()
     };
 
@@ -784,8 +795,14 @@ mod tests {
 
     fn default_param() -> Param {
         Param {
-            base_taker_fee_rate: Dimensionless::new_permille(10), // 1%
-            base_maker_fee_rate: Dimensionless::new_permille(10), // 1%
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
             liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
             max_open_orders: 100,
             ..Default::default()
@@ -833,6 +850,8 @@ mod tests {
             size: Quantity::new_int(size),
             entry_price: UsdPrice::new_int(entry_price),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
 
         USER_STATES.save(storage, user, &user_state).unwrap();

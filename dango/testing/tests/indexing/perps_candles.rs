@@ -616,18 +616,17 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
             contracts.perps,
             &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
                 param: perps::Param {
-                    base_taker_fee_rate: Dimensionless::new_permille(1),
-                    base_maker_fee_rate: Dimensionless::ZERO,
-                    tiered_taker_fee_rate: Default::default(),
-                    tiered_maker_fee_rate: Default::default(),
+                    taker_fee_rates: perps::RateSchedule {
+                        base: Dimensionless::new_permille(1),
+                        ..Default::default()
+                    },
                     protocol_fee_rate: Dimensionless::ZERO,
                     liquidation_fee_rate: Dimensionless::new_permille(10),
                     vault_cooldown_period: Duration::from_days(1),
                     max_unlocks: 10,
                     max_open_orders: 100,
-                    max_conditional_orders: 100,
                     funding_period: Duration::from_hours(1),
-                    vault_total_weight: Dimensionless::ZERO,
+                    ..Default::default()
                 },
                 pair_params: btree_map! {
                     eth_pair.clone() => PairParam {

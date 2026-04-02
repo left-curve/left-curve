@@ -144,22 +144,6 @@ test.describe("Convert Applet", () => {
       expect(isDisabled).toBeTruthy();
     });
 
-    test("convert header shows pool statistics", async () => {
-      await sharedPage.goto("/convert");
-      await waitForStorageHydration(sharedPage);
-
-      const apyLabel = sharedPage.getByText("APY", { exact: false });
-      const volumeLabel = sharedPage.getByText("24h", { exact: false });
-      const tvlLabel = sharedPage.getByText("TVL", { exact: false });
-
-      const hasStats =
-        (await apyLabel.isVisible()) ||
-        (await volumeLabel.isVisible()) ||
-        (await tvlLabel.isVisible());
-
-      expect(hasStats).toBeTruthy();
-    });
-
     test("swap direction toggle switches inputs", async () => {
       await sharedPage.goto("/convert");
       await waitForStorageHydration(sharedPage);

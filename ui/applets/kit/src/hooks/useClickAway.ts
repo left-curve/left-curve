@@ -25,8 +25,8 @@ export function useClickAway<E extends Event = Event>(
       const { current: el } = ref;
       const target = event?.target as Node;
 
-      const isInsideIgnored = savedIgnoreRefs.current.some(
-        (ignoreRef) => ignoreRef.current?.contains(target),
+      const isInsideIgnored = savedIgnoreRefs.current.some((ignoreRef) =>
+        ignoreRef.current?.contains(target),
       );
 
       if (isInsideIgnored) return;

@@ -7,5 +7,5 @@
 
 - name: "{{ network }} - Drop app database"
   command:
-    cmd: docker compose run --rm --pull never points points drop-db
+    cmd: "docker compose run --rm --pull never points points drop-db{{ ' --full' if drop_db_full | default(false) | bool else '' }}"
     chdir: "{{ points_bot_dir }}/{{ network }}"

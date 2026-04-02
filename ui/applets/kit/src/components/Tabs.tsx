@@ -174,7 +174,7 @@ const tabsVariants = tv({
       "line-red": {
         base: "p-0",
         button: "border-b-[1px] border-outline-secondary-gray pt-0",
-        "animated-element": "h-[2px] top-auto bottom-[-1px] bg-primitives-red-light-400",
+        "animated-element": "h-[2px] top-auto bottom-0 bg-primitives-red-light-400",
       },
     },
     fullWidth: {
@@ -209,7 +209,7 @@ export const Tab: React.FC<PropsWithChildren<TabProps>> = ({
 };
 
 const tabVariants = tv({
-  base: "transition-all relative z-10 whitespace-nowrap outline-none",
+  base: "transition-all relative z-10 whitespace-nowrap outline-none exposure-m-italic",
   variants: {
     color: {
       green: "",

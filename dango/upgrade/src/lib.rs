@@ -1,189 +1,210 @@
 use {
     dango_types::{
-        account_factory::{AccountIndex, User, UserIndex, Username},
-        config::AppConfig,
+        Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
+        perps::{self, RateSchedule},
     },
-    grug::{Addr, Inner, JsonDeExt, JsonSerExt, Order, StdResult, Storage, addr},
-    grug_app::{APP_CONFIG, AppResult, CONTRACT_NAMESPACE, StorageProvider},
-    std::collections::BTreeMap,
+    grug::{
+        Addr, BlockInfo, Duration, Map, Order as IterationOrder, StdResult, Storage, Uint128,
+        increment_last_byte,
+    },
+    grug_app::{AppResult, CONTRACT_NAMESPACE, CONTRACTS, StorageProvider},
+    std::collections::{BTreeMap, VecDeque},
 };
 
-/// Address of the account factory contract.
-const ACCOUNT_FACTORY: Addr = addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b");
+/// Address of the perps contract. Placeholder — fill in the actual value before
+/// deploying the upgrade binary.
+const PERPS_ADDRESS: Addr = Addr::ZERO;
 
-/// Storage layout of the account factory contract prior to this upgrade.
+/// Legacy types matching the pre-upgrade Borsh layout.
 mod legacy {
-    use {
-        borsh::{BorshDeserialize, BorshSerialize},
-        dango_types::{
-            account_factory::{AccountIndex, UserIndex, Username},
-            auth::Key,
-        },
-        grug::{Addr, Hash256, Map},
-    };
+    use super::*;
 
-    pub const CODE_HASHES: Map<u8, Hash256> = Map::new("hash");
-
-    pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
-
-    /// Old `Account` Borsh layout: `u32` index + `u8` enum discriminant + `u32` owner.
-    #[derive(BorshSerialize, BorshDeserialize)]
-    pub struct Account {
-        pub index: AccountIndex,
-        pub params: AccountParams,
+    /// The Param struct before the upgrade, which contains the
+    /// `max_conditional_orders` field.
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct Param {
+        pub max_unlocks: usize,
+        pub max_open_orders: usize,
+        pub max_conditional_orders: usize,
+        pub maker_fee_rates: RateSchedule,
+        pub taker_fee_rates: RateSchedule,
+        pub protocol_fee_rate: Dimensionless,
+        pub liquidation_fee_rate: Dimensionless,
+        pub funding_period: Duration,
+        pub vault_total_weight: Dimensionless,
+        pub vault_cooldown_period: Duration,
+        pub referral_active: bool,
+        pub min_referrer_volume: UsdValue,
+        pub referrer_commission_rates: RateSchedule,
     }
 
-    #[derive(BorshSerialize, BorshDeserialize)]
-    pub enum AccountParams {
-        Single { owner: u32 },
+    /// The Position struct before the upgrade (3 fields, no conditional orders).
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct Position {
+        pub size: Quantity,
+        pub entry_price: UsdPrice,
+        pub entry_funding_per_unit: FundingPerUnit,
     }
 
-    pub const KEYS: Map<(UserIndex, Hash256), Key> = Map::new("key");
-    pub const USER_NAMES_BY_INDEX: Map<UserIndex, Username> = Map::new("user_names__index");
+    /// The UserState struct before the upgrade.
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct UserState {
+        pub margin: UsdValue,
+        pub vault_shares: Uint128,
+        pub positions: BTreeMap<perps::PairId, Position>,
+        pub unlocks: VecDeque<perps::Unlock>,
+        pub reserved_margin: UsdValue,
+        pub open_order_count: usize,
+        pub conditional_order_count: usize,
+    }
 
-    // For clearing only — key/value types don't matter.
-    pub const ACCOUNTS_BY_USER: Map<u8, u8> = Map::new("account__user");
-    pub const ACCOUNT_COUNT_BY_USER: Map<u8, u8> = Map::new("account_count");
-    pub const USER_INDEXES_BY_NAME: Map<u8, u8> = Map::new("user_indexes__name");
+    /// The PairState struct before the upgrade (no funding_rate field).
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct PairState {
+        pub long_oi: Quantity,
+        pub short_oi: Quantity,
+        pub funding_per_unit: FundingPerUnit,
+    }
+
+    pub const PARAM: grug::Item<Param> = grug::Item::new("param");
+
+    /// Read legacy user states using a plain Map (same namespace as the
+    /// IndexedMap primary). Index entries are not affected by the value change.
+    pub const USER_STATES: Map<Addr, UserState> = Map::new("us");
+
+    pub const PAIR_STATES: Map<&perps::PairId, PairState> = Map::new("pair_state");
 }
 
-pub fn do_upgrade<VM>(
-    mut storage: Box<dyn Storage>,
-    _vm: VM,
-    _block: grug::BlockInfo,
-) -> AppResult<()> {
-    // ======================== Migrate AppConfig ===============================
-    //
-    // The `perps` field was added to `AppAddresses`. Insert a zero address so
-    // the on-chain JSON deserializes correctly. The oracle guards against
-    // calling a zero perps address.
+pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
+    // This upgrade only applies to the testnet. The perps contract isn't deployed
+    // on mainnet, so nothing to do.
+    // Check whether perps contract exists. If not, skip.
+    if !CONTRACTS.has(&storage, PERPS_ADDRESS) {
+        tracing::info!("Perps contract not found. Nothing to do");
+
+        return Ok(());
+    }
+
+    let mut perps_storage =
+        StorageProvider::new(storage, &[CONTRACT_NAMESPACE, PERPS_ADDRESS.as_ref()]);
+
+    // -------------------------------------------------------------------------
+
+    // 1. Migrate Param: load the old layout, convert to new (dropping
+    //    max_conditional_orders), and save.
+
     {
-        let mut json = APP_CONFIG.load(&storage)?;
-        let obj = json
-            .as_object_mut()
-            .expect("AppConfig must be a JSON object");
-        let addresses = obj
-            .get_mut("addresses")
-            .expect("AppConfig must have `addresses`")
-            .as_object_mut()
-            .expect("`addresses` must be a JSON object");
+        let old_param = legacy::PARAM.load(&perps_storage)?;
 
-        addresses.insert(
-            "perps".to_string(),
-            Addr::ZERO.to_json_value()?.into_inner(),
-        );
-
-        // Verify the modified JSON is a valid AppConfig.
-        let _: AppConfig = json.clone().deserialize_json()?;
-
-        APP_CONFIG.save(&mut storage, &json)?;
-
-        tracing::info!("Migrated AppConfig: added zero perps address");
-    }
-
-    let mut factory_storage =
-        StorageProvider::new(storage, &[CONTRACT_NAMESPACE, ACCOUNT_FACTORY.inner()]);
-    let factory_storage = &mut factory_storage;
-
-    // ======================== CODE_HASHES → CODE_HASH ========================
-
-    // Load the Single account code hash from the old map (key 0 = AccountType::Single).
-    let code_hash = legacy::CODE_HASHES.load(factory_storage, 0u8)?;
-
-    tracing::info!(%code_hash, "Loaded Single code hash from legacy CODE_HASHES");
-
-    // Clear the old map entries.
-    legacy::CODE_HASHES.clear(factory_storage, None, None);
-
-    // Save to the new Item-based storage.
-    dango_account_factory::CODE_HASH.save(factory_storage, &code_hash)?;
-
-    tracing::info!("Saved code hash to new CODE_HASH item");
-
-    // ======================== Read old Accounts ==============================
-
-    // Load all accounts with the old Borsh layout, group by owner as
-    // BTreeMap<UserIndex, BTreeMap<AccountIndex, Addr>>.
-    let mut accounts_by_user: BTreeMap<UserIndex, BTreeMap<AccountIndex, Addr>> = BTreeMap::new();
-    for entry in legacy::ACCOUNTS.range(factory_storage, None, None, Order::Ascending) {
-        let (addr, old_account) = entry?;
-        let legacy::AccountParams::Single { owner } = old_account.params;
-        accounts_by_user
-            .entry(owner)
-            .or_default()
-            .insert(old_account.index, addr);
-    }
-
-    tracing::info!(
-        num_users = accounts_by_user.len(),
-        "Loaded accounts per user"
-    );
-
-    // ======================== Read old Keys ==================================
-
-    let mut keys_by_user = BTreeMap::new();
-    for entry in legacy::KEYS.range(factory_storage, None, None, Order::Ascending) {
-        let ((user_index, key_hash), key) = entry?;
-        keys_by_user
-            .entry(user_index)
-            .or_insert_with(BTreeMap::new)
-            .insert(key_hash, key);
-    }
-
-    tracing::info!(num_users = keys_by_user.len(), "Loaded keys per user");
-
-    // ======================== Read old usernames ==============================
-
-    let usernames: BTreeMap<UserIndex, Username> = legacy::USER_NAMES_BY_INDEX
-        .range(factory_storage, None, None, Order::Ascending)
-        .collect::<StdResult<_>>()?;
-
-    tracing::info!(num_usernames = usernames.len(), "Loaded usernames");
-
-    // ======================== Build User structs ==============================
-
-    let all_user_indexes: BTreeMap<UserIndex, ()> = keys_by_user
-        .keys()
-        .chain(accounts_by_user.keys())
-        .chain(usernames.keys())
-        .map(|&idx| (idx, ()))
-        .collect();
-
-    tracing::info!(num_users = all_user_indexes.len(), "Building User structs");
-
-    for &user_index in all_user_indexes.keys() {
-        let user = User {
-            index: user_index,
-            name: usernames
-                .get(&user_index)
-                .cloned()
-                .unwrap_or_else(|| Username::default_for_index(user_index)),
-            accounts: accounts_by_user
-                .get(&user_index)
-                .cloned()
-                .unwrap_or_default(),
-            keys: keys_by_user.get(&user_index).cloned().unwrap_or_default(),
+        let new_param = perps::Param {
+            max_unlocks: old_param.max_unlocks,
+            max_open_orders: old_param.max_open_orders,
+            maker_fee_rates: old_param.maker_fee_rates,
+            taker_fee_rates: old_param.taker_fee_rates,
+            protocol_fee_rate: old_param.protocol_fee_rate,
+            liquidation_fee_rate: old_param.liquidation_fee_rate,
+            funding_period: old_param.funding_period,
+            vault_total_weight: old_param.vault_total_weight,
+            vault_cooldown_period: old_param.vault_cooldown_period,
+            referral_active: old_param.referral_active,
+            min_referrer_volume: old_param.min_referrer_volume,
+            referrer_commission_rates: old_param.referrer_commission_rates,
         };
 
-        dango_account_factory::USERS.save(factory_storage, user_index, &user)?;
+        dango_perps::state::PARAM.save(&mut perps_storage, &new_param)?;
+
+        tracing::info!("Migrated Param (removed max_conditional_orders)");
     }
 
-    tracing::info!(
-        num_users = all_user_indexes.len(),
-        "Saved User structs to IndexedMap"
-    );
+    // -------------------------------------------------------------------------
 
-    // ======================== Clear legacy storage ============================
+    // 2. Wipe old CONDITIONAL_ABOVE/BELOW maps via raw remove_range.
+    //    These maps no longer exist as IndexedMap constants, so we clear them
+    //    by their storage namespace prefixes.
+    //    Namespaces: "conda", "conda__id", "conda__user", "condb", "condb__id", "condb__user"
 
-    legacy::CODE_HASHES.clear(factory_storage, None, None);
-    legacy::ACCOUNTS.clear(factory_storage, None, None);
-    legacy::KEYS.clear(factory_storage, None, None);
-    legacy::ACCOUNTS_BY_USER.clear(factory_storage, None, None);
-    legacy::ACCOUNT_COUNT_BY_USER.clear(factory_storage, None, None);
-    legacy::USER_NAMES_BY_INDEX.clear(factory_storage, None, None);
-    legacy::USER_INDEXES_BY_NAME.clear(factory_storage, None, None);
+    {
+        for ns in &[
+            b"conda" as &[u8],
+            b"conda__id",
+            b"conda__user",
+            b"condb",
+            b"condb__id",
+            b"condb__user",
+        ] {
+            let max = increment_last_byte(ns.to_vec());
+            perps_storage.remove_range(Some(ns), Some(&max));
+        }
 
-    tracing::info!("Cleared legacy storage namespaces");
+        tracing::info!("Wiped all conditional orders");
+    }
+
+    // -------------------------------------------------------------------------
+
+    // 3. Migrate UserState records: read with legacy layout, convert to new
+    //    layout (drop conditional_order_count, add conditional_order fields to
+    //    Position).
+
+    {
+        let all_users = legacy::USER_STATES
+            .range(&perps_storage, None, None, IterationOrder::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        let new_user_states: Map<Addr, perps::UserState> = Map::new("us");
+
+        for (addr, old_us) in all_users {
+            let new_positions = old_us
+                .positions
+                .into_iter()
+                .map(|(pair_id, old_pos)| {
+                    (pair_id, perps::Position {
+                        size: old_pos.size,
+                        entry_price: old_pos.entry_price,
+                        entry_funding_per_unit: old_pos.entry_funding_per_unit,
+                        conditional_order_above: None,
+                        conditional_order_below: None,
+                    })
+                })
+                .collect();
+
+            let new_us = perps::UserState {
+                margin: old_us.margin,
+                vault_shares: old_us.vault_shares,
+                positions: new_positions,
+                unlocks: old_us.unlocks,
+                reserved_margin: old_us.reserved_margin,
+                open_order_count: old_us.open_order_count,
+            };
+
+            new_user_states.save(&mut perps_storage, addr, &new_us)?;
+        }
+
+        tracing::info!("Migrated UserState records");
+    }
+
+    // -------------------------------------------------------------------------
+
+    // 4. Migrate PairState records: load with legacy layout (no funding_rate),
+    //    convert to new layout (funding_rate defaults to zero).
+
+    {
+        let all_pairs = legacy::PAIR_STATES
+            .range(&perps_storage, None, None, IterationOrder::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        for (pair_id, old_ps) in &all_pairs {
+            let new_ps = perps::PairState {
+                long_oi: old_ps.long_oi,
+                short_oi: old_ps.short_oi,
+                funding_per_unit: old_ps.funding_per_unit,
+                funding_rate: FundingRate::ZERO,
+            };
+
+            dango_perps::state::PAIR_STATES.save(&mut perps_storage, pair_id, &new_ps)?;
+        }
+
+        tracing::info!("Migrated {} PairState records", all_pairs.len());
+    }
 
     Ok(())
 }

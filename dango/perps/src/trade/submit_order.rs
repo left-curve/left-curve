@@ -1,20 +1,22 @@
 use {
     crate::{
-        ASKS, BIDS, NEXT_ORDER_ID, NoCachePerpQuerier, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-        USER_STATES, VOLUME_LOOKBACK,
+        VOLUME_LOOKBACK,
         core::{
             check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
             compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
-            decompose_fill, execute_fill, is_price_constraint_violated, resolve_fee_rate,
+            decompose_fill, execute_fill, is_price_constraint_violated,
         },
-        flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
         price::may_invert_price,
+        querier::NoCachePerpQuerier,
         query::query_volume,
+        referral::apply_fee_commissions,
+        state::{ASKS, BIDS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+        volume::flush_volumes,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -62,29 +64,50 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (maker_states, order_mutations, order_to_store, next_order_id, index_updates, volumes) =
-        _submit_order(
-            ctx.storage,
-            ctx.sender,
-            ctx.contract,
-            ctx.block.timestamp,
-            &mut oracle_querier,
-            &param,
-            &mut state,
-            &pair_id,
-            &pair_param,
-            &mut pair_state,
-            &mut taker_state,
-            oracle_price,
-            size,
-            kind,
-            reduce_only,
-            &mut events,
-        )?;
+    let (
+        mut maker_states,
+        order_mutations,
+        order_to_store,
+        next_order_id,
+        index_updates,
+        volumes,
+        fee_breakdowns,
+    ) = _submit_order(
+        ctx.storage,
+        ctx.sender,
+        ctx.contract,
+        ctx.block.timestamp,
+        &mut oracle_querier,
+        &param,
+        &mut state,
+        &pair_id,
+        &pair_param,
+        &mut pair_state,
+        &mut taker_state,
+        oracle_price,
+        size,
+        kind,
+        reduce_only,
+        &mut events,
+    )?;
 
     // ------------------------ 3. Apply state changes -------------------------
 
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
+
+    maker_states.insert(ctx.sender, taker_state);
+
+    apply_fee_commissions(
+        ctx.storage,
+        ctx.querier,
+        ctx.contract,
+        ctx.block.timestamp,
+        &param,
+        &mut maker_states,
+        fee_breakdowns,
+        &volumes,
+        &mut events,
+    )?;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
@@ -92,10 +115,8 @@ pub fn submit_order(
 
     PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
 
-    USER_STATES.save(ctx.storage, ctx.sender, &taker_state)?;
-
-    for (addr, maker_state) in &maker_states {
-        USER_STATES.save(ctx.storage, *addr, maker_state)?;
+    for (addr, user_state) in &maker_states {
+        USER_STATES.save(ctx.storage, *addr, user_state)?;
     }
 
     apply_position_index_updates(ctx.storage, &index_updates)?;
@@ -233,6 +254,7 @@ pub fn submit_order(
 ///   `BTreeMap<Addr, UserState>`.
 /// - Order mutations to apply: `Vec<(OrderKey, Option<LimitOrder>)>`.
 /// - GTC order to store: `Option<(stored_price, order_id, LimitOrder)>`.
+#[allow(clippy::type_complexity)]
 pub(crate) fn _submit_order(
     storage: &dyn Storage,
     taker: Addr,
@@ -257,6 +279,7 @@ pub(crate) fn _submit_order(
     OrderId,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
+    BTreeMap<Addr, FeeBreakdown>,
 )> {
     // -------------- Step 1. Check minimum order size -------------------------
 
@@ -317,6 +340,7 @@ pub(crate) fn _submit_order(
             taker_order_id + OrderId::ONE,
             Vec::new(),
             BTreeMap::new(),
+            BTreeMap::new(),
         ));
     }
 
@@ -330,11 +354,7 @@ pub(crate) fn _submit_order(
         let taker_fee_rate = {
             let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
             let taker_volume = query_volume(storage, taker, volume_since)?;
-            resolve_fee_rate(
-                param.base_taker_fee_rate,
-                &param.tiered_taker_fee_rate,
-                taker_volume,
-            )
+            param.taker_fee_rates.resolve(taker_volume)
         };
 
         check_margin(
@@ -412,7 +432,7 @@ pub(crate) fn _submit_order(
             .unwrap_or_default()
     });
 
-    settle_pnls(
+    let fee_breakdowns = settle_pnls(
         contract,
         param,
         state,
@@ -430,6 +450,7 @@ pub(crate) fn _submit_order(
         next_order_id,
         index_updates,
         volumes,
+        fee_breakdowns,
     ))
 }
 
@@ -490,11 +511,7 @@ pub fn match_order(
     let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
     let taker_fee_rate = {
         let taker_volume = query_volume(storage, taker, volume_since)?;
-        resolve_fee_rate(
-            param.base_taker_fee_rate,
-            &param.tiered_taker_fee_rate,
-            taker_volume,
-        )
+        param.taker_fee_rates.resolve(taker_volume)
     };
 
     // Create iterator over the maker side of the order book.
@@ -606,11 +623,7 @@ pub fn match_order(
         // Resolve maker's fee rate based on recent volume.
         let maker_fee_rate = {
             let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
-            resolve_fee_rate(
-                param.base_maker_fee_rate,
-                &param.tiered_maker_fee_rate,
-                maker_volume,
-            )
+            param.maker_fee_rates.resolve(maker_volume)
         };
 
         settle_fill(
@@ -788,6 +801,15 @@ pub fn settle_fill(
     Ok(pnl)
 }
 
+#[derive(Debug)]
+pub struct FeeBreakdown {
+    /// Portion of the fee routed to the protocol treasury.
+    pub protocol_fee: UsdValue,
+
+    /// Portion of the fee credited to the vault.
+    pub vault_fee: UsdValue,
+}
+
 /// Settle PnLs and fees directly in USD on user margins.
 ///
 /// Two loops:
@@ -807,7 +829,10 @@ pub fn settle_fill(
 /// - `maker_states[*].margin` — adjusted by PnL and fees (including the vault's
 ///   `UserState`).
 ///
-/// Returns: `()` — all side effects are applied in-place.
+/// Per-user fee breakdown after splitting between protocol treasury and vault.
+///
+/// Returns: per-user fee breakdown — the split between protocol treasury and
+/// vault for each fee-paying user.
 pub fn settle_pnls(
     contract: Addr,
     param: &Param,
@@ -817,13 +842,15 @@ pub fn settle_pnls(
     maker_states: &mut BTreeMap<Addr, UserState>,
     pnls: BTreeMap<Addr, UsdValue>,
     fees: BTreeMap<Addr, UsdValue>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<BTreeMap<Addr, FeeBreakdown>> {
     debug_assert!(
         !maker_states.contains_key(&taker),
         "taker must not be in maker_states — self-trade prevention violated"
     );
 
     // ------------------------------ Settle fees ------------------------------
+
+    let mut fee_breakdowns = BTreeMap::new();
 
     for (user, fee) in fees {
         if fee.is_zero() || user == contract {
@@ -854,6 +881,11 @@ pub fn settle_pnls(
                 .margin
                 .checked_sub_assign(fee)?;
         }
+
+        fee_breakdowns.insert(user, FeeBreakdown {
+            protocol_fee,
+            vault_fee,
+        });
     }
 
     // ------------------------------ Settle PnLs ------------------------------
@@ -874,7 +906,7 @@ pub fn settle_pnls(
         }
     }
 
-    Ok(())
+    Ok(fee_breakdowns)
 }
 
 /// Validate and store a post-only limit order. Rejects if the limit price
@@ -1025,7 +1057,11 @@ mod tests {
     use {
         super::*,
         crate::USER_STATES,
-        dango_types::{Dimensionless, FundingPerUnit, oracle::PrecisionedPrice, perps::Position},
+        dango_types::{
+            Dimensionless, FundingPerUnit,
+            oracle::PrecisionedPrice,
+            perps::{Position, RateSchedule},
+        },
         grug::{Coins, MockContext, Timestamp, Udec128, Uint64, hash_map},
     };
 
@@ -1054,8 +1090,10 @@ mod tests {
     fn test_param() -> Param {
         Param {
             max_open_orders: 10,
-            base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
-            base_maker_fee_rate: Dimensionless::ZERO,
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(1), // 0.1%
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
@@ -1463,6 +1501,8 @@ mod tests {
             size: Quantity::new_int(5),
             entry_price: UsdPrice::new_int(50_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
         let mut oq = test_oracle_querier();
 
@@ -2341,6 +2381,203 @@ mod tests {
         assert_eq!(state.treasury, UsdValue::new_int(20));
     }
 
+    // =========== Negative maker fee (rebate) settle_pnls tests ===============
+
+    #[test]
+    fn settle_pnls_negative_maker_fee_rebate() {
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let mut maker_states = BTreeMap::from([
+            (CONTRACT, UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
+
+        let pnls = BTreeMap::new();
+        // Taker pays +$50 fee, maker receives -$10 fee (rebate).
+        let fees = BTreeMap::from([
+            (Addr::mock(1), UsdValue::new_int(50)),
+            (Addr::mock(2), UsdValue::new_int(-10)),
+        ]);
+        let mut state = State::default();
+
+        settle_pnls(
+            CONTRACT,
+            &Param::default(), // protocol_fee_rate = 0
+            &mut state,
+            taker,
+            &mut taker_state,
+            &mut maker_states,
+            pnls,
+            fees,
+        )
+        .unwrap();
+
+        // Taker margin decreases by fee.
+        assert_eq!(taker_state.margin, UsdValue::new_int(-50));
+
+        // Maker margin increases (rebate): 0 - (-10) = +10.
+        assert_eq!(maker_states[&Addr::mock(2)].margin, UsdValue::new_int(10));
+
+        // Vault receives net: +50 (from taker) + (-10) (rebate to maker) = +40.
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(40));
+
+        // No protocol fee split → treasury unchanged.
+        assert_eq!(state.treasury, UsdValue::ZERO);
+    }
+
+    #[test]
+    fn settle_pnls_negative_maker_fee_with_protocol_split() {
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let param = Param {
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            ..Default::default()
+        };
+        let mut maker_states = BTreeMap::from([
+            (CONTRACT, UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
+
+        let pnls = BTreeMap::new();
+        // Taker fee = +$30, maker fee = -$10 (rebate).
+        let fees = BTreeMap::from([
+            (Addr::mock(1), UsdValue::new_int(30)),
+            (Addr::mock(2), UsdValue::new_int(-10)),
+        ]);
+        let mut state = State::default();
+
+        settle_pnls(
+            CONTRACT,
+            &param,
+            &mut state,
+            taker,
+            &mut taker_state,
+            &mut maker_states,
+            pnls,
+            fees,
+        )
+        .unwrap();
+
+        // Taker pays full fee.
+        assert_eq!(taker_state.margin, UsdValue::new_int(-30));
+
+        // Maker gets rebate: 0 - (-10) = +10.
+        assert_eq!(maker_states[&Addr::mock(2)].margin, UsdValue::new_int(10));
+
+        // Vault receives:
+        //   from taker: $30 * 80% = $24
+        //   from maker: -$10 * 80% = -$8
+        //   total = $16
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(16));
+
+        // Treasury receives:
+        //   from taker: $30 * 20% = $6
+        //   from maker: -$10 * 20% = -$2
+        //   total = $4
+        assert_eq!(state.treasury, UsdValue::new_int(4));
+    }
+
+    // ====== Negative maker fee: full _submit_order integration ===============
+
+    #[test]
+    fn negative_maker_fee_rebate_on_market_buy() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        // Custom param: taker = 3 bps, maker = -1 bps, protocol = 20%.
+        let param = Param {
+            max_open_orders: 10,
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(300), // 3 bps
+                ..Default::default()
+            },
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(-100), // -1 bps
+                ..Default::default()
+            },
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            ..Default::default()
+        };
+
+        // Manually set up storage (can't use setup_storage which saves test_param).
+        PARAM.save(&mut ctx.storage, &param).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &test_pair_param())
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let pair_param = test_pair_param();
+        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut state = State::default();
+        let mut oq = test_oracle_querier();
+
+        let (maker_states, ..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &mut state,
+            &pair_id(),
+            &pair_param,
+            &mut pair_state,
+            &mut taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Notional = 10 * $50,000 = $500,000.
+        // Taker fee = $500,000 * 3 bps = $150.
+        // Maker fee = $500,000 * (-1 bps) = -$50 (rebate).
+        //
+        // Taker margin: LARGE_COLLATERAL - $150.
+        assert_eq!(
+            taker_state.margin,
+            LARGE_COLLATERAL
+                .checked_sub(UsdValue::new_int(150))
+                .unwrap()
+        );
+
+        // Maker margin: 0 - (-$50) = +$50 (receives rebate).
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::new_int(50));
+
+        // Vault receives:
+        //   taker vault_fee = $150 * 80% = $120
+        //   maker vault_fee = -$50 * 80% = -$40
+        //   total = $80
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(80));
+
+        // Treasury:
+        //   taker protocol_fee = $150 * 20% = $30
+        //   maker protocol_fee = -$50 * 20% = -$10
+        //   total = $20
+        assert_eq!(state.treasury, UsdValue::new_int(20));
+
+        // Positions are correct.
+        let taker_pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(taker_pos.size, Quantity::new_int(10));
+        assert_eq!(taker_pos.entry_price, UsdPrice::new_int(50_000));
+    }
+
     // =================== Post-only order tests ===============================
 
     #[test]
@@ -2644,6 +2881,8 @@ mod tests {
             size: Quantity::new_int(5),
             entry_price: UsdPrice::new_int(50_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
         let mut oq = test_oracle_querier();
 
@@ -3011,6 +3250,8 @@ mod tests {
             size: Quantity::new_int(-10),
             entry_price: UsdPrice::new_int(50_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
         USER_STATES
             .save(&mut ctx.storage, CONTRACT, &vault_state)

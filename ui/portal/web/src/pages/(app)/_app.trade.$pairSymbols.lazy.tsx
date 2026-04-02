@@ -14,7 +14,7 @@ function ProTradeApplet() {
   const navigate = useNavigate();
   const { coins } = useConfig();
   const { pairSymbols } = Route.useParams();
-  const { action = "buy", order_type = "market", type = "spot" } = Route.useSearch();
+  const { action = "buy", order_type = "market", type = "perps" } = Route.useSearch();
   const headerHeight = useHeaderHeight();
 
   const onChangePairId = (pairSymbols: string, type: "spot" | "perps") => {

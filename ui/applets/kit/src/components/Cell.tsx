@@ -21,12 +21,17 @@ import { format } from "date-fns";
 
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { AnyCoin } from "@left-curve/store/types";
+import { memo } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
 import { PairAssets } from "./PairAssets";
 import { IconStar } from "./icons/IconStar";
 import { IconEmptyStar } from "./icons/IconEmptyStar";
+
+const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
+  <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
+));
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -327,11 +332,11 @@ const PairName: React.FC<CellPairNameProps> = ({ pairId, type, className }) => {
   return (
     <div
       className={twMerge(
-        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2",
         className,
       )}
     >
-      <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );
@@ -343,7 +348,7 @@ type CellPairNameWithFavProps = {
   className?: string;
 };
 
-const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, className }) => {
+const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type, className }) => {
   const { coins } = useConfig();
   const { baseDenom, quoteDenom } = pairId;
   const baseCoin = coins.byDenom[baseDenom];
@@ -357,7 +362,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
   return (
     <div
       className={twMerge(
-        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2",
         className,
       )}
     >
@@ -367,7 +372,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
           e.stopPropagation();
           toggleFavPair(pairSymbols);
         }}
-        className="focus:outline-none"
+        className="focus:outline-none flex-shrink-0"
       >
         {isFav ? (
           <IconStar className="w-4 h-4 text-fg-primary-700" />
@@ -375,12 +380,12 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
           <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
         )}
       </button>
-      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5" />
-      <p className="min-w-[4.5rem]">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
+      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );
-};
+});
 
 export const Cell = Object.assign(Container, {
   Age,

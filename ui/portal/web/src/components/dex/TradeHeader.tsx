@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SearchToken } from "./SearchToken";
 import {
   Badge,
@@ -14,7 +14,14 @@ import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { useCurrentPrice, usePairStats, tradePairStore } from "@left-curve/store";
+import {
+  useConfig,
+  useCurrentPrice,
+  usePairStats,
+  usePerpsPairStats,
+  tradePairStore,
+  toPerpsPairId,
+} from "@left-curve/store";
 import type React from "react";
 import type { SearchTokenRow } from "./SearchToken";
 
@@ -24,13 +31,28 @@ export const TradeHeader: React.FC = () => {
 
   const mode = tradePairStore((s) => s.mode);
   const pairId = tradePairStore((s) => s.pairId);
+  const { coins } = useConfig();
 
   const { onChangePairId } = useProTrade();
 
-  const pairStats = usePairStats({
+  const perpsPairId = useMemo(() => {
+    const baseSymbol = coins.byDenom[pairId.baseDenom]?.symbol;
+    const quoteSymbol = coins.byDenom[pairId.quoteDenom]?.symbol ?? "USD";
+    return baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
+  }, [pairId, coins]);
+
+  const spotStats = usePairStats({
     baseDenom: pairId.baseDenom,
     quoteDenom: pairId.quoteDenom,
+    enabled: mode === "spot",
   });
+
+  const perpsStats = usePerpsPairStats({
+    pairId: perpsPairId,
+    enabled: mode === "perps" && !!perpsPairId,
+  });
+
+  const pairStats = mode === "perps" ? perpsStats : spotStats;
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -97,7 +119,6 @@ export const TradeHeader: React.FC = () => {
               <PairStatValue
                 kind="volume24h"
                 value={pairStats.data?.volume24H}
-                currency={null}
                 formatOptions={{ maximumTotalDigits: 10 }}
                 className="diatype-sm-bold text-center"
               />

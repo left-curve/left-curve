@@ -1,9 +1,12 @@
 import {
   useAllPairStats,
+  useAllPerpsPairStats,
   useFavPairs,
   usePrices,
   perpsOrderBookStore,
   tradePairStore,
+  toPerpsPairId,
+  useConfig,
 } from "@left-curve/store";
 import {
   Badge,
@@ -15,7 +18,7 @@ import {
   Table,
   useApp,
 } from "@left-curve/applets-kit";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -24,23 +27,27 @@ import type React from "react";
 
 import type { SearchTokenRow } from "./SearchToken";
 
+const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
+  <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
+));
+
 const PerpsPairNameWithFav: React.FC<{
   baseCoin: { symbol: string; logoURI?: string };
   quoteCoin: { symbol: string };
   pairKey: string;
-}> = ({ baseCoin, quoteCoin, pairKey }) => {
+}> = memo(({ baseCoin, quoteCoin, pairKey }) => {
   const { toggleFavPair, hasFavPair } = useFavPairs();
   const isFav = hasFavPair(pairKey);
 
   return (
-    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
+    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2">
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           toggleFavPair(pairKey);
         }}
-        className="focus:outline-none"
+        className="focus:outline-none flex-shrink-0"
       >
         {isFav ? (
           <IconStar className="w-4 h-4 text-fg-primary-700" />
@@ -48,12 +55,82 @@ const PerpsPairNameWithFav: React.FC<{
           <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
         )}
       </button>
-      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5" />
-      <p className="min-w-[4.5rem]">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
+      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       <Badge text="Perp" color="green" size="s" />
     </div>
   );
-};
+});
+
+function useRowPairStats(row: SearchTokenRow) {
+  const { coins } = useConfig();
+  const { statsByPair } = useAllPairStats();
+  const { statsByPairId: perpStatsByPairId } = useAllPerpsPairStats();
+
+  if (row.mode === "perps") {
+    const baseSymbol = coins.byDenom[row.pairId.baseDenom]?.symbol;
+    const quoteSymbol = coins.byDenom[row.pairId.quoteDenom]?.symbol ?? "USD";
+    const perpsPairId = baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
+    return perpsPairId ? perpStatsByPairId[perpsPairId] : undefined;
+  }
+  return statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
+}
+
+const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+  const activePerpsPrice = perpsOrderBookStore((s) => s.currentPrice);
+  const activePairId = tradePairStore((s) => s.pairId);
+  const activeMode = tradePairStore((s) => s.mode);
+
+  if (
+    row.mode === "perps" &&
+    activeMode === "perps" &&
+    row.pairId.baseDenom === activePairId.baseDenom &&
+    activePerpsPrice !== "0"
+  ) {
+    return <Cell.Text text={formatNumber(activePerpsPrice, formatNumberOptions)} />;
+  }
+  return <Cell.Text text={getPrice(1, row.baseCoin.denom, { format: true })} />;
+});
+
+const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const stats = useRowPairStats(row);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <PairStatValue
+        kind="priceChange24h"
+        value={stats?.priceChange24H}
+        formatOptions={{ ...formatNumberOptions, maximumTotalDigits: 6 }}
+        className="diatype-xs-medium"
+        as="span"
+      />
+    </div>
+  );
+});
+
+const VolumeCell = memo(({ row }: { row: SearchTokenRow }) => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const stats = useRowPairStats(row);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <PairStatValue
+        kind="volume24h"
+        value={stats?.volume24H}
+        formatOptions={{ ...formatNumberOptions, maximumTotalDigits: 5 }}
+        className="diatype-xs-medium"
+        align="end"
+        as="span"
+      />
+    </div>
+  );
+});
 
 type SearchTokenTableProps = {
   classNames?: TableClassNames;
@@ -70,16 +147,21 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
   const { formatNumberOptions } = settings;
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const { favPairs } = useFavPairs();
+  const { coins } = useConfig();
   const { statsByPair } = useAllPairStats();
-
-  const activePerpsPrice = perpsOrderBookStore((s) => s.currentPrice);
-  const activePairId = tradePairStore((s) => s.pairId);
-  const activeMode = tradePairStore((s) => s.mode);
+  const { statsByPairId: perpStatsByPairId } = useAllPerpsPairStats();
 
   const data = useMemo(() => [...rows], [rows, favPairs]);
 
-  const getPairStats = (row: SearchTokenRow) =>
-    statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
+  const getPairStats = (row: SearchTokenRow) => {
+    if (row.mode === "perps") {
+      const baseSymbol = coins.byDenom[row.pairId.baseDenom]?.symbol;
+      const quoteSymbol = coins.byDenom[row.pairId.quoteDenom]?.symbol ?? "USD";
+      const perpsPairId = baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
+      return perpsPairId ? perpStatsByPairId[perpsPairId] : undefined;
+    }
+    return statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
+  };
 
   const columns: TableColumn<SearchTokenRow> = [
     {
@@ -105,11 +187,7 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
             />
           );
         }
-        const pair = {
-          baseDenom: row.original.pairId.baseDenom,
-          quoteDenom: row.original.pairId.quoteDenom,
-        };
-        return <Cell.PairNameWithFav type="Spot" pairId={pair} />;
+        return <Cell.PairNameWithFav type="Spot" pairId={row.original.pairId} />;
       },
       filterFn: (row, _, value) => {
         const v = String(value ?? "").toUpperCase();
@@ -129,17 +207,7 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
           toggleSort={ctx.column.toggleSorting}
         />
       ),
-      cell: ({ row }) => {
-        if (
-          row.original.mode === "perps" &&
-          activeMode === "perps" &&
-          row.original.pairId.baseDenom === activePairId.baseDenom &&
-          activePerpsPrice !== "0"
-        ) {
-          return <Cell.Text text={formatNumber(activePerpsPrice, formatNumberOptions)} />;
-        }
-        return <Cell.Text text={getPrice(1, row.original.baseCoin.denom, { format: true })} />;
-      },
+      cell: ({ row }) => <PriceCell row={row.original} />,
       accessorFn: (row) => getPrice(1, row.baseCoin.denom, { format: false }),
     },
     {
@@ -151,20 +219,7 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
           toggleSort={ctx.column.toggleSorting}
         />
       ),
-      cell: ({ row }) => {
-        const stats = getPairStats(row.original);
-        return (
-          <div className="flex flex-col gap-1">
-            <PairStatValue
-              kind="priceChange24h"
-              value={stats?.priceChange24H}
-              formatOptions={{ ...formatNumberOptions, maximumTotalDigits: 6 }}
-              className="diatype-xs-medium"
-              as="span"
-            />
-          </div>
-        );
-      },
+      cell: ({ row }) => <ChangeCell row={row.original} />,
       accessorFn: (row) => {
         const value = getPairStats(row)?.priceChange24H;
         return value === null || value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
@@ -180,21 +235,7 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
           className="ml-auto w-full justify-end"
         />
       ),
-      cell: ({ row }) => {
-        const value = getPairStats(row.original)?.volume24H;
-        return (
-          <div className="flex flex-col gap-1">
-            <PairStatValue
-              kind="volume24h"
-              value={value}
-              formatOptions={{ ...formatNumberOptions, maximumTotalDigits: 5 }}
-              className="diatype-xs-medium"
-              align="end"
-              as="span"
-            />
-          </div>
-        );
-      },
+      cell: ({ row }) => <VolumeCell row={row.original} />,
       accessorFn: (row) => {
         const value = getPairStats(row)?.volume24H;
         return value === undefined ? Number.NEGATIVE_INFINITY : Number(value);

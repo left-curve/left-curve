@@ -14,6 +14,10 @@ type ChestOpeningOverlayProps = {
   currentFrame: number;
   animationFrames: string[] | null;
   onAnimationComplete: () => void;
+  isOpenAllMode?: boolean;
+  currentBoxIndex?: number;
+  totalBoxesToOpen?: number;
+  onNext?: () => void;
 };
 
 const CHEST_ASSETS: Record<BoxVariant, string> = {
@@ -27,22 +31,42 @@ const FLASH_IMAGE = "/images/points/flash.png";
 const FLASH_IMAGE2 = "/images/points/flash2.png";
 
 const ALL_NFTS: NFTItem[] = [
-  { id: "common", rarity: "common", label: "Common", imageSrc: "/images/points/nft/common.png" },
+  {
+    id: "common",
+    rarity: "common",
+    label: "Common",
+    frameSrc: "/images/points/nft/frame-common.png",
+  },
   {
     id: "uncommon",
     rarity: "uncommon",
     label: "Uncommon",
-    imageSrc: "/images/points/nft/uncommon.png",
+    frameSrc: "/images/points/nft/frame-uncommon.png",
   },
-  { id: "epic", rarity: "epic", label: "Epic", imageSrc: "/images/points/nft/epic.png" },
-  { id: "mythic", rarity: "mythic", label: "Mythic", imageSrc: "/images/points/nft/mythic.png" },
+  {
+    id: "rare",
+    rarity: "rare",
+    label: "Rare",
+    frameSrc: "/images/points/nft/frame-rare.png",
+  },
+  {
+    id: "epic",
+    rarity: "epic",
+    label: "Epic",
+    frameSrc: "/images/points/nft/frame-epic.png",
+  },
   {
     id: "legendary",
     rarity: "legendary",
     label: "Legendary",
-    imageSrc: "/images/points/nft/legendary.png",
+    frameSrc: "/images/points/nft/frame-legendary.png",
   },
-  { id: "rare", rarity: "rare", label: "Rare", imageSrc: "/images/points/nft/rare.png" },
+  {
+    id: "mythic",
+    rarity: "mythic",
+    label: "Mythic",
+    frameSrc: "/images/points/nft/frame-mythic.png",
+  },
 ];
 
 type Phase = "chest" | "carousel" | "spinning" | "result";
@@ -54,6 +78,10 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   currentFrame,
   animationFrames,
   onAnimationComplete,
+  isOpenAllMode = false,
+  currentBoxIndex = 0,
+  totalBoxesToOpen = 1,
+  onNext,
 }) => {
   const [phase, setPhase] = useState<Phase>("chest");
   const [isShaking, setIsShaking] = useState(false);
@@ -69,6 +97,13 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
     const lootKey = loot.toLowerCase();
     return ALL_NFTS.find((nft) => nft.rarity === lootKey) ?? ALL_NFTS[0];
   }, [loot]);
+
+  // Update winningNFT when moving to next box in Open All mode (stay in result phase)
+  useEffect(() => {
+    if (isOpenAllMode && phase === "result" && currentBoxIndex > 0) {
+      setWinningNFT(targetNFT);
+    }
+  }, [currentBoxIndex, isOpenAllMode, phase, targetNFT]);
 
   useEffect(() => {
     if (phase === "chest" && hasAnimation && animationFrames) {
@@ -278,7 +313,14 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            <NFTResult nft={winningNFT} onContinue={onClose} />
+            <NFTResult
+              nft={winningNFT}
+              onContinue={onClose}
+              isOpenAllMode={isOpenAllMode}
+              currentBoxIndex={currentBoxIndex}
+              totalBoxesToOpen={totalBoxesToOpen}
+              onNext={onNext}
+            />
           </motion.div>
         )}
       </AnimatePresence>

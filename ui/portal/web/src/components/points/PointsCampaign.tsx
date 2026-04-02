@@ -1,8 +1,18 @@
-import { Button, IconGift, IconUser, Tab, Tabs, createContext } from "@left-curve/applets-kit";
+import {
+  Button,
+  IconGift,
+  IconStar,
+  IconUser,
+  Tab,
+  Tabs,
+  createContext,
+} from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 
 import type { PropsWithChildren } from "react";
+import { MobileTitle } from "../foundation/MobileTitle";
+import { LeaderboardTable } from "./leaderboard";
 import { PointsHeader } from "./PointsHeader";
 import { LigueLevels, PointsProfileTable } from "./profile";
 import {
@@ -11,12 +21,11 @@ import {
   NFTsSection,
   OATsSection,
   PointsProgressBar,
-  useChestOpening,
 } from "./rewards";
-import { UserPointsProvider } from "./useUserPoints";
+import { UserPointsProvider, useUserPoints } from "./useUserPoints";
 import { useAccount, useBoxes, useOats } from "@left-curve/store";
 
-type PointsCampaignTab = "profile" | "rewards";
+type PointsCampaignTab = "profile" | "rewards" | "leaderboard";
 
 const [PointsCampaignProvider, usePointsCampaign] = createContext<{
   activeTab: PointsCampaignTab;
@@ -42,6 +51,7 @@ const PointsCampaignContainer: React.FC<PointsCampaignContainerProps> = ({
       <ChestOpeningProviderWrapper userIndex={userIndex}>
         <PointsCampaignProvider value={{ activeTab, setActiveTab: onTabChange }}>
           <div className="w-full md:max-w-[56.125rem] mx-auto flex flex-col p-4 lg:p-0 lg:pt-6 lg:pb-20 pt-6 gap-4 min-h-[100svh] md:min-h-fit pb-20">
+            <MobileTitle title={m["points.mobileTitle"]()} />
             <div className="pt-10 lg:pt-20 gap-[60px] flex flex-col items-center justify-center relative">
               {children}
             </div>
@@ -74,7 +84,12 @@ const PointsCampaignHeader: React.FC = () => (
         {m["points.header.title"]()}
       </h1>
     </div>
-    <Button variant="utility">{m["points.header.readRules"]()}</Button>
+    <Button
+      variant="utility"
+      onClick={() => window.open("https://dango-4.gitbook.io/dango-docs/points")}
+    >
+      {m["points.header.readRules"]()}
+    </Button>
   </div>
 );
 
@@ -93,14 +108,9 @@ const ProfileTable: React.FC = () => {
   if (!isConnected) return null;
 
   return (
-    <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
-      <div className="px-6 py-4">
-        <p className="diatype-m-bold text-ink-primary-900">{m["points.profile.pointHistory"]()}</p>
-      </div>
+    <div className="flex flex-col gap-4">
+      <p className="diatype-m-bold text-ink-primary-900">{m["points.profile.pointHistory"]()}</p>
       <PointsProfileTable />
-      <div className="px-6 py-4 flex items-center justify-center">
-        <Button>{m["points.profile.getStarted"]()}</Button>
-      </div>
     </div>
   );
 };
@@ -108,16 +118,16 @@ const ProfileTable: React.FC = () => {
 const RewardsLoot: React.FC = () => {
   const { userIndex } = useAccount();
   const pointsUrl = window.dango.urls.pointsUrl;
-  const { openChest } = useChestOpening();
-  const { nfts, unopenedBoxes, estimatedVolume } = useBoxes({ pointsUrl, userIndex });
+  const { nfts, unopenedBoxes } = useBoxes({ pointsUrl, userIndex });
   const { oatStatuses } = useOats({ pointsUrl, userIndex });
+  const { volume } = useUserPoints();
 
   return (
     <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-primary-gray rounded-b-xl">
       <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl shadow-account-card">
-        <PointsProgressBar currentVolume={estimatedVolume} />
+        <PointsProgressBar currentVolume={volume} />
       </div>
-      <BoxesSection unopenedBoxes={unopenedBoxes} onOpenChest={openChest} />
+      <BoxesSection unopenedBoxes={unopenedBoxes} />
       <NFTsSection nfts={nfts} />
       <OATsSection oatStatuses={oatStatuses} />
     </div>
@@ -135,6 +145,17 @@ const RewardsSection: React.FC = () => (
   <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
     <PointsHeader />
     <RewardsLoot />
+  </div>
+);
+
+const LeaderboardSection: React.FC = () => (
+  <div className="flex flex-col gap-8">
+    <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
+      <PointsHeader />
+    </div>
+    <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
+      <LeaderboardTable />
+    </div>
   </div>
 );
 
@@ -161,9 +182,22 @@ const PointsCampaignTabs: React.FC = () => {
             {m["points.tabs.rewards"]()}
           </span>
         </Tab>
+        <Tab title="leaderboard">
+          <span className="flex items-center gap-1">
+            <IconStar className="w-4 h-4" />
+            {m["points.tabs.leaderboard"]()}
+          </span>
+        </Tab>
       </Tabs>
-      {activeTab === "profile" ? <ProfileSection /> : null}
-      {activeTab === "rewards" ? <RewardsSection /> : null}
+      <div className={activeTab === "profile" ? "" : "hidden"}>
+        <ProfileSection />
+      </div>
+      <div className={activeTab === "rewards" ? "" : "hidden"}>
+        <RewardsSection />
+      </div>
+      <div className={activeTab === "leaderboard" ? "" : "hidden"}>
+        <LeaderboardSection />
+      </div>
     </div>
   );
 };

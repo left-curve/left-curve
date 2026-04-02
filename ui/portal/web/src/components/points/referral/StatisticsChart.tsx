@@ -1,30 +1,22 @@
 import type React from "react";
+import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { useAccount, useEpochPoints } from "@left-curve/store";
 
-type StatisticsChartData = {
+type ChartDataPoint = {
   date: string;
-  tier1: number;
-  tier2: number;
-  tier3: number;
+  value: number;
 };
 
-const mockChartData: StatisticsChartData[] = [
-  { date: "2026-01-20", tier1: 250, tier2: 280, tier3: 320 },
-  { date: "2026-01-21", tier1: 300, tier2: 300, tier3: 320 },
-  { date: "2026-01-22", tier1: 260, tier2: 240, tier3: 280 },
-  { date: "2026-01-23", tier1: 300, tier2: 280, tier3: 300 },
-  { date: "2026-01-24", tier1: 150, tier2: 200, tier3: 350 },
-  { date: "2026-01-25", tier1: 280, tier2: 300, tier3: 340 },
-  { date: "2026-01-26", tier1: 280, tier2: 260, tier3: 320 },
-];
+const BAR_COLOR = "#A8AA4A";
 
-const TIER_LABELS = ["Tamsin", "Oswald", "Scranton"];
-
-const BAR_COLORS = ["#C5C76E", "#A8AA4A", "#8B8D3D"];
+const EPOCH_ORIGIN = 1735689600;
+const EPOCH_DURATION = 604_800;
 
 type CustomTooltipProps = {
   active?: boolean;
-  payload?: Array<{ value: number; dataKey: string }>;
+  payload?: Array<{ value: number }>;
   label?: string;
 };
 
@@ -41,24 +33,17 @@ const formatDateLabel = (dateString: string): string => {
 };
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
-  if (!active || !payload) return null;
+  if (!active || !payload?.length) return null;
 
   return (
     <div className="bg-surface-tertiary-gray rounded-lg shadow-lg p-3">
       <p className="text-ink-tertiary-500 diatype-xs-medium mb-2">
         {label && formatDateLabel(label)}
       </p>
-      <div className="flex flex-col gap-1">
-        {payload.map((item, index) => (
-          <div key={item.dataKey} className="flex items-center gap-2">
-            <span className="diatype-xs-medium" style={{ color: BAR_COLORS[2 - index] }}>
-              {TIER_LABELS[2 - index]}
-            </span>
-            <span className="text-ink-primary-900 diatype-xs-medium">
-              {formatValue(item.value)}
-            </span>
-          </div>
-        ))}
+      <div className="flex items-center gap-2">
+        <span className="diatype-xs-medium" style={{ color: BAR_COLOR }}>
+          {formatValue(payload[0].value)}
+        </span>
       </div>
     </div>
   );
@@ -69,12 +54,65 @@ type StatisticsChartProps = {
   period: "7D" | "30D" | "90D";
 };
 
+const periodToDays: Record<string, number> = {
+  "7D": 7,
+  "30D": 30,
+  "90D": 90,
+};
+
 export const StatisticsChart: React.FC<StatisticsChartProps> = ({ metric, period }) => {
+  const { account } = useAccount();
+  const userIndex = account?.index;
+
+  const pointsUrl = window.dango.urls.pointsUrl;
+  const { epochPoints, isLoading } = useEpochPoints({
+    pointsUrl,
+    userIndex,
+  });
+
+  const chartData = useMemo<ChartDataPoint[]>(() => {
+    if (!epochPoints) return [];
+
+    const days = periodToDays[period];
+    const cutoff = Date.now() / 1000 - days * 86400;
+
+    return Object.entries(epochPoints)
+      .map(([epoch, stats]) => {
+        const epochNumber = Number.parseInt(epoch, 10);
+        const epochStartTs = EPOCH_ORIGIN + epochNumber * EPOCH_DURATION;
+        const date = new Date(epochStartTs * 1000).toISOString().slice(0, 10);
+        const value = metric === "commission"
+          ? Number(stats.points.referral)
+          : Number(stats.volume);
+
+        return { date, value, ts: epochStartTs };
+      })
+      .filter((d) => d.ts >= cutoff)
+      .sort((a, b) => a.ts - b.ts)
+      .map(({ date, value }) => ({ date, value }));
+  }, [epochPoints, metric, period]);
+
+  if (isLoading) {
+    return (
+      <div className="p-4 bg-surface-primary-gray h-[15rem] lg:h-[28.125rem] flex items-center justify-center">
+        <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.chart.loading"]()}</p>
+      </div>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="p-4 bg-surface-primary-gray h-[15rem] lg:h-[28.125rem] flex items-center justify-center">
+        <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.chart.noData"]()}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 bg-surface-primary-gray [&_*]:outline-none">
       <div className="h-[15rem] lg:h-[28.125rem]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={mockChartData} barCategoryGap="15%">
+          <BarChart data={chartData} barCategoryGap="15%">
             <CartesianGrid
               strokeDasharray="0"
               vertical={false}
@@ -96,9 +134,7 @@ export const StatisticsChart: React.FC<StatisticsChartProps> = ({ metric, period
               width={50}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />
-            <Bar dataKey="tier3" stackId="stack" fill={BAR_COLORS[2]} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="tier2" stackId="stack" fill={BAR_COLORS[1]} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="tier1" stackId="stack" fill={BAR_COLORS[0]} radius={[10, 10, 0, 0]} />
+            <Bar dataKey="value" fill={BAR_COLOR} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

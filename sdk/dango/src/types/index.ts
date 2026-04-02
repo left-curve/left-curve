@@ -146,9 +146,11 @@ export type {
   LiquidityDepth,
   LiquidityDepthResponse,
   PairStats,
+  PerpsPairStats,
 } from "./dex.js";
 
 export type {
+  RateSchedule,
   PerpsUserState,
   PerpsPosition,
   PerpsUnlock,

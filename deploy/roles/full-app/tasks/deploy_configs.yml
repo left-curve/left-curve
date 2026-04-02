@@ -3,6 +3,7 @@
     faucet_url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}"
     quest_url: "https://quest-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/to_fix"
     up_url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/up"
+    points_url: "https://points-{{ dango_network }}.{{ dango_domain }}"
   when: not traefik_enabled
 
 - set_fact:
@@ -10,6 +11,7 @@
     faucet_url: "https://faucet-{{ dango_network }}.{{ dango_domain }}"
     quest_url: "https://quest-{{ dango_network }}.{{ dango_domain }}/to_fix"
     up_url: "https://api-{{ dango_network }}.{{ dango_domain }}/up"
+    points_url: "https://points-{{ dango_network }}.{{ dango_domain }}"
   when: traefik_enabled
 
 - file:

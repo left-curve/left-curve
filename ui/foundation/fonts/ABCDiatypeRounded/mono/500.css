@@ -2,6 +2,7 @@
   font-family: 'ABCDiatypeRoundedMono';
   font-style: normal;
   font-weight: 500;
+  font-display: swap;
   src: url(../files/ABCDiatypeRoundedMono-Medium.woff2) format('woff2'),
     url(../files/ABCDiatypeRoundedMono-Medium.woff) format('woff');
 }

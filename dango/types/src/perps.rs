@@ -1,6 +1,12 @@
 use {
-    crate::{Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
-    grug::{Addr, Denom, Duration, Part, Timestamp, Uint64, Uint128},
+    crate::{
+        Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
+        account_factory::UserIndex,
+    },
+    grug::{
+        Addr, Denom, Duration, MathResult, Op, Order as IterationOrder, Part, Timestamp, Uint64,
+        Uint128,
+    },
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
         sync::LazyLock,
@@ -28,6 +34,20 @@ pub type OrderId = Uint64;
 
 /// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
 pub type ConditionalOrderId = OrderId;
+
+/// Type alias for a referrer's user index.
+pub type Referrer = UserIndex;
+
+/// Type alias for a referee's user index.
+pub type Referee = UserIndex;
+
+/// The fee share ratio a referrer gives back to the referee.
+/// Uses `Dimensionless` (a value in the range appropriate for ratios).
+pub type FeeShareRatio = Dimensionless;
+
+/// Commission rate — the fraction of the post-protocol-cut fee distributed
+/// to the referral chain when a user with an active referral trades.
+pub type CommissionRate = Dimensionless;
 
 #[grug::derive(Serde)]
 #[derive(Copy)]
@@ -69,13 +89,80 @@ impl OrderKind {
 /// For a conditional (TP/SL) order, direction the oracle price must cross to
 /// trigger it.
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy)]
+#[derive(Copy, grug::PrimaryKey)]
 pub enum TriggerDirection {
     /// Trigger when oracle_price >= trigger_price (TP for longs, SL for shorts).
     Above,
 
     /// Trigger when oracle_price <= trigger_price (SL for longs, TP for shorts).
     Below,
+}
+
+/// A base rate with optional volume-tiered overrides.
+///
+/// The highest qualifying tier (by volume threshold) wins;
+/// if no tier is met, the base rate applies.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct RateSchedule {
+    /// The rate applied when no volume tier qualifies.
+    pub base: Dimensionless,
+
+    /// Volume-tiered rates. Key = minimum USD volume threshold;
+    /// value = rate. Highest qualifying tier wins.
+    pub tiers: BTreeMap<UsdValue, Dimensionless>,
+}
+
+impl RateSchedule {
+    /// Resolve the applicable rate for the given volume.
+    pub fn resolve(&self, volume: UsdValue) -> Dimensionless {
+        self.tiers
+            .range(..=volume)
+            .next_back()
+            .map(|(_, &rate)| rate)
+            .unwrap_or(self.base)
+    }
+}
+
+/// Referrer settings for a referrer.
+#[grug::derive(Serde)]
+#[derive(Copy)]
+pub struct ReferrerSettings {
+    pub commission_rate: CommissionRate,
+    pub share_ratio: FeeShareRatio,
+}
+
+/// Per-referee statistics tracked from the referrer's perspective.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct RefereeStats {
+    /// Timestamp when the referee registered with the referral.
+    pub registered_at: Timestamp,
+
+    /// Total trading volume made by the referee (USD).
+    pub volume: UsdValue,
+
+    /// Total commission earned by the referrer from this referee (USD).
+    pub commission_earned: UsdValue,
+
+    /// Timestamp of the last day the referee was active.
+    pub last_day_active: Timestamp,
+}
+
+/// Ordering options for querying per-referee statistics.
+#[grug::derive(Serde)]
+pub struct ReferrerStatsOrderBy {
+    pub order: IterationOrder,
+    pub limit: Option<u32>,
+    pub index: ReferrerStatsOrderIndex,
+}
+
+/// Which index to use when querying per-referee statistics.
+#[grug::derive(Serde)]
+pub enum ReferrerStatsOrderIndex {
+    Commission { start_after: Option<UsdValue> },
+    RegisterAt { start_after: Option<Timestamp> },
+    Volume { start_after: Option<UsdValue> },
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
@@ -89,23 +176,13 @@ pub struct Param {
     /// trading pairs.
     pub max_open_orders: usize,
 
-    /// Maximum number of conditional (TP/SL) orders a single user may have
-    /// across all trading pairs.
-    pub max_conditional_orders: usize,
+    /// Volume-tiered maker fee rates. Highest qualifying tier wins;
+    /// base rate applies when no tier is met.
+    pub maker_fee_rates: RateSchedule,
 
-    /// Base fee charged to makers, used when no volume tier qualifies.
-    pub base_maker_fee_rate: Dimensionless,
-
-    /// Base fee charged to takers, used when no volume tier qualifies.
-    pub base_taker_fee_rate: Dimensionless,
-
-    /// Volume-tiered maker fee rates. Key = minimum recent USD volume
-    /// threshold; value = fee rate. Highest qualifying tier wins.
-    pub tiered_maker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
-
-    /// Volume-tiered taker fee rates. Key = minimum recent USD volume
-    /// threshold; value = fee rate. Highest qualifying tier wins.
-    pub tiered_taker_fee_rate: BTreeMap<UsdValue, Dimensionless>,
+    /// Volume-tiered taker fee rates. Highest qualifying tier wins;
+    /// base rate applies when no tier is met.
+    pub taker_fee_rates: RateSchedule,
 
     /// Fraction of each trading fee routed to the protocol treasury.
     /// The remainder (1 − `protocol_fee_rate`) stays with the vault.
@@ -135,6 +212,18 @@ pub struct Param {
     /// submitted, the waiting time that must elapsed before the funds are released
     /// to the liquidity provider.
     pub vault_cooldown_period: Duration,
+
+    /// Whether the referral commission system is active.
+    /// When false, `apply_fee_commissions` is skipped entirely.
+    pub referral_active: bool,
+
+    /// Minimum lifetime perps trading volume a user must have
+    /// before they can become a referrer by setting a fee share ratio.
+    pub min_referrer_volume: UsdValue,
+
+    /// Volume-tiered referrer commission rates. Highest qualifying tier wins;
+    /// base rate applies when no tier is met.
+    pub referrer_commission_rates: RateSchedule,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
@@ -253,6 +342,11 @@ pub struct PairState {
     /// funding, take the difference between the current value and the position's
     /// `entry_funding_per_unit`.
     pub funding_per_unit: FundingPerUnit,
+
+    /// The clamped per-day funding rate applied during the most recent funding
+    /// collection. Positive means longs pay shorts; negative means shorts pay
+    /// longs.
+    pub funding_rate: FundingRate,
 }
 
 /// State of a specific user.
@@ -276,9 +370,6 @@ pub struct UserState {
 
     /// Number of resting limit orders the user currently has on the book.
     pub open_order_count: usize,
-
-    /// Number of conditional (TP/SL) orders the user currently has.
-    pub conditional_order_count: usize,
 }
 
 impl UserState {
@@ -300,6 +391,14 @@ pub struct Position {
     /// The value of `pair_state.cumulative_funding_per_unit` at the time when
     /// this position was last opened, modified, or funding settled.
     pub entry_funding_per_unit: FundingPerUnit,
+
+    /// Conditional order that triggers when oracle_price >= trigger_price.
+    /// Used for: TP on longs, SL on shorts.
+    pub conditional_order_above: Option<ConditionalOrder>,
+
+    /// Conditional order that triggers when oracle_price <= trigger_price.
+    /// Used for: SL on longs, TP on shorts.
+    pub conditional_order_below: Option<ConditionalOrder>,
 }
 
 /// A pending withdrawal of liquidity from the counterparty vault, awaiting the
@@ -312,6 +411,54 @@ pub struct Unlock {
     /// The USD value to be released once cooldown completes. Token conversion
     /// happens at claim time using the current oracle price.
     pub amount_to_release: UsdValue,
+}
+
+/// Cumulative referral data for a user, bucketed by day.
+///
+/// Each day-bucket stores running totals that can be differenced to compute
+/// rolling-window values (e.g. 30-day referees volume).
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct UserReferralData {
+    /// The user's own trading volume (cumulative).
+    pub volume: UsdValue,
+
+    /// Total commission shared by this user's referrer (cumulative).
+    pub commission_shared_by_referrer: UsdValue,
+
+    /// Number of direct referees this user has.
+    pub referee_count: u32,
+
+    /// Total trading volume of this user's direct referees (cumulative).
+    pub referees_volume: UsdValue,
+
+    /// Total commission distributed from this user's referees (cumulative).
+    pub commission_earned_from_referees: UsdValue,
+
+    /// Cumulative count of daily active direct referees. Incremented by one
+    /// each time a direct referee trades for the first time on a given day.
+    /// Difference two buckets to get the count for a specific window.
+    pub cumulative_active_referees: u32,
+}
+
+impl UserReferralData {
+    /// Element-wise subtraction for rolling window calculations.
+    pub fn checked_sub(&self, other: &Self) -> MathResult<Self> {
+        Ok(Self {
+            volume: self.volume.checked_sub(other.volume)?,
+            commission_shared_by_referrer: self
+                .commission_shared_by_referrer
+                .checked_sub(other.commission_shared_by_referrer)?,
+            referee_count: self.referee_count.saturating_sub(other.referee_count),
+            referees_volume: self.referees_volume.checked_sub(other.referees_volume)?,
+            commission_earned_from_referees: self
+                .commission_earned_from_referees
+                .checked_sub(other.commission_earned_from_referees)?,
+            cumulative_active_referees: self
+                .cumulative_active_referees
+                .saturating_sub(other.cumulative_active_referees),
+        })
+    }
 }
 
 /// A resting limit order, waiting to be fulfilled.
@@ -331,29 +478,42 @@ pub struct LimitOrder {
 /// A conditional order stored off-book until triggered.
 #[grug::derive(Serde, Borsh)]
 pub struct ConditionalOrder {
-    pub user: Addr,
+    /// Internal ID for price-time priority tiebreaking during cron execution.
+    pub order_id: ConditionalOrderId,
 
-    /// Size to close (sign must oppose the position: negative for closing longs,
-    /// positive for closing shorts). Always reduce-only.
-    pub size: Quantity,
+    /// Size to close. If `Some`, the sign must oppose the position (negative for
+    /// closing longs, positive for closing shorts). If `None`, closes the entire
+    /// position at trigger time.
+    pub size: Option<Quantity>,
 
     /// Oracle price that activates this order.
     pub trigger_price: UsdPrice,
 
-    /// Direction oracle must cross.
-    pub trigger_direction: TriggerDirection,
-
     /// Max slippage for the market order executed at trigger.
     pub max_slippage: Dimensionless,
-
-    pub created_at: Timestamp,
 }
 
 #[grug::derive(Serde)]
 pub enum CancelOrderRequest {
     /// Cancel a single order by ID.
     One(OrderId),
+
     /// Cancel all orders associated with the sender.
+    All,
+}
+
+#[grug::derive(Serde)]
+pub enum CancelConditionalOrderRequest {
+    /// Cancel a single conditional order identified by pair and direction.
+    One {
+        pair_id: PairId,
+        trigger_direction: TriggerDirection,
+    },
+
+    /// Cancel all conditional orders for a specific pair.
+    AllForPair { pair_id: PairId },
+
+    /// Cancel all conditional orders associated with the sender.
     All,
 }
 
@@ -366,6 +526,7 @@ pub struct InstantiateMsg {
 }
 
 #[grug::derive(Serde)]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     /// Messages for contract maintenance (owner/admin).
     Maintain(MaintainerMsg),
@@ -375,9 +536,13 @@ pub enum ExecuteMsg {
 
     /// Messages related to the market making vault.
     Vault(VaultMsg),
+
+    /// Messages related to the referral system.
+    Referral(ReferralMsg),
 }
 
 #[grug::derive(Serde)]
+#[allow(clippy::large_enum_variant)]
 pub enum MaintainerMsg {
     /// Update global and/or per-pair parameters.
     /// Only callable by the chain owner (or GENESIS_SENDER during instantiation).
@@ -434,14 +599,15 @@ pub enum TraderMsg {
     /// market order at trigger time.
     SubmitConditionalOrder {
         pair_id: PairId,
-        size: Quantity,
+        /// If `None`, closes the entire position at trigger time.
+        size: Option<Quantity>,
         trigger_price: UsdPrice,
         trigger_direction: TriggerDirection,
         max_slippage: Dimensionless,
     },
 
-    /// Cancel one or all conditional orders.
-    CancelConditionalOrder(CancelOrderRequest),
+    /// Cancel one or more conditional orders.
+    CancelConditionalOrder(CancelConditionalOrderRequest),
 }
 
 #[grug::derive(Serde)]
@@ -464,6 +630,37 @@ pub enum VaultMsg {
     /// The vault places new orders based on the oracle price, the state of the
     /// order book at the time, and its policy for market making.
     Refresh {},
+}
+
+#[grug::derive(Serde)]
+#[allow(clippy::enum_variant_names)]
+pub enum ReferralMsg {
+    /// Register a referral relationship between a referrer and a referee.
+    ///
+    /// Called by the account factory during user registration, or by the
+    /// referee himself.
+    SetReferral {
+        referrer: UserIndex,
+        referee: UserIndex,
+    },
+
+    /// Set or update the fee share ratio for the calling referrer.
+    ///
+    /// The share ratio determines what fraction of the commission the referrer
+    /// gives back to the referee.
+    ///
+    /// Can only increase (never decrease) once set.
+    SetFeeShareRatio { share_ratio: FeeShareRatio },
+
+    /// Set or remove a commission rate override for a user.
+    ///
+    /// Only callable by the chain owner.
+    ///
+    /// Use `Op::Insert` to set, `Op::Delete` to remove.
+    SetCommissionRateOverride {
+        user: UserIndex,
+        commission_rate: Op<CommissionRate>,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -509,11 +706,11 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Query a single order (limit or conditional) by ID.
+    /// Query a single limit order by ID.
     #[returns(Option<QueryOrderResponse>)]
     Order { order_id: OrderId },
 
-    /// Query all orders (limit + conditional) of a single user.
+    /// Query all limit orders of a single user.
     #[returns(BTreeMap<OrderId, QueryOrdersByUserResponseItem>)]
     OrdersByUser { user: Addr },
 
@@ -532,20 +729,43 @@ pub enum QueryMsg {
         user: Addr,
         since: Option<Timestamp>,
     },
-}
 
-#[grug::derive(Serde)]
-pub enum LimitOrConditionalOrder {
-    Limit {
-        limit_price: UsdPrice,
-        reduce_only: bool,
-        reserved_margin: UsdValue,
+    /// Query the referrer of a given referee.
+    #[returns(Option<Referrer>)]
+    Referrer { referee: UserIndex },
+
+    /// Query referral data for a user.
+    /// `since: None` -> lifetime data. `since: Some(ts)` -> data since ts.
+    #[returns(UserReferralData)]
+    ReferralData {
+        user: UserIndex,
+        since: Option<Timestamp>,
     },
-    Conditional {
-        trigger_price: UsdPrice,
-        trigger_direction: TriggerDirection,
-        // Conditonal orders are always `reduce_only` and has zero `reserved_margin`.
+
+    /// Query multiple cumulative referral data snapshots for a user,
+    /// paginated by day-bucket in reverse chronological order. Returns raw
+    /// cumulative entries (no delta computation), useful for charting
+    /// historical referral activity.
+    /// `start_after` — exclusive lower bound for descending iteration;
+    /// entries strictly older than this timestamp are returned.
+    /// `limit` — max entries to return (defaults to `DEFAULT_PAGE_LIMIT`).
+    #[returns(Vec<(Timestamp, UserReferralData)>)]
+    ReferralDataEntries {
+        user: UserIndex,
+        start_after: Option<Timestamp>,
+        limit: Option<u32>,
     },
+
+    /// Query per-referee statistics for a referrer, with ordering and pagination.
+    #[returns(Vec<(Referee, RefereeStats)>)]
+    ReferrerToRefereeStats {
+        referrer: Referrer,
+        order_by: ReferrerStatsOrderBy,
+    },
+
+    /// Return the referral settings if the user is a referrer. Otherwise, return `None`.
+    #[returns(Option<ReferrerSettings>)]
+    ReferralSettings { user: UserIndex },
 }
 
 #[grug::derive(Serde)]
@@ -553,19 +773,20 @@ pub struct QueryOrderResponse {
     pub user: Addr,
     pub pair_id: PairId,
     pub size: Quantity,
-    pub kind: LimitOrConditionalOrder,
+    pub limit_price: UsdPrice,
+    pub reduce_only: bool,
+    pub reserved_margin: UsdValue,
     pub created_at: Timestamp,
-    // `order_id` is not included in the response because the client already knows it.
 }
 
 #[grug::derive(Serde)]
 pub struct QueryOrdersByUserResponseItem {
     pub pair_id: PairId,
     pub size: Quantity,
-    pub kind: LimitOrConditionalOrder,
+    pub limit_price: UsdPrice,
+    pub reduce_only: bool,
+    pub reserved_margin: UsdValue,
     pub created_at: Timestamp,
-    // `user` is not included in the response because the client already knows it.
-    // `order_id` is the map key.
 }
 
 #[grug::derive(Serde)]
@@ -616,8 +837,8 @@ pub struct LiquidityDepthResponse {
 // | `OrderRemoved(Liq.)`     | Yes         | -                    | -                     |
 // | `OrderRemoved(ADL)`      | Yes         | -                    | -                     |
 // | `Liquidated`             | 1 per pair  | -                    | 1 per pair            |
-// | `Deleveraged`            | 1 per ADL'd counter-party         | -                     |
-// | `BadDebtCovered`         | 1 per liquidation (if bad debt)   | -                     |
+// | `Deleveraged`            | 1 per ADL'd counter-party          | -                     |
+// | `BadDebtCovered`         | 1 per liquidation (if bad debt)    | -                     |
 //
 // (*) Off-book fills that realize PnL without emitting `OrderFilled`:
 //
@@ -726,12 +947,11 @@ pub struct OrderRemoved {
 #[grug::event("conditional_order_placed")]
 #[grug::derive(Serde)]
 pub struct ConditionalOrderPlaced {
-    pub order_id: ConditionalOrderId,
     pub pair_id: PairId,
     pub user: Addr,
     pub trigger_price: UsdPrice,
     pub trigger_direction: TriggerDirection,
-    pub size: Quantity,
+    pub size: Option<Quantity>,
     pub max_slippage: Dimensionless,
 }
 
@@ -739,20 +959,20 @@ pub struct ConditionalOrderPlaced {
 #[grug::event("conditional_order_triggered")]
 #[grug::derive(Serde)]
 pub struct ConditionalOrderTriggered {
-    pub order_id: ConditionalOrderId,
     pub pair_id: PairId,
     pub user: Addr,
     pub trigger_price: UsdPrice,
+    pub trigger_direction: TriggerDirection,
     pub oracle_price: UsdPrice,
 }
 
-/// Event indicating a conditional order was removed without being triggered.
+/// Event indicating a conditional order was removed.
 #[grug::event("conditional_order_removed")]
 #[grug::derive(Serde)]
 pub struct ConditionalOrderRemoved {
-    pub order_id: ConditionalOrderId,
     pub pair_id: PairId,
     pub user: Addr,
+    pub trigger_direction: TriggerDirection,
     pub reason: ReasonForOrderRemoval,
 }
 
@@ -831,4 +1051,120 @@ pub struct BadDebtCovered {
     pub liquidated_user: Addr,
     pub amount: UsdValue,
     pub insurance_fund_remaining: UsdValue,
+}
+
+/// Event emitted when referral commissions are distributed for a fee-paying user.
+///
+/// `commissions[0]` is the payer (referee), `commissions[1]` is the first referrer,
+/// and so on up the chain. Zero entries indicate no commission at that level.
+#[grug::event("fee_distributed")]
+#[grug::derive(Serde)]
+pub struct FeeDistributed {
+    /// User index of the fee payer.
+    pub payer: UserIndex,
+
+    /// Protocol treasury portion of the fee.
+    pub protocol_fee: UsdValue,
+
+    /// Vault portion of the fee (before commissions).
+    pub vault_fee: UsdValue,
+
+    /// Commission amounts per chain level: [payer, 1st referrer, 2nd, ...].
+    pub commissions: Vec<UsdValue>,
+}
+
+/// Event indicating a referral relationship has been registered.
+#[grug::event("referral_set")]
+#[grug::derive(Serde)]
+pub struct ReferralSet {
+    pub referrer: UserIndex,
+    pub referee: UserIndex,
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {super::*, std::collections::BTreeMap};
+
+    #[test]
+    fn resolve_empty_tiers() {
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::new(),
+        };
+        assert_eq!(
+            schedule.resolve(UsdValue::new_int(1_000_000)),
+            schedule.base
+        );
+    }
+
+    #[test]
+    fn resolve_below_all_thresholds() {
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), Dimensionless::new_raw(800)),
+                (UsdValue::new_int(1_000_000), Dimensionless::new_raw(500)),
+            ]),
+        };
+        assert_eq!(schedule.resolve(UsdValue::new_int(50_000)), schedule.base);
+    }
+
+    #[test]
+    fn resolve_between_thresholds() {
+        let tier1_rate = Dimensionless::new_raw(800);
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), tier1_rate),
+                (UsdValue::new_int(1_000_000), Dimensionless::new_raw(500)),
+            ]),
+        };
+        assert_eq!(schedule.resolve(UsdValue::new_int(500_000)), tier1_rate);
+    }
+
+    #[test]
+    fn resolve_above_all_thresholds() {
+        let top_rate = Dimensionless::new_raw(500);
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), Dimensionless::new_raw(800)),
+                (UsdValue::new_int(1_000_000), top_rate),
+            ]),
+        };
+        assert_eq!(schedule.resolve(UsdValue::new_int(5_000_000)), top_rate);
+    }
+
+    #[test]
+    fn resolve_exactly_at_threshold() {
+        let tier1_rate = Dimensionless::new_raw(800);
+        let schedule = RateSchedule {
+            base: Dimensionless::new_permille(1),
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), tier1_rate),
+                (UsdValue::new_int(1_000_000), Dimensionless::new_raw(500)),
+            ]),
+        };
+        assert_eq!(schedule.resolve(UsdValue::new_int(100_000)), tier1_rate);
+    }
+
+    #[test]
+    fn resolve_negative_tier_rate() {
+        let base = Dimensionless::new_raw(-100); // -1 bps
+        let tier1_rate = Dimensionless::new_raw(-200); // -2 bps
+        let tier2_rate = Dimensionless::new_raw(-500); // -5 bps
+        let schedule = RateSchedule {
+            base,
+            tiers: BTreeMap::from([
+                (UsdValue::new_int(100_000), tier1_rate),
+                (UsdValue::new_int(1_000_000), tier2_rate),
+            ]),
+        };
+
+        assert_eq!(schedule.resolve(UsdValue::new_int(50_000)), base);
+        assert_eq!(schedule.resolve(UsdValue::new_int(500_000)), tier1_rate);
+        assert_eq!(schedule.resolve(UsdValue::new_int(5_000_000)), tier2_rate);
+    }
 }

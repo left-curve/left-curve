@@ -155,9 +155,9 @@ where
             .service(routes::index::up)
             .service(routes::blocks::services())
             .service(graphql_route::<
-                crate::graphql::query::Query,
-                crate::graphql::mutation::Mutation,
-                crate::graphql::subscription::Subscription,
+                crate::graphql::query::IndexerQuery,
+                crate::graphql::mutation::IndexerMutation,
+                crate::graphql::subscription::IndexerSubscription,
             >())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))

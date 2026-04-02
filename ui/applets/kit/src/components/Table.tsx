@@ -199,7 +199,7 @@ export const Table = <T,>({
 
 const tabsVariants = tv({
   slots: {
-    base: "grid rounded-xl w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
+    base: "grid rounded-xl w-full md:max-w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
     header: "whitespace-nowrap",
     cell: "",
     row: "",

@@ -40,6 +40,6 @@ export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
   validateSearch: z.object({
     order_type: z.enum(["limit", "market"]).default("market"),
     action: z.enum(["buy", "sell"]).default("buy"),
-    type: z.enum(["spot", "perps"]).default("spot"),
+    type: z.enum(["spot", "perps"]).default("perps"),
   }),
 });

@@ -236,8 +236,13 @@ type CreatePerpsDataFeedParameters = {
   baseSymbol: string;
 };
 
+function perpsSymbolToPairId(symbolName: string): string {
+  const [base] = symbolName.split("-");
+  return `perp/${base.toLowerCase()}usd`;
+}
+
 export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): IBasicDataFeed {
-  const { client, queryClient, subscriptions, pairId, baseSymbol } = parameters;
+  const { client, queryClient, subscriptions } = parameters;
 
   let _unsubscribe: () => void = () => {};
 
@@ -271,10 +276,12 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
       _onResolveErrorCallback: (reason: string) => void,
       _extension?: unknown,
     ) => {
+      const [base] = symbolName.split("-");
+
       const symbolInfo: LibrarySymbolInfo = {
         name: symbolName,
         ticker: symbolName,
-        description: `${baseSymbol} / USD Perp`,
+        description: `${base} / USD Perp`,
         session: "24x7",
         type: "crypto",
         timezone: "Etc/UTC",
@@ -303,22 +310,23 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
     },
 
     getBars: (
-      _symbolInfo: LibrarySymbolInfo,
+      symbolInfo: LibrarySymbolInfo,
       resolution: ResolutionString,
       periodParams: PeriodParams,
       onHistoryCallback: HistoryCallback,
       onErrorCallback: (reason: string) => void,
     ) => {
       const { to } = periodParams;
+      const currentPairId = perpsSymbolToPairId(symbolInfo.name);
       const interval = convertResolutionToCandleInterval(resolution);
       const earlierThan = new Date(to * 1000);
 
       queryClient
         .fetchQuery({
-          queryKey: ["perpsCandles", pairId, earlierThan, interval],
+          queryKey: ["perpsCandles", currentPairId, earlierThan, interval],
           queryFn: () =>
             client.queryPerpsCandles({
-              pairId,
+              pairId: currentPairId,
               interval,
               earlierThan: earlierThan.toJSON(),
             }),
@@ -339,16 +347,17 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
     },
 
     subscribeBars: (
-      _symbolInfo: LibrarySymbolInfo,
+      symbolInfo: LibrarySymbolInfo,
       resolution: ResolutionString,
       onRealtimeCallback: SubscribeBarsCallback,
       _subscriberId: string,
     ) => {
+      const currentPairId = perpsSymbolToPairId(symbolInfo.name);
       const interval = convertResolutionToCandleInterval(resolution);
       unsubscribe();
 
       _unsubscribe = subscriptions.subscribe("perpsCandles", {
-        params: { pairId, interval },
+        params: { pairId: currentPairId, interval },
         listener: ({ perpsCandles }) => {
           if (perpsCandles.length > 0) {
             const [newBar] = perpsCandlesToTradingViewBar(perpsCandles);

@@ -54,6 +54,17 @@ export {
 } from "./queries/perpsEvents.js";
 
 export {
+  type GetPerpsPairStatsParameters,
+  type GetPerpsPairStatsReturnType,
+  getPerpsPairStats,
+} from "./queries/getPerpsPairStats.js";
+
+export {
+  type GetAllPerpsPairStatsReturnType,
+  getAllPerpsPairStats,
+} from "./queries/getAllPerpsPairStats.js";
+
+export {
   type DepositMarginParameters,
   type DepositMarginReturnType,
   depositMargin,
@@ -76,3 +87,15 @@ export {
   type CancelPerpsOrderReturnType,
   cancelPerpsOrder,
 } from "./mutations/cancelOrder.js";
+
+export {
+  type SetReferralParameters,
+  type SetReferralReturnType,
+  setReferral,
+} from "./mutations/setReferral.js";
+
+export {
+  type SetFeeShareRatioParameters,
+  type SetFeeShareRatioReturnType,
+  setFeeShareRatio,
+} from "./mutations/setFeeShareRatio.js";

@@ -1,9 +1,11 @@
 use {
     dango_types::{
         Quantity, UsdPrice, UsdValue,
+        account_factory::UserIndex,
         perps::{
-            ConditionalOrder, ConditionalOrderId, LimitOrder, OrderId, PairId, PairParam,
-            PairState, Param, State, UserState,
+            CommissionRate, ConditionalOrderId, FeeShareRatio, LimitOrder, OrderId, PairId,
+            PairParam, PairState, Param, Referee, RefereeStats, Referrer, State, TriggerDirection,
+            UserReferralData, UserState,
         },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
@@ -27,7 +29,7 @@ pub const PAIR_PARAMS: Map<&PairId, PairParam> = Map::new("pair_param");
 pub const PAIR_STATES: Map<&PairId, PairState> = Map::new("pair_state");
 
 pub const USER_STATES: IndexedMap<Addr, UserState, UserStateIndexes> =
-    IndexedMap::new("us", UserStateIndexes::new("us", "us__unlock"));
+    IndexedMap::new("us", UserStateIndexes::new("us", "us__unlock", "us__cond"));
 
 /// For a given trading pair, users who have _long_ positions in this pair,
 /// indexed by their entry prices.
@@ -49,28 +51,6 @@ pub const BIDS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
 pub const ASKS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
     IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
 
-/// Conditional orders that trigger when oracle_price >= trigger_price.
-/// Used for: TP on longs, SL on shorts.
-pub const CONDITIONAL_ABOVE: IndexedMap<
-    ConditionalOrderKey,
-    ConditionalOrder,
-    ConditionalOrderIndexes,
-> = IndexedMap::new(
-    "conda",
-    ConditionalOrderIndexes::new("conda", "conda__id", "conda__user"),
-);
-
-/// Conditional orders that trigger when oracle_price <= trigger_price.
-/// Used for: SL on longs, TP on shorts.
-pub const CONDITIONAL_BELOW: IndexedMap<
-    ConditionalOrderKey,
-    ConditionalOrder,
-    ConditionalOrderIndexes,
-> = IndexedMap::new(
-    "condb",
-    ConditionalOrderIndexes::new("condb", "condb__id", "condb__user"),
-);
-
 /// Liquidity depths of the order book.
 pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 
@@ -78,11 +58,40 @@ pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 /// Key: (user, day_timestamp). Value: lifetime cumulative USD notional.
 pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
 
+// --------------------------------- referral ----------------------------------
+
+/// Maps a referee to their referrer. Immutable once set.
+pub const REFEREE_TO_REFERRER: Map<UserIndex, UserIndex> = Map::new("ref_r");
+
+/// Maps a referrer to their fee share ratio.
+pub const FEE_SHARE_RATIO: Map<UserIndex, FeeShareRatio> = Map::new("ref_sr");
+
+/// Per-user commission rate override. If set, this value is used instead of
+/// the volume-based tier calculation.
+pub const COMMISSION_RATE_OVERRIDES: Map<UserIndex, CommissionRate> = Map::new("ref_cr_override");
+
+/// Cumulative referral data per user, bucketed by day.
+pub const USER_REFERRAL_DATA: Map<(UserIndex, Timestamp), UserReferralData> = Map::new("ref_data");
+
+/// Per-referee statistics from the referrer's perspective, with multi-indexes
+/// for sorted queries by registration date, volume, and commission.
+pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
+    (Referrer, Referee),
+    RefereeStats,
+    ReferrerStatisticsIndex,
+> = IndexedMap::new(
+    "ref_stat",
+    ReferrerStatisticsIndex::new(
+        "ref_stat",
+        "ref_stat__registered_at",
+        "ref_stat__volume",
+        "ref_stat__commission",
+    ),
+);
+
 // ----------------------------------- types -----------------------------------
 
 pub type OrderKey = (PairId, UsdPrice, OrderId);
-
-pub type ConditionalOrderKey = (PairId, UsdPrice, ConditionalOrderId);
 
 #[grug::index_list(OrderKey, LimitOrder)]
 pub struct OrderIndexes<'a> {
@@ -107,38 +116,25 @@ impl OrderIndexes<'static> {
     }
 }
 
-#[grug::index_list(ConditionalOrderKey, ConditionalOrder)]
-pub struct ConditionalOrderIndexes<'a> {
-    pub order_id: UniqueIndex<'a, ConditionalOrderKey, ConditionalOrderId, ConditionalOrder>,
-    pub user: MultiIndex<'a, ConditionalOrderKey, Addr, ConditionalOrder>,
-}
-
-impl ConditionalOrderIndexes<'static> {
-    pub const fn new(
-        pk_namespace: &'static str,
-        order_id_namespace: &'static str,
-        user_namespace: &'static str,
-    ) -> Self {
-        ConditionalOrderIndexes {
-            order_id: UniqueIndex::new(
-                |(_, _, order_id), _| *order_id,
-                pk_namespace,
-                order_id_namespace,
-            ),
-            user: MultiIndex::new(|_, order| order.user, pk_namespace, user_namespace),
-        }
-    }
-}
-
 #[grug::index_list(Addr, UserState)]
 pub struct UserStateIndexes<'a> {
-    /// If the user state has one or more pending unlocks, the earlist ending
+    /// If the user state has one or more pending unlocks, the earliest ending
     /// time of those unlocks; otherwise, `Timestamp::MAX`.
     pub earliest_unlock_end_time: MultiIndex<'a, Addr, Timestamp, UserState>,
+
+    /// Conditional orders across a user's positions.
+    /// For BELOW orders, the trigger price is inverted, so that ascending
+    /// iteration visits the highest prices first.
+    pub conditional_orders:
+        MultiIndex<'a, Addr, (PairId, TriggerDirection, UsdPrice, ConditionalOrderId), UserState>,
 }
 
 impl UserStateIndexes<'static> {
-    pub const fn new(pk_namespace: &'static str, idx_namespace: &'static str) -> Self {
+    pub const fn new(
+        pk_namespace: &'static str,
+        unlock_namespace: &'static str,
+        cond_namespace: &'static str,
+    ) -> Self {
         UserStateIndexes {
             earliest_unlock_end_time: MultiIndex::new(
                 |_, user_state| {
@@ -149,7 +145,67 @@ impl UserStateIndexes<'static> {
                         .unwrap_or(Timestamp::MAX)
                 },
                 pk_namespace,
-                idx_namespace,
+                unlock_namespace,
+            ),
+            conditional_orders: MultiIndex::new2(
+                |_, user_state| {
+                    let mut keys = Vec::new();
+                    for (pair_id, position) in &user_state.positions {
+                        if let Some(order) = &position.conditional_order_above {
+                            keys.push((
+                                pair_id.clone(),
+                                TriggerDirection::Above,
+                                order.trigger_price,
+                                order.order_id,
+                            ));
+                        }
+                        if let Some(order) = &position.conditional_order_below {
+                            keys.push((
+                                pair_id.clone(),
+                                TriggerDirection::Below,
+                                !order.trigger_price,
+                                order.order_id,
+                            ));
+                        }
+                    }
+                    keys
+                },
+                pk_namespace,
+                cond_namespace,
+            ),
+        }
+    }
+}
+
+#[grug::index_list((Referrer, Referee), RefereeStats)]
+pub struct ReferrerStatisticsIndex<'a> {
+    pub registered_at: MultiIndex<'a, (Referrer, Referee), (Referrer, Timestamp), RefereeStats>,
+    pub volume: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,
+    pub commission: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,
+}
+
+impl ReferrerStatisticsIndex<'static> {
+    pub const fn new(
+        pk_namespace: &'static str,
+        registered_at_namespace: &'static str,
+        volume_namespace: &'static str,
+        commission_namespace: &'static str,
+    ) -> Self {
+        ReferrerStatisticsIndex {
+            registered_at: MultiIndex::new(
+                |(referrer, _), data| (*referrer, data.registered_at),
+                pk_namespace,
+                registered_at_namespace,
+            ),
+            volume: MultiIndex::new(
+                |(referrer, _), data| (*referrer, data.volume),
+                pk_namespace,
+                volume_namespace,
+            ),
+            commission: MultiIndex::new(
+                |(referrer, _), data| (*referrer, data.commission_earned),
+                pk_namespace,
+                commission_namespace,
             ),
         }
     }

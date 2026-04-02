@@ -34,4 +34,5 @@ hyperlane-types = { workspace = true }
 indexer-cache   = { workspace = true }
 indexer-sql     = { workspace = true }
 num-format      = { workspace = true }
+pyth-types      = { workspace = true }
 tracing         = { workspace = true }

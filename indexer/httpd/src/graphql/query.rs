@@ -11,7 +11,7 @@ pub mod pagination;
 pub mod transaction;
 
 #[derive(MergedObject, Default)]
-pub struct Query(
+pub struct IndexerQuery(
     BlockQuery,
     TransactionQuery,
     MessageQuery,

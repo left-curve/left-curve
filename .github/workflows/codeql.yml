@@ -1,0 +1,118 @@
+name: "CodeQL"
+
+permissions: {}
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: ["*"]
+  schedule:
+    - cron: "0 6 * * 1" # weekly Monday 06:00 UTC
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      rust: ${{ github.event_name == 'schedule' || steps.filter.outputs.rust }}
+      javascript: ${{ github.event_name == 'schedule' || steps.filter.outputs.javascript }}
+      actions: ${{ github.event_name == 'schedule' || steps.filter.outputs.actions }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 100
+      - name: Determine affected paths
+        if: github.event_name != 'schedule'
+        id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
+        with:
+          filters: |
+            rust:
+              - 'dango/**'
+              - 'grug/**'
+              - 'hyperlane/**'
+              - 'indexer/**'
+              - 'pyth/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            javascript:
+              - 'sdk/**'
+              - 'ui/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+            actions:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+
+  analyze-rust:
+    name: Analyze (rust)
+    needs: [changes]
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          languages: rust
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          category: "/language:rust"
+
+  analyze-javascript:
+    name: Analyze (javascript-typescript)
+    needs: [changes]
+    if: needs.changes.outputs.javascript == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          languages: javascript-typescript
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          category: "/language:javascript-typescript"
+
+  analyze-actions:
+    name: Analyze (actions)
+    needs: [changes]
+    if: needs.changes.outputs.actions == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          languages: actions
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          category: "/language:actions"

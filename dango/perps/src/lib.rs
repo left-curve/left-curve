@@ -1,27 +1,27 @@
-mod core;
-mod cron;
-mod liquidity_depth;
-mod maintain;
+pub mod core;
+pub mod cron;
+pub mod liquidity_depth;
+pub mod maintain;
 #[cfg(feature = "metrics")]
 pub mod metrics;
-mod position_index;
-mod price;
-mod querier;
-mod query;
-mod state;
-mod trade;
-mod vault;
-mod volume;
-
-pub(crate) use {querier::*, state::*, volume::*};
+pub mod position_index;
+pub mod price;
+pub mod querier;
+pub mod query;
+pub mod referral;
+pub mod state;
+pub mod trade;
+pub mod vault;
+pub mod volume;
 
 use {
+    crate::state::{NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, UsdValue,
         perps::{
-            CancelOrderRequest, ExecuteMsg, InstantiateMsg, MaintainerMsg, OrderId, QueryMsg,
-            State, TraderMsg, VaultMsg,
+            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, InstantiateMsg,
+            MaintainerMsg, OrderId, QueryMsg, ReferralMsg, State, TraderMsg, VaultMsg,
         },
     },
     grug::{
@@ -62,6 +62,20 @@ fn oracle(querier: impl DangoQuerier) -> Addr {
     }
 }
 
+#[inline]
+fn account_factory(querier: impl DangoQuerier) -> Addr {
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = querier;
+        grug::addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b")
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        querier.query_account_factory().unwrap()
+    }
+}
+
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     STATE.save(ctx.storage, &State {
@@ -89,6 +103,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_conditional_orders(
         ctx.storage,
+        ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
         &mut oracle_querier,
@@ -139,10 +154,14 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 trigger_direction,
                 max_slippage,
             ),
-            TraderMsg::CancelConditionalOrder(CancelOrderRequest::One(order_id)) => {
-                trade::cancel_one_conditional_order(ctx, order_id)
-            },
-            TraderMsg::CancelConditionalOrder(CancelOrderRequest::All) => {
+            TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::One {
+                pair_id,
+                trigger_direction,
+            }) => trade::cancel_one_conditional_order(ctx, pair_id, trigger_direction),
+            TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::AllForPair {
+                pair_id,
+            }) => trade::cancel_conditional_orders_for_pair(ctx, pair_id),
+            TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::All) => {
                 trade::cancel_all_conditional_orders(ctx)
             },
         },
@@ -155,6 +174,18 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 vault::remove_liquidity(ctx, shares_to_burn)
             },
             VaultMsg::Refresh {} => vault::refresh_orders(ctx),
+        },
+        ExecuteMsg::Referral(msg) => match msg {
+            ReferralMsg::SetReferral { referrer, referee } => {
+                referral::set_referral(ctx, referrer, referee)
+            },
+            ReferralMsg::SetFeeShareRatio { share_ratio } => {
+                referral::set_fee_share_ratio(ctx, share_ratio)
+            },
+            ReferralMsg::SetCommissionRateOverride {
+                user,
+                commission_rate,
+            } => referral::set_commission_rate_override(ctx, user, commission_rate),
         },
     }
 }
@@ -212,6 +243,30 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Volume { user, since } => {
             let res = query::query_volume(ctx.storage, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::Referrer { referee } => {
+            let res = query::query_referrer(ctx.storage, referee)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralData { user, since } => {
+            let res = query::query_referral_data(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralDataEntries {
+            user,
+            start_after,
+            limit,
+        } => {
+            let res = query::query_referral_data_entries(ctx, user, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferrerToRefereeStats { referrer, order_by } => {
+            let res = query::query_referrer_to_referee_stats(ctx, referrer, order_by)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralSettings { user } => {
+            let res = query::query_referral_settings(ctx, user)?;
             res.to_json_value()
         },
     }

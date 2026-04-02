@@ -3,12 +3,14 @@ use {
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
     dango_types::{
-        account,
+        DangoQuerier, account,
         account_factory::{
             AccountOwned, AccountRegistered, ExecuteMsg, InstantiateMsg, KeyDisowned, KeyOwned,
-            NewUserSalt, RegisterUserData, Salt, User, UserRegistered, Username,
+            NewUserSalt, RegisterUserData, Salt, User, UserIndex, UserRegistered, Username,
+            UsernameUpdated,
         },
         auth::{Key, Signature},
+        perps,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
@@ -115,7 +117,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
             seed,
             signature,
-        } => register_user(ctx, key, key_hash, seed, signature),
+            referrer,
+        } => register_user(ctx, key, key_hash, seed, signature, referrer),
         ExecuteMsg::RegisterAccount {} => register_account(ctx),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
@@ -128,6 +131,7 @@ fn register_user(
     key_hash: Hash256,
     seed: u32,
     signature: Signature,
+    referrer: Option<UserIndex>,
 ) -> anyhow::Result<Response> {
     // Verify the signature is valid.
     verify_signature(
@@ -142,8 +146,24 @@ fn register_user(
     let (msg, user_registered, account_registered) =
         onboard_new_user(ctx.storage, ctx.contract, key, key_hash, seed, ctx.funds)?;
 
+    // If a referrer is provided, send a message to the perps contract to
+    // register the referral relationship.
+    let maybe_referral_msg = if let Some(referrer) = referrer {
+        Some(Message::execute(
+            ctx.querier.query_perps()?,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer,
+                referee: user_registered.user_index,
+            }),
+            Coins::default(),
+        )?)
+    } else {
+        None
+    };
+
     Ok(Response::new()
         .add_message(msg)
+        .may_add_message(maybe_referral_msg)
         .add_event(user_registered)?
         .add_event(account_registered)?)
 }
@@ -348,5 +368,8 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
 
     USERS.save(ctx.storage, user_index, &user)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event(UsernameUpdated {
+        user_index,
+        username,
+    })?)
 }

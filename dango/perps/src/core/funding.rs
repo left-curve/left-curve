@@ -80,13 +80,14 @@ pub fn compute_premium(
 /// `[-max_abs_funding_rate, +max_abs_funding_rate]`, then scaled by the actual
 /// elapsed interval.
 ///
-/// Returns: the funding delta as `FundingPerUnit`.
+/// Returns: `(funding_delta, clamped_rate)` — the delta as `FundingPerUnit`
+/// and the clamped per-day `FundingRate` that produced it.
 pub fn compute_funding_delta(
     avg_premium: Dimensionless,
     oracle_price: UsdPrice,
     max_abs_funding_rate: FundingRate,
     interval: Days,
-) -> MathResult<FundingPerUnit> {
+) -> MathResult<(FundingPerUnit, FundingRate)> {
     // Reinterpret the dimensionless average premium as a per-day funding rate.
     let rate_per_day = FundingRate::new(avg_premium.into_inner());
 
@@ -96,9 +97,11 @@ pub fn compute_funding_delta(
     // funding_delta = clamped_rate * interval * oracle_price
     // FundingRate(day⁻¹) × Days(day) = Dimensionless
     // Dimensionless × UsdPrice(usd/qty) = FundingPerUnit(usd/qty)
-    clamped_rate
+    let delta = clamped_rate
         .checked_mul(interval)?
-        .checked_mul(oracle_price)
+        .checked_mul(oracle_price)?;
+
+    Ok((delta, clamped_rate))
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -202,8 +205,10 @@ mod tests {
         let max_rate = FundingRate::new_raw(50_000); // 0.05/day
         let interval = Days::from_duration(Duration::from_seconds(86400)).unwrap();
 
-        let delta = compute_funding_delta(avg_premium, oracle_price, max_rate, interval).unwrap();
+        let (delta, rate) =
+            compute_funding_delta(avg_premium, oracle_price, max_rate, interval).unwrap();
         assert_eq!(delta, FundingPerUnit::new_raw(1_000_000)); // 1.0
+        assert_eq!(rate, FundingRate::new_raw(10_000)); // 0.01/day (unclamped)
     }
 
     #[test]
@@ -215,8 +220,10 @@ mod tests {
         let max_rate = FundingRate::new_raw(50_000); // 0.05/day
         let interval = Days::from_duration(Duration::from_seconds(86400)).unwrap();
 
-        let delta = compute_funding_delta(avg_premium, oracle_price, max_rate, interval).unwrap();
+        let (delta, rate) =
+            compute_funding_delta(avg_premium, oracle_price, max_rate, interval).unwrap();
         assert_eq!(delta, FundingPerUnit::new_raw(5_000_000)); // 5.0
+        assert_eq!(rate, max_rate); // clamped to max
     }
 
     #[test]
@@ -228,8 +235,10 @@ mod tests {
         let max_rate = FundingRate::new_raw(50_000); // 0.05/day
         let interval = Days::from_duration(Duration::from_seconds(86400)).unwrap();
 
-        let delta = compute_funding_delta(avg_premium, oracle_price, max_rate, interval).unwrap();
+        let (delta, rate) =
+            compute_funding_delta(avg_premium, oracle_price, max_rate, interval).unwrap();
         assert_eq!(delta, FundingPerUnit::new_raw(-5_000_000)); // -5.0
+        assert_eq!(rate, -max_rate); // clamped to -max
     }
 
     #[test]
@@ -242,7 +251,9 @@ mod tests {
         let max_rate = FundingRate::new_raw(50_000); // 0.05/day
         let interval = Days::from_duration(Duration::from_seconds(43200)).unwrap(); // 12h
 
-        let delta = compute_funding_delta(avg_premium, oracle_price, max_rate, interval).unwrap();
+        let (delta, rate) =
+            compute_funding_delta(avg_premium, oracle_price, max_rate, interval).unwrap();
         assert_eq!(delta, FundingPerUnit::new_int(500));
+        assert_eq!(rate, FundingRate::new_raw(20_000)); // 0.02/day (unclamped)
     }
 }

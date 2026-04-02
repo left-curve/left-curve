@@ -1,20 +1,26 @@
 use {
     crate::{
-        ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, DEPTHS, PAIR_PARAMS, PAIR_STATES,
-        USER_STATES, VOLUMES, round_to_day,
+        referral::calculate_commission_rate,
+        state::{
+            ASKS, BIDS, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS, PAIR_STATES, REFEREE_TO_REFERRER,
+            REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, VOLUMES,
+        },
+        volume::round_to_day,
     },
     anyhow::ensure,
     dango_types::{
         UsdPrice, UsdValue,
+        account_factory::UserIndex,
         perps::{
-            ConditionalOrder, LimitOrConditionalOrder, LimitOrder, LiquidityDepth,
-            LiquidityDepthResponse, OrderId, PairId, PairParam, PairState, QueryOrderResponse,
-            QueryOrdersByUserResponseItem, UserState,
+            LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId, PairParam,
+            PairState, QueryOrderResponse, QueryOrdersByUserResponseItem, Referee, RefereeStats,
+            Referrer, ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex,
+            UserReferralData, UserState,
         },
     },
     grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, StdResult, Storage,
-        Timestamp,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, MultiIndex, Order as IterationOrder,
+        PrefixBound, PrimaryKey, StdResult, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -61,9 +67,7 @@ pub fn query_user_states(
         .collect()
 }
 
-/// Search all 4 order maps (`BIDS`, `ASKS`, `CONDITIONAL_ABOVE`, `CONDITIONAL_BELOW`)
-/// for an order with the given ID. Since `OrderId` and `ConditionalOrderId` share
-/// the same ID space, an ID appears in exactly one map.
+/// Search `BIDS` and `ASKS` for an order with the given ID.
 pub fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<Option<QueryOrderResponse>> {
     // Check `BIDS` (un-invert price).
     if let Some(((pair_id, stored_price, _), order)) =
@@ -79,28 +83,10 @@ pub fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<Option<Que
         return Ok(Some(limit_order_to_response(pair_id, limit_price, order)));
     }
 
-    // Check `CONDITIONAL_ABOVE`.
-    if let Some(((pair_id, ..), order)) = CONDITIONAL_ABOVE
-        .idx
-        .order_id
-        .may_load(ctx.storage, order_id)?
-    {
-        return Ok(Some(conditional_order_to_response(pair_id, order)));
-    }
-
-    // Check `CONDITIONAL_BELOW`.
-    if let Some(((pair_id, ..), order)) = CONDITIONAL_BELOW
-        .idx
-        .order_id
-        .may_load(ctx.storage, order_id)?
-    {
-        return Ok(Some(conditional_order_to_response(pair_id, order)));
-    }
-
     Ok(None)
 }
 
-/// Return all orders (limit + conditional) for a user, keyed by order ID.
+/// Return all limit orders for a user, keyed by order ID.
 pub fn query_orders_by_user(
     ctx: ImmutableCtx,
     user: Addr,
@@ -129,28 +115,6 @@ pub fn query_orders_by_user(
         items.insert(order_id, limit_order_to_item(pair_id, limit_price, order));
     }
 
-    // `CONDITIONAL_ABOVE`.
-    for res in CONDITIONAL_ABOVE.idx.user.prefix(user).range(
-        ctx.storage,
-        None,
-        None,
-        IterationOrder::Ascending,
-    ) {
-        let ((pair_id, _, order_id), order) = res?;
-        items.insert(order_id, conditional_order_to_item(pair_id, order));
-    }
-
-    // `CONDITIONAL_BELOW`.
-    for res in CONDITIONAL_BELOW.idx.user.prefix(user).range(
-        ctx.storage,
-        None,
-        None,
-        IterationOrder::Ascending,
-    ) {
-        let ((pair_id, _, order_id), order) = res?;
-        items.insert(order_id, conditional_order_to_item(pair_id, order));
-    }
-
     Ok(items)
 }
 
@@ -163,24 +127,9 @@ fn limit_order_to_response(
         user: order.user,
         pair_id,
         size: order.size,
-        kind: LimitOrConditionalOrder::Limit {
-            limit_price,
-            reduce_only: order.reduce_only,
-            reserved_margin: order.reserved_margin,
-        },
-        created_at: order.created_at,
-    }
-}
-
-fn conditional_order_to_response(pair_id: PairId, order: ConditionalOrder) -> QueryOrderResponse {
-    QueryOrderResponse {
-        user: order.user,
-        pair_id,
-        size: order.size,
-        kind: LimitOrConditionalOrder::Conditional {
-            trigger_price: order.trigger_price,
-            trigger_direction: order.trigger_direction,
-        },
+        limit_price,
+        reduce_only: order.reduce_only,
+        reserved_margin: order.reserved_margin,
         created_at: order.created_at,
     }
 }
@@ -193,26 +142,9 @@ fn limit_order_to_item(
     QueryOrdersByUserResponseItem {
         pair_id,
         size: order.size,
-        kind: LimitOrConditionalOrder::Limit {
-            limit_price,
-            reduce_only: order.reduce_only,
-            reserved_margin: order.reserved_margin,
-        },
-        created_at: order.created_at,
-    }
-}
-
-fn conditional_order_to_item(
-    pair_id: PairId,
-    order: ConditionalOrder,
-) -> QueryOrdersByUserResponseItem {
-    QueryOrdersByUserResponseItem {
-        pair_id,
-        size: order.size,
-        kind: LimitOrConditionalOrder::Conditional {
-            trigger_price: order.trigger_price,
-            trigger_direction: order.trigger_direction,
-        },
+        limit_price,
+        reduce_only: order.reduce_only,
+        reserved_margin: order.reserved_margin,
         created_at: order.created_at,
     }
 }
@@ -290,4 +222,140 @@ pub fn query_volume(
             Ok(latest.checked_sub(baseline)?)
         },
     }
+}
+
+pub fn query_referrer(storage: &dyn Storage, referee: UserIndex) -> StdResult<Option<Referrer>> {
+    REFEREE_TO_REFERRER.may_load(storage, referee)
+}
+
+pub fn query_referral_data(
+    ctx: ImmutableCtx,
+    user: UserIndex,
+    since: Option<Timestamp>,
+) -> anyhow::Result<UserReferralData> {
+    let Some(data_now) = USER_REFERRAL_DATA
+        .prefix(user)
+        .values(ctx.storage, None, None, IterationOrder::Descending)
+        .next()
+        .transpose()?
+    else {
+        return Ok(UserReferralData::default());
+    };
+
+    let data_since = if let Some(since) = since {
+        USER_REFERRAL_DATA
+            .prefix(user)
+            .values(
+                ctx.storage,
+                None,
+                Some(Bound::Inclusive(since)),
+                IterationOrder::Descending,
+            )
+            .next()
+            .transpose()?
+            .unwrap_or_default()
+    } else {
+        UserReferralData::default()
+    };
+
+    Ok(data_now.checked_sub(&data_since)?)
+}
+
+pub fn query_referral_data_entries(
+    ctx: ImmutableCtx,
+    user: UserIndex,
+    start_after: Option<Timestamp>,
+    limit: Option<u32>,
+) -> StdResult<Vec<(Timestamp, UserReferralData)>> {
+    let max = start_after.map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    USER_REFERRAL_DATA
+        .prefix(user)
+        .range(ctx.storage, None, max, IterationOrder::Descending)
+        .take(limit)
+        .collect()
+}
+
+pub fn query_referrer_to_referee_stats(
+    ctx: ImmutableCtx,
+    referrer: Referrer,
+    order_by: ReferrerStatsOrderBy,
+) -> StdResult<Vec<(Referee, RefereeStats)>> {
+    let limit = order_by.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    match order_by.index {
+        ReferrerStatsOrderIndex::Commission { start_after } => collect_referee_stats(
+            ctx.storage,
+            &REFERRER_TO_REFEREE_STATISTICS.idx.commission,
+            referrer,
+            start_after,
+            limit,
+            order_by.order,
+        ),
+        ReferrerStatsOrderIndex::RegisterAt { start_after } => collect_referee_stats(
+            ctx.storage,
+            &REFERRER_TO_REFEREE_STATISTICS.idx.registered_at,
+            referrer,
+            start_after,
+            limit,
+            order_by.order,
+        ),
+        ReferrerStatsOrderIndex::Volume { start_after } => collect_referee_stats(
+            ctx.storage,
+            &REFERRER_TO_REFEREE_STATISTICS.idx.volume,
+            referrer,
+            start_after,
+            limit,
+            order_by.order,
+        ),
+    }
+}
+
+fn collect_referee_stats<'a, S>(
+    storage: &dyn Storage,
+    index: &MultiIndex<'a, (Referrer, Referee), (Referrer, S), RefereeStats>,
+    referrer: Referrer,
+    start_after: Option<S>,
+    limit: usize,
+    order: IterationOrder,
+) -> StdResult<Vec<(Referee, RefereeStats)>>
+where
+    S: PrimaryKey,
+{
+    let start_after = start_after.map(PrefixBound::Exclusive);
+
+    let (min, max) = match order {
+        IterationOrder::Ascending => (start_after, None),
+        IterationOrder::Descending => (None, start_after),
+    };
+
+    index
+        .sub_prefix(referrer)
+        .prefix_range(storage, min, max, order)
+        .take(limit)
+        .map(|value| {
+            let ((_, referee), referee_stats) = value?;
+            Ok((referee, referee_stats))
+        })
+        .collect()
+}
+
+pub fn query_referral_settings(
+    ctx: ImmutableCtx,
+    user: UserIndex,
+) -> anyhow::Result<Option<ReferrerSettings>> {
+    let Some(share_ratio) = FEE_SHARE_RATIO.may_load(ctx.storage, user)? else {
+        return Ok(None);
+    };
+
+    let param = crate::PARAM.load(ctx.storage)?;
+
+    let commission_rate =
+        calculate_commission_rate(ctx.storage, user, ctx.block.timestamp, &param)?;
+
+    Ok(Some(ReferrerSettings {
+        commission_rate,
+        share_ratio,
+    }))
 }

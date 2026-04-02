@@ -12,16 +12,19 @@ use {
 pub mod query;
 pub mod subscription;
 
-pub(crate) type AppSchema = Schema<query::Query, EmptyMutation, EmptySubscription>;
+pub(crate) type AppSchema = Schema<query::ClickhouseQuery, EmptyMutation, EmptySubscription>;
 
 pub fn build_schema(app_ctx: Context) -> AppSchema {
     #[cfg(feature = "metrics")]
     init_graphql_metrics();
 
     #[allow(unused_mut)]
-    let mut schema_builder =
-        Schema::build(query::Query::default(), EmptyMutation, EmptySubscription)
-            .extension(SentryExtension);
+    let mut schema_builder = Schema::build(
+        query::ClickhouseQuery::default(),
+        EmptyMutation,
+        EmptySubscription,
+    )
+    .extension(SentryExtension);
 
     #[cfg(feature = "metrics")]
     {

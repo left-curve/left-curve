@@ -1,29 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 
 import { usePublicClient } from "./usePublicClient.js";
 import { useAppConfig } from "./useAppConfig.js";
+import { useAccount } from "./useAccount.js";
+import { useSigningClient } from "./useSigningClient.js";
+import { useSubmitTx } from "./useSubmitTx.js";
 
 import {
   queryReferrer,
   queryReferralData,
   queryRefereeStats,
   queryReferralSettings,
-  queryUserVolume,
-  queryReferralConfig,
+  queryReferralParams,
 } from "./referralApi.js";
 
 import type {
   UserReferralData,
-  RefereeStats,
-  ReferralSettings,
-  ReferralConfig,
-  RefereeStatsOrderBy,
+  RefereeStatsWithUser,
+  ReferrerSettings,
+  ReferralParams,
+  ReferrerStatsOrderBy,
 } from "../types/referral.js";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// useReferrer - Get the referrer of a user
-// ─────────────────────────────────────────────────────────────────────────────
 
 export type UseReferrerParameters = {
   userIndex: number | undefined;
@@ -37,7 +34,7 @@ export function useReferrer(parameters: UseReferrerParameters) {
 
   const { data, isLoading, isError, error } = useQuery<number | null>({
     queryKey: ["referrer", userIndex],
-    queryFn: () => queryReferrer(client!, appConfig.addresses.taxman, userIndex!),
+    queryFn: () => queryReferrer(client!, appConfig.addresses.perps, userIndex!),
     enabled: enabled && !!userIndex && !!client,
   });
 
@@ -49,10 +46,6 @@ export function useReferrer(parameters: UseReferrerParameters) {
     hasReferrer: data !== null && data !== undefined,
   };
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// useReferralData - Get referral data for a user (as referrer)
-// ─────────────────────────────────────────────────────────────────────────────
 
 export type UseReferralDataParameters = {
   userIndex: number | undefined;
@@ -67,7 +60,7 @@ export function useReferralData(parameters: UseReferralDataParameters) {
 
   const { data, isLoading, isError, error } = useQuery<UserReferralData>({
     queryKey: ["referralData", userIndex, since],
-    queryFn: () => queryReferralData(client!, appConfig.addresses.taxman, userIndex!, since),
+    queryFn: () => queryReferralData(client!, appConfig.addresses.perps, userIndex!, since),
     enabled: enabled && !!userIndex && !!client,
   });
 
@@ -79,24 +72,25 @@ export function useReferralData(parameters: UseReferralDataParameters) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// useRefereeStats - Get list of referees for a referrer
-// ─────────────────────────────────────────────────────────────────────────────
-
 export type UseRefereeStatsParameters = {
   referrerIndex: number | undefined;
-  orderBy?: RefereeStatsOrderBy;
+  orderBy?: ReferrerStatsOrderBy;
   enabled?: boolean;
 };
 
+const DEFAULT_ORDER_BY: ReferrerStatsOrderBy = {
+  order: "descending",
+  index: { volume: {} },
+};
+
 export function useRefereeStats(parameters: UseRefereeStatsParameters) {
-  const { referrerIndex, orderBy, enabled = true } = parameters;
+  const { referrerIndex, orderBy = DEFAULT_ORDER_BY, enabled = true } = parameters;
   const client = usePublicClient();
   const { data: appConfig } = useAppConfig();
 
-  const { data, isLoading, isError, error } = useQuery<RefereeStats[]>({
+  const { data, isLoading, isError, error } = useQuery<RefereeStatsWithUser[]>({
     queryKey: ["refereeStats", referrerIndex, orderBy],
-    queryFn: () => queryRefereeStats(client!, appConfig.addresses.taxman, referrerIndex!, orderBy),
+    queryFn: () => queryRefereeStats(client!, appConfig.addresses.perps, referrerIndex!, orderBy),
     enabled: enabled && !!referrerIndex && !!client,
   });
 
@@ -108,10 +102,6 @@ export function useRefereeStats(parameters: UseRefereeStatsParameters) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// useReferralSettings - Get referral settings for a referrer
-// ─────────────────────────────────────────────────────────────────────────────
-
 export type UseReferralSettingsParameters = {
   userIndex: number | undefined;
   enabled?: boolean;
@@ -122,9 +112,9 @@ export function useReferralSettings(parameters: UseReferralSettingsParameters) {
   const client = usePublicClient();
   const { data: appConfig } = useAppConfig();
 
-  const { data, isLoading, isError, error } = useQuery<ReferralSettings>({
+  const { data, isLoading, isError, error } = useQuery<ReferrerSettings | null>({
     queryKey: ["referralSettings", userIndex],
-    queryFn: () => queryReferralSettings(client!, appConfig.addresses.taxman, userIndex!),
+    queryFn: () => queryReferralSettings(client!, appConfig.addresses.perps, userIndex!),
     enabled: enabled && !!userIndex && !!client,
   });
 
@@ -136,69 +126,23 @@ export function useReferralSettings(parameters: UseReferralSettingsParameters) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// useUserVolume - Get trading volume for a user
-// ─────────────────────────────────────────────────────────────────────────────
-
-export type UseUserVolumeParameters = {
-  userIndex: number | undefined;
-  days?: number;
+export type UseReferralParamsParameters = {
   enabled?: boolean;
 };
 
-export function useUserVolume(parameters: UseUserVolumeParameters) {
-  const { userIndex, days = 30, enabled = true } = parameters;
-  const client = usePublicClient();
-  const { data: appConfig } = useAppConfig();
-
-  const since = useMemo(() => {
-    if (!days) return undefined;
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    return Math.floor(d.getTime() / 1000);
-  }, [days]);
-
-  const { data, isLoading, isError, error } = useQuery<string>({
-    queryKey: ["userVolume", userIndex, since],
-    queryFn: () => queryUserVolume(client!, appConfig.addresses.taxman, userIndex!, since),
-    enabled: enabled && !!userIndex && !!client,
-  });
-
-  const volume = useMemo(() => {
-    if (!data) return 0;
-    return Number(data);
-  }, [data]);
-
-  return {
-    volume,
-    volumeRaw: data,
-    isLoading,
-    isError,
-    error,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// useReferralConfig - Get system-wide referral configuration
-// ─────────────────────────────────────────────────────────────────────────────
-
-export type UseReferralConfigParameters = {
-  enabled?: boolean;
-};
-
-export function useReferralConfig(parameters: UseReferralConfigParameters = {}) {
+export function useReferralParams(parameters: UseReferralParamsParameters = {}) {
   const { enabled = true } = parameters;
   const client = usePublicClient();
   const { data: appConfig } = useAppConfig();
 
-  const { data, isLoading, isError, error } = useQuery<ReferralConfig>({
-    queryKey: ["referralConfig"],
-    queryFn: () => queryReferralConfig(client!, appConfig.addresses.taxman),
+  const { data, isLoading, isError, error } = useQuery<ReferralParams>({
+    queryKey: ["referralParams"],
+    queryFn: () => queryReferralParams(client!, appConfig.addresses.perps),
     enabled: enabled && !!client,
   });
 
   return {
-    config: data,
+    referralParams: data,
     isLoading,
     isError,
     error,
@@ -206,8 +150,65 @@ export function useReferralConfig(parameters: UseReferralConfigParameters = {}) 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Utility: Generate referral code and link
+// useSetReferral - Mutation to register a referral relationship
 // ─────────────────────────────────────────────────────────────────────────────
+
+export type UseSetReferralParameters = {
+  onError?: (error: unknown) => void;
+  onSuccess?: () => void;
+};
+
+export function useSetReferral(parameters: UseSetReferralParameters = {}) {
+  const { onError, onSuccess } = parameters;
+  const { account } = useAccount();
+  const { data: signingClient } = useSigningClient();
+
+  return useSubmitTx({
+    mutation: {
+      invalidateKeys: [["referrer"], ["referralData"]],
+      mutationFn: async (variables: { referrer: number; referee: number }) => {
+        if (!signingClient) throw new Error("No signing client available");
+        if (!account) throw new Error("No account found");
+
+        await signingClient.setReferral({
+          sender: account.address,
+          referrer: variables.referrer,
+          referee: variables.referee,
+        });
+      },
+      onError,
+      onSuccess,
+    },
+  });
+}
+
+export type UseSetFeeShareRatioParameters = {
+  onError?: (error: unknown) => void;
+  onSuccess?: () => void;
+};
+
+export function useSetFeeShareRatio(parameters: UseSetFeeShareRatioParameters = {}) {
+  const { onError, onSuccess } = parameters;
+  const { account } = useAccount();
+  const { data: signingClient } = useSigningClient();
+
+  return useSubmitTx({
+    mutation: {
+      invalidateKeys: [["referralSettings"]],
+      mutationFn: async (variables: { shareRatio: string }) => {
+        if (!signingClient) throw new Error("No signing client available");
+        if (!account) throw new Error("No account found");
+
+        await signingClient.setFeeShareRatio({
+          sender: account.address,
+          shareRatio: variables.shareRatio,
+        });
+      },
+      onError,
+      onSuccess,
+    },
+  });
+}
 
 export function getReferralCode(userIndex: number | undefined): string {
   if (!userIndex) return "";
@@ -217,7 +218,6 @@ export function getReferralCode(userIndex: number | undefined): string {
 export function getReferralLink(userIndex: number | undefined): string {
   if (!userIndex) return "";
   const code = getReferralCode(userIndex);
-  // Use current origin for the referral link
   if (typeof window !== "undefined") {
     return `${window.location.origin}?ref=${code}`;
   }

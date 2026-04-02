@@ -1,5 +1,5 @@
 import { getAppConfig, simulate } from "@left-curve/sdk";
-import type { Hex, Transport } from "@left-curve/sdk/types";
+import type { Transport } from "@left-curve/sdk/types";
 import { broadcastTxSync } from "../../app/mutations/broadcastTxSync.js";
 
 import { getAction } from "@left-curve/sdk/actions";
@@ -18,17 +18,18 @@ export type RegisterUserParameters = {
   keyHash: KeyHash;
   seed: number;
   signature: Signature;
+  referrer?: number;
 };
 
 export type RegisterUserReturnType = BroadcastTxSyncReturnType;
 
 export type MsgRegisterUser = {
   registerUser: {
-    username: string;
-    KeyHash: Hex;
+    keyHash: KeyHash;
     key: Key;
     seed: number;
     signature: Signature;
+    referrer: number | null;
   };
 };
 
@@ -36,7 +37,7 @@ export async function registerUser<transport extends Transport>(
   client: DangoClient<transport, undefined | Signer>,
   parameters: RegisterUserParameters,
 ): RegisterUserReturnType {
-  const { keyHash, key, seed, signature } = parameters;
+  const { keyHash, key, seed, signature, referrer } = parameters;
 
   const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
 
@@ -48,6 +49,7 @@ export async function registerUser<transport extends Transport>(
       key,
       seed,
       signature,
+      referrer: referrer ?? null,
     },
   };
 

@@ -84,7 +84,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         >
           <div className={inputParent({ className: classNames?.inputParent })}>
             {startContent ? startContent : null}
-            <div className="relative flex-1 flex items-center">
+            <div className="relative flex-1 min-w-0 flex items-center">
               {!props.value && !isLoading && placeholder ? (
                 <div
                   className={twMerge("w-full absolute z-0 text-ink-tertiary-500 text-left ", {

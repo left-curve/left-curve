@@ -1,5 +1,5 @@
 use {
-    crate::{NoCachePerpQuerier, core::compute_trading_fee},
+    crate::{core::compute_trading_fee, querier::NoCachePerpQuerier},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -16,7 +16,7 @@ use {
 ///
 /// Positive result means profit; negative means loss. The sign automatically
 /// accounts for position direction (long vs short).
-pub(super) fn compute_position_unrealized_pnl(
+pub fn compute_position_unrealized_pnl(
     position: &Position,
     oracle_price: UsdPrice,
 ) -> grug::MathResult<UsdValue> {
@@ -38,7 +38,7 @@ pub(super) fn compute_position_unrealized_pnl(
 ///
 /// - When rate > 0: longs pay (size > 0 produces positive accrued)
 /// - When rate < 0: shorts pay (size < 0, delta < 0, product is positive)
-pub(super) fn compute_position_unrealized_funding(
+pub fn compute_position_unrealized_funding(
     position: &Position,
     pair_state: &PairState,
 ) -> grug::MathResult<UsdValue> {
@@ -289,7 +289,7 @@ mod tests {
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
-            perps::{PairParam, PairState, Param, Position},
+            perps::{PairParam, PairState, Param, Position, RateSchedule},
         },
         grug::{Timestamp, Udec128, btree_map, hash_map},
         std::collections::HashMap,
@@ -314,6 +314,8 @@ mod tests {
             size: Quantity::new_int(size),
             entry_price: UsdPrice::new_int(entry_price),
             entry_funding_per_unit: FundingPerUnit::new_int(0),
+            conditional_order_above: None,
+            conditional_order_below: None,
         };
 
         assert_eq!(
@@ -346,6 +348,8 @@ mod tests {
             size: Quantity::new_raw(size_raw),
             entry_price: UsdPrice::new_raw(0),
             entry_funding_per_unit: FundingPerUnit::new_raw(entry_raw),
+            conditional_order_above: None,
+            conditional_order_below: None,
         };
         let pair_state = PairState {
             funding_per_unit: FundingPerUnit::new_raw(cumulative_raw),
@@ -387,6 +391,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -424,6 +430,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(1),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -463,11 +471,15 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(1),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
                 btc::DENOM.clone() => Position {
                     size: Quantity::new_int(-1),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -513,6 +525,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -562,6 +576,8 @@ mod tests {
                     size: Quantity::new_int(size),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -600,11 +616,15 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
                 btc::DENOM.clone() => Position {
                     size: Quantity::new_int(-1),
                     entry_price: UsdPrice::new_int(50000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -688,6 +708,8 @@ mod tests {
                     size: Quantity::new_int(5),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -734,6 +756,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -823,11 +847,15 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
                 btc::DENOM.clone() => Position {
                     size: Quantity::new_int(-1),
                     entry_price: UsdPrice::new_int(50000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -931,6 +959,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -975,6 +1005,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -1021,6 +1053,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -1067,6 +1101,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(1),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -1113,7 +1149,10 @@ mod tests {
     fn margin_check_full_fill_fails() {
         let pair_id: PairId = "perp/btcusd".parse().unwrap();
         let param = Param {
-            base_taker_fee_rate: Dimensionless::new_permille(1), // 0.1%
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(1), // 0.1%
+                ..Default::default()
+            },
             ..Default::default()
         };
         let taker_state = UserState {
@@ -1145,7 +1184,7 @@ mod tests {
             &pair_id,
             &perp_querier,
             &taker_state,
-            param.base_taker_fee_rate,
+            param.taker_fee_rates.base,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
         );

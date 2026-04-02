@@ -1,11 +1,9 @@
 use crate::{entities::pair_price::PairPrice, error::Result};
 #[cfg(feature = "async-graphql")]
 use {
-    crate::context::Context,
-    crate::entities::graphql_decimal::GraphqlBigDecimal,
+    crate::{context::Context, entities::graphql_decimal::GraphqlBigDecimal},
     async_graphql::{ComplexObject, SimpleObject},
-    bigdecimal::BigDecimal,
-    bigdecimal::num_bigint::BigInt,
+    bigdecimal::{BigDecimal, num_bigint::BigInt},
     chrono::{Duration, Utc},
     clickhouse::Row,
     serde::Deserialize,

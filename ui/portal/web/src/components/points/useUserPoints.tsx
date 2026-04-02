@@ -52,6 +52,7 @@ const getNextLeague = (currentLeague: UserLeague): LeagueConfig | null => {
 type UserPointsData = {
   points: number;
   volume: number;
+  pnl: number;
   rank: number;
   percentile: number;
   league: UserLeague;
@@ -80,6 +81,8 @@ export const UserPointsProvider: React.FC<PropsWithChildren> = ({ children }) =>
     lpPoints,
     tradingPoints,
     referralPoints,
+    volume,
+    pnl,
     rank,
     percentile,
     isLoading,
@@ -92,7 +95,8 @@ export const UserPointsProvider: React.FC<PropsWithChildren> = ({ children }) =>
 
     return {
       points,
-      volume: 0,
+      volume,
+      pnl,
       rank,
       percentile,
       league,
@@ -104,7 +108,7 @@ export const UserPointsProvider: React.FC<PropsWithChildren> = ({ children }) =>
       isLoading,
       leagueList: LEAGUE_CONFIG,
     };
-  }, [points, lpPoints, tradingPoints, referralPoints, rank, percentile, isLoading]);
+  }, [points, lpPoints, tradingPoints, referralPoints, volume, pnl, rank, percentile, isLoading]);
 
   return <UserPointsContextProvider value={value}>{children}</UserPointsContextProvider>;
 };

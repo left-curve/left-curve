@@ -149,7 +149,7 @@ const SearchMenu: React.FC = () => {
                     className="flex absolute w-full h-full bg-transparent left-0 rounded-md cursor-text gap-1 items-center pl-9 pt-1 diatype-m-regular"
                     onClick={() => (isSearchBarVisible ? hideMenu() : openMenu())}
                   >
-                    <span>{m["searchBar.placeholder.title"]()}</span>{" "}
+                    <span className="whitespace-nowrap">{m["searchBar.placeholder.title"]()}</span>{" "}
                     <TextLoop
                       texts={[
                         m["searchBar.placeholder.transactions"](),
@@ -198,7 +198,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({
   allApplets,
 }) => {
   const navigate = useNavigate();
-  const { applets, block, txs, account, contracts } = searchResult;
+  const { applets, block, txs, account, contracts, user } = searchResult;
 
   return (
     <AnimatePresence mode="wait" custom={isVisible}>
@@ -300,6 +300,18 @@ const Body: React.FC<SearchMenuBodyProps> = ({
                     onSelect={() => [navigate({ to: `/account/${account.address}` }), hideMenu()]}
                   >
                     <SearchItem.Account account={account} />
+                  </Command.Item>
+                </Command.Group>
+              ) : null}
+              {user ? (
+                <Command.Group heading="Users">
+                  <Command.Item
+                    key={user.name}
+                    value={user.name}
+                    className="group"
+                    onSelect={() => [navigate({ to: `/user/${user.name}` }), hideMenu()]}
+                  >
+                    <SearchItem.User user={user} />
                   </Command.Item>
                 </Command.Group>
               ) : null}

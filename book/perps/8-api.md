@@ -646,33 +646,44 @@ query {
 {
   "max_unlocks": 5,
   "max_open_orders": 50,
-  "max_conditional_orders": 20,
-  "base_maker_fee_rate": "0.000000",
-  "base_taker_fee_rate": "0.001000",
-  "tiered_maker_fee_rate": {},
-  "tiered_taker_fee_rate": {},
+  "maker_fee_rates": {
+    "base": "0.000000",
+    "tiers": {}
+  },
+  "taker_fee_rates": {
+    "base": "0.001000",
+    "tiers": {}
+  },
   "protocol_fee_rate": "0.100000",
   "liquidation_fee_rate": "0.010000",
   "funding_period": "3600000000000",
   "vault_total_weight": "10.000000",
-  "vault_cooldown_period": "604800000000000"
+  "vault_cooldown_period": "604800000000000",
+  "referral_active": true,
+  "min_referrer_volume": "0.000000",
+  "referrer_commission_rates": {
+    "base": "0.000000",
+    "tiers": {}
+  }
 }
 ```
 
-| Field                    | Type                           | Description                                                |
-| ------------------------ | ------------------------------ | ---------------------------------------------------------- |
-| `max_unlocks`            | `usize`                        | Max concurrent vault unlock requests per user              |
-| `max_open_orders`        | `usize`                        | Max resting limit orders per user (all pairs)              |
-| `max_conditional_orders` | `usize`                        | Max TP/SL orders per user (all pairs)                      |
-| `base_maker_fee_rate`    | `Dimensionless`                | Maker fee when no volume tier qualifies                    |
-| `base_taker_fee_rate`    | `Dimensionless`                | Taker fee when no volume tier qualifies                    |
-| `tiered_maker_fee_rate`  | `Map<UsdValue, Dimensionless>` | Volume-tiered maker fees (threshold → rate)                |
-| `tiered_taker_fee_rate`  | `Map<UsdValue, Dimensionless>` | Volume-tiered taker fees (threshold → rate)                |
-| `protocol_fee_rate`      | `Dimensionless`                | Fraction of trading fees routed to treasury                |
-| `liquidation_fee_rate`   | `Dimensionless`                | Insurance fund fee on liquidations                         |
-| `funding_period`         | `Duration`                     | Interval between funding collections (nanoseconds)         |
-| `vault_total_weight`     | `Dimensionless`                | Sum of all pairs' vault liquidity weights                  |
-| `vault_cooldown_period`  | `Duration`                     | Waiting time before vault withdrawal release (nanoseconds) |
+| Field                      | Type           | Description                                                |
+| -------------------------- | -------------- | ---------------------------------------------------------- |
+| `max_unlocks`              | `usize`        | Max concurrent vault unlock requests per user              |
+| `max_open_orders`          | `usize`        | Max resting limit orders per user (all pairs)              |
+| `maker_fee_rates`          | `RateSchedule` | Volume-tiered maker fee rates                              |
+| `taker_fee_rates`          | `RateSchedule` | Volume-tiered taker fee rates                              |
+| `protocol_fee_rate`        | `Dimensionless`| Fraction of trading fees routed to treasury                |
+| `liquidation_fee_rate`     | `Dimensionless`| Insurance fund fee on liquidations                         |
+| `funding_period`           | `Duration`     | Interval between funding collections (nanoseconds)         |
+| `vault_total_weight`       | `Dimensionless`| Sum of all pairs' vault liquidity weights                  |
+| `vault_cooldown_period`    | `Duration`     | Waiting time before vault withdrawal release (nanoseconds) |
+| `referral_active`          | `bool`         | Whether the referral commission system is active           |
+| `min_referrer_volume`      | `UsdValue`     | Minimum lifetime volume to become a referrer               |
+| `referrer_commission_rates`| `RateSchedule` | Volume-tiered referrer commission rates                    |
+
+A `RateSchedule` has two fields: `base` (the default rate) and `tiers` (a map of volume threshold to rate; highest qualifying tier wins).
 
 For fee mechanics, see [Order matching §8](2-order-matching.md#8-trading-fees).
 
@@ -1029,8 +1040,7 @@ query {
   },
   "unlocks": [],
   "reserved_margin": "500.000000",
-  "open_order_count": 2,
-  "conditional_order_count": 1
+  "open_order_count": 2
 }
 ```
 
@@ -1042,7 +1052,6 @@ query {
 | `unlocks`                 | `[Unlock]`              | Pending vault withdrawals                |
 | `reserved_margin`         | `UsdValue`              | Margin reserved for resting limit orders |
 | `open_order_count`        | `usize`                 | Number of resting limit orders           |
-| `conditional_order_count` | `usize`                 | Number of TP/SL orders                   |
 
 **Position:**
 

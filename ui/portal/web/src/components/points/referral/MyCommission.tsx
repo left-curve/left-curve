@@ -10,8 +10,16 @@ import {
 } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAccount, useRefereeStats, useWeeklyPoints, useUserVolume } from "@left-curve/store";
-import type { RefereeStats } from "@left-curve/store";
+import {
+  useAccount,
+  useRefereeStats,
+  useReferralData,
+  usePublicClient,
+  useAppConfig,
+  queryReferralData,
+} from "@left-curve/store";
+import { useQueries } from "@tanstack/react-query";
+import type { RefereeStatsWithUser } from "@left-curve/store";
 import type React from "react";
 import { Suspense, lazy, useMemo, useState } from "react";
 import type { ReferralMode } from "./ReferralStats";
@@ -63,9 +71,40 @@ const formatDate = (timestamp: number): string => {
   });
 };
 
+const ROWS_PER_PAGE = 10;
+const SECONDS_PER_DAY = 86_400;
+
+function dayBoundary(baseTs: number, daysAgo: number): number {
+  const ts = baseTs - daysAgo * SECONDS_PER_DAY;
+  return ts - (ts % SECONDS_PER_DAY);
+}
+
+function diffReferralData(
+  wider: {
+    commissionEarnedFromReferees?: string;
+    refereesVolume?: string;
+    cumulativeActiveReferees?: number;
+  },
+  narrower: {
+    commissionEarnedFromReferees?: string;
+    refereesVolume?: string;
+    cumulativeActiveReferees?: number;
+  },
+) {
+  return {
+    commission:
+      Number(wider.commissionEarnedFromReferees ?? "0") -
+      Number(narrower.commissionEarnedFromReferees ?? "0"),
+    volume: Number(wider.refereesVolume ?? "0") - Number(narrower.refereesVolume ?? "0"),
+    activeUsers: (wider.cumulativeActiveReferees ?? 0) - (narrower.cumulativeActiveReferees ?? 0),
+  };
+}
+
 const NotConnectedMessage: React.FC = () => (
   <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
-    <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.commission.logInToView"]()}</p>
+    <p className="text-ink-tertiary-500 diatype-m-medium">
+      {m["referral.commission.logInToView"]()}
+    </p>
   </div>
 );
 
@@ -73,28 +112,58 @@ const CommissionTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
+  const client = usePublicClient();
+  const { data: appConfig } = useAppConfig();
 
-  const { weeklyPoints, isLoading } = useWeeklyPoints({
-    pointsUrl: "", // Will be set by the hook from config
-    userIndex,
+  const nowTs = useMemo(() => Math.floor(Date.now() / 1000), []);
+
+  const totalDays = 30;
+  const totalPages = Math.ceil(totalDays / ROWS_PER_PAGE);
+
+  const offset = (currentPage - 1) * ROWS_PER_PAGE;
+  const rowsOnPage = Math.min(ROWS_PER_PAGE, totalDays - offset);
+
+  const boundaries = useMemo(() => {
+    const b: number[] = [];
+    for (let i = rowsOnPage; i >= 0; i--) {
+      b.push(dayBoundary(nowTs, offset + i));
+    }
+    return b;
+  }, [nowTs, offset, rowsOnPage]);
+
+  const queries = useQueries({
+    queries: boundaries.map((since) => ({
+      queryKey: ["referralData", userIndex, since],
+      queryFn: () => queryReferralData(client!, appConfig.addresses.perps, userIndex!, since),
+      enabled: !!client && !!userIndex,
+    })),
   });
 
+  const isLoading = queries.some((q) => q.isLoading);
+
   const commissionData = useMemo<CommissionRow[]>(() => {
-    if (!weeklyPoints) return [];
+    if (queries.some((q) => !q.data)) return [];
 
-    return Object.entries(weeklyPoints).map(([week, points]) => {
-      const weekNumber = Number.parseInt(week, 10);
-      const weekDate = new Date();
-      weekDate.setDate(weekDate.getDate() - 7 * (52 - weekNumber));
+    const rows: CommissionRow[] = [];
 
-      return {
-        myCommission: formatUSD(points.referral),
-        referralVolume: "-",
-        activeUsers: "-",
-        date: weekDate.toLocaleDateString("en-US"),
-      };
-    });
-  }, [weeklyPoints]);
+    for (let i = 0; i < rowsOnPage; i++) {
+      const wider = queries[i].data!;
+      const narrower = queries[i + 1].data!;
+      const delta = diffReferralData(wider, narrower);
+
+      const dayTs = boundaries[i + 1];
+      const dateStr = new Date(dayTs * 1000).toLocaleDateString("en-US");
+
+      rows.push({
+        myCommission: formatUSD(delta.commission),
+        referralVolume: formatUSD(delta.volume),
+        activeUsers: String(delta.activeUsers),
+        date: dateStr,
+      });
+    }
+
+    return rows.reverse();
+  }, [queries, boundaries, rowsOnPage]);
 
   const columns: TableColumn<CommissionRow> = [
     {
@@ -123,8 +192,8 @@ const CommissionTable: React.FC = () => {
     return (
       <div className="p-4 bg-surface-primary-gray">
         <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="w-full h-12" />
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={`commission-skeleton-${i}`} className="w-full h-12" />
           ))}
         </div>
       </div>
@@ -137,10 +206,10 @@ const CommissionTable: React.FC = () => {
       columns={columns}
       classNames={{ base: "shadow-none bg-surface-primary-gray" }}
       bottomContent={
-        commissionData.length > 10 ? (
+        totalPages > 1 ? (
           <div className="p-4">
             <Pagination
-              totalPages={Math.ceil(commissionData.length / 10)}
+              totalPages={totalPages}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
             />
@@ -161,11 +230,11 @@ const MyRefereesTable: React.FC = () => {
   });
 
   const refereeData = useMemo<RefereeRow[]>(() => {
-    return referees.map((referee: RefereeStats) => ({
-      userName: `#${referee.user_index}`,
+    return referees.map((referee: RefereeStatsWithUser) => ({
+      userName: `#${referee.userIndex}`,
       totalVolume: formatUSD(referee.volume),
-      totalCommission: formatUSD(referee.commission),
-      date: formatDate(referee.registered_at),
+      totalCommission: formatUSD(referee.commissionEarned),
+      date: formatDate(referee.registeredAt),
     }));
   }, [referees]);
 
@@ -221,7 +290,9 @@ const MyRefereesTable: React.FC = () => {
   if (refereeData.length === 0) {
     return (
       <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
-        <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.commission.noReferees"]()}</p>
+        <p className="text-ink-tertiary-500 diatype-m-medium">
+          {m["referral.commission.noReferees"]()}
+        </p>
       </div>
     );
   }
@@ -251,23 +322,23 @@ const RebateTable: React.FC = () => {
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
-  const { volume, isLoading } = useUserVolume({
-    userIndex,
-    days: 30,
-  });
+  const { referralData, isLoading } = useReferralData({ userIndex });
 
   const rebateData = useMemo<RebateRow[]>(() => {
-    if (volume && volume > 0) {
+    const volume = Number(referralData?.volume ?? "0");
+    const rebates = referralData?.commissionSharedByReferrer ?? "0";
+
+    if (volume > 0 || Number(rebates) > 0) {
       return [
         {
-          rebates: "$0.00",
+          rebates: formatUSD(rebates),
           tradingVolume: formatUSD(volume),
           date: new Date().toLocaleDateString("en-US"),
         },
       ];
     }
     return [];
-  }, [volume]);
+  }, [referralData]);
 
   const columns: TableColumn<RebateRow> = [
     {
@@ -312,7 +383,9 @@ const RebateTable: React.FC = () => {
   if (rebateData.length === 0) {
     return (
       <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
-        <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.commission.noRebates"]()}</p>
+        <p className="text-ink-tertiary-500 diatype-m-medium">
+          {m["referral.commission.noRebates"]()}
+        </p>
       </div>
     );
   }
@@ -339,7 +412,9 @@ const RebateTable: React.FC = () => {
 
 const ChartLoading: React.FC = () => (
   <div className="p-4 lg:p-6 bg-surface-primary-gray h-[300px] flex items-center justify-center">
-    <p className="text-ink-tertiary-500 diatype-m-medium">{m["referral.commission.loadingChart"]()}</p>
+    <p className="text-ink-tertiary-500 diatype-m-medium">
+      {m["referral.commission.loadingChart"]()}
+    </p>
   </div>
 );
 

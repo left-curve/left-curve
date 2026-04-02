@@ -1,6 +1,7 @@
 import { Button, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
 
 type PerpsClosePositionProps = {
@@ -14,6 +15,7 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(
     const { hideModal } = useApp();
     const { account } = useAccount();
     const { data: signingClient } = useSigningClient();
+    const queryClient = useQueryClient();
 
     const sizeNum = Number(size);
     const closeSize = sizeNum > 0 ? `-${Math.abs(sizeNum)}` : `${Math.abs(sizeNum)}`;
@@ -22,7 +24,6 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(
     const { isPending, mutateAsync: closePosition } = useSubmitTx({
       submission: {
         success: "Position closed successfully",
-        error: "Failed to close position",
       },
       mutation: {
         mutationFn: async () => {
@@ -36,6 +37,8 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(
           });
         },
         onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["prices"] });
+          queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
           hideModal();
         },
       },

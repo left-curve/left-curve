@@ -3,15 +3,16 @@ import { useConfig, usePrices } from "@left-curve/store";
 
 import { formatUnits } from "@left-curve/dango/utils";
 
-import type { TableColumn } from "@left-curve/applets-kit";
+import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { Coins } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount, WithPrice } from "@left-curve/store/types";
 
 export type AssetsTableProps = {
   balances: Coins;
+  classNames?: TableClassNames;
 };
 
-export const AssetsTable: React.FC<AssetsTableProps> = ({ balances }) => {
+export const AssetsTable: React.FC<AssetsTableProps> = ({ balances, classNames }) => {
   const { getCoinInfo } = useConfig();
   const { settings } = useApp();
   const { getPrice } = usePrices();
@@ -63,5 +64,5 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({ balances }) => {
 
   if (!data.length) return null;
 
-  return <Table data={data} columns={columns} />;
+  return <Table data={data} columns={columns} classNames={classNames} />;
 };

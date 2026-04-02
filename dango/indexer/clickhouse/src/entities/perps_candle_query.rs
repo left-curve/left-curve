@@ -1,6 +1,5 @@
 #[cfg(feature = "tracing")]
 use itertools::Itertools;
-
 use {
     crate::entities::{CandleInterval, perps_candle::PerpsCandle},
     chrono::{DateTime, Utc},

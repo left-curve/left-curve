@@ -4,7 +4,6 @@ import { useAccount, useAppConfig, useConfig, usePublicClient } from "@left-curv
 import { useQuery } from "@tanstack/react-query";
 
 import { twMerge } from "@left-curve/foundation";
-import { useStorage } from "@left-curve/store";
 
 import { TruncateResponsive } from "./TruncateResponsive";
 import { IconLink } from "./icons/IconLink";
@@ -53,13 +52,6 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
   const { accounts } = useAccount();
   const client = usePublicClient();
 
-  const [addresses, setAddresses] = useStorage<
-    Record<string, { contract: AddressInfo } | { account: AddressInfo }>
-  >("app.known_addresses", {
-    initialValue: {},
-    sync: true,
-  });
-
   const blockExplorer = chain.blockExplorer;
 
   const isClickable = !!onClick;
@@ -69,8 +61,6 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
   const { data } = useQuery({
     queryKey: ["address_visualizer", config, address],
     queryFn: async () => {
-      if (addresses[address]) return addresses[address];
-
       const contractName = config.addresses[address as keyof typeof config.addresses] as string;
       if (contractName) {
         return {
@@ -97,23 +87,23 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
       const account = await client.getAccountInfo({ address });
 
       if (account) {
-        const accountName = `${account.username} #${account.index}`;
-        const type = "other";
-        const info = { account: { name: accountName, type } };
-
-        setAddresses((prev) => ({ ...prev, [address]: info }));
-        return info;
+        return {
+          account: {
+            name: `${account.username} #${account.index}`,
+            type: "other",
+          },
+        };
       }
 
       const contract = await client.getContractInfo({ address });
 
       if (contract?.label) {
-        const contractName = contract.label;
-        const type = "other";
-        const info = { contract: { name: contractName, type } };
-
-        setAddresses((prev) => ({ ...prev, [address]: info }));
-        return { contract: contractName };
+        return {
+          contract: {
+            name: contract.label,
+            type: "other",
+          },
+        };
       }
 
       return {};

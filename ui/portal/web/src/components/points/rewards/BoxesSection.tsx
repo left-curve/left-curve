@@ -5,12 +5,11 @@ import { BoxCard, type BoxVariant } from "./BoxCard";
 
 type BoxesSectionProps = {
   unopenedBoxes: Record<string, BoxReward[]>;
-  onOpenChest: (variant: BoxVariant) => void;
 };
 
 const VARIANTS: BoxVariant[] = ["bronze", "silver", "gold", "crystal"];
 
-export const BoxesSection: React.FC<BoxesSectionProps> = ({ unopenedBoxes, onOpenChest }) => {
+export const BoxesSection: React.FC<BoxesSectionProps> = ({ unopenedBoxes }) => {
   const { isConnected } = useAccount();
 
   return (
@@ -22,7 +21,6 @@ export const BoxesSection: React.FC<BoxesSectionProps> = ({ unopenedBoxes, onOpe
             key={variant}
             variant={variant}
             quantity={unopenedBoxes[variant]?.length ?? 0}
-            onClick={() => onOpenChest(variant)}
             isUserLocked={!isConnected}
           />
         ))}

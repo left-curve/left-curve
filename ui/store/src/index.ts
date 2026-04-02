@@ -137,6 +137,12 @@ export {
 } from "./hooks/explorer/useExplorerContract.js";
 export { useExplorerTransactionsBySender } from "./hooks/explorer/useExplorerTransactionsBySender.js";
 export {
+  useExplorerUser,
+  type AccountWithDetails,
+  type ExplorerUserData,
+} from "./hooks/explorer/useExplorerUser.js";
+export { useExplorerUserTransactions } from "./hooks/explorer/useExplorerUserTransactions.js";
+export {
   parseExplorerErrorMessage,
   type ParsedExplorerError,
 } from "./hooks/explorer/parseExplorerErrorMessage.js";
@@ -158,7 +164,6 @@ export { useSpotSubmission } from "./hooks/useSpotSubmission.js";
 export { usePerpsSubmission } from "./hooks/usePerpsSubmission.js";
 export { useSpotMaxSize } from "./hooks/useSpotMaxSize.js";
 export { usePerpsMaxSize } from "./hooks/usePerpsMaxSize.js";
-export { useErrorHandler } from "./hooks/useErrorHandler.js";
 
 export {
   type UsePoolLiquidityStateParameters,
@@ -174,6 +179,14 @@ export {
 } from "./hooks/usePairStats.js";
 
 export {
+  type UsePerpsPairStatsParameters,
+  type UseAllPerpsPairStatsParameters,
+  type NormalizedPerpsPairStats,
+  usePerpsPairStats,
+  useAllPerpsPairStats,
+} from "./hooks/usePerpsPairStats.js";
+
+export {
   type UseBridgeStateParameters,
   useBridgeState,
 } from "./hooks/useBridgeState.js";
@@ -187,6 +200,12 @@ export {
   type UseSigninStateParameters,
   useSigninState,
 } from "./hooks/useSigninState.js";
+
+export {
+  type UseAuthStateParameters,
+  type AuthScreen,
+  useAuthState,
+} from "./hooks/useAuthState.js";
 
 export {
   useSearchBar,
@@ -240,6 +259,19 @@ export {
 } from "./hooks/usePoints.js";
 
 export {
+  type UseLeaderboardParameters,
+  type LeaderboardSort,
+  type LeaderboardTimeframe,
+  type LeaderboardEntryWithRank,
+  useLeaderboard,
+} from "./hooks/useLeaderboard.js";
+
+export {
+  type UseEpochPointsParameters,
+  useEpochPoints,
+} from "./hooks/useEpochPoints.js";
+
+export {
   type UseBoxesParameters,
   type NFTItem,
   useBoxes,
@@ -257,19 +289,16 @@ export {
 } from "./hooks/useRegisterOat.js";
 
 export {
-  type UseWeeklyPointsParameters,
-  useWeeklyPoints,
-} from "./hooks/useWeeklyPoints.js";
-
-export {
-  type PointsResponse,
-  type WeeklyPointsResponse,
+  type Points,
+  type UserStats,
+  type UserPoints,
   type LeaderboardEntry,
   type BoxReward,
   type OatEntry,
-  fetchUserPoints,
-  fetchWeeklyPoints,
+  fetchUserStats,
+  fetchEpochPoints,
   fetchLeaderboard,
+  fetchTotalUsersWithPoints,
   fetchUserBoxes,
   openBox,
   fetchUserOats,
@@ -283,14 +312,16 @@ export {
   type UseReferralDataParameters,
   type UseRefereeStatsParameters,
   type UseReferralSettingsParameters,
-  type UseUserVolumeParameters,
-  type UseReferralConfigParameters,
+  type UseReferralParamsParameters,
+  type UseSetReferralParameters,
+  type UseSetFeeShareRatioParameters,
   useReferrer,
   useReferralData,
   useRefereeStats,
   useReferralSettings,
-  useUserVolume,
-  useReferralConfig,
+  useReferralParams,
+  useSetReferral,
+  useSetFeeShareRatio,
   getReferralCode,
   getReferralLink,
 } from "./hooks/useReferral.js";
@@ -298,9 +329,12 @@ export {
 export type {
   UserReferralData,
   RefereeStats,
-  ReferralSettings,
-  ReferralConfig,
-  RefereeStatsOrderBy,
+  RefereeStatsWithUser,
+  ReferrerSettings,
+  ReferralParams,
+  RateSchedule,
+  ReferrerStatsOrderBy,
+  ReferrerStatsOrderIndex,
 } from "./types/referral.js";
 
 export {
@@ -308,8 +342,7 @@ export {
   queryReferralData,
   queryRefereeStats,
   queryReferralSettings,
-  queryUserVolume,
-  queryReferralConfig,
+  queryReferralParams,
 } from "./hooks/referralApi.js";
 
 export { rehydrate } from "./rehydrate.js";

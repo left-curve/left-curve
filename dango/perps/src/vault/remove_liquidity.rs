@@ -1,7 +1,10 @@
 use {
     crate::{
-        NoCachePerpQuerier, PARAM, STATE, USER_STATES, VIRTUAL_ASSETS, VIRTUAL_SHARES,
-        core::compute_user_equity, oracle,
+        VIRTUAL_ASSETS, VIRTUAL_SHARES,
+        core::compute_user_equity,
+        oracle,
+        querier::NoCachePerpQuerier,
+        state::{PARAM, STATE, USER_STATES},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,

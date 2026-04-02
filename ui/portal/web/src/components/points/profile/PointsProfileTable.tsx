@@ -1,79 +1,132 @@
-import { Cell, Table } from "@left-curve/applets-kit";
+import { Button, Cell, Pagination, SortHeader, Table } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAccount, useWeeklyPoints } from "@left-curve/store";
-import { useMemo } from "react";
+import { useAccount, useEpochPoints } from "@left-curve/store";
+import { useNavigate } from "@tanstack/react-router";
+import { useCallback, useMemo, useState } from "react";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
 
-type PointsHistoryRow = {
-  activity: string;
-  date: string;
+type EpochHistoryRow = {
+  epoch: number;
+  epochLabel: string;
+  dateRange: string;
+  dateTimestamp: number;
   points: number;
 };
 
+type SortKey = "date" | "points";
+type SortDir = "asc" | "desc";
+
 const EVENT_START_EPOCH = 1735689600;
-const SECONDS_PER_WEEK = 604_800;
+const EPOCH_DURATION_SECONDS = 604_800;
 
-const getSourceLabel = (source: string): string => {
-  switch (source) {
-    case "vault":
-      return m["points.profile.activities.provideLiquidity"]();
-    case "perps":
-      return m["points.profile.activities.trade"]();
-    case "referral":
-      return m["points.profile.activities.referral"]();
-    default:
-      return source;
-  }
+const formatEpochDateRange = (epochNumber: number): string => {
+  const startTs = EVENT_START_EPOCH + epochNumber * EPOCH_DURATION_SECONDS;
+  const endTs = startTs + EPOCH_DURATION_SECONDS;
+  const start = new Date(startTs * 1000);
+  const end = new Date(endTs * 1000);
+  const opts: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", year: "numeric" };
+  return `${start.toLocaleDateString("en-US", opts)} - ${end.toLocaleDateString("en-US", opts)}`;
 };
 
-const SOURCE_KEYS = ["vault", "perps", "referral"] as const;
-
-const formatWeekDate = (weekNumber: number): string => {
-  const timestamp = EVENT_START_EPOCH + weekNumber * SECONDS_PER_WEEK;
-  const date = new Date(timestamp * 1000);
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-};
+const PAGE_SIZE = 10;
 
 export const PointsProfileTable: React.FC = () => {
   const { userIndex } = useAccount();
+  const navigate = useNavigate();
   const pointsUrl = window.dango.urls.pointsUrl;
-  const { weeklyPoints, isLoading } = useWeeklyPoints({ pointsUrl, userIndex });
+  const { epochPoints, isLoading } = useEpochPoints({ pointsUrl, userIndex });
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const rows = useMemo((): PointsHistoryRow[] => {
-    if (!weeklyPoints) return [];
-    const result: PointsHistoryRow[] = [];
-    for (const [weekStr, points] of Object.entries(weeklyPoints)) {
-      const weekNumber = Number(weekStr);
-      const date = formatWeekDate(weekNumber);
-      for (const source of SOURCE_KEYS) {
-        const value = Number(points[source as keyof typeof points] ?? "0");
-        if (value > 0) {
-          result.push({ activity: getSourceLabel(source), date, points: value });
-        }
+  const allRows = useMemo((): EpochHistoryRow[] => {
+    if (!epochPoints) return [];
+    return Object.entries(epochPoints)
+      .map(([epochStr, stats]) => {
+        const epoch = Number(epochStr);
+        const vault = Number(stats.points.vault);
+        const perps = Number(stats.points.perps);
+        const referral = Number(stats.points.referral);
+        return {
+          epoch,
+          epochLabel: m["points.profile.epochLabel"]({ number: String(epoch + 1) }),
+          dateRange: formatEpochDateRange(epoch),
+          dateTimestamp: EVENT_START_EPOCH + epoch * EPOCH_DURATION_SECONDS,
+          points: vault + perps + referral,
+        };
+      })
+      .filter((r) => r.points > 0);
+  }, [epochPoints]);
+
+  const sortedRows = useMemo(() => {
+    const accessor =
+      sortKey === "date"
+        ? (r: EpochHistoryRow) => r.dateTimestamp
+        : (r: EpochHistoryRow) => r.points;
+    const sorted = [...allRows].sort((a, b) => accessor(a) - accessor(b));
+    return sortDir === "desc" ? sorted.reverse() : sorted;
+  }, [allRows, sortKey, sortDir]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return sortedRows.slice(start, start + PAGE_SIZE);
+  }, [sortedRows, page]);
+
+  const totalPages = Math.ceil(sortedRows.length / PAGE_SIZE);
+
+  const handleSort = useCallback(
+    (key: SortKey) => {
+      if (key === sortKey) {
+        setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+      } else {
+        setSortKey(key);
+        setSortDir("desc");
       }
-    }
-    return result.sort((a, b) => b.date.localeCompare(a.date));
-  }, [weeklyPoints]);
+      setPage(1);
+    },
+    [sortKey],
+  );
 
-  const columns: TableColumn<PointsHistoryRow> = [
+  const columns: TableColumn<EpochHistoryRow> = [
     {
-      header: m["points.profile.columns.action"](),
+      id: "epoch",
+      header: m["points.profile.columns.epoch"](),
+      enableSorting: false,
       cell: ({ row }) => (
-        <Cell.Text className="text-ink-primary-900" text={row.original.activity} />
+        <Cell.Text className="text-ink-primary-900" text={row.original.epochLabel} />
       ),
     },
     {
-      header: m["points.profile.columns.date"](),
-      cell: ({ row }) => <Cell.Text className="text-ink-primary-900" text={row.original.date} />,
+      id: "date",
+      header: () => (
+        <SortHeader
+          label={m["points.profile.columns.date"]()}
+          sorted={sortKey === "date" ? sortDir : false}
+          toggleSort={() => handleSort("date")}
+        />
+      ),
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Cell.Text className="text-ink-primary-900" text={row.original.dateRange} />
+      ),
     },
     {
-      header: m["points.profile.columns.points"](),
+      id: "points",
+      header: () => (
+        <SortHeader
+          label={m["points.profile.columns.points"]()}
+          sorted={sortKey === "points" ? sortDir : false}
+          toggleSort={() => handleSort("points")}
+          className="ml-auto w-full justify-end"
+        />
+      ),
+      enableSorting: false,
       cell: ({ row }) => (
         <Cell.Text
           className="text-ink-primary-900"
-          text={m["points.profile.xPoints"]({ points: String(row.original.points) })}
+          text={m["points.profile.xPoints"]({ points: row.original.points.toLocaleString() })}
         />
       ),
     },
@@ -87,25 +140,33 @@ export const PointsProfileTable: React.FC = () => {
     );
   }
 
-  if (rows.length === 0) {
-    return (
-      <div className="px-6 py-8 text-center text-ink-tertiary-500 diatype-m-regular">
-        {m["points.profile.noHistory"]()}
-      </div>
-    );
-  }
-
   return (
     <Table
-      data={rows}
+      data={paginatedRows}
       columns={columns}
-      style="simple"
+      style="default"
+      emptyComponent={
+        <div className="px-6 py-8 text-center text-ink-tertiary-500 diatype-m-regular">
+          {m["points.profile.noHistory"]()}
+        </div>
+      }
       classNames={{
-        base: "rounded-none bg-surface-primary-rice p-0",
-        header: "hidden",
+        base: "p-0",
         cell: "px-6 py-4",
         row: "border-b border-outline-secondary-gray last:border-b-0",
       }}
+      bottomContent={
+        <div>
+          {totalPages > 1 ? (
+            <Pagination totalPages={totalPages} currentPage={page} onPageChange={setPage} />
+          ) : null}
+          {allRows.length === 0 && (
+            <div className="px-6 py-4 flex items-center justify-center">
+              <Button onClick={() => navigate({ to: "/trade" })}>{m["points.profile.getStarted"]()}</Button>
+            </div>
+          )}
+        </div>
+      }
     />
   );
 };

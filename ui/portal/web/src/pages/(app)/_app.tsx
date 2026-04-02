@@ -1,7 +1,8 @@
 import { Modals, twMerge, useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { useAccount, useBalances, useConfig } from "@left-curve/store";
 import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute, useRouter, useSearch } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 import { StatusBadge } from "~/components/foundation/StatusBadge";
@@ -46,6 +47,10 @@ function LayoutApp() {
   const { isLg } = useMediaQuery();
   const router = useRouter();
   const { isSidebarVisible } = useApp();
+  const { isConnected, userStatus, account } = useAccount();
+  const { chain } = useConfig();
+  const { data: balances } = useBalances({ address: account?.address });
+  const modalShowed = useRef(false);
 
   const isProSwap = useMemo(() => {
     return router.state.location.pathname.includes("trade");
@@ -54,10 +59,32 @@ function LayoutApp() {
   const { socketId } = useSearch({ strict: false });
 
   useEffect(() => {
+    if (!isConnected) modalShowed.current = false;
+    if (!isConnected || modalShowed.current) return;
+
+    const isMainnet = chain.id === "dango-1";
+    const needsActivation = isMainnet
+      ? userStatus && userStatus !== "active"
+      : balances && Object.keys(balances).length === 0;
+
+    if (needsActivation) {
+      modalShowed.current = true;
+      showModal(Modals.ActivateAccount);
+    }
+  }, [isConnected, userStatus, balances, chain.id]);
+
+  useEffect(() => {
     if (socketId) showModal(Modals.SignWithDesktopFromNativeCamera, { socketId });
     const params = new URLSearchParams(window.location.search);
-    const authAction = params.get("auth_callback");
-    if (authAction) showModal(Modals.Authenticate, { action: authAction });
+    const authCallback = params.get("auth_callback");
+    const ref = params.get("ref");
+    if (authCallback) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("auth_callback");
+      url.searchParams.delete("ref");
+      window.history.replaceState({}, "", url.pathname + (url.search || ""));
+      showModal(Modals.Authenticate, { referrer: ref ? Number.parseInt(ref, 10) : undefined });
+    }
   }, []);
 
   useEffect(() => {
