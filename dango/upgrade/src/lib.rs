@@ -1,6 +1,6 @@
 use {
     dango_types::{
-        Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
+        Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
         perps::{self, RateSchedule},
     },
     grug::{
@@ -58,11 +58,21 @@ mod legacy {
         pub conditional_order_count: usize,
     }
 
+    /// The PairState struct before the upgrade (no funding_rate field).
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct PairState {
+        pub long_oi: Quantity,
+        pub short_oi: Quantity,
+        pub funding_per_unit: FundingPerUnit,
+    }
+
     pub const PARAM: grug::Item<Param> = grug::Item::new("param");
 
     /// Read legacy user states using a plain Map (same namespace as the
     /// IndexedMap primary). Index entries are not affected by the value change.
     pub const USER_STATES: Map<Addr, UserState> = Map::new("us");
+
+    pub const PAIR_STATES: Map<&perps::PairId, PairState> = Map::new("pair_state");
 }
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
@@ -169,6 +179,29 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
         }
 
         tracing::info!("Migrated UserState records");
+    }
+
+    // -------------------------------------------------------------------------
+
+    // 4. Migrate PairState records: load with legacy layout (no funding_rate),
+    //    convert to new layout (funding_rate defaults to zero).
+
+    {
+        let all_pairs = legacy::PAIR_STATES
+            .range(&perps_storage, None, None, IterationOrder::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        for (pair_id, old_ps) in &all_pairs {
+            let new_ps = perps::PairState {
+                long_oi: old_ps.long_oi,
+                short_oi: old_ps.short_oi,
+                funding_per_unit: old_ps.funding_per_unit,
+                funding_rate: FundingRate::ZERO,
+            };
+            dango_perps::PAIR_STATES.save(&mut perps_storage, pair_id, &new_ps)?;
+        }
+
+        tracing::info!("Migrated {} PairState records", all_pairs.len());
     }
 
     Ok(())

@@ -342,6 +342,11 @@ pub struct PairState {
     /// funding, take the difference between the current value and the position's
     /// `entry_funding_per_unit`.
     pub funding_per_unit: FundingPerUnit,
+
+    /// The clamped per-day funding rate applied during the most recent funding
+    /// collection. Positive means longs pay shorts; negative means shorts pay
+    /// longs.
+    pub funding_rate: FundingRate,
 }
 
 /// State of a specific user.

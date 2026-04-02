@@ -175,13 +175,14 @@ fn process_funding_for_pair(
 
     let premium = compute_premium(impact_bid, impact_ask, oracle_price)?;
 
-    let funding_delta = compute_funding_delta(
+    let (funding_delta, funding_rate) = compute_funding_delta(
         premium,
         oracle_price,
         pair_param.max_abs_funding_rate,
         interval,
     )?;
 
+    pair_state.funding_rate = funding_rate;
     (pair_state.funding_per_unit).checked_add_assign(funding_delta)?;
 
     PAIR_STATES.save(storage, &pair_id, &pair_state)?;
@@ -931,6 +932,7 @@ mod tests {
 
         let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
         assert_eq!(pair_state.funding_per_unit, FundingPerUnit::ZERO);
+        assert_eq!(pair_state.funding_rate, FundingRate::ZERO);
     }
 
     #[test]
@@ -965,6 +967,7 @@ mod tests {
 
         let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
         assert_ne!(pair_state.funding_per_unit, FundingPerUnit::ZERO);
+        assert_ne!(pair_state.funding_rate, FundingRate::ZERO);
     }
 
     #[test]
@@ -997,6 +1000,7 @@ mod tests {
         // Empty book → premium = 0 → delta = 0.
         let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
         assert_eq!(pair_state.funding_per_unit, FundingPerUnit::ZERO);
+        assert_eq!(pair_state.funding_rate, FundingRate::ZERO);
     }
 
     #[test]
@@ -1055,9 +1059,11 @@ mod tests {
 
         let btc_state = PAIR_STATES.load(&storage, &btc).unwrap();
         assert_ne!(btc_state.funding_per_unit, FundingPerUnit::ZERO);
+        assert_ne!(btc_state.funding_rate, FundingRate::ZERO);
 
         let eth_state = PAIR_STATES.load(&storage, &eth).unwrap();
         assert_ne!(eth_state.funding_per_unit, FundingPerUnit::ZERO);
+        assert_ne!(eth_state.funding_rate, FundingRate::ZERO);
     }
 
     #[test]
