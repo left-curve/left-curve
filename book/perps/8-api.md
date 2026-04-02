@@ -596,7 +596,7 @@ query {
 }
 ```
 
-The `keyType` enum values are: `SECP_25_6R_1`, `SECP_25_6K_1`, `ETHEREUM`.
+The `keyType` enum values are: `SECP256R1`, `SECP256K1`, `ETHEREUM`.
 
 ### 3.6 Query accounts
 
