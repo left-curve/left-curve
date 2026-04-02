@@ -1177,6 +1177,11 @@
       "myVolume": "My volume",
       "myRank": "My rank",
       "points": "Points",
+      "currentEpoch": "Epoch",
+      "epoch": {
+        "title": "Epoch",
+        "description": "An epoch is a one-week period during which points are accumulated"
+      },
       "tradingPoints": {
         "title": "Trading Points",
         "description": "Points earned from organic trading activity"

@@ -129,3 +129,22 @@ export const checkOat = async (
   if (!res.ok) throw new Error(`Failed to check OAT: ${res.status}`);
   return res.json();
 };
+
+export type EpochInfoNotStarted = {
+  status: "not_started";
+  starts_at: { Block: number } | { Timestamp: string };
+};
+
+export type EpochInfoActive = {
+  status: "active";
+  current_epoch: number;
+  remaining: string;
+};
+
+export type EpochInfo = EpochInfoNotStarted | EpochInfoActive;
+
+export const fetchCurrentEpoch = async (baseUrl: string): Promise<EpochInfo> => {
+  const res = await fetch(`${baseUrl}/event/epoch`);
+  if (!res.ok) throw new Error(`Failed to fetch current epoch: ${res.status}`);
+  return res.json();
+};

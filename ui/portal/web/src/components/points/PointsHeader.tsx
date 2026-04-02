@@ -1,12 +1,19 @@
-import { IconFriendshipGroup, IconSprout, IconSwapMoney, Tooltip } from "@left-curve/applets-kit";
+import {
+  IconFriendshipGroup,
+  IconSprout,
+  IconSwapMoney,
+  Tooltip,
+} from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAccount } from "@left-curve/store";
+import { useAccount, useCurrentEpoch } from "@left-curve/store";
 import type React from "react";
 import { useUserPoints } from "./useUserPoints";
 
 export const PointsHeader: React.FC = () => {
   const { isConnected } = useAccount();
   const { points, volume, rank, tradingPoints, lpPoints, referralPoints } = useUserPoints();
+  const pointsUrl = window.dango.urls.pointsUrl;
+  const { isStarted, currentEpoch } = useCurrentEpoch({ pointsUrl });
 
   const formatNumber = (num: number) => (isConnected ? num.toLocaleString() : "--");
   const formatCurrency = (num: number) => (isConnected ? `$${num.toLocaleString()}` : "--");
@@ -27,6 +34,18 @@ export const PointsHeader: React.FC = () => {
             {isConnected ? `#${rank.toLocaleString()}` : "--"}
           </p>
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myRank"]()}</p>
+        </div>
+        <div className="flex flex-col items-center">
+          <p className="text-ink-secondary-rice h3-bold">
+            {isStarted ? currentEpoch : "--"}
+          </p>
+          <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
+            <p>{m["points.header.currentEpoch"]()}</p>
+            <Tooltip
+              title={m["points.header.epoch.title"]()}
+              description={m["points.header.epoch.description"]()}
+            />
+          </div>
         </div>
       </div>
       <div className="flex flex-col lg:flex-row gap-4 w-full">

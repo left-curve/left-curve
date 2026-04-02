@@ -272,6 +272,11 @@ export {
 } from "./hooks/useEpochPoints.js";
 
 export {
+  type UseCurrentEpochParameters,
+  useCurrentEpoch,
+} from "./hooks/useCurrentEpoch.js";
+
+export {
   type UseBoxesParameters,
   type NFTItem,
   useBoxes,
@@ -295,6 +300,9 @@ export {
   type LeaderboardEntry,
   type BoxReward,
   type OatEntry,
+  type EpochInfo,
+  type EpochInfoNotStarted,
+  type EpochInfoActive,
   fetchUserStats,
   fetchEpochPoints,
   fetchLeaderboard,
@@ -305,6 +313,7 @@ export {
   fetchCampaigns,
   registerOat,
   checkOat,
+  fetchCurrentEpoch,
 } from "./hooks/pointsApi.js";
 
 export {
