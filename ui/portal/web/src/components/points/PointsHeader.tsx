@@ -4,11 +4,14 @@ import {
   IconSwapMoney,
   Tooltip,
 } from "@left-curve/applets-kit";
+import { useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useCurrentEpoch } from "@left-curve/store";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useUserPoints } from "./useUserPoints";
+
+const BLOCK_TIME_MS = 500;
 
 const formatCountdown = (seconds: number) => {
   const days = Math.floor(seconds / (60 * 60 * 24));
@@ -44,11 +47,58 @@ const EpochCountdown: React.FC<{ remainingSeconds: number | null }> = ({ remaini
   );
 };
 
+type StartsAt = { Block: number } | { Timestamp: string };
+
+const EpochStartsIn: React.FC<{ startsAt: StartsAt }> = ({ startsAt }) => {
+  const { subscriptions } = useApp();
+  const [currentBlock, setCurrentBlock] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+
+  useEffect(() => {
+    if (!("Block" in startsAt)) return;
+
+    const unsubscribe = subscriptions.subscribe("block", {
+      listener: ({ blockHeight }) => {
+        setCurrentBlock(blockHeight);
+      },
+    });
+    return () => unsubscribe();
+  }, [startsAt, subscriptions]);
+
+  useEffect(() => {
+    if ("Timestamp" in startsAt) {
+      const targetTime = new Date(startsAt.Timestamp).getTime();
+      const remaining = Math.max(0, Math.floor((targetTime - Date.now()) / 1000));
+      setRemainingSeconds(remaining);
+    } else if ("Block" in startsAt && currentBlock !== null) {
+      const blockDiff = Math.max(0, startsAt.Block - currentBlock);
+      const remaining = Math.floor((blockDiff * BLOCK_TIME_MS) / 1000);
+      setRemainingSeconds(remaining);
+    }
+  }, [startsAt, currentBlock]);
+
+  useEffect(() => {
+    if (remainingSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setRemainingSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [remainingSeconds > 0]);
+
+  return (
+    <p className="text-ink-tertiary-500 diatype-s-medium">
+      {m["points.header.startsIn"]()} {formatCountdown(remainingSeconds)}
+    </p>
+  );
+};
+
 export const PointsHeader: React.FC = () => {
   const { isConnected } = useAccount();
   const { points, volume, rank, tradingPoints, lpPoints, referralPoints } = useUserPoints();
   const pointsUrl = window.dango.urls.pointsUrl;
-  const { isStarted, currentEpoch, remainingSeconds } = useCurrentEpoch({ pointsUrl });
+  const { isStarted, currentEpoch, remainingSeconds, startsAt } = useCurrentEpoch({ pointsUrl });
 
   const formatNumber = (num: number) => (isConnected ? num.toLocaleString() : "--");
   const formatCurrency = (num: number) => (isConnected ? `$${num.toLocaleString()}` : "--");
@@ -70,20 +120,19 @@ export const PointsHeader: React.FC = () => {
           </p>
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myRank"]()}</p>
         </div>
-        {isStarted && (
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1">
-              <p className="text-ink-secondary-rice h3-bold">
-                {m["points.header.currentEpoch"]()} {currentEpoch}
-              </p>
-              <Tooltip
-                title={m["points.header.epoch.title"]()}
-                description={m["points.header.epoch.description"]()}
-              />
-            </div>
-            <EpochCountdown remainingSeconds={remainingSeconds} />
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1">
+            <p className="text-ink-secondary-rice h3-bold">
+              {m["points.header.currentEpoch"]()} {isStarted ? currentEpoch : "--"}
+            </p>
+            <Tooltip
+              title={m["points.header.epoch.title"]()}
+              description={m["points.header.epoch.description"]()}
+            />
           </div>
-        )}
+          {isStarted && <EpochCountdown remainingSeconds={remainingSeconds} />}
+          {!isStarted && startsAt && <EpochStartsIn startsAt={startsAt} />}
+        </div>
       </div>
       <div className="flex flex-col lg:flex-row gap-4 w-full">
         <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
