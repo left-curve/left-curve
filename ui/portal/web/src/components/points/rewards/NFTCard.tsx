@@ -53,7 +53,7 @@ export const NFTCard: React.FC<NFTCardProps> = ({
       <div
         className={twMerge(
           "bg-[#261c0a] h-[130px] w-[120px] rounded-lg relative overflow-hidden",
-          isLocked && "opacity-50",
+          (isLocked || quantity === 0) && "opacity-50",
         )}
       >
         <div className="absolute inset-0 flex items-center justify-center">
