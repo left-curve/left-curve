@@ -209,7 +209,7 @@ export const Tab: React.FC<PropsWithChildren<TabProps>> = ({
 };
 
 const tabVariants = tv({
-  base: "transition-all relative z-10 whitespace-nowrap outline-none",
+  base: "transition-all relative z-10 whitespace-nowrap outline-none exposure-m-italic",
   variants: {
     color: {
       green: "",
