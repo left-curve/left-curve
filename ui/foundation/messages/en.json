@@ -1178,6 +1178,8 @@
       "myRank": "My rank",
       "points": "Points",
       "currentEpoch": "Epoch",
+      "endsIn": "Ends in",
+      "startsIn": "Starts in",
       "epoch": {
         "title": "Epoch",
         "description": "An epoch is a one-week period during which points are accumulated"
