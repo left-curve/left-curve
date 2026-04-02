@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { ERC20_ABI } from "@left-curve/dango/hyperlane";
+import { ERC20_ABI, INFURA_URLS } from "@left-curve/dango/hyperlane";
 
 import type { Chain } from "viem";
 import type { Address } from "@left-curve/dango/types";
@@ -9,13 +9,6 @@ import type { useBridgeState } from "./useBridgeState.js";
 export type UseEvmBalancesParameters = {
   chain: NonNullable<ReturnType<typeof useBridgeState>["config"]>["chain"];
   address?: Address;
-};
-
-const infuraUrl = {
-  "1": "https://mainnet.infura.io/v3/00f81bbb13ef4da997f6351b8146807e",
-  "11155111": "https://sepolia.infura.io/v3/2de96f6db6d34eccaa8935cabb9b29c8",
-  "8453": "base",
-  "42161": "arbitrum",
 };
 
 export function useEvmBalances(parameters: UseEvmBalancesParameters) {
@@ -30,7 +23,7 @@ export function useEvmBalances(parameters: UseEvmBalancesParameters) {
 
       const evmClient = createPublicClient({
         chain: chain as Chain,
-        transport: http(infuraUrl[chain.id], {
+        transport: http(INFURA_URLS[chain.id], {
           batch: true,
         }),
       });
