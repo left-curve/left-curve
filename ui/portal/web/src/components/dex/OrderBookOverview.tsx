@@ -1,5 +1,5 @@
 import { FormattedNumber, Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { Direction, type PairId } from "@left-curve/dango/types";
@@ -10,7 +10,6 @@ import {
   useLivePerpsTradesState,
   livePerpsTradesStore,
   useOrderBookState,
-  useCurrentPrice,
   useTradeCoins,
   useAppConfig,
   useConfig,
@@ -552,51 +551,66 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const { currentPrice, previousPrice } = useCurrentPrice();
   const { orderBookStore } = useOrderBookState({ pairId });
   const orderBook = orderBookStore((s) => s.orderBook);
   const perpsDepth = perpsOrderBookStore((s) => s.liquidityDepth);
 
-  const spreadCalc = useMemo(() => {
+  const { midPrice, spread, spreadPercent } = useMemo(() => {
     if (mode === "perps") {
-      if (!perpsDepth) return null;
+      if (!perpsDepth) return { midPrice: null, spread: null, spreadPercent: null };
       const bidPrices = Object.keys(perpsDepth.bids);
       const askPrices = Object.keys(perpsDepth.asks);
-      if (!bidPrices.length || !askPrices.length) return null;
+      if (!bidPrices.length || !askPrices.length)
+        return { midPrice: null, spread: null, spreadPercent: null };
       const bestBid = bidPrices[bidPrices.length - 1];
       const bestAsk = askPrices[0];
       const mid = Decimal(bestBid).plus(bestAsk).div(2);
-      const spread = Decimal(bestAsk).minus(bestBid);
-      const spreadPercent = mid.gt(0) ? spread.div(mid).times(100) : Decimal(0);
-      return { spread, spreadPercent };
+      const spreadVal = Decimal(bestAsk).minus(bestBid);
+      const spreadPct = mid.gt(0) ? spreadVal.div(mid).times(100) : Decimal(0);
+      return { midPrice: mid.toFixed(), spread: spreadVal, spreadPercent: spreadPct };
     }
 
-    if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice || !orderBook?.midPrice) return null;
-    const spread = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
-    const spreadPercent = spread.div(orderBook.midPrice).times(100);
-    return { spread, spreadPercent };
+    if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice)
+      return { midPrice: null, spread: null, spreadPercent: null };
+    const mid = Decimal(orderBook.bestBidPrice).plus(orderBook.bestAskPrice).div(2);
+    const spreadVal = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
+    const spreadPct = mid.gt(0) ? spreadVal.div(mid).times(100) : Decimal(0);
+    return { midPrice: mid.toFixed(), spread: spreadVal, spreadPercent: spreadPct };
   }, [mode, orderBook, perpsDepth]);
 
+  const previousMidPriceRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (midPrice) previousMidPriceRef.current = midPrice;
+  }, [midPrice]);
+  const previousMidPrice = previousMidPriceRef.current;
+
   const spreadDisplay = useMemo(() => {
-    if (!spreadCalc) return "n/a";
+    if (!spread || !spreadPercent) return "n/a";
     const spreadValue =
       mode === "perps"
-        ? spreadCalc.spread.toFixed()
-        : spreadCalc.spread.mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed();
-    return `${formatNumber(+spreadValue, formatNumberOptions)} (${formatNumber(spreadCalc.spreadPercent.toFixed(), formatNumberOptions)}%)`;
-  }, [spreadCalc, mode, base.decimals, quote.decimals, formatNumberOptions]);
+        ? spread.toFixed()
+        : spread.mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed();
+    return `${formatNumber(+spreadValue, formatNumberOptions)} (${formatNumber(spreadPercent.toFixed(), formatNumberOptions)}%)`;
+  }, [spread, spreadPercent, mode, base.decimals, quote.decimals, formatNumberOptions]);
+
+  const midPriceDisplay = useMemo(() => {
+    if (!midPrice) return "0";
+    return mode === "perps"
+      ? midPrice
+      : Decimal(midPrice).mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed();
+  }, [midPrice, mode, base.decimals, quote.decimals]);
 
   return (
     <div className="hidden lg:flex w-full py-1 items-center justify-between relative order-2 px-4">
       <p
         className={twMerge(
           "diatype-m-bold relative z-20",
-          Decimal(previousPrice).lte(currentPrice)
-            ? "text-utility-error-600"
-            : "text-utility-success-600",
+          Decimal(previousMidPrice || "0").lte(midPrice || "0")
+            ? "text-utility-success-600"
+            : "text-utility-error-600",
         )}
       >
-        {formatNumber(currentPrice || "0", formatNumberOptions)}
+        {formatNumber(midPriceDisplay, formatNumberOptions)}
       </p>
       <div className="flex flex-col items-end text-ink-tertiary-500 relative z-20">
         <p className="diatype-xxs-medium">{m["dex.protrade.spread"]()}</p>
