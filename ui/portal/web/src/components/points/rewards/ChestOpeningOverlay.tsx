@@ -3,7 +3,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type NFTItem, NFTCarousel } from "./NFTCarousel";
+import { LootSummary } from "./LootSummary";
 import { NFTResult } from "./NFTResult";
+import type { LootCount } from "./useChestOpening";
 
 type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 
@@ -15,9 +17,11 @@ type ChestOpeningOverlayProps = {
   animationFrames: string[] | null;
   onAnimationComplete: () => void;
   isOpenAllMode?: boolean;
+  isBulkMode?: boolean;
   currentBoxIndex?: number;
   totalBoxesToOpen?: number;
   onNext?: () => void;
+  lootCounts?: LootCount;
 };
 
 const CHEST_ASSETS: Record<BoxVariant, string> = {
@@ -69,7 +73,7 @@ const ALL_NFTS: NFTItem[] = [
   },
 ];
 
-type Phase = "chest" | "carousel" | "spinning" | "result";
+type Phase = "chest" | "carousel" | "spinning" | "result" | "bulk-result";
 
 export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   variant,
@@ -79,9 +83,11 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   animationFrames,
   onAnimationComplete,
   isOpenAllMode = false,
+  isBulkMode = false,
   currentBoxIndex = 0,
   totalBoxesToOpen = 1,
   onNext,
+  lootCounts,
 }) => {
   const [phase, setPhase] = useState<Phase>("chest");
   const [isShaking, setIsShaking] = useState(false);
@@ -131,8 +137,8 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   }, [targetNFT]);
 
   const handleSpinComplete = useCallback(() => {
-    setPhase("result");
-  }, []);
+    setPhase(isBulkMode ? "bulk-result" : "result");
+  }, [isBulkMode]);
 
   return (
     <motion.div
@@ -322,6 +328,47 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
               onNext={onNext}
             />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phase === "bulk-result" && lootCounts && (
+          <>
+            <motion.div
+              key="bulk-flash"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <motion.div
+                className="absolute w-[200vmax] h-[200vmax] pointer-events-none"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 0.4, opacity: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <motion.img
+                  src={FLASH_IMAGE2}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 40, ease: "linear", repeat: Number.POSITIVE_INFINITY }}
+                />
+              </motion.div>
+              <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_20%,transparent_50%,#1a1714_90%)]" />
+            </motion.div>
+            <motion.div
+              key="bulk-result-modal"
+              className="relative z-30"
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <LootSummary lootCounts={lootCounts} onClose={onClose} />
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </motion.div>
