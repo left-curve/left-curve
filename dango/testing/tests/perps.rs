@@ -28,7 +28,6 @@ fn default_param() -> Param {
         vault_cooldown_period: Duration::from_days(1),
         max_unlocks: 10,
         max_open_orders: 100,
-        max_conditional_orders: 10,
         funding_period: Duration::from_hours(1),
         ..Default::default()
     }
@@ -370,17 +369,13 @@ fn limit_order_partial_fill_and_cancel() {
         })
         .should_succeed();
 
-    let limit_orders: Vec<_> = orders
-        .iter()
-        .filter(|(_, o)| matches!(o.kind, perps::LimitOrConditionalOrder::Limit { .. }))
-        .collect();
-    assert_eq!(limit_orders.len(), 1, "trader should have 1 resting bid");
+    assert_eq!(orders.len(), 1, "trader should have 1 resting bid");
 
     // -------------------------------------------------------------------------
     // Step 4: Trader cancels the resting order.
     // -------------------------------------------------------------------------
 
-    let order_id = *limit_orders[0].0;
+    let order_id = *orders.keys().next().unwrap();
 
     suite
         .execute(
@@ -1103,15 +1098,11 @@ fn vault_lp_lifecycle() {
 
     let vault_bids: Vec<_> = vault_orders
         .values()
-        .filter(|o| {
-            matches!(o.kind, perps::LimitOrConditionalOrder::Limit { .. }) && o.size.is_positive()
-        })
+        .filter(|o| o.size.is_positive())
         .collect();
     let vault_asks: Vec<_> = vault_orders
         .values()
-        .filter(|o| {
-            matches!(o.kind, perps::LimitOrConditionalOrder::Limit { .. }) && o.size.is_negative()
-        })
+        .filter(|o| o.size.is_negative())
         .collect();
 
     assert!(
@@ -1124,10 +1115,7 @@ fn vault_lp_lifecycle() {
     );
 
     // Vault bid = $2,000 * (1 - 5%) = $1,900, ask = $2,000 * (1 + 5%) = $2,100.
-    let bid_price = match vault_bids[0].kind {
-        perps::LimitOrConditionalOrder::Limit { limit_price, .. } => limit_price,
-        _ => unreachable!(),
-    };
+    let bid_price = vault_bids[0].limit_price;
     assert_eq!(bid_price, UsdPrice::new_int(1_900));
 
     let vault_bid_size = vault_bids[0].size;
@@ -1513,14 +1501,8 @@ fn oracle_triggers_on_oracle_update() {
     //
     // Note that we use $1 tick size in the testing setup. It's not a sensible
     // tick size for production, but it simplifies assertions like this.
-    let vo1_bid_price = match vo1_bids[0].kind {
-        perps::LimitOrConditionalOrder::Limit { limit_price, .. } => limit_price,
-        _ => unreachable!(),
-    };
-    let vo1_ask_price = match vo1_asks[0].kind {
-        perps::LimitOrConditionalOrder::Limit { limit_price, .. } => limit_price,
-        _ => unreachable!(),
-    };
+    let vo1_bid_price = vo1_bids[0].limit_price;
+    let vo1_ask_price = vo1_asks[0].limit_price;
     assert_eq!(vo1_bid_price, UsdPrice::new_int(1_936));
     assert_eq!(vo1_ask_price, UsdPrice::new_int(2_140));
 
@@ -2208,7 +2190,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-10),
+                size: Some(Quantity::new_int(-10)),
                 trigger_price: UsdPrice::new_int(2_500),
                 trigger_direction: perps::TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
@@ -2217,30 +2199,21 @@ fn conditional_order_tp_triggers_on_price_rise() {
         )
         .should_succeed();
 
-    // Step 5: Query conditional orders.
-    let all_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed();
-
-    let cond_orders: Vec<_> = all_orders
-        .values()
-        .filter(|o| matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. }))
-        .collect();
-    assert_eq!(
-        cond_orders.len(),
-        1,
-        "should have exactly 1 conditional order"
-    );
-
+    // Step 5: Verify conditional order exists on the position.
     let state: UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
         .should_succeed()
         .unwrap();
-    assert_eq!(state.conditional_order_count, 1);
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("should have ETH position");
+    assert!(
+        pos.conditional_order_above.is_some(),
+        "should have a conditional order above (TP)"
+    );
 
     // Step 6: Bidder (user2) places bid: 10 ETH @ $2,500.
     suite
@@ -2278,7 +2251,6 @@ fn conditional_order_tp_triggers_on_price_rise() {
         !state.positions.contains_key(&pair),
         "position should be closed after TP triggered"
     );
-    assert_eq!(state.conditional_order_count, 0);
 
     // PnL should be positive: 10 * ($2,500 - $2,000) = +$5,000 (minus fees).
     // Margin started at $9,980, so should be > $14,000.
@@ -2288,20 +2260,11 @@ fn conditional_order_tp_triggers_on_price_rise() {
         state.margin
     );
 
-    // Step 10: Query conditional orders — should be empty.
-    let all_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed();
-
-    let cond_orders: Vec<_> = all_orders
-        .values()
-        .filter(|o| matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. }))
-        .collect();
+    // Step 10: Position is closed, so conditional orders are gone with it.
+    // Verify no positions remain (and thus no conditional orders).
     assert!(
-        cond_orders.is_empty(),
-        "conditional orders should be empty after trigger"
+        state.positions.is_empty(),
+        "all positions should be gone after TP triggered"
     );
 }
 
@@ -2375,7 +2338,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_800),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -2418,7 +2381,11 @@ fn conditional_order_sl_triggers_on_price_drop() {
         !state.positions.contains_key(&pair),
         "position should be closed after SL triggered"
     );
-    assert_eq!(state.conditional_order_count, 0);
+    // Position closed → conditional orders are gone with it.
+    assert!(
+        state.positions.is_empty(),
+        "all positions should be gone after SL triggered"
+    );
 
     // Margin started at $9,990 (after $10 fee), loss of $1,000, minus close fee.
     // Should be roughly $8,980.
@@ -2521,7 +2488,7 @@ fn liquidation_cancels_conditional_orders() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(2_500),
                 trigger_direction: perps::TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
@@ -2536,7 +2503,7 @@ fn liquidation_cancels_conditional_orders() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_500),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -2545,13 +2512,22 @@ fn liquidation_cancels_conditional_orders() {
         )
         .should_succeed();
 
+    // Verify both conditional orders were placed.
     let state: UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
         .should_succeed()
         .unwrap();
-    assert_eq!(state.conditional_order_count, 2);
+    let pos = state.positions.get(&pair).expect("should have position");
+    assert!(
+        pos.conditional_order_above.is_some(),
+        "should have TP (above) conditional order"
+    );
+    assert!(
+        pos.conditional_order_below.is_some(),
+        "should have SL (below) conditional order"
+    );
 
     // Step 4: Oracle drops to $1,450.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
@@ -2595,36 +2571,39 @@ fn liquidation_cancels_conditional_orders() {
         )
         .should_succeed();
 
-    // Step 7: Verify conditional orders are canceled.
-    // Note: liquidation may be partial, so the position may still exist
-    // (just reduced). The key assertion is that conditional orders were canceled.
-    let state: UserState = suite
+    // Step 7: Verify state after liquidation.
+    let state: Option<UserState> = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
         })
-        .should_succeed()
-        .unwrap();
+        .should_succeed();
 
-    assert_eq!(
-        state.conditional_order_count, 0,
-        "conditional orders should be canceled by liquidation"
-    );
-
-    // Conditional orders should be gone from storage.
+    // All limit orders should have been canceled during liquidation.
     let all_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
         .should_succeed();
 
-    let cond_orders: Vec<_> = all_orders
-        .values()
-        .filter(|o| matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. }))
-        .collect();
     assert!(
-        cond_orders.is_empty(),
-        "conditional orders should be empty after liquidation"
+        all_orders.is_empty(),
+        "all limit orders should be canceled after liquidation"
     );
+
+    // Conditional orders should be gone: if position was fully closed, they
+    // disappeared with it; if partially liquidated, they were cleared.
+    if let Some(ref st) = state {
+        for (pid, pos) in &st.positions {
+            assert!(
+                pos.conditional_order_above.is_none(),
+                "conditional_order_above should be None for pair {pid} after liquidation"
+            );
+            assert!(
+                pos.conditional_order_below.is_none(),
+                "conditional_order_below should be None for pair {pid} after liquidation"
+            );
+        }
+    }
 }
 
 /// BELOW conditional orders store `!trigger_price` (bitwise-inverted) in the
@@ -2748,7 +2727,7 @@ fn conditional_orders_follow_price_time_priority() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_900),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -2767,7 +2746,7 @@ fn conditional_orders_follow_price_time_priority() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_800),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -2846,9 +2825,10 @@ fn conditional_orders_follow_price_time_priority() {
         !state_user1.positions.contains_key(&pair),
         "User1 position should be closed after SL triggered"
     );
-    assert_eq!(
-        state_user1.conditional_order_count, 0,
-        "User1 should have 0 conditional orders"
+    // Position closed → conditional orders gone with it.
+    assert!(
+        state_user1.positions.is_empty(),
+        "User1 should have no positions (and thus no conditional orders)"
     );
 
     let state_user3: UserState = suite
@@ -2862,9 +2842,9 @@ fn conditional_orders_follow_price_time_priority() {
         !state_user3.positions.contains_key(&pair),
         "User3 position should be closed after SL triggered"
     );
-    assert_eq!(
-        state_user3.conditional_order_count, 0,
-        "User3 should have 0 conditional orders"
+    assert!(
+        state_user3.positions.is_empty(),
+        "User3 should have no positions (and thus no conditional orders)"
     );
 
     // User1 got the better fill ($1,790) so should have more margin than User3
@@ -3041,7 +3021,7 @@ fn conditional_order_failure_does_not_block_others() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(-5),
+                size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_900),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -3061,7 +3041,7 @@ fn conditional_order_failure_does_not_block_others() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
                 pair_id: pair.clone(),
-                size: Quantity::new_int(5),
+                size: Some(Quantity::new_int(5)),
                 trigger_price: UsdPrice::new_int(1_800),
                 trigger_direction: perps::TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
@@ -3122,10 +3102,6 @@ fn conditional_order_failure_does_not_block_others() {
         Quantity::new_int(5),
         "User1 should still be 5 ETH long (sell had no liquidity)"
     );
-    assert_eq!(
-        state_user1.conditional_order_count, 0,
-        "User1 SL should be cancelled, not stuck retrying"
-    );
 
     // User3: position closed (short covered), conditional order consumed.
     let state_user3: UserState = suite
@@ -3139,35 +3115,18 @@ fn conditional_order_failure_does_not_block_others() {
         !state_user3.positions.contains_key(&pair),
         "User3 short should be closed (buy filled against ask @ $1,800)"
     );
-    assert_eq!(
-        state_user3.conditional_order_count, 0,
-        "User3 should have 0 conditional orders"
-    );
-
-    // Both users' conditional order queries should return empty.
-    let orders_user1: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed();
-
+    // Both users' conditional orders should be cleared from their positions.
+    // User1: position still exists (sell failed), but conditional order should be
+    // canceled (graceful SlippageExceeded removal).
+    let pos_user1 = state_user1
+        .positions
+        .get(&pair)
+        .expect("User1 should still have a position");
     assert!(
-        orders_user1
-            .values()
-            .all(|o| !matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. })),
-        "User1 conditional orders should be empty"
+        pos_user1.conditional_order_below.is_none(),
+        "User1 conditional_order_below should be None after graceful cancel"
     );
 
-    let orders_user3: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user3.address(),
-        })
-        .should_succeed();
-
-    assert!(
-        orders_user3
-            .values()
-            .all(|o| !matches!(o.kind, perps::LimitOrConditionalOrder::Conditional { .. })),
-        "User3 conditional orders should be empty"
-    );
+    // User3: position is closed (already asserted above), so no conditional
+    // orders to check — absence of position is sufficient.
 }

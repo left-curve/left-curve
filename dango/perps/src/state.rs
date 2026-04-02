@@ -3,8 +3,8 @@ use {
         Quantity, UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
-            CommissionRate, ConditionalOrder, ConditionalOrderId, FeeShareRatio, LimitOrder,
-            OrderId, PairId, PairParam, PairState, Param, Referee, RefereeStats, Referrer, State,
+            CommissionRate, ConditionalOrderId, FeeShareRatio, LimitOrder, OrderId, PairId,
+            PairParam, PairState, Param, Referee, RefereeStats, Referrer, State, TriggerDirection,
             UserReferralData, UserState,
         },
     },
@@ -29,7 +29,7 @@ pub const PAIR_PARAMS: Map<&PairId, PairParam> = Map::new("pair_param");
 pub const PAIR_STATES: Map<&PairId, PairState> = Map::new("pair_state");
 
 pub const USER_STATES: IndexedMap<Addr, UserState, UserStateIndexes> =
-    IndexedMap::new("us", UserStateIndexes::new("us", "us__unlock"));
+    IndexedMap::new("us", UserStateIndexes::new("us", "us__unlock", "us__cond"));
 
 /// For a given trading pair, users who have _long_ positions in this pair,
 /// indexed by their entry prices.
@@ -50,28 +50,6 @@ pub const BIDS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
 /// Sell orders.
 pub const ASKS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
     IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
-
-/// Conditional orders that trigger when oracle_price >= trigger_price.
-/// Used for: TP on longs, SL on shorts.
-pub const CONDITIONAL_ABOVE: IndexedMap<
-    ConditionalOrderKey,
-    ConditionalOrder,
-    ConditionalOrderIndexes,
-> = IndexedMap::new(
-    "conda",
-    ConditionalOrderIndexes::new("conda", "conda__id", "conda__user"),
-);
-
-/// Conditional orders that trigger when oracle_price <= trigger_price.
-/// Used for: SL on longs, TP on shorts.
-pub const CONDITIONAL_BELOW: IndexedMap<
-    ConditionalOrderKey,
-    ConditionalOrder,
-    ConditionalOrderIndexes,
-> = IndexedMap::new(
-    "condb",
-    ConditionalOrderIndexes::new("condb", "condb__id", "condb__user"),
-);
 
 /// Liquidity depths of the order book.
 pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
@@ -115,8 +93,6 @@ pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
 
 pub type OrderKey = (PairId, UsdPrice, OrderId);
 
-pub type ConditionalOrderKey = (PairId, UsdPrice, ConditionalOrderId);
-
 #[grug::index_list(OrderKey, LimitOrder)]
 pub struct OrderIndexes<'a> {
     pub order_id: UniqueIndex<'a, OrderKey, OrderId, LimitOrder>,
@@ -140,38 +116,25 @@ impl OrderIndexes<'static> {
     }
 }
 
-#[grug::index_list(ConditionalOrderKey, ConditionalOrder)]
-pub struct ConditionalOrderIndexes<'a> {
-    pub order_id: UniqueIndex<'a, ConditionalOrderKey, ConditionalOrderId, ConditionalOrder>,
-    pub user: MultiIndex<'a, ConditionalOrderKey, Addr, ConditionalOrder>,
-}
-
-impl ConditionalOrderIndexes<'static> {
-    pub const fn new(
-        pk_namespace: &'static str,
-        order_id_namespace: &'static str,
-        user_namespace: &'static str,
-    ) -> Self {
-        ConditionalOrderIndexes {
-            order_id: UniqueIndex::new(
-                |(_, _, order_id), _| *order_id,
-                pk_namespace,
-                order_id_namespace,
-            ),
-            user: MultiIndex::new(|_, order| order.user, pk_namespace, user_namespace),
-        }
-    }
-}
-
 #[grug::index_list(Addr, UserState)]
 pub struct UserStateIndexes<'a> {
-    /// If the user state has one or more pending unlocks, the earlist ending
+    /// If the user state has one or more pending unlocks, the earliest ending
     /// time of those unlocks; otherwise, `Timestamp::MAX`.
     pub earliest_unlock_end_time: MultiIndex<'a, Addr, Timestamp, UserState>,
+
+    /// Conditional orders across a user's positions.
+    /// For BELOW orders, the trigger price is inverted, so that ascending
+    /// iteration visits the highest prices first.
+    pub conditional_orders:
+        MultiIndex<'a, Addr, (PairId, TriggerDirection, UsdPrice, ConditionalOrderId), UserState>,
 }
 
 impl UserStateIndexes<'static> {
-    pub const fn new(pk_namespace: &'static str, idx_namespace: &'static str) -> Self {
+    pub const fn new(
+        pk_namespace: &'static str,
+        unlock_namespace: &'static str,
+        cond_namespace: &'static str,
+    ) -> Self {
         UserStateIndexes {
             earliest_unlock_end_time: MultiIndex::new(
                 |_, user_state| {
@@ -182,7 +145,33 @@ impl UserStateIndexes<'static> {
                         .unwrap_or(Timestamp::MAX)
                 },
                 pk_namespace,
-                idx_namespace,
+                unlock_namespace,
+            ),
+            conditional_orders: MultiIndex::new2(
+                |_, user_state| {
+                    let mut keys = Vec::new();
+                    for (pair_id, position) in &user_state.positions {
+                        if let Some(order) = &position.conditional_order_above {
+                            keys.push((
+                                pair_id.clone(),
+                                TriggerDirection::Above,
+                                order.trigger_price,
+                                order.order_id,
+                            ));
+                        }
+                        if let Some(order) = &position.conditional_order_below {
+                            keys.push((
+                                pair_id.clone(),
+                                TriggerDirection::Below,
+                                !order.trigger_price,
+                                order.order_id,
+                            ));
+                        }
+                    }
+                    keys
+                },
+                pk_namespace,
+                cond_namespace,
             ),
         }
     }

@@ -1500,6 +1500,8 @@ mod tests {
             size: Quantity::new_int(5),
             entry_price: UsdPrice::new_int(50_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
         let mut oq = test_oracle_querier();
 
@@ -2878,6 +2880,8 @@ mod tests {
             size: Quantity::new_int(5),
             entry_price: UsdPrice::new_int(50_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
         let mut oq = test_oracle_querier();
 
@@ -3245,6 +3249,8 @@ mod tests {
             size: Quantity::new_int(-10),
             entry_price: UsdPrice::new_int(50_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         });
         USER_STATES
             .save(&mut ctx.storage, CONTRACT, &vault_state)

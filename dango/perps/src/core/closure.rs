@@ -218,6 +218,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -260,6 +262,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -302,6 +306,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -352,6 +358,8 @@ mod tests {
                         size: Quantity::new_int(10),
                         entry_price: UsdPrice::new_int(2000),
                         entry_funding_per_unit: FundingPerUnit::new_int(0),
+                        conditional_order_above: None,
+                        conditional_order_below: None,
                     },
                 },
                 ..Default::default()
@@ -404,6 +412,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -440,11 +450,15 @@ mod tests {
                     size: Quantity::new_int(1),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
                 pair_eth() => Position {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(3_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -489,6 +503,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -524,6 +540,8 @@ mod tests {
                 size: Quantity::new_int(1),
                 entry_price: UsdPrice::new_int(50_000),
                 entry_funding_per_unit: FundingPerUnit::ZERO,
+                conditional_order_above: None,
+                conditional_order_below: None,
             })]),
             ..Default::default()
         };
@@ -554,6 +572,8 @@ mod tests {
                 size: Quantity::new_int(-1),
                 entry_price: UsdPrice::new_int(50_000),
                 entry_funding_per_unit: FundingPerUnit::ZERO,
+                conditional_order_above: None,
+                conditional_order_below: None,
             })]),
             ..Default::default()
         };
@@ -588,11 +608,15 @@ mod tests {
                     size: Quantity::new_int(1),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 }),
                 (pair_eth(), Position {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(3_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 }),
             ]),
             ..Default::default()

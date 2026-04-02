@@ -1,5 +1,5 @@
 use {
-    crate::{CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, PARAM, USER_STATES},
+    crate::{NEXT_ORDER_ID, USER_STATES},
     anyhow::{anyhow, ensure},
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
@@ -13,83 +13,76 @@ use {
 pub fn submit_conditional_order(
     ctx: MutableCtx,
     pair_id: PairId,
-    size: Quantity,
+    size: Option<Quantity>,
     trigger_price: UsdPrice,
     trigger_direction: TriggerDirection,
     max_slippage: Dimensionless,
 ) -> anyhow::Result<Response> {
-    let param = PARAM.load(ctx.storage)?;
     let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
     // -------------------------------- Checks ---------------------------------
 
     // 1. User must have an open position in this pair.
-    // 2. Size sign must oppose the position sign (reduce-only).
-    // 3. |size| must not exceed |position.size|.
-    // 4. Must not exceed max conditional orders.
+    // 2. If size is specified: sign must oppose position, |size| <= |position.size|.
+    // 3. Must not already have a conditional order of the same direction for this pair.
 
     let position = user_state
         .positions
         .get(&pair_id)
         .ok_or_else(|| anyhow!("no position in pair {pair_id}"))?;
 
-    ensure!(
-        (size.is_negative() && position.size.is_positive())
-            || (size.is_positive() && position.size.is_negative()),
-        "size must oppose position direction"
-    );
+    if let Some(size) = size {
+        ensure!(
+            (size.is_negative() && position.size.is_positive())
+                || (size.is_positive() && position.size.is_negative()),
+            "size must oppose position direction"
+        );
+
+        ensure!(
+            {
+                let abs_size = size.checked_abs()?;
+                let abs_pos_size = position.size.checked_abs()?;
+                abs_size <= abs_pos_size
+            },
+            "conditional order size exceeds position size"
+        );
+    }
 
     ensure!(
-        {
-            let abs_size = size.checked_abs()?;
-            let abs_pos_size = position.size.checked_abs()?;
-            abs_size <= abs_pos_size
+        match trigger_direction {
+            TriggerDirection::Above => position.conditional_order_above.is_none(),
+            TriggerDirection::Below => position.conditional_order_below.is_none(),
         },
-        "conditional order size exceeds position size"
-    );
-
-    ensure!(
-        user_state.conditional_order_count < param.max_conditional_orders,
-        "maximum conditional orders reached"
+        "conditional order already exists for pair {pair_id}"
     );
 
     // ----------------------------- State changes -----------------------------
 
-    // Assign order ID.
+    // Assign order ID and increment.
     let order_id = NEXT_ORDER_ID.load(ctx.storage)?;
+    NEXT_ORDER_ID.save(ctx.storage, &(order_id + ConditionalOrderId::ONE))?;
 
-    // Increment the user's conditional order count.
-    user_state.conditional_order_count += 1;
-
-    // Create the order.
-    // For BELOW orders, invert the trigger_price in the storage key so that
-    // ascending iteration yields highest-real-trigger-price first (the order
-    // crossed earliest as price fell) with FIFO tiebreaker on order_id.
-    let stored_price = match trigger_direction {
-        TriggerDirection::Above => trigger_price,
-        TriggerDirection::Below => !trigger_price,
-    };
-    let key = (pair_id.clone(), stored_price, order_id);
-    let order = ConditionalOrder {
-        user: ctx.sender,
+    let conditional_order = ConditionalOrder {
+        order_id,
         size,
         trigger_price,
-        trigger_direction,
         max_slippage,
-        created_at: ctx.block.timestamp,
     };
 
-    NEXT_ORDER_ID.save(ctx.storage, &(order_id + ConditionalOrderId::ONE))?;
+    // Set the field on the position.
+    let position = user_state
+        .positions
+        .get_mut(&pair_id)
+        .ok_or_else(|| anyhow!("no position in pair {pair_id}"))?;
+
+    match trigger_direction {
+        TriggerDirection::Above => position.conditional_order_above = Some(conditional_order),
+        TriggerDirection::Below => position.conditional_order_below = Some(conditional_order),
+    }
 
     USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
 
-    match trigger_direction {
-        TriggerDirection::Above => CONDITIONAL_ABOVE.save(ctx.storage, key, &order)?,
-        TriggerDirection::Below => CONDITIONAL_BELOW.save(ctx.storage, key, &order)?,
-    }
-
     Ok(Response::new().add_event(ConditionalOrderPlaced {
-        order_id,
         pair_id,
         user: ctx.sender,
         trigger_price,
@@ -105,7 +98,7 @@ pub fn submit_conditional_order(
 mod tests {
     use {
         super::*,
-        crate::{CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, PARAM, USER_STATES},
+        crate::{NEXT_ORDER_ID, PARAM, USER_STATES},
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             perps::{OrderId, Param, Position, TriggerDirection, UserState},
@@ -125,6 +118,8 @@ mod tests {
             size: Quantity::new_int(size),
             entry_price: UsdPrice::new_int(2_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         }
     }
 
@@ -133,6 +128,8 @@ mod tests {
             size: Quantity::new_int(-size),
             entry_price: UsdPrice::new_int(2_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
         }
     }
 
@@ -147,12 +144,7 @@ mod tests {
     }
 
     fn init_storage(storage: &mut dyn Storage, user_state: UserState) {
-        PARAM
-            .save(storage, &Param {
-                max_conditional_orders: 2,
-                ..Default::default()
-            })
-            .unwrap();
+        PARAM.save(storage, &Param::default()).unwrap();
         NEXT_ORDER_ID.save(storage, &OrderId::ONE).unwrap();
         USER_STATES.save(storage, USER, &user_state).unwrap();
     }
@@ -171,24 +163,22 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
         )
         .should_succeed();
 
-        // Order stored in CONDITIONAL_ABOVE.
-        let order = CONDITIONAL_ABOVE
-            .idx
-            .order_id
-            .may_load(&ctx.storage, Uint64::ONE)
-            .unwrap();
-        assert!(order.is_some());
+        // Order stored in position's conditional_order_above field.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_above.is_some());
 
-        // User state updated.
-        let state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        assert_eq!(state.conditional_order_count, 1);
+        let order = position.conditional_order_above.as_ref().unwrap();
+        assert_eq!(order.order_id, Uint64::ONE);
+        assert_eq!(order.size, Some(Quantity::new_int(-5)));
+        assert_eq!(order.trigger_price, UsdPrice::new_int(2_500));
 
         // Next order ID incremented.
         let next_id = NEXT_ORDER_ID.load(&ctx.storage).unwrap();
@@ -209,19 +199,19 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-10),
+            Some(Quantity::new_int(-10)),
             UsdPrice::new_int(1_800),
             TriggerDirection::Below,
             Dimensionless::new_percent(2),
         )
         .should_succeed();
 
-        let order = CONDITIONAL_BELOW
-            .idx
-            .order_id
-            .may_load(&ctx.storage, Uint64::ONE)
-            .unwrap();
-        assert!(order.is_some());
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_below.is_some());
+
+        let order = position.conditional_order_below.as_ref().unwrap();
+        assert_eq!(order.order_id, Uint64::ONE);
     }
 
     #[test]
@@ -238,19 +228,19 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(5),
+            Some(Quantity::new_int(5)),
             UsdPrice::new_int(1_500),
             TriggerDirection::Below,
             Dimensionless::new_percent(1),
         )
         .should_succeed();
 
-        let order = CONDITIONAL_BELOW
-            .idx
-            .order_id
-            .may_load(&ctx.storage, Uint64::ONE)
-            .unwrap();
-        assert!(order.is_some());
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_below.is_some());
+
+        let order = position.conditional_order_below.as_ref().unwrap();
+        assert_eq!(order.order_id, Uint64::ONE);
     }
 
     #[test]
@@ -268,7 +258,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(5),
+            Some(Quantity::new_int(5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -287,7 +277,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -311,7 +301,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -320,24 +310,48 @@ mod tests {
     }
 
     #[test]
-    fn p7_reject_max_count() {
+    fn p7_reject_duplicate_direction() {
         let mut ctx = MockContext::new()
             .with_sender(USER)
             .with_funds(Coins::default());
 
-        let mut us = user_state_with_position(long_position(10));
-        us.conditional_order_count = 2; // already at max (max_conditional_orders=2)
-        init_storage(&mut ctx.storage, us);
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
 
+        // First Above order — should succeed.
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
         )
-        .should_fail_with_error("maximum conditional orders");
+        .should_succeed();
+
+        // Second Above order for same pair — should fail.
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-3)),
+            UsdPrice::new_int(3_000),
+            TriggerDirection::Above,
+            Dimensionless::new_percent(1),
+        )
+        .should_fail_with_error("already exists");
+
+        // Below order for same pair — should succeed (different direction).
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(1_800),
+            TriggerDirection::Below,
+            Dimensionless::new_percent(2),
+        )
+        .should_succeed();
     }
 
     #[test]
@@ -355,7 +369,7 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-5),
+            Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
@@ -366,14 +380,26 @@ mod tests {
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
-            Quantity::new_int(-10),
+            Some(Quantity::new_int(-10)),
             UsdPrice::new_int(1_800),
             TriggerDirection::Below,
             Dimensionless::new_percent(2),
         )
         .should_succeed();
 
-        let state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        assert_eq!(state.conditional_order_count, 2);
+        // Both orders exist on the position.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_above.is_some());
+
+        let above = position.conditional_order_above.as_ref().unwrap();
+        assert_eq!(above.order_id, Uint64::ONE);
+        assert_eq!(above.trigger_price, UsdPrice::new_int(2_500));
+
+        assert!(position.conditional_order_below.is_some());
+        let below = position.conditional_order_below.as_ref().unwrap();
+        assert_eq!(below.order_id, Uint64::new(2));
+        assert_eq!(below.trigger_price, UsdPrice::new_int(1_800));
     }
 }

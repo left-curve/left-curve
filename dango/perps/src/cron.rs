@@ -1,7 +1,6 @@
 use {
     crate::{
-        ASKS, BIDS, CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS,
-        PAIR_STATES, PARAM, STATE, USER_STATES,
+        ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
         core::{compute_funding_delta, compute_impact_price, compute_premium},
         flush_volumes,
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
@@ -14,14 +13,14 @@ use {
     dango_types::{
         Days, UsdPrice, UsdValue,
         perps::{
-            ConditionalOrder, ConditionalOrderId, ConditionalOrderRemoved,
-            ConditionalOrderTriggered, LiquidityReleased, OrderKind, PairId, PairParam, PairState,
-            Param, ReasonForOrderRemoval, State, UserState,
+            ConditionalOrderRemoved, ConditionalOrderTriggered, LiquidityReleased, OrderKind,
+            PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State, TriggerDirection,
+            UserState,
         },
     },
     grug::{
-        Addr, EventBuilder, Order as IterationOrder, PrefixBound, QuerierWrapper, StdResult,
-        Storage, Timestamp,
+        Addr, EventBuilder, NumberConst, Order as IterationOrder, PrefixBound, QuerierWrapper,
+        StdResult, Storage, Timestamp, Uint64,
     },
 };
 #[cfg(feature = "metrics")]
@@ -260,17 +259,27 @@ fn process_conditional_orders_for_pair(
 
     // ABOVE orders: trigger when oracle_price >= trigger_price.
     // Range: all keys with trigger_price <= oracle_price.
-    let above_triggered = CONDITIONAL_ABOVE
-        .prefix(pair_id.clone())
+    let above_triggered = USER_STATES
+        .idx
+        .conditional_orders
+        .sub_prefix(pair_id.clone())
         .prefix_range(
             storage,
-            None,
-            Some(PrefixBound::Inclusive(oracle_price)),
+            Some(PrefixBound::Inclusive((
+                TriggerDirection::Above,
+                UsdPrice::MIN,
+                Uint64::MIN,
+            ))),
+            Some(PrefixBound::Inclusive((
+                TriggerDirection::Above,
+                oracle_price,
+                Uint64::MAX,
+            ))),
             IterationOrder::Ascending,
         )
         .collect::<StdResult<Vec<_>>>()?;
 
-    for ((trigger_price, order_id), order) in above_triggered {
+    for (user, _user_state) in above_triggered {
         process_triggered_order(
             storage,
             querier,
@@ -282,28 +291,36 @@ fn process_conditional_orders_for_pair(
             pair_id,
             &pair_param,
             &mut pair_state,
-            order_id,
-            order,
+            user,
+            TriggerDirection::Above,
             oracle_price,
             events,
         )?;
-
-        CONDITIONAL_ABOVE.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
     }
 
     // BELOW orders: trigger when oracle_price <= trigger_price.
     // Keys store inverted trigger_price, so stored <= !oracle_price ≡ real >= oracle_price.
-    let below_triggered = CONDITIONAL_BELOW
-        .prefix(pair_id.clone())
+    let below_triggered = USER_STATES
+        .idx
+        .conditional_orders
+        .sub_prefix(pair_id.clone())
         .prefix_range(
             storage,
-            None,
-            Some(PrefixBound::Inclusive(!oracle_price)),
+            Some(PrefixBound::Inclusive((
+                TriggerDirection::Below,
+                UsdPrice::MIN,
+                Uint64::MIN,
+            ))),
+            Some(PrefixBound::Inclusive((
+                TriggerDirection::Below,
+                !oracle_price,
+                Uint64::MAX,
+            ))),
             IterationOrder::Ascending,
         )
         .collect::<StdResult<Vec<_>>>()?;
 
-    for ((trigger_price, order_id), order) in below_triggered {
+    for (user, _user_state) in below_triggered {
         process_triggered_order(
             storage,
             querier,
@@ -315,13 +332,11 @@ fn process_conditional_orders_for_pair(
             pair_id,
             &pair_param,
             &mut pair_state,
-            order_id,
-            order,
+            user,
+            TriggerDirection::Below,
             oracle_price,
             events,
         )?;
-
-        CONDITIONAL_BELOW.remove(storage, (pair_id.clone(), trigger_price, order_id))?;
     }
 
     PAIR_STATES.save(storage, pair_id, &pair_state)?;
@@ -342,51 +357,69 @@ fn process_triggered_order(
     pair_id: &PairId,
     pair_param: &PairParam,
     pair_state: &mut PairState,
-    order_id: ConditionalOrderId,
-    order: ConditionalOrder,
+    user: Addr,
+    trigger_direction: TriggerDirection,
     oracle_price: UsdPrice,
     events: &mut EventBuilder,
 ) -> anyhow::Result<()> {
-    let mut user_state = USER_STATES
-        .may_load(storage, order.user)?
-        .unwrap_or_default();
+    let mut user_state = USER_STATES.may_load(storage, user)?.unwrap_or_default();
 
-    // Decrement conditional order count.
-    user_state.conditional_order_count = user_state.conditional_order_count.saturating_sub(1);
-
-    // Check if the user still has a position in this pair.
-    let position = user_state.positions.get(pair_id);
-
-    let should_cancel = match position {
+    // Extract the conditional order and position size info before mutating.
+    let (order, position_size) = match user_state.positions.get(pair_id) {
         Some(pos) => {
-            // Position flipped: the conditional order's size no longer reduces.
-            // E.g. order.size is negative (close long) but position is now short.
-            (order.size.is_negative() && pos.size.is_negative())
-                || (order.size.is_positive() && pos.size.is_positive())
+            let ord = match trigger_direction {
+                TriggerDirection::Above => pos.conditional_order_above.clone(),
+                TriggerDirection::Below => pos.conditional_order_below.clone(),
+            };
+            (ord, Some(pos.size))
         },
-        None => true,
+        None => (None, None),
+    };
+
+    // Clear the conditional order field BEFORE saving so the MultiIndex is updated.
+    if let Some(pos) = user_state.positions.get_mut(pair_id) {
+        match trigger_direction {
+            TriggerDirection::Above => pos.conditional_order_above = None,
+            TriggerDirection::Below => pos.conditional_order_below = None,
+        }
+    }
+
+    let should_cancel = match (&order, position_size) {
+        (Some(ord), Some(pos_size)) => {
+            // If size is specified, check for position flip.
+            // E.g. order.size is negative (close long) but position is now short.
+            match ord.size {
+                Some(size) => {
+                    (size.is_negative() && pos_size.is_negative())
+                        || (size.is_positive() && pos_size.is_positive())
+                },
+                // size = None means "close entire position" — never flipped.
+                None => false,
+            }
+        },
+        _ => true,
     };
 
     if should_cancel {
         events.push(ConditionalOrderRemoved {
-            order_id,
             pair_id: pair_id.clone(),
-            user: order.user,
+            user,
+            trigger_direction,
             reason: ReasonForOrderRemoval::PositionClosed,
         })?;
 
         if user_state.is_empty() {
-            USER_STATES.remove(storage, order.user)?;
+            USER_STATES.remove(storage, user)?;
         } else {
-            USER_STATES.save(storage, order.user, &user_state)?;
+            USER_STATES.save(storage, user, &user_state)?;
         }
 
         #[cfg(feature = "tracing")]
         {
             tracing::info!(
-                %order_id,
                 %pair_id,
-                user = %order.user,
+                %user,
+                ?trigger_direction,
                 "Conditional order cancelled: position closed"
             );
         }
@@ -394,34 +427,41 @@ fn process_triggered_order(
         return Ok(());
     }
 
-    let position = position.unwrap();
+    let order = order.unwrap();
+    let position_size = position_size.unwrap();
 
-    // Auto-resize: clamp |order.size| to |position.size|.
-    let abs_order_size = order.size.checked_abs()?;
-    let abs_pos_size = position.size.checked_abs()?;
-    let clamped_size = if abs_order_size > abs_pos_size {
-        // Preserve the sign of order.size but clamp the magnitude.
-        if order.size.is_negative() {
-            abs_pos_size.checked_neg()?
-        } else {
-            abs_pos_size
-        }
-    } else {
-        order.size
+    // Compute the closing size.
+    // If size is None, close the entire position (negate position size).
+    // If size is Some, clamp |order.size| to |position.size|.
+    let clamped_size = match order.size {
+        None => position_size.checked_neg()?,
+        Some(size) => {
+            let abs_order_size = size.checked_abs()?;
+            let abs_pos_size = position_size.checked_abs()?;
+            if abs_order_size > abs_pos_size {
+                if size.is_negative() {
+                    abs_pos_size.checked_neg()?
+                } else {
+                    abs_pos_size
+                }
+            } else {
+                size
+            }
+        },
     };
 
     events.push(ConditionalOrderTriggered {
-        order_id,
         pair_id: pair_id.clone(),
-        user: order.user,
+        user,
         trigger_price: order.trigger_price,
+        trigger_direction,
         oracle_price,
     })?;
 
     // Execute as a market order via `_submit_order`.
     let result = _submit_order(
         storage,
-        order.user,
+        user,
         contract,
         current_time,
         oracle_querier,
@@ -453,24 +493,24 @@ fn process_triggered_order(
             // Order couldn't fill (slippage exceeded or no liquidity).
             // Cancel it gracefully — don't block other orders.
             events.push(ConditionalOrderRemoved {
-                order_id,
                 pair_id: pair_id.clone(),
-                user: order.user,
+                user,
+                trigger_direction,
                 reason: ReasonForOrderRemoval::SlippageExceeded,
             })?;
 
             if user_state.is_empty() {
-                USER_STATES.remove(storage, order.user)?;
+                USER_STATES.remove(storage, user)?;
             } else {
-                USER_STATES.save(storage, order.user, &user_state)?;
+                USER_STATES.save(storage, user, &user_state)?;
             }
 
             #[cfg(feature = "tracing")]
             {
                 tracing::info!(
-                    %order_id,
                     %pair_id,
-                    user = %order.user,
+                    %user,
+                    ?trigger_direction,
                     "Conditional order cancelled: slippage exceeded"
                 );
             }
@@ -483,7 +523,7 @@ fn process_triggered_order(
     // Apply state changes (same pattern as submit_order's section 3).
     flush_volumes(storage, current_time, &volumes)?;
 
-    maker_states.insert(order.user, user_state);
+    maker_states.insert(user, user_state);
 
     apply_fee_commissions(
         storage,

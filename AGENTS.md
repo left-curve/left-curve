@@ -293,6 +293,11 @@ If adding/upgrading these, align versions across crates to avoid trait/type mism
 
 - Keep `clippy -D warnings` clean across the workspace.
 - Prefer targeted tests; avoid changing unrelated behavior.
+- Never make test assertions weaker. When refactoring changes the API
+  surface, adapt assertions to the new API but verify the same (or
+  stronger) post-conditions. If an old assertion can't be expressed
+  with the new types, replace it with an equivalent check — don't
+  just delete it.
 
 ## Common Gotchas
 

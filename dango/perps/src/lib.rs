@@ -22,8 +22,8 @@ use {
     dango_types::{
         DangoQuerier, UsdValue,
         perps::{
-            CancelOrderRequest, ExecuteMsg, InstantiateMsg, MaintainerMsg, OrderId, QueryMsg,
-            ReferralMsg, State, TraderMsg, VaultMsg,
+            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, InstantiateMsg,
+            MaintainerMsg, OrderId, QueryMsg, ReferralMsg, State, TraderMsg, VaultMsg,
         },
     },
     grug::{
@@ -156,10 +156,14 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 trigger_direction,
                 max_slippage,
             ),
-            TraderMsg::CancelConditionalOrder(CancelOrderRequest::One(order_id)) => {
-                trade::cancel_one_conditional_order(ctx, order_id)
-            },
-            TraderMsg::CancelConditionalOrder(CancelOrderRequest::All) => {
+            TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::One {
+                pair_id,
+                trigger_direction,
+            }) => trade::cancel_one_conditional_order(ctx, pair_id, trigger_direction),
+            TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::AllForPair {
+                pair_id,
+            }) => trade::cancel_conditional_orders_for_pair(ctx, pair_id),
+            TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::All) => {
                 trade::cancel_all_conditional_orders(ctx)
             },
         },

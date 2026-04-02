@@ -4442,6 +4442,9 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
+ "borsh",
+ "dango-perps",
+ "dango-types",
  "grug",
  "grug-app",
  "tracing",

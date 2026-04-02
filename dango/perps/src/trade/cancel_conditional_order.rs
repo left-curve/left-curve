@@ -1,136 +1,112 @@
 use {
-    crate::{
-        CONDITIONAL_ABOVE, CONDITIONAL_BELOW, state::ConditionalOrderKey,
-        trade::update_user_state_with,
-    },
-    anyhow::{anyhow, ensure},
+    crate::USER_STATES,
+    anyhow::anyhow,
     dango_types::perps::{
-        ConditionalOrder, ConditionalOrderId, ConditionalOrderRemoved, ReasonForOrderRemoval,
-        UserState,
+        ConditionalOrderRemoved, PairId, ReasonForOrderRemoval, TriggerDirection,
     },
-    grug::{Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
+    grug::{MutableCtx, Response},
 };
 
 pub fn cancel_one_conditional_order(
     ctx: MutableCtx,
-    order_id: ConditionalOrderId,
+    pair_id: PairId,
+    trigger_direction: TriggerDirection,
 ) -> anyhow::Result<Response> {
-    // Try CONDITIONAL_ABOVE first, then CONDITIONAL_BELOW (same pattern
-    // as cancel_one_order tries BIDS then ASKS).
-    let (key, order, is_above) = CONDITIONAL_ABOVE
-        .idx
-        .order_id
-        .may_load(ctx.storage, order_id)?
-        .map(|(k, o)| (k, o, true))
-        .or_else(|| {
-            CONDITIONAL_BELOW
-                .idx
-                .order_id
-                .may_load(ctx.storage, order_id)
-                .ok()
-                .flatten()
-                .map(|(k, o)| (k, o, false))
-        })
-        .ok_or_else(|| anyhow!("conditional order not found with id {order_id}"))?;
+    let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
-    ensure!(
-        ctx.sender == order.user,
-        "you are not the owner of this conditional order"
-    );
+    let position = user_state
+        .positions
+        .get_mut(&pair_id)
+        .ok_or_else(|| anyhow!("no position in pair {pair_id}"))?;
 
-    let event = update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
-        _cancel_one_conditional_order(
-            storage,
-            user_state,
-            key,
-            order,
-            is_above,
-            ReasonForOrderRemoval::Canceled,
-        )
-    })?;
+    let _order = match trigger_direction {
+        TriggerDirection::Above => position
+            .conditional_order_above
+            .take()
+            .ok_or_else(|| anyhow!("no conditional order above for pair {pair_id}"))?,
+        TriggerDirection::Below => position
+            .conditional_order_below
+            .take()
+            .ok_or_else(|| anyhow!("no conditional order below for pair {pair_id}"))?,
+    };
 
-    Ok(Response::new().add_event(event)?)
+    USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
+
+    Ok(Response::new().add_event(ConditionalOrderRemoved {
+        pair_id,
+        user: ctx.sender,
+        trigger_direction,
+        reason: ReasonForOrderRemoval::Canceled,
+    })?)
 }
 
-/// Mutates user_state in memory (decrements count). Does NOT persist it.
-/// Removes order from CONDITIONAL_ABOVE or CONDITIONAL_BELOW.
-/// Returns the ConditionalOrderRemoved event.
-fn _cancel_one_conditional_order(
-    storage: &mut dyn Storage,
-    user_state: &mut UserState,
-    key: ConditionalOrderKey,
-    order: ConditionalOrder,
-    is_above: bool,
-    reason: ReasonForOrderRemoval,
-) -> StdResult<ConditionalOrderRemoved> {
-    let (pair_id, _, order_id) = key.clone();
+pub fn cancel_conditional_orders_for_pair(
+    ctx: MutableCtx,
+    pair_id: PairId,
+) -> anyhow::Result<Response> {
+    let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
-    if is_above {
-        CONDITIONAL_ABOVE.remove(storage, key)?;
-    } else {
-        CONDITIONAL_BELOW.remove(storage, key)?;
+    let position = user_state
+        .positions
+        .get_mut(&pair_id)
+        .ok_or_else(|| anyhow!("no position in pair {pair_id}"))?;
+
+    let had_above = position.conditional_order_above.take().is_some();
+    let had_below = position.conditional_order_below.take().is_some();
+
+    USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
+
+    let mut response = Response::new();
+
+    if had_above {
+        response = response.add_event(ConditionalOrderRemoved {
+            pair_id: pair_id.clone(),
+            user: ctx.sender,
+            trigger_direction: TriggerDirection::Above,
+            reason: ReasonForOrderRemoval::Canceled,
+        })?;
     }
 
-    user_state.conditional_order_count -= 1;
+    if had_below {
+        response = response.add_event(ConditionalOrderRemoved {
+            pair_id,
+            user: ctx.sender,
+            trigger_direction: TriggerDirection::Below,
+            reason: ReasonForOrderRemoval::Canceled,
+        })?;
+    }
 
-    Ok(ConditionalOrderRemoved {
-        order_id,
-        pair_id,
-        user: order.user,
-        reason,
-    })
+    Ok(response)
 }
 
 pub fn cancel_all_conditional_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let events = update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
-        _cancel_all_conditional_orders(
-            storage,
-            ctx.sender,
-            user_state,
-            ReasonForOrderRemoval::Canceled,
-        )
-    })?;
+    let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
 
-    Ok(Response::new().add_events(events)?)
-}
+    let mut response = Response::new();
 
-/// Cancel all conditional orders for a user, updating the in-memory `user_state`.
-///
-/// Writes to `CONDITIONAL_ABOVE` / `CONDITIONAL_BELOW` in storage but does
-/// **not** persist `user_state` — the caller is responsible for saving or
-/// removing it.
-pub fn _cancel_all_conditional_orders(
-    storage: &mut dyn Storage,
-    user: Addr,
-    user_state: &mut UserState,
-    reason: ReasonForOrderRemoval,
-) -> StdResult<EventBuilder> {
-    let mut events = EventBuilder::new();
+    for (pair_id, position) in &mut user_state.positions {
+        if let Some(_order) = position.conditional_order_above.take() {
+            response = response.add_event(ConditionalOrderRemoved {
+                pair_id: pair_id.clone(),
+                user: ctx.sender,
+                trigger_direction: TriggerDirection::Above,
+                reason: ReasonForOrderRemoval::Canceled,
+            })?;
+        }
 
-    // Collect from both maps.
-    let above = CONDITIONAL_ABOVE
-        .idx
-        .user
-        .prefix(user)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .map(|res| res.map(|(k, o)| (k, o, true)))
-        .collect::<StdResult<Vec<_>>>()?;
-
-    let below = CONDITIONAL_BELOW
-        .idx
-        .user
-        .prefix(user)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .map(|res| res.map(|(k, o)| (k, o, false)))
-        .collect::<StdResult<Vec<_>>>()?;
-
-    for (key, order, is_above) in above.into_iter().chain(below) {
-        events.push(_cancel_one_conditional_order(
-            storage, user_state, key, order, is_above, reason,
-        )?)?;
+        if let Some(_order) = position.conditional_order_below.take() {
+            response = response.add_event(ConditionalOrderRemoved {
+                pair_id: pair_id.clone(),
+                user: ctx.sender,
+                trigger_direction: TriggerDirection::Below,
+                reason: ReasonForOrderRemoval::Canceled,
+            })?;
+        }
     }
 
-    Ok(events)
+    USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
+
+    Ok(response)
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -139,20 +115,25 @@ pub fn _cancel_all_conditional_orders(
 mod tests {
     use {
         super::*,
-        crate::{CONDITIONAL_ABOVE, CONDITIONAL_BELOW, NEXT_ORDER_ID, PARAM, USER_STATES},
+        crate::{NEXT_ORDER_ID, PARAM, USER_STATES},
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{OrderId, PairId, Param, Position, TriggerDirection, UserState},
+            perps::{
+                ConditionalOrder, OrderId, PairId, Param, Position, TriggerDirection, UserState,
+            },
         },
-        grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Timestamp, Uint64},
+        grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Uint64},
         std::collections::BTreeMap,
     };
 
     const USER: Addr = Addr::mock(1);
-    const OTHER_USER: Addr = Addr::mock(2);
 
     fn pair_id() -> PairId {
         "perp/ethusd".parse().unwrap()
+    }
+
+    fn pair_id_2() -> PairId {
+        "perp/btcusd".parse().unwrap()
     }
 
     fn long_position(size: i128) -> Position {
@@ -160,6 +141,31 @@ mod tests {
             size: Quantity::new_int(size),
             entry_price: UsdPrice::new_int(2_000),
             entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
+        }
+    }
+
+    fn long_position_with_orders(
+        size: i128,
+        above: Option<ConditionalOrder>,
+        below: Option<ConditionalOrder>,
+    ) -> Position {
+        Position {
+            size: Quantity::new_int(size),
+            entry_price: UsdPrice::new_int(2_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: above,
+            conditional_order_below: below,
+        }
+    }
+
+    fn make_conditional_order(order_id: u64, size: i128, trigger_price: i128) -> ConditionalOrder {
+        ConditionalOrder {
+            order_id: Uint64::new(order_id),
+            size: Some(Quantity::new_int(size)),
+            trigger_price: UsdPrice::new_int(trigger_price),
+            max_slippage: Dimensionless::new_percent(1),
         }
     }
 
@@ -174,100 +180,50 @@ mod tests {
     }
 
     fn init_storage(storage: &mut dyn Storage, user_state: UserState) {
-        PARAM
-            .save(storage, &Param {
-                max_conditional_orders: 2,
-                ..Default::default()
-            })
-            .unwrap();
+        PARAM.save(storage, &Param::default()).unwrap();
         NEXT_ORDER_ID.save(storage, &OrderId::ONE).unwrap();
         USER_STATES.save(storage, USER, &user_state).unwrap();
     }
 
     #[test]
-    fn c1_cancel_own_order() {
+    fn c1_cancel_one_above() {
         let mut ctx = MockContext::new()
             .with_sender(USER)
             .with_funds(Coins::default());
 
-        let mut us = user_state_with_position(long_position(10));
-        us.conditional_order_count = 1;
-        init_storage(&mut ctx.storage, us);
+        let position =
+            long_position_with_orders(10, Some(make_conditional_order(1, -5, 2_500)), None);
+        init_storage(&mut ctx.storage, user_state_with_position(position));
 
-        // Manually store an order.
-        let order = ConditionalOrder {
-            user: USER,
-            size: Quantity::new_int(-5),
-            trigger_price: UsdPrice::new_int(2_500),
-            trigger_direction: TriggerDirection::Above,
-            max_slippage: Dimensionless::new_percent(1),
-            created_at: Timestamp::from_nanos(0),
-        };
-        let key = (pair_id(), UsdPrice::new_int(2_500), Uint64::new(7));
-        CONDITIONAL_ABOVE
-            .save(&mut ctx.storage, key, &order)
-            .unwrap();
+        cancel_one_conditional_order(ctx.as_mutable(), pair_id(), TriggerDirection::Above)
+            .should_succeed();
 
-        cancel_one_conditional_order(ctx.as_mutable(), Uint64::new(7)).should_succeed();
-
-        // Order removed.
-        assert!(
-            CONDITIONAL_ABOVE
-                .idx
-                .order_id
-                .may_load(&ctx.storage, Uint64::new(7))
-                .unwrap()
-                .is_none()
-        );
-
-        // Count decremented.
-        let state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        assert_eq!(state.conditional_order_count, 0);
+        // Order removed from position.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_above.is_none());
     }
 
     #[test]
-    fn c2_reject_not_owner() {
+    fn c2_cancel_one_below() {
         let mut ctx = MockContext::new()
-            .with_sender(OTHER_USER)
+            .with_sender(USER)
             .with_funds(Coins::default());
 
-        // Store an order owned by USER.
-        let mut us = user_state_with_position(long_position(10));
-        us.conditional_order_count = 1;
-        PARAM
-            .save(&mut ctx.storage, &Param {
-                max_conditional_orders: 2,
-                ..Default::default()
-            })
-            .unwrap();
-        NEXT_ORDER_ID.save(&mut ctx.storage, &OrderId::ONE).unwrap();
-        USER_STATES.save(&mut ctx.storage, USER, &us).unwrap();
-        USER_STATES
-            .save(&mut ctx.storage, OTHER_USER, &UserState {
-                margin: UsdValue::new_int(1_000),
-                ..Default::default()
-            })
-            .unwrap();
+        let position =
+            long_position_with_orders(10, None, Some(make_conditional_order(1, -10, 1_800)));
+        init_storage(&mut ctx.storage, user_state_with_position(position));
 
-        let order = ConditionalOrder {
-            user: USER,
-            size: Quantity::new_int(-5),
-            trigger_price: UsdPrice::new_int(2_500),
-            trigger_direction: TriggerDirection::Above,
-            max_slippage: Dimensionless::new_percent(1),
-            created_at: Timestamp::from_nanos(0),
-        };
-        let key = (pair_id(), UsdPrice::new_int(2_500), Uint64::new(7));
-        CONDITIONAL_ABOVE
-            .save(&mut ctx.storage, key, &order)
-            .unwrap();
+        cancel_one_conditional_order(ctx.as_mutable(), pair_id(), TriggerDirection::Below)
+            .should_succeed();
 
-        cancel_one_conditional_order(ctx.as_mutable(), Uint64::new(7))
-            .should_fail_with_error("not the owner");
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_below.is_none());
     }
 
     #[test]
-    fn c3_reject_nonexistent() {
+    fn c3_reject_no_order() {
         let mut ctx = MockContext::new()
             .with_sender(USER)
             .with_funds(Coins::default());
@@ -277,8 +233,8 @@ mod tests {
             user_state_with_position(long_position(10)),
         );
 
-        cancel_one_conditional_order(ctx.as_mutable(), Uint64::new(99))
-            .should_fail_with_error("not found");
+        cancel_one_conditional_order(ctx.as_mutable(), pair_id(), TriggerDirection::Above)
+            .should_fail_with_error("no conditional order above");
     }
 
     #[test]
@@ -287,66 +243,75 @@ mod tests {
             .with_sender(USER)
             .with_funds(Coins::default());
 
-        let mut us = user_state_with_position(long_position(10));
-        us.conditional_order_count = 3;
-        init_storage(&mut ctx.storage, us);
-
-        // Store 3 orders across both maps.
-        for (id, price, is_above) in [(1u64, 2_500i128, true), (2, 1_800, false), (3, 3_000, true)]
-        {
-            let order = ConditionalOrder {
-                user: USER,
-                size: Quantity::new_int(-5),
-                trigger_price: UsdPrice::new_int(price),
-                trigger_direction: if is_above {
-                    TriggerDirection::Above
-                } else {
-                    TriggerDirection::Below
-                },
-                max_slippage: Dimensionless::new_percent(1),
-                created_at: Timestamp::from_nanos(0),
-            };
-            let key = (pair_id(), UsdPrice::new_int(price), Uint64::new(id));
-            if is_above {
-                CONDITIONAL_ABOVE
-                    .save(&mut ctx.storage, key, &order)
-                    .unwrap();
-            } else {
-                CONDITIONAL_BELOW
-                    .save(&mut ctx.storage, key, &order)
-                    .unwrap();
-            }
-        }
+        let position = long_position_with_orders(
+            10,
+            Some(make_conditional_order(1, -5, 2_500)),
+            Some(make_conditional_order(2, -10, 1_800)),
+        );
+        init_storage(&mut ctx.storage, user_state_with_position(position));
 
         cancel_all_conditional_orders(ctx.as_mutable()).should_succeed();
 
-        // All removed.
-        for id in 1..=3u64 {
-            assert!(
-                CONDITIONAL_ABOVE
-                    .idx
-                    .order_id
-                    .may_load(&ctx.storage, Uint64::new(id))
-                    .unwrap()
-                    .is_none()
-            );
-            assert!(
-                CONDITIONAL_BELOW
-                    .idx
-                    .order_id
-                    .may_load(&ctx.storage, Uint64::new(id))
-                    .unwrap()
-                    .is_none()
-            );
-        }
-
-        // Count = 0.
-        let state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        assert_eq!(state.conditional_order_count, 0);
+        // All orders removed.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_above.is_none());
+        assert!(position.conditional_order_below.is_none());
     }
 
     #[test]
-    fn c5_cancel_all_no_orders() {
+    fn c5_cancel_for_pair() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        // User has positions in two pairs, each with conditional orders.
+        let mut positions = BTreeMap::new();
+        positions.insert(
+            pair_id(),
+            long_position_with_orders(
+                10,
+                Some(make_conditional_order(1, -5, 2_500)),
+                Some(make_conditional_order(2, -10, 1_800)),
+            ),
+        );
+        positions.insert(
+            pair_id_2(),
+            long_position_with_orders(5, Some(make_conditional_order(3, -3, 50_000)), None),
+        );
+
+        let user_state = UserState {
+            margin: UsdValue::new_int(10_000),
+            positions,
+            ..Default::default()
+        };
+        init_storage(&mut ctx.storage, user_state);
+
+        // Cancel only pair_id's orders.
+        cancel_conditional_orders_for_pair(ctx.as_mutable(), pair_id()).should_succeed();
+
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+
+        // pair_id orders cleared.
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_above.is_none());
+        assert!(position.conditional_order_below.is_none());
+
+        // pair_id_2 order still exists.
+        let position_2 = user_state.positions.get(&pair_id_2()).unwrap();
+        assert!(position_2.conditional_order_above.is_some());
+        assert_eq!(
+            position_2
+                .conditional_order_above
+                .as_ref()
+                .unwrap()
+                .order_id,
+            Uint64::new(3)
+        );
+    }
+
+    #[test]
+    fn c6_cancel_all_no_orders() {
         let mut ctx = MockContext::new()
             .with_sender(USER)
             .with_funds(Coins::default());
