@@ -336,7 +336,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
   <div className="flex items-center justify-center px-4 w-full">
-    <p className="flex-1 diatype-m-bold text-ink-primary-900">{title}</p>
+    <p className="flex-1 exposure-m-italic text-ink-primary-900">{title}</p>
   </div>
 );
 
