@@ -8,8 +8,6 @@ export type UseCurrentEpochParameters = {
   enabled?: boolean;
 };
 
-const NANOS_PER_SECOND = 1_000_000_000;
-
 export function useCurrentEpoch(parameters: UseCurrentEpochParameters) {
   const { pointsUrl, enabled = true } = parameters;
 
@@ -33,7 +31,8 @@ export function useCurrentEpoch(parameters: UseCurrentEpochParameters) {
       };
     }
 
-    const remainingSeconds = Math.floor(Number(data.remaining) / NANOS_PER_SECOND);
+    // remaining is in seconds (with nanosecond precision in decimals, e.g. "69.710194012")
+    const remainingSeconds = Math.floor(Number(data.remaining));
     return {
       isStarted: true as const,
       currentEpoch: data.current_epoch,
