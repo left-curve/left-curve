@@ -39,24 +39,20 @@ function formatPairStat(
   if (decimalValue === null) return { text: "-", tone: "neutral" };
 
   if (kind === "priceChange24h") {
-    const maximumTotalDigits = formatOptions?.maximumTotalDigits ?? 6;
     const text = `${decimalValue.gte(0) ? "+" : ""}${formatNumber(value as string, {
       ...formatNumberOptions,
       ...formatOptions,
-      maximumTotalDigits,
     })}%`;
 
     return { text, tone: decimalValue.gte(0) ? "positive" : "negative" };
   }
 
-  const maximumTotalDigits = formatOptions?.maximumTotalDigits ?? 5;
   const selectedCurrency =
     currency === null ? undefined : (currency ?? formatOptions?.currency ?? "usd");
   const text = formatNumber(value as string, {
     ...formatNumberOptions,
     ...formatOptions,
     ...(selectedCurrency ? { currency: selectedCurrency } : {}),
-    maximumTotalDigits,
   });
 
   return { text, tone: "neutral" };

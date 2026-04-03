@@ -1,6 +1,8 @@
 import type React from "react";
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { useApp } from "@left-curve/applets-kit";
+import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useEpochPoints } from "@left-curve/store";
 
@@ -58,6 +60,8 @@ const periodToDays: Record<string, number> = {
 };
 
 export const StatisticsChart: React.FC<StatisticsChartProps> = ({ metric, period }) => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const { account } = useAccount();
   const userIndex = account?.index;
 
@@ -126,7 +130,7 @@ export const StatisticsChart: React.FC<StatisticsChartProps> = ({ metric, period
               axisLine={false}
               tickLine={false}
               tick={{ fill: "var(--color-ink-secondary-700)", fontSize: 12 }}
-              tickFormatter={(value) => value.toLocaleString()}
+              tickFormatter={(value) => formatNumber(value, formatNumberOptions)}
               width={50}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />

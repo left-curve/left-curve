@@ -14,7 +14,11 @@ export {
 
 export {
   type FormatNumberOptions,
+  type DisplayPart,
   formatNumber,
+  formatDisplayNumber,
+  formatDisplayString,
+  bucketSizeToFractionDigits,
   formatUnits,
   parseUnits,
 } from "./formatters.js";

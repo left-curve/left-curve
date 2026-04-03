@@ -42,11 +42,7 @@ const Spot: React.FC<SpotProps> = ({ coin }) => {
         </div>
         <div className="flex flex-col items-end text-ink-primary-900">
           <p className="diatype-m-bold">{price}</p>
-          <p>
-            {coinInfo.type === "lp"
-              ? formatNumber(humanAmount, { ...formatNumberOptions, maximumTotalDigits: 4 })
-              : formatNumber(humanAmount, formatNumberOptions)}
-          </p>
+          <p>{formatNumber(humanAmount, formatNumberOptions)}</p>
         </div>
       </div>
     </motion.div>

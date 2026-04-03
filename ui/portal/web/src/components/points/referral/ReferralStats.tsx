@@ -13,6 +13,7 @@ import {
   twMerge,
   useApp,
 } from "@left-curve/applets-kit";
+import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   useAccount,
@@ -32,17 +33,6 @@ type ReferralMode = "affiliate" | "trader";
 type ReferralStatsProps = {
   mode: ReferralMode;
   onModeChange: (mode: ReferralMode) => void;
-};
-
-const formatUSD = (value: number | string): string => {
-  const num = typeof value === "string" ? Number(value) : value;
-  if (Number.isNaN(num)) return "$0.00";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
 };
 
 const formatPercent = (value: string | undefined): string => {
@@ -133,7 +123,10 @@ const AffiliateCredentialsLoading: React.FC = () => (
 );
 
 export const AffiliateStats: React.FC = () => {
-  const { showModal, navigate } = useApp();
+  const { showModal, navigate, settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const formatUSD = (value: number | string) =>
+    formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
 
@@ -347,7 +340,10 @@ export const AffiliateStats: React.FC = () => {
 };
 
 export const TraderStats: React.FC = () => {
-  const { showModal } = useApp();
+  const { showModal, settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const formatUSD = (value: number | string) =>
+    formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [referralCodeInput, setReferralCodeInput] = useState("");
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;

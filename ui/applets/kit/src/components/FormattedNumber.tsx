@@ -2,7 +2,7 @@ import { useApp } from "@left-curve/foundation";
 import { useId } from "react";
 import { twMerge } from "@left-curve/foundation";
 
-import { formatNumber } from "@left-curve/dango/utils";
+import { formatDisplayNumber } from "@left-curve/dango/utils";
 
 import type React from "react";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
@@ -24,22 +24,35 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = ({
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const characters = [...formatNumber(number, { ...formatNumberOptions, ...formatOptions })];
+  const parts = formatDisplayNumber(number, { ...formatNumberOptions, ...formatOptions });
   const Component = as;
 
   return (
     <Component className={twMerge(className)}>
-      {characters.map((char, index) => {
-        const isNumber = /\d/.test(char);
+      {parts.map((part, index) => {
+        if (part.type === "subscript") {
+          return (
+            <sub
+              key={`${id}-part-${
+                // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional
+                index
+              }`}
+              className="tabular-nums lining-nums"
+            >
+              {part.value}
+            </sub>
+          );
+        }
+        const isDigit = part.type === "integer" || part.type === "fraction";
         return (
           <span
-            key={`${id}-char-${
-              // biome-ignore lint/suspicious/noArrayIndexKey: better to use index to make sure not repeat the same char
+            key={`${id}-part-${
+              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional
               index
             }`}
-            className={isNumber ? "tabular-nums lining-nums" : ""}
+            className={isDigit ? "tabular-nums lining-nums" : ""}
           >
-            {char}
+            {part.value}
           </span>
         );
       })}

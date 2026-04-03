@@ -1,4 +1,5 @@
-import { Cell, Pagination, SortHeader, Tab, Table, Tabs } from "@left-curve/applets-kit";
+import { Cell, Pagination, SortHeader, Tab, Table, Tabs, useApp } from "@left-curve/applets-kit";
+import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useLeaderboard } from "@left-curve/store";
 import { useMemo } from "react";
@@ -38,6 +39,8 @@ function formatUsername(username: string | null, userIndex: number): string {
 }
 
 export const LeaderboardTable: React.FC = () => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const { userIndex, username } = useAccount();
   const pointsUrl = window.dango.urls.pointsUrl;
   const { points: userPoints, volume: userVolume, pnl: userPnl } = useUserPoints();
@@ -136,7 +139,7 @@ export const LeaderboardTable: React.FC = () => {
         />
       ),
       enableSorting: false,
-      cell: ({ row }) => <Cell.Text text={`$${row.original.volume.toLocaleString()}`} />,
+      cell: ({ row }) => <Cell.Text text={formatNumber(row.original.volume, { ...formatNumberOptions, currency: "USD" })} />,
     },
     {
       id: "pnl",
@@ -148,7 +151,7 @@ export const LeaderboardTable: React.FC = () => {
         />
       ),
       enableSorting: false,
-      cell: ({ row }) => <Cell.Text text={`$${row.original.pnl.toLocaleString()}`} />,
+      cell: ({ row }) => <Cell.Text text={formatNumber(row.original.pnl, { ...formatNumberOptions, currency: "USD" })} />,
     },
     {
       id: "points",
@@ -162,7 +165,7 @@ export const LeaderboardTable: React.FC = () => {
       ),
       enableSorting: false,
       cell: ({ row }) => (
-        <Cell.Text text={`${row.original.points.toLocaleString()} ${m["points.header.points"]()}`} />
+        <Cell.Text text={`${formatNumber(row.original.points, formatNumberOptions)} ${m["points.header.points"]()}`} />
       ),
     },
   ];

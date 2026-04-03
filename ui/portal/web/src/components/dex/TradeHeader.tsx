@@ -116,7 +116,6 @@ export const TradeHeader: React.FC = () => {
               <PairStatValue
                 kind="volume24h"
                 value={pairStats.data?.volume24H}
-                formatOptions={{ maximumTotalDigits: 5 }}
                 className="diatype-xs-medium text-center"
               />
             </div>
@@ -191,10 +190,7 @@ const Header24hChange: React.FC<Header24hChangeProps> = ({
     if (!absoluteChange) return null;
 
     const prefix = isPositive ? "+" : "";
-    return `${prefix}${formatNumber(absoluteChange, {
-      ...formatNumberOptions,
-      maximumTotalDigits: 6,
-    })}`;
+    return `${prefix}${formatNumber(absoluteChange, formatNumberOptions)}`;
   }, [absoluteChange, isPositive, formatNumberOptions]);
 
   const formattedPercentage = useMemo(() => {
@@ -202,10 +198,7 @@ const Header24hChange: React.FC<Header24hChangeProps> = ({
 
     const change = Decimal(priceChange24H);
     const prefix = change.gte(0) ? "+" : "";
-    return `${prefix}${formatNumber(priceChange24H, {
-      ...formatNumberOptions,
-      maximumTotalDigits: 6,
-    })}%`;
+    return `${prefix}${formatNumber(priceChange24H, formatNumberOptions)}%`;
   }, [priceChange24H, formatNumberOptions]);
 
   const colorClass = useMemo(() => {

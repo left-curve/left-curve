@@ -107,7 +107,6 @@ const ConvertHeader: React.FC = () => {
           <PairStatValue
             kind="priceChange24h"
             value={priceChange24H}
-            formatOptions={{ maximumTotalDigits: 6 }}
             className="diatype-xs-bold"
             as="span"
           />
@@ -120,7 +119,6 @@ const ConvertHeader: React.FC = () => {
             kind="volume24h"
             value={volume}
             currency={null}
-            formatOptions={{ maximumTotalDigits: 10 }}
             className="diatype-xs-bold"
             as="span"
           />
@@ -248,10 +246,7 @@ const ConvertDetails: React.FC = () => {
         ) : (
           <p className="text-ink-secondary-700 diatype-sm-medium">
             1 {inputCoin.symbol} ≈{" "}
-            {formatNumber(Decimal(outputAmount).div(inputAmount).toFixed(), {
-              ...formatNumberOptions,
-              maximumTotalDigits: 10,
-            })}{" "}
+            {formatNumber(Decimal(outputAmount).div(inputAmount).toFixed(), formatNumberOptions)}{" "}
             {outputCoin.symbol}
           </p>
         )}

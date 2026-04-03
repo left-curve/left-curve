@@ -146,7 +146,7 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
                 ) : (
                   getPrice(value, asset.denom, {
                     format: true,
-                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
+                    formatOptions: formatNumberOptions,
                   })
                 )}
               </div>

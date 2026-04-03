@@ -96,8 +96,6 @@ const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
 });
 
 const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
   const stats = useRowPairStats(row);
 
   return (
@@ -105,7 +103,6 @@ const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {
       <PairStatValue
         kind="priceChange24h"
         value={stats?.priceChange24H}
-        formatOptions={{ ...formatNumberOptions, maximumTotalDigits: 6 }}
         className="diatype-xs-medium"
         as="span"
       />
@@ -114,8 +111,6 @@ const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {
 });
 
 const VolumeCell = memo(({ row }: { row: SearchTokenRow }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
   const stats = useRowPairStats(row);
 
   return (
@@ -123,7 +118,6 @@ const VolumeCell = memo(({ row }: { row: SearchTokenRow }) => {
       <PairStatValue
         kind="volume24h"
         value={stats?.volume24H}
-        formatOptions={{ ...formatNumberOptions, maximumTotalDigits: 5 }}
         className="diatype-xs-medium"
         align="end"
         as="span"

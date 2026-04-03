@@ -1,12 +1,17 @@
 import { Decimal } from "@left-curve/sdk/utils";
 
+export type DisplayPart = {
+  type: "integer" | "decimal" | "group" | "fraction" | "subscript" | "suffix" | "literal";
+  value: string;
+};
+
 export type FormatNumberOptions = {
   language: string;
   currency?: string;
   style?: "decimal" | "currency";
-  minimumTotalDigits?: number;
-  maximumTotalDigits?: number;
   mask: keyof typeof formatNumberMask;
+  /** Override: use exactly this many fraction digits, bypassing tier logic. */
+  fractionDigits?: number;
 };
 
 const formatNumberMask = {
@@ -43,75 +48,225 @@ const formatNumberMask = {
   },
 };
 
+const SUBSCRIPT_DIGITS = "₀₁₂₃₄₅₆₇₈₉";
+
+function toUnicodeSubscript(n: string): string {
+  return [...n].map((c) => SUBSCRIPT_DIGITS[+c] ?? c).join("");
+}
+
+function mapIntlParts(
+  parts: Intl.NumberFormatPart[],
+  mask: keyof typeof formatNumberMask,
+): DisplayPart[] {
+  const format = formatNumberMask[mask].format as Record<string, string>;
+
+  return parts.map((part): DisplayPart => {
+    switch (part.type) {
+      case "integer":
+        return { type: "integer", value: part.value };
+      case "fraction":
+        return { type: "fraction", value: part.value };
+      case "decimal":
+        return { type: "decimal", value: format.decimal ?? part.value };
+      case "group":
+        return { type: "group", value: format.group ?? part.value };
+      case "compact":
+        return { type: "suffix", value: part.value };
+      default:
+        return { type: "literal", value: part.value };
+    }
+  });
+}
+
+function intlFormatToParts(
+  value: number,
+  language: string,
+  currency: string | undefined,
+  mask: keyof typeof formatNumberMask,
+  intlOverrides: Intl.NumberFormatOptions,
+): DisplayPart[] {
+  const currencyOpts: Intl.NumberFormatOptions = currency
+    ? { currency, currencyDisplay: "narrowSymbol", style: "currency" }
+    : { style: "decimal" };
+
+  const opts: Intl.NumberFormatOptions = {
+    ...currencyOpts,
+    useGrouping: formatNumberMask[mask].useGrouping,
+    ...intlOverrides,
+  };
+
+  return mapIntlParts(new Intl.NumberFormat(language, opts).formatToParts(value), mask);
+}
+
+/**
+ * Format a number into structured display parts using tier-based rules.
+ *
+ * Tiers:
+ * 1. num < 0.0001 → subscript notation: 0.0ₙXXXX (4 sig digits)
+ * 2. 0.0001 ≤ num < 1 → 4 significant digits
+ * 3. 1 ≤ num < 100 → 4 decimal places
+ * 4. 100 ≤ num < 10,000 → 2 decimal places + grouping
+ * 5. 10,000 ≤ num < 1,000,000 → integer + grouping
+ * 6. ≥ 1,000,000 → compact (M/B/T) + 2 decimal places
+ *
+ * When `fractionDigits` is set, tiers are bypassed and exactly that many
+ * fraction digits are shown.
+ */
+export function formatDisplayNumber(
+  _amount_: number | string,
+  options: FormatNumberOptions,
+): DisplayPart[] {
+  const { language = "en-US", currency, mask = 1, fractionDigits } = options;
+  const amount = Decimal(_amount_);
+  const absAmount = amount.abs();
+
+  // Zero
+  if (absAmount.eq(0)) {
+    if (currency) {
+      return intlFormatToParts(0, language, currency, mask, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+    return [{ type: "integer", value: "0" }];
+  }
+
+  // fractionDigits override — bypass tier logic
+  if (fractionDigits !== undefined) {
+    return intlFormatToParts(amount.toNumber(), language, currency, mask, {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    });
+  }
+
+  const numValue = amount.toNumber();
+
+  // Tier 1: < 0.0001 — subscript notation
+  if (absAmount.lt("0.0001")) {
+    return formatSubscriptParts(amount, absAmount, { language, currency, mask });
+  }
+
+  // Tier 2: 0.0001 ≤ num < 1 — 4 significant digits
+  if (absAmount.lt(1)) {
+    return intlFormatToParts(numValue, language, currency, mask, {
+      maximumSignificantDigits: 4,
+      useGrouping: false,
+    });
+  }
+
+  // Tier 3: 1 ≤ num < 100 — 4 decimal places
+  if (absAmount.lt(100)) {
+    return intlFormatToParts(numValue, language, currency, mask, {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+      useGrouping: false,
+    });
+  }
+
+  // Tier 4: 100 ≤ num < 10,000 — 2 decimal places
+  if (absAmount.lt(10000)) {
+    return intlFormatToParts(numValue, language, currency, mask, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  // Tier 5: 10,000 ≤ num < 1,000,000 — integer
+  if (absAmount.lt(1000000)) {
+    return intlFormatToParts(numValue, language, currency, mask, {
+      maximumFractionDigits: 0,
+    });
+  }
+
+  // Tier 6: ≥ 1,000,000 — compact
+  return intlFormatToParts(numValue, language, currency, mask, {
+    notation: "compact",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatSubscriptParts(
+  amount: ReturnType<typeof Decimal>,
+  absAmount: ReturnType<typeof Decimal>,
+  options: { language: string; currency?: string; mask: keyof typeof formatNumberMask },
+): DisplayPart[] {
+  const parts: DisplayPart[] = [];
+  const format = formatNumberMask[options.mask].format as Record<string, string>;
+  const decimalChar = format.decimal ?? ".";
+  const isNegative = amount.lt(0);
+
+  if (isNegative) parts.push({ type: "literal", value: "-" });
+
+  if (options.currency) {
+    const symbol =
+      new Intl.NumberFormat(options.language, {
+        style: "currency",
+        currency: options.currency,
+        currencyDisplay: "narrowSymbol",
+      })
+        .formatToParts(0)
+        .find((p) => p.type === "currency")?.value ?? "";
+    if (symbol) parts.push({ type: "literal", value: symbol });
+  }
+
+  // Count leading zeros from the exact decimal string
+  const str = absAmount.toFixed();
+  const frac = str.split(".")[1] ?? "";
+  const leadingZeros = frac.match(/^0*/)?.[0].length ?? 0;
+
+  // Round to leadingZeros + 4 decimal places for 4 significant digits
+  const rounded = absAmount.toFixed(leadingZeros + 4);
+  const roundedFrac = rounded.split(".")[1] ?? "";
+  const roundedLeading = roundedFrac.match(/^0*/)?.[0].length ?? 0;
+  const sigDigits = roundedFrac.slice(roundedLeading, roundedLeading + 4).padEnd(4, "0");
+
+  parts.push(
+    { type: "integer", value: "0" },
+    { type: "decimal", value: decimalChar },
+    { type: "integer", value: "0" },
+    { type: "subscript", value: String(roundedLeading) },
+    { type: "fraction", value: sigDigits },
+  );
+
+  return parts;
+}
+
+/**
+ * Convert display parts to a flat string.
+ * Subscript parts are rendered as unicode subscript digits.
+ */
+export function formatDisplayString(parts: DisplayPart[]): string {
+  return parts
+    .map((p) => (p.type === "subscript" ? toUnicodeSubscript(p.value) : p.value))
+    .join("");
+}
+
 /**
  * Format a number with the given options.
  * @param amount The number to format.
  * @param options The formatting options.
- * @param options.currency The currency code. Ex: "USD".
- * @param options.language The language to use. Ex: "en-US".
- * @param options.maximumTotalDigits The maximum number of total digits.
- * @param options.minimumTotalDigits The minimum number of total digits.
- * @param options.mask The mask to use. Ex: 1 for "1,234.00", 2 for "1.234,00", 3 for "1234,00", 4 for "1 234,00".
- * @returns The formatted number.
+ * @returns The formatted number as a string.
  */
 export function formatNumber(_amount_: number | string, options: FormatNumberOptions) {
-  const { language, currency, maximumTotalDigits = 20, minimumTotalDigits = 0, mask = 1 } = options;
+  return formatDisplayString(formatDisplayNumber(_amount_, options));
+}
 
-  const amount = Decimal(_amount_);
-
-  const currencyOptions = currency
-    ? ({
-        currency,
-        currencyDisplay: "narrowSymbol",
-        style: "currency",
-      } as const)
-    : ({
-        style: "decimal",
-      } as const);
-
-  const intlOptions: Intl.NumberFormatOptions = {
-    ...currencyOptions,
-    useGrouping: formatNumberMask[mask].useGrouping,
-  };
-
-  const absAmount = amount.abs();
-
-  const integerPart = absAmount.round(0, 0);
-  const integerDigits = integerPart.isZero() ? 1 : integerPart.toFixed(0).length;
-
-  const threshold = Decimal(1).div(Decimal(10).pow(maximumTotalDigits - 1));
-
-  if (absAmount.gt(0) && absAmount.lt(threshold)) {
-    const thresholdFormatter = new Intl.NumberFormat(language, {
-      maximumFractionDigits: maximumTotalDigits - 1,
-    });
-    return `< ${thresholdFormatter.format(threshold.toNumber())}`;
-  }
-
-  if (integerDigits > maximumTotalDigits) {
-    intlOptions.notation = "compact";
-    intlOptions.maximumFractionDigits = maximumTotalDigits;
-  } else {
-    intlOptions.maximumFractionDigits = maximumTotalDigits - integerDigits;
-  }
-
-  if (minimumTotalDigits) {
-    intlOptions.minimumFractionDigits = Math.min(
-      minimumTotalDigits,
-      intlOptions.maximumFractionDigits,
-    );
-  }
-
-  return new Intl.NumberFormat(language, intlOptions)
-    .formatToParts(amount.toNumber())
-    .map((part) => {
-      const partType =
-        formatNumberMask[mask].format[
-          part.type as keyof (typeof formatNumberMask)[keyof typeof formatNumberMask]["format"]
-        ];
-      return partType || part.value;
-    })
-    .join("");
+/**
+ * Derive the number of fraction digits to display for prices based on
+ * the selected bucket size.
+ *
+ * - bucket size >= 1 → 0 (integer prices)
+ * - bucket size = 0.1 → 1
+ * - bucket size = 0.01 → 2
+ * - etc.
+ */
+export function bucketSizeToFractionDigits(bucketSize: string): number {
+  if (Decimal(bucketSize).gte(1)) return 0;
+  const str = Decimal(bucketSize).toFixed();
+  const dotIndex = str.indexOf(".");
+  if (dotIndex === -1) return 0;
+  return str.length - dotIndex - 1;
 }
 
 /**

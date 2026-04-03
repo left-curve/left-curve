@@ -263,7 +263,7 @@ const EvmDeposit: React.FC = () => {
             <p>
               {getPrice(amount, coin.denom, {
                 format: true,
-                formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
+                formatOptions: formatNumberOptions,
               })}
             </p>
           </div>
@@ -385,7 +385,7 @@ const BridgeWithdraw: React.FC = () => {
                 <p>
                   {getPrice(youGet, coin.denom, {
                     format: true,
-                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
+                    formatOptions: formatNumberOptions,
                   })}
                 </p>
               </div>

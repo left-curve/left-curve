@@ -19,7 +19,7 @@ import {
   perpsLiquidityDepthStore,
   useStorage,
 } from "@left-curve/store";
-import { calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
+import { bucketSizeToFractionDigits, calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -153,11 +153,12 @@ type OrderBookRowProps = {
   total: string;
   max: string;
   type: "bid" | "ask";
+  priceFractionDigits: number;
   onSelectPrice: (price: string) => void;
 };
 
 const OrderRow: React.FC<OrderBookRowProps> = (props) => {
-  const { price, size, total, type, max, onSelectPrice } = props;
+  const { price, size, total, type, max, priceFractionDigits, onSelectPrice } = props;
   const depthBarWidthPercent = Decimal(size).div(max).times(100).toFixed();
 
   const depthBarClass =
@@ -180,10 +181,10 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
         )}
         onClick={() => onSelectPrice(price)}
       >
-        <FormattedNumber number={price} formatOptions={{ minimumTotalDigits: 10 }} />
+        <FormattedNumber number={price} formatOptions={{ fractionDigits: priceFractionDigits }} />
       </div>
       <div className="z-10 justify-end text-end hidden lg:flex gap-1">
-        <FormattedNumber number={size} formatOptions={{ minimumTotalDigits: 8 }} />
+        <FormattedNumber number={size} />
       </div>
       <div
         className={twMerge(
@@ -191,7 +192,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
           type === "bid" ? "text-start lg:text-end" : "order-1 lg:order-none text-end",
         )}
       >
-        <FormattedNumber number={total} formatOptions={{ minimumTotalDigits: 8 }} />
+        <FormattedNumber number={total} />
       </div>
     </div>
   );
@@ -236,6 +237,16 @@ const OrderBook: React.FC<OrderBookProps> = ({
       : bucketSizeCoin === "base"
         ? baseCoin.symbol
         : quoteCoin.symbol;
+
+  const priceFractionDigits = useMemo(() => {
+    const displaySize =
+      mode === "perps"
+        ? bucketSize
+        : Decimal(bucketSize)
+            .mul(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+            .toString();
+    return bucketSizeToFractionDigits(displaySize);
+  }, [bucketSize, mode, baseCoin.decimals, quoteCoin.decimals]);
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center h-full">
@@ -302,6 +313,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
         onSelectPrice={(price) => controllers.setValue("price", price)}
         mode={mode}
         displayMode={perpsDisplayMode}
+        priceFractionDigits={priceFractionDigits}
       />
     </div>
   );
@@ -355,16 +367,10 @@ const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, pairId }) => {
                     isLong ? "text-utility-success-600" : "text-utility-error-600",
                   )}
                 >
-                  <FormattedNumber
-                    number={trade.fillPrice}
-                    formatOptions={{ minimumTotalDigits: 8 }}
-                  />
+                  <FormattedNumber number={trade.fillPrice} />
                 </div>
                 <div className="text-center z-10 flex gap-1 justify-center">
-                  <FormattedNumber
-                    number={Math.abs(Number(trade.fillSize)).toString()}
-                    formatOptions={{ maximumTotalDigits: 5, minimumTotalDigits: 5 }}
-                  />
+                  <FormattedNumber number={Math.abs(Number(trade.fillSize)).toString()} />
                 </div>
                 <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
                   <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
@@ -429,14 +435,10 @@ const SpotLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin, pairId
                     baseCoin.decimals - quoteCoin.decimals,
                     true,
                   )}
-                  formatOptions={{ minimumTotalDigits: 8 }}
                 />
               </div>
               <div className="text-center z-10 flex gap-1 justify-center">
-                <FormattedNumber
-                  number={calculateTradeSize(trade, baseCoin.decimals).toFixed()}
-                  formatOptions={{ maximumTotalDigits: 5, minimumTotalDigits: 5 }}
-                />
+                <FormattedNumber number={calculateTradeSize(trade, baseCoin.decimals).toFixed()} />
               </div>
 
               <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
@@ -463,6 +465,7 @@ type LiquidityDepthProps = {
   onSelectPrice: (price: string) => void;
   mode: "spot" | "perps";
   displayMode: "base" | "quote";
+  priceFractionDigits: number;
 };
 
 const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
@@ -474,6 +477,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   onSelectPrice,
   mode,
   displayMode,
+  priceFractionDigits,
 }) => {
   const { isLg } = useMediaQuery();
   const { liquidityDepthStore } = useLiquidityDepthState({
@@ -509,6 +513,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
             type="ask"
             {...ask}
             max={max}
+            priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
           />
         ))}
@@ -523,6 +528,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
             type="bid"
             {...bid}
             max={max}
+            priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
           />
         ))}
