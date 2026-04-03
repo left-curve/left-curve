@@ -1133,6 +1133,7 @@ fn map_child_orders(
     let make_conditional = |child: &ChildOrder, next_id: &mut OrderId| -> ConditionalOrder {
         let order_id = *next_id;
         *next_id += OrderId::ONE;
+
         ConditionalOrder {
             order_id,
             size: child.size,
