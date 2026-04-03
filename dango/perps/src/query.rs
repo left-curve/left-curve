@@ -1,12 +1,12 @@
 use {
     crate::{
-        core::compute_user_equity,
+        core::{compute_available_margin, compute_user_equity},
         oracle,
         querier::NoCachePerpQuerier,
         referral::calculate_commission_rate,
         state::{
             ASKS, BIDS, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS, PAIR_STATES, REFEREE_TO_REFERRER,
-            REFERRER_TO_REFEREE_STATISTICS, STATE, USER_REFERRAL_DATA, USER_STATES, VOLUMES,
+            REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, VOLUMES,
         },
         volume::round_to_day,
     },
@@ -19,7 +19,7 @@ use {
             LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId, PairParam,
             PairState, QueryOrderResponse, QueryOrdersByUserResponseItem, Referee, RefereeStats,
             Referrer, ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex,
-            UserReferralData, UserState, VaultState,
+            UserReferralData, UserState, UserStateExtended,
         },
     },
     grug::{
@@ -71,24 +71,41 @@ pub fn query_user_states(
         .collect()
 }
 
-pub fn query_vault_state(ctx: ImmutableCtx) -> anyhow::Result<VaultState> {
-    let state = STATE.load(ctx.storage)?;
-    let vault_user_state = USER_STATES.load(ctx.storage, ctx.contract)?;
+pub fn query_user_state_extended(
+    ctx: ImmutableCtx,
+    user: Addr,
+    include_equity: bool,
+    include_available_margin: bool,
+) -> anyhow::Result<UserStateExtended> {
+    let user_state = USER_STATES.load(ctx.storage, user)?;
 
-    let equity = {
-        let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
-        let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
-        compute_user_equity(&mut oracle_querier, &perp_querier, &vault_user_state)?
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
+
+    let equity = if include_equity {
+        Some(compute_user_equity(
+            &mut oracle_querier,
+            &perp_querier,
+            &user_state,
+        )?)
+    } else {
+        None
     };
 
-    Ok(VaultState {
-        share_supply: state.vault_share_supply,
+    let available_margin = if include_available_margin {
+        Some(compute_available_margin(
+            &mut oracle_querier,
+            &perp_querier,
+            &user_state,
+        )?)
+    } else {
+        None
+    };
+
+    Ok(UserStateExtended {
+        raw: user_state,
         equity,
-        deposit_withdrawal_active: equity.is_positive(),
-        margin: vault_user_state.margin,
-        positions: vault_user_state.positions,
-        reserved_margin: vault_user_state.reserved_margin,
-        open_order_count: vault_user_state.open_order_count,
+        available_margin,
     })
 }
 

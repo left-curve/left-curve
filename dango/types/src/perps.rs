@@ -349,7 +349,7 @@ pub struct PairState {
     pub funding_rate: FundingRate,
 }
 
-/// State of a specific user.
+/// State of a specific user. Saved in contract storage.
 #[grug::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct UserState {
@@ -379,25 +379,43 @@ impl UserState {
     }
 }
 
-/// State of the vault. Used in query response.
+/// State of s specific user, containing a few fields not saved in contract
+/// storage but rather computed on-the-fly at query time. Used in query response.
 #[grug::derive(Serde)]
-pub struct VaultState {
-    /// Total supply of vault shares.
-    pub share_supply: Uint128,
+pub struct UserStateExtended {
+    /// The raw user state, as saved in contract storage.
+    pub raw: UserState,
 
-    /// The vault's equity, calculated as:
-    /// > the vault's margin + unrealized PnL - unrealized funding
-    pub equity: UsdValue,
+    /// The user's equity, defined as:
+    ///
+    /// ```plain
+    /// margin + sum_all_pairs(unrealized_pnl - unrealized_funding)
+    /// ```
+    ///
+    /// Equity reflects the total value of the account's collaterals and positions.
+    ///
+    /// `None` if the client elects not to compute this in `QueryMsg::UserStateExtended`.
+    pub equity: Option<UsdValue>,
 
-    /// Whether the deposit and withdrawal are allowed.
-    /// These actions are disabled when the vault is in catastrophic loss (equity < 0).
-    pub deposit_withdrawal_active: bool,
-
-    // The following fields are the same as those in `UserState`.
-    pub margin: UsdValue,
-    pub positions: BTreeMap<PairId, Position>,
-    pub reserved_margin: UsdValue,
-    pub open_order_count: usize,
+    /// The user's available margin, defined as:
+    ///
+    /// ```plain
+    /// margin
+    ///   - sum_all_pairs(|size| * oracle_price * initial_margin_ratio)
+    ///   - sum_all_orders(reserved_margin)
+    /// ```
+    ///
+    /// I.e. the user's collateral (margin) minus the cost for opening his all
+    /// existing positions and resting orders.
+    ///
+    /// This is the amount of collateral that the user can 1) withdraw to spot
+    /// account, or 2) use to place orders. E.g. if the user has $100 available
+    /// margin, it means he can either withdraw up to 100 USDC to his spot account,
+    /// or if he has set leverage to 5x, he can open a new position of size up to
+    /// $100 * 5 = $500.
+    ///
+    /// `None` if the client elects not to compute this in `QueryMsg::UserStateExtended`.
+    pub available_margin: Option<UsdValue>,
 }
 
 /// A user's position in a specific trading pair.
@@ -727,9 +745,13 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Query the state of the vault.
-    #[returns(VaultState)]
-    VaultState {},
+    /// Query the state of a single user with additional data computed on-the-fly.
+    #[returns(UserStateExtended)]
+    UserStateExtended {
+        user: Addr,
+        include_equity: bool,
+        include_available_margin: bool,
+    },
 
     /// Query a single limit order by ID.
     #[returns(Option<QueryOrderResponse>)]
