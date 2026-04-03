@@ -316,7 +316,11 @@ services:
     env_file:
       - ./perp-liquidator/.env
     ports:
+{% if expose_ports %}
+      - "0:9310"
+{% else %}
       - "${PERP_LIQUIDATOR_HTTP_PORT:-9310}:9310"
+{% endif %}
     networks:
       - default
       - traefik
