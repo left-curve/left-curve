@@ -450,7 +450,7 @@ pub(crate) fn _submit_order(
         && let Some(position) = taker_state.positions.get_mut(pair_id)
         && position.size.is_positive() == size.is_positive()
     {
-        let (above, below) = map_child_orders(position.size, &tp, &sl, &mut next_order_id)?;
+        let (above, below) = map_child_orders(position.size, &tp, &sl, &mut next_order_id);
 
         position.conditional_order_above = above;
         position.conditional_order_below = below;
@@ -695,7 +695,7 @@ pub fn match_order(
                 &maker_order.tp,
                 &maker_order.sl,
                 next_order_id,
-            )?;
+            );
 
             maker_pos.conditional_order_above = above;
             maker_pos.conditional_order_below = below;
@@ -1129,18 +1129,17 @@ fn map_child_orders(
     tp: &Option<ChildOrder>,
     sl: &Option<ChildOrder>,
     next_order_id: &mut OrderId,
-) -> anyhow::Result<(Option<ConditionalOrder>, Option<ConditionalOrder>)> {
-    let make_conditional =
-        |child: &ChildOrder, next_id: &mut OrderId| -> anyhow::Result<ConditionalOrder> {
-            let order_id = *next_id;
-            *next_id += OrderId::ONE;
-            Ok(ConditionalOrder {
-                order_id,
-                size: child.size,
-                trigger_price: child.trigger_price,
-                max_slippage: child.max_slippage,
-            })
-        };
+) -> (Option<ConditionalOrder>, Option<ConditionalOrder>) {
+    let make_conditional = |child: &ChildOrder, next_id: &mut OrderId| -> ConditionalOrder {
+        let order_id = *next_id;
+        *next_id += OrderId::ONE;
+        ConditionalOrder {
+            order_id,
+            size: child.size,
+            trigger_price: child.trigger_price,
+            max_slippage: child.max_slippage,
+        }
+    };
 
     let is_long = position_size.is_positive();
 
@@ -1153,14 +1152,12 @@ fn map_child_orders(
 
     let above = above_src
         .as_ref()
-        .map(|c| make_conditional(c, next_order_id))
-        .transpose()?;
+        .map(|c| make_conditional(c, next_order_id));
     let below = below_src
         .as_ref()
-        .map(|c| make_conditional(c, next_order_id))
-        .transpose()?;
+        .map(|c| make_conditional(c, next_order_id));
 
-    Ok((above, below))
+    (above, below)
 }
 
 /// Emit `ConditionalOrderPlaced` events for child orders that were applied.
