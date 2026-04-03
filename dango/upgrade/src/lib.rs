@@ -19,6 +19,40 @@ const PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
 mod legacy {
     use super::*;
 
+    pub const PARAM: grug::Item<Param> = grug::Item::new("param");
+
+    /// Read legacy user states using a plain Map (same namespace as the
+    /// IndexedMap primary). Index entries are not affected by the value change.
+    pub const USER_STATES: Map<Addr, UserState> = Map::new("us");
+
+    pub const PAIR_STATES: Map<&perps::PairId, PairState> = Map::new("pair_state");
+
+    pub const BIDS: Map<OrderKey, LimitOrder> = Map::new("bid");
+
+    pub const ASKS: Map<OrderKey, LimitOrder> = Map::new("ask");
+
+    pub const CONDITIONAL_ABOVE: IndexedMap<
+        ConditionalOrderKey,
+        ConditionalOrder,
+        ConditionalOrderIndexes,
+    > = IndexedMap::new(
+        "conda",
+        ConditionalOrderIndexes::new("conda", "conda__id", "conda__user"),
+    );
+
+    pub const CONDITIONAL_BELOW: IndexedMap<
+        ConditionalOrderKey,
+        ConditionalOrder,
+        ConditionalOrderIndexes,
+    > = IndexedMap::new(
+        "condb",
+        ConditionalOrderIndexes::new("condb", "condb__id", "condb__user"),
+    );
+
+    pub type OrderKey = (perps::PairId, UsdPrice, perps::OrderId);
+
+    pub type ConditionalOrderKey = (perps::PairId, UsdPrice, perps::ConditionalOrderId);
+
     /// The Param struct before the upgrade, which contains the
     /// `max_conditional_orders` field.
     #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
@@ -66,14 +100,6 @@ mod legacy {
         pub funding_per_unit: FundingPerUnit,
     }
 
-    pub const PARAM: grug::Item<Param> = grug::Item::new("param");
-
-    /// Read legacy user states using a plain Map (same namespace as the
-    /// IndexedMap primary). Index entries are not affected by the value change.
-    pub const USER_STATES: Map<Addr, UserState> = Map::new("us");
-
-    pub const PAIR_STATES: Map<&perps::PairId, PairState> = Map::new("pair_state");
-
     /// The LimitOrder struct before the upgrade (no tp/sl child order fields).
     #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
     pub struct LimitOrder {
@@ -83,13 +109,6 @@ mod legacy {
         pub reserved_margin: UsdValue,
         pub created_at: Timestamp,
     }
-
-    pub type OrderKey = (perps::PairId, UsdPrice, perps::OrderId);
-
-    pub const BIDS: Map<OrderKey, LimitOrder> = Map::new("bid");
-    pub const ASKS: Map<OrderKey, LimitOrder> = Map::new("ask");
-
-    pub type ConditionalOrderKey = (perps::PairId, UsdPrice, perps::ConditionalOrderId);
 
     /// The ConditionalOrder struct before the upgrade (stored in separate
     /// IndexedMaps, not embedded in Position).
@@ -126,24 +145,6 @@ mod legacy {
             }
         }
     }
-
-    pub const CONDITIONAL_ABOVE: IndexedMap<
-        ConditionalOrderKey,
-        ConditionalOrder,
-        ConditionalOrderIndexes,
-    > = IndexedMap::new(
-        "conda",
-        ConditionalOrderIndexes::new("conda", "conda__id", "conda__user"),
-    );
-
-    pub const CONDITIONAL_BELOW: IndexedMap<
-        ConditionalOrderKey,
-        ConditionalOrder,
-        ConditionalOrderIndexes,
-    > = IndexedMap::new(
-        "condb",
-        ConditionalOrderIndexes::new("condb", "condb__id", "condb__user"),
-    );
 }
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
