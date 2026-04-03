@@ -1,27 +1,19 @@
 import type { PropsWithChildren } from "react";
 
-import { uid } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { Cell, Table } from "@left-curve/applets-kit";
-import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
-import { StrategyCard, createContext } from "@left-curve/applets-kit";
-import { useAccount, useAppConfig, useBalances, useConfig } from "@left-curve/store";
-
-import type { TableColumn } from "@left-curve/applets-kit";
-import type { PairSymbols } from "@left-curve/dango/types";
-import type { LpCoin, WithAmount } from "@left-curve/store/types";
+import { Button, createContext } from "@left-curve/applets-kit";
 
 type EarnProps = {
-  navigate: (pair: PairSymbols) => void;
+  navigateToVault: () => void;
 };
 
 const [EarnProvider, useEarn] = createContext<EarnProps>({
   name: "EarnContext",
 });
 
-const EarnContainer: React.FC<PropsWithChildren<EarnProps>> = ({ children, navigate }) => {
-  return <EarnProvider value={{ navigate }}>{children}</EarnProvider>;
+const EarnContainer: React.FC<PropsWithChildren<EarnProps>> = ({ children, navigateToVault }) => {
+  return <EarnProvider value={{ navigateToVault }}>{children}</EarnProvider>;
 };
 
 const EarnHeader: React.FC = () => {
@@ -38,102 +30,48 @@ const EarnHeader: React.FC = () => {
   );
 };
 
-const EarnPoolsCards: React.FC = () => {
-  const { navigate } = useEarn();
-  const { data: appConfig } = useAppConfig();
+const EarnVaultCard: React.FC = () => {
+  const { navigateToVault } = useEarn();
 
   return (
-    <div className="flex gap-4 scrollbar-none justify-start lg:justify-between p-4 overflow-x-auto overflow-y-visible">
-      {Object.values(appConfig.pairs)
-        .slice(0, 4)
-        .map((pair, index) => (
-          <StrategyCard
-            key={uid()}
-            pair={pair}
-            index={index}
-            onSelect={navigate}
-            labels={{
-              party: m["earn.party"](),
-              earn: m["earn.earn"](),
-              deposit: m["earn.deposit"](),
-              select: m["earn.select"](),
-              apy: m["earn.apy"](),
-              tvl: m["earn.tvl"](),
-            }}
+    <div className="flex justify-center p-4">
+      <div className="flex flex-col gap-4 p-6 rounded-xl shadow-account-card bg-surface-tertiary-rice w-full max-w-[25rem] relative overflow-hidden">
+        <div className="flex gap-2 items-center">
+          <img
+            src="/images/coins/usd.svg"
+            alt="vault"
+            className="w-10 h-10 rounded-full"
           />
-        ))}
-    </div>
-  );
-};
-
-const EarnUserPoolsTable: React.FC = () => {
-  const { navigate } = useEarn();
-  const { getCoinInfo } = useConfig();
-  const { account } = useAccount();
-  const { data: balances = {}, isLoading } = useBalances({ address: account?.address });
-
-  const userPools = Object.entries(balances)
-    .filter(([denom]) => denom.includes("dex"))
-    .map(([denom, amount]) => {
-      const coin = getCoinInfo(denom);
-      return { ...coin, amount } as WithAmount<LpCoin>;
-    });
-
-  const columns: TableColumn<WithAmount<LpCoin>> = [
-    {
-      header: m["earn.vault"](),
-      cell: ({ row }) => {
-        return <Cell.Assets assets={[row.original.base, row.original.quote]} />;
-      },
-    },
-    {
-      header: m["earn.myPosition"](),
-      cell: ({ row }) => <Cell.Text text={row.original.amount} />,
-    },
-    {
-      header: m["earn.apr"](),
-      cell: () => <Cell.Text text="-" />,
-    },
-    {
-      header: m["earn.tvl"](),
-      cell: ({ row }) => <Cell.Text text="-" />,
-    },
-    {
-      id: "manage",
-      header: () => {
-        return <Cell.Text text={m["earn.manage"]()} className="text-right px-1" />;
-      },
-      cell: ({ row }) => (
-        <Cell.Action
-          classNames={{ cell: "items-end", button: "m-0 px-1" }}
-          action={() =>
-            navigate({
-              baseSymbol: row.original.base.symbol,
-              quoteSymbol: row.original.quote.symbol,
-            })
-          }
-          label="Manage"
+          <div className="flex flex-col">
+            <p className="text-ink-secondary-700 h4-bold">
+              {m["vaultLiquidity.title"]()}
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-between items-center">
+          <div className="flex flex-col">
+            <p className="text-ink-tertiary-500 diatype-xs-medium">{m["earn.apy"]()}</p>
+            <p className="text-ink-secondary-700 diatype-sm-bold">-</p>
+          </div>
+          <div className="flex flex-col items-end">
+            <p className="text-ink-tertiary-500 diatype-xs-medium">{m["earn.tvl"]()}</p>
+            <p className="text-ink-secondary-700 diatype-sm-bold">-</p>
+          </div>
+        </div>
+        <Button size="md" fullWidth onClick={navigateToVault}>
+          {m["earn.select"]()}
+        </Button>
+        <img
+          src="/images/characters/hippo.svg"
+          alt="dango-hippo"
+          className="max-w-[200px] absolute opacity-5 right-[-2rem] top-[-1rem] select-none drag-none"
         />
-      ),
-    },
-  ];
-
-  return (
-    <div className="flex w-full p-4">
-      <Table
-        data={userPools}
-        columns={columns}
-        isLoading={isLoading}
-        emptyComponent={
-          <EmptyPlaceholder component={m["earn.noLiquidity"]()} className="h-[7rem]" />
-        }
-      />
+      </div>
     </div>
   );
 };
 
 export const Earn = Object.assign(EarnContainer, {
   Header: EarnHeader,
-  PoolsCards: EarnPoolsCards,
-  UserPoolsTable: EarnUserPoolsTable,
+  VaultCard: EarnVaultCard,
 });

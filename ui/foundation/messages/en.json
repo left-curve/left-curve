@@ -749,6 +749,27 @@
     "tvl": "TVL",
     "manage": "Manage"
   },
+  "vaultLiquidity": {
+    "title": "Dango Liquidity Provider",
+    "apy": "APY",
+    "tvl": "TVL",
+    "toDeposit": "To deposit",
+    "toGet": "To get",
+    "sharesToBurn": "Shares to burn",
+    "usdToReceive": "USD to receive",
+    "liquidity": "My Liquidity",
+    "vaultShares": "Vault Shares",
+    "paused": "This vault has paused activity due to abnormal risk conditions. Your funds remain safe.",
+    "modal": {
+      "addLiquidity": "Add Liquidity",
+      "depositing": "Depositing",
+      "toReceive": "To receive",
+      "destination": "To",
+      "withdrawLiquidity": "Withdraw Liquidity",
+      "withdrawing": "Withdrawing",
+      "cooldownAdvice": "Your funds will be available after the cooldown period"
+    }
+  },
   "poolLiquidity": {
     "apy": "APY",
     "networkFee": "Network fee",

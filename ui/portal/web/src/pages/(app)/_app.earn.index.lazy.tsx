@@ -14,17 +14,9 @@ function EarnApplet() {
   return (
     <div className="w-full md:max-w-[76rem] mx-auto flex flex-col pt-6 mb-16">
       <MobileTitle title={m["earn.title"]()} />
-      <Earn
-        navigate={({ baseSymbol, quoteSymbol }) =>
-          navigate({
-            to: "/earn/pool/$pairSymbols",
-            params: { pairSymbols: `${baseSymbol}-${quoteSymbol}` },
-          })
-        }
-      >
+      <Earn navigateToVault={() => navigate({ to: "/earn/vault" })}>
         <Earn.Header />
-        <Earn.PoolsCards />
-        <Earn.UserPoolsTable />
+        <Earn.VaultCard />
       </Earn>
     </div>
   );

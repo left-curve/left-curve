@@ -31,6 +31,8 @@ export const Modals = {
   PerpsCloseAll: "perps-close-all",
   PerpsClosePosition: "perps-close-position",
   ActivateAccount: "activate-account",
+  VaultAddLiquidity: "vault-add-liquidity",
+  VaultWithdrawLiquidity: "vault-withdraw-liquidity",
 };
 
 export type ModalRef = {

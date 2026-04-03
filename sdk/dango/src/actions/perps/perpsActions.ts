@@ -109,6 +109,24 @@ import {
   setFeeShareRatio,
 } from "./mutations/setFeeShareRatio.js";
 
+import {
+  type GetPerpsVaultStateParameters,
+  type GetPerpsVaultStateReturnType,
+  getPerpsVaultState,
+} from "./queries/getVaultState.js";
+
+import {
+  type VaultAddLiquidityParameters,
+  type VaultAddLiquidityReturnType,
+  vaultAddLiquidity,
+} from "./mutations/vaultAddLiquidity.js";
+
+import {
+  type VaultRemoveLiquidityParameters,
+  type VaultRemoveLiquidityReturnType,
+  vaultRemoveLiquidity,
+} from "./mutations/vaultRemoveLiquidity.js";
+
 export type PerpsQueryActions = {
   getPerpsUserState: (args: GetPerpsUserStateParameters) => GetPerpsUserStateReturnType;
   getPerpsOrdersByUser: (args: GetPerpsOrdersByUserParameters) => GetPerpsOrdersByUserReturnType;
@@ -124,6 +142,7 @@ export type PerpsQueryActions = {
   getAllPerpsPairStats: () => GetAllPerpsPairStatsReturnType;
   getPerpsPairState: (args: GetPerpsPairStateParameters) => GetPerpsPairStateReturnType;
   getPerpsState: (args?: GetPerpsStateParameters) => GetPerpsStateReturnType;
+  getPerpsVaultState: (args?: GetPerpsVaultStateParameters) => GetPerpsVaultStateReturnType;
 };
 
 export function perpsQueryActions<transport extends Transport = Transport>(
@@ -142,6 +161,7 @@ export function perpsQueryActions<transport extends Transport = Transport>(
     getAllPerpsPairStats: () => getAllPerpsPairStats(client),
     getPerpsPairState: (args) => getPerpsPairState(client, args),
     getPerpsState: (args) => getPerpsState(client, args),
+    getPerpsVaultState: (args) => getPerpsVaultState(client, args),
   };
 }
 
@@ -152,6 +172,8 @@ export type PerpsMutationActions = {
   cancelPerpsOrder: (args: CancelPerpsOrderParameters) => CancelPerpsOrderReturnType;
   setReferral: (args: SetReferralParameters) => SetReferralReturnType;
   setFeeShareRatio: (args: SetFeeShareRatioParameters) => SetFeeShareRatioReturnType;
+  vaultAddLiquidity: (args: VaultAddLiquidityParameters) => VaultAddLiquidityReturnType;
+  vaultRemoveLiquidity: (args: VaultRemoveLiquidityParameters) => VaultRemoveLiquidityReturnType;
 };
 
 export function perpsMutationActions<transport extends Transport = Transport>(
@@ -164,5 +186,7 @@ export function perpsMutationActions<transport extends Transport = Transport>(
     cancelPerpsOrder: (args) => cancelPerpsOrder(client, args),
     setReferral: (args) => setReferral(client, args),
     setFeeShareRatio: (args) => setFeeShareRatio(client, args),
+    vaultAddLiquidity: (args) => vaultAddLiquidity(client, args),
+    vaultRemoveLiquidity: (args) => vaultRemoveLiquidity(client, args),
   };
 }

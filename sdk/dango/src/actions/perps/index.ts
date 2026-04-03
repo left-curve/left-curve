@@ -111,3 +111,21 @@ export {
   type SetFeeShareRatioReturnType,
   setFeeShareRatio,
 } from "./mutations/setFeeShareRatio.js";
+
+export {
+  type GetPerpsVaultStateParameters,
+  type GetPerpsVaultStateReturnType,
+  getPerpsVaultState,
+} from "./queries/getVaultState.js";
+
+export {
+  type VaultAddLiquidityParameters,
+  type VaultAddLiquidityReturnType,
+  vaultAddLiquidity,
+} from "./mutations/vaultAddLiquidity.js";
+
+export {
+  type VaultRemoveLiquidityParameters,
+  type VaultRemoveLiquidityReturnType,
+  vaultRemoveLiquidity,
+} from "./mutations/vaultRemoveLiquidity.js";

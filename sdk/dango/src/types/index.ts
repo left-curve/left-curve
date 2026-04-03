@@ -169,6 +169,7 @@ export type {
   PerpsCancelOrderRequest,
   PerpsQueryMsg,
   GetPerpsQueryMsg,
+  PerpsVaultState,
 } from "./perps.js";
 
 export type {
