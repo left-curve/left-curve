@@ -9,7 +9,7 @@ import fuzzysort from "fuzzysort";
 
 import type { AppletMetadata } from "../types/applets.js";
 import type {
-  Account,
+  AccountDetails,
   Address,
   ContractInfo,
   IndexedBlock,
@@ -28,7 +28,7 @@ export type SearchBarResult = {
   txs: IndexedTransaction[];
   applets: AppletMetadata[];
   contracts: (ContractInfo & { address: Address })[];
-  account?: Account;
+  account?: AccountDetails;
   user?: User;
 };
 

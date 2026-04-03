@@ -112,7 +112,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { data: appConfig } = useAppConfig();
   const { getPrice, isFetched } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const queryClient = useQueryClient();
-  const { account } = useAccount();
+  const { account, username } = useAccount();
 
   const pairId = tradePairStore((s) => s.pairId);
   const action = tradeInfoStore((s) => s.action);
@@ -189,7 +189,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
       queryClient.invalidateQueries({ queryKey: ["tradeHistory", account?.address] });
-      queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
+      queryClient.invalidateQueries({ queryKey: ["quests", username] });
       setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
     },
   });

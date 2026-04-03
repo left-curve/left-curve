@@ -52,6 +52,7 @@ export type ConnectorParameter = {
 
 export type ConnectorEventMap = {
   change: {
+    username: string;
     userStatus: UserStatus | undefined;
     userIndex: number;
     accounts?: readonly Account[] | undefined;
@@ -59,6 +60,7 @@ export type ConnectorEventMap = {
     keyHash: KeyHash;
   };
   connect: {
+    username: string;
     userStatus: UserStatus | undefined;
     userIndex: number;
     accounts: readonly Account[];

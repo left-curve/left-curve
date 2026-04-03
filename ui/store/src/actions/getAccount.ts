@@ -112,7 +112,8 @@ const disconnected = {
 } as const;
 
 export function getAccount<config extends Config = Config>(config: config): GetAccountReturnType {
-  const { chainId, connectors, status, userStatus } = config.state;
+  const { chainId, connectors, status } = config.state;
+  const userStatus = config.state.user?.status;
   const connectorUId = config.state.current!;
   const connection = connectors.get(connectorUId);
 
@@ -131,16 +132,17 @@ export function getAccount<config extends Config = Config>(config: config): GetA
   };
 
   const refreshAccounts = async () => {
-    if (config.state.userIndex === undefined) return;
+    if (config.state.user?.index === undefined) return;
     refreshAccountsAction(config, {
       connectorUId,
-      userIndex: config.state.userIndex,
+      userIndex: config.state.user.index,
     });
   };
 
   const { accounts, connector, account: acc, keyHash } = connection;
-  const username = acc?.username;
-  const userIndex = config.state.userIndex;
+  const user = config.state.user;
+  const username = user?.username;
+  const userIndex = user?.index;
   const isUserActive = userStatus === "active";
 
   const account = acc as Account;

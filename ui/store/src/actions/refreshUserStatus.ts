@@ -27,10 +27,16 @@ export async function refreshUserStatus<config extends Config>(
   const accountAddress = address ?? connection.account?.address ?? connection.accounts[0]?.address;
 
   if (!accountAddress) {
-    config.setState((x) => ({ ...x, userStatus: undefined }));
+    config.setState((x) => ({
+      ...x,
+      user: x.user ? { ...x.user, status: undefined } : undefined,
+    }));
     return;
   }
 
   const userStatus: UserStatus = await client.getAccountStatus({ address: accountAddress });
-  config.setState((x) => ({ ...x, userStatus }));
+  config.setState((x) => ({
+    ...x,
+    user: x.user ? { ...x.user, status: userStatus } : undefined,
+  }));
 }

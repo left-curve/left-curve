@@ -14,6 +14,5 @@ export function toAccount(parameters: ToAccountParameters) {
     index: accountIndex,
     owner: user.index,
     address: address as Address,
-    username: user.name,
   };
 }
