@@ -90,10 +90,7 @@ pub fn init_metrics() {
             LABEL_VAULT_POSITION,
             "Vault position size per pair (positive=long, negative=short)"
         );
-        describe_gauge!(
-            LABEL_VAULT_SHARE_SUPPLY,
-            "Total supply of vault shares"
-        );
+        describe_gauge!(LABEL_VAULT_SHARE_SUPPLY, "Total supply of vault shares");
         describe_gauge!(LABEL_INSURANCE_FUND, "Insurance fund balance in USD");
         describe_gauge!(LABEL_TREASURY, "Protocol treasury balance in USD");
 
