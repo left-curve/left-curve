@@ -318,15 +318,19 @@ mod tests {
             VOLUMES,
         },
         grug::{MockStorage, Order as IterationOrder, StdResult, Storage},
-        std::collections::BTreeMap,
+        std::{collections::BTreeMap, path::PathBuf},
     };
 
     /// Load the testnet perps storage fixture and return a MockStorage populated
     /// with its key-value pairs.
     fn load_fixture() -> MockStorage {
-        let bytes = include_bytes!("../testdata/perps_storage.borsh");
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("testdata")
+            .join("perps_storage.borsh");
+        let bytes = std::fs::read(&path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
         let fixture: BTreeMap<Vec<u8>, Vec<u8>> =
-            borsh::from_slice(bytes).expect("failed to deserialize fixture");
+            borsh::from_slice(&bytes).expect("failed to deserialize fixture");
 
         let mut storage = MockStorage::new();
         for (k, v) in &fixture {
