@@ -61,8 +61,7 @@ const EpochStartsIn: React.FC<{ startsAt: StartsAt; onRefetch: () => void }> = (
     const isZero = countdown.days === "0" && countdown.hours === "0" && countdown.minutes === "0" && countdown.seconds === "0";
     if (isZero && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
-      const timeout = setTimeout(() => onRefetch(), 1500);
-      return () => clearTimeout(timeout);
+      onRefetch();
     }
   }, [targetDate, countdown, onRefetch]);
 
@@ -84,7 +83,7 @@ export const PointsHeader: React.FC = () => {
 
   useEffect(() => {
     hasRefetchedRef.current = false;
-  }, [endDate]);
+  }, [currentEpoch]);
 
   useEffect(() => {
     if (!isStarted || !endDate) return;
@@ -92,8 +91,7 @@ export const PointsHeader: React.FC = () => {
     const isZero = countdown.days === "0" && countdown.hours === "0" && countdown.minutes === "0" && countdown.seconds === "0";
     if (isZero && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
-      const timeout = setTimeout(() => refetch(), 1500);
-      return () => clearTimeout(timeout);
+      refetch();
     }
   }, [isStarted, endDate, countdown, refetch]);
 
