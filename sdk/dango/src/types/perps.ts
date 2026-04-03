@@ -42,6 +42,7 @@ export type PerpsPairState = {
   longOi: string;
   shortOi: string;
   fundingPerUnit: string;
+  fundingRate: string;
 };
 
 export type RateSchedule = {

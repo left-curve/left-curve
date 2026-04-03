@@ -25,6 +25,9 @@ import {
 import type React from "react";
 import type { SearchTokenRow } from "./SearchToken";
 
+import { OpenInterestDisplay } from "./OpenInterestDisplay";
+import { FundingCountdown } from "./FundingCountdown";
+
 export const TradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
@@ -101,17 +104,11 @@ export const TradeHeader: React.FC = () => {
           >
             <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
             <HeaderPrice />
-            <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
-              <p className="diatype-xs-medium text-ink-tertiary-500">
-                {m["dex.protrade.spot.24hChange"]()}
-              </p>
-              <PairStatValue
-                kind="priceChange24h"
-                value={pairStats.data?.priceChange24H}
-                formatOptions={{ maximumTotalDigits: 6 }}
-                className="diatype-sm-bold text-center"
-              />
-            </div>
+            <Header24hChange
+              currentPrice={pairStats.data?.currentPrice}
+              price24HAgo={pairStats.data?.price24HAgo}
+              priceChange24H={pairStats.data?.priceChange24H}
+            />
             <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
               <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.volume"]()}
@@ -123,6 +120,12 @@ export const TradeHeader: React.FC = () => {
                 className="diatype-sm-bold text-center"
               />
             </div>
+            {mode === "perps" && perpsPairId && (
+              <>
+                <OpenInterestDisplay pairId={perpsPairId} />
+                <FundingCountdown pairId={perpsPairId} />
+              </>
+            )}
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -150,6 +153,75 @@ const HeaderPrice: React.FC = () => {
         )}
       >
         {currentPrice ? formatNumber(currentPrice, formatNumberOptions) : "-"}
+      </p>
+    </div>
+  );
+};
+
+type Header24hChangeProps = {
+  currentPrice: string | null | undefined;
+  price24HAgo: string | null | undefined;
+  priceChange24H: string | null | undefined;
+};
+
+const Header24hChange: React.FC<Header24hChangeProps> = ({
+  currentPrice,
+  price24HAgo,
+  priceChange24H,
+}) => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+
+  const { absoluteChange, isPositive } = useMemo(() => {
+    if (!currentPrice || !price24HAgo) {
+      return { absoluteChange: null, isPositive: true };
+    }
+
+    const current = Decimal(currentPrice);
+    const previous = Decimal(price24HAgo);
+    const change = current.minus(previous);
+
+    return {
+      absoluteChange: change.toString(),
+      isPositive: change.gte(0),
+    };
+  }, [currentPrice, price24HAgo]);
+
+  const formattedAbsoluteChange = useMemo(() => {
+    if (!absoluteChange) return null;
+
+    const prefix = isPositive ? "+" : "";
+    return `${prefix}${formatNumber(absoluteChange, {
+      ...formatNumberOptions,
+      maximumTotalDigits: 6,
+    })}`;
+  }, [absoluteChange, isPositive, formatNumberOptions]);
+
+  const formattedPercentage = useMemo(() => {
+    if (!priceChange24H) return null;
+
+    const change = Decimal(priceChange24H);
+    const prefix = change.gte(0) ? "+" : "";
+    return `${prefix}${formatNumber(priceChange24H, {
+      ...formatNumberOptions,
+      maximumTotalDigits: 6,
+    })}%`;
+  }, [priceChange24H, formatNumberOptions]);
+
+  const colorClass = useMemo(() => {
+    if (!priceChange24H) return "text-ink-secondary-700";
+    return Decimal(priceChange24H).gte(0) ? "text-status-success" : "text-status-fail";
+  }, [priceChange24H]);
+
+  return (
+    <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
+      <p className="diatype-xs-medium text-ink-tertiary-500">
+        {m["dex.protrade.spot.24hChange"]()}
+      </p>
+      <p className={twMerge("diatype-sm-bold tabular-nums lining-nums", colorClass)}>
+        {formattedAbsoluteChange && formattedPercentage
+          ? `${formattedAbsoluteChange} / ${formattedPercentage}`
+          : formattedPercentage ?? "-"}
       </p>
     </div>
   );
