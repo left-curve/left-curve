@@ -438,6 +438,11 @@ pub(crate) fn _submit_order(
 
     // ---------- Step 8½. Apply taker's child orders after fills --------------
 
+    // If the taker's order has TP/SL setting attached, apply them if:
+    // - the taker order was at least partially filled;
+    // - the taker now has a position of non-zero size;
+    // - the position is of the same direction as the order.
+
     let had_fills = unfilled != fillable_size;
 
     if had_fills
@@ -446,6 +451,7 @@ pub(crate) fn _submit_order(
         && position.size.is_positive() == size.is_positive()
     {
         let (above, below) = map_child_orders(position.size, &tp, &sl, &mut next_order_id)?;
+
         position.conditional_order_above = above;
         position.conditional_order_below = below;
 
