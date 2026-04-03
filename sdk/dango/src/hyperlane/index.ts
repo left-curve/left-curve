@@ -6,4 +6,4 @@ export { TokenMessage } from "./warp.js";
 
 export { mockValidatorSet, mockValidatorSign } from "./mock.js";
 
-export { ERC20_ABI, HYPERLANE_ROUTER_ABI } from "./abis.js";
+export { ERC20_ABI, HYPERLANE_ROUTER_ABI, INFURA_URLS } from "./abis.js";

@@ -17,6 +17,7 @@ export type {
 
 export type {
   Account,
+  AccountDetails,
   AccountIndex,
   AccountInfo,
   User,
@@ -160,6 +161,7 @@ export type {
   PerpsParam,
   PerpsState,
   PerpsOrderResponse,
+  PerpsOrderByUserItem,
   PerpsOrdersByUserResponse,
   PerpsLiquidityDepth,
   PerpsLiquidityDepthResponse,

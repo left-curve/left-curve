@@ -14,6 +14,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   useConfig,
   useOrderBookState,
+  useLivePerpsTradesState,
   usePerpsUserState,
   useOrdersByUser,
   usePerpsOrdersByUser,
@@ -55,6 +56,7 @@ const TradeSubscriptions: React.FC = () => {
   const pairId = tradePairStore((s) => s.pairId);
 
   useOrderBookState({ pairId, subscribe: mode === "spot" });
+  useLivePerpsTradesState({ pairId, subscribe: mode === "perps" });
 
   usePerpsUserState({ subscribe: mode === "perps" });
   usePerpsOrdersByUser({ subscribe: mode === "perps" });
@@ -425,18 +427,18 @@ const UnifiedOpenOrders: React.FC = () => {
       }
     }
 
-    if (mode === "perps" && perpsOrders?.bids && perpsOrders?.asks) {
-      const allPerpsOrders = [...perpsOrders.bids, ...perpsOrders.asks];
+    if (mode === "perps" && perpsOrders) {
+      const allPerpsOrders = Object.entries(perpsOrders);
       const filtered = showAllPairs
         ? allPerpsOrders
-        : allPerpsOrders.filter((o) => o.pairId === currentPerpsPairId);
+        : allPerpsOrders.filter(([, o]) => o.pairId === currentPerpsPairId);
 
-      for (const order of filtered) {
+      for (const [orderId, order] of filtered) {
         const label = order.pairId.replace("perp/", "").replace(/usd$/i, "/USD").toUpperCase();
         const isLong = Number(order.size) > 0;
 
         rows.push({
-          id: order.orderId,
+          id: orderId,
           market: "perps",
           pairDisplay: label,
           side: isLong ? "buy" : "sell",
@@ -445,7 +447,7 @@ const UnifiedOpenOrders: React.FC = () => {
           size: Math.abs(Number(order.size)).toString(),
           filled: null,
           reduceOnly: order.reduceOnly,
-          rawPerpsOrderId: order.orderId,
+          rawPerpsOrderId: orderId,
         });
       }
     }

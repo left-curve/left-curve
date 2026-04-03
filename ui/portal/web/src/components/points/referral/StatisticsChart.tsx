@@ -11,9 +11,6 @@ type ChartDataPoint = {
 
 const BAR_COLOR = "#A8AA4A";
 
-const EPOCH_ORIGIN = 1735689600;
-const EPOCH_DURATION = 604_800;
-
 type CustomTooltipProps = {
   active?: boolean;
   payload?: Array<{ value: number }>;
@@ -77,13 +74,12 @@ export const StatisticsChart: React.FC<StatisticsChartProps> = ({ metric, period
     const cutoff = Date.now() / 1000 - days * 86400;
 
     return Object.entries(epochPoints)
-      .map(([epoch, stats]) => {
-        const epochNumber = Number.parseInt(epoch, 10);
-        const epochStartTs = EPOCH_ORIGIN + epochNumber * EPOCH_DURATION;
+      .map(([_epoch, epochStats]) => {
+        const epochStartTs = Number.parseFloat(epochStats.started_at);
         const date = new Date(epochStartTs * 1000).toISOString().slice(0, 10);
         const value = metric === "commission"
-          ? Number(stats.points.referral)
-          : Number(stats.volume);
+          ? Number(epochStats.stats.points.referral)
+          : Number(epochStats.stats.volume);
 
         return { date, value, ts: epochStartTs };
       })

@@ -250,7 +250,7 @@ export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js"
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
 export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";
 export { useLivePerpsTradesState, livePerpsTradesStore } from "./hooks/useLivePerpsTradesState.js";
-export { usePerpsOrderBookState, perpsOrderBookStore } from "./hooks/usePerpsOrderBookState.js";
+export { usePerpsLiquidityDepth, perpsLiquidityDepthStore } from "./hooks/usePerpsLiquidityDepth.js";
 export { usePerpsOrdersByUser, perpsOrdersByUserStore } from "./hooks/usePerpsOrdersByUser.js";
 
 export {
@@ -270,6 +270,11 @@ export {
   type UseEpochPointsParameters,
   useEpochPoints,
 } from "./hooks/useEpochPoints.js";
+
+export {
+  type UseCurrentEpochParameters,
+  useCurrentEpoch,
+} from "./hooks/useCurrentEpoch.js";
 
 export {
   type UseBoxesParameters,
@@ -295,6 +300,9 @@ export {
   type LeaderboardEntry,
   type BoxReward,
   type OatEntry,
+  type EpochInfo,
+  type EpochInfoNotStarted,
+  type EpochInfoActive,
   fetchUserStats,
   fetchEpochPoints,
   fetchLeaderboard,
@@ -305,6 +313,7 @@ export {
   fetchCampaigns,
   registerOat,
   checkOat,
+  fetchCurrentEpoch,
 } from "./hooks/pointsApi.js";
 
 export {

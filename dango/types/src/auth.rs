@@ -45,8 +45,10 @@ pub type Nonce = u32;
 )]
 pub enum KeyType {
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
+    #[cfg_attr(feature = "async-graphql", graphql(name = "SECP256R1"))]
     Secp256r1,
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 1))]
+    #[cfg_attr(feature = "async-graphql", graphql(name = "SECP256K1"))]
     Secp256k1,
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 2))]
     Ethereum,

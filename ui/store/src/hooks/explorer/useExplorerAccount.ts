@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "../usePublicClient.js";
 
-import type { Account, Address, Coins, ContractInfo } from "@left-curve/dango/types";
+import type { AccountDetails, Address, Coins, ContractInfo } from "@left-curve/dango/types";
 
-export type ExplorerAccount = (Account & ContractInfo & { balances: Coins }) | null;
+export type ExplorerAccount = (AccountDetails & ContractInfo & { balances: Coins }) | null;
 
 export function useExplorerAccount(address: Address) {
   const client = usePublicClient();

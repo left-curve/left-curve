@@ -4,7 +4,7 @@ use {
         perps::{self, RateSchedule},
     },
     grug::{
-        Addr, BlockInfo, Duration, Map, Order as IterationOrder, StdResult, Storage, Uint128,
+        Addr, BlockInfo, Duration, Map, Order as IterationOrder, StdResult, Storage, Uint128, addr,
         increment_last_byte,
     },
     grug_app::{AppResult, CONTRACT_NAMESPACE, CONTRACTS, StorageProvider},
@@ -13,7 +13,7 @@ use {
 
 /// Address of the perps contract. Placeholder — fill in the actual value before
 /// deploying the upgrade binary.
-const PERPS_ADDRESS: Addr = Addr::ZERO;
+const PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
 
 /// Legacy types matching the pre-upgrade Borsh layout.
 mod legacy {

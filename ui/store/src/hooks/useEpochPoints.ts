@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchEpochPoints, type UserStats } from "./pointsApi.js";
+import { fetchEpochPoints, type EpochUserStats } from "./pointsApi.js";
 
 export type UseEpochPointsParameters = {
   pointsUrl: string;
@@ -13,7 +13,7 @@ export type UseEpochPointsParameters = {
 export function useEpochPoints(parameters: UseEpochPointsParameters) {
   const { pointsUrl, userIndex, min, max, enabled = true } = parameters;
 
-  const { data: epochPoints, isLoading } = useQuery<Record<string, UserStats>>({
+  const { data: epochPoints, isLoading } = useQuery<Record<string, EpochUserStats>>({
     queryKey: ["epochPoints", userIndex, min, max],
     queryFn: () => fetchEpochPoints(pointsUrl, userIndex!, { min, max }),
     enabled: enabled && !!userIndex,

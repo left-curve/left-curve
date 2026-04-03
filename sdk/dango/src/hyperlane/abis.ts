@@ -12,6 +12,13 @@ export const HYPERLANE_ROUTER_ABI = [
   },
 ] as const;
 
+export const INFURA_URLS = {
+  "1": "https://mainnet.infura.io/v3/00f81bbb13ef4da997f6351b8146807e",
+  "11155111": "https://sepolia.infura.io/v3/2de96f6db6d34eccaa8935cabb9b29c8",
+  "8453": "base",
+  "42161": "arbitrum",
+};
+
 export const ERC20_ABI = [
   {
     inputs: [

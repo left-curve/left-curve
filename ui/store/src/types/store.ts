@@ -5,6 +5,7 @@ import type {
   Denom,
   Transport,
   UID,
+  Username,
   UserStatus,
 } from "@left-curve/dango/types";
 
@@ -23,12 +24,17 @@ export const ConnectionStatus = {
 
 export type ConnectionStatusType = (typeof ConnectionStatus)[keyof typeof ConnectionStatus];
 
+export type StoreUser = {
+  index: number;
+  username: Username;
+  status: UserStatus | undefined;
+};
+
 export type State = {
   chainId: ChainId;
   isMipdLoaded: boolean;
   current: UID | null;
-  userIndex: number | undefined;
-  userStatus: UserStatus | undefined;
+  user: StoreUser | undefined;
   connectors: Map<UID, Connection>;
   status: ConnectionStatusType;
 };

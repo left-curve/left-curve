@@ -1,5 +1,5 @@
 import { orderBookStore } from "./useOrderBookState.js";
-import { perpsOrderBookStore } from "./usePerpsOrderBookState.js";
+import { livePerpsTradesStore } from "./useLivePerpsTradesState.js";
 import { tradePairStore } from "../stores/tradePairStore.js";
 
 export function useCurrentPrice() {
@@ -8,8 +8,8 @@ export function useCurrentPrice() {
   const spotCurrent = orderBookStore((s) => s.currentPrice);
   const spotPrevious = orderBookStore((s) => s.previousPrice);
 
-  const perpsCurrent = perpsOrderBookStore((s) => s.currentPrice);
-  const perpsPrevious = perpsOrderBookStore((s) => s.previousPrice);
+  const perpsCurrent = livePerpsTradesStore((s) => s.currentPrice);
+  const perpsPrevious = livePerpsTradesStore((s) => s.previousPrice);
 
   return mode === "perps"
     ? { currentPrice: perpsCurrent, previousPrice: perpsPrevious }

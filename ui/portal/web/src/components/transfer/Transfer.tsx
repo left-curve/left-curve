@@ -95,7 +95,7 @@ const TransferSend: React.FC = () => {
 
   const { register, reset, handleSubmit, inputs } = controllers;
 
-  const { account, isConnected } = useAccount();
+  const { account, username, isConnected } = useAccount();
   const { coins, getCoinInfo } = useConfig();
   const { data: signingClient } = useSigningClient();
   const publicClient = usePublicClient();
@@ -169,7 +169,7 @@ const TransferSend: React.FC = () => {
       onSuccess: () => {
         reset();
         refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
+        queryClient.invalidateQueries({ queryKey: ["quests", username] });
       },
     },
   });

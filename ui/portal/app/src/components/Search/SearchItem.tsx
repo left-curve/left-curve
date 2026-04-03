@@ -10,7 +10,7 @@ import EmojiBlocks from "@left-curve/foundation/images/emojis/simple/blocks.svg"
 import EmojiFactory from "@left-curve/foundation/images/emojis/simple/protrading.svg";
 
 import type React from "react";
-import type { Account, Address, ContractInfo } from "@left-curve/dango/types";
+import type { AccountDetails, Address, ContractInfo } from "@left-curve/dango/types";
 import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
 
 const Root: React.FC<React.PropsWithChildren> = ({ children }) => <>{children}</>;
@@ -148,7 +148,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
   );
 };
 
-type SearchAccountItemProps = { account: Account };
+type SearchAccountItemProps = { account: AccountDetails };
 
 const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
   const { username, address, index } = account;

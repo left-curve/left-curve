@@ -28,8 +28,11 @@ export type AccountInfo = {
 };
 
 export type Account = {
-  readonly username: Username;
   readonly address: Address;
   readonly index: AccountIndex;
   readonly owner: number;
+};
+
+export type AccountDetails = Account & {
+  readonly username: Username;
 };

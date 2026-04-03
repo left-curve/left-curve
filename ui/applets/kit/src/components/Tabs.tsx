@@ -36,7 +36,6 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   selectedTab,
   defaultKey,
   fullWidth,
-  layoutId,
   color,
   classNames,
   isDisabled,
@@ -146,7 +145,8 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 const tabsVariants = tv({
   slots: {
     base: "flex text-base relative items-center w-fit p-1 rounded-md exposure-sm-italic",
-    button: "relative capitalize transition-all flex items-center justify-center py-2 px-4 z-10",
+    button:
+      "relative capitalize transition-all flex items-center justify-center py-2 px-4 z-10 expose-sm-italic",
     "animated-element": "z-0",
   },
   variants: {

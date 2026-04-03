@@ -4,7 +4,7 @@ import { useFavApplets } from "@left-curve/store";
 import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import type { Account, Address, ContractInfo, User } from "@left-curve/dango/types";
+import type { AccountDetails, Address, ContractInfo, User } from "@left-curve/dango/types";
 import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
 import type { MouseEvent, PropsWithChildren } from "react";
 
@@ -166,7 +166,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
 };
 
 type SearchAccountItemProps = {
-  account: Account;
+  account: AccountDetails;
 };
 
 const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {

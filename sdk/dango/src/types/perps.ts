@@ -81,10 +81,16 @@ export type PerpsOrderResponse = {
   reservedMargin: string;
 };
 
-export type PerpsOrdersByUserResponse = {
-  bids: PerpsOrderResponse[];
-  asks: PerpsOrderResponse[];
+export type PerpsOrderByUserItem = {
+  pairId: string;
+  size: string;
+  limitPrice: string;
+  reduceOnly: boolean;
+  reservedMargin: string;
+  createdAt: string;
 };
+
+export type PerpsOrdersByUserResponse = Record<string, PerpsOrderByUserItem>;
 
 export type PerpsLiquidityDepth = {
   size: string;

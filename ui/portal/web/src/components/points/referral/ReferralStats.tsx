@@ -112,7 +112,7 @@ const AffiliateLockedBanner: React.FC<AffiliateLockedBannerProps> = ({
       )}
     </div>
     <img
-      src="/images/points/referral-banner.png"
+      src="/images/points/referral-banner.svg"
       alt="Referral banner"
       className="absolute bottom-0 right-1/2 translate-x-1/2 lg:right-[3rem] lg:translate-x-0 w-[200px] lg:w-auto h-auto object-contain pointer-events-none"
     />

@@ -336,7 +336,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
   <div className="flex items-center justify-center px-4 w-full">
-    <p className="flex-1 diatype-m-bold text-ink-primary-900">{title}</p>
+    <p className="flex-1 exposure-m-italic text-ink-primary-900">{title}</p>
   </div>
 );
 
@@ -360,6 +360,9 @@ export const WalletTab: React.FC = () => {
       <div className="flex flex-col w-full">
         <SectionHeader title={m["accountMenu.perpAccount"]()} />
         <AssetCard.Perp amount={perpsState?.margin ?? "0"} />
+      </div>
+      <div className="w-full px-4">
+        <div className="w-full h-px bg-outline-secondary-gray" />
       </div>
       <div className="flex flex-col w-full">
         <SectionHeader title={m["accountMenu.spotAccount"]()} />
