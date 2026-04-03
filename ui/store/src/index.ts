@@ -252,6 +252,16 @@ export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.
 export { useLivePerpsTradesState, livePerpsTradesStore } from "./hooks/useLivePerpsTradesState.js";
 export { usePerpsLiquidityDepth, perpsLiquidityDepthStore } from "./hooks/usePerpsLiquidityDepth.js";
 export { usePerpsOrdersByUser, perpsOrdersByUserStore } from "./hooks/usePerpsOrdersByUser.js";
+export { usePerpsPairState, perpsPairStateStore } from "./hooks/usePerpsPairState.js";
+export { usePerpsState, perpsStateStore } from "./hooks/usePerpsState.js";
+export {
+  type UsePerpsPairParamParameters,
+  usePerpsPairParam,
+} from "./hooks/usePerpsPairParam.js";
+export {
+  type UsePerpsParamParameters,
+  usePerpsParam,
+} from "./hooks/usePerpsParam.js";
 
 export {
   type UsePointsParameters,

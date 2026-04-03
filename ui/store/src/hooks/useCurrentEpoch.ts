@@ -8,6 +8,10 @@ export type UseCurrentEpochParameters = {
   enabled?: boolean;
 };
 
+const NORMAL_INTERVAL = 60_000;
+const POLLING_INTERVAL = 2_000;
+const POLLING_THRESHOLD = 10;
+
 export function useCurrentEpoch(parameters: UseCurrentEpochParameters) {
   const { pointsUrl, enabled = true } = parameters;
 
@@ -15,7 +19,12 @@ export function useCurrentEpoch(parameters: UseCurrentEpochParameters) {
     queryKey: ["currentEpoch"],
     queryFn: () => fetchCurrentEpoch(pointsUrl),
     enabled,
-    refetchInterval: 60000,
+    refetchInterval: ({ state }) => {
+      const data = state.data;
+      if (!data || data.status !== "active") return NORMAL_INTERVAL;
+      const remaining = Math.floor(Number(data.remaining));
+      return remaining <= POLLING_THRESHOLD ? POLLING_INTERVAL : NORMAL_INTERVAL;
+    },
   });
 
   const derived = useMemo(() => {

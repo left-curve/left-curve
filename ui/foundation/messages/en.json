@@ -1029,7 +1029,11 @@
       },
       "spot": {
         "24hChange": "24h Change",
-        "volume": "Volume",
+        "volume": "24h Volume",
+        "openInterest": "Open Interest (Long / Short / Total)",
+        "funding": "Funding / Countdown",
+        "oiLimitReached": "OI limit reached",
+        "oiLimitDescription": "No new positions can be opened",
         "fees": "Fees",
         "orderValue": "Order Value",
         "orderSize": "Order Size",
