@@ -8,12 +8,10 @@ import {
   useWatchEffect,
 } from "@left-curve/applets-kit";
 import {
-  perpsUserStateStore,
   perpsUserStateExtendedStore,
   useAccount,
   useBalances,
   useConfig,
-  usePerpsUserState,
   usePerpsUserStateExtended,
   usePublicClient,
   useSigningClient,
