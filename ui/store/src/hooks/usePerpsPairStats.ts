@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePublicClient } from "./usePublicClient.js";
 
-import { Decimal, formatUnits } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/dango/utils";
 
 import type { PerpsPairStats } from "@left-curve/dango/types";
 
@@ -22,8 +22,6 @@ export type UsePerpsPairStatsParameters = {
 export type UseAllPerpsPairStatsParameters = {
   enabled?: boolean;
 };
-
-const PERPS_PRICE_DECIMALS = 6;
 
 function asDecimal(value: string | null | undefined) {
   if (!value) return null;
@@ -49,7 +47,7 @@ function normalizePerpsPairStats(stats: PerpsPairStats): NormalizedPerpsPairStat
     pairId: stats.pairId,
     currentPrice: currentPrice?.toString() ?? null,
     price24HAgo: price24HAgo?.toString() ?? null,
-    volume24H: formatUnits(stats.volume24H, PERPS_PRICE_DECIMALS),
+    volume24H: stats.volume24H,
     priceChange24H: (priceChangeFromBackend ?? priceChangeComputed)?.toString() ?? null,
   };
 }

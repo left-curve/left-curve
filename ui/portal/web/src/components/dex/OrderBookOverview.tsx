@@ -1,5 +1,5 @@
 import { FormattedNumber, Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { Direction, type PairId } from "@left-curve/dango/types";
@@ -7,16 +7,16 @@ import {
   liquidityDepthStore,
   useLiquidityDepthState,
   useLiveTradesState,
-  useLivePerpsTradesState,
   livePerpsTradesStore,
   useOrderBookState,
+  useCurrentPrice,
   useTradeCoins,
   useAppConfig,
   useConfig,
   tradePairStore,
   toPerpsPairId,
-  usePerpsOrderBookState,
-  perpsOrderBookStore,
+  usePerpsLiquidityDepth,
+  perpsLiquidityDepthStore,
   useStorage,
 } from "@left-curve/store";
 import { calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
@@ -66,7 +66,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
     if (bucketSizes[0]) setBucketSize(bucketSizes[0]);
   }, [bucketSizes[0]]);
 
-  usePerpsOrderBookState({
+  usePerpsLiquidityDepth({
     pairId: perpsPairId ?? "",
     bucketSize,
     subscribe: mode === "perps" && !!perpsPairId,
@@ -323,15 +323,6 @@ const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, pairId }) => {
   const { settings } = useApp();
   const { is3XlTall } = useMediaQuery();
   const { timeFormat } = settings;
-  const { coins } = useConfig();
-
-  const perpsPairId = useMemo(() => {
-    const baseSymbol = coins.byDenom[pairId.baseDenom]?.symbol;
-    const quoteSymbol = coins.byDenom[pairId.quoteDenom]?.symbol ?? "USD";
-    return baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
-  }, [pairId, coins]);
-
-  useLivePerpsTradesState({ pairId: perpsPairId, subscribe: !!perpsPairId });
 
   const livePerps = livePerpsTradesStore((s) => s.trades);
   const perpsTrades = useDeferredValue(livePerps);
@@ -493,7 +484,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   });
 
   const spotDepth = liquidityDepthStore();
-  const perpsDepthData = perpsOrderBookStore((s) => s.liquidityDepth);
+  const perpsDepthData = perpsLiquidityDepthStore((s) => s.liquidityDepth);
 
   const liquidityDepth = useMemo(() => {
     if (mode === "spot") return spotDepth.liquidityDepth;
@@ -551,38 +542,33 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
+  const { currentPrice, previousPrice } = useCurrentPrice();
+
   const { orderBookStore } = useOrderBookState({ pairId });
   const orderBook = orderBookStore((s) => s.orderBook);
-  const perpsDepth = perpsOrderBookStore((s) => s.liquidityDepth);
+  const perpsDepth = perpsLiquidityDepthStore((s) => s.liquidityDepth);
 
-  const { midPrice, spread, spreadPercent } = useMemo(() => {
+  const { spread, spreadPercent } = useMemo(() => {
     if (mode === "perps") {
-      if (!perpsDepth) return { midPrice: null, spread: null, spreadPercent: null };
+      if (!perpsDepth) return { spread: null, spreadPercent: null };
       const bidPrices = Object.keys(perpsDepth.bids);
       const askPrices = Object.keys(perpsDepth.asks);
-      if (!bidPrices.length || !askPrices.length)
-        return { midPrice: null, spread: null, spreadPercent: null };
-      const bestBid = bidPrices[bidPrices.length - 1];
-      const bestAsk = askPrices[0];
+      if (!bidPrices.length || !askPrices.length) return { spread: null, spreadPercent: null };
+      const bestBid = bidPrices.reduce((max, p) => (Decimal(p).gt(max) ? p : max), bidPrices[0]);
+      const bestAsk = askPrices.reduce((min, p) => (Decimal(p).lt(min) ? p : min), askPrices[0]);
       const mid = Decimal(bestBid).plus(bestAsk).div(2);
       const spreadVal = Decimal(bestAsk).minus(bestBid);
       const spreadPct = mid.gt(0) ? spreadVal.div(mid).times(100) : Decimal(0);
-      return { midPrice: mid.toFixed(), spread: spreadVal, spreadPercent: spreadPct };
+      return { spread: spreadVal, spreadPercent: spreadPct };
     }
 
     if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice)
-      return { midPrice: null, spread: null, spreadPercent: null };
+      return { spread: null, spreadPercent: null };
     const mid = Decimal(orderBook.bestBidPrice).plus(orderBook.bestAskPrice).div(2);
     const spreadVal = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
     const spreadPct = mid.gt(0) ? spreadVal.div(mid).times(100) : Decimal(0);
-    return { midPrice: mid.toFixed(), spread: spreadVal, spreadPercent: spreadPct };
+    return { spread: spreadVal, spreadPercent: spreadPct };
   }, [mode, orderBook, perpsDepth]);
-
-  const previousMidPriceRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (midPrice) previousMidPriceRef.current = midPrice;
-  }, [midPrice]);
-  const previousMidPrice = previousMidPriceRef.current;
 
   const spreadDisplay = useMemo(() => {
     if (!spread || !spreadPercent) return "n/a";
@@ -594,23 +580,25 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
   }, [spread, spreadPercent, mode, base.decimals, quote.decimals, formatNumberOptions]);
 
   const midPriceDisplay = useMemo(() => {
-    if (!midPrice) return "0";
+    if (!currentPrice) return null;
     return mode === "perps"
-      ? midPrice
-      : Decimal(midPrice).mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed();
-  }, [midPrice, mode, base.decimals, quote.decimals]);
+      ? currentPrice
+      : Decimal(currentPrice).mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed();
+  }, [currentPrice, mode, base.decimals, quote.decimals]);
 
   return (
     <div className="hidden lg:flex w-full py-1 items-center justify-between relative order-2 px-4">
       <p
         className={twMerge(
           "diatype-m-bold relative z-20",
-          Decimal(previousMidPrice || "0").lte(midPrice || "0")
-            ? "text-utility-success-600"
-            : "text-utility-error-600",
+          currentPrice && previousPrice
+            ? Decimal(previousPrice).lte(currentPrice)
+              ? "text-utility-success-600"
+              : "text-utility-error-600"
+            : "text-ink-secondary-700",
         )}
       >
-        {formatNumber(midPriceDisplay, formatNumberOptions)}
+        {midPriceDisplay ? formatNumber(midPriceDisplay, formatNumberOptions) : "-"}
       </p>
       <div className="flex flex-col items-end text-ink-tertiary-500 relative z-20">
         <p className="diatype-xxs-medium">{m["dex.protrade.spread"]()}</p>

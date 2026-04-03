@@ -14,6 +14,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   useConfig,
   useOrderBookState,
+  useLivePerpsTradesState,
   usePerpsUserState,
   useOrdersByUser,
   usePerpsOrdersByUser,
@@ -55,6 +56,7 @@ const TradeSubscriptions: React.FC = () => {
   const pairId = tradePairStore((s) => s.pairId);
 
   useOrderBookState({ pairId, subscribe: mode === "spot" });
+  useLivePerpsTradesState({ pairId, subscribe: mode === "perps" });
 
   usePerpsUserState({ subscribe: mode === "perps" });
   usePerpsOrdersByUser({ subscribe: mode === "perps" });

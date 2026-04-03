@@ -119,7 +119,7 @@ export const TradeHeader: React.FC = () => {
               <PairStatValue
                 kind="volume24h"
                 value={pairStats.data?.volume24H}
-                formatOptions={{ maximumTotalDigits: 10 }}
+                formatOptions={{ maximumTotalDigits: 5 }}
                 className="diatype-sm-bold text-center"
               />
             </div>
@@ -142,10 +142,14 @@ const HeaderPrice: React.FC = () => {
       <p
         className={twMerge(
           "diatype-sm-bold text-ink-secondary-700",
-          Decimal(previousPrice).lte(currentPrice) ? "text-status-fail" : "text-status-success",
+          currentPrice && previousPrice
+            ? Decimal(previousPrice).lte(currentPrice)
+              ? "text-status-success"
+              : "text-status-fail"
+            : "",
         )}
       >
-        {formatNumber(currentPrice, formatNumberOptions)}
+        {currentPrice ? formatNumber(currentPrice, formatNumberOptions) : "-"}
       </p>
     </div>
   );
