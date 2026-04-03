@@ -1,5 +1,10 @@
 {
   "relaychains": "dango,ethereum",
+  "chains": {
+    "ethereum": {
+      "ignoreReorgReports": true
+    }
+  },
   "whitelist": [
     {
       "originDomain": "1",
