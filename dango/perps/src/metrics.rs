@@ -33,6 +33,8 @@ pub const LABEL_VAULT_MARGIN: &str = "dango.contract.perps.vault_margin";
 
 pub const LABEL_VAULT_POSITION: &str = "dango.contract.perps.vault_position";
 
+pub const LABEL_VAULT_SHARE_SUPPLY: &str = "dango.contract.perps.vault_share_supply";
+
 pub const LABEL_INSURANCE_FUND: &str = "dango.contract.perps.insurance_fund";
 
 pub const LABEL_TREASURY: &str = "dango.contract.perps.treasury";
@@ -87,6 +89,10 @@ pub fn init_metrics() {
         describe_gauge!(
             LABEL_VAULT_POSITION,
             "Vault position size per pair (positive=long, negative=short)"
+        );
+        describe_gauge!(
+            LABEL_VAULT_SHARE_SUPPLY,
+            "Total supply of vault shares"
         );
         describe_gauge!(LABEL_INSURANCE_FUND, "Insurance fund balance in USD");
         describe_gauge!(LABEL_TREASURY, "Protocol treasury balance in USD");
