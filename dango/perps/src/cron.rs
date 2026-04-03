@@ -1,6 +1,7 @@
 #[cfg(feature = "metrics")]
 use {
     crate::{core::compute_user_equity, querier::NoCachePerpQuerier},
+    grug::Inner,
     std::time::Instant,
 };
 use {
@@ -201,9 +202,17 @@ fn process_funding_for_pair(
 
     #[cfg(feature = "metrics")]
     {
+        let pair_label = pair_id.to_string();
+
         metrics::gauge!(
             crate::metrics::LABEL_FUNDING_RATE,
-            "pair_id" => pair_id.to_string()
+            "pair_id" => pair_label.clone()
+        )
+        .set(pair_state.funding_rate.to_f64());
+
+        metrics::gauge!(
+            crate::metrics::LABEL_FUNDING_PER_UNIT,
+            "pair_id" => pair_label
         )
         .set(pair_state.funding_per_unit.to_f64());
     }
@@ -620,6 +629,9 @@ pub fn emit_cron_metrics(
     }
 
     metrics::gauge!(crate::metrics::LABEL_VAULT_MARGIN).set(vault_state.margin.to_f64());
+
+    metrics::gauge!(crate::metrics::LABEL_VAULT_SHARE_SUPPLY)
+        .set(state.vault_share_supply.into_inner() as f64);
 
     metrics::gauge!(crate::metrics::LABEL_INSURANCE_FUND).set(state.insurance_fund.to_f64());
 
