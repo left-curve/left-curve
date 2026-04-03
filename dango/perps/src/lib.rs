@@ -225,8 +225,17 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query::query_user_states(ctx, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::VaultState {} => {
-            let res = query::query_vault_state(ctx)?;
+        QueryMsg::UserStateExtended {
+            user,
+            include_equity,
+            include_available_margin,
+        } => {
+            let res = query::query_user_state_extended(
+                ctx,
+                user,
+                include_equity,
+                include_available_margin,
+            )?;
             res.to_json_value()
         },
         QueryMsg::Order { order_id } => {
