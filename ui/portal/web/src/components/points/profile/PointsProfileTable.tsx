@@ -55,7 +55,7 @@ export const PointsProfileTable: React.FC = () => {
         const referral = Number(epochStats.stats.points.referral);
         return {
           epoch,
-          epochLabel: m["points.profile.epochLabel"]({ number: String(epoch + 1) }),
+          epochLabel: m["points.profile.epochLabel"]({ number: String(epoch) }),
           dateRange: formatEpochDateRange(epochStats.started_at, epochStats.ended_at),
           dateTimestamp: Number.parseFloat(epochStats.started_at),
           points: vault + perps + referral,
