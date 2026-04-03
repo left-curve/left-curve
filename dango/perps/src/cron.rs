@@ -203,11 +203,13 @@ fn process_funding_for_pair(
     #[cfg(feature = "metrics")]
     {
         let pair_label = pair_id.to_string();
+
         metrics::gauge!(
             crate::metrics::LABEL_FUNDING_RATE,
             "pair_id" => pair_label.clone()
         )
         .set(pair_state.funding_rate.to_f64());
+
         metrics::gauge!(
             crate::metrics::LABEL_FUNDING_PER_UNIT,
             "pair_id" => pair_label
