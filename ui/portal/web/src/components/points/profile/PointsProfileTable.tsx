@@ -18,14 +18,9 @@ type EpochHistoryRow = {
 type SortKey = "date" | "points";
 type SortDir = "asc" | "desc";
 
-const EVENT_START_EPOCH = 1735689600;
-const EPOCH_DURATION_SECONDS = 604_800;
-
-const formatEpochDateRange = (epochNumber: number): string => {
-  const startTs = EVENT_START_EPOCH + epochNumber * EPOCH_DURATION_SECONDS;
-  const endTs = startTs + EPOCH_DURATION_SECONDS;
-  const start = new Date(startTs * 1000);
-  const end = new Date(endTs * 1000);
+const formatEpochDateRange = (startedAt: string, endedAt: string): string => {
+  const start = new Date(Number.parseFloat(startedAt) * 1000);
+  const end = new Date(Number.parseFloat(endedAt) * 1000);
   const opts: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", year: "numeric" };
   return `${start.toLocaleDateString("en-US", opts)} - ${end.toLocaleDateString("en-US", opts)}`;
 };
@@ -44,16 +39,16 @@ export const PointsProfileTable: React.FC = () => {
   const allRows = useMemo((): EpochHistoryRow[] => {
     if (!epochPoints) return [];
     return Object.entries(epochPoints)
-      .map(([epochStr, stats]) => {
+      .map(([epochStr, epochStats]) => {
         const epoch = Number(epochStr);
-        const vault = Number(stats.points.vault);
-        const perps = Number(stats.points.perps);
-        const referral = Number(stats.points.referral);
+        const vault = Number(epochStats.stats.points.vault);
+        const perps = Number(epochStats.stats.points.perps);
+        const referral = Number(epochStats.stats.points.referral);
         return {
           epoch,
           epochLabel: m["points.profile.epochLabel"]({ number: String(epoch + 1) }),
-          dateRange: formatEpochDateRange(epoch),
-          dateTimestamp: EVENT_START_EPOCH + epoch * EPOCH_DURATION_SECONDS,
+          dateRange: formatEpochDateRange(epochStats.started_at, epochStats.ended_at),
+          dateTimestamp: Number.parseFloat(epochStats.started_at),
           points: vault + perps + referral,
         };
       })

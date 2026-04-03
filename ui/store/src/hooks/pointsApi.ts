@@ -10,6 +10,14 @@ export type UserStats = {
   volume: string;
 };
 
+export type EpochUserStats = {
+  stats: UserStats;
+  /** Epoch start timestamp in seconds with nanosecond decimal precision (e.g. "1735689600.000000000") */
+  started_at: string;
+  /** Epoch end timestamp in seconds with nanosecond decimal precision (e.g. "1736294400.000000000") */
+  ended_at: string;
+};
+
 export type LeaderboardEntry = {
   user_index: number;
   username: string | null;
@@ -45,7 +53,7 @@ export const fetchEpochPoints = async (
   baseUrl: string,
   userIndex: number,
   params?: { min?: number; max?: number },
-): Promise<Record<string, UserStats>> => {
+): Promise<Record<string, EpochUserStats>> => {
   const url = new URL(`${baseUrl}/stats/user/${userIndex}/epochs`);
   if (params?.min !== undefined) url.searchParams.set("min", String(params.min));
   if (params?.max !== undefined) url.searchParams.set("max", String(params.max));
