@@ -314,6 +314,10 @@ export {
   registerOat,
   checkOat,
   fetchCurrentEpoch,
+  type TierKey,
+  type Tier,
+  TIERS,
+  REWARD_STEP,
 } from "./hooks/pointsApi.js";
 
 export {

@@ -136,6 +136,24 @@ export const checkOat = async (
   return res.json();
 };
 
+export type TierKey = "bronze" | "silver" | "gold" | "crystal";
+
+export type Tier = {
+  key: TierKey;
+  threshold: number;
+};
+
+// Shared tier thresholds — single source of truth.
+// TODO: Fetch dynamically from GET /config once bot exposes loot_tables.
+export const TIERS: Tier[] = [
+  { key: "bronze", threshold: 25_000 },
+  { key: "silver", threshold: 100_000 },
+  { key: "gold", threshold: 250_000 },
+  { key: "crystal", threshold: 500_000 },
+];
+
+export const REWARD_STEP = TIERS[0].threshold;
+
 export type EpochInfoNotStarted = {
   status: "not_started";
   starts_at: { Block: number } | { Timestamp: string };

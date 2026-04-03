@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { type BoxReward, fetchUserBoxes } from "./pointsApi.js";
+import { TIERS, type BoxReward, fetchUserBoxes } from "./pointsApi.js";
 
 export type UseBoxesParameters = {
   pointsUrl: string;
@@ -57,12 +57,7 @@ export function useBoxes(parameters: UseBoxesParameters) {
   }, [boxes]);
 
   const estimatedVolume = useMemo(() => {
-    const thresholds: Record<string, number> = {
-      bronze: 25_000,
-      silver: 100_000,
-      gold: 250_000,
-      crystal: 500_000,
-    };
+    const thresholds = Object.fromEntries(TIERS.map((t) => [t.key, t.threshold]));
     let volume = 0;
     for (const box of boxes) {
       const chest = box.chest.toLowerCase();

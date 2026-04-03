@@ -1255,6 +1255,7 @@
           "gold": "Receive a Gold chest for every $250k volume.",
           "crystal": "Receive a Crystal chest for every $500k volume."
         },
+        "start": "START",
         "volumeUntilNext": "{amount} volume until next {tier} Box",
         "notLoggedIn": "You are not logged in."
       },
