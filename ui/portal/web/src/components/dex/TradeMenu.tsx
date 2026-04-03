@@ -12,6 +12,7 @@ import {
   useSpotSubmission,
   usePerpsSubmission,
   perpsUserStateStore,
+  perpsUserStateExtendedStore,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -320,40 +321,14 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const userState = perpsUserStateStore((s) => s.userState);
 
+  const availableMargin = Number(perpsUserStateExtendedStore((s) => s.availableMargin) ?? "0");
+
   const margin = useMemo(() => userState?.margin ?? "0", [userState]);
 
   const position = useMemo(() => {
     if (!userState?.positions?.[perpsPairId]) return null;
     return userState.positions[perpsPairId];
   }, [userState, perpsPairId]);
-
-  const availableMargin = useMemo(() => {
-    if (!userState) return 0;
-    const marginNum = Number(margin);
-
-    let totalPnl = 0;
-    let existingIM = 0;
-
-    const allPerpsPairs = (appConfig as any)?.perpsPairs;
-    if (userState.positions && allPerpsPairs) {
-      for (const [pid, pos] of Object.entries(userState.positions)) {
-        const param = allPerpsPairs[pid];
-        if (!param) continue;
-        const size = Number(pos.size);
-        const absSize = Math.abs(size);
-        const imr = Number(param.initialMarginRatio);
-        const entryPrice = Number(pos.entryPrice);
-        const price = pid === perpsPairId ? currentPrice : entryPrice;
-
-        totalPnl += size * (price - entryPrice);
-        existingIM += absSize * price * imr;
-      }
-    }
-
-    const equity = marginNum + totalPnl;
-    const reserved = Number(userState.reservedMargin ?? "0");
-    return Math.max(0, equity - existingIM - reserved);
-  }, [margin, userState, perpsPairId, currentPrice, appConfig]);
 
   const maxLeverage = useMemo(() => {
     if (!perpsPairParam?.initialMarginRatio) return 100;

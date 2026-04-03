@@ -246,6 +246,10 @@ export {
   perpsUserStateStore,
   perpsMarginAsset,
 } from "./hooks/usePerpsUserState.js";
+export {
+  usePerpsUserStateExtended,
+  perpsUserStateExtendedStore,
+} from "./hooks/usePerpsUserStateExtended.js";
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
 export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";

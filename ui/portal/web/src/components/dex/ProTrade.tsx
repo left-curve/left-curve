@@ -16,6 +16,7 @@ import {
   useOrderBookState,
   useLivePerpsTradesState,
   usePerpsUserState,
+  usePerpsUserStateExtended,
   useOrdersByUser,
   usePerpsOrdersByUser,
   perpsOrdersByUserStore,
@@ -59,6 +60,7 @@ const TradeSubscriptions: React.FC = () => {
   useLivePerpsTradesState({ pairId, subscribe: mode === "perps" });
 
   usePerpsUserState({ subscribe: mode === "perps" });
+  usePerpsUserStateExtended({ subscribe: mode === "perps" });
   usePerpsOrdersByUser({ subscribe: mode === "perps" });
 
   return null;
