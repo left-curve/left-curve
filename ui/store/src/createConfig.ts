@@ -130,11 +130,23 @@ export function createConfig<
         version,
         storage,
         migrate(state, savedVersion) {
-          const persistedState = state as State;
-          if (version === savedVersion) return persistedState;
+          if (version === savedVersion) return state as State;
 
+          const persisted = state as Record<string, unknown>;
           const initialState = getInitialState();
-          return { ...initialState };
+
+          // v1 → v2: migrate { userIndex, userStatus } to { user: { index } }
+          if (savedVersion === 1 && persisted) {
+            const userIndex = persisted.userIndex as number | undefined;
+            return {
+              ...initialState,
+              current: (persisted.current as State["current"]) ?? null,
+              connectors: (persisted.connectors as State["connectors"]) ?? new Map(),
+              user: userIndex !== undefined ? { index: userIndex } : undefined,
+            } as State;
+          }
+
+          return initialState;
         },
         partialize(state) {
           const { chainId, connectors, status, current, user } = state;
