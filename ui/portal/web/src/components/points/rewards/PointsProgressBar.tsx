@@ -1,5 +1,5 @@
 import { formatNumber, type FormatNumberOptions } from "@left-curve/dango/utils";
-import { Badge, twMerge, useApp } from "@left-curve/applets-kit";
+import { twMerge, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { REWARD_STEP, TIERS, type TierKey, useAccount } from "@left-curve/store";
 import type React from "react";
@@ -58,11 +58,14 @@ const formatCompact = (value: number): string => {
   return `$${value}`;
 };
 
-const CHEST_SIZES: Record<TierKey, string> = {
-  bronze: "w-10 lg:w-12",
-  silver: "w-11 lg:w-14",
-  gold: "w-12 lg:w-14",
-  crystal: "w-12 lg:w-16",
+const CHEST_SHADOWS: Record<TierKey, string> = {
+  bronze:
+    "[filter:drop-shadow(0px_4px_100px_#C96A1D66)_drop-shadow(0px_1px_24px_#FFA72C4D)]",
+  silver:
+    "[filter:drop-shadow(0px_4px_100px_#80850680)_drop-shadow(0px_1px_24px_#B8BE0833)]",
+  gold: "[filter:drop-shadow(0px_4px_100px_#E3BD6666)_drop-shadow(0px_1px_24px_#DCA54333)]",
+  crystal:
+    "[filter:drop-shadow(0px_4px_100px_#BCB8EB80)_drop-shadow(0px_1px_24px_#FFFFFF4D)]",
 };
 
 type PointsProgressBarProps = {
@@ -102,100 +105,131 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
       })
     : m["points.rewards.boxes.notLoggedIn"]();
 
+  const isReached = (threshold: number) => isConnected && currentVolume >= threshold;
+
   return (
-    <div className={twMerge("w-full flex flex-col gap-1", className)}>
-      {/* Chest images row */}
-      <div className="relative w-full h-10 lg:h-14 mb-1">
-        {TIER_MILESTONES.map((ms) => (
+    <div className={twMerge("w-full flex flex-col gap-4", className)}>
+      <div className="relative w-full">
+        {/* Chest card row */}
+        <div className="relative w-full h-[54px] mb-2">
+          {TIER_MILESTONES.map((ms) => {
+            const reached = isReached(ms.threshold);
+            return (
+              <div
+                key={ms.key}
+                className={twMerge(
+                  "absolute bottom-0 w-[50px] h-[54px] lg:w-[61px] rounded-lg overflow-hidden border bg-surface-secondary-rice",
+                  reached
+                    ? "border-outline-secondary-rice shadow-[0px_4px_6px_rgba(0,0,0,0.04),0px_4px_6px_rgba(0,0,0,0.04)]"
+                    : "border-outline-primary-gray",
+                )}
+                style={{
+                  left: `${ms.position}%`,
+                  transform:
+                    ms.position === 100 ? "translateX(-100%)" : "translateX(-50%)",
+                }}
+              >
+                <img
+                  src={`/images/points/boxes/${ms.key}.png`}
+                  alt={`${TierLabels[ms.key]()} chest`}
+                  className={twMerge(
+                    "absolute inset-0 w-full h-full object-contain select-none drag-none scale-125 -translate-y-1",
+                    reached && CHEST_SHADOWS[ms.key],
+                  )}
+                />
+                {/* Dark overlay for unreached */}
+                {!reached && (
+                  <div className="absolute inset-0 bg-black/50" />
+                )}
+                {/* Inner highlight for reached */}
+                {reached && (
+                  <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0px_3px_6px_-2px_rgba(255,255,255,0.64),inset_0px_0px_8px_-2px_rgba(255,255,255,0.48)]" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* START flag + Progress bar track */}
+        <div className="relative w-full flex items-center">
+          {/* START flag */}
           <img
-            key={ms.key}
-            src={`/images/points/boxes/${ms.key}.png`}
-            alt={`${TierLabels[ms.key]()} chest`}
-            className={twMerge(
-              "absolute bottom-0 select-none drag-none object-contain transition-opacity duration-300",
-              CHEST_SIZES[ms.key],
-              currentVolume >= ms.threshold || !isConnected ? "opacity-100" : "opacity-50",
-            )}
-            style={{
-              left: `${ms.position}%`,
-              transform: ms.position === 100 ? "translateX(-100%)" : "translateX(-50%)",
-            }}
+            src="/images/points/startFlag.svg"
+            alt={m["points.rewards.boxes.start"]()}
+            className="absolute -top-[52px] left-0 w-8 lg:w-10 h-auto select-none drag-none z-10 -translate-x-1/4"
           />
-        ))}
-      </div>
 
-      {/* Progress bar track */}
-      <div className="relative w-full flex items-center">
-        {/* START badge */}
-        <Badge
-          size="s"
-          color="red"
-          text={m["points.rewards.boxes.start"]()}
-          className="absolute -top-5 left-0 -translate-x-1/4 z-10 rounded-sm"
-        />
+          <div className="relative w-full h-3 rounded-full bg-ink-placeholder-400 border border-[#AFB244]">
+            {/* Fill */}
+            <div className="absolute inset-0 rounded-full overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                style={{
+                  width: `${progressPercent}%`,
+                  backgroundImage:
+                    "linear-gradient(-1.8deg, #AFB244 26.16%, #F9F8EC 111.55%)",
+                }}
+              />
+            </div>
 
-        <div className="relative w-full h-3 rounded-full bg-ink-placeholder-400 border border-brand-green">
-          {/* Fill */}
-          <div className="absolute inset-0 rounded-full overflow-hidden">
-            <div
-              className="absolute inset-y-0 left-0 rounded-full transition-all duration-300 bg-[linear-gradient(321.22deg,_#AFB244_26.16%,_#F9F8EC_111.55%)]"
-              style={{ width: `${progressPercent}%` }}
-            />
+            {/* Milestone dots */}
+            {TIER_MILESTONES.map((ms) => {
+              const filled = progressPercent >= ms.position;
+              return (
+                <div
+                  key={ms.key}
+                  className={twMerge(
+                    "absolute top-1/2 w-3 h-3 lg:w-4 lg:h-4 rounded-full border-2 z-[1]",
+                    filled
+                      ? "bg-[#AFB244] border-[#AFB244]"
+                      : "bg-ink-placeholder-400 border-[#837d7b]",
+                  )}
+                  style={{
+                    left: `${ms.position}%`,
+                    transform: "translateX(-50%) translateY(-50%)",
+                  }}
+                />
+              );
+            })}
+
+            {/* Character thumb */}
+            {isConnected && (
+              <img
+                src="/images/points/pointBarThumb.png"
+                alt="Progress"
+                className="absolute -top-4 w-10 h-10 select-none drag-none z-[2]"
+                style={{ left: `calc(${progressPercent}% - 20px)` }}
+              />
+            )}
           </div>
+        </div>
 
-          {/* Milestone markers */}
-          {TIER_MILESTONES.map((ms) => (
-            <div
+        {/* Dollar labels row */}
+        <div className="relative w-full h-6 mt-1">
+          {MILESTONES.map((ms) => (
+            <span
               key={ms.key}
               className={twMerge(
-                "absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border border-brand-green z-[1]",
-                progressPercent >= ms.position
-                  ? "bg-[#F9F8EC]"
-                  : "bg-ink-placeholder-400",
+                "absolute diatype-m-bold lg:diatype-lg-bold text-utility-warning-600",
+                !isReached(ms.threshold) && ms.key !== "start" && "opacity-50",
+                ms.position === 0 && "left-0",
+                ms.position === 100 && "right-0",
+                ms.position > 0 && ms.position < 100 && "-translate-x-1/2",
               )}
-              style={{
-                left: `${ms.position}%`,
-                transform: "translateX(-50%) translateY(-50%)",
-              }}
-            />
+              style={
+                ms.position > 0 && ms.position < 100
+                  ? { left: `${ms.position}%` }
+                  : undefined
+              }
+            >
+              {formatCompact(ms.threshold)}
+            </span>
           ))}
-
-          {/* Thumb */}
-          {isConnected && (
-            <img
-              src="/images/points/pointBarThumb.png"
-              alt="Progress"
-              className="absolute -top-3 w-8 h-8 select-none drag-none z-[2]"
-              style={{ left: `calc(${progressPercent}% - 16px)` }}
-            />
-          )}
         </div>
       </div>
 
-      {/* Dollar labels row */}
-      <div className="relative w-full h-5 mt-0.5">
-        {MILESTONES.map((ms) => (
-          <span
-            key={ms.key}
-            className={twMerge(
-              "absolute diatype-xs-medium lg:diatype-s-medium text-ink-tertiary-500",
-              ms.position === 0 && "left-0",
-              ms.position === 100 && "right-0",
-              ms.position > 0 && ms.position < 100 && "-translate-x-1/2",
-            )}
-            style={
-              ms.position > 0 && ms.position < 100
-                ? { left: `${ms.position}%` }
-                : undefined
-            }
-          >
-            {formatCompact(ms.threshold)}
-          </span>
-        ))}
-      </div>
-
       {/* Motivational message */}
-      <p className="diatype-m-bold text-ink-tertiary-500 mt-1">{remainingLabel}</p>
+      <p className="diatype-m-bold text-ink-tertiary-500">{remainingLabel}</p>
     </div>
   );
 };
