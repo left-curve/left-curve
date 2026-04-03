@@ -49,6 +49,8 @@ fn place_limit_ask(
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -73,6 +75,8 @@ fn market_buy(
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )

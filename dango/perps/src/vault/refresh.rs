@@ -127,6 +127,8 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
                 reduce_only: false,
                 reserved_margin: UsdValue::ZERO,
                 created_at: ctx.block.timestamp,
+                tp: None,
+                sl: None,
             };
 
             BIDS.save(
@@ -156,6 +158,8 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
                 reduce_only: false,
                 reserved_margin: UsdValue::ZERO,
                 created_at: ctx.block.timestamp,
+                tp: None,
+                sl: None,
             };
 
             ASKS.save(

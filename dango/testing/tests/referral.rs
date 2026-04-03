@@ -1284,6 +1284,8 @@ fn place_ask_order(
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1307,6 +1309,8 @@ fn place_market_buy(
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )

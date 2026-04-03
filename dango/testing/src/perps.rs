@@ -77,6 +77,8 @@ pub fn create_perps_fill(
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -93,6 +95,8 @@ pub fn create_perps_fill(
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )

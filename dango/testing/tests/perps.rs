@@ -139,6 +139,8 @@ fn trading_lifecycle() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -169,6 +171,8 @@ fn trading_lifecycle() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -304,6 +308,8 @@ fn limit_order_partial_fill_and_cancel() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -327,6 +333,8 @@ fn limit_order_partial_fill_and_cancel() {
                     post_only: false,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -505,6 +513,8 @@ fn liquidation_on_order_book() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -526,6 +536,8 @@ fn liquidation_on_order_book() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -583,6 +595,8 @@ fn liquidation_on_order_book() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -781,6 +795,8 @@ fn liquidation_with_adl() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -802,6 +818,8 @@ fn liquidation_with_adl() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -842,6 +860,8 @@ fn liquidation_with_adl() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -862,6 +882,8 @@ fn liquidation_with_adl() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1143,6 +1165,8 @@ fn vault_lp_lifecycle() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1202,6 +1226,8 @@ fn vault_lp_lifecycle() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1662,6 +1688,8 @@ fn liquidity_depth_tracking() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1698,6 +1726,8 @@ fn liquidity_depth_tracking() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1738,6 +1768,8 @@ fn liquidity_depth_tracking() {
                     post_only: false,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1862,6 +1894,8 @@ fn protocol_fee_accumulates_across_fills() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1878,6 +1912,8 @@ fn protocol_fee_accumulates_across_fills() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1909,6 +1945,8 @@ fn protocol_fee_accumulates_across_fills() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -1925,6 +1963,8 @@ fn protocol_fee_accumulates_across_fills() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2026,6 +2066,8 @@ fn negative_maker_fee_rebate_lifecycle() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2050,6 +2092,8 @@ fn negative_maker_fee_rebate_lifecycle() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2148,6 +2192,8 @@ fn conditional_order_tp_triggers_on_price_rise() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2165,6 +2211,8 @@ fn conditional_order_tp_triggers_on_price_rise() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2228,6 +2276,8 @@ fn conditional_order_tp_triggers_on_price_rise() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2310,6 +2360,8 @@ fn conditional_order_sl_triggers_on_price_drop() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2326,6 +2378,8 @@ fn conditional_order_sl_triggers_on_price_drop() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2360,6 +2414,8 @@ fn conditional_order_sl_triggers_on_price_drop() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2459,6 +2515,8 @@ fn liquidation_cancels_conditional_orders() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2476,6 +2534,8 @@ fn liquidation_cancels_conditional_orders() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2554,6 +2614,8 @@ fn liquidation_cancels_conditional_orders() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2672,6 +2734,8 @@ fn conditional_orders_follow_price_time_priority() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2692,6 +2756,8 @@ fn conditional_orders_follow_price_time_priority() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2712,6 +2778,8 @@ fn conditional_orders_follow_price_time_priority() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2773,6 +2841,8 @@ fn conditional_orders_follow_price_time_priority() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2790,6 +2860,8 @@ fn conditional_orders_follow_price_time_priority() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2927,6 +2999,8 @@ fn conditional_order_failure_does_not_block_others() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2943,6 +3017,8 @@ fn conditional_order_failure_does_not_block_others() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2964,6 +3040,8 @@ fn conditional_order_failure_does_not_block_others() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -2980,6 +3058,8 @@ fn conditional_order_failure_does_not_block_others() {
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -3067,6 +3147,8 @@ fn conditional_order_failure_does_not_block_others() {
                     post_only: true,
                 },
                 reduce_only: false,
+                tp: None,
+                sl: None,
             }),
             Coins::new(),
         )
@@ -3129,4 +3211,683 @@ fn conditional_order_failure_does_not_block_others() {
 
     // User3: position is closed (already asserted above), so no conditional
     // orders to check — absence of position is sufficient.
+}
+
+// ===================== Child order e2e tests ================================
+
+/// Market buy with TP child order → position has conditional_order_above →
+/// oracle rises → cron triggers TP → position closed with profit.
+#[test]
+fn child_order_market_with_tp_triggers() {
+    let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
+        setup_test_naive(TestOption::default());
+
+    let pair = pair_id();
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    // Deposit for user1 (trader) and user2 (maker).
+    for user in [&mut accounts.user1, &mut accounts.user2] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Maker places ask: 10 ETH @ $2,000.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trader market buys 10 ETH with TP @ $2,500.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: Some(perps::ChildOrder {
+                    trigger_price: UsdPrice::new_int(2_500),
+                    max_slippage: Dimensionless::new_percent(1),
+                    size: None,
+                }),
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify TP is on the position.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state.positions.get(&pair).expect("should have position");
+    assert!(pos.conditional_order_above.is_some(), "TP should be set");
+    assert!(pos.conditional_order_below.is_none(), "no SL");
+
+    // Oracle rises to $2,500 → trigger TP.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+
+    // Maker places bid to fill the TP market sell.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_500),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Advance time to trigger cron.
+    suite.increase_time(Duration::from_minutes(2));
+
+    // Verify position is closed.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert!(
+        !state.positions.contains_key(&pair),
+        "position should be closed by TP"
+    );
+
+    // Margin should reflect profit: entry $2,000, exit $2,500, 10 ETH → $5,000 profit.
+    assert!(state.margin > UsdValue::new_int(14_000));
+}
+
+/// Market buy with SL child order → oracle drops → SL triggers → closed with loss.
+#[test]
+fn child_order_market_with_sl_triggers() {
+    let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
+        setup_test_naive(TestOption::default());
+
+    let pair = pair_id();
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    for user in [&mut accounts.user1, &mut accounts.user2] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Maker places ask: 5 ETH @ $2,000.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trader market buys 5 ETH with SL @ $1,800.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: Some(perps::ChildOrder {
+                    trigger_price: UsdPrice::new_int(1_800),
+                    max_slippage: Dimensionless::new_percent(2),
+                    size: None,
+                }),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify SL is on the position.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state.positions.get(&pair).unwrap();
+    assert!(pos.conditional_order_below.is_some(), "SL should be set");
+    assert!(pos.conditional_order_above.is_none(), "no TP");
+
+    // Oracle drops to $1,800 → trigger SL.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800);
+
+    // Maker places bid to fill SL.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_800),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite.increase_time(Duration::from_minutes(2));
+
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert!(
+        !state.positions.contains_key(&pair),
+        "position closed by SL"
+    );
+    assert!(state.margin < UsdValue::new_int(9_100)); // loss
+}
+
+/// Market sell that closes existing long position, with TP/SL child order →
+/// no conditional orders remain.
+#[test]
+fn child_order_ignored_when_position_closed() {
+    let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
+        setup_test_naive(TestOption::default());
+
+    let pair = pair_id();
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    for user in [&mut accounts.user1, &mut accounts.user2] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Maker places ask, trader buys to establish a long.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Now maker places bid, trader sells to close with TP/SL attached.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5), // close the long
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: Some(perps::ChildOrder {
+                    trigger_price: UsdPrice::new_int(1_800),
+                    max_slippage: Dimensionless::new_percent(1),
+                    size: None,
+                }),
+                sl: Some(perps::ChildOrder {
+                    trigger_price: UsdPrice::new_int(2_200),
+                    max_slippage: Dimensionless::new_percent(2),
+                    size: None,
+                }),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Position should be closed, no conditional orders.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    assert!(!state.positions.contains_key(&pair));
+}
+
+/// Position has existing TP/SL. New market order with different child orders fills
+/// → old TP/SL replaced.
+#[test]
+fn child_order_overwrites_existing() {
+    let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
+        setup_test_naive(TestOption::default());
+
+    let pair = pair_id();
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    for user in [&mut accounts.user1, &mut accounts.user2] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Establish position.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Set existing TP/SL via SubmitConditionalOrder.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: None,
+                trigger_price: UsdPrice::new_int(3_000),
+                trigger_direction: perps::TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(1),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Buy more with different TP/SL child orders → overwrites.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: Some(perps::ChildOrder {
+                    trigger_price: UsdPrice::new_int(2_500),
+                    max_slippage: Dimensionless::new_percent(1),
+                    size: None,
+                }),
+                sl: Some(perps::ChildOrder {
+                    trigger_price: UsdPrice::new_int(1_800),
+                    max_slippage: Dimensionless::new_percent(2),
+                    size: None,
+                }),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state.positions.get(&pair).unwrap();
+
+    // Old TP was at $3,000, new should be at $2,500.
+    let above = pos.conditional_order_above.as_ref().unwrap();
+    assert_eq!(above.trigger_price, UsdPrice::new_int(2_500));
+
+    // SL (new) should be set.
+    let below = pos.conditional_order_below.as_ref().unwrap();
+    assert_eq!(below.trigger_price, UsdPrice::new_int(1_800));
+}
+
+/// SubmitConditionalOrder twice with same direction → second overwrites first.
+#[test]
+fn conditional_order_overwrite_same_direction() {
+    let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
+        setup_test_naive(TestOption::default());
+
+    let pair = pair_id();
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Establish long position.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // First TP.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: None,
+                trigger_price: UsdPrice::new_int(2_500),
+                trigger_direction: perps::TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(1),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Second TP (same direction) → should overwrite, not error.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: None,
+                trigger_price: UsdPrice::new_int(3_000),
+                trigger_direction: perps::TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(1),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state.positions.get(&pair).unwrap();
+    let above = pos.conditional_order_above.as_ref().unwrap();
+    assert_eq!(
+        above.trigger_price,
+        UsdPrice::new_int(3_000),
+        "should be overwritten to $3,000"
+    );
+}
+
+/// SubmitConditionalOrder with size > position → now allowed (previously errored).
+#[test]
+fn conditional_order_size_exceeds_position_allowed() {
+    let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
+        setup_test_naive(TestOption::default());
+
+    let pair = pair_id();
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Establish small long.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-3),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(3),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Submit TP with size > position (was -5 but position is only 3).
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Some(Quantity::new_int(-5)),
+                trigger_price: UsdPrice::new_int(2_500),
+                trigger_direction: perps::TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(1),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify it was placed.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state.positions.get(&pair).unwrap();
+    let above = pos.conditional_order_above.as_ref().unwrap();
+    assert_eq!(above.size, Some(Quantity::new_int(-5)));
 }

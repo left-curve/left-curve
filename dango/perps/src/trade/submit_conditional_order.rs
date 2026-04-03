@@ -37,24 +37,7 @@ pub fn submit_conditional_order(
                 || (size.is_positive() && position.size.is_negative()),
             "size must oppose position direction"
         );
-
-        ensure!(
-            {
-                let abs_size = size.checked_abs()?;
-                let abs_pos_size = position.size.checked_abs()?;
-                abs_size <= abs_pos_size
-            },
-            "conditional order size exceeds position size"
-        );
     }
-
-    ensure!(
-        match trigger_direction {
-            TriggerDirection::Above => position.conditional_order_above.is_none(),
-            TriggerDirection::Below => position.conditional_order_below.is_none(),
-        },
-        "conditional order already exists for pair {pair_id}"
-    );
 
     // ----------------------------- State changes -----------------------------
 
@@ -149,6 +132,12 @@ mod tests {
         USER_STATES.save(storage, USER, &user_state).unwrap();
     }
 
+    /// Take-profit on a long position: sell 5 of 10 ETH when price rises
+    /// above $2,500.
+    ///
+    /// Expected: order stored in `conditional_order_above` with correct
+    /// trigger price, size, and a freshly allocated order ID. The global
+    /// `NEXT_ORDER_ID` counter advances by one.
     #[test]
     fn p1_valid_tp_on_long() {
         let mut ctx = MockContext::new()
@@ -185,6 +174,11 @@ mod tests {
         assert_eq!(next_id, Uint64::new(2));
     }
 
+    /// Stop-loss on a long position: sell all 10 ETH when price drops
+    /// below $1,800.
+    ///
+    /// Expected: order stored in `conditional_order_below`. Mirrors p1 but
+    /// for the opposite trigger direction.
     #[test]
     fn p2_valid_sl_on_long() {
         let mut ctx = MockContext::new()
@@ -214,6 +208,15 @@ mod tests {
         assert_eq!(order.order_id, Uint64::ONE);
     }
 
+    /// Take-profit on a short position: buy 5 of 10 ETH when price drops
+    /// below $1,500.
+    ///
+    /// Expected: order stored in `conditional_order_below`. For shorts, TP
+    /// triggers *below* (profit when price falls), which is the opposite of
+    /// longs.
+    ///
+    /// Wrong behavior: storing it in `conditional_order_above` — that would
+    /// make it a stop-loss for a short.
     #[test]
     fn p3_valid_tp_on_short() {
         let mut ctx = MockContext::new()
@@ -243,6 +246,15 @@ mod tests {
         assert_eq!(order.order_id, Uint64::ONE);
     }
 
+    /// Conditional order size must oppose the position direction: a long
+    /// position can only have a *sell* (negative size) conditional order.
+    ///
+    /// Expected: error "size must oppose position direction" when submitting
+    /// a positive (buy) size on a long position.
+    ///
+    /// Wrong behavior: accepting the order — this would let a conditional
+    /// order *increase* the position, but conditional orders are always
+    /// reduce-only.
     #[test]
     fn p4_reject_wrong_direction() {
         let mut ctx = MockContext::new()
@@ -266,14 +278,25 @@ mod tests {
         .should_fail_with_error("size must oppose position direction");
     }
 
+    /// Conditional order size larger than the position is allowed at
+    /// submission time. The cron job clamps the size to the actual position
+    /// size when the order triggers.
+    ///
+    /// Expected: order placed successfully with size = -5 even though the
+    /// position is only 3.
+    ///
+    /// Wrong behavior (old): rejecting with "conditional order size exceeds
+    /// position size". This was overly strict because the position size can
+    /// change between submission and trigger, and the cron already clamps.
     #[test]
-    fn p5_reject_exceeds_position() {
+    fn p5_allow_exceeds_position() {
         let mut ctx = MockContext::new()
             .with_sender(USER)
             .with_funds(Coins::default());
 
         init_storage(&mut ctx.storage, user_state_with_position(long_position(3)));
 
+        // Size exceeds position — allowed because it's clamped at trigger time.
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
@@ -282,9 +305,23 @@ mod tests {
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
         )
-        .should_fail_with_error("exceeds position size");
+        .should_succeed();
+
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        let order = position.conditional_order_above.as_ref().unwrap();
+        assert_eq!(order.size, Some(Quantity::new_int(-5)));
     }
 
+    /// A conditional order requires an existing position — it is meaningless
+    /// without one since it's always reduce-only.
+    ///
+    /// Expected: error "no position" when the user has margin but no open
+    /// position in the requested pair.
+    ///
+    /// Wrong behavior: accepting the order — it would sit on a non-existent
+    /// position and never trigger, or worse, trigger against a future
+    /// position with unexpected direction.
     #[test]
     fn p6_reject_no_position() {
         let mut ctx = MockContext::new()
@@ -309,8 +346,18 @@ mod tests {
         .should_fail_with_error("no position");
     }
 
+    /// Submitting a second conditional order with the same trigger direction
+    /// overwrites the first. The other direction is not affected.
+    ///
+    /// Expected: the second Above order (trigger $3,000, size -3, order_id 2)
+    /// replaces the first (trigger $2,500, size -5, order_id 1). A subsequent
+    /// Below order coexists without disturbing the Above.
+    ///
+    /// Wrong behavior (old): rejecting the second order with "conditional
+    /// order already exists". This forced users to cancel-then-resubmit,
+    /// which is a poor UX and creates a window with no protection.
     #[test]
-    fn p7_reject_duplicate_direction() {
+    fn p7_overwrite_duplicate_direction() {
         let mut ctx = MockContext::new()
             .with_sender(USER)
             .with_funds(Coins::default());
@@ -331,7 +378,7 @@ mod tests {
         )
         .should_succeed();
 
-        // Second Above order for same pair — should fail.
+        // Second Above order for same pair — overwrites the first.
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
@@ -340,9 +387,17 @@ mod tests {
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
         )
-        .should_fail_with_error("already exists");
+        .should_succeed();
 
-        // Below order for same pair — should succeed (different direction).
+        // Verify the overwrite: trigger_price and order_id reflect the new order.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        let order = position.conditional_order_above.as_ref().unwrap();
+        assert_eq!(order.order_id, Uint64::new(2));
+        assert_eq!(order.trigger_price, UsdPrice::new_int(3_000));
+        assert_eq!(order.size, Some(Quantity::new_int(-3)));
+
+        // Below order for same pair — should still succeed (different direction).
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
@@ -352,8 +407,26 @@ mod tests {
             Dimensionless::new_percent(2),
         )
         .should_succeed();
+
+        // Verify Above was NOT affected by the Below submission.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(
+            position
+                .conditional_order_above
+                .as_ref()
+                .unwrap()
+                .trigger_price,
+            UsdPrice::new_int(3_000)
+        );
     }
 
+    /// A position can hold both an Above and a Below conditional order at
+    /// the same time (TP + SL bracket).
+    ///
+    /// Expected: after submitting TP @ $2,500 (Above) and SL @ $1,800
+    /// (Below), both are stored on the position with distinct order IDs
+    /// (1 and 2 respectively).
     #[test]
     fn p8_multiple_on_same_pair() {
         let mut ctx = MockContext::new()

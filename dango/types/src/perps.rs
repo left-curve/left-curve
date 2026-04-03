@@ -29,7 +29,20 @@ pub use crate::constants::usdc as settlement_currency;
 /// Identifier of a trading pair. It should be a string that looks like e.g. "perp/btcusd".
 pub type PairId = Denom;
 
-/// Identifies a resting limit order.
+/// Identifier for a resting limit order.
+///
+/// Order Id has two purposes:
+///
+/// 1. For uniquely identifying an order.
+/// 2. For determining an order's seniority. Orders matching follows **price-time
+///    priority**: orders with the better prices are executed first; for orders
+///    with the same price, those submitted earlier are executed first. Order IDs
+///    are allocated in incremental order, so orders with smaller IDs are more senior.
+///    It's also for this reason, that the order ID is included as a sub-key in
+///    the `BIDS` and `ASKS` maps, as well as in the index key of `UserStateIndex::conditional_orders`
+///    (see `dango/perps/src/state.rs`).
+///    Timestamp doesn't work for this case, because two orders submitted in the
+///    same block have the same timestamp.
 pub type OrderId = Uint64;
 
 /// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
@@ -512,6 +525,10 @@ pub struct LimitOrder {
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
     pub created_at: Timestamp,
+    /// Take-profit child order to apply when this order fills.
+    pub tp: Option<ChildOrder>,
+    /// Stop-loss child order to apply when this order fills.
+    pub sl: Option<ChildOrder>,
 }
 
 /// A conditional order stored off-book until triggered.
@@ -530,6 +547,20 @@ pub struct ConditionalOrder {
 
     /// Max slippage for the market order executed at trigger.
     pub max_slippage: Dimensionless,
+}
+
+/// TP or SL parameters attached to a parent order as a "child order".
+/// Applied to the resulting position when the parent order fills.
+#[grug::derive(Serde, Borsh)]
+pub struct ChildOrder {
+    /// Oracle price that activates this order.
+    pub trigger_price: UsdPrice,
+
+    /// Max slippage for the market order executed at trigger.
+    pub max_slippage: Dimensionless,
+
+    /// Size to close. If `None`, closes the entire position at trigger time.
+    pub size: Option<Quantity>,
 }
 
 #[grug::derive(Serde)]
@@ -628,6 +659,12 @@ pub enum TraderMsg {
         /// If false, the order must be executed in full. If any of the risk
         /// parameters is violated, the entire order is aborted.
         reduce_only: bool,
+
+        /// Take-profit child order. Applied to the resulting position after fill.
+        tp: Option<ChildOrder>,
+
+        /// Stop-loss child order. Applied to the resulting position after fill.
+        sl: Option<ChildOrder>,
     },
 
     /// Cancel a resting limit order.

@@ -11,7 +11,10 @@ use {
         },
         price::may_invert_price,
         querier::NoCachePerpQuerier,
-        state::{ASKS, BIDS, LONGS, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE, USER_STATES},
+        state::{
+            ASKS, BIDS, LONGS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE,
+            USER_STATES,
+        },
         trade::{_cancel_all_orders, match_order, settle_fill, settle_pnls},
         volume::flush_volumes,
     },
@@ -118,7 +121,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------------- 5. Business logic ---------------------------
 
-    let (maker_states, order_mutations, index_updates, volumes) = _liquidate(
+    let (maker_states, order_mutations, index_updates, volumes, next_order_id) = _liquidate(
         ctx.storage,
         user,
         ctx.contract,
@@ -138,6 +141,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
 
     STATE.save(ctx.storage, &state)?;
+
+    NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
     for (pair_id, pair_state) in &pair_states {
         PAIR_STATES.save(ctx.storage, pair_id, pair_state)?;
@@ -285,6 +290,7 @@ fn _liquidate(
     )>,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
+    OrderId,
 )> {
     // -------------------- Step 1: Assert liquidatable -------------------------
 
@@ -314,6 +320,7 @@ fn _liquidate(
         closed_notional,
         all_index_updates,
         all_volumes,
+        next_order_id,
     ) = execute_close_schedule(
         storage,
         user,
@@ -416,6 +423,7 @@ fn _liquidate(
         all_order_mutations,
         all_index_updates,
         all_volumes,
+        next_order_id,
     ))
 }
 
@@ -450,7 +458,10 @@ fn execute_close_schedule(
     UsdValue,
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
+    OrderId,
 )> {
+    let mut next_order_id = NEXT_ORDER_ID.load(storage)?;
+
     // Zero-fee param for liquidation fills.
     let liq_param = Param {
         maker_fee_rates: RateSchedule::default(),
@@ -490,6 +501,7 @@ fn execute_close_schedule(
             maker_states,
             target_price,
             *close_size,
+            &mut next_order_id,
             events,
         )?;
 
@@ -597,6 +609,7 @@ fn execute_close_schedule(
         closed_notional,
         all_index_updates,
         all_volumes,
+        next_order_id,
     ))
 }
 
@@ -778,7 +791,9 @@ mod tests {
         },
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{LimitOrder, PairParam, PairState, Param, Position, State, UserState},
+            perps::{
+                ChildOrder, LimitOrder, PairParam, PairState, Param, Position, State, UserState,
+            },
         },
         grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64},
         std::collections::BTreeMap,
@@ -826,6 +841,7 @@ mod tests {
     ) {
         PARAM.save(storage, param).unwrap();
         STATE.save(storage, &State::default()).unwrap();
+        NEXT_ORDER_ID.save(storage, &OrderId::ONE).unwrap();
 
         for (pair_id, pair_param, pair_state) in pairs {
             PAIR_PARAMS.save(storage, pair_id, pair_param).unwrap();
@@ -884,6 +900,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
             created_at: Timestamp::ZERO,
+            tp: None,
+            sl: None,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -905,6 +923,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
             created_at: Timestamp::ZERO,
+            tp: None,
+            sl: None,
         };
         ASKS.save(storage, key, &order).unwrap();
     }
@@ -1446,5 +1466,122 @@ mod tests {
             maker_states[&MAKER].positions.contains_key(&pair_btc()),
             "maker should have a position after absorbing liquidation"
         );
+    }
+
+    /// Maker's resting bid has TP/SL child orders. A liquidation matches
+    /// against it. After liquidation, the maker's new position should have
+    /// the child orders applied and NEXT_ORDER_ID should be incremented.
+    #[test]
+    fn maker_child_orders_applied_during_liquidation() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = default_param();
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(10),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        // USER has long 10 BTC at entry $50k. Oracle drops to $47,500.
+        // Equity < maintenance margin → liquidatable.
+        save_position(&mut ctx.storage, USER, &pair_btc(), 10, 50_000);
+
+        // MAKER places a bid with TP/SL child orders.
+        let maker_state = UserState {
+            margin: UsdValue::new_int(100_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+
+        {
+            use crate::price::may_invert_price;
+            let stored_price = may_invert_price(UsdPrice::new_int(47_500), true);
+            let key: OrderKey = (pair_btc(), stored_price, Uint64::new(1));
+            let order = LimitOrder {
+                user: MAKER,
+                size: Quantity::new_int(10),
+                reduce_only: false,
+                reserved_margin: UsdValue::ZERO,
+                created_at: Timestamp::ZERO,
+                tp: Some(ChildOrder {
+                    trigger_price: UsdPrice::new_int(55_000),
+                    max_slippage: Dimensionless::new_percent(1),
+                    size: None,
+                }),
+                sl: Some(ChildOrder {
+                    trigger_price: UsdPrice::new_int(40_000),
+                    max_slippage: Dimensionless::new_percent(2),
+                    size: None,
+                }),
+            };
+            BIDS.save(&mut ctx.storage, key, &order).unwrap();
+        }
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_500));
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(2_400);
+
+        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
+        let mut state = STATE.load(&ctx.storage).unwrap();
+
+        let (maker_states, _, _, _, next_order_id) = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
+            &param,
+            &mut state,
+            &pair_params,
+            &mut pair_states,
+            &mut user_state,
+            &oracle_prices,
+            &mut EventBuilder::new(),
+        )
+        .expect("liquidation should succeed");
+
+        // Maker should have a long position with TP/SL applied.
+        let maker = &maker_states[&MAKER];
+        let pos = maker
+            .positions
+            .get(&pair_btc())
+            .expect("maker should have a position");
+
+        assert!(pos.size.is_positive(), "maker should be long");
+
+        // TP → Above for long.
+        let above = pos
+            .conditional_order_above
+            .as_ref()
+            .expect("TP should be set");
+        assert_eq!(above.trigger_price, UsdPrice::new_int(55_000));
+
+        // SL → Below for long.
+        let below = pos
+            .conditional_order_below
+            .as_ref()
+            .expect("SL should be set");
+        assert_eq!(below.trigger_price, UsdPrice::new_int(40_000));
+
+        // NEXT_ORDER_ID: started at 1, +1 for TP child, +1 for SL child = 3.
+        assert_eq!(next_order_id, OrderId::new(3));
     }
 }

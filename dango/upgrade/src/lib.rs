@@ -4,8 +4,8 @@ use {
         perps::{self, RateSchedule},
     },
     grug::{
-        Addr, BlockInfo, Duration, Map, Order as IterationOrder, StdResult, Storage, Uint128, addr,
-        increment_last_byte,
+        Addr, BlockInfo, Duration, Map, Order as IterationOrder, StdResult, Storage, Timestamp,
+        Uint128, addr, increment_last_byte,
     },
     grug_app::{AppResult, CONTRACT_NAMESPACE, CONTRACTS, StorageProvider},
     std::collections::{BTreeMap, VecDeque},
@@ -73,6 +73,21 @@ mod legacy {
     pub const USER_STATES: Map<Addr, UserState> = Map::new("us");
 
     pub const PAIR_STATES: Map<&perps::PairId, PairState> = Map::new("pair_state");
+
+    /// The LimitOrder struct before the upgrade (no tp/sl child order fields).
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct LimitOrder {
+        pub user: Addr,
+        pub size: Quantity,
+        pub reduce_only: bool,
+        pub reserved_margin: UsdValue,
+        pub created_at: Timestamp,
+    }
+
+    pub type OrderKey = (perps::PairId, UsdPrice, perps::OrderId);
+
+    pub const BIDS: Map<OrderKey, LimitOrder> = Map::new("bid");
+    pub const ASKS: Map<OrderKey, LimitOrder> = Map::new("ask");
 }
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
@@ -204,6 +219,42 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
         }
 
         tracing::info!("Migrated {} PairState records", all_pairs.len());
+    }
+
+    // -------------------------------------------------------------------------
+
+    // 5. Migrate LimitOrder records in BIDS and ASKS: add tp/sl = None.
+    //    Indexes (bid__id, bid__user, ask__id, ask__user) remain valid because
+    //    the key and indexed fields (order_id, user) are unchanged.
+
+    {
+        let new_bids: Map<legacy::OrderKey, perps::LimitOrder> = Map::new("bid");
+        let new_asks: Map<legacy::OrderKey, perps::LimitOrder> = Map::new("ask");
+
+        for (old_map, new_map, label) in [
+            (&legacy::BIDS, &new_bids, "bid"),
+            (&legacy::ASKS, &new_asks, "ask"),
+        ] {
+            let all = old_map
+                .range(&perps_storage, None, None, IterationOrder::Ascending)
+                .collect::<StdResult<Vec<_>>>()?;
+
+            let count = all.len();
+
+            for (key, old_order) in all {
+                new_map.save(&mut perps_storage, key, &perps::LimitOrder {
+                    user: old_order.user,
+                    size: old_order.size,
+                    reduce_only: old_order.reduce_only,
+                    reserved_margin: old_order.reserved_margin,
+                    created_at: old_order.created_at,
+                    tp: None,
+                    sl: None,
+                })?;
+            }
+
+            tracing::info!("Migrated {count} {label} orders");
+        }
     }
 
     Ok(())

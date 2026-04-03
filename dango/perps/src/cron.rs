@@ -490,6 +490,8 @@ fn process_triggered_order(
             max_slippage: order.max_slippage,
         },
         true, // reduce_only
+        None, // tp
+        None, // sl
         events,
     );
 
@@ -702,6 +704,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
             created_at: Timestamp::ZERO,
+            tp: None,
+            sl: None,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -728,6 +732,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
             created_at: Timestamp::ZERO,
+            tp: None,
+            sl: None,
         };
         ASKS.save(storage, key, &order).unwrap();
     }
