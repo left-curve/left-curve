@@ -5,12 +5,12 @@ import {
   IconChevronDownFill,
   PairStatValue,
   twMerge,
-  useApp,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { useProTrade } from "./ProTrade";
 import { AnimatePresence, motion } from "framer-motion";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/dango/utils";
+import { FormattedNumber } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -133,9 +133,6 @@ export const TradeHeader: React.FC = () => {
 };
 
 const HeaderPrice: React.FC = () => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-
   const { currentPrice, previousPrice } = useCurrentPrice();
 
   return (
@@ -151,7 +148,7 @@ const HeaderPrice: React.FC = () => {
             : "",
         )}
       >
-        {currentPrice ? formatNumber(currentPrice, formatNumberOptions) : "-"}
+        {currentPrice ? <FormattedNumber number={currentPrice} as="span" /> : "-"}
       </p>
     </div>
   );

@@ -30,7 +30,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
-import { Cell, Table, Tabs } from "@left-curve/applets-kit";
+import { Cell, FormattedNumber, Table, Tabs } from "@left-curve/applets-kit";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { TradeButtons } from "./TradeButtons";
@@ -296,14 +296,28 @@ const PerpsPositionsTable: React.FC = () => {
     {
       header: "Entry Price",
       cell: ({ row }) => (
-        <Cell.Text text={`$${formatNumber(row.original.entryPrice, formatNumberOptions)}`} />
+        <Cell.Text
+          text={
+            <FormattedNumber
+              number={row.original.entryPrice}
+              formatOptions={{ currency: "USD" }}
+              as="span"
+            />
+          }
+        />
       ),
     },
     {
       header: "Mark Price",
       cell: ({ row }) => (
         <Cell.Text
-          text={`$${formatNumber(row.original.currentPrice.toString(), formatNumberOptions)}`}
+          text={
+            <FormattedNumber
+              number={row.original.currentPrice.toString()}
+              formatOptions={{ currency: "USD" }}
+              as="span"
+            />
+          }
         />
       ),
     },
@@ -313,7 +327,16 @@ const PerpsPositionsTable: React.FC = () => {
         const isPositive = row.original.pnl >= 0;
         return (
           <Cell.Text
-            text={`${isPositive ? "+" : ""}$${formatNumber(row.original.pnl.toFixed(2), formatNumberOptions)}`}
+            text={
+              <>
+                {isPositive ? "+" : ""}
+                <FormattedNumber
+                  number={row.original.pnl.toFixed(2)}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
+              </>
+            }
             className={isPositive ? "text-utility-success-600" : "text-utility-error-600"}
           />
         );

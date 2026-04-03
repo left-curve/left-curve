@@ -604,7 +604,7 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
             : "text-ink-secondary-700",
         )}
       >
-        {midPriceDisplay ? formatNumber(midPriceDisplay, formatNumberOptions) : "-"}
+        {midPriceDisplay ? <FormattedNumber number={midPriceDisplay} as="span" /> : "-"}
       </p>
       <div className="flex flex-col items-end text-ink-tertiary-500 relative z-20">
         <p className="diatype-xxs-medium">{m["dex.protrade.spread"]()}</p>

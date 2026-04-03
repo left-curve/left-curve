@@ -1,6 +1,6 @@
-import { Cell, useApp } from "@left-curve/applets-kit";
+import { Cell, FormattedNumber, useApp } from "@left-curve/applets-kit";
 import { useConfig, usePublicClient, useAccount, useQueryWithPagination, tradePairStore, useTradeCoins } from "@left-curve/store";
-import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
+import { calculateTradeSize, Decimal } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TimeInForceOption, type Trade } from "@left-curve/dango/types";
 import { TradeHistoryTable } from "./TradeHistoryTable";
@@ -83,17 +83,17 @@ export const SpotTradeHistory: React.FC = () => {
       header: m["dex.protrade.history.price"](),
       cell: ({ row }) => (
         <Cell.Text
-          text={formatNumber(
-            Decimal(row.original.clearingPrice)
+          text={<FormattedNumber
+            number={Decimal(row.original.clearingPrice)
               .times(
                 Decimal(10).pow(
                   coins.byDenom[row.original.baseDenom].decimals -
                     coins.byDenom[row.original.quoteDenom].decimals,
                 ),
               )
-              .toFixed(),
-            formatNumberOptions,
-          )}
+              .toFixed()}
+            as="span"
+          />}
         />
       ),
     },

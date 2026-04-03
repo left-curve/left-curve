@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   AssetInputWithRange,
   Button,
+  FormattedNumber,
   IconArrowDown,
   Modals,
   PairStatValue,
@@ -209,9 +210,7 @@ const ConvertForm: React.FC = () => {
 const ConvertDetails: React.FC = () => {
   const { isConnected } = useAccount();
   const { state } = useConvert();
-  const { settings } = useApp();
   const { pair, simulation, fee, coins } = state;
-  const { formatNumberOptions } = settings;
   const { data, isPending } = simulation;
 
   if (!data || !isConnected || data.input.denom === "0") return <div />;
@@ -235,7 +234,7 @@ const ConvertDetails: React.FC = () => {
           <Skeleton className="w-14 h-4" />
         ) : (
           <p className="text-ink-secondary-700 diatype-sm-medium">
-            {formatNumber(fee, { ...formatNumberOptions, currency: "usd" })}
+            <FormattedNumber number={fee} formatOptions={{ currency: "usd" }} as="span" />
           </p>
         )}
       </div>
@@ -246,7 +245,7 @@ const ConvertDetails: React.FC = () => {
         ) : (
           <p className="text-ink-secondary-700 diatype-sm-medium">
             1 {inputCoin.symbol} ≈{" "}
-            {formatNumber(Decimal(outputAmount).div(inputAmount).toFixed(), formatNumberOptions)}{" "}
+            <FormattedNumber number={Decimal(outputAmount).div(inputAmount).toFixed()} as="span" />{" "}
             {outputCoin.symbol}
           </p>
         )}

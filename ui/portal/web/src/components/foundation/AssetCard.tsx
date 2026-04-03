@@ -1,10 +1,10 @@
 import { useConfig, usePrices, perpsMarginAsset } from "@left-curve/store";
 
-import { FormattedNumber, PairAssets, useApp } from "@left-curve/applets-kit";
+import { FormattedNumber, PairAssets } from "@left-curve/applets-kit";
 import { twMerge } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/dango/utils";
 
 import type { Coin } from "@left-curve/dango/types";
 
@@ -14,15 +14,12 @@ interface SpotProps {
 
 const Spot: React.FC<SpotProps> = ({ coin }) => {
   const { getCoinInfo } = useConfig();
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
 
   const coinInfo = getCoinInfo(coin.denom);
 
   const humanAmount = formatUnits(coin.amount, coinInfo.decimals);
 
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
-  const price = getPrice(humanAmount, coin.denom, { format: true });
+  const { getPrice } = usePrices();
 
   return (
     <motion.div layout="position" className="flex flex-col p-4 w-full">
@@ -41,8 +38,8 @@ const Spot: React.FC<SpotProps> = ({ coin }) => {
           </div>
         </div>
         <div className="flex flex-col items-end text-ink-primary-900">
-          <p className="diatype-m-bold">{price}</p>
-          <p>{formatNumber(humanAmount, formatNumberOptions)}</p>
+          <FormattedNumber className="diatype-m-bold" number={getPrice(humanAmount, coin.denom)} />
+          <FormattedNumber number={humanAmount} />
         </div>
       </div>
     </motion.div>

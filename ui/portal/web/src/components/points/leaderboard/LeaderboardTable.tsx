@@ -1,5 +1,4 @@
-import { Cell, Pagination, SortHeader, Tab, Table, Tabs, useApp } from "@left-curve/applets-kit";
-import { formatNumber } from "@left-curve/dango/utils";
+import { Cell, FormattedNumber, Pagination, SortHeader, Tab, Table, Tabs } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useLeaderboard } from "@left-curve/store";
 import { useMemo } from "react";
@@ -39,8 +38,6 @@ function formatUsername(username: string | null, userIndex: number): string {
 }
 
 export const LeaderboardTable: React.FC = () => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
   const { userIndex, username } = useAccount();
   const pointsUrl = window.dango.urls.pointsUrl;
   const { points: userPoints, volume: userVolume, pnl: userPnl } = useUserPoints();
@@ -139,7 +136,9 @@ export const LeaderboardTable: React.FC = () => {
         />
       ),
       enableSorting: false,
-      cell: ({ row }) => <Cell.Text text={formatNumber(row.original.volume, { ...formatNumberOptions, currency: "USD" })} />,
+      cell: ({ row }) => (
+        <Cell.Text text={<FormattedNumber number={row.original.volume} formatOptions={{ currency: "USD" }} as="span" />} />
+      ),
     },
     {
       id: "pnl",
@@ -151,7 +150,9 @@ export const LeaderboardTable: React.FC = () => {
         />
       ),
       enableSorting: false,
-      cell: ({ row }) => <Cell.Text text={formatNumber(row.original.pnl, { ...formatNumberOptions, currency: "USD" })} />,
+      cell: ({ row }) => (
+        <Cell.Text text={<FormattedNumber number={row.original.pnl} formatOptions={{ currency: "USD" }} as="span" />} />
+      ),
     },
     {
       id: "points",
@@ -165,7 +166,7 @@ export const LeaderboardTable: React.FC = () => {
       ),
       enableSorting: false,
       cell: ({ row }) => (
-        <Cell.Text text={`${formatNumber(row.original.points, formatNumberOptions)} ${m["points.header.points"]()}`} />
+        <Cell.Text text={<><FormattedNumber number={row.original.points} as="span" /> {m["points.header.points"]()}</>} />
       ),
     },
   ];

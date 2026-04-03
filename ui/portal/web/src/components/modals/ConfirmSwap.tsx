@@ -1,6 +1,13 @@
 import { forwardRef, useImperativeHandle } from "react";
 
-import { Button, IconArrowDown, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
+import {
+  Button,
+  FormattedNumber,
+  IconArrowDown,
+  IconButton,
+  IconClose,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import { formatUnits } from "@left-curve/dango/utils";
 import { useConfig, usePrices } from "@left-curve/store";
@@ -26,8 +33,7 @@ type ConfirmSwapProps = {
 
 export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
   ({ input, output, fee, confirmSwap, rejectSwap }, ref) => {
-    const { hideModal, settings } = useApp();
-    const { formatNumberOptions } = settings;
+    const { hideModal } = useApp();
 
     const { coins } = useConfig();
     const { getPrice } = usePrices();
@@ -66,9 +72,11 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
               </p>
               <img className="h-8 w-8" src={inputCoin.logoURI} alt={inputCoin.symbol} />
             </div>
-            <p className="text-ink-tertiary-500 diatype-sm-regular">
-              {getPrice(inputAmount, inputCoin.denom, { format: true, ...formatNumberOptions })}
-            </p>
+            <FormattedNumber
+              number={getPrice(inputAmount, inputCoin.denom)}
+              as="span"
+              className="text-ink-tertiary-500 diatype-sm-regular"
+            />
           </div>
           <div className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5">
             <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
@@ -80,9 +88,11 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
               </p>
               <img className="h-8 w-8" src={outputCoin.logoURI} alt={outputCoin.symbol} />
             </div>
-            <p className="text-ink-tertiary-500 diatype-sm-regular">
-              {getPrice(outputAmount, outputCoin.denom, { format: true, ...formatNumberOptions })}
-            </p>
+            <FormattedNumber
+              number={getPrice(outputAmount, outputCoin.denom)}
+              as="span"
+              className="text-ink-tertiary-500 diatype-sm-regular"
+            />
           </div>
           <div className="flex w-full items-center justify-between pt-3">
             <p className="text-ink-tertiary-500 diatype-sm-regular">{m["dex.fee"]()}</p>

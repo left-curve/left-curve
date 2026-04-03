@@ -1,8 +1,7 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { twMerge } from "@left-curve/foundation";
-import { formatNumber } from "@left-curve/dango/utils";
-import { useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { FormattedNumber } from "@left-curve/applets-kit";
 
 import { OrderActivity } from "./OrderActivity";
 
@@ -15,8 +14,6 @@ type ActivityPerpDeleveragedProps = {
 
 export const ActivityPerpDeleveraged = forwardRef<ActivityRef, ActivityPerpDeleveragedProps>(
   ({ activity }, ref) => {
-    const { settings } = useApp();
-    const { formatNumberOptions } = settings;
     const { pair_id, closing_size, fill_price, realized_pnl } = activity.data;
 
     const absSize = closing_size.startsWith("-") ? closing_size.slice(1) : closing_size;
@@ -38,14 +35,14 @@ export const ActivityPerpDeleveraged = forwardRef<ActivityRef, ActivityPerpDelev
             <div className="flex w-full gap-1">
               <span>{pairLabel}</span>
               <span className="diatype-m-bold">
-                {formatNumber(absSize, formatNumberOptions)} {baseSymbol}
+                <FormattedNumber number={absSize} as="span" /> {baseSymbol}
               </span>
             </div>
 
             <div className="flex w-full gap-1">
               <span>{m["activities.activity.perpOrderFilled.atPrice"]()}</span>
               <span className="diatype-m-bold">
-                ${formatNumber(fill_price, formatNumberOptions)}
+                <FormattedNumber number={fill_price} formatOptions={{ currency: "USD" }} as="span" />
               </span>
             </div>
 
@@ -59,7 +56,7 @@ export const ActivityPerpDeleveraged = forwardRef<ActivityRef, ActivityPerpDelev
                   )}
                 >
                   {!realized_pnl.startsWith("-") ? "+" : ""}
-                  {formatNumber(realized_pnl, formatNumberOptions)}
+                  <FormattedNumber number={realized_pnl} as="span" />
                 </span>
               </div>
             )}

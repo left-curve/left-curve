@@ -2,11 +2,12 @@ import { useConfig } from "@left-curve/store";
 import { useRouter } from "@tanstack/react-router";
 import { forwardRef, useImperativeHandle } from "react";
 
-import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
   AddressVisualizer,
+  FormattedNumber,
   IconReceived,
   IconSent,
   Modals,
@@ -24,12 +25,11 @@ type ActivityTransferProps = {
 
 export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
   ({ activity }, ref) => {
-    const { settings, showModal } = useApp();
+    const { showModal } = useApp();
     const { navigate } = useRouter();
     const { getCoinInfo } = useConfig();
     const { blockHeight, txHash, createdAt } = activity;
     const { coins, type, fromAddress, toAddress } = activity.data;
-    const { formatNumberOptions } = settings;
     const isSent = type === "sent";
     const Icon = isSent ? IconSent : IconReceived;
 
@@ -93,7 +93,7 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
                       />
                     )}
                   </span>
-                  {`${isSent ? "−" : "+"}${formatNumber(formatUnits(amount, coin.decimals), formatNumberOptions)}  ${coin.symbol}`}
+                  {isSent ? "−" : "+"}<FormattedNumber number={formatUnits(amount, coin.decimals)} as="span" />  {coin.symbol}
                 </p>
               );
             })}

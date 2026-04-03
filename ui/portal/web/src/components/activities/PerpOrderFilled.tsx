@@ -1,8 +1,7 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { twMerge } from "@left-curve/foundation";
-import { formatNumber } from "@left-curve/dango/utils";
-import { useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { FormattedNumber } from "@left-curve/applets-kit";
 
 import { OrderActivity } from "./OrderActivity";
 
@@ -15,8 +14,6 @@ type ActivityPerpOrderFilledProps = {
 
 export const ActivityPerpOrderFilled = forwardRef<ActivityRef, ActivityPerpOrderFilledProps>(
   ({ activity }, ref) => {
-    const { settings } = useApp();
-    const { formatNumberOptions } = settings;
     const { pair_id, fill_price, fill_size, realized_pnl, fee } = activity.data;
 
     const isBuy = !fill_size.startsWith("-");
@@ -47,14 +44,14 @@ export const ActivityPerpOrderFilled = forwardRef<ActivityRef, ActivityPerpOrder
                 {isBuy ? "Long" : "Short"}
               </span>
               <span className="diatype-m-bold">
-                {formatNumber(absSize, formatNumberOptions)} {baseSymbol}
+                <FormattedNumber number={absSize} as="span" /> {baseSymbol}
               </span>
             </div>
 
             <div className="flex w-full gap-1">
               <span>{m["activities.activity.perpOrderFilled.atPrice"]()}</span>
               <span className="diatype-m-bold">
-                ${formatNumber(fill_price, formatNumberOptions)}
+                <FormattedNumber number={fill_price} formatOptions={{ currency: "USD" }} as="span" />
               </span>
             </div>
 
@@ -68,7 +65,7 @@ export const ActivityPerpOrderFilled = forwardRef<ActivityRef, ActivityPerpOrder
                   )}
                 >
                   {!realized_pnl.startsWith("-") ? "+" : ""}
-                  {formatNumber(realized_pnl, formatNumberOptions)}
+                  <FormattedNumber number={realized_pnl} as="span" />
                 </span>
               </div>
             )}

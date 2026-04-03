@@ -21,6 +21,7 @@ import {
   Button,
   Checkbox,
   CoinSelector,
+  FormattedNumber,
   IconButton,
   IconChevronDownFill,
   IconUser,
@@ -210,7 +211,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
       <div className="w-full flex flex-col gap-4 px-4">
         <InfoRow
           label={m["dex.protrade.spot.availableToTrade"]()}
-          value={`${formatNumber(availableCoin.amount, formatNumberOptions)} ${availableCoin.symbol}`}
+          value={<><FormattedNumber number={availableCoin.amount} as="span" /> {availableCoin.symbol}</>}
         />
         {operation === "limit" ? (
           <Input
@@ -265,15 +266,15 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <div className="flex flex-col gap-1 px-4">
           <InfoRow
             label={m["dex.protrade.spot.orderValue"]()}
-            value={getPrice(size, sizeCoin.denom, { format: true })}
+            value={<FormattedNumber number={getPrice(size, sizeCoin.denom)} formatOptions={{ currency: "usd" }} as="span" />}
           />
           <InfoRow
             label={m["dex.protrade.spot.orderSize"]()}
-            value={`${formatNumber(amount.quote, formatNumberOptions)} ${quoteCoin.symbol}`}
+            value={<><FormattedNumber number={amount.quote} as="span" /> {quoteCoin.symbol}</>}
           />
           <InfoRow
             label=""
-            value={`${formatNumber(amount.base, formatNumberOptions)} ${baseCoin.symbol}`}
+            value={<><FormattedNumber number={amount.base} as="span" /> {baseCoin.symbol}</>}
           />
           {operation === "market" ? (
             <InfoRow label={m["dex.protrade.spot.slippage"]()} value="-" />
@@ -437,11 +438,11 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <div className="flex flex-col gap-2">
           <InfoRow
             label="Available to Trade"
-            value={`${formatNumber(availableMargin.toFixed(2), formatNumberOptions)} USDC`}
+            value={<><FormattedNumber number={availableMargin.toFixed(2)} as="span" /> USDC</>}
           />
           <InfoRow
             label="Current Position"
-            value={`${formatNumber(currentPositionSize, formatNumberOptions)} ${baseCoin.symbol}`}
+            value={<><FormattedNumber number={currentPositionSize} as="span" /> {baseCoin.symbol}</>}
           />
         </div>
         <InputSizeWithMax
@@ -525,13 +526,13 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           {requiredMargin !== null ? (
             <InfoRow
               label="Required Margin"
-              value={`$${formatNumber(requiredMargin.toString(), formatNumberOptions)}`}
+              value={<FormattedNumber number={requiredMargin.toString()} formatOptions={{ currency: "usd" }} as="span" />}
             />
           ) : null}
           {estLiquidationPrice !== null ? (
             <InfoRow
               label="Est. Liq. Price"
-              value={`$${formatNumber(estLiquidationPrice.toFixed(2), formatNumberOptions)}`}
+              value={<FormattedNumber number={estLiquidationPrice.toFixed(2)} formatOptions={{ currency: "usd" }} as="span" />}
             />
           ) : null}
           {operation === "market" ? <InfoRow label="Slippage" value="Max: 0.1%" /> : null}
@@ -540,7 +541,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <div className="flex flex-col gap-1 px-4 border-t border-outline-tertiary-rice pt-3">
           <InfoRow
             label="Account Equity"
-            value={`$${formatNumber(equity, formatNumberOptions)}`}
+            value={<FormattedNumber number={equity} formatOptions={{ currency: "usd" }} as="span" />}
           />
           <InfoRow label="Max Leverage" value={`${maxLeverage}x`} />
           <div className="flex items-center justify-between gap-2">
@@ -551,7 +552,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
                 Number(unrealizedPnl) >= 0 ? "text-utility-success-600" : "text-utility-error-600",
               )}
             >
-              ${formatNumber(unrealizedPnl, formatNumberOptions)}
+              <FormattedNumber number={unrealizedPnl} formatOptions={{ currency: "usd" }} as="span" />
             </p>
           </div>
         </div>

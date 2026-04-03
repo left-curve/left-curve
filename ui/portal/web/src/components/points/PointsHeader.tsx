@@ -1,10 +1,10 @@
 import {
+  FormattedNumber,
   IconFriendshipGroup,
   IconSprout,
   IconSwapMoney,
   Tooltip,
 } from "@left-curve/applets-kit";
-import { formatNumber as fmt } from "@left-curve/dango/utils";
 import { useApp, useCountdown } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useCurrentEpoch } from "@left-curve/store";
@@ -75,8 +75,6 @@ const EpochStartsIn: React.FC<{ startsAt: StartsAt; onRefetch: () => void }> = (
 
 export const PointsHeader: React.FC = () => {
   const { isConnected } = useAccount();
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
   const { points, volume, rank, tradingPoints, lpPoints, referralPoints } = useUserPoints();
   const pointsUrl = window.dango.urls.pointsUrl;
   const { isStarted, currentEpoch, endDate, startsAt, refetch } = useCurrentEpoch({ pointsUrl });
@@ -98,24 +96,24 @@ export const PointsHeader: React.FC = () => {
     }
   }, [isStarted, endDate, countdown, refetch]);
 
-  const formatNum = (num: number) => (isConnected ? fmt(num, formatNumberOptions) : "--");
-  const formatCurrency = (num: number) =>
-    isConnected ? fmt(num, { ...formatNumberOptions, currency: "USD" }) : "--";
-
   return (
     <div className="p-4 lg:p-8 lg:pb-[30px] flex flex-col gap-4 rounded-t-xl">
       <div className="w-full rounded-xl bg-surface-tertiary-rice border border-outline-primary-gray p-4 flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
         <div className="flex flex-col items-center">
-          <p className="text-ink-secondary-rice h3-bold">{formatNum(points)}</p>
+          <p className="text-ink-secondary-rice h3-bold">
+            {isConnected ? <FormattedNumber number={points} as="span" /> : "--"}
+          </p>
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myPoints"]()}</p>
         </div>
         <div className="flex flex-col items-center">
-          <p className="text-ink-secondary-rice h3-bold">{formatCurrency(volume)}</p>
+          <p className="text-ink-secondary-rice h3-bold">
+            {isConnected ? <FormattedNumber number={volume} formatOptions={{ currency: "USD" }} as="span" /> : "--"}
+          </p>
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myVolume"]()}</p>
         </div>
         <div className="flex flex-col items-center">
           <p className="text-ink-secondary-rice h3-bold">
-            {isConnected ? `#${fmt(rank, formatNumberOptions)}` : "--"}
+            {isConnected ? <>{"#"}<FormattedNumber number={rank} as="span" /></> : "--"}
           </p>
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myRank"]()}</p>
         </div>
@@ -141,7 +139,9 @@ export const PointsHeader: React.FC = () => {
         <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
           <IconSwapMoney />
           <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
-            <p className="text-ink-primary-900">{formatNum(tradingPoints)}</p>
+            <p className="text-ink-primary-900">
+              {isConnected ? <FormattedNumber number={tradingPoints} as="span" /> : "--"}
+            </p>
             <p>{m["points.header.points"]()}</p>
             <Tooltip
               title={m["points.header.tradingPoints.title"]()}
@@ -153,7 +153,9 @@ export const PointsHeader: React.FC = () => {
         <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
           <IconSprout />
           <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
-            <p className="text-ink-primary-900">{formatNum(lpPoints)}</p>
+            <p className="text-ink-primary-900">
+              {isConnected ? <FormattedNumber number={lpPoints} as="span" /> : "--"}
+            </p>
             <p>{m["points.header.points"]()}</p>
             <Tooltip
               title={m["points.header.lpPoints.title"]()}
@@ -164,7 +166,9 @@ export const PointsHeader: React.FC = () => {
         <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
           <IconFriendshipGroup />
           <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
-            <p className="text-ink-primary-900">{formatNum(referralPoints)}</p>
+            <p className="text-ink-primary-900">
+              {isConnected ? <FormattedNumber number={referralPoints} as="span" /> : "--"}
+            </p>
             <p>{m["points.header.points"]()}</p>
             <Tooltip
               title={m["points.header.referralPoints.title"]()}

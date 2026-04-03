@@ -1,5 +1,6 @@
 import {
   Button,
+  FormattedNumber,
   IconButton,
   IconClose,
   Skeleton,
@@ -25,8 +26,7 @@ type ConfirmSendProps = {
 
 export const ConfirmSend = forwardRef(
   ({ amount, denom, to, confirmSend, rejectSend }: ConfirmSendProps, ref) => {
-    const { hideModal, settings } = useApp();
-    const { formatNumberOptions } = settings;
+    const { hideModal } = useApp();
     const { getCoinInfo } = useConfig();
     const client = usePublicClient();
     const coin = getCoinInfo(denom);
@@ -64,9 +64,11 @@ export const ConfirmSend = forwardRef(
               </p>
               <img src={coin.logoURI} alt={coin.denom} className="w-8 h-8" />
             </div>
-            <p className="text-ink-tertiary-500 diatype-sm-regular">
-              {getPrice(humanAmount, denom, { format: true, formatOptions: formatNumberOptions })}
-            </p>
+            <FormattedNumber
+              number={getPrice(humanAmount, denom)}
+              as="span"
+              className="text-ink-tertiary-500 diatype-sm-regular"
+            />
           </div>
           <div className="flex flex-col gap-2 w-full">
             <p className="exposure-sm-italic text-primitives-gray-light-300">{m["common.to"]()}</p>

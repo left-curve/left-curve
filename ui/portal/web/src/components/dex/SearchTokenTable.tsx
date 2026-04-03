@@ -11,6 +11,7 @@ import {
 import {
   Badge,
   Cell,
+  FormattedNumber,
   IconEmptyStar,
   IconStar,
   PairStatValue,
@@ -19,7 +20,6 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 import { memo, useMemo } from "react";
-import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { TableHeaderContext, TableClassNames, TableColumn } from "@left-curve/applets-kit";
@@ -90,9 +90,9 @@ const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
     row.pairId.baseDenom === activePairId.baseDenom &&
     activePerpsPrice !== null
   ) {
-    return <Cell.Text text={formatNumber(activePerpsPrice, formatNumberOptions)} />;
+    return <Cell.Text text={<FormattedNumber number={activePerpsPrice} as="span" />} />;
   }
-  return <Cell.Text text={getPrice(1, row.baseCoin.denom, { format: true })} />;
+  return <Cell.Text text={<FormattedNumber number={getPrice(1, row.baseCoin.denom)} as="span" />} />;
 });
 
 const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {

@@ -13,7 +13,7 @@ import {
   formatNumber,
   formatUnits,
 } from "@left-curve/dango/utils";
-import { PairAssets } from "@left-curve/applets-kit";
+import { FormattedNumber, PairAssets } from "@left-curve/applets-kit";
 
 import { OrderActivity } from "./OrderActivity";
 
@@ -137,7 +137,7 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
           {!cleared && (
             <div className="flex gap-1 text-ink-tertiary-500">
               <span>{m["common.width"]()}</span>
-              <span className="diatype-m-bold">{`${formatNumber(formatUnits(remaining, base.decimals), formatNumberOptions)} ${base.symbol}`}</span>
+              <span className="diatype-m-bold"><FormattedNumber number={formatUnits(remaining, base.decimals)} as="span" /> {base.symbol}</span>
               <span>{m["activities.activity.orderFilled.remaining"]()}</span>
             </div>
           )}

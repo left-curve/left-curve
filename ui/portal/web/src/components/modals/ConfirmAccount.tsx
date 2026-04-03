@@ -1,6 +1,14 @@
 import { forwardRef } from "react";
 
-import { Badge, Button, IconButton, IconChecked, IconClose, useApp } from "@left-curve/applets-kit";
+import {
+  Badge,
+  Button,
+  FormattedNumber,
+  IconButton,
+  IconChecked,
+  IconClose,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import { formatUnits, wait } from "@left-curve/dango/utils";
 import { useAccount, useConfig, usePrices } from "@left-curve/store";
@@ -19,9 +27,8 @@ type ConfirmAccountProps = {
 
 export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
   ({ amount, accountName, accountAddress, denom, navigate }, _ref) => {
-    const { hideModal, settings } = useApp();
+    const { hideModal } = useApp();
     const { refreshAccounts, changeAccount } = useAccount();
-    const { formatNumberOptions } = settings;
 
     const { coins } = useConfig();
     const coin = coins.byDenom[denom];
@@ -69,9 +76,11 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
               </p>
               <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
             </div>
-            <p className="text-ink-tertiary-500 diatype-sm-regular">
-              {getPrice(humanAmount, denom, { format: true, formatOptions: formatNumberOptions })}
-            </p>
+            <FormattedNumber
+              number={getPrice(humanAmount, denom)}
+              as="span"
+              className="text-ink-tertiary-500 diatype-sm-regular"
+            />
           </div>
         </div>
 

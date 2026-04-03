@@ -1,6 +1,7 @@
 import {
   AddressVisualizer,
   formatDate,
+  FormattedNumber,
   IconButton,
   IconClose,
   IconLink,
@@ -67,9 +68,11 @@ export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModal
                     </p>
                     <img src={coin.logoURI} alt={`${coin.symbol} logo`} className="h-8 w-8" />
                   </div>
-                  <p className="text-ink-tertiary-500 diatype-sm-regular">
-                    {getPrice(humanAmount, denom, { format: true })}
-                  </p>
+                  <FormattedNumber
+                    number={getPrice(humanAmount, denom)}
+                    as="span"
+                    className="text-ink-tertiary-500 diatype-sm-regular"
+                  />
                 </div>
               );
             })}

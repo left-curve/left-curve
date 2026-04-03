@@ -1,6 +1,7 @@
 import {
   Badge,
   Button,
+  FormattedNumber,
   IconEdit,
   IconUser,
   Input,
@@ -123,8 +124,8 @@ const AffiliateCredentialsLoading: React.FC = () => (
 );
 
 export const AffiliateStats: React.FC = () => {
-  const { showModal, navigate, settings } = useApp();
-  const { formatNumberOptions } = settings;
+  const { showModal, navigate, settings: appSettings } = useApp();
+  const { formatNumberOptions } = appSettings;
   const formatUSD = (value: number | string) =>
     formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const { account, isConnected } = useAccount();
@@ -240,7 +241,7 @@ export const AffiliateStats: React.FC = () => {
               <Skeleton className="w-24 h-8" />
             ) : (
               <p className="text-ink-primary-900 h3-bold">
-                {isConnected ? formatUSD(totalCommission) : "--"}
+                {isConnected ? <FormattedNumber number={totalCommission} formatOptions={{ currency: "USD" }} as="span" /> : "--"}
               </p>
             )}
             <p className="text-ink-tertiary-500 diatype-m-medium">
@@ -252,7 +253,7 @@ export const AffiliateStats: React.FC = () => {
               <Skeleton className="w-24 h-8" />
             ) : (
               <p className="text-primitives-warning-500 h3-bold">
-                {isConnected ? formatUSD(totalRefereesVolume) : "--"}
+                {isConnected ? <FormattedNumber number={totalRefereesVolume} formatOptions={{ currency: "USD" }} as="span" /> : "--"}
               </p>
             )}
             <p className="text-ink-tertiary-500 diatype-m-medium">
@@ -340,8 +341,8 @@ export const AffiliateStats: React.FC = () => {
 };
 
 export const TraderStats: React.FC = () => {
-  const { showModal, settings } = useApp();
-  const { formatNumberOptions } = settings;
+  const { showModal, settings: appSettings } = useApp();
+  const { formatNumberOptions } = appSettings;
   const formatUSD = (value: number | string) =>
     formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [referralCodeInput, setReferralCodeInput] = useState("");
@@ -407,7 +408,7 @@ export const TraderStats: React.FC = () => {
             <Skeleton className="w-24 h-8" />
           ) : (
             <p className="text-utility-warning-600 h3-bold">
-              {isConnected ? formatUSD(totalRebates) : "--"}
+              {isConnected ? <FormattedNumber number={totalRebates} formatOptions={{ currency: "USD" }} as="span" /> : "--"}
             </p>
           )}
           <p className="text-ink-tertiary-500 diatype-m-medium">
@@ -419,7 +420,7 @@ export const TraderStats: React.FC = () => {
             <Skeleton className="w-24 h-8" />
           ) : (
             <p className="text-utility-warning-600 h3-bold">
-              {isConnected ? formatUSD(totalVolume) : "--"}
+              {isConnected ? <FormattedNumber number={totalVolume} formatOptions={{ currency: "USD" }} as="span" /> : "--"}
             </p>
           )}
           <p className="text-ink-tertiary-500 diatype-m-medium">
