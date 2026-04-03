@@ -4,11 +4,11 @@
     path: "{{ deployment_dir }}/perp-liquidator"
     state: directory
     mode: '0755'
-  when: inventory_hostname == perp_liquidator_host and dango_network in perp_liquidator_config
+  when: inventory_hostname == perp_liquidator_host
 
 - name: Template perp-liquidator .env
   template:
     src: perp-liquidator.env.j2
     dest: "{{ deployment_dir }}/perp-liquidator/.env"
     mode: '0600'
-  when: inventory_hostname == perp_liquidator_host and dango_network in perp_liquidator_config
+  when: inventory_hostname == perp_liquidator_host

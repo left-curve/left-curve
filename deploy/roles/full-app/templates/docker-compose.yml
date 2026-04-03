@@ -303,7 +303,7 @@ services:
       - ./perps-bot/config.json:/root/.dango-perps/config.json
 {% endif %}
 
-{% if inventory_hostname == perp_liquidator_host and dango_network in perp_liquidator_config %}
+{% if inventory_hostname == perp_liquidator_host %}
   perp-liquidator:
     image: ghcr.io/left-curve/bots/perps-liquidator:${PERP_LIQUIDATOR_TAG:-latest}
     labels:
