@@ -41,6 +41,8 @@ pub const LABEL_TREASURY: &str = "dango.contract.perps.treasury";
 
 pub const LABEL_FUNDING_RATE: &str = "dango.contract.perps.funding_rate";
 
+pub const LABEL_FUNDING_PER_UNIT: &str = "dango.contract.perps.funding_per_unit";
+
 // ----------------------------- Durations -------------------------------------
 
 pub const LABEL_DURATION_SUBMIT_ORDER: &str = "dango.contract.perps.submit_order.duration";
@@ -90,9 +92,10 @@ pub fn init_metrics() {
         describe_gauge!(LABEL_TREASURY, "Protocol treasury balance in USD");
 
         // Funding
+        describe_gauge!(LABEL_FUNDING_RATE, "Current funding rate per pair");
         describe_gauge!(
-            LABEL_FUNDING_RATE,
-            "Cumulative funding rate per unit per pair"
+            LABEL_FUNDING_PER_UNIT,
+            "Cumulative funding per unit of asset per pair"
         );
 
         // Durations
