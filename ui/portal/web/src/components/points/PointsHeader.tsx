@@ -4,62 +4,25 @@ import {
   IconSwapMoney,
   Tooltip,
 } from "@left-curve/applets-kit";
-import { useApp } from "@left-curve/foundation";
+import { useApp, useCountdown } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useCurrentEpoch } from "@left-curve/store";
-import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useUserPoints } from "./useUserPoints";
 
 const BLOCK_TIME_MS = 500;
 
-const formatCountdown = (seconds: number) => {
-  const days = Math.floor(seconds / (60 * 60 * 24));
-  const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));
-  const minutes = Math.floor((seconds % (60 * 60)) / 60);
-  const secs = Math.floor(seconds % 60);
+const formatCountdown = (countdown: { days: string; hours: string; minutes: string; seconds: string }) => {
+  const { days, hours, minutes, seconds } = countdown;
+  const d = Number(days);
+  const h = Number(hours);
+  const m = Number(minutes);
 
-  if (days > 0) return `${days}d ${hours}h ${minutes}m ${secs}s`;
-  if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
-  if (minutes > 0) return `${minutes}m ${secs}s`;
-  return `${secs}s`;
-};
-
-const EpochCountdown: React.FC<{ remainingSeconds: number | null; onRefetch: () => void }> = ({
-  remainingSeconds,
-  onRefetch,
-}) => {
-  const [currentRemaining, setCurrentRemaining] = useState(remainingSeconds ?? 0);
-  const hasRefetchedRef = useRef(false);
-
-  useEffect(() => {
-    setCurrentRemaining(remainingSeconds ?? 0);
-    hasRefetchedRef.current = false;
-  }, [remainingSeconds]);
-
-  useEffect(() => {
-    if (currentRemaining <= 0) {
-      if (!hasRefetchedRef.current) {
-        hasRefetchedRef.current = true;
-        const timeout = setTimeout(() => onRefetch(), 1500);
-        return () => clearTimeout(timeout);
-      }
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setCurrentRemaining((prev) => Math.max(0, prev - 1));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [currentRemaining > 0, onRefetch]);
-
-  return (
-    <p className="text-ink-tertiary-500 diatype-s-medium">
-      {m["points.header.endsIn"]()} {formatCountdown(currentRemaining)}
-    </p>
-  );
+  if (d > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  if (h > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (m > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 };
 
 type StartsAt = { Block: number } | { Timestamp: string };
@@ -69,55 +32,43 @@ const EpochStartsIn: React.FC<{ startsAt: StartsAt; onRefetch: () => void }> = (
   onRefetch,
 }) => {
   const { subscriptions } = useApp();
-  const [currentBlock, setCurrentBlock] = useState<number | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+  const [targetDate, setTargetDate] = useState<Date | undefined>(undefined);
   const hasRefetchedRef = useRef(false);
 
   useEffect(() => {
-    if (!("Block" in startsAt)) return;
+    if ("Timestamp" in startsAt) {
+      setTargetDate(new Date(startsAt.Timestamp));
+      hasRefetchedRef.current = false;
+      return;
+    }
 
     const unsubscribe = subscriptions.subscribe("block", {
       listener: ({ blockHeight }) => {
-        setCurrentBlock(blockHeight);
+        const blockDiff = Math.max(0, startsAt.Block - blockHeight);
+        const remainingMs = blockDiff * BLOCK_TIME_MS;
+        setTargetDate(new Date(Date.now() + remainingMs));
+        hasRefetchedRef.current = false;
       },
     });
     return () => unsubscribe();
   }, [startsAt, subscriptions]);
 
-  useEffect(() => {
-    if ("Timestamp" in startsAt) {
-      const targetTime = new Date(startsAt.Timestamp).getTime();
-      const remaining = Math.max(0, Math.floor((targetTime - Date.now()) / 1000));
-      setRemainingSeconds(remaining);
-      hasRefetchedRef.current = false;
-    } else if ("Block" in startsAt && currentBlock !== null) {
-      const blockDiff = Math.max(0, startsAt.Block - currentBlock);
-      const remaining = Math.floor((blockDiff * BLOCK_TIME_MS) / 1000);
-      setRemainingSeconds(remaining);
-      hasRefetchedRef.current = false;
-    }
-  }, [startsAt, currentBlock]);
+  const countdown = useCountdown({ date: targetDate });
 
   useEffect(() => {
-    if (remainingSeconds <= 0) {
-      if (!hasRefetchedRef.current) {
-        hasRefetchedRef.current = true;
-        const timeout = setTimeout(() => onRefetch(), 1500);
-        return () => clearTimeout(timeout);
-      }
-      return;
+    if (!targetDate) return;
+
+    const isZero = countdown.days === "0" && countdown.hours === "0" && countdown.minutes === "0" && countdown.seconds === "0";
+    if (isZero && !hasRefetchedRef.current) {
+      hasRefetchedRef.current = true;
+      const timeout = setTimeout(() => onRefetch(), 1500);
+      return () => clearTimeout(timeout);
     }
-
-    const timer = setInterval(() => {
-      setRemainingSeconds((prev) => Math.max(0, prev - 1));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [remainingSeconds > 0, onRefetch]);
+  }, [targetDate, countdown, onRefetch]);
 
   return (
     <p className="text-ink-tertiary-500 diatype-s-medium">
-      {m["points.header.startsIn"]()} {formatCountdown(remainingSeconds)}
+      {m["points.header.startsIn"]()} {formatCountdown(countdown)}
     </p>
   );
 };
@@ -126,12 +77,25 @@ export const PointsHeader: React.FC = () => {
   const { isConnected } = useAccount();
   const { points, volume, rank, tradingPoints, lpPoints, referralPoints } = useUserPoints();
   const pointsUrl = window.dango.urls.pointsUrl;
-  const { isStarted, currentEpoch, remainingSeconds, startsAt } = useCurrentEpoch({ pointsUrl });
-  const queryClient = useQueryClient();
+  const { isStarted, currentEpoch, endDate, startsAt, refetch } = useCurrentEpoch({ pointsUrl });
 
-  const handleEpochRefetch = () => {
-    queryClient.invalidateQueries({ queryKey: ["currentEpoch"] });
-  };
+  const countdown = useCountdown({ date: endDate ?? undefined });
+  const hasRefetchedRef = useRef(false);
+
+  useEffect(() => {
+    hasRefetchedRef.current = false;
+  }, [endDate]);
+
+  useEffect(() => {
+    if (!isStarted || !endDate) return;
+
+    const isZero = countdown.days === "0" && countdown.hours === "0" && countdown.minutes === "0" && countdown.seconds === "0";
+    if (isZero && !hasRefetchedRef.current) {
+      hasRefetchedRef.current = true;
+      const timeout = setTimeout(() => refetch(), 1500);
+      return () => clearTimeout(timeout);
+    }
+  }, [isStarted, endDate, countdown, refetch]);
 
   const formatNumber = (num: number) => (isConnected ? num.toLocaleString() : "--");
   const formatCurrency = (num: number) => (isConnected ? `$${num.toLocaleString()}` : "--");
@@ -163,8 +127,12 @@ export const PointsHeader: React.FC = () => {
               description={m["points.header.epoch.description"]()}
             />
           </div>
-          {isStarted && <EpochCountdown remainingSeconds={remainingSeconds} onRefetch={handleEpochRefetch} />}
-          {!isStarted && startsAt && <EpochStartsIn startsAt={startsAt} onRefetch={handleEpochRefetch} />}
+          {isStarted && endDate && (
+            <p className="text-ink-tertiary-500 diatype-s-medium">
+              {m["points.header.endsIn"]()} {formatCountdown(countdown)}
+            </p>
+          )}
+          {!isStarted && startsAt && <EpochStartsIn startsAt={startsAt} onRefetch={refetch} />}
         </div>
       </div>
       <div className="flex flex-col lg:flex-row gap-4 w-full">

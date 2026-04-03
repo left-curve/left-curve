@@ -20,22 +20,24 @@ export function useCurrentEpoch(parameters: UseCurrentEpochParameters) {
 
   const derived = useMemo(() => {
     const data = query.data;
-    if (!data) return { isStarted: false, currentEpoch: null, remainingSeconds: null, startsAt: null };
+    if (!data) return { isStarted: false, currentEpoch: null, endDate: null, startsAt: null };
 
     if (data.status === "not_started") {
       return {
         isStarted: false as const,
         currentEpoch: null,
-        remainingSeconds: null,
+        endDate: null,
         startsAt: data.starts_at,
       };
     }
 
     const remainingSeconds = Math.floor(Number(data.remaining));
+    const endDate = new Date(Date.now() + remainingSeconds * 1000);
+
     return {
       isStarted: true as const,
       currentEpoch: data.current_epoch,
-      remainingSeconds,
+      endDate,
       startsAt: null,
     };
   }, [query.data]);
@@ -43,5 +45,6 @@ export function useCurrentEpoch(parameters: UseCurrentEpochParameters) {
   return {
     ...derived,
     isLoading: query.isLoading,
+    refetch: query.refetch,
   };
 }
