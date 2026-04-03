@@ -132,6 +132,12 @@ mod tests {
         USER_STATES.save(storage, USER, &user_state).unwrap();
     }
 
+    /// Take-profit on a long position: sell 5 of 10 ETH when price rises
+    /// above $2,500.
+    ///
+    /// Expected: order stored in `conditional_order_above` with correct
+    /// trigger price, size, and a freshly allocated order ID. The global
+    /// `NEXT_ORDER_ID` counter advances by one.
     #[test]
     fn p1_valid_tp_on_long() {
         let mut ctx = MockContext::new()
@@ -168,6 +174,11 @@ mod tests {
         assert_eq!(next_id, Uint64::new(2));
     }
 
+    /// Stop-loss on a long position: sell all 10 ETH when price drops
+    /// below $1,800.
+    ///
+    /// Expected: order stored in `conditional_order_below`. Mirrors p1 but
+    /// for the opposite trigger direction.
     #[test]
     fn p2_valid_sl_on_long() {
         let mut ctx = MockContext::new()
@@ -197,6 +208,15 @@ mod tests {
         assert_eq!(order.order_id, Uint64::ONE);
     }
 
+    /// Take-profit on a short position: buy 5 of 10 ETH when price drops
+    /// below $1,500.
+    ///
+    /// Expected: order stored in `conditional_order_below`. For shorts, TP
+    /// triggers *below* (profit when price falls), which is the opposite of
+    /// longs.
+    ///
+    /// Wrong behavior: storing it in `conditional_order_above` — that would
+    /// make it a stop-loss for a short.
     #[test]
     fn p3_valid_tp_on_short() {
         let mut ctx = MockContext::new()
@@ -226,6 +246,15 @@ mod tests {
         assert_eq!(order.order_id, Uint64::ONE);
     }
 
+    /// Conditional order size must oppose the position direction: a long
+    /// position can only have a *sell* (negative size) conditional order.
+    ///
+    /// Expected: error "size must oppose position direction" when submitting
+    /// a positive (buy) size on a long position.
+    ///
+    /// Wrong behavior: accepting the order — this would let a conditional
+    /// order *increase* the position, but conditional orders are always
+    /// reduce-only.
     #[test]
     fn p4_reject_wrong_direction() {
         let mut ctx = MockContext::new()
@@ -249,6 +278,16 @@ mod tests {
         .should_fail_with_error("size must oppose position direction");
     }
 
+    /// Conditional order size larger than the position is allowed at
+    /// submission time. The cron job clamps the size to the actual position
+    /// size when the order triggers.
+    ///
+    /// Expected: order placed successfully with size = -5 even though the
+    /// position is only 3.
+    ///
+    /// Wrong behavior (old): rejecting with "conditional order size exceeds
+    /// position size". This was overly strict because the position size can
+    /// change between submission and trigger, and the cron already clamps.
     #[test]
     fn p5_allow_exceeds_position() {
         let mut ctx = MockContext::new()
@@ -274,6 +313,15 @@ mod tests {
         assert_eq!(order.size, Some(Quantity::new_int(-5)));
     }
 
+    /// A conditional order requires an existing position — it is meaningless
+    /// without one since it's always reduce-only.
+    ///
+    /// Expected: error "no position" when the user has margin but no open
+    /// position in the requested pair.
+    ///
+    /// Wrong behavior: accepting the order — it would sit on a non-existent
+    /// position and never trigger, or worse, trigger against a future
+    /// position with unexpected direction.
     #[test]
     fn p6_reject_no_position() {
         let mut ctx = MockContext::new()
@@ -298,6 +346,16 @@ mod tests {
         .should_fail_with_error("no position");
     }
 
+    /// Submitting a second conditional order with the same trigger direction
+    /// overwrites the first. The other direction is not affected.
+    ///
+    /// Expected: the second Above order (trigger $3,000, size -3, order_id 2)
+    /// replaces the first (trigger $2,500, size -5, order_id 1). A subsequent
+    /// Below order coexists without disturbing the Above.
+    ///
+    /// Wrong behavior (old): rejecting the second order with "conditional
+    /// order already exists". This forced users to cancel-then-resubmit,
+    /// which is a poor UX and creates a window with no protection.
     #[test]
     fn p7_overwrite_duplicate_direction() {
         let mut ctx = MockContext::new()
@@ -363,6 +421,12 @@ mod tests {
         );
     }
 
+    /// A position can hold both an Above and a Below conditional order at
+    /// the same time (TP + SL bracket).
+    ///
+    /// Expected: after submitting TP @ $2,500 (Above) and SL @ $1,800
+    /// (Below), both are stored on the position with distinct order IDs
+    /// (1 and 2 respectively).
     #[test]
     fn p8_multiple_on_same_pair() {
         let mut ctx = MockContext::new()
