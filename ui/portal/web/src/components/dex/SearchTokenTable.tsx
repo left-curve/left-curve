@@ -90,9 +90,9 @@ const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
     row.pairId.baseDenom === activePairId.baseDenom &&
     activePerpsPrice !== null
   ) {
-    return <Cell.Text text={<FormattedNumber number={activePerpsPrice} as="span" />} />;
+    return <Cell.Text text={<FormattedNumber number={activePerpsPrice} formatOptions={{ currency: "USD" }} as="span" />} />;
   }
-  return <Cell.Text text={<FormattedNumber number={getPrice(1, row.baseCoin.denom)} as="span" />} />;
+  return <Cell.Text text={<FormattedNumber number={getPrice(1, row.baseCoin.denom)} formatOptions={{ currency: "USD" }} as="span" />} />;
 });
 
 const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {

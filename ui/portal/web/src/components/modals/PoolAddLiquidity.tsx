@@ -62,6 +62,7 @@ export const PoolAddLiquidity = forwardRef(
               </div>
               <FormattedNumber
                 number={getPrice(base.amount, base.denom)}
+                formatOptions={{ currency: "USD" }}
                 as="span"
                 className="text-ink-tertiary-500 diatype-sm-regular"
               />
@@ -75,6 +76,7 @@ export const PoolAddLiquidity = forwardRef(
               </div>
               <FormattedNumber
                 number={getPrice(quote.amount, quote.denom)}
+                formatOptions={{ currency: "USD" }}
                 as="span"
                 className="text-ink-tertiary-500 diatype-sm-regular"
               />

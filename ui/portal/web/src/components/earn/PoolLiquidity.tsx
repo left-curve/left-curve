@@ -235,7 +235,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                   </Button>
                 </div>
                 <p className="text-ink-tertiary-500 diatype-sm-regular">
-                  <FormattedNumber number={getPrice(base.amount, base.denom)} as="span" />
+                  <FormattedNumber number={getPrice(base.amount, base.denom)} formatOptions={{ currency: "USD" }} as="span" />
                 </p>
               </div>
             }
@@ -281,7 +281,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                   </Button>
                 </div>
                 <p className="text-ink-tertiary-500 diatype-sm-regular">
-                  <FormattedNumber number={getPrice(quote.amount, quote.denom)} as="span" />
+                  <FormattedNumber number={getPrice(quote.amount, quote.denom)} formatOptions={{ currency: "USD" }} as="span" />
                 </p>
               </div>
             }

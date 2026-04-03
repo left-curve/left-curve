@@ -166,7 +166,7 @@ export const LeaderboardTable: React.FC = () => {
       ),
       enableSorting: false,
       cell: ({ row }) => (
-        <Cell.Text text={<><FormattedNumber number={row.original.points} as="span" /> {m["points.header.points"]()}</>} />
+        <Cell.Text text={<><FormattedNumber number={row.original.points} formatOptions={{ fractionDigits: 0 }} as="span" /> {m["points.header.points"]()}</>} />
       ),
     },
   ];

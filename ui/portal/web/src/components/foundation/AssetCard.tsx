@@ -38,7 +38,7 @@ const Spot: React.FC<SpotProps> = ({ coin }) => {
           </div>
         </div>
         <div className="flex flex-col items-end text-ink-primary-900">
-          <FormattedNumber className="diatype-m-bold" number={getPrice(humanAmount, coin.denom)} />
+          <FormattedNumber className="diatype-m-bold" number={getPrice(humanAmount, coin.denom)} formatOptions={{ currency: "USD" }} />
           <FormattedNumber number={humanAmount} />
         </div>
       </div>

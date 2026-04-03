@@ -74,6 +74,7 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
             </div>
             <FormattedNumber
               number={getPrice(inputAmount, inputCoin.denom)}
+              formatOptions={{ currency: "USD" }}
               as="span"
               className="text-ink-tertiary-500 diatype-sm-regular"
             />
@@ -90,6 +91,7 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
             </div>
             <FormattedNumber
               number={getPrice(outputAmount, outputCoin.denom)}
+              formatOptions={{ currency: "USD" }}
               as="span"
               className="text-ink-tertiary-500 diatype-sm-regular"
             />

@@ -142,7 +142,7 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
                 {isLoading ? (
                   <Skeleton className="w-14 h-4" />
                 ) : (
-                  <FormattedNumber number={getPrice(value, asset.denom)} as="span" />
+                  <FormattedNumber number={getPrice(value, asset.denom)} formatOptions={{ currency: "USD" }} as="span" />
                 )}
               </div>
             )}

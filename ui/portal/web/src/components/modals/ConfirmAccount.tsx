@@ -78,6 +78,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
             </div>
             <FormattedNumber
               number={getPrice(humanAmount, denom)}
+              formatOptions={{ currency: "USD" }}
               as="span"
               className="text-ink-tertiary-500 diatype-sm-regular"
             />

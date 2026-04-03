@@ -260,7 +260,7 @@ const EvmDeposit: React.FC = () => {
         }
         insideBottomComponent={
           <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-            <FormattedNumber number={getPrice(amount, coin.denom)} as="p" />
+            <FormattedNumber number={getPrice(amount, coin.denom)} formatOptions={{ currency: "USD" }} as="p" />
           </div>
         }
       />
@@ -375,7 +375,7 @@ const BridgeWithdraw: React.FC = () => {
             }
             insideBottomComponent={
               <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-                <FormattedNumber number={getPrice(youGet, coin.denom)} as="p" />
+                <FormattedNumber number={getPrice(youGet, coin.denom)} formatOptions={{ currency: "USD" }} as="p" />
               </div>
             }
           />

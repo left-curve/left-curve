@@ -101,7 +101,7 @@ export const PointsHeader: React.FC = () => {
       <div className="w-full rounded-xl bg-surface-tertiary-rice border border-outline-primary-gray p-4 flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
         <div className="flex flex-col items-center">
           <p className="text-ink-secondary-rice h3-bold">
-            {isConnected ? <FormattedNumber number={points} as="span" /> : "--"}
+            {isConnected ? <FormattedNumber number={points} formatOptions={{ fractionDigits: 0 }} as="span" /> : "--"}
           </p>
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myPoints"]()}</p>
         </div>
@@ -113,7 +113,7 @@ export const PointsHeader: React.FC = () => {
         </div>
         <div className="flex flex-col items-center">
           <p className="text-ink-secondary-rice h3-bold">
-            {isConnected ? <>{"#"}<FormattedNumber number={rank} as="span" /></> : "--"}
+            {isConnected ? <>{"#"}<FormattedNumber number={rank} formatOptions={{ fractionDigits: 0 }} as="span" /></> : "--"}
           </p>
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myRank"]()}</p>
         </div>
@@ -140,7 +140,7 @@ export const PointsHeader: React.FC = () => {
           <IconSwapMoney />
           <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
             <p className="text-ink-primary-900">
-              {isConnected ? <FormattedNumber number={tradingPoints} as="span" /> : "--"}
+              {isConnected ? <FormattedNumber number={tradingPoints} formatOptions={{ fractionDigits: 0 }} as="span" /> : "--"}
             </p>
             <p>{m["points.header.points"]()}</p>
             <Tooltip
@@ -154,7 +154,7 @@ export const PointsHeader: React.FC = () => {
           <IconSprout />
           <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
             <p className="text-ink-primary-900">
-              {isConnected ? <FormattedNumber number={lpPoints} as="span" /> : "--"}
+              {isConnected ? <FormattedNumber number={lpPoints} formatOptions={{ fractionDigits: 0 }} as="span" /> : "--"}
             </p>
             <p>{m["points.header.points"]()}</p>
             <Tooltip
@@ -167,7 +167,7 @@ export const PointsHeader: React.FC = () => {
           <IconFriendshipGroup />
           <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
             <p className="text-ink-primary-900">
-              {isConnected ? <FormattedNumber number={referralPoints} as="span" /> : "--"}
+              {isConnected ? <FormattedNumber number={referralPoints} formatOptions={{ fractionDigits: 0 }} as="span" /> : "--"}
             </p>
             <p>{m["points.header.points"]()}</p>
             <Tooltip
