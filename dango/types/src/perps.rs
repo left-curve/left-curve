@@ -379,6 +379,27 @@ impl UserState {
     }
 }
 
+/// State of the vault. Used in query response.
+#[grug::derive(Serde)]
+pub struct VaultState {
+    /// Total supply of vault shares.
+    pub share_supply: Uint128,
+
+    /// The vault's equity, calculated as:
+    /// > the vault's margin + unrealized PnL - unrealized funding
+    pub equity: UsdValue,
+
+    /// Whether the deposit and withdrawal are allowed.
+    /// These actions are disabled when the vault is in catastrophic loss (equity < 0).
+    pub deposit_withdrawal_active: bool,
+
+    // The following fields are the same as those in `UserState`.
+    pub margin: UsdValue,
+    pub positions: BTreeMap<PairId, Position>,
+    pub reserved_margin: UsdValue,
+    pub open_order_count: usize,
+}
+
 /// A user's position in a specific trading pair.
 #[grug::derive(Serde, Borsh)]
 pub struct Position {
@@ -705,6 +726,10 @@ pub enum QueryMsg {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
+
+    /// Query the state of the vault.
+    #[returns(VaultState)]
+    VaultState {},
 
     /// Query a single limit order by ID.
     #[returns(Option<QueryOrderResponse>)]

@@ -1,13 +1,17 @@
 use {
     crate::{
+        core::compute_user_equity,
+        oracle,
+        querier::NoCachePerpQuerier,
         referral::calculate_commission_rate,
         state::{
             ASKS, BIDS, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS, PAIR_STATES, REFEREE_TO_REFERRER,
-            REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, VOLUMES,
+            REFERRER_TO_REFEREE_STATISTICS, STATE, USER_REFERRAL_DATA, USER_STATES, VOLUMES,
         },
         volume::round_to_day,
     },
     anyhow::ensure,
+    dango_oracle::OracleQuerier,
     dango_types::{
         UsdPrice, UsdValue,
         account_factory::UserIndex,
@@ -15,7 +19,7 @@ use {
             LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId, PairParam,
             PairState, QueryOrderResponse, QueryOrdersByUserResponseItem, Referee, RefereeStats,
             Referrer, ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex,
-            UserReferralData, UserState,
+            UserReferralData, UserState, VaultState,
         },
     },
     grug::{
@@ -65,6 +69,27 @@ pub fn query_user_states(
         .range(ctx.storage, start, None, IterationOrder::Ascending)
         .take(limit)
         .collect()
+}
+
+pub fn query_vault_state(ctx: ImmutableCtx) -> anyhow::Result<VaultState> {
+    let state = STATE.load(ctx.storage)?;
+    let vault_user_state = USER_STATES.load(ctx.storage, ctx.contract)?;
+
+    let equity = {
+        let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+        let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
+        compute_user_equity(&mut oracle_querier, &perp_querier, &vault_user_state)?
+    };
+
+    Ok(VaultState {
+        share_supply: state.vault_share_supply,
+        equity,
+        deposit_withdrawal_active: equity.is_positive(),
+        margin: vault_user_state.margin,
+        positions: vault_user_state.positions,
+        reserved_margin: vault_user_state.reserved_margin,
+        open_order_count: vault_user_state.open_order_count,
+    })
 }
 
 /// Search `BIDS` and `ASKS` for an order with the given ID.
