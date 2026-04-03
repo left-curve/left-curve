@@ -4,8 +4,8 @@ use {
         perps::{self, RateSchedule},
     },
     grug::{
-        Addr, BlockInfo, Duration, Map, Order as IterationOrder, StdResult, Storage, Timestamp,
-        Uint128, addr, increment_last_byte,
+        Addr, BlockInfo, Duration, IndexedMap, Map, MultiIndex, Order as IterationOrder, StdResult,
+        Storage, Timestamp, Uint128, UniqueIndex, addr,
     },
     grug_app::{AppResult, CONTRACT_NAMESPACE, CONTRACTS, StorageProvider},
     std::collections::{BTreeMap, VecDeque},
@@ -88,6 +88,62 @@ mod legacy {
 
     pub const BIDS: Map<OrderKey, LimitOrder> = Map::new("bid");
     pub const ASKS: Map<OrderKey, LimitOrder> = Map::new("ask");
+
+    pub type ConditionalOrderKey = (perps::PairId, UsdPrice, perps::ConditionalOrderId);
+
+    /// The ConditionalOrder struct before the upgrade (stored in separate
+    /// IndexedMaps, not embedded in Position).
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct ConditionalOrder {
+        pub user: Addr,
+        pub size: Quantity,
+        pub trigger_price: UsdPrice,
+        pub trigger_direction: perps::TriggerDirection,
+        pub max_slippage: Dimensionless,
+        pub created_at: Timestamp,
+    }
+
+    #[grug::index_list(ConditionalOrderKey, ConditionalOrder)]
+    pub struct ConditionalOrderIndexes<'a> {
+        pub order_id:
+            UniqueIndex<'a, ConditionalOrderKey, perps::ConditionalOrderId, ConditionalOrder>,
+        pub user: MultiIndex<'a, ConditionalOrderKey, Addr, ConditionalOrder>,
+    }
+
+    impl ConditionalOrderIndexes<'static> {
+        pub const fn new(
+            pk_namespace: &'static str,
+            order_id_namespace: &'static str,
+            user_namespace: &'static str,
+        ) -> Self {
+            ConditionalOrderIndexes {
+                order_id: UniqueIndex::new(
+                    |(_, _, order_id), _| *order_id,
+                    pk_namespace,
+                    order_id_namespace,
+                ),
+                user: MultiIndex::new(|_, order| order.user, pk_namespace, user_namespace),
+            }
+        }
+    }
+
+    pub const CONDITIONAL_ABOVE: IndexedMap<
+        ConditionalOrderKey,
+        ConditionalOrder,
+        ConditionalOrderIndexes,
+    > = IndexedMap::new(
+        "conda",
+        ConditionalOrderIndexes::new("conda", "conda__id", "conda__user"),
+    );
+
+    pub const CONDITIONAL_BELOW: IndexedMap<
+        ConditionalOrderKey,
+        ConditionalOrder,
+        ConditionalOrderIndexes,
+    > = IndexedMap::new(
+        "condb",
+        ConditionalOrderIndexes::new("condb", "condb__id", "condb__user"),
+    );
 }
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
@@ -133,23 +189,11 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
 
     // -------------------------------------------------------------------------
 
-    // 2. Wipe old CONDITIONAL_ABOVE/BELOW maps via raw remove_range.
-    //    These maps no longer exist as IndexedMap constants, so we clear them
-    //    by their storage namespace prefixes.
-    //    Namespaces: "conda", "conda__id", "conda__user", "condb", "condb__id", "condb__user"
+    // 2. Wipe old CONDITIONAL_ABOVE/BELOW IndexedMaps (primary + indexes).
 
     {
-        for ns in &[
-            b"conda" as &[u8],
-            b"conda__id",
-            b"conda__user",
-            b"condb",
-            b"condb__id",
-            b"condb__user",
-        ] {
-            let max = increment_last_byte(ns.to_vec());
-            perps_storage.remove_range(Some(ns), Some(&max));
-        }
+        legacy::CONDITIONAL_ABOVE.clear_all(&mut perps_storage);
+        legacy::CONDITIONAL_BELOW.clear_all(&mut perps_storage);
 
         tracing::info!("Wiped all conditional orders");
     }
