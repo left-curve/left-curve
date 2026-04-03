@@ -31,7 +31,6 @@ export function useCurrentEpoch(parameters: UseCurrentEpochParameters) {
       };
     }
 
-    // remaining is in seconds (with nanosecond precision in decimals, e.g. "69.710194012")
     const remainingSeconds = Math.floor(Number(data.remaining));
     return {
       isStarted: true as const,

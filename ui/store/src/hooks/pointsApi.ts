@@ -12,9 +12,7 @@ export type UserStats = {
 
 export type EpochUserStats = {
   stats: UserStats;
-  /** Epoch start timestamp in seconds with nanosecond decimal precision (e.g. "1735689600.000000000") */
   started_at: string;
-  /** Epoch end timestamp in seconds with nanosecond decimal precision (e.g. "1736294400.000000000") */
   ended_at: string;
 };
 
