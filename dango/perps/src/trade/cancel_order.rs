@@ -241,6 +241,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(reserved_margin),
             created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
         };
 
         BIDS.save(storage, key, &order).unwrap();
@@ -262,6 +264,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(reserved_margin),
             created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
         };
 
         ASKS.save(storage, key, &order).unwrap();

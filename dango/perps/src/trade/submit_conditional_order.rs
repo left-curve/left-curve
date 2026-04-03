@@ -37,24 +37,7 @@ pub fn submit_conditional_order(
                 || (size.is_positive() && position.size.is_negative()),
             "size must oppose position direction"
         );
-
-        ensure!(
-            {
-                let abs_size = size.checked_abs()?;
-                let abs_pos_size = position.size.checked_abs()?;
-                abs_size <= abs_pos_size
-            },
-            "conditional order size exceeds position size"
-        );
     }
-
-    ensure!(
-        match trigger_direction {
-            TriggerDirection::Above => position.conditional_order_above.is_none(),
-            TriggerDirection::Below => position.conditional_order_below.is_none(),
-        },
-        "conditional order already exists for pair {pair_id}"
-    );
 
     // ----------------------------- State changes -----------------------------
 
@@ -267,13 +250,14 @@ mod tests {
     }
 
     #[test]
-    fn p5_reject_exceeds_position() {
+    fn p5_allow_exceeds_position() {
         let mut ctx = MockContext::new()
             .with_sender(USER)
             .with_funds(Coins::default());
 
         init_storage(&mut ctx.storage, user_state_with_position(long_position(3)));
 
+        // Size exceeds position — allowed because it's clamped at trigger time.
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
@@ -282,7 +266,12 @@ mod tests {
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
         )
-        .should_fail_with_error("exceeds position size");
+        .should_succeed();
+
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        let order = position.conditional_order_above.as_ref().unwrap();
+        assert_eq!(order.size, Some(Quantity::new_int(-5)));
     }
 
     #[test]
@@ -310,7 +299,7 @@ mod tests {
     }
 
     #[test]
-    fn p7_reject_duplicate_direction() {
+    fn p7_overwrite_duplicate_direction() {
         let mut ctx = MockContext::new()
             .with_sender(USER)
             .with_funds(Coins::default());
@@ -331,7 +320,7 @@ mod tests {
         )
         .should_succeed();
 
-        // Second Above order for same pair — should fail.
+        // Second Above order for same pair — overwrites the first.
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
@@ -340,9 +329,17 @@ mod tests {
             TriggerDirection::Above,
             Dimensionless::new_percent(1),
         )
-        .should_fail_with_error("already exists");
+        .should_succeed();
 
-        // Below order for same pair — should succeed (different direction).
+        // Verify the overwrite: trigger_price and order_id reflect the new order.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        let order = position.conditional_order_above.as_ref().unwrap();
+        assert_eq!(order.order_id, Uint64::new(2));
+        assert_eq!(order.trigger_price, UsdPrice::new_int(3_000));
+        assert_eq!(order.size, Some(Quantity::new_int(-3)));
+
+        // Below order for same pair — should still succeed (different direction).
         submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
@@ -352,6 +349,18 @@ mod tests {
             Dimensionless::new_percent(2),
         )
         .should_succeed();
+
+        // Verify Above was NOT affected by the Below submission.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(
+            position
+                .conditional_order_above
+                .as_ref()
+                .unwrap()
+                .trigger_price,
+            UsdPrice::new_int(3_000)
+        );
     }
 
     #[test]

@@ -23,8 +23,9 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            LimitOrder, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
-            PairParam, PairState, Param, ReasonForOrderRemoval, State, UserState,
+            ChildOrder, ConditionalOrder, ConditionalOrderPlaced, LimitOrder, OrderFilled, OrderId,
+            OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam, PairState, Param,
+            ReasonForOrderRemoval, State, TriggerDirection, UserState,
         },
     },
     grug::{
@@ -40,6 +41,8 @@ pub fn submit_order(
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
+    tp: Option<ChildOrder>,
+    sl: Option<ChildOrder>,
 ) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
@@ -88,6 +91,8 @@ pub fn submit_order(
         size,
         kind,
         reduce_only,
+        tp,
+        sl,
         &mut events,
     )?;
 
@@ -271,6 +276,8 @@ pub(crate) fn _submit_order(
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
+    tp: Option<ChildOrder>,
+    sl: Option<ChildOrder>,
     events: &mut EventBuilder,
 ) -> anyhow::Result<(
     BTreeMap<Addr, UserState>,
@@ -313,7 +320,7 @@ pub(crate) fn _submit_order(
     // --------------- Step 3½. Allocate a unique order ID ---------------------
 
     let taker_order_id = NEXT_ORDER_ID.load(storage)?;
-    let next_order_id = taker_order_id + OrderId::ONE;
+    let mut next_order_id = taker_order_id + OrderId::ONE;
 
     // ---------------------- Step 4. Post-only fast path ----------------------
 
@@ -331,6 +338,8 @@ pub(crate) fn _submit_order(
             limit_price,
             reduce_only,
             taker_order_id,
+            tp,
+            sl,
         )?;
 
         return Ok((
@@ -391,6 +400,7 @@ pub(crate) fn _submit_order(
         &mut maker_states,
         target_price,
         fillable_size,
+        &mut next_order_id,
         events,
     )?;
 
@@ -410,6 +420,8 @@ pub(crate) fn _submit_order(
                 limit_price,
                 reduce_only,
                 taker_order_id,
+                tp.clone(),
+                sl.clone(),
             )?),
             OrderKind::Market { .. } => {
                 ensure!(
@@ -423,6 +435,21 @@ pub(crate) fn _submit_order(
     } else {
         None
     };
+
+    // ---------- Step 8½. Apply taker's child orders after fills --------------
+
+    let had_fills = unfilled != fillable_size;
+
+    if had_fills
+        && (tp.is_some() || sl.is_some())
+        && let Some(position) = taker_state.positions.get_mut(pair_id)
+    {
+        let (above, below) = map_child_orders(position.size, &tp, &sl, &mut next_order_id)?;
+        position.conditional_order_above = above;
+        position.conditional_order_below = below;
+
+        emit_child_order_events(events, pair_id, taker, &tp, &sl, position.size)?;
+    }
 
     // Ensure the vault's UserState is in maker_states for fee settlement.
     maker_states.entry(contract).or_insert_with(|| {
@@ -492,6 +519,7 @@ pub fn match_order(
     maker_states: &mut BTreeMap<Addr, UserState>,
     target_price: UsdPrice,
     mut remaining_size: Quantity,
+    next_order_id: &mut OrderId,
     events: &mut EventBuilder,
 ) -> anyhow::Result<(
     Quantity,
@@ -647,6 +675,31 @@ pub fn match_order(
             maker_state.positions.get(pair_id),
         ) {
             index_updates.push(diff);
+        }
+
+        // ------------- Apply maker's child orders after fill -----------------
+
+        if (maker_order.tp.is_some() || maker_order.sl.is_some())
+            && let Some(maker_pos) = maker_state.positions.get_mut(pair_id)
+        {
+            let (above, below) = map_child_orders(
+                maker_pos.size,
+                &maker_order.tp,
+                &maker_order.sl,
+                next_order_id,
+            )?;
+
+            maker_pos.conditional_order_above = above;
+            maker_pos.conditional_order_below = below;
+
+            emit_child_order_events(
+                events,
+                pair_id,
+                maker_order.user,
+                &maker_order.tp,
+                &maker_order.sl,
+                maker_pos.size,
+            )?;
         }
 
         // ---------------- Update maker's order and user state ----------------
@@ -934,6 +987,8 @@ fn store_post_only_limit_order(
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
+    tp: Option<ChildOrder>,
+    sl: Option<ChildOrder>,
 ) -> anyhow::Result<(UsdPrice, OrderId, LimitOrder)> {
     let taker_is_bid = size.is_positive();
     let maker_is_bid = !taker_is_bid;
@@ -977,6 +1032,8 @@ fn store_post_only_limit_order(
         limit_price,
         reduce_only,
         order_id,
+        tp,
+        sl,
     )
 }
 
@@ -1001,6 +1058,8 @@ fn store_limit_order(
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
+    tp: Option<ChildOrder>,
+    sl: Option<ChildOrder>,
 ) -> anyhow::Result<(UsdPrice, OrderId, LimitOrder)> {
     ensure!(
         user_state.open_order_count < param.max_open_orders,
@@ -1047,7 +1106,101 @@ fn store_limit_order(
         reduce_only,
         reserved_margin: margin_to_reserve,
         created_at: current_time,
+        tp,
+        sl,
     }))
+}
+
+/// Map TP/SL child order params to above/below conditional orders based on
+/// position direction, allocating order IDs from the shared counter.
+///
+/// - Long positions: TP → Above, SL → Below
+/// - Short positions: TP → Below, SL → Above
+fn map_child_orders(
+    position_size: Quantity,
+    tp: &Option<ChildOrder>,
+    sl: &Option<ChildOrder>,
+    next_order_id: &mut OrderId,
+) -> anyhow::Result<(Option<ConditionalOrder>, Option<ConditionalOrder>)> {
+    let make_conditional =
+        |child: &ChildOrder, next_id: &mut OrderId| -> anyhow::Result<ConditionalOrder> {
+            let order_id = *next_id;
+            *next_id += OrderId::ONE;
+            Ok(ConditionalOrder {
+                order_id,
+                size: child.size,
+                trigger_price: child.trigger_price,
+                max_slippage: child.max_slippage,
+            })
+        };
+
+    let is_long = position_size.is_positive();
+
+    // Map TP/SL to above/below based on direction.
+    let (above_src, below_src) = if is_long {
+        (tp, sl)
+    } else {
+        (sl, tp)
+    };
+
+    let above = above_src
+        .as_ref()
+        .map(|c| make_conditional(c, next_order_id))
+        .transpose()?;
+    let below = below_src
+        .as_ref()
+        .map(|c| make_conditional(c, next_order_id))
+        .transpose()?;
+
+    Ok((above, below))
+}
+
+/// Emit `ConditionalOrderPlaced` events for child orders that were applied.
+fn emit_child_order_events(
+    events: &mut EventBuilder,
+    pair_id: &PairId,
+    user: Addr,
+    tp: &Option<ChildOrder>,
+    sl: &Option<ChildOrder>,
+    position_size: Quantity,
+) -> anyhow::Result<()> {
+    let is_long = position_size.is_positive();
+
+    if let Some(child) = tp {
+        let direction = if is_long {
+            TriggerDirection::Above
+        } else {
+            TriggerDirection::Below
+        };
+
+        events.push(ConditionalOrderPlaced {
+            pair_id: pair_id.clone(),
+            user,
+            trigger_price: child.trigger_price,
+            trigger_direction: direction,
+            size: child.size,
+            max_slippage: child.max_slippage,
+        })?;
+    }
+
+    if let Some(child) = sl {
+        let direction = if is_long {
+            TriggerDirection::Below
+        } else {
+            TriggerDirection::Above
+        };
+
+        events.push(ConditionalOrderPlaced {
+            pair_id: pair_id.clone(),
+            user,
+            trigger_price: child.trigger_price,
+            trigger_direction: direction,
+            size: child.size,
+            max_slippage: child.max_slippage,
+        })?;
+    }
+
+    Ok(())
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -1128,6 +1281,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(size.abs() * price / 20), // 5% margin
             created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
         };
         ASKS.save(storage, key, &order).unwrap();
 
@@ -1153,6 +1308,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(size.abs() * price / 20),
             created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
         };
         BIDS.save(storage, key, &order).unwrap();
 
@@ -1206,6 +1363,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100), // 10%
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1264,6 +1423,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1312,6 +1473,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(10),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -1362,6 +1525,8 @@ mod tests {
                 post_only: false,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1411,6 +1576,8 @@ mod tests {
                 post_only: false,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1464,6 +1631,8 @@ mod tests {
                 post_only: false,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1524,6 +1693,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             true,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1570,6 +1741,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(10),
             },
             true,
+            None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -1619,6 +1792,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1674,6 +1849,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1726,6 +1903,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1787,6 +1966,8 @@ mod tests {
                 post_only: false,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -1834,6 +2015,8 @@ mod tests {
                 post_only: false,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -1884,6 +2067,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1944,6 +2129,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1990,6 +2177,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2042,6 +2231,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(10), // 1%
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -2541,6 +2732,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2617,6 +2810,8 @@ mod tests {
                 post_only: true,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2668,6 +2863,8 @@ mod tests {
                 post_only: true,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -2712,6 +2909,8 @@ mod tests {
                 post_only: true,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -2756,6 +2955,8 @@ mod tests {
                 post_only: true,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2806,6 +3007,8 @@ mod tests {
                 post_only: true,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -2850,6 +3053,8 @@ mod tests {
                 post_only: true,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2905,6 +3110,8 @@ mod tests {
                 post_only: true,
             },
             true,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2962,6 +3169,8 @@ mod tests {
                 post_only: true,
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -3021,6 +3230,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100), // 10%
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3118,6 +3329,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3171,6 +3384,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3297,6 +3512,8 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3360,6 +3577,8 @@ mod tests {
                     max_slippage: Dimensionless::new_permille(100),
                 },
                 false,
+                None,
+                None,
                 &mut EventBuilder::new(),
             )
             .unwrap();
@@ -3421,6 +3640,8 @@ mod tests {
                     post_only: false,
                 },
                 false,
+                None,
+                None,
                 &mut EventBuilder::new(),
             )
             .unwrap();
@@ -3435,5 +3656,551 @@ mod tests {
                 "next_order_id must advance again"
             );
         }
+    }
+
+    // ==================== Child order tests ====================
+
+    fn make_tp(trigger_price: i128) -> Option<ChildOrder> {
+        Some(ChildOrder {
+            trigger_price: UsdPrice::new_int(trigger_price),
+            max_slippage: Dimensionless::new_percent(1),
+            size: None,
+        })
+    }
+
+    fn make_sl(trigger_price: i128) -> Option<ChildOrder> {
+        Some(ChildOrder {
+            trigger_price: UsdPrice::new_int(trigger_price),
+            max_slippage: Dimensionless::new_percent(2),
+            size: None,
+        })
+    }
+
+    /// Market buy with TP/SL → long position gets above (TP) and below (SL).
+    #[test]
+    fn co1_market_buy_applies_tp_sl() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let mut ts = taker_state(&ctx.storage);
+
+        let (..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState::default(),
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            make_tp(55_000),
+            make_sl(45_000),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        let pos = ts.positions.get(&pair_id()).unwrap();
+        assert!(pos.size.is_positive(), "should be long");
+
+        // TP → Above for long
+        let above = pos.conditional_order_above.as_ref().unwrap();
+        assert_eq!(above.trigger_price, UsdPrice::new_int(55_000));
+
+        // SL → Below for long
+        let below = pos.conditional_order_below.as_ref().unwrap();
+        assert_eq!(below.trigger_price, UsdPrice::new_int(45_000));
+    }
+
+    /// Market sell with TP/SL → short position gets below (TP) and above (SL).
+    #[test]
+    fn co2_market_sell_applies_tp_sl() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+        place_bid(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let mut ts = taker_state(&ctx.storage);
+
+        let (..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState::default(),
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(-10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            make_tp(45_000),
+            make_sl(55_000),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        let pos = ts.positions.get(&pair_id()).unwrap();
+        assert!(pos.size.is_negative(), "should be short");
+
+        // TP → Below for short
+        let below = pos.conditional_order_below.as_ref().unwrap();
+        assert_eq!(below.trigger_price, UsdPrice::new_int(45_000));
+
+        // SL → Above for short
+        let above = pos.conditional_order_above.as_ref().unwrap();
+        assert_eq!(above.trigger_price, UsdPrice::new_int(55_000));
+    }
+
+    /// Market order that fully closes position → TP/SL dropped (position gone).
+    #[test]
+    fn co3_ignored_on_full_close() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+
+        // Give taker an existing long position.
+        let mut ts = taker_state(&ctx.storage);
+        ts.positions.insert(pair_id(), Position {
+            size: Quantity::new_int(10),
+            entry_price: UsdPrice::new_int(50_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
+        });
+        USER_STATES.save(&mut ctx.storage, TAKER, &ts).unwrap();
+
+        // Place bid to absorb the sell.
+        place_bid(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        // Sell 10 (closes the long). TP/SL should be dropped.
+        let mut pair_state = PairState {
+            long_oi: Quantity::new_int(10),
+            ..Default::default()
+        };
+
+        let mut ts = taker_state(&ctx.storage);
+
+        let (..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut pair_state,
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(-10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            make_tp(45_000),
+            make_sl(55_000),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        assert!(
+            !ts.positions.contains_key(&pair_id()),
+            "position should be closed"
+        );
+    }
+
+    /// Order with only TP (no SL) → above is set, below is cleared.
+    #[test]
+    fn co4_tp_only_clears_sl() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let mut ts = taker_state(&ctx.storage);
+
+        let (..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState::default(),
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            make_tp(55_000),
+            None, // no SL
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        let pos = ts.positions.get(&pair_id()).unwrap();
+        assert!(pos.conditional_order_above.is_some(), "TP should be set");
+        assert!(pos.conditional_order_below.is_none(), "SL should be None");
+    }
+
+    /// Limit order partially fills → TP/SL applied to position AND stored on
+    /// resting order.
+    #[test]
+    fn co5_limit_partial_fill_applies_and_rests() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+
+        // Only 5 available on the ask side, taker wants 10.
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 5, 100);
+
+        let mut ts = taker_state(&ctx.storage);
+
+        let (_, _, order_to_store, ..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState::default(),
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(50_000),
+                post_only: false,
+            },
+            false,
+            make_tp(55_000),
+            make_sl(45_000),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Position should have TP/SL from partial fill.
+        let pos = ts.positions.get(&pair_id()).unwrap();
+        assert!(pos.conditional_order_above.is_some());
+        assert!(pos.conditional_order_below.is_some());
+
+        // Resting order should also carry TP/SL.
+        let (_, _, resting_order) = order_to_store.expect("should have resting order");
+        assert!(resting_order.tp.is_some());
+        assert!(resting_order.sl.is_some());
+    }
+
+    /// Limit order doesn't fill at all → TP/SL NOT applied to any existing
+    /// position, only stored on the resting order.
+    #[test]
+    fn co6_no_fill_limit_not_applied() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+
+        // Give taker an existing long with no conditional orders.
+        let mut ts = taker_state(&ctx.storage);
+        ts.positions.insert(pair_id(), Position {
+            size: Quantity::new_int(5),
+            entry_price: UsdPrice::new_int(50_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
+        });
+        USER_STATES.save(&mut ctx.storage, TAKER, &ts).unwrap();
+
+        // Place a buy limit at 49_000 — no asks below that so nothing fills.
+        let mut ts = taker_state(&ctx.storage);
+
+        let (_, _, order_to_store, ..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState::default(),
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                post_only: false,
+            },
+            false,
+            make_tp(55_000),
+            make_sl(45_000),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Position should NOT have conditional orders (no fills).
+        let pos = ts.positions.get(&pair_id()).unwrap();
+        assert!(pos.conditional_order_above.is_none());
+        assert!(pos.conditional_order_below.is_none());
+
+        // Resting order carries TP/SL for later.
+        let (_, _, resting_order) = order_to_store.expect("should have resting order");
+        assert!(resting_order.tp.is_some());
+        assert!(resting_order.sl.is_some());
+    }
+
+    /// Maker's resting limit order with TP/SL gets filled → TP/SL applied to
+    /// maker's resulting position.
+    #[test]
+    fn co7_maker_fill_applies_tp_sl() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+
+        // Place a maker ask with TP/SL child orders.
+        let key = (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100));
+        let order = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_int(-10),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(25_000),
+            created_at: Timestamp::from_nanos(0),
+            tp: make_tp(45_000),
+            sl: make_sl(55_000),
+        };
+        ASKS.save(&mut ctx.storage, key, &order).unwrap();
+
+        let maker_a_state = UserState {
+            margin: LARGE_COLLATERAL,
+            open_order_count: 1,
+            reserved_margin: UsdValue::new_int(25_000),
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &maker_a_state)
+            .unwrap();
+
+        // Taker buys 10 → fills maker's ask.
+        let (maker_states, ..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState::default(),
+            &mut taker_state(&ctx.storage),
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Maker should have a short position with TP/SL.
+        let maker_state = maker_states.get(&MAKER_A).unwrap();
+        let pos = maker_state.positions.get(&pair_id()).unwrap();
+        assert!(pos.size.is_negative(), "maker should be short");
+
+        // For shorts: TP → Below, SL → Above
+        let below = pos.conditional_order_below.as_ref().unwrap();
+        assert_eq!(below.trigger_price, UsdPrice::new_int(45_000));
+
+        let above = pos.conditional_order_above.as_ref().unwrap();
+        assert_eq!(above.trigger_price, UsdPrice::new_int(55_000));
+    }
+
+    /// Verify next_order_id is incremented correctly: taker order + child orders.
+    #[test]
+    fn co8_order_id_incremented() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let mut ts = taker_state(&ctx.storage);
+
+        let (_, _, _, next_order_id, ..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState::default(),
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            make_tp(55_000),
+            make_sl(45_000),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // ID 1 = taker order, ID 2 = TP child, ID 3 = SL child → next = 4
+        assert_eq!(next_order_id, OrderId::new(4));
+    }
+
+    /// Position has existing conditional orders → new order with child orders
+    /// overwrites both.
+    #[test]
+    fn co9_overwrites_existing_conditional_orders() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+
+        // Give taker a long position with existing TP/SL.
+        let mut ts = taker_state(&ctx.storage);
+        ts.positions.insert(pair_id(), Position {
+            size: Quantity::new_int(5),
+            entry_price: UsdPrice::new_int(50_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: Some(ConditionalOrder {
+                order_id: Uint64::new(99),
+                size: None,
+                trigger_price: UsdPrice::new_int(60_000),
+                max_slippage: Dimensionless::new_percent(1),
+            }),
+            conditional_order_below: Some(ConditionalOrder {
+                order_id: Uint64::new(98),
+                size: None,
+                trigger_price: UsdPrice::new_int(40_000),
+                max_slippage: Dimensionless::new_percent(2),
+            }),
+        });
+        USER_STATES.save(&mut ctx.storage, TAKER, &ts).unwrap();
+
+        // Buy more with different TP/SL.
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 5, 100);
+
+        let mut ts = taker_state(&ctx.storage);
+
+        let (..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState {
+                long_oi: Quantity::new_int(5),
+                ..Default::default()
+            },
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(5),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            make_tp(58_000), // different from existing 60k
+            make_sl(42_000), // different from existing 40k
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        let pos = ts.positions.get(&pair_id()).unwrap();
+
+        let above = pos.conditional_order_above.as_ref().unwrap();
+        assert_eq!(above.trigger_price, UsdPrice::new_int(58_000));
+        assert_ne!(above.order_id, Uint64::new(99)); // new ID
+
+        let below = pos.conditional_order_below.as_ref().unwrap();
+        assert_eq!(below.trigger_price, UsdPrice::new_int(42_000));
+        assert_ne!(below.order_id, Uint64::new(98)); // new ID
+    }
+
+    /// Helper: load taker state (returns default if missing).
+    fn taker_state(storage: &dyn Storage) -> UserState {
+        USER_STATES
+            .may_load(storage, TAKER)
+            .unwrap()
+            .unwrap_or_default()
+    }
+
+    fn setup_taker(storage: &mut dyn Storage, margin: UsdValue) {
+        let ts = UserState {
+            margin,
+            ..Default::default()
+        };
+        USER_STATES.save(storage, TAKER, &ts).unwrap();
     }
 }

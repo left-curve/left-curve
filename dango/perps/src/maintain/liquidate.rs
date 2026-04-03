@@ -11,7 +11,10 @@ use {
         },
         price::may_invert_price,
         querier::NoCachePerpQuerier,
-        state::{ASKS, BIDS, LONGS, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE, USER_STATES},
+        state::{
+            ASKS, BIDS, LONGS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE,
+            USER_STATES,
+        },
         trade::{_cancel_all_orders, match_order, settle_fill, settle_pnls},
         volume::flush_volumes,
     },
@@ -451,6 +454,8 @@ fn execute_close_schedule(
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
 )> {
+    let mut next_order_id = NEXT_ORDER_ID.load(storage)?;
+
     // Zero-fee param for liquidation fills.
     let liq_param = Param {
         maker_fee_rates: RateSchedule::default(),
@@ -490,6 +495,7 @@ fn execute_close_schedule(
             maker_states,
             target_price,
             *close_size,
+            &mut next_order_id,
             events,
         )?;
 
@@ -826,6 +832,7 @@ mod tests {
     ) {
         PARAM.save(storage, param).unwrap();
         STATE.save(storage, &State::default()).unwrap();
+        NEXT_ORDER_ID.save(storage, &OrderId::ONE).unwrap();
 
         for (pair_id, pair_param, pair_state) in pairs {
             PAIR_PARAMS.save(storage, pair_id, pair_param).unwrap();
@@ -884,6 +891,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
             created_at: Timestamp::ZERO,
+            tp: None,
+            sl: None,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -905,6 +914,8 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
             created_at: Timestamp::ZERO,
+            tp: None,
+            sl: None,
         };
         ASKS.save(storage, key, &order).unwrap();
     }
