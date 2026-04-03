@@ -31,6 +31,7 @@ export const Modals = {
   PerpsCloseAll: "perps-close-all",
   PerpsClosePosition: "perps-close-position",
   ActivateAccount: "activate-account",
+  OatCheckResult: "oat-check-result",
 };
 
 export type ModalRef = {

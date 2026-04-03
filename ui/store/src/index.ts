@@ -285,6 +285,8 @@ export {
 export {
   type UseOatsParameters,
   type OATStatus,
+  type OATType,
+  FALLBACK_CAMPAIGN_MAP,
   useOats,
 } from "./hooks/useOats.js";
 
@@ -303,6 +305,7 @@ export {
   type EpochInfo,
   type EpochInfoNotStarted,
   type EpochInfoActive,
+  type OatCheckEntry,
   fetchUserStats,
   fetchEpochPoints,
   fetchLeaderboard,

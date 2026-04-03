@@ -127,10 +127,16 @@ export const registerOat = async (
   return res.json();
 };
 
+export type OatCheckEntry = {
+  collection_id: number;
+  token_id: string;
+  maybe_username: { index: number } | null;
+};
+
 export const checkOat = async (
   baseUrl: string,
   evmAddress: string,
-): Promise<Record<number, string>> => {
+): Promise<OatCheckEntry[]> => {
   const res = await fetch(`${baseUrl}/oat/check/${evmAddress}`);
   if (!res.ok) throw new Error(`Failed to check OAT: ${res.status}`);
   return res.json();

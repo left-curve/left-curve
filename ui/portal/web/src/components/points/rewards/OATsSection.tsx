@@ -2,7 +2,7 @@ import { Button, toast, useMediaQuery } from "@left-curve/applets-kit";
 import { Modals, useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { withResolvers } from "@left-curve/dango/utils";
-import { useAccount, useConnectors, useRegisterOat } from "@left-curve/store";
+import { checkOat, useAccount, useConnectors, useRegisterOat } from "@left-curve/store";
 import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
 import { useState } from "react";
@@ -53,14 +53,14 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
     setIsLinking(true);
 
     try {
-      const { promise, resolve: onWalletSelect, reject: onReject } = withResolvers<string>();
+      const { promise: walletPromise, resolve: onWalletSelect, reject: onReject } = withResolvers<string>();
 
       showModal(Modals.WalletSelector, {
         onWalletSelect,
         onReject,
       });
 
-      const walletId = await promise;
+      const walletId = await walletPromise;
       const connector = connectors.find((c) => c.id === walletId);
       if (!connector) {
         onReject();
@@ -70,7 +70,31 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
       const provider = await (
         connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
       ).getProvider();
-      await provider.request({ method: "eth_requestAccounts" });
+      const accounts = await provider.request({ method: "eth_requestAccounts" });
+      const evmAddress = (accounts[0] as string).toLowerCase();
+
+      // Check OAT availability before signing
+      const entries = await checkOat(pointsUrl, evmAddress);
+
+      if (entries.length === 0) {
+        toast.error({
+          title: m["points.boosters.toast.errorTitle"](),
+          description: m["modals.oatCheckResult.noOats"](),
+        });
+        return;
+      }
+
+      // Show check results and wait for user confirmation
+      const { promise: confirmPromise, resolve: onConfirm, reject: onConfirmReject } = withResolvers<void>();
+
+      showModal(Modals.OatCheckResult, {
+        entries,
+        currentUserIndex: userIndex,
+        onConfirm,
+        onReject: onConfirmReject,
+      });
+
+      await confirmPromise;
 
       await registerOat(walletId);
     } catch (error) {

@@ -247,6 +247,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.OatCheckResult]: {
+    component: lazy(() =>
+      import("./OatCheckResult").then(({ OatCheckResult }) => ({
+        default: OatCheckResult,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {

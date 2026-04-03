@@ -3,11 +3,11 @@ import { useMemo } from "react";
 
 import { fetchCampaigns, fetchUserOats } from "./pointsApi.js";
 
-type OATType = "supporter" | "wizard" | "trader" | "hurrah";
+export type OATType = "supporter" | "wizard" | "trader" | "hurrah";
 
 const OAT_ORDER: OATType[] = ["supporter", "wizard", "trader", "hurrah"];
 
-const FALLBACK_CAMPAIGN_MAP: Record<number, OATType> = {
+export const FALLBACK_CAMPAIGN_MAP: Record<number, OATType> = {
   1: "supporter",
   2: "wizard",
   3: "trader",

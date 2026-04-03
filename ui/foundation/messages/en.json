@@ -390,6 +390,15 @@
       "title": "Close Order",
       "description": "This will close the order.",
       "action": "Confirm Close Order"
+    },
+    "oatCheckResult": {
+      "title": "Available OATs",
+      "available": "Available",
+      "linkedToUser": "Linked to user {index}",
+      "linkedToYou": "Already linked",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "noOats": "No OATs found for this wallet."
     }
   },
   "signin": {
