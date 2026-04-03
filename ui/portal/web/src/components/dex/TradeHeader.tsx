@@ -117,7 +117,7 @@ export const TradeHeader: React.FC = () => {
                 kind="volume24h"
                 value={pairStats.data?.volume24H}
                 formatOptions={{ maximumTotalDigits: 5 }}
-                className="diatype-sm-bold text-center"
+                className="diatype-xs-medium text-center"
               />
             </div>
             {mode === "perps" && perpsPairId && (
@@ -144,7 +144,7 @@ const HeaderPrice: React.FC = () => {
       <p className="diatype-xs-medium text-ink-tertiary-500">{m["dex.protrade.history.price"]()}</p>
       <p
         className={twMerge(
-          "diatype-sm-bold text-ink-secondary-700",
+          "diatype-xs-medium text-ink-secondary-700",
           currentPrice && previousPrice
             ? Decimal(previousPrice).lte(currentPrice)
               ? "text-status-success"
@@ -218,7 +218,7 @@ const Header24hChange: React.FC<Header24hChangeProps> = ({
       <p className="diatype-xs-medium text-ink-tertiary-500">
         {m["dex.protrade.spot.24hChange"]()}
       </p>
-      <p className={twMerge("diatype-sm-bold tabular-nums lining-nums", colorClass)}>
+      <p className={twMerge("diatype-xs-medium", colorClass)}>
         {formattedAbsoluteChange && formattedPercentage
           ? `${formattedAbsoluteChange} / ${formattedPercentage}`
           : formattedPercentage ?? "-"}

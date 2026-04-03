@@ -74,7 +74,7 @@ export const OpenInterestDisplay: React.FC<OpenInterestDisplayProps> = ({ pairId
       <div className="flex items-center gap-1">
         <p
           className={twMerge(
-            "diatype-sm-bold tabular-nums lining-nums",
+            "diatype-xs-medium",
             isAtLimit ? "text-status-fail" : "text-ink-secondary-700",
           )}
         >

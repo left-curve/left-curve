@@ -84,7 +84,7 @@ export const FundingCountdown: React.FC<FundingCountdownProps> = ({ pairId }) =>
       <div className="flex items-center gap-2">
         <span
           className={twMerge(
-            "diatype-sm-bold tabular-nums lining-nums",
+            "diatype-xs-medium",
             dailyRate === null
               ? "text-ink-secondary-700"
               : isPositive
@@ -94,7 +94,7 @@ export const FundingCountdown: React.FC<FundingCountdownProps> = ({ pairId }) =>
         >
           {formattedRate}
         </span>
-        <span className="diatype-sm-bold tabular-nums lining-nums text-ink-secondary-700">
+        <span className="diatype-xs-medium text-ink-secondary-700">
           {formattedCountdown}
         </span>
       </div>
