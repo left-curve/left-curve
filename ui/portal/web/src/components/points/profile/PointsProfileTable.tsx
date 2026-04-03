@@ -21,8 +21,17 @@ type SortDir = "asc" | "desc";
 const formatEpochDateRange = (startedAt: string, endedAt: string): string => {
   const start = new Date(Number.parseFloat(startedAt) * 1000);
   const end = new Date(Number.parseFloat(endedAt) * 1000);
-  const opts: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", year: "numeric" };
-  return `${start.toLocaleDateString("en-US", opts)} - ${end.toLocaleDateString("en-US", opts)}`;
+  const dateOpts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  const timeOpts: Intl.DateTimeFormatOptions = {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  };
+  const startDate = start.toLocaleDateString("en-US", dateOpts);
+  const startTime = start.toLocaleTimeString("en-US", timeOpts);
+  const endDate = end.toLocaleDateString("en-US", dateOpts);
+  const endTime = end.toLocaleTimeString("en-US", timeOpts);
+  return `${startDate} · ${startTime} – ${endDate} · ${endTime}`;
 };
 
 const PAGE_SIZE = 10;
@@ -157,7 +166,9 @@ export const PointsProfileTable: React.FC = () => {
           ) : null}
           {allRows.length === 0 && (
             <div className="px-6 py-4 flex items-center justify-center">
-              <Button onClick={() => navigate({ to: "/trade" })}>{m["points.profile.getStarted"]()}</Button>
+              <Button onClick={() => navigate({ to: "/trade" })}>
+                {m["points.profile.getStarted"]()}
+              </Button>
             </div>
           )}
         </div>
