@@ -10,6 +10,12 @@ export type UserStats = {
   volume: string;
 };
 
+export type EpochUserStats = {
+  stats: UserStats;
+  started_at: string;
+  ended_at: string;
+};
+
 export type LeaderboardEntry = {
   user_index: number;
   username: string | null;
@@ -45,7 +51,7 @@ export const fetchEpochPoints = async (
   baseUrl: string,
   userIndex: number,
   params?: { min?: number; max?: number },
-): Promise<Record<string, UserStats>> => {
+): Promise<Record<string, EpochUserStats>> => {
   const url = new URL(`${baseUrl}/stats/user/${userIndex}/epochs`);
   if (params?.min !== undefined) url.searchParams.set("min", String(params.min));
   if (params?.max !== undefined) url.searchParams.set("max", String(params.max));
@@ -127,5 +133,24 @@ export const checkOat = async (
 ): Promise<Record<number, string>> => {
   const res = await fetch(`${baseUrl}/oat/check/${evmAddress}`);
   if (!res.ok) throw new Error(`Failed to check OAT: ${res.status}`);
+  return res.json();
+};
+
+export type EpochInfoNotStarted = {
+  status: "not_started";
+  starts_at: { Block: number } | { Timestamp: string };
+};
+
+export type EpochInfoActive = {
+  status: "active";
+  current_epoch: number;
+  remaining: string;
+};
+
+export type EpochInfo = EpochInfoNotStarted | EpochInfoActive;
+
+export const fetchCurrentEpoch = async (baseUrl: string): Promise<EpochInfo> => {
+  const res = await fetch(`${baseUrl}/event/epoch`);
+  if (!res.ok) throw new Error(`Failed to fetch current epoch: ${res.status}`);
   return res.json();
 };
