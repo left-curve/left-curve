@@ -443,6 +443,7 @@ pub(crate) fn _submit_order(
     if had_fills
         && (tp.is_some() || sl.is_some())
         && let Some(position) = taker_state.positions.get_mut(pair_id)
+        && position.size.is_positive() == size.is_positive()
     {
         let (above, below) = map_child_orders(position.size, &tp, &sl, &mut next_order_id)?;
         position.conditional_order_above = above;
@@ -681,6 +682,7 @@ pub fn match_order(
 
         if (maker_order.tp.is_some() || maker_order.sl.is_some())
             && let Some(maker_pos) = maker_state.positions.get_mut(pair_id)
+            && maker_pos.size.is_positive() == maker_order.size.is_positive()
         {
             let (above, below) = map_child_orders(
                 maker_pos.size,
@@ -4186,6 +4188,168 @@ mod tests {
         let below = pos.conditional_order_below.as_ref().unwrap();
         assert_eq!(below.trigger_price, UsdPrice::new_int(42_000));
         assert_ne!(below.order_id, Uint64::new(98)); // new ID
+    }
+
+    /// Taker has a short position but submits a buy with TP/SL (intended for
+    /// long). Buy partially closes the short but doesn't flip it → direction
+    /// mismatch → TP/SL dropped.
+    ///
+    /// Wrong behavior: applying TP/SL to the short position, which would
+    /// place trigger prices in nonsensical slots (e.g., TP @ $55k as a Below
+    /// trigger on a short would fire immediately).
+    #[test]
+    fn co10_taker_child_order_dropped_on_direction_mismatch() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        // Taker starts with a short position of -10.
+        let ts = UserState {
+            margin: LARGE_COLLATERAL,
+            positions: {
+                let mut p = BTreeMap::new();
+                p.insert(pair_id(), Position {
+                    size: Quantity::new_int(-10),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                });
+                p
+            },
+            ..Default::default()
+        };
+        USER_STATES.save(&mut ctx.storage, TAKER, &ts).unwrap();
+
+        // Place ask to fill the taker's buy.
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 5, 100);
+
+        let mut ts = taker_state(&ctx.storage);
+
+        // Buy 5 with TP/SL intended for a long.
+        let (..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState {
+                short_oi: Quantity::new_int(10),
+                ..Default::default()
+            },
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(5), // buy
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            make_tp(55_000),
+            make_sl(45_000),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Position is still short (-5) → direction mismatch → TP/SL NOT applied.
+        let pos = ts.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(-5));
+        assert!(pos.conditional_order_above.is_none());
+        assert!(pos.conditional_order_below.is_none());
+    }
+
+    /// Maker's resting bid (buy) has TP/SL, but maker's position flipped to
+    /// short before this fill. The bid partially closes the short but doesn't
+    /// flip it → direction mismatch → TP/SL dropped on maker's position.
+    #[test]
+    fn co11_maker_child_order_dropped_on_direction_mismatch() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+
+        // Maker_A has a short position of -10 (was long, got flipped).
+        let maker_a_state = UserState {
+            margin: LARGE_COLLATERAL,
+            open_order_count: 1,
+            reserved_margin: UsdValue::new_int(12_500),
+            positions: {
+                let mut p = BTreeMap::new();
+                p.insert(pair_id(), Position {
+                    size: Quantity::new_int(-10),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                });
+                p
+            },
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &maker_a_state)
+            .unwrap();
+
+        // Maker_A's resting bid (buy 5) with TP/SL intended for a long.
+        let inverted_price = !UsdPrice::new_int(50_000);
+        let key = (pair_id(), inverted_price, Uint64::new(100));
+        let order = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_int(5),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(12_500),
+            created_at: Timestamp::from_nanos(0),
+            tp: make_tp(55_000),
+            sl: make_sl(45_000),
+        };
+        BIDS.save(&mut ctx.storage, key, &order).unwrap();
+
+        // Taker sells 5 → fills Maker_A's bid.
+        let mut ts = taker_state(&ctx.storage);
+
+        let (maker_states, ..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut test_oracle_querier(),
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState {
+                short_oi: Quantity::new_int(10),
+                ..Default::default()
+            },
+            &mut ts,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(-5), // sell
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Maker_A bought 5, reducing short from -10 to -5. Still short →
+        // direction mismatch → TP/SL NOT applied.
+        let maker_state = maker_states.get(&MAKER_A).unwrap();
+        let pos = maker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(-5));
+        assert!(pos.conditional_order_above.is_none());
+        assert!(pos.conditional_order_below.is_none());
     }
 
     /// Helper: load taker state (returns default if missing).
