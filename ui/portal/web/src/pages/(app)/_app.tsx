@@ -8,7 +8,7 @@ import { NotFound } from "~/components/foundation/NotFound";
 import { StatusBadge } from "~/components/foundation/StatusBadge";
 import { TestnetBanner } from "~/components/foundation/TestnetBanner";
 
-import { z } from "zod";
+import { effect, z } from "zod";
 
 export const Route = createFileRoute("/(app)/_app")({
   validateSearch: z.object({
@@ -87,13 +87,12 @@ function LayoutApp() {
     }
   }, []);
 
+  const headerThreshold = isProSwap ? 1 : 70;
+
   useEffect(() => {
     const handleScroll = () => {
-      const headerThreshold = isProSwap ? 20 : 70;
-
       const scrollTop =
         window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-
       setIsScrolled(scrollTop > headerThreshold);
     };
 
@@ -106,7 +105,7 @@ function LayoutApp() {
   const isHomePage = location.pathname === "/";
   const lockedY = Number(document.body.dataset.scrollLockY || 0);
 
-  const effectiveIsScrolled = isSidebarVisible ? lockedY > (isProSwap ? 20 : 70) : isScrolled;
+  const effectiveIsScrolled = isSidebarVisible ? lockedY > headerThreshold : isScrolled;
 
   return (
     <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-surface-primary-rice text-ink-secondary-700">
