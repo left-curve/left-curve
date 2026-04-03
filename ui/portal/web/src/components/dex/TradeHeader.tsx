@@ -119,7 +119,7 @@ export const TradeHeader: React.FC = () => {
               <PairStatValue
                 kind="volume24h"
                 value={pairStats.data?.volume24H}
-                formatOptions={{ maximumTotalDigits: 10 }}
+                formatOptions={{ maximumTotalDigits: 5 }}
                 className="diatype-sm-bold text-center"
               />
             </div>
