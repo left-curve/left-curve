@@ -44,6 +44,7 @@ export async function refreshAccounts<config extends Config>(
 
     return {
       ...x,
+      user: x.user ? { ...x.user, username: user.name } : undefined,
       connectors: new Map(x.connectors).set(connectorUId, {
         ...connector,
         accounts: updatedAccounts,

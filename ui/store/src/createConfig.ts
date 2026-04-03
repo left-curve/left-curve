@@ -68,7 +68,7 @@ export function createConfig<
   });
 
   function getUserIndex(): number | undefined {
-    return store.getState().userIndex;
+    return store.getState().user?.index;
   }
 
   function setup(connectorFn: CreateConnectorFn): Connector {
@@ -119,8 +119,7 @@ export function createConfig<
       chainId: rest.chain.id,
       connectors: new Map(),
       current: null,
-      userIndex: undefined,
-      userStatus: undefined,
+      user: undefined,
       status: ConnectionStatus.Disconnected,
     };
   }
@@ -131,25 +130,37 @@ export function createConfig<
         version,
         storage,
         migrate(state, savedVersion) {
-          const persistedState = state as State;
-          if (version === savedVersion) return persistedState;
+          if (version === savedVersion) return state as State;
 
+          const persisted = state as Record<string, unknown>;
           const initialState = getInitialState();
-          return { ...initialState };
+
+          // v1 → v2: migrate { userIndex, userStatus } to { user: { index } }
+          if (savedVersion === 1 && persisted) {
+            const userIndex = persisted.userIndex as number | undefined;
+            return {
+              ...initialState,
+              current: (persisted.current as State["current"]) ?? null,
+              connectors: (persisted.connectors as State["connectors"]) ?? new Map(),
+              user: userIndex !== undefined ? { index: userIndex } : undefined,
+            } as State;
+          }
+
+          return initialState;
         },
         partialize(state) {
-          const { chainId, connectors, status, current, userIndex, userStatus } = state;
+          const { chainId, connectors, status, current, user } = state;
           return {
             chainId,
             status,
             current,
-            userStatus,
-            userIndex,
+            user: user ? { index: user.index } : undefined,
             connectors: new Map(
               Array.from(connectors.entries()).map(([key, connection]) => {
                 const { id, name, type, uid } = connection.connector;
                 const connector = { id, name, type, uid };
-                return [key, { ...connection, connector }];
+                const { accounts: _, ...rest } = connection;
+                return [key, { ...rest, connector }];
               }),
             ),
           };
@@ -212,6 +223,11 @@ export function createConfig<
 
       return {
         ...x,
+        user: {
+          index: data.userIndex,
+          username: data.username,
+          status: data.userStatus,
+        },
         connectors: new Map(x.connectors).set(uid, {
           keyHash: data.keyHash,
           accounts: data.accounts ?? connection.accounts,
@@ -241,8 +257,11 @@ export function createConfig<
       return {
         ...x,
         current: data.uid,
-        userStatus: data.userStatus,
-        userIndex: data.userIndex,
+        user: {
+          index: data.userIndex,
+          username: data.username,
+          status: data.userStatus,
+        },
         connectors: new Map(x.connectors).set(data.uid, {
           keyHash: data.keyHash,
           account: data.accounts[0],
@@ -282,8 +301,7 @@ export function createConfig<
           ...x,
           connectors: new Map(),
           current: null,
-          userIndex: undefined,
-          userStatus: undefined,
+          user: undefined,
           status: ConnectionStatus.Disconnected,
         };
       }

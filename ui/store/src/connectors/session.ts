@@ -65,6 +65,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
           userIndex,
           keyHash: session.keyHash,
           userStatus,
+          username: user.name,
         });
       },
       async disconnect() {

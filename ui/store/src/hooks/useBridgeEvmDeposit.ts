@@ -7,7 +7,12 @@ import { useSubmitTx } from "./useSubmitTx.js";
 
 import { parseUnits } from "@left-curve/dango/utils";
 
-import { ERC20_ABI, HYPERLANE_ROUTER_ABI, toAddr32 } from "@left-curve/dango/hyperlane";
+import {
+  ERC20_ABI,
+  HYPERLANE_ROUTER_ABI,
+  INFURA_URLS,
+  toAddr32,
+} from "@left-curve/dango/hyperlane";
 
 import type { Connector } from "../types/connector.js";
 import type { Chain as ViemChain } from "viem";
@@ -39,7 +44,7 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
 
   const publicClient = createPublicClient({
     chain: chain as ViemChain,
-    transport: http(),
+    transport: http(INFURA_URLS[chain.id]),
   });
 
   const wallet = useQuery({

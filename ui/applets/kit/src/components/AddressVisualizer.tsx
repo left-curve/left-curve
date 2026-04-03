@@ -49,7 +49,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
 }) => {
   const { data: config } = useAppConfig();
   const { chain } = useConfig();
-  const { accounts } = useAccount();
+  const { accounts, username: currentUsername } = useAccount();
   const client = usePublicClient();
 
   const blockExplorer = chain.blockExplorer;
@@ -76,8 +76,8 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
       if (userAccount) {
         return {
           account: {
-            name: userAccount.username
-              ? `${userAccount.username} #${userAccount.index}`
+            name: currentUsername
+              ? `${currentUsername} #${userAccount.index}`
               : `Account #${userAccount.index}`,
             type: "own",
           },

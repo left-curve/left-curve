@@ -62,7 +62,7 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
   const [screen, setScreen] = useState<AddKeyScreen>("options");
   const [email, setEmail] = useState("");
   const connectors = useConnectors();
-  const { account, userIndex } = useAccount();
+  const { account, username, userIndex } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { hideModal, toast } = useApp();
 
@@ -96,7 +96,7 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
 
   const { mutateAsync: submitKey, isPending: isAddingKey } = useSubmitTx({
     mutation: {
-      invalidateKeys: [["user_keys"], ["quests", account?.username]],
+      invalidateKeys: [["user_keys"], ["quests", username]],
       mutationFn: async (connectorId: string) => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("Connector not found");
@@ -124,7 +124,7 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
 
   const { mutateAsync: linkEmailKey, isPending: isLinkingEmailKey } = useSubmitTx({
     mutation: {
-      invalidateKeys: [["user_keys"], ["quests", account?.username]],
+      invalidateKeys: [["user_keys"], ["quests", username]],
       mutationFn: async () => {
         const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
         if (!connector) throw new Error("Privy connector not found");

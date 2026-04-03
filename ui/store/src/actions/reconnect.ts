@@ -2,7 +2,7 @@ import { toAccount } from "@left-curve/dango";
 import { getAccountStatus, getUser } from "@left-curve/dango/actions";
 
 import type { Address } from "@left-curve/dango/types";
-import { type Config, ConnectionStatus } from "../types/store.js";
+import { type Config, ConnectionStatus, type StoreUser } from "../types/store.js";
 
 export type ReconnectReturnType = void;
 
@@ -25,10 +25,10 @@ export async function reconnect<config extends Config>(
 
   let current = config.state.current;
 
-  const user = config.state.userIndex
-    ? await getUser(client, { userIndexOrName: { index: config.state.userIndex } }).catch(
-        () => undefined,
-      )
+  const userIndex = config.state.user?.index;
+
+  const user = userIndex
+    ? await getUser(client, { userIndexOrName: { index: userIndex } }).catch(() => undefined)
     : undefined;
 
   const accounts = user
@@ -55,9 +55,10 @@ export async function reconnect<config extends Config>(
       connector.emitter.off("connect", config._internal.events.connect);
       connector.emitter.on("change", config._internal.events.change);
       connector.emitter.on("disconnect", config._internal.events.disconnect);
+
       connectors.set(connector.uid, {
         keyHash,
-        account,
+        account: accounts?.find((a) => a.address === account.address) || accounts?.[0],
         chainId,
         accounts,
         connector,
@@ -69,11 +70,20 @@ export async function reconnect<config extends Config>(
     ? await getAccountStatus(client, { address: accounts[0].address }).catch(() => undefined)
     : undefined;
 
+  const userState: StoreUser | undefined =
+    userIndex !== undefined
+      ? {
+          index: userIndex,
+          username: user?.name ?? `User #${userIndex}`,
+          status: userStatus,
+        }
+      : undefined;
+
   config.setState((x) => ({
     ...x,
     connectors,
     current,
-    userStatus,
+    user: userState,
     status: connectors.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
   }));
 

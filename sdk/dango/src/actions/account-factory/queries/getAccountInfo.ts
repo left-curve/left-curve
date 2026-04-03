@@ -2,14 +2,14 @@ import { getAction, getAppConfig, queryWasmSmart } from "@left-curve/sdk/actions
 import { getUser } from "./getUser.js";
 
 import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
-import type { Account, AccountInfo, AppConfig } from "../../../types/index.js";
+import type { AccountDetails, AccountInfo, AppConfig } from "../../../types/index.js";
 
 export type GetAccountInfoParameters = {
   address: Address;
   height?: number;
 };
 
-export type GetAccountInfoReturnType = Promise<Account | null>;
+export type GetAccountInfoReturnType = Promise<AccountDetails | null>;
 
 /**
  * Given an account address get the account info.
