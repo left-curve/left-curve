@@ -4352,6 +4352,75 @@ mod tests {
         assert!(pos.conditional_order_below.is_none());
     }
 
+    /// Fill price is below the SL trigger price — the SL condition is already
+    /// met at fill time. The SL is still applied; the cron will trigger it on
+    /// the next tick.
+    ///
+    /// This is correct: the user said "close if price < $49k", and the fill
+    /// happened at $48k which is already below $49k. Applying the SL (and
+    /// letting the cron close it) is consistent with the user's stated intent.
+    ///
+    /// Wrong behavior: silently dropping the SL because the condition is
+    /// already met — this would remove protection the user explicitly
+    /// requested.
+    #[test]
+    fn co12_child_order_applied_even_when_fill_price_below_sl() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
+
+        // Resting ask at $48k — the fill will happen at this price.
+        place_ask(&mut ctx.storage, MAKER_A, 48_000, 10, 100);
+
+        let mut ts = taker_state(&ctx.storage);
+
+        // Oracle at $48k (matches the fill price).
+        let mut oracle = OracleQuerier::new_mock(hash_map! {
+            pair_id() => PrecisionedPrice::new(
+                Udec128::new_percent(4_800_000), // $48,000
+                Timestamp::from_seconds(0),
+                8,
+            ),
+        });
+
+        // Market buy 10 with SL @ $49k. The fill price ($48k) is below the
+        // SL trigger ($49k), so the SL condition is already met.
+        let (..) = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::from_seconds(0),
+            &mut oracle,
+            &test_param(),
+            &mut State::default(),
+            &pair_id(),
+            &test_pair_param(),
+            &mut PairState::default(),
+            &mut ts,
+            UsdPrice::new_int(48_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            make_sl(49_000),
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        let pos = ts.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.entry_price, UsdPrice::new_int(48_000));
+
+        // SL is applied even though the trigger condition is already met.
+        let below = pos.conditional_order_below.as_ref().unwrap();
+        assert_eq!(below.trigger_price, UsdPrice::new_int(49_000));
+    }
+
     /// Helper: load taker state (returns default if missing).
     fn taker_state(storage: &dyn Storage) -> UserState {
         USER_STATES
