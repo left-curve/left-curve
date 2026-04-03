@@ -1,6 +1,7 @@
 #[cfg(feature = "metrics")]
 use {
     crate::{core::compute_user_equity, querier::NoCachePerpQuerier},
+    grug::Inner,
     std::time::Instant,
 };
 use {
@@ -628,7 +629,7 @@ pub fn emit_cron_metrics(
     metrics::gauge!(crate::metrics::LABEL_VAULT_MARGIN).set(vault_state.margin.to_f64());
 
     metrics::gauge!(crate::metrics::LABEL_VAULT_SHARE_SUPPLY)
-        .set(state.vault_share_supply.u128() as f64);
+        .set(state.vault_share_supply.into_inner() as f64);
 
     metrics::gauge!(crate::metrics::LABEL_INSURANCE_FUND).set(state.insurance_fund.to_f64());
 
