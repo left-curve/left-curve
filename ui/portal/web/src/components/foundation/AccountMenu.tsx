@@ -308,18 +308,6 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           </Tab>
         </Tabs>
       </div>
-      {activeTab === "wallet" && (
-        <div className="px-4 py-0 w-full">
-          <Button
-            variant="secondary"
-            size="md"
-            fullWidth
-            onClick={() => [navigate({ to: "/transfer", search: { action: "spot-perp" } }), setSidebarVisibility(false)]}
-          >
-            {m["accountMenu.spotPerp"]()}
-          </Button>
-        </div>
-      )}
       <motion.div
         key={activeTab}
         className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full min-h-0"
@@ -327,7 +315,24 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
       >
-        {activeTab === "wallet" ? <WalletTab /> : null}
+        {activeTab === "wallet" && (
+          <>
+            <div className="px-4 pb-4 w-full">
+              <Button
+                variant="secondary"
+                size="md"
+                fullWidth
+                onClick={() => [
+                  navigate({ to: "/transfer", search: { action: "spot-perp" } }),
+                  setSidebarVisibility(false),
+                ]}
+              >
+                {m["accountMenu.spotPerp"]()}
+              </Button>
+            </div>
+            <WalletTab />
+          </>
+        )}
         {activeTab === "activities" ? <ActivityTab /> : null}
       </motion.div>
     </div>
@@ -356,18 +361,20 @@ export const WalletTab: React.FC = () => {
   }, [balances, calculateBalance]);
 
   return (
-    <div className="flex flex-col gap-3 w-full items-center">
+    <div className="flex flex-col w-full items-center">
       <div className="flex flex-col w-full">
         <SectionHeader title={m["accountMenu.perpAccount"]()} />
         <AssetCard.Perp amount={perpsState?.margin ?? "0"} />
       </div>
-      <div className="w-full px-4">
+      <div className="w-full px-4 py-1">
         <div className="w-full h-px bg-outline-secondary-gray" />
       </div>
-      <div className="flex flex-col w-full">
+      <div className="flex flex-col w-full pt-4">
         <SectionHeader title={m["accountMenu.spotAccount"]()} />
         {sortedBalances.length > 0 ? (
-          sortedBalances.map(([denom, amount]) => <AssetCard key={denom} coin={{ denom, amount }} />)
+          sortedBalances.map(([denom, amount]) => (
+            <AssetCard key={denom} coin={{ denom, amount }} />
+          ))
         ) : (
           <div className="px-4">
             <EmptyPlaceholder component={m["accountMenu.noWalletCoins"]()} className="p-4" />
