@@ -3,7 +3,7 @@ import {
   useAllPerpsPairStats,
   useFavPairs,
   usePrices,
-  perpsOrderBookStore,
+  livePerpsTradesStore,
   tradePairStore,
   toPerpsPairId,
   useConfig,
@@ -80,7 +80,7 @@ const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
-  const activePerpsPrice = perpsOrderBookStore((s) => s.currentPrice);
+  const activePerpsPrice = livePerpsTradesStore((s) => s.currentPrice);
   const activePairId = tradePairStore((s) => s.pairId);
   const activeMode = tradePairStore((s) => s.mode);
 
@@ -88,7 +88,7 @@ const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
     row.mode === "perps" &&
     activeMode === "perps" &&
     row.pairId.baseDenom === activePairId.baseDenom &&
-    activePerpsPrice !== "0"
+    activePerpsPrice !== null
   ) {
     return <Cell.Text text={formatNumber(activePerpsPrice, formatNumberOptions)} />;
   }
