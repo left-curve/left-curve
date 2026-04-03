@@ -1,11 +1,16 @@
 import { createContext } from "@left-curve/applets-kit";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
-import { type PropsWithChildren, useCallback, useEffect, useRef, useState } from "react";
+import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { type BoxReward, openBox } from "@left-curve/store";
 import { ChestOpeningOverlay } from "./ChestOpeningOverlay";
+
+type NFTRarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
+export type LootCount = Record<NFTRarity, number>;
+
+const BULK_THRESHOLD = 10;
 
 type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 
@@ -75,8 +80,10 @@ type ChestOpeningContextValue = {
   isOpen: boolean;
   currentVariant: BoxVariant | null;
   isOpenAllMode: boolean;
+  isBulkMode: boolean;
   currentBoxIndex: number;
   totalBoxesToOpen: number;
+  lootCounts: LootCount;
 };
 
 const [ChestOpeningContextProvider, useChestOpeningContext] =
@@ -111,6 +118,26 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
 
   const isOpen = currentVariant !== null;
   const animationFrames = currentVariant ? (ANIMATION_FRAMES[currentVariant] ?? null) : null;
+  const isBulkMode = isOpenAllMode && totalBoxesToOpen > BULK_THRESHOLD;
+
+  const lootCounts = useMemo<LootCount>(() => {
+    const counts: LootCount = {
+      common: 0,
+      uncommon: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 0,
+      mythic: 0,
+    };
+    if (!isOpenAllMode || boxesToOpen.length === 0) return counts;
+    for (const box of boxesToOpen) {
+      const rarity = box.loot?.toLowerCase() as NFTRarity | undefined;
+      if (rarity && rarity in counts) {
+        counts[rarity]++;
+      }
+    }
+    return counts;
+  }, [isOpenAllMode, boxesToOpen]);
 
   const openBoxMutation = useMutation({
     mutationFn: ({ boxUserIndex, boxId }: { boxUserIndex: number; boxId: string }) =>
@@ -245,11 +272,19 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
   }, []);
 
   const closeChest = useCallback(() => {
-    if (currentBox && userIndex) {
-      openBoxMutation.mutate({ boxUserIndex: userIndex, boxId: currentBox.box_id });
+    if (userIndex) {
+      if (isBulkMode && boxesToOpen.length > 0) {
+        // In bulk mode, open all boxes at once
+        for (const box of boxesToOpen) {
+          openBoxMutation.mutate({ boxUserIndex: userIndex, boxId: box.box_id });
+        }
+      } else if (currentBox) {
+        // Single box mode
+        openBoxMutation.mutate({ boxUserIndex: userIndex, boxId: currentBox.box_id });
+      }
     }
     closeChestInternal();
-  }, [currentBox, userIndex, openBoxMutation, closeChestInternal]);
+  }, [currentBox, userIndex, openBoxMutation, closeChestInternal, isBulkMode, boxesToOpen]);
 
   const onAnimationComplete = useCallback(() => {
     setAnimationComplete(true);
@@ -264,8 +299,10 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
         isOpen,
         currentVariant,
         isOpenAllMode,
+        isBulkMode,
         currentBoxIndex,
         totalBoxesToOpen,
+        lootCounts,
       }}
     >
       {children}
@@ -279,9 +316,11 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
             animationFrames={animationFrames}
             onAnimationComplete={onAnimationComplete}
             isOpenAllMode={isOpenAllMode}
+            isBulkMode={isBulkMode}
             currentBoxIndex={currentBoxIndex}
             totalBoxesToOpen={totalBoxesToOpen}
             onNext={openNextBox}
+            lootCounts={lootCounts}
           />,
           document.body,
         )}
