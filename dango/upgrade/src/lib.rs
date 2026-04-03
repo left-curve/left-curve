@@ -159,13 +159,15 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     let mut perps_storage =
         StorageProvider::new(storage, &[CONTRACT_NAMESPACE, PERPS_ADDRESS.as_ref()]);
 
-    // -------------------------------------------------------------------------
+    Ok(_do_upgrade(&mut perps_storage)?)
+}
 
+fn _do_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
     // 1. Migrate Param: load the old layout, convert to new (dropping
     //    max_conditional_orders), and save.
 
     {
-        let old_param = legacy::PARAM.load(&perps_storage)?;
+        let old_param = legacy::PARAM.load(storage)?;
 
         let new_param = perps::Param {
             max_unlocks: old_param.max_unlocks,
@@ -182,7 +184,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
             referrer_commission_rates: old_param.referrer_commission_rates,
         };
 
-        dango_perps::state::PARAM.save(&mut perps_storage, &new_param)?;
+        dango_perps::state::PARAM.save(storage, &new_param)?;
 
         tracing::info!("Migrated Param (removed max_conditional_orders)");
     }
@@ -192,8 +194,8 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     // 2. Wipe old CONDITIONAL_ABOVE/BELOW IndexedMaps (primary + indexes).
 
     {
-        legacy::CONDITIONAL_ABOVE.clear_all(&mut perps_storage);
-        legacy::CONDITIONAL_BELOW.clear_all(&mut perps_storage);
+        legacy::CONDITIONAL_ABOVE.clear_all(storage);
+        legacy::CONDITIONAL_BELOW.clear_all(storage);
 
         tracing::info!("Wiped all conditional orders");
     }
@@ -206,7 +208,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
 
     {
         let all_users = legacy::USER_STATES
-            .range(&perps_storage, None, None, IterationOrder::Ascending)
+            .range(storage, None, None, IterationOrder::Ascending)
             .collect::<StdResult<Vec<_>>>()?;
 
         let new_user_states: Map<Addr, perps::UserState> = Map::new("us");
@@ -235,7 +237,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
                 open_order_count: old_us.open_order_count,
             };
 
-            new_user_states.save(&mut perps_storage, addr, &new_us)?;
+            new_user_states.save(storage, addr, &new_us)?;
         }
 
         tracing::info!("Migrated UserState records");
@@ -248,7 +250,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
 
     {
         let all_pairs = legacy::PAIR_STATES
-            .range(&perps_storage, None, None, IterationOrder::Ascending)
+            .range(storage, None, None, IterationOrder::Ascending)
             .collect::<StdResult<Vec<_>>>()?;
 
         for (pair_id, old_ps) in &all_pairs {
@@ -259,7 +261,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
                 funding_rate: FundingRate::ZERO,
             };
 
-            dango_perps::state::PAIR_STATES.save(&mut perps_storage, pair_id, &new_ps)?;
+            dango_perps::state::PAIR_STATES.save(storage, pair_id, &new_ps)?;
         }
 
         tracing::info!("Migrated {} PairState records", all_pairs.len());
@@ -280,13 +282,13 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
             (&legacy::ASKS, &new_asks, "ask"),
         ] {
             let all = old_map
-                .range(&perps_storage, None, None, IterationOrder::Ascending)
+                .range(storage, None, None, IterationOrder::Ascending)
                 .collect::<StdResult<Vec<_>>>()?;
 
             let count = all.len();
 
             for (key, old_order) in all {
-                new_map.save(&mut perps_storage, key, &perps::LimitOrder {
+                new_map.save(storage, key, &perps::LimitOrder {
                     user: old_order.user,
                     size: old_order.size,
                     reduce_only: old_order.reduce_only,
