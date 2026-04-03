@@ -1,6 +1,40 @@
 ---
 dex_bot_host: "{{ ansible_play_hosts_all | first }}"
 perps_bot_host: "{{ ansible_play_hosts_all | first }}"
+perp_liquidator_host: "{{ ansible_play_hosts_all | first }}"
+
+# Per-network non-secret configuration for perp-liquidator
+perp_liquidator_config:
+  devnet:
+    http_url: "http://dango:8080"
+    liquidation_cooldown: 20
+    event_driven: "true"
+    http_port: 9310
+    notification_timeout: 1
+    frontend_url: "https://dev.dango.exchange"
+  testnet:
+    http_url: "http://dango:8080"
+    liquidation_cooldown: 20
+    event_driven: "true"
+    http_port: 9310
+    notification_timeout: 1
+    frontend_url: "https://test.dango.exchange"
+  mainnet:
+    http_url: "http://dango:8080"
+    liquidation_cooldown: 20
+    event_driven: "true"
+    http_port: 9310
+    notification_timeout: 1
+    frontend_url: "https://dango.exchange"
+  previewnet:
+    http_url: "http://dango:8080"
+    liquidation_cooldown: 20
+    event_driven: "true"
+    http_port: 9310
+    notification_timeout: 1
+    frontend_url: ""
+
+perp_liquidator_http_port: 9310
 postgres_host: "postgres"
 postgres_external_host: "127.0.0.1"
 postgres_port: 5432

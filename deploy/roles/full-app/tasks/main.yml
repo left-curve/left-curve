@@ -28,6 +28,7 @@
 - import_tasks: resolve_digests.yml
 - import_tasks: perps_bot.yml
   when: perps_bot_enabled
+- import_tasks: perp_liquidator.yml
 - import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
 - import_tasks: update_traefik.yml

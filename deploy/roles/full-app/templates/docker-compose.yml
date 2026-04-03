@@ -303,6 +303,30 @@ services:
       - ./perps-bot/config.json:/root/.dango-perps/config.json
 {% endif %}
 
+{% if inventory_hostname == perp_liquidator_host and dango_network in perp_liquidator_config %}
+  perp-liquidator:
+    image: ghcr.io/left-curve/bots/perps-liquidator:${PERP_LIQUIDATOR_TAG:-latest}
+    labels:
+      <<: *common-labels
+      service_name: "perp_liquidator"
+    depends_on:
+      dango:
+        condition: service_healthy
+    restart: always
+    env_file:
+      - ./perp-liquidator/.env
+    ports:
+      - "${PERP_LIQUIDATOR_HTTP_PORT:-9310}:9310"
+    networks:
+      - default
+      - traefik
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9310/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+{% endif %}
+
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-latest}
     restart: unless-stopped

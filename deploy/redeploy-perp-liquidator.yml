@@ -1,0 +1,39 @@
+---
+- hosts: full-app
+  remote_user: "{{ deploy_user }}"
+  gather_facts: yes
+  vars_files:
+    - roles/full-app/vars/main.yml
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+  tasks:
+    - name: Read current deploy
+      include_role:
+        name: full-app
+        tasks_from: read_current_deploy.yml
+
+    - name: Set deployment facts
+      set_fact:
+        deployment_name: "{{ current_deployment }}"
+
+    - name: Template perp-liquidator .env
+      template:
+        src: roles/full-app/templates/perp-liquidator.env.j2
+        dest: "{{ deployment_dir }}/perp-liquidator/.env"
+        mode: '0600'
+
+    - name: Redeploy perp-liquidator service
+      community.docker.docker_compose_v2:
+        project_name: "{{ current_deployment }}"
+        project_src: "{{ deployment_dir }}"
+        services:
+          - perp-liquidator
+        pull: always
+        state: present
+        recreate: always
