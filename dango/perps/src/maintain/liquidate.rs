@@ -292,7 +292,7 @@ fn _liquidate(
     BTreeMap<Addr, UsdValue>,
     OrderId,
 )> {
-    // -------------------- Step 1: Assert liquidatable -------------------------
+    // -------------------- Step 1: Assert liquidatable ------------------------
 
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
@@ -301,17 +301,20 @@ fn _liquidate(
         "user is not liquidatable"
     );
 
-    // ------------- Step 2: Compute close schedule (largest-MM-first) ----------
+    // ------------- Step 2: Compute close schedule (largest-MM-first) ---------
 
-    let equity = compute_user_equity(oracle_querier, &perp_querier, user_state)?;
-    let total_mm = compute_maintenance_margin(oracle_querier, &perp_querier, user_state)?;
+    // Compute the deficit. This is the shortfall between the user's equity and
+    // maintenance margin (MM) + a buffer.
+    // We need to close positions such that MM + buffer <= equity.
+    let deficit = {
+        let equity = compute_user_equity(oracle_querier, &perp_querier, user_state)?;
+        let mm = compute_maintenance_margin(oracle_querier, &perp_querier, user_state)?;
+        let one_plus_buffer = Dimensionless::ONE.checked_add(param.liquidation_buffer_ratio)?;
+        let effective_equity = equity.checked_div(one_plus_buffer)?;
+        mm.checked_sub(effective_equity)?
+    };
 
-    // With buffer ratio `b`, target post-liquidation equity = remaining_mm × (1 + b).
-    // deficit = MM - equity / (1 + b). When b = 0, reduces to MM - equity.
-    let one_plus_buffer = Dimensionless::ONE.checked_add(param.liquidation_buffer_ratio)?;
-    let effective_equity = equity.checked_div(one_plus_buffer)?;
-    let deficit = total_mm.checked_sub(effective_equity)?;
-
+    // Compute which positions to close and how much to close based on the deficit.
     let schedule = compute_close_schedule(user_state, pair_params, oracle_prices, deficit)?;
 
     // -------- Step 3: Execute closes via the order book + ADL ----------------
