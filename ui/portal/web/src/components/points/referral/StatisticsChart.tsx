@@ -73,7 +73,7 @@ export const StatisticsChart: React.FC<StatisticsChartProps> = ({ metric, period
     const days = periodToDays[period];
     const cutoff = Date.now() / 1000 - days * 86400;
 
-    return Object.entries(epochPoints)
+    return epochPoints
       .map(([_epoch, epochStats]) => {
         const epochStartTs = Number.parseFloat(epochStats.started_at);
         const date = new Date(epochStartTs * 1000).toISOString().slice(0, 10);

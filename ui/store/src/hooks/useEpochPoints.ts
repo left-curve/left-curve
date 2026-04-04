@@ -13,7 +13,7 @@ export type UseEpochPointsParameters = {
 export function useEpochPoints(parameters: UseEpochPointsParameters) {
   const { pointsUrl, userIndex, min, max, enabled = true } = parameters;
 
-  const { data: epochPoints, isLoading } = useQuery<Record<string, EpochUserStats>>({
+  const { data: epochPoints, isLoading } = useQuery<[number, EpochUserStats][]>({
     queryKey: ["epochPoints", userIndex, min, max],
     queryFn: () => fetchEpochPoints(pointsUrl, userIndex!, { min, max }),
     enabled: enabled && !!userIndex,
