@@ -305,7 +305,12 @@ fn _liquidate(
 
     let equity = compute_user_equity(oracle_querier, &perp_querier, user_state)?;
     let total_mm = compute_maintenance_margin(oracle_querier, &perp_querier, user_state)?;
-    let deficit = total_mm.checked_sub(equity)?;
+
+    // With buffer ratio `b`, target post-liquidation equity = remaining_mm × (1 + b).
+    // deficit = MM - equity / (1 + b). When b = 0, reduces to MM - equity.
+    let one_plus_buffer = Dimensionless::ONE.checked_add(param.liquidation_buffer_ratio)?;
+    let effective_equity = equity.checked_div(one_plus_buffer)?;
+    let deficit = total_mm.checked_sub(effective_equity)?;
 
     let schedule = compute_close_schedule(user_state, pair_params, oracle_prices, deficit)?;
 
@@ -1583,5 +1588,174 @@ mod tests {
 
         // NEXT_ORDER_ID: started at 1, +1 for TP child, +1 for SL child = 3.
         assert_eq!(next_order_id, OrderId::new(3));
+    }
+
+    /// With a 10% liquidation buffer, the close schedule should close more of
+    /// the position than with zero buffer, leaving post-liquidation equity
+    /// above the remaining maintenance margin.
+    ///
+    /// Setup: long 10 BTC @ $50,000, margin $2,400, oracle $48,000.
+    /// - equity = $2,400 + 10*($48,000-$50,000) = $2,400 - $20,000 = -$17,600
+    /// - MM = 10 * $48,000 * 5% = $24,000
+    /// - Without buffer: deficit = $24,000 - (-$17,600) = $41,600  (> MM → full close)
+    /// - With 10% buffer: deficit = $24,000 - (-$17,600)/1.1 = $24,000 + $16,000 = $40,000 (> MM → full close)
+    ///
+    /// Both cases fully close, so we use a scenario where the difference matters:
+    /// long 10 BTC @ $50,000, margin $25,000, oracle $48,000.
+    /// - equity = $25,000 + 10*($48,000-$50,000) = $5,000
+    /// - MM = 10 * $48,000 * 5% = $24,000
+    /// - Without buffer: deficit = $24,000 - $5,000 = $19,000
+    ///   close_amount = $19,000 / ($48,000 * 0.05) = $19,000 / $2,400 = 7.916..
+    /// - With 10% buffer: deficit = $24,000 - $5,000/1.1 = $24,000 - $4,545.45 = $19,454.54
+    ///   close_amount = $19,454.54 / $2,400 = 8.106..
+    ///
+    /// The buffer version closes ~0.19 BTC more.
+    #[test]
+    fn liquidation_buffer_closes_more() {
+        // --- Run WITHOUT buffer ---
+        let remaining_without_buffer = {
+            let mut ctx = MockContext::new()
+                .with_contract(CONTRACT)
+                .with_funds(Coins::default());
+
+            let param = default_param(); // buffer defaults to 0
+            let pair_state = PairState {
+                long_oi: Quantity::new_int(10),
+                ..Default::default()
+            };
+
+            setup_storage(&mut ctx.storage, &param, &[(
+                pair_btc(),
+                btc_pair_param(),
+                pair_state.clone(),
+            )]);
+
+            save_position(&mut ctx.storage, USER, &pair_btc(), 10, 50_000);
+
+            let maker_state = UserState {
+                margin: UsdValue::new_int(500_000),
+                open_order_count: 1,
+                ..Default::default()
+            };
+            USER_STATES
+                .save(&mut ctx.storage, MAKER, &maker_state)
+                .unwrap();
+            save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 10, 48_000);
+
+            let mut pair_params = BTreeMap::new();
+            pair_params.insert(pair_btc(), btc_pair_param());
+
+            let mut pair_states = BTreeMap::new();
+            pair_states.insert(pair_btc(), pair_state);
+
+            let mut oracle_prices = BTreeMap::new();
+            oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
+
+            let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+            user_state.margin = UsdValue::new_int(25_000);
+
+            let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
+            let mut state = STATE.load(&ctx.storage).unwrap();
+
+            let result = _liquidate(
+                &ctx.storage,
+                USER,
+                CONTRACT,
+                Timestamp::ZERO,
+                &mut oracle_querier,
+                &param,
+                &mut state,
+                &pair_params,
+                &mut pair_states,
+                &mut user_state,
+                &oracle_prices,
+                &mut EventBuilder::new(),
+            );
+            assert!(result.is_ok(), "no-buffer liq failed: {:?}", result.err());
+
+            user_state
+                .positions
+                .get(&pair_btc())
+                .map(|p| p.size)
+                .unwrap_or(Quantity::ZERO)
+        };
+
+        // --- Run WITH 10% buffer ---
+        let remaining_with_buffer = {
+            let mut ctx = MockContext::new()
+                .with_contract(CONTRACT)
+                .with_funds(Coins::default());
+
+            let param = Param {
+                liquidation_buffer_ratio: Dimensionless::new_permille(100), // 10%
+                ..default_param()
+            };
+            let pair_state = PairState {
+                long_oi: Quantity::new_int(10),
+                ..Default::default()
+            };
+
+            setup_storage(&mut ctx.storage, &param, &[(
+                pair_btc(),
+                btc_pair_param(),
+                pair_state.clone(),
+            )]);
+
+            save_position(&mut ctx.storage, USER, &pair_btc(), 10, 50_000);
+
+            let maker_state = UserState {
+                margin: UsdValue::new_int(500_000),
+                open_order_count: 1,
+                ..Default::default()
+            };
+            USER_STATES
+                .save(&mut ctx.storage, MAKER, &maker_state)
+                .unwrap();
+            save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 10, 48_000);
+
+            let mut pair_params = BTreeMap::new();
+            pair_params.insert(pair_btc(), btc_pair_param());
+
+            let mut pair_states = BTreeMap::new();
+            pair_states.insert(pair_btc(), pair_state);
+
+            let mut oracle_prices = BTreeMap::new();
+            oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
+
+            let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+            user_state.margin = UsdValue::new_int(25_000);
+
+            let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
+            let mut state = STATE.load(&ctx.storage).unwrap();
+
+            let result = _liquidate(
+                &ctx.storage,
+                USER,
+                CONTRACT,
+                Timestamp::ZERO,
+                &mut oracle_querier,
+                &param,
+                &mut state,
+                &pair_params,
+                &mut pair_states,
+                &mut user_state,
+                &oracle_prices,
+                &mut EventBuilder::new(),
+            );
+            assert!(result.is_ok(), "buffered liq failed: {:?}", result.err());
+
+            user_state
+                .positions
+                .get(&pair_btc())
+                .map(|p| p.size)
+                .unwrap_or(Quantity::ZERO)
+        };
+
+        // With buffer, more is closed → remaining position is smaller.
+        assert!(
+            remaining_with_buffer < remaining_without_buffer,
+            "buffer should cause more position to be closed: \
+             without={remaining_without_buffer}, with={remaining_with_buffer}"
+        );
     }
 }
