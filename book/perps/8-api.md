@@ -656,6 +656,7 @@ query {
   },
   "protocol_fee_rate": "0.100000",
   "liquidation_fee_rate": "0.010000",
+  "liquidation_buffer_ratio": "0.000000",
   "funding_period": "3600000000000",
   "vault_total_weight": "10.000000",
   "vault_cooldown_period": "604800000000000",
@@ -676,6 +677,7 @@ query {
 | `taker_fee_rates`           | `RateSchedule`  | Volume-tiered taker fee rates                              |
 | `protocol_fee_rate`         | `Dimensionless` | Fraction of trading fees routed to treasury                |
 | `liquidation_fee_rate`      | `Dimensionless` | Insurance fund fee on liquidations                         |
+| `liquidation_buffer_ratio`  | `Dimensionless` | Post-liquidation equity buffer above maintenance margin    |
 | `funding_period`            | `Duration`      | Interval between funding collections (nanoseconds)         |
 | `vault_total_weight`        | `Dimensionless` | Sum of all pairs' vault liquidity weights                  |
 | `vault_cooldown_period`     | `Duration`      | Waiting time before vault withdrawal release (nanoseconds) |
