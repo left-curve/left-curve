@@ -238,7 +238,7 @@
       file:
         path: "{{ ansible_facts['env']['HOME'] }}/deployments/"
         state: directory
-        mode: '0755'
+        mode: "0755"
 
     - name: Create or refresh deployment lock
       file:
@@ -394,9 +394,6 @@
         - name: Mark deployment as failed
           set_fact:
             deploy_failed: true
-
-
-
 
         - name: Notify Discord of deployment failure
           when:
@@ -559,6 +556,7 @@
           run_once: true
           become: false
           ignore_errors: true
+
 
 - hosts: monitoring
   remote_user: "{{ deploy_user }}"
