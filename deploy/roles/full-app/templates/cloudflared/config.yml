@@ -12,4 +12,8 @@ ingress:
     service: http://faucet-bot:8082
   - hostname: graphiql-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
     service: http://graphiql:80
+{% if inventory_hostname == perp_liquidator_host %}
+  - hostname: liquidator-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
+    service: http://perp-liquidator:9310
+{% endif %}
   - service: http_status:404
