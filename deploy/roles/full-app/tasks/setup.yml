@@ -14,6 +14,7 @@
     - cometbft_abci_port
     - cometbft_metrics_port
     - graphiql_port
+    - perp_liquidator_http_port
 
 - name: Check if deployment already exists
   stat:
@@ -22,7 +23,7 @@
 
 - name: Read .env values
   shell: |
-    grep -E '^(CLICKHOUSE_DATABASE|POSTGRES_DATABASE|CLICKHOUSE_METRICS_PORT|DB_METRICS_PORT|DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|GRAPHIQL_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_METRICS_PORT|DANGO_DIRECTORY|COMETBFT_DIRECTORY)=' {{ deployment_dir }}/.env | \
+    grep -E '^(CLICKHOUSE_DATABASE|POSTGRES_DATABASE|CLICKHOUSE_METRICS_PORT|DB_METRICS_PORT|DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|GRAPHIQL_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_METRICS_PORT|PERP_LIQUIDATOR_HTTP_PORT|DANGO_DIRECTORY|COMETBFT_DIRECTORY)=' {{ deployment_dir }}/.env | \
     awk -F= '{print tolower($1) "=" $2}'
   register: existing_port_pairs
   when: env_file_exists.stat.exists
