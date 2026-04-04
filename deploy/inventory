@@ -110,6 +110,20 @@ points-bot-devnet
 points-bot-testnet
 points-bot-mainnet
 
+[perp-liquidator-devnet]
+100.96.253.40  # ovh1
+
+[perp-liquidator-testnet]
+100.90.163.19  # hetzner2
+
+[perp-liquidator-mainnet]
+100.89.7.33    # inter1
+
+[perp-liquidator:children]
+perp-liquidator-devnet
+perp-liquidator-testnet
+perp-liquidator-mainnet
+
 [hyperlane]
 100.89.7.33    # inter1
 100.66.234.16  # inter2

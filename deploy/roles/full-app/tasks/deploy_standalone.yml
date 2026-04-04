@@ -1,4 +1,13 @@
 # Quick redeploy for existing deployments
+- name: Log bot image tags
+  debug:
+    msg:
+      faucet-bot: "{{ faucet_bot_tag }}"
+      dex-bot: "{{ dex_bot_tag }}"
+      perps-bot: "{{ perps_bot_tag }}"
+      perp-liquidator: "{{ perp_liquidator_tag }}"
+  run_once: true
+
 - name: Deploy with new image tag
   community.docker.docker_compose_v2:
     project_name: "{{ deployment_name }}"
