@@ -668,20 +668,20 @@ query {
 }
 ```
 
-| Field                      | Type           | Description                                                |
-| -------------------------- | -------------- | ---------------------------------------------------------- |
-| `max_unlocks`              | `usize`        | Max concurrent vault unlock requests per user              |
-| `max_open_orders`          | `usize`        | Max resting limit orders per user (all pairs)              |
-| `maker_fee_rates`          | `RateSchedule` | Volume-tiered maker fee rates                              |
-| `taker_fee_rates`          | `RateSchedule` | Volume-tiered taker fee rates                              |
-| `protocol_fee_rate`        | `Dimensionless`| Fraction of trading fees routed to treasury                |
-| `liquidation_fee_rate`     | `Dimensionless`| Insurance fund fee on liquidations                         |
-| `funding_period`           | `Duration`     | Interval between funding collections (nanoseconds)         |
-| `vault_total_weight`       | `Dimensionless`| Sum of all pairs' vault liquidity weights                  |
-| `vault_cooldown_period`    | `Duration`     | Waiting time before vault withdrawal release (nanoseconds) |
-| `referral_active`          | `bool`         | Whether the referral commission system is active           |
-| `min_referrer_volume`      | `UsdValue`     | Minimum lifetime volume to become a referrer               |
-| `referrer_commission_rates`| `RateSchedule` | Volume-tiered referrer commission rates                    |
+| Field                       | Type            | Description                                                |
+| --------------------------- | --------------- | ---------------------------------------------------------- |
+| `max_unlocks`               | `usize`         | Max concurrent vault unlock requests per user              |
+| `max_open_orders`           | `usize`         | Max resting limit orders per user (all pairs)              |
+| `maker_fee_rates`           | `RateSchedule`  | Volume-tiered maker fee rates                              |
+| `taker_fee_rates`           | `RateSchedule`  | Volume-tiered taker fee rates                              |
+| `protocol_fee_rate`         | `Dimensionless` | Fraction of trading fees routed to treasury                |
+| `liquidation_fee_rate`      | `Dimensionless` | Insurance fund fee on liquidations                         |
+| `funding_period`            | `Duration`      | Interval between funding collections (nanoseconds)         |
+| `vault_total_weight`        | `Dimensionless` | Sum of all pairs' vault liquidity weights                  |
+| `vault_cooldown_period`     | `Duration`      | Waiting time before vault withdrawal release (nanoseconds) |
+| `referral_active`           | `bool`          | Whether the referral commission system is active           |
+| `min_referrer_volume`       | `UsdValue`      | Minimum lifetime volume to become a referrer               |
+| `referrer_commission_rates` | `RateSchedule`  | Volume-tiered referrer commission rates                    |
 
 A `RateSchedule` has two fields: `base` (the default rate) and `tiers` (a map of volume threshold to rate; highest qualifying tier wins).
 
@@ -839,12 +839,12 @@ query {
 }
 ```
 
-| Field              | Type             | Description                                          |
-| ------------------ | ---------------- | ---------------------------------------------------- |
-| `long_oi`          | `Quantity`       | Total long open interest                             |
-| `short_oi`         | `Quantity`       | Total short open interest                            |
-| `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator                       |
-| `funding_rate`     | `FundingRate`    | Current per-day funding rate (positive = longs pay)  |
+| Field              | Type             | Description                                         |
+| ------------------ | ---------------- | --------------------------------------------------- |
+| `long_oi`          | `Quantity`       | Total long open interest                            |
+| `short_oi`         | `Quantity`       | Total short open interest                           |
+| `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator                      |
+| `funding_rate`     | `FundingRate`    | Current per-day funding rate (positive = longs pay) |
 
 For funding mechanics, see [Funding](3-funding.md).
 
@@ -1053,24 +1053,24 @@ query {
 }
 ```
 
-| Field                     | Type                    | Description                              |
-| ------------------------- | ----------------------- | ---------------------------------------- |
-| `margin`                  | `UsdValue`              | Deposited margin (USD)                   |
-| `vault_shares`            | `Uint128`               | Vault liquidity shares owned             |
-| `positions`               | `Map<PairId, Position>` | Open positions by pair                   |
-| `unlocks`                 | `[Unlock]`              | Pending vault withdrawals                |
-| `reserved_margin`         | `UsdValue`              | Margin reserved for resting limit orders |
-| `open_order_count`        | `usize`                 | Number of resting limit orders           |
+| Field              | Type                    | Description                              |
+| ------------------ | ----------------------- | ---------------------------------------- |
+| `margin`           | `UsdValue`              | Deposited margin (USD)                   |
+| `vault_shares`     | `Uint128`               | Vault liquidity shares owned             |
+| `positions`        | `Map<PairId, Position>` | Open positions by pair                   |
+| `unlocks`          | `[Unlock]`              | Pending vault withdrawals                |
+| `reserved_margin`  | `UsdValue`              | Margin reserved for resting limit orders |
+| `open_order_count` | `usize`                 | Number of resting limit orders           |
 
 **Position:**
 
-| Field                      | Type                     | Description                                          |
-| -------------------------- | ------------------------ | ---------------------------------------------------- |
-| `size`                     | `Quantity`               | Position size (positive = long, negative = short)    |
-| `entry_price`              | `UsdPrice`               | Average entry price                                  |
-| `entry_funding_per_unit`   | `FundingPerUnit`         | Funding accumulator at last modification             |
-| `conditional_order_above`  | `ConditionalOrder\|null` | TP/SL that triggers when oracle >= trigger_price     |
-| `conditional_order_below`  | `ConditionalOrder\|null` | TP/SL that triggers when oracle <= trigger_price     |
+| Field                     | Type                     | Description                                       |
+| ------------------------- | ------------------------ | ------------------------------------------------- |
+| `size`                    | `Quantity`               | Position size (positive = long, negative = short) |
+| `entry_price`             | `UsdPrice`               | Average entry price                               |
+| `entry_funding_per_unit`  | `FundingPerUnit`         | Funding accumulator at last modification          |
+| `conditional_order_above` | `ConditionalOrder\|null` | TP/SL that triggers when oracle >= trigger_price  |
+| `conditional_order_below` | `ConditionalOrder\|null` | TP/SL that triggers when oracle <= trigger_price  |
 
 **ConditionalOrder** (embedded in Position):
 
@@ -1146,14 +1146,14 @@ query {
 
 The response is a map of `OrderId` → order details. This query returns only resting **limit orders**. Conditional (TP/SL) orders are stored on the position itself and can be queried via `user_state` (see [§5.1](#51-user-state), `conditional_order_above` / `conditional_order_below` fields).
 
-| Field             | Type            | Description                                           |
-| ----------------- | --------------- | ----------------------------------------------------- |
-| `pair_id`         | `PairId`        | Trading pair                                          |
-| `size`            | `Quantity`      | Order size (positive = buy, negative = sell)          |
-| `limit_price`     | `UsdPrice`      | Limit price                                           |
-| `reduce_only`     | `bool`          | Whether the order only reduces an existing position   |
-| `reserved_margin` | `UsdValue`      | Margin reserved for this order                        |
-| `created_at`      | `Timestamp`     | Creation time                                         |
+| Field             | Type        | Description                                         |
+| ----------------- | ----------- | --------------------------------------------------- |
+| `pair_id`         | `PairId`    | Trading pair                                        |
+| `size`            | `Quantity`  | Order size (positive = buy, negative = sell)        |
+| `limit_price`     | `UsdPrice`  | Limit price                                         |
+| `reduce_only`     | `bool`      | Whether the order only reduces an existing position |
+| `reserved_margin` | `UsdValue`  | Margin reserved for this order                      |
+| `created_at`      | `Timestamp` | Creation time                                       |
 
 ### 5.3 Single order
 
@@ -1186,15 +1186,15 @@ query {
 }
 ```
 
-| Field             | Type       | Description                                          |
-| ----------------- | ---------- | ---------------------------------------------------- |
-| `user`            | `Addr`     | Order owner                                          |
-| `pair_id`         | `PairId`   | Trading pair                                         |
-| `size`            | `Quantity` | Order size (positive = buy, negative = sell)         |
-| `limit_price`     | `UsdPrice` | Limit price                                          |
-| `reduce_only`     | `bool`     | Whether the order only reduces an existing position  |
-| `reserved_margin` | `UsdValue` | Margin reserved for this order                       |
-| `created_at`      | `Timestamp`| Creation time                                        |
+| Field             | Type        | Description                                         |
+| ----------------- | ----------- | --------------------------------------------------- |
+| `user`            | `Addr`      | Order owner                                         |
+| `pair_id`         | `PairId`    | Trading pair                                        |
+| `size`            | `Quantity`  | Order size (positive = buy, negative = sell)        |
+| `limit_price`     | `UsdPrice`  | Limit price                                         |
+| `reduce_only`     | `bool`      | Whether the order only reduces an existing position |
+| `reserved_margin` | `UsdValue`  | Margin reserved for this order                      |
+| `created_at`      | `Timestamp` | Creation time                                       |
 
 Returns `null` if the order does not exist.
 
@@ -1298,11 +1298,11 @@ query {
 }
 ```
 
-| Parameter                  | Type   | Description                                 |
-| -------------------------- | ------ | ------------------------------------------- |
-| `user`                     | `Addr` | Account address                             |
-| `include_equity`           | `bool` | Compute and return the user's equity        |
-| `include_available_margin` | `bool` | Compute and return the user's free margin   |
+| Parameter                  | Type   | Description                               |
+| -------------------------- | ------ | ----------------------------------------- |
+| `user`                     | `Addr` | Account address                           |
+| `include_equity`           | `bool` | Compute and return the user's equity      |
+| `include_available_margin` | `bool` | Compute and return the user's free margin |
 
 **Response:**
 
@@ -1321,11 +1321,11 @@ query {
 }
 ```
 
-| Field              | Type              | Description                                                                 |
-| ------------------ | ----------------- | --------------------------------------------------------------------------- |
-| `raw`              | `UserState`       | The raw user state (same as [§5.1](#51-user-state))                         |
-| `equity`           | `UsdValue\|null`  | margin + unrealized PnL − unrealized funding; `null` if not requested       |
-| `available_margin` | `UsdValue\|null`  | margin − initial margin requirements − reserved margin; `null` if not requested |
+| Field              | Type             | Description                                                                     |
+| ------------------ | ---------------- | ------------------------------------------------------------------------------- |
+| `raw`              | `UserState`      | The raw user state (same as [§5.1](#51-user-state))                             |
+| `equity`           | `UsdValue\|null` | margin + unrealized PnL − unrealized funding; `null` if not requested           |
+| `available_margin` | `UsdValue\|null` | margin − initial margin requirements − reserved margin; `null` if not requested |
 
 `equity` reflects the total account value including unrealized positions. `available_margin` is the amount the user can withdraw or use for new orders.
 
@@ -1472,11 +1472,11 @@ Place a resting order on the book:
 }
 ```
 
-| Field         | Type          | Description                                                    |
-| ------------- | ------------- | -------------------------------------------------------------- |
-| `limit_price` | `UsdPrice`    | Limit price — must be aligned to `tick_size`                   |
-| `post_only`   | `bool`        | If `true`, rejected if it would match immediately (maker-only) |
-| `reduce_only` | `bool`        | If `true`, only position-closing portion is kept               |
+| Field         | Type          | Description                                                            |
+| ------------- | ------------- | ---------------------------------------------------------------------- |
+| `limit_price` | `UsdPrice`    | Limit price — must be aligned to `tick_size`                           |
+| `post_only`   | `bool`        | If `true`, rejected if it would match immediately (maker-only)         |
+| `reduce_only` | `bool`        | If `true`, only position-closing portion is kept                       |
 | `tp`          | `ChildOrder?` | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
 | `sl`          | `ChildOrder?` | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
 
@@ -1892,11 +1892,11 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Conditional order events
 
-| Event                         | Fields                                                                               | Description                   |
-| ----------------------------- | ------------------------------------------------------------------------------------ | ----------------------------- |
-| `conditional_order_placed`    | `pair_id`, `user`, `trigger_price`, `trigger_direction`, `size`, `max_slippage`      | TP/SL order created           |
-| `conditional_order_triggered` | `pair_id`, `user`, `trigger_price`, `trigger_direction`, `oracle_price`              | TP/SL triggered by price move |
-| `conditional_order_removed`   | `pair_id`, `user`, `trigger_direction`, `reason`                                     | TP/SL removed                 |
+| Event                         | Fields                                                                          | Description                   |
+| ----------------------------- | ------------------------------------------------------------------------------- | ----------------------------- |
+| `conditional_order_placed`    | `pair_id`, `user`, `trigger_price`, `trigger_direction`, `size`, `max_slippage` | TP/SL order created           |
+| `conditional_order_triggered` | `pair_id`, `user`, `trigger_price`, `trigger_direction`, `oracle_price`         | TP/SL triggered by price move |
+| `conditional_order_removed`   | `pair_id`, `user`, `trigger_direction`, `reason`                                | TP/SL removed                 |
 
 ### Liquidation events
 
@@ -2092,13 +2092,13 @@ Additional integer types:
 
 **Position:**
 
-| Field                      | Type                     | Description                                          |
-| -------------------------- | ------------------------ | ---------------------------------------------------- |
-| `size`                     | `Quantity`               | Positive = long, negative = short                    |
-| `entry_price`              | `UsdPrice`               | Average entry price                                  |
-| `entry_funding_per_unit`   | `FundingPerUnit`         | Funding accumulator at last update                   |
-| `conditional_order_above`  | `ConditionalOrder\|null` | TP/SL that triggers when oracle >= trigger_price     |
-| `conditional_order_below`  | `ConditionalOrder\|null` | TP/SL that triggers when oracle <= trigger_price     |
+| Field                     | Type                     | Description                                      |
+| ------------------------- | ------------------------ | ------------------------------------------------ |
+| `size`                    | `Quantity`               | Positive = long, negative = short                |
+| `entry_price`             | `UsdPrice`               | Average entry price                              |
+| `entry_funding_per_unit`  | `FundingPerUnit`         | Funding accumulator at last update               |
+| `conditional_order_above` | `ConditionalOrder\|null` | TP/SL that triggers when oracle >= trigger_price |
+| `conditional_order_below` | `ConditionalOrder\|null` | TP/SL that triggers when oracle <= trigger_price |
 
 <a id="conditionalorder"></a>**ConditionalOrder** (embedded in Position):
 
@@ -2126,15 +2126,15 @@ Additional integer types:
 
 **QueryOrderResponse:**
 
-| Field             | Type        | Description                                          |
-| ----------------- | ----------- | ---------------------------------------------------- |
-| `user`            | `Addr`      | Order owner                                          |
-| `pair_id`         | `PairId`    | Trading pair                                         |
-| `size`            | `Quantity`  | Order size                                           |
-| `limit_price`     | `UsdPrice`  | Limit price                                          |
-| `reduce_only`     | `bool`      | Whether the order only reduces an existing position  |
-| `reserved_margin` | `UsdValue`  | Margin reserved for this order                       |
-| `created_at`      | `Timestamp` | Creation time                                        |
+| Field             | Type        | Description                                         |
+| ----------------- | ----------- | --------------------------------------------------- |
+| `user`            | `Addr`      | Order owner                                         |
+| `pair_id`         | `PairId`    | Trading pair                                        |
+| `size`            | `Quantity`  | Order size                                          |
+| `limit_price`     | `UsdPrice`  | Limit price                                         |
+| `reduce_only`     | `bool`      | Whether the order only reduces an existing position |
+| `reserved_margin` | `UsdValue`  | Margin reserved for this order                      |
+| `created_at`      | `Timestamp` | Creation time                                       |
 
 **LiquidityDepthResponse:**
 
