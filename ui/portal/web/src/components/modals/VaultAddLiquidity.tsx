@@ -14,7 +14,7 @@ type VaultAddLiquidityProps = {
 };
 
 export const VaultAddLiquidity = forwardRef(
-  ({ confirmAddLiquidity, rejectAddLiquidity, amount, sharesToReceive }: VaultAddLiquidityProps, ref) => {
+  ({ confirmAddLiquidity, rejectAddLiquidity, amount }: VaultAddLiquidityProps, ref) => {
     const { hideModal, settings } = useApp();
     const { formatNumberOptions } = settings;
 
@@ -29,37 +29,7 @@ export const VaultAddLiquidity = forwardRef(
         <p className="text-ink-primary-900 diatype-lg-medium w-full text-center">
           {m["vaultLiquidity.modal.addLiquidity"]()}
         </p>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <p className="text-ink-tertiary-500 diatype-sm-regular">
-              {m["vaultLiquidity.modal.depositing"]()}
-            </p>
-            <div className="flex items-center justify-between">
-              <p className="text-ink-secondary-700 h3-bold">
-                {formatNumber(amount, { ...formatNumberOptions, currency: "USD" })}
-              </p>
-              <img src="/images/coins/usd.svg" alt="USD" className="w-8 h-8" />
-            </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-ink-tertiary-500 diatype-sm-regular">
-              {m["vaultLiquidity.modal.toReceive"]()}
-            </p>
-            <div className="flex items-center justify-between">
-              <p className="text-ink-secondary-700 h3-bold">
-                {formatNumber(sharesToReceive, formatNumberOptions)} {m["vaultLiquidity.vaultShares"]()}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between pt-2 border-t border-outline-secondary-gray">
-            <p className="text-ink-tertiary-500 diatype-sm-regular">
-              {m["vaultLiquidity.modal.destination"]()}
-            </p>
-            <p className="text-ink-secondary-700 diatype-sm-medium">
-              {m["vaultLiquidity.title"]()}
-            </p>
-          </div>
-        </div>
+
         <IconButton
           className="hidden md:block absolute right-4 top-4"
           variant="link"
@@ -70,6 +40,39 @@ export const VaultAddLiquidity = forwardRef(
         >
           <IconClose />
         </IconButton>
+
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <p className="text-ink-tertiary-500 exposure-sm-italic">
+              {m["vaultLiquidity.modal.depositing"]()}
+            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-ink-secondary-700 h3-bold">
+                {formatNumber(amount, { ...formatNumberOptions, currency: "USD" })}
+              </p>
+              <img src="/images/coins/usd.svg" alt="USD" className="w-8 h-8" />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <p className="text-ink-tertiary-500 exposure-sm-italic">
+              {m["vaultLiquidity.modal.destination"]()}
+            </p>
+            <p className="text-ink-secondary-700 diatype-m-bold">
+              {m["vaultLiquidity.title"]()}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-ink-tertiary-500 diatype-sm-regular">
+              {m["vaultLiquidity.networkFee"]()}
+            </p>
+            <p className="text-ink-secondary-700 diatype-sm-medium">
+              {formatNumber("0.02", { ...formatNumberOptions, currency: "USD" })}
+            </p>
+          </div>
+        </div>
+
         <Button fullWidth onClick={() => [confirmAddLiquidity(), hideModal()]}>
           {m["common.confirm"]()}
         </Button>

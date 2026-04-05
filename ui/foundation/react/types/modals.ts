@@ -33,6 +33,7 @@ export const Modals = {
   ActivateAccount: "activate-account",
   VaultAddLiquidity: "vault-add-liquidity",
   VaultWithdrawLiquidity: "vault-withdraw-liquidity",
+  VaultWithdrawLiquidityWithPenalty: "vault-withdraw-liquidity-with-penalty",
 };
 
 export type ModalRef = {
