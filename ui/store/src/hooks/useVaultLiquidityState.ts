@@ -42,10 +42,10 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
     refetchInterval: 10_000,
   });
 
-  const userVaultShares = perpsUserState?.vaultShares ?? "0";
-  const userMargin = perpsUserState?.margin ?? "0";
-  const userUnlocks = perpsUserState?.unlocks ?? [];
-  const userHasShares = userVaultShares !== "0";
+  const userVaultShares = account ? (perpsUserState?.vaultShares ?? "0") : "0";
+  const userMargin = account ? (perpsUserState?.margin ?? "0") : "0";
+  const userUnlocks = account ? (perpsUserState?.unlocks ?? []) : [];
+  const userHasShares = account ? userVaultShares !== "0" : false;
 
   const shareSupply = vaultState.data?.shareSupply ?? "0";
   const equity = vaultState.data?.equity ?? "0";

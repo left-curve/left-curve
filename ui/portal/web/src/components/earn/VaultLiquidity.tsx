@@ -142,6 +142,10 @@ const DepositForm: React.FC = () => {
   const isLoggedIn = !!account;
   const depositAmount = controllers.inputs.depositAmount?.value || "0";
 
+  useEffect(() => {
+    setValue("depositAmount", "");
+  }, [account?.address, setValue]);
+
   return (
     <>
       <div className="flex flex-col gap-2">
@@ -263,6 +267,10 @@ const WithdrawForm: React.FC = () => {
       setPercentage(0);
     }
   }, [withdraw.isSuccess]);
+
+  useEffect(() => {
+    setPercentage(0);
+  }, [account?.address]);
 
   const handlePercentageChange = (newPercentage: number) => {
     setPercentage(Math.min(100, Math.max(0, newPercentage)));
