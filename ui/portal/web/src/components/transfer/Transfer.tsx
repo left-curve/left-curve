@@ -8,11 +8,11 @@ import {
   useWatchEffect,
 } from "@left-curve/applets-kit";
 import {
-  perpsUserStateStore,
+  perpsUserStateExtendedStore,
   useAccount,
   useBalances,
   useConfig,
-  usePerpsUserState,
+  usePerpsUserStateExtended,
   usePublicClient,
   useSigningClient,
   useSubmitTx,
@@ -244,8 +244,8 @@ const TransferSpotPerp: React.FC = () => {
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
 
-  usePerpsUserState();
-  const perpsState = perpsUserStateStore((s) => s.userState);
+  usePerpsUserStateExtended({ includeAvailableMargin: true });
+  const availableMargin = perpsUserStateExtendedStore((s) => s.availableMargin);
 
   const { inputs, reset } = controllers;
 
@@ -256,8 +256,7 @@ const TransferSpotPerp: React.FC = () => {
   const usdcCoin = coins.byDenom["bridge/usdc"];
 
   const spotUsdcBalance = balances["bridge/usdc"] || "0";
-  const perpMarginHuman = perpsState?.margin || "0";
-  const perpMargin = parseUnits(perpMarginHuman, perpsMarginAsset.decimals);
+  const availableMarginRaw = parseUnits(availableMargin || "0", perpsMarginAsset.decimals);
 
   const isSpotToPerp = direction === "spot-to-perp";
 
@@ -266,7 +265,7 @@ const TransferSpotPerp: React.FC = () => {
 
   const flipDirection = () => {
     const newDirection = isSpotToPerp ? "perp-to-spot" : "spot-to-perp";
-    const newBalance = newDirection === "spot-to-perp" ? spotUsdcBalance : perpMargin;
+    const newBalance = newDirection === "spot-to-perp" ? spotUsdcBalance : availableMarginRaw;
     const newDecimals =
       newDirection === "spot-to-perp" ? usdcCoin.decimals : perpsMarginAsset.decimals;
     const maxHuman = formatUnits(newBalance, newDecimals);
@@ -281,7 +280,7 @@ const TransferSpotPerp: React.FC = () => {
 
   const effectiveBalances = isSpotToPerp
     ? { "bridge/usdc": spotUsdcBalance }
-    : { "bridge/usdc": perpMargin };
+    : { "bridge/usdc": availableMarginRaw };
 
   const amount = inputs.amount?.value || "0";
 

@@ -153,6 +153,7 @@ export type {
 export type {
   RateSchedule,
   PerpsUserState,
+  PerpsUserStateExtended,
   PerpsPosition,
   PerpsUnlock,
   PerpsOrderKind,
