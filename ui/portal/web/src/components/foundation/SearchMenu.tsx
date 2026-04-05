@@ -30,9 +30,7 @@ const SearchMenu: React.FC = () => {
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
   const { searchText, setSearchText, isLoading, searchResult, allNotFavApplets, isRefetching } =
     useSearchBar({
-      applets: Object.fromEntries(
-        Object.entries(APPLETS).filter(([appletId]) => appletId !== "earn"),
-      ),
+      applets: APPLETS,
       favApplets,
     });
 
