@@ -9,7 +9,7 @@
   run_once: true
 
 - name: Verify GHCR access for bot images
-  command: "docker manifest inspect {{ item.image }}"
+  command: "docker pull --quiet {{ item.image }}"
   loop:
     - image: "ghcr.io/left-curve/bots/faucet:{{ faucet_bot_tag }}"
       name: faucet-bot
