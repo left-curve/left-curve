@@ -129,7 +129,7 @@ The insurance fund is a separate pool from the vault that absorbs bad debt and i
 
 **Negative balance:** The insurance fund may go negative when accumulated bad debt exceeds accumulated fees. This is the simplest approach — no special trigger or intervention is needed. Future liquidation fees will naturally replenish the fund.
 
-The vault's margin is never touched for bad debt or liquidation fees. This isolates liquidity providers from liquidation losses.
+Other users' bad debt and liquidation fees never touch the vault's margin — this isolates liquidity providers from external liquidation losses. However, the vault itself is subject to liquidation like any other account. If the vault's equity falls below its maintenance margin, its positions are closed following the same procedure described above. The vault's own liquidation fee goes to the insurance fund, and any bad debt is absorbed by it.
 
 ## Examples
 
