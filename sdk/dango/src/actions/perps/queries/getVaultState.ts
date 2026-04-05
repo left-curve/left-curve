@@ -4,9 +4,12 @@ import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
 import { getAction, getAppConfig } from "@left-curve/sdk/actions";
 import type { Chain, Signer } from "@left-curve/sdk/types";
 import type { AppConfig } from "../../../types/app.js";
-import type { GetPerpsQueryMsg, PerpsVaultState } from "../../../types/perps.js";
-
-type ActionMsg = GetPerpsQueryMsg<"vaultState">;
+import type {
+  PerpsQueryMsg,
+  PerpsState,
+  PerpsUserStateExtended,
+  PerpsVaultState,
+} from "../../../types/perps.js";
 
 export type GetPerpsVaultStateParameters = Prettify<{ height?: number }>;
 
@@ -22,12 +25,36 @@ export async function getPerpsVaultState<
   const { height = 0 } = parameters ?? {};
 
   const action = getAction(client, getAppConfig, "getAppConfig");
-
-  const msg: ActionMsg = {
-    vaultState: {},
-  };
-
   const { addresses } = await action<AppConfig>({});
+  const perpsContract = addresses.perps;
 
-  return await queryWasmSmart(client, { contract: addresses.perps, msg, height });
+  const stateMsg: PerpsQueryMsg = { state: {} };
+  const state: PerpsState = await queryWasmSmart(client, {
+    contract: perpsContract,
+    msg: stateMsg,
+    height,
+  });
+
+  const userStateMsg: PerpsQueryMsg = {
+    userStateExtended: {
+      user: perpsContract,
+      includeEquity: true,
+      includeAvailableMargin: false,
+    },
+  };
+  const vaultUserState: PerpsUserStateExtended | null = await queryWasmSmart(client, {
+    contract: perpsContract,
+    msg: userStateMsg,
+    height,
+  });
+
+  return {
+    shareSupply: state.vaultShareSupply,
+    equity: vaultUserState?.equity ?? "0",
+    depositWithdrawalActive: true,
+    margin: vaultUserState?.raw.margin ?? "0",
+    positions: vaultUserState?.raw.positions ?? {},
+    reservedMargin: vaultUserState?.raw.reservedMargin ?? "0",
+    openOrderCount: vaultUserState?.raw.openOrderCount ?? 0,
+  };
 }
