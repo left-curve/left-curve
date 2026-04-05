@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConnectors } from "./useConnectors.js";
-import { registerOat, OatRateLimitError } from "./pointsApi.js";
+import { registerOat, OatRateLimitError, NoOatsFoundError } from "./pointsApi.js";
 import { encodeBase64, encodeUtf8, decodeHex } from "@left-curve/dango/encoding";
 
-export { OatRateLimitError };
+export { OatRateLimitError, NoOatsFoundError };
 
 import type { EIP1193Provider } from "../types/eip1193.js";
 

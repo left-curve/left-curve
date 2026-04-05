@@ -2,7 +2,13 @@ import { Button, toast, useMediaQuery } from "@left-curve/applets-kit";
 import { Modals, useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { withResolvers } from "@left-curve/dango/utils";
-import { useAccount, useConnectors, useRegisterOat, OatRateLimitError } from "@left-curve/store";
+import {
+  useAccount,
+  useConnectors,
+  useRegisterOat,
+  OatRateLimitError,
+  NoOatsFoundError,
+} from "@left-curve/store";
 import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
 import { useState } from "react";
@@ -39,13 +45,20 @@ export const OATsSection: React.FC<OATsSectionProps> = ({ oatStatuses }) => {
       });
     },
     onError: (error) => {
-      // Handle rate limit (429) - show info toast instead of error
       if (error instanceof OatRateLimitError) {
         toast.info({
           title: m["points.boosters.toast.rateLimitTitle"](),
           description: m["points.boosters.toast.rateLimitDescription"]({
             seconds: error.retryAfterSeconds,
           }),
+        });
+        return;
+      }
+
+      if (error instanceof NoOatsFoundError) {
+        toast.info({
+          title: m["points.boosters.toast.noOatsTitle"](),
+          description: m["points.boosters.toast.noOatsDescription"](),
         });
         return;
       }

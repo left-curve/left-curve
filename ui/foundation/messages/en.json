@@ -1331,7 +1331,9 @@
         "errorTitle": "Linking Failed",
         "errorDescription": "Failed to link your EVM wallet. Please try again.",
         "rateLimitTitle": "Address Already Linked",
-        "rateLimitDescription": "This address was linked recently. You can relink it in {seconds} seconds."
+        "rateLimitDescription": "This address was linked recently. You can relink it in {seconds} seconds.",
+        "noOatsTitle": "No OATs Found",
+        "noOatsDescription": "This address doesn't have any Dango OATs. Make sure you've minted your OATs on Galxe."
       },
       "oats": {
         "hurrah": "The Last Hurrah",
