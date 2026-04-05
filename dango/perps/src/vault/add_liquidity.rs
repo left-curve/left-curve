@@ -12,7 +12,7 @@ use {
         UsdValue,
         perps::{LiquidityAdded, UserState},
     },
-    grug::{IsZero, MultiplyFraction, MutableCtx, Number as _, Response, Signed, Uint128},
+    grug::{IsZero, MultiplyRatio, MutableCtx, Number as _, Response, Signed, Uint128},
 };
 
 /// Add liquidity to the counterparty vault by transferring margin to the vault.
@@ -127,12 +127,13 @@ fn _add_liquidity(
 
     // -------------------------- Step 3. Mint shares --------------------------
 
-    // deposit_margin is already a UsdValue — no conversion needed.
-    let ratio = amount
-        .checked_div(effective_equity)?
-        .into_inner()
-        .checked_into_unsigned()?;
-    let shares_to_mint = effective_supply.checked_mul_dec_floor(ratio)?;
+    // Multiply first, then divide, to avoid precision loss from intermediate
+    // rounding in Dec128_6 (6 decimal places). The scale factors cancel since
+    // both amount and effective_equity are UsdValue (same Dec128_6 scale).
+    let shares_to_mint = effective_supply.checked_multiply_ratio_floor(
+        amount.into_inner().checked_into_unsigned()?.0,
+        effective_equity.into_inner().checked_into_unsigned()?.0,
+    )?;
 
     ensure!(
         shares_to_mint.is_non_zero(),
@@ -376,9 +377,47 @@ mod tests {
         assert!(user_state.vault_shares > Uint128::new(0));
     }
 
-    // ---- Test 13: shares rounded floor ----
+    // ---- Test: small deposit should not lose precision ----
     #[test]
-    fn shares_rounded_floor() {
+    fn small_deposit_precision() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        // Vault: $2 margin, 2M shares.
+        // effective_supply = 2M + 1M = 3M
+        // effective_equity = $2 + $1 = $3 (raw = 3_000_000)
+        //
+        // Deposit $0.000001 (raw = 1).
+        // Correct: floor(3_000_000 * 1 / 3_000_000) = 1 share.
+        // Buggy (divide-first): ratio = 1 * 10^6 / 3_000_000 = 0 → zero shares.
+        let mut vault_share_supply = Uint128::new(2_000_000);
+        let mut user_state = UserState {
+            margin: UsdValue::new_raw(1),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(2),
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        let shares = _add_liquidity(
+            &mut oracle_querier,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_raw(1),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(shares, Uint128::new(1));
+    }
+
+    // ---- Test 13: exact division yields exact shares ----
+    #[test]
+    fn exact_division_shares() {
         let storage = MockStorage::new();
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
@@ -404,7 +443,8 @@ mod tests {
         )
         .unwrap();
 
-        // Should be 999_999, not 1_000_000 (ceil) or 1_000_002 (if division ceiled).
-        assert_eq!(user_state.vault_shares, Uint128::new(999_999));
+        // effective_supply = 3M, effective_equity = $3
+        // floor(3M * 1M / 3M) = 1_000_000 (exact, no rounding needed).
+        assert_eq!(user_state.vault_shares, Uint128::new(1_000_000));
     }
 }
