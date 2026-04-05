@@ -50,9 +50,8 @@ export const PointsProfileTable: React.FC = () => {
 
   const allRows = useMemo((): EpochHistoryRow[] => {
     if (!epochPoints) return [];
-    return Object.entries(epochPoints)
-      .map(([epochStr, epochStats]) => {
-        const epoch = Number(epochStr);
+    return epochPoints
+      .map(([epoch, epochStats]) => {
         const vault = Number(epochStats.stats.points.vault);
         const perps = Number(epochStats.stats.points.perps);
         const referral = Number(epochStats.stats.points.referral);

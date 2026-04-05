@@ -51,7 +51,7 @@ export const fetchEpochPoints = async (
   baseUrl: string,
   userIndex: number,
   params?: { min?: number; max?: number },
-): Promise<Record<string, EpochUserStats>> => {
+): Promise<[number, EpochUserStats][]> => {
   const url = new URL(`${baseUrl}/stats/user/${userIndex}/epochs`);
   if (params?.min !== undefined) url.searchParams.set("min", String(params.min));
   if (params?.max !== undefined) url.searchParams.set("max", String(params.max));
