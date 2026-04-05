@@ -250,7 +250,10 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(err.to_string().contains("nothing to do"));
+        assert!(
+            err.to_string()
+                .contains("amount of margin to add must be positive")
+        );
     }
 
     // ---- Test 4: insufficient margin rejected ----

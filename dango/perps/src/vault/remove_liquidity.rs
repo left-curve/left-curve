@@ -284,7 +284,10 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(err.to_string().contains("nothing to do"));
+        assert!(
+            err.to_string()
+                .contains("amount of shares to burn must be positive")
+        );
     }
 
     // ---- Test 7: max unlocks exceeded ----
