@@ -313,6 +313,7 @@ export {
 export {
   type UseRegisterOatParameters,
   useRegisterOat,
+  OatRateLimitError,
 } from "./hooks/useRegisterOat.js";
 
 export {

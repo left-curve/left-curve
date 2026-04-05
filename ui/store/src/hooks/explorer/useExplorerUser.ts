@@ -36,9 +36,7 @@ export function useExplorerUser(username: string) {
     enabled: !!username,
   });
 
-  const accountAddresses = userQuery.data
-    ? Object.values(userQuery.data.accounts)
-    : [];
+  const accountAddresses = userQuery.data ? Object.values(userQuery.data.accounts) : [];
 
   const accountQueries = useQueries({
     queries: accountAddresses.map((address, idx) => ({
@@ -64,9 +62,7 @@ export function useExplorerUser(username: string) {
   });
 
   const isAccountsLoading = accountQueries.some((q) => q.isLoading);
-  const accounts = accountQueries
-    .filter((q) => q.data)
-    .map((q) => q.data as AccountWithDetails);
+  const accounts = accountQueries.filter((q) => q.data).map((q) => q.data as AccountWithDetails);
 
   const aggregatedBalances: Coins = {};
   for (const account of accounts) {

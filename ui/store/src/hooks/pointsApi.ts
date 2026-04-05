@@ -41,6 +41,29 @@ export type OatEntry = {
   registered_at: string;
 };
 
+/**
+ * Error thrown when the OAT registration is rate limited.
+ * The address was recently linked and can be relinked after the retry delay.
+ */
+export class OatRateLimitError extends Error {
+  /** Retry delay in seconds parsed from the backend response */
+  retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number) {
+    super(`Address already linked recently. Retry in ${retryAfterSeconds} seconds.`);
+    this.name = "OatRateLimitError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+/**
+ * Parse retry delay from error message like "Too many requests, retry in 3 seconds"
+ */
+function parseRetrySeconds(message: string): number {
+  const match = message.match(/retry in (\d+) second/i);
+  return match ? Number.parseInt(match[1], 10) : 60; // Default to 60s if parsing fails
+}
+
 export const fetchUserStats = async (baseUrl: string, userIndex: number): Promise<UserPoints> => {
   const res = await fetch(`${baseUrl}/stats/user/${userIndex}`);
   if (!res.ok) throw new Error(`Failed to fetch user stats: ${res.status}`);
@@ -123,7 +146,17 @@ export const registerOat = async (
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Failed to register OAT: ${res.status}`);
+
+  if (!res.ok) {
+    // Handle rate limit (429) - address was recently linked
+    if (res.status === 429) {
+      const text = await res.text();
+      const retrySeconds = parseRetrySeconds(text);
+      throw new OatRateLimitError(retrySeconds);
+    }
+    throw new Error(`Failed to register OAT: ${res.status}`);
+  }
+
   return res.json();
 };
 

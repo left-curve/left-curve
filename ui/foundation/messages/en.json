@@ -1329,7 +1329,9 @@
         "successTitle": "Wallet Linked",
         "successDescription": "Your EVM wallet has been linked successfully.",
         "errorTitle": "Linking Failed",
-        "errorDescription": "Failed to link your EVM wallet. Please try again."
+        "errorDescription": "Failed to link your EVM wallet. Please try again.",
+        "rateLimitTitle": "Address Already Linked",
+        "rateLimitDescription": "This address was linked recently. You can relink it in {seconds} seconds."
       },
       "oats": {
         "hurrah": "The Last Hurrah",
