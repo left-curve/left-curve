@@ -211,6 +211,17 @@ pub struct Param {
     /// )
     pub liquidation_fee_rate: Dimensionless,
 
+    /// Buffer applied during liquidation so that the user's post-liquidation
+    /// equity slightly exceeds the remaining maintenance margin.
+    ///
+    /// With a buffer ratio `b`, the deficit formula becomes:
+    ///
+    ///   deficit = MM - equity / (1 + b)
+    ///
+    /// When `b = 0`, positions are closed to bring equity exactly to the
+    /// maintenance margin boundary (default behavior). Recommended: 5-10%.
+    pub liquidation_buffer_ratio: Dimensionless,
+
     /// Duration between funding collections. The cron job applies funding
     /// only when this period elapses.
     pub funding_period: Duration,

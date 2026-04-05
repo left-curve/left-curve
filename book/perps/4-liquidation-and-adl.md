@@ -36,7 +36,10 @@ When an account is liquidatable, the system computes the **minimum set of positi
 
 3. Walk the sorted list and close just enough to cover the deficit:
 
-   - $\mathtt{deficit} = \mathtt{MM} − \mathtt{equity}$
+   - $\mathtt{deficit} = \mathtt{MM} − \mathtt{equity} \;/\; (1 + b)$
+
+     where $b$ is the global `liquidation_buffer_ratio` (default 0). When $b > 0$, positions are closed slightly beyond the maintenance boundary so the user's post-liquidation equity exceeds their remaining MM by a factor of $(1 + b)$, preventing repeated small liquidations from minor adverse price movements.
+
    - For each position:
      - If $\mathtt{deficit} \le 0$: stop
      - $\mathtt{closeSize} = \min \left( \left\lceil \frac{\mathtt{deficit}}{\mathtt{oraclePrice} \times \mathtt{mmr}} \right\rceil,\; |\mathtt{size}| \right)$
