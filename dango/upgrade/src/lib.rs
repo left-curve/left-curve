@@ -59,7 +59,7 @@ fn _do_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
         taker_fee_rates: old_param.taker_fee_rates,
         protocol_fee_rate: old_param.protocol_fee_rate,
         liquidation_fee_rate: old_param.liquidation_fee_rate,
-        liquidation_buffer_ratio: Dimensionless::ZERO,
+        liquidation_buffer_ratio: Dimensionless::new_percent(5), // 5%
         funding_period: old_param.funding_period,
         vault_total_weight: old_param.vault_total_weight,
         vault_cooldown_period: old_param.vault_cooldown_period,
