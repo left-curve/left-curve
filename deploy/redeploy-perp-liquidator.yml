@@ -4,6 +4,7 @@
   gather_facts: yes
   vars_files:
     - roles/full-app/vars/main.yml
+    - roles/full-app/defaults/main.yml
   pre_tasks:
     - name: Get deploy user info
       getent:
@@ -21,6 +22,12 @@
     - name: Set deployment facts
       set_fact:
         deployment_name: "{{ current_deployment }}"
+
+    - name: Create perp-liquidator config directory
+      file:
+        path: "{{ deployment_dir }}/perp-liquidator"
+        state: directory
+        mode: '0755'
 
     - name: Template perp-liquidator .env
       template:
