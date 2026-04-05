@@ -50,8 +50,6 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------- 1. Preparation + basic checks ---------------------
 
-    ensure!(user != ctx.contract, "cannot liquidate the vault");
-
     let param = PARAM.load(ctx.storage)?;
     let mut state = STATE.load(ctx.storage)?;
 
@@ -362,13 +360,19 @@ fn _liquidate(
 
     // ----------------------- Step 5: Settle PnLs ------------------------------
 
-    // Ensure the vault's UserState is in the map for fee settlement.
-    all_maker_states.entry(contract).or_insert_with(|| {
-        USER_STATES
-            .may_load(storage, contract)
-            .unwrap()
-            .unwrap_or_default()
-    });
+    // Ensure the vault's UserState is in the map for fee settlement —
+    // unless the vault itself is being liquidated, in which case it is
+    // already the taker and must NOT appear in maker_states (settle_pnls
+    // assumes taker ∉ maker_states, and the later save would overwrite
+    // the taker's state, losing its PnL).
+    if user != contract {
+        all_maker_states.entry(contract).or_insert_with(|| {
+            USER_STATES
+                .may_load(storage, contract)
+                .unwrap()
+                .unwrap_or_default()
+        });
+    }
 
     // Fee breakdowns are ignored during liquidation: trading fees are zero,
     // and the liquidation fee is routed to the insurance fund separately.
@@ -383,15 +387,22 @@ fn _liquidate(
         all_fees,
     )?;
 
-    // Route liquidation fee to insurance fund (not vault margin).
-    // settle_pnls added the fee to the vault's margin and subtracted from user.
-    // Reverse the vault credit and add to insurance fund instead.
+    // Route liquidation fee to the insurance fund.
     if liq_fee.is_non_zero() {
-        all_maker_states
-            .get_mut(&contract)
-            .unwrap()
-            .margin
-            .checked_sub_assign(liq_fee)?;
+        if user == contract {
+            // Vault is being liquidated. settle_pnls skipped the fee
+            // (user == contract guard at line 917 of submit_order.rs),
+            // so deduct directly from the vault's taker state.
+            user_state.margin.checked_sub_assign(liq_fee)?;
+        } else {
+            // Normal user: settle_pnls credited the vault with the fee.
+            // Reverse the vault credit.
+            all_maker_states
+                .get_mut(&contract)
+                .unwrap()
+                .margin
+                .checked_sub_assign(liq_fee)?;
+        }
         state.insurance_fund.checked_add_assign(liq_fee)?;
     }
 
@@ -1008,34 +1019,6 @@ mod tests {
         assert!(
             result.unwrap_err().to_string().contains("not liquidatable"),
             "expected 'not liquidatable' error"
-        );
-    }
-
-    #[test]
-    fn vault_self_liquidation_rejected() {
-        let mut ctx = MockContext::new()
-            .with_contract(CONTRACT)
-            .with_sender(USER)
-            .with_funds(Coins::default());
-
-        let param = default_param();
-        let pair_state = PairState::default();
-
-        setup_storage(&mut ctx.storage, &param, &[(
-            pair_btc(),
-            btc_pair_param(),
-            pair_state,
-        )]);
-
-        let result = liquidate(ctx.as_mutable(), CONTRACT);
-
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("cannot liquidate the vault"),
-            "expected 'cannot liquidate the vault' error"
         );
     }
 
