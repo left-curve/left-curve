@@ -9,6 +9,7 @@ const useExternalServer = process.env.PLAYWRIGHT_EXTERNAL_SERVER === "1";
 export default defineConfig({
   outputDir: "./tests/reports",
   testDir: "./tests",
+  testMatch: "**/*.spec.ts",
   /* Run tests in files in parallel */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
