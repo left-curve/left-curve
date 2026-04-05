@@ -171,6 +171,11 @@ export {
 } from "./hooks/usePoolLiquidityState.js";
 
 export {
+  type UseVaultLiquidityStateParameters,
+  useVaultLiquidityState,
+} from "./hooks/useVaultLiquidityState.js";
+
+export {
   type UsePairStatsParameters,
   type UseAllPairStatsParameters,
   type NormalizedPairStats,

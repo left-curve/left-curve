@@ -1,0 +1,55 @@
+import { getAppConfig } from "@left-curve/sdk";
+import { getAction } from "@left-curve/sdk/actions";
+import { execute } from "../../app/mutations/execute.js";
+
+import type { Address, Transport } from "@left-curve/sdk/types";
+import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
+import type {
+  AppConfig,
+  DangoClient,
+  Signer,
+  TypedDataParameter,
+} from "../../../types/index.js";
+
+export type VaultRemoveLiquidityParameters = {
+  sender: Address;
+  sharesToBurn: string;
+};
+
+export type VaultRemoveLiquidityReturnType = SignAndBroadcastTxReturnType;
+
+export async function vaultRemoveLiquidity<transport extends Transport>(
+  client: DangoClient<transport, Signer>,
+  parameters: VaultRemoveLiquidityParameters,
+): VaultRemoveLiquidityReturnType {
+  const { sender, sharesToBurn } = parameters;
+
+  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
+
+  const { addresses } = await getAppConfigAction<AppConfig>({});
+
+  const msg = {
+    vault: {
+      removeLiquidity: {
+        sharesToBurn,
+      },
+    },
+  };
+
+  const typedData: TypedDataParameter = {
+    type: [{ name: "vault", type: "Vault" }],
+    extraTypes: {
+      Vault: [{ name: "removeLiquidity", type: "RemoveLiquidity" }],
+      RemoveLiquidity: [{ name: "sharesToBurn", type: "uint128" }],
+    },
+  };
+
+  return await execute(client, {
+    sender,
+    execute: {
+      msg,
+      typedData,
+      contract: addresses.perps,
+    },
+  });
+}

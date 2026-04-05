@@ -40,6 +40,7 @@ export { Pagination, CursorPagination } from "./Pagination";
 export { JsonVisualizer } from "./JsonVisualizer";
 export { AddressVisualizer } from "./AddressVisualizer";
 export { Range } from "./Range";
+export { RangeWithButtons } from "./RangeWithButtons";
 export { Tooltip } from "./Tooltip";
 export { Radio } from "./RadioGroup";
 export { Toast, Toaster } from "./Toast";

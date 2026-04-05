@@ -247,6 +247,27 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.VaultAddLiquidity]: {
+    component: lazy(() =>
+      import("./VaultAddLiquidity").then(({ VaultAddLiquidity }) => ({
+        default: VaultAddLiquidity,
+      })),
+    ),
+  },
+  [Modals.VaultWithdrawLiquidity]: {
+    component: lazy(() =>
+      import("./VaultWithdrawLiquidity").then(({ VaultWithdrawLiquidity }) => ({
+        default: VaultWithdrawLiquidity,
+      })),
+    ),
+  },
+  [Modals.VaultWithdrawLiquidityWithPenalty]: {
+    component: lazy(() =>
+      import("./VaultWithdrawLiquidityWithPenalty").then(({ VaultWithdrawLiquidityWithPenalty }) => ({
+        default: VaultWithdrawLiquidityWithPenalty,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {
