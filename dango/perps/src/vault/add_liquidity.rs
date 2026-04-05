@@ -97,9 +97,17 @@ fn _add_liquidity(
 ) -> anyhow::Result<Uint128> {
     // ----------------------- Step 1. Validate deposit ------------------------
 
-    ensure!(amount.is_positive(), "nothing to do");
+    ensure!(
+        amount.is_positive(),
+        "amount of margin to add must be positive"
+    );
 
-    ensure!(user_state.margin >= amount, "insufficient margin");
+    ensure!(
+        user_state.margin >= amount,
+        "insufficient margin: {} (available) < {} (requested to be added)",
+        user_state.margin,
+        amount
+    );
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
@@ -126,7 +134,10 @@ fn _add_liquidity(
         .checked_into_unsigned()?;
     let shares_to_mint = effective_supply.checked_mul_dec_floor(ratio)?;
 
-    ensure!(shares_to_mint.is_non_zero(), "nothing to do");
+    ensure!(
+        shares_to_mint.is_non_zero(),
+        "amount of vault shares to be minted is zero"
+    );
 
     if let Some(min_shares_to_mint) = min_shares_to_mint {
         ensure!(
@@ -239,7 +250,10 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(err.to_string().contains("nothing to do"));
+        assert!(
+            err.to_string()
+                .contains("amount of margin to add must be positive")
+        );
     }
 
     // ---- Test 4: insufficient margin rejected ----
