@@ -12,17 +12,26 @@ import {
 import type { PerpsUserStateExtended, QueryRequest } from "@left-curve/dango/types";
 
 export const perpsUserStateExtendedStore = createBlockStore({
-  initialState: { availableMargin: null as string | null },
+  initialState: {
+    equity: null as string | null,
+    availableMargin: null as string | null,
+  },
 });
 
 type UsePerpsUserStateExtendedParameters = {
   subscribe?: boolean;
+  includeEquity?: boolean;
+  includeAvailableMargin?: boolean;
 };
 
 export function usePerpsUserStateExtended(
   parameters?: UsePerpsUserStateExtendedParameters,
 ) {
-  const { subscribe = true } = parameters ?? {};
+  const {
+    subscribe = true,
+    includeEquity = false,
+    includeAvailableMargin = false,
+  } = parameters ?? {};
   const { subscriptions } = useConfig();
   const { data: appConfig } = useAppConfig();
   const { account } = useAccount();
@@ -42,8 +51,8 @@ export function usePerpsUserStateExtended(
             msg: {
               userStateExtended: {
                 user: account.address,
-                includeEquity: false,
-                includeAvailableMargin: true,
+                includeEquity,
+                includeAvailableMargin,
               },
             },
           },
@@ -56,6 +65,7 @@ export function usePerpsUserStateExtended(
         };
         const { response, blockHeight } = camelCaseJsonDeserialization<Event>(event);
         setState({
+          equity: response.wasmSmart?.equity ?? null,
           availableMargin: response.wasmSmart?.availableMargin ?? null,
           blockHeight,
         });
@@ -63,7 +73,7 @@ export function usePerpsUserStateExtended(
     });
 
     return () => unsubscribe();
-  }, [appConfig.addresses, subscribe, account]);
+  }, [appConfig.addresses, subscribe, account, includeEquity, includeAvailableMargin]);
 
   return { perpsUserStateExtendedStore };
 }

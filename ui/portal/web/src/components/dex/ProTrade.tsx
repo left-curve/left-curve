@@ -60,7 +60,7 @@ const TradeSubscriptions: React.FC = () => {
   useLivePerpsTradesState({ pairId, subscribe: mode === "perps" });
 
   usePerpsUserState({ subscribe: mode === "perps" });
-  usePerpsUserStateExtended({ subscribe: mode === "perps" });
+  usePerpsUserStateExtended({ subscribe: mode === "perps", includeEquity: true, includeAvailableMargin: true });
   usePerpsOrdersByUser({ subscribe: mode === "perps" });
 
   return null;

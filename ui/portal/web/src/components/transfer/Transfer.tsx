@@ -244,7 +244,7 @@ const TransferSpotPerp: React.FC = () => {
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
 
-  usePerpsUserStateExtended();
+  usePerpsUserStateExtended({ includeAvailableMargin: true });
   const availableMargin = perpsUserStateExtendedStore((s) => s.availableMargin);
 
   const { inputs, reset } = controllers;

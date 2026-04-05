@@ -321,9 +321,10 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const userState = perpsUserStateStore((s) => s.userState);
 
-  const availableMargin = Number(perpsUserStateExtendedStore((s) => s.availableMargin) ?? "0");
+  const userStateExtended = perpsUserStateExtendedStore((s) => ({ equity: s.equity, availableMargin: s.availableMargin }));
 
-  const margin = useMemo(() => userState?.margin ?? "0", [userState]);
+  const availableMargin = Number(userStateExtended.availableMargin ?? "0");
+  const equity = userStateExtended.equity ?? "0"
 
   const position = useMemo(() => {
     if (!userState?.positions?.[perpsPairId]) return null;
@@ -371,10 +372,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     const pnl = Decimal(position.size).mul(Decimal(currentPrice).minus(position.entryPrice));
     return pnl.toFixed();
   }, [position, pairId, getPrice]);
-
-  const accountEquity = useMemo(() => {
-    return Decimal(margin).plus(unrealizedPnl).toFixed();
-  }, [margin, unrealizedPnl]);
 
   const sizeValue = useMemo(() => {
     if (isBaseSize) return size;
@@ -543,7 +540,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <div className="flex flex-col gap-1 px-4 border-t border-outline-tertiary-rice pt-3">
           <InfoRow
             label="Account Equity"
-            value={`$${formatNumber(accountEquity, formatNumberOptions)}`}
+            value={`$${formatNumber(equity, formatNumberOptions)}`}
           />
           <InfoRow label="Max Leverage" value={`${maxLeverage}x`} />
           <div className="flex items-center justify-between gap-2">
