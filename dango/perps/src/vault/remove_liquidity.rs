@@ -96,16 +96,23 @@ fn _remove_liquidity(
 ) -> anyhow::Result<(UsdValue, Timestamp)> {
     // -------------------- Step 1. Validate shares to burn --------------------
 
-    ensure!(shares_to_burn.is_non_zero(), "nothing to do");
+    ensure!(
+        shares_to_burn.is_non_zero(),
+        "amount of shares to burn must be positive"
+    );
 
     ensure!(
         user_state.vault_shares >= shares_to_burn,
-        "insufficient vault shares"
+        "insufficient vault shares: {} (available) < {} (requested to burn)",
+        user_state.vault_shares,
+        shares_to_burn
     );
 
     ensure!(
         user_state.unlocks.len() < param.max_unlocks,
-        "too many pending unlocks"
+        "too many pending unlocks! current: {}, max: {}",
+        user_state.unlocks.len(),
+        param.max_unlocks
     );
 
     // --------------------- Step 2. Compute vault equity ----------------------
