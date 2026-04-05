@@ -9,20 +9,23 @@ import {
 } from "@left-curve/dango/encoding";
 
 import type { PerpsPairState, QueryRequest } from "@left-curve/dango/types";
+import { TradePairStore } from "../stores/tradePairStore.js";
 
 export const perpsPairStateStore = createBlockStore({
   initialState: { pairState: null as PerpsPairState | null, pairId: null as string | null },
 });
 
 type UsePerpsPairStateParameters = {
-  pairId: string;
   subscribe?: boolean;
 };
 
 export function usePerpsPairState(parameters: UsePerpsPairStateParameters) {
-  const { pairId, subscribe = true } = parameters;
+  const { subscribe = true } = parameters;
   const { subscriptions } = useConfig();
   const { data: appConfig } = useAppConfig();
+
+  const pairId = TradePairStore((s) => s.pairId);
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 
   const { setState } = perpsPairStateStore();
 
@@ -36,7 +39,7 @@ export function usePerpsPairState(parameters: UsePerpsPairStateParameters) {
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
             contract: addresses.perps,
-            msg: { pairState: { pairId } },
+            msg: { pairState: { pairId: getPerpsPairId() } },
           },
         }),
       },
@@ -46,7 +49,7 @@ export function usePerpsPairState(parameters: UsePerpsPairStateParameters) {
           blockHeight: number;
         };
         const { response, blockHeight } = camelCaseJsonDeserialization<Event>(event);
-        setState({ pairState: response.wasmSmart, pairId, blockHeight });
+        setState({ pairState: response.wasmSmart, pairId: getPerpsPairId(), blockHeight });
       },
     });
 

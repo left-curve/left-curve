@@ -1,19 +1,19 @@
-import { useApp } from "@left-curve/applets-kit";
-
 import {
   Badge,
   formatDate,
+  FormattedNumber,
   IconButton,
   IconClose,
   IconLink,
   PairAssets,
   TextCopy,
+  useApp,
 } from "@left-curve/applets-kit";
 
 import { forwardRef } from "react";
 import { twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { formatNumber, formatOrderId, formatUnits } from "@left-curve/dango/utils";
+import { formatOrderId, formatUnits } from "@left-curve/dango/utils";
 
 import type { useNavigate } from "@tanstack/react-router";
 import type { AnyCoin, WithAmount } from "@left-curve/store/types";
@@ -46,7 +46,7 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
       order;
 
     const { hideModal, setSidebarVisibility, settings } = useApp();
-    const { formatNumberOptions, timeFormat, dateFormat } = settings;
+    const { timeFormat, dateFormat } = settings;
     const orderId = formatOrderId(id);
 
     const navigate = (parameters: Parameters<typeof _navigate_>[0]) => {
@@ -147,9 +147,10 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                   </p>
                   <div className="flex items-center gap-1">
                     {refund.map((r) => (
-                      <p
-                        key={`refound-${r.denom}`}
-                      >{`${formatNumber(formatUnits(r.amount, r.decimals), formatNumberOptions)} ${r.symbol}`}</p>
+                      <p key={`refound-${r.denom}`}>
+                        <FormattedNumber number={formatUnits(r.amount, r.decimals)} as="span" />{" "}
+                        {r.symbol}
+                      </p>
                     ))}
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 export { createConfig } from "./createConfig.js";
 export { createEventBus } from "./createEventBus.js";
 export { createBlockStore, type BlockGuardedState } from "./hooks/createBlockStore.js";
-export { tradePairStore, toPerpsPairId, type TradePairState } from "./stores/tradePairStore.js";
+export { TradePairStore, type TradePairState } from "./stores/tradePairStore.js";
 export { tradeInfoStore, type TradeInfoState } from "./stores/tradeInfoStore.js";
 
 export { WebCryptoECDH } from "./ecdh.js";
@@ -257,9 +257,12 @@ export {
 } from "./hooks/usePerpsUserStateExtended.js";
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
-export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";
+export { useLiveSpotTradesState, liveSpotTradesStore } from "./hooks/useLiveSpotTradesState.js";
 export { useLivePerpsTradesState, livePerpsTradesStore } from "./hooks/useLivePerpsTradesState.js";
-export { usePerpsLiquidityDepth, perpsLiquidityDepthStore } from "./hooks/usePerpsLiquidityDepth.js";
+export {
+  usePerpsLiquidityDepth,
+  perpsLiquidityDepthStore,
+} from "./hooks/usePerpsLiquidityDepth.js";
 export { usePerpsOrdersByUser, perpsOrdersByUserStore } from "./hooks/usePerpsOrdersByUser.js";
 export { usePerpsPairState, perpsPairStateStore } from "./hooks/usePerpsPairState.js";
 export { usePerpsState, perpsStateStore } from "./hooks/usePerpsState.js";

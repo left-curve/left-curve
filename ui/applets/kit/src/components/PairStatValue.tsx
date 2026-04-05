@@ -1,6 +1,7 @@
 import { useApp, twMerge } from "@left-curve/foundation";
 
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/dango/utils";
+import { FormattedNumber } from "./FormattedNumber";
 
 import type React from "react";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
@@ -28,40 +29,6 @@ function asDecimal(value: string | null | undefined) {
   }
 }
 
-function formatPairStat(
-  kind: PairStatKind,
-  value: string | null | undefined,
-  formatNumberOptions: FormatNumberOptions,
-  formatOptions?: Partial<FormatNumberOptions>,
-  currency?: string | null,
-): { text: string; tone: PairStatTone } {
-  const decimalValue = asDecimal(value);
-  if (decimalValue === null) return { text: "-", tone: "neutral" };
-
-  if (kind === "priceChange24h") {
-    const maximumTotalDigits = formatOptions?.maximumTotalDigits ?? 6;
-    const text = `${decimalValue.gte(0) ? "+" : ""}${formatNumber(value as string, {
-      ...formatNumberOptions,
-      ...formatOptions,
-      maximumTotalDigits,
-    })}%`;
-
-    return { text, tone: decimalValue.gte(0) ? "positive" : "negative" };
-  }
-
-  const maximumTotalDigits = formatOptions?.maximumTotalDigits ?? 5;
-  const selectedCurrency =
-    currency === null ? undefined : (currency ?? formatOptions?.currency ?? "usd");
-  const text = formatNumber(value as string, {
-    ...formatNumberOptions,
-    ...formatOptions,
-    ...(selectedCurrency ? { currency: selectedCurrency } : {}),
-    maximumTotalDigits,
-  });
-
-  return { text, tone: "neutral" };
-}
-
 export const PairStatValue: React.FC<PairStatValueProps> = ({
   kind,
   value,
@@ -71,24 +38,51 @@ export const PairStatValue: React.FC<PairStatValueProps> = ({
   align = "start",
   as = "p",
 }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-  const { text, tone } = formatPairStat(kind, value, formatNumberOptions, formatOptions, currency);
+  const decimalValue = asDecimal(value);
+
+  const tone: PairStatTone =
+    decimalValue === null
+      ? "neutral"
+      : kind === "priceChange24h"
+        ? decimalValue.gte(0)
+          ? "positive"
+          : "negative"
+        : "neutral";
+
+  const baseClassName = twMerge(
+    "tabular-nums lining-nums",
+    align === "end" ? "text-right" : "text-left",
+    tone === "positive" && "text-status-success",
+    tone === "negative" && "text-status-fail",
+    tone === "neutral" && "text-ink-secondary-700",
+    className,
+  );
 
   const Component = as;
 
+  if (decimalValue === null) {
+    return <Component className={baseClassName}>-</Component>;
+  }
+
+  if (kind === "priceChange24h") {
+    return (
+      <Component className={baseClassName}>
+        {decimalValue.gte(0) ? "+" : ""}
+        <FormattedNumber number={value!} formatOptions={formatOptions} as="span" />
+        {"%"}
+      </Component>
+    );
+  }
+
+  const selectedCurrency =
+    currency === null ? undefined : (currency ?? formatOptions?.currency ?? "usd");
+
   return (
-    <Component
-      className={twMerge(
-        "tabular-nums lining-nums",
-        align === "end" ? "text-right" : "text-left",
-        tone === "positive" && "text-status-success",
-        tone === "negative" && "text-status-fail",
-        tone === "neutral" && "text-ink-secondary-700",
-        className,
-      )}
-    >
-      {text}
-    </Component>
+    <FormattedNumber
+      number={value!}
+      formatOptions={{ ...formatOptions, ...(selectedCurrency ? { currency: selectedCurrency } : {}) }}
+      as={as}
+      className={baseClassName}
+    />
   );
 };

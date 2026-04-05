@@ -1,6 +1,7 @@
 import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
 
-import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { capitalize, formatUnits } from "@left-curve/dango/utils";
+import { FormattedNumber } from "./FormattedNumber";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { twMerge } from "@left-curve/foundation";
 
@@ -45,9 +46,9 @@ type CellAssetProps = Prettify<
 >;
 
 const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
-  const { getCoinInfo } = useConfig();
+  const { coins } = useConfig();
 
-  const coin = asset || getCoinInfo(denom as string);
+  const coin = asset || coins.getCoinInfo(denom as string);
 
   if (!coin) return <div className="flex h-full items-center diatype-sm-medium ">-</div>;
 
@@ -111,7 +112,7 @@ const Amount: React.FC<CellAmountProps> = ({ amount, price, decimals, className 
 
 type CellTextProps = {
   className?: string;
-  text: string | number;
+  text: React.ReactNode;
 };
 
 const Text: React.FC<CellTextProps> = ({ text, className }) => {
@@ -124,14 +125,14 @@ const Text: React.FC<CellTextProps> = ({ text, className }) => {
 
 type CellNumberProps = {
   className?: string;
-  formatOptions: FormatNumberOptions;
+  formatOptions?: Partial<FormatNumberOptions>;
   value: number | string;
 };
 
 const CellNumber: React.FC<CellNumberProps> = ({ value, formatOptions, className }) => {
   return (
     <div className={twMerge("flex flex-col gap-1 text-ink-tertiary-500", className)}>
-      <p>{formatNumber(value, formatOptions)}</p>
+      <FormattedNumber number={value} formatOptions={formatOptions} />
     </div>
   );
 };
@@ -158,7 +159,7 @@ const OrderDirection: React.FC<CellOrderDirectionProps> = ({ text, direction, cl
 
 type CellMarketPriceProps = {
   className?: string;
-  formatOptions: FormatNumberOptions;
+  formatOptions?: Partial<FormatNumberOptions>;
   denom: string;
 };
 
@@ -173,7 +174,10 @@ const MarketPrice: React.FC<CellMarketPriceProps> = ({ denom, className, formatO
         className,
       )}
     >
-      <p>{formatNumber(price.humanizedPrice || 0, { ...formatOptions, currency: "usd" })}</p>
+      <FormattedNumber
+        number={price.humanizedPrice || 0}
+        formatOptions={{ ...formatOptions, currency: "usd" }}
+      />
     </div>
   );
 };

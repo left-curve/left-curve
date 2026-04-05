@@ -6,20 +6,24 @@ import { Direction, type PairId } from "@left-curve/dango/types";
 import {
   liquidityDepthStore,
   useLiquidityDepthState,
-  useLiveTradesState,
   livePerpsTradesStore,
   useOrderBookState,
   useCurrentPrice,
   useTradeCoins,
   useAppConfig,
-  useConfig,
-  tradePairStore,
-  toPerpsPairId,
-  usePerpsLiquidityDepth,
   perpsLiquidityDepthStore,
   useStorage,
+  TradePairStore,
+  liveSpotTradesStore,
+  usePerpsLiquidityDepth,
 } from "@left-curve/store";
-import { calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
+import {
+  bucketSizeToFractionDigits,
+  calculateTradeSize,
+  Decimal,
+  formatNumber,
+  parseUnits,
+} from "@left-curve/dango/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -37,39 +41,29 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
 
   const { isLg, is3XlTall } = useMediaQuery();
 
-  const mode = tradePairStore((s) => s.mode);
-  const pairId = tradePairStore((s) => s.pairId);
+  const mode = TradePairStore((s) => s.mode);
+  const pairId = TradePairStore((s) => s.pairId);
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
   const { data: appConfig } = useAppConfig();
-  const { coins } = useConfig();
 
-  const { baseCoin, quoteCoin } = useTradeCoins({ pairId, mode });
+  const { baseCoin, quoteCoin } = useTradeCoins();
 
-  const perpsPairId = useMemo(() => {
-    if (mode !== "perps") return null;
-    const baseSymbol = coins.byDenom[pairId.baseDenom]?.symbol;
-    const quoteSymbol = coins.byDenom[pairId.quoteDenom]?.symbol ?? "USD";
-    return baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : null;
-  }, [mode, pairId, coins]);
-
-  const pair =
-    mode === "spot"
-      ? appConfig?.pairs[pairId.baseDenom]
-      : perpsPairId
-        ? (appConfig as any)?.perpsPairs?.[perpsPairId]
-        : null;
+  const pairInfo =
+    mode === "spot" ? appConfig.pairs[pairId.baseDenom] : appConfig.perpsPairs[getPerpsPairId()];
 
   const bucketSizes: string[] =
-    pair && "params" in pair ? pair.params.bucketSizes : ((pair as any)?.bucketSizes ?? []);
-  const [bucketSize, setBucketSize] = useState(bucketSizes[0] ?? "1");
+    pairInfo && "params" in pairInfo ? pairInfo.params.bucketSizes : pairInfo.bucketSizes;
+
+  const [bucketSize, setBucketSize] = useState(bucketSizes[0]);
 
   useEffect(() => {
-    if (bucketSizes[0]) setBucketSize(bucketSizes[0]);
-  }, [bucketSizes[0]]);
+    setBucketSize(bucketSizes[0]);
+  }, [bucketSizes]);
 
   usePerpsLiquidityDepth({
-    pairId: perpsPairId ?? "",
+    pairId: getPerpsPairId(),
     bucketSize,
-    subscribe: mode === "perps" && !!perpsPairId,
+    subscribe: mode === "perps",
   });
 
   useEffect(() => {
@@ -126,7 +120,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
             />
           )}
           {activeTab === "trades" && (
-            <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} pairId={pairId} mode={mode} />
+            <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} mode={mode} />
           )}
         </>
       )}
@@ -140,7 +134,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
             fullWidth
             classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
           />
-          <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} pairId={pairId} mode={mode} />
+          <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} mode={mode} />
         </>
       )}
     </ResizerContainer>
@@ -153,11 +147,12 @@ type OrderBookRowProps = {
   total: string;
   max: string;
   type: "bid" | "ask";
+  priceFractionDigits: number;
   onSelectPrice: (price: string) => void;
 };
 
 const OrderRow: React.FC<OrderBookRowProps> = (props) => {
-  const { price, size, total, type, max, onSelectPrice } = props;
+  const { price, size, total, type, max, priceFractionDigits, onSelectPrice } = props;
   const depthBarWidthPercent = Decimal(size).div(max).times(100).toFixed();
 
   const depthBarClass =
@@ -180,10 +175,10 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
         )}
         onClick={() => onSelectPrice(price)}
       >
-        <FormattedNumber number={price} formatOptions={{ minimumTotalDigits: 10 }} />
+        <FormattedNumber number={price} formatOptions={{ fractionDigits: priceFractionDigits }} />
       </div>
       <div className="z-10 justify-end text-end hidden lg:flex gap-1">
-        <FormattedNumber number={size} formatOptions={{ minimumTotalDigits: 8 }} />
+        <FormattedNumber number={size} />
       </div>
       <div
         className={twMerge(
@@ -191,7 +186,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
           type === "bid" ? "text-start lg:text-end" : "order-1 lg:order-none text-end",
         )}
       >
-        <FormattedNumber number={total} formatOptions={{ minimumTotalDigits: 8 }} />
+        <FormattedNumber number={total} />
       </div>
     </div>
   );
@@ -236,6 +231,16 @@ const OrderBook: React.FC<OrderBookProps> = ({
       : bucketSizeCoin === "base"
         ? baseCoin.symbol
         : quoteCoin.symbol;
+
+  const priceFractionDigits = useMemo(() => {
+    const displaySize =
+      mode === "perps"
+        ? bucketSize
+        : Decimal(bucketSize)
+            .mul(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+            .toString();
+    return bucketSizeToFractionDigits(displaySize);
+  }, [bucketSize, mode, baseCoin.decimals, quoteCoin.decimals]);
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center h-full">
@@ -302,6 +307,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
         onSelectPrice={(price) => controllers.setValue("price", price)}
         mode={mode}
         displayMode={perpsDisplayMode}
+        priceFractionDigits={priceFractionDigits}
       />
     </div>
   );
@@ -310,7 +316,6 @@ const OrderBook: React.FC<OrderBookProps> = ({
 type LiveTradesProps = {
   baseCoin: AnyCoin & { amount: string };
   quoteCoin: AnyCoin & { amount: string };
-  pairId: PairId;
   mode: "spot" | "perps";
 };
 
@@ -318,7 +323,7 @@ const LiveTrades: React.FC<LiveTradesProps> = (props) => {
   return props.mode === "perps" ? <PerpsLiveTrades {...props} /> : <SpotLiveTrades {...props} />;
 };
 
-const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, pairId }) => {
+const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
   const { is3XlTall } = useMediaQuery();
@@ -355,16 +360,10 @@ const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, pairId }) => {
                     isLong ? "text-utility-success-600" : "text-utility-error-600",
                   )}
                 >
-                  <FormattedNumber
-                    number={trade.fillPrice}
-                    formatOptions={{ minimumTotalDigits: 8 }}
-                  />
+                  <FormattedNumber number={trade.fillPrice} />
                 </div>
                 <div className="text-center z-10 flex gap-1 justify-center">
-                  <FormattedNumber
-                    number={Math.abs(Number(trade.fillSize)).toString()}
-                    formatOptions={{ maximumTotalDigits: 5, minimumTotalDigits: 5 }}
-                  />
+                  <FormattedNumber number={Math.abs(Number(trade.fillSize)).toString()} />
                 </div>
                 <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
                   <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
@@ -382,15 +381,13 @@ const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, pairId }) => {
   );
 };
 
-const SpotLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin, pairId }) => {
+const SpotLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
   const { is3XlTall } = useMediaQuery();
   const { timeFormat } = settings;
 
-  const { liveTradesStore } = useLiveTradesState({ pairId, subscribe: true });
-
-  const liveTrades = liveTradesStore((s) => s.trades);
+  const liveTrades = liveSpotTradesStore((s) => s.trades);
   const trades = useDeferredValue(liveTrades);
 
   return (
@@ -429,14 +426,10 @@ const SpotLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin, pairId
                     baseCoin.decimals - quoteCoin.decimals,
                     true,
                   )}
-                  formatOptions={{ minimumTotalDigits: 8 }}
                 />
               </div>
               <div className="text-center z-10 flex gap-1 justify-center">
-                <FormattedNumber
-                  number={calculateTradeSize(trade, baseCoin.decimals).toFixed()}
-                  formatOptions={{ maximumTotalDigits: 5, minimumTotalDigits: 5 }}
-                />
+                <FormattedNumber number={calculateTradeSize(trade, baseCoin.decimals).toFixed()} />
               </div>
 
               <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
@@ -463,6 +456,7 @@ type LiquidityDepthProps = {
   onSelectPrice: (price: string) => void;
   mode: "spot" | "perps";
   displayMode: "base" | "quote";
+  priceFractionDigits: number;
 };
 
 const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
@@ -474,6 +468,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   onSelectPrice,
   mode,
   displayMode,
+  priceFractionDigits,
 }) => {
   const { isLg } = useMediaQuery();
   const { liquidityDepthStore } = useLiquidityDepthState({
@@ -509,6 +504,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
             type="ask"
             {...ask}
             max={max}
+            priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
           />
         ))}
@@ -523,6 +519,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
             type="bid"
             {...bid}
             max={max}
+            priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
           />
         ))}
@@ -538,13 +535,13 @@ type SpreadProps = {
   mode: "spot" | "perps";
 };
 
-const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
+const Spread: React.FC<SpreadProps> = ({ base, quote, mode }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
   const { currentPrice, previousPrice } = useCurrentPrice();
 
-  const { orderBookStore } = useOrderBookState({ pairId });
+  const { orderBookStore } = useOrderBookState();
   const orderBook = orderBookStore((s) => s.orderBook);
   const perpsDepth = perpsLiquidityDepthStore((s) => s.liquidityDepth);
 
@@ -583,7 +580,9 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
     if (!currentPrice) return null;
     return mode === "perps"
       ? currentPrice
-      : Decimal(currentPrice).mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed();
+      : Decimal(currentPrice)
+          .mul(Decimal(10).pow(base.decimals - quote.decimals))
+          .toFixed();
   }, [currentPrice, mode, base.decimals, quote.decimals]);
 
   return (
@@ -598,7 +597,7 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
             : "text-ink-secondary-700",
         )}
       >
-        {midPriceDisplay ? formatNumber(midPriceDisplay, formatNumberOptions) : "-"}
+        {midPriceDisplay ? <FormattedNumber number={midPriceDisplay} as="span" /> : "-"}
       </p>
       <div className="flex flex-col items-end text-ink-tertiary-500 relative z-20">
         <p className="diatype-xxs-medium">{m["dex.protrade.spread"]()}</p>

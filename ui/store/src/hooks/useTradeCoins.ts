@@ -6,37 +6,30 @@ import { perpsUserStateStore, perpsMarginAsset } from "./usePerpsUserState.js";
 
 import { formatUnits } from "@left-curve/dango/utils";
 
-import type { PairId } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount } from "../types/coin.js";
+import { TradePairStore } from "../stores/tradePairStore.js";
 
-type UseTradeCoinsParameters = {
-  pairId: PairId;
-  mode: "spot" | "perps";
-};
-
-export function useTradeCoins(parameters: UseTradeCoinsParameters) {
-  const { pairId, mode } = parameters;
+export function useTradeCoins() {
   const { coins } = useConfig();
   const { account } = useAccount();
-
   const { data: balances = {} } = useBalances({ address: account?.address });
+
   const userState = perpsUserStateStore((s) => s.userState);
+  const pairId = TradePairStore((s) => s.pairId);
+  const mode = TradePairStore((s) => s.mode);
+
+  if (!pairId) throw new Error("[useTradeCoins] pairId is required");
 
   const baseCoin: WithAmount<AnyCoin> = useMemo(() => {
-    const coin = coins.byDenom[pairId.baseDenom] ?? {
-      symbol: pairId.baseDenom,
-      denom: pairId.baseDenom,
-      decimals: 6,
-      name: pairId.baseDenom,
-      type: "native" as const,
-    };
+    const base = coins.byDenom[pairId.baseDenom];
 
-    const amount =
-      mode === "spot" && balances[pairId.baseDenom]
-        ? formatUnits(balances[pairId.baseDenom] || "0", coin.decimals)
-        : "0";
+    if (!base) throw new Error(`[useTradeCoins] Base coin not found for denom ${pairId.baseDenom}`);
 
-    return Object.assign({}, coin, { amount });
+    const baseBalance = balances[pairId.baseDenom];
+
+    const amount = mode === "spot" && baseBalance ? formatUnits(baseBalance, base.decimals) : "0";
+
+    return Object.assign({}, base, { amount });
   }, [pairId.baseDenom, coins, balances, mode]);
 
   const quoteCoin: WithAmount<AnyCoin> = useMemo(() => {
@@ -56,11 +49,15 @@ export function useTradeCoins(parameters: UseTradeCoinsParameters) {
       );
     }
 
-    const coin = coins.byDenom[pairId.quoteDenom];
-    const amount = balances[pairId.baseDenom]
-      ? formatUnits(balances[pairId.quoteDenom] || "0", coin.decimals)
-      : "0";
-    return Object.assign({}, coin, { amount });
+    const quote = coins.byDenom[pairId.quoteDenom];
+
+    if (!quote)
+      throw new Error(`[useTradeCoins] Quote coin not found for denom ${pairId.quoteDenom}`);
+
+    const quoteBalance = balances[pairId.quoteDenom];
+
+    const amount = quoteBalance ? formatUnits(quoteBalance || "0", quote.decimals) : "0";
+    return Object.assign({}, quote, { amount });
   }, [pairId.quoteDenom, coins, balances, mode, userState]);
 
   return { baseCoin, quoteCoin };

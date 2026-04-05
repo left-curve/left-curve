@@ -1,8 +1,7 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { twMerge } from "@left-curve/foundation";
-import { formatNumber } from "@left-curve/dango/utils";
-import { useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { FormattedNumber } from "@left-curve/applets-kit";
 
 import { OrderActivity } from "./OrderActivity";
 
@@ -15,8 +14,6 @@ type ActivityPerpLiquidatedProps = {
 
 export const ActivityPerpLiquidated = forwardRef<ActivityRef, ActivityPerpLiquidatedProps>(
   ({ activity }, ref) => {
-    const { settings } = useApp();
-    const { formatNumberOptions } = settings;
     const { pair_id, adl_size, adl_price, adl_realized_pnl } = activity.data;
 
     const absSize = adl_size.startsWith("-") ? adl_size.slice(1) : adl_size;
@@ -38,7 +35,7 @@ export const ActivityPerpLiquidated = forwardRef<ActivityRef, ActivityPerpLiquid
             <div className="flex w-full gap-1">
               <span>{pairLabel}</span>
               <span className="diatype-m-bold">
-                {formatNumber(absSize, formatNumberOptions)} {baseSymbol}
+                <FormattedNumber number={absSize} as="span" /> {baseSymbol}
               </span>
             </div>
 
@@ -46,7 +43,7 @@ export const ActivityPerpLiquidated = forwardRef<ActivityRef, ActivityPerpLiquid
               <div className="flex w-full gap-1">
                 <span>{m["activities.activity.perpOrderFilled.atPrice"]()}</span>
                 <span className="diatype-m-bold">
-                  ${formatNumber(adl_price, formatNumberOptions)}
+                  <FormattedNumber number={adl_price} formatOptions={{ currency: "USD" }} as="span" />
                 </span>
               </div>
             )}
@@ -61,7 +58,7 @@ export const ActivityPerpLiquidated = forwardRef<ActivityRef, ActivityPerpLiquid
                   )}
                 >
                   {!adl_realized_pnl.startsWith("-") ? "+" : ""}
-                  {formatNumber(adl_realized_pnl, formatNumberOptions)}
+                  <FormattedNumber number={adl_realized_pnl} as="span" />
                 </span>
               </div>
             )}

@@ -1,33 +1,23 @@
 import type React from "react";
 import { useMemo } from "react";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
-import { IconToastInfo, Tooltip, twMerge, useApp } from "@left-curve/applets-kit";
+import { Decimal } from "@left-curve/dango/utils";
+import { FormattedNumber, IconToastInfo, Tooltip, twMerge } from "@left-curve/applets-kit";
 import {
   useCurrentPrice,
-  usePerpsPairState,
   perpsPairStateStore,
   usePerpsPairParam,
+  TradePairStore,
 } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-type OpenInterestDisplayProps = {
-  pairId: string;
-};
-
-export const OpenInterestDisplay: React.FC<OpenInterestDisplayProps> = ({ pairId }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-
-  // Subscribe to pair state updates
-  usePerpsPairState({ pairId });
+export const OpenInterestDisplay: React.FC = () => {
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
   const pairState = perpsPairStateStore((s) => s.pairState);
 
-  // Get current price for USD conversion
   const { currentPrice } = useCurrentPrice();
 
-  // Get pair params for OI limit
-  const { data: pairParam } = usePerpsPairParam({ pairId });
+  const { data: pairParam } = usePerpsPairParam({ pairId: getPerpsPairId() });
 
   const { longOiUsd, shortOiUsd, totalOiUsd, isAtLimit } = useMemo(() => {
     if (!pairState || !currentPrice) {
@@ -57,13 +47,9 @@ export const OpenInterestDisplay: React.FC<OpenInterestDisplayProps> = ({ pairId
     };
   }, [pairState, currentPrice, pairParam]);
 
-  const formatOiValue = (value: string | null) => {
+  const OiValue: React.FC<{ value: string | null }> = ({ value }) => {
     if (!value) return "-";
-    return formatNumber(value, {
-      ...formatNumberOptions,
-      currency: "usd",
-      maximumTotalDigits: 6,
-    });
+    return <FormattedNumber number={value} formatOptions={{ currency: "USD" }} as="span" />;
   };
 
   return (
@@ -78,7 +64,8 @@ export const OpenInterestDisplay: React.FC<OpenInterestDisplayProps> = ({ pairId
             isAtLimit ? "text-status-fail" : "text-ink-secondary-700",
           )}
         >
-          {formatOiValue(longOiUsd)} / {formatOiValue(shortOiUsd)} / {formatOiValue(totalOiUsd)}
+          <OiValue value={longOiUsd} /> / <OiValue value={shortOiUsd} /> /{" "}
+          <OiValue value={totalOiUsd} />
         </p>
         {isAtLimit && (
           <Tooltip

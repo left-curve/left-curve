@@ -66,7 +66,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
       timeZone: "local",
       formatNumberOptions: {
         mask: 1,
-        maximumTotalDigits: 8,
         language: "en-US",
       },
     },
@@ -80,7 +79,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
         state.timeZone = state.timeZone || "local";
         state.formatNumberOptions = {
           mask: state.formatNumberOptions.mask,
-          maximumTotalDigits: 8,
           language: state.formatNumberOptions.language,
         };
         return state;

@@ -22,15 +22,17 @@ import {
   perpsOrdersByUserStore,
   perpsUserStateStore,
   usePrices,
-  tradePairStore,
+  TradePairStore,
   tradeInfoStore,
   useTradeCoins,
+  useLiveSpotTradesState,
+  usePerpsPairState,
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
-import { Cell, Table, Tabs } from "@left-curve/applets-kit";
+import { Cell, FormattedNumber, Table, Tabs } from "@left-curve/applets-kit";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { TradeButtons } from "./TradeButtons";
@@ -53,14 +55,20 @@ const [ProTradeProvider, useProTrade] = createContext<{
 export { useProTrade };
 
 const TradeSubscriptions: React.FC = () => {
-  const mode = tradePairStore((s) => s.mode);
-  const pairId = tradePairStore((s) => s.pairId);
+  const mode = TradePairStore((s) => s.mode);
 
-  useOrderBookState({ pairId, subscribe: mode === "spot" });
-  useLivePerpsTradesState({ pairId, subscribe: mode === "perps" });
+  useOrderBookState({ subscribe: mode === "spot" });
+
+  useLivePerpsTradesState({ subscribe: mode === "perps" });
+  useLiveSpotTradesState({ subscribe: mode === "spot" });
 
   usePerpsUserState({ subscribe: mode === "perps" });
-  usePerpsUserStateExtended({ subscribe: mode === "perps", includeEquity: true, includeAvailableMargin: true });
+  usePerpsUserStateExtended({
+    subscribe: mode === "perps",
+    includeEquity: true,
+    includeAvailableMargin: true,
+  });
+  usePerpsPairState({ subscribe: mode === "perps" });
   usePerpsOrdersByUser({ subscribe: mode === "perps" });
 
   return null;
@@ -89,7 +97,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   const controllers = useInputs();
 
   useEffect(() => {
-    tradePairStore.getState().setPair(pairId, type);
+    TradePairStore.getState().setPair(pairId, type);
   }, [pairId, type]);
 
   useEffect(() => {
@@ -106,6 +114,8 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
       if (state.operation !== prev.operation) onChangeOrderType(state.operation);
     });
   }, [onChangeAction, onChangeOrderType]);
+
+  if (TradePairStore.getState().pairId.baseDenom === "") return null;
 
   return (
     <ProTradeProvider value={{ controllers, onChangePairId }}>
@@ -129,11 +139,10 @@ const TradingView = lazy(() =>
 );
 
 const ProTradeChart: React.FC = () => {
-  const mode = tradePairStore((s) => s.mode);
-  const pairId = tradePairStore((s) => s.pairId);
+  const mode = TradePairStore((s) => s.mode);
   const { isLg } = useMediaQuery();
 
-  const { baseCoin, quoteCoin } = useTradeCoins({ pairId, mode });
+  const { baseCoin, quoteCoin } = useTradeCoins();
 
   const orders = useOrdersByUser({ enabled: mode === "spot", initialData: [] });
 
@@ -183,7 +192,7 @@ const ProTradeMenu: React.FC = () => {
 type BottomTab = "positions" | "open-orders" | "trade-history";
 
 const ProTradeHistory: React.FC = () => {
-  const mode = tradePairStore((s) => s.mode);
+  const mode = TradePairStore((s) => s.mode);
   const defaultTab: BottomTab = mode === "perps" ? "positions" : "open-orders";
   const [activeTab, setActiveTab] = useState<BottomTab>(defaultTab);
 
@@ -296,14 +305,28 @@ const PerpsPositionsTable: React.FC = () => {
     {
       header: "Entry Price",
       cell: ({ row }) => (
-        <Cell.Text text={`$${formatNumber(row.original.entryPrice, formatNumberOptions)}`} />
+        <Cell.Text
+          text={
+            <FormattedNumber
+              number={row.original.entryPrice}
+              formatOptions={{ currency: "USD" }}
+              as="span"
+            />
+          }
+        />
       ),
     },
     {
       header: "Mark Price",
       cell: ({ row }) => (
         <Cell.Text
-          text={`$${formatNumber(row.original.currentPrice.toString(), formatNumberOptions)}`}
+          text={
+            <FormattedNumber
+              number={row.original.currentPrice.toString()}
+              formatOptions={{ currency: "USD" }}
+              as="span"
+            />
+          }
         />
       ),
     },
@@ -313,7 +336,16 @@ const PerpsPositionsTable: React.FC = () => {
         const isPositive = row.original.pnl >= 0;
         return (
           <Cell.Text
-            text={`${isPositive ? "+" : ""}$${formatNumber(row.original.pnl.toFixed(2), formatNumberOptions)}`}
+            text={
+              <>
+                {isPositive ? "+" : ""}
+                <FormattedNumber
+                  number={row.original.pnl.toString()}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
+              </>
+            }
             className={isPositive ? "text-utility-success-600" : "text-utility-error-600"}
           />
         );
@@ -376,10 +408,10 @@ type UnifiedOrder = {
 const UnifiedOpenOrders: React.FC = () => {
   const { showModal, settings } = useApp();
   const { coins } = useConfig();
-  const mode = tradePairStore((s) => s.mode);
-  const pairId = tradePairStore((s) => s.pairId);
+  const mode = TradePairStore((s) => s.mode);
+
   const { formatNumberOptions } = settings;
-  const { baseCoin } = useTradeCoins({ pairId, mode });
+  const { baseCoin } = useTradeCoins();
 
   const [showAllPairs, setShowAllPairs] = useState(false);
 
@@ -610,7 +642,7 @@ const UnifiedOpenOrders: React.FC = () => {
 };
 
 const ProTradeOrdersHistory: React.FC = () => {
-  const mode = tradePairStore((s) => s.mode);
+  const mode = TradePairStore((s) => s.mode);
   return mode === "perps" ? <PerpsTradeHistory /> : <SpotTradeHistory />;
 };
 

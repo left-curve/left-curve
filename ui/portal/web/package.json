@@ -2,6 +2,7 @@
   "name": "@left-curve/portal-web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "rsbuild dev",
     "build": "rsbuild build",
@@ -23,6 +24,7 @@
     "@tanstack/react-table": "^8.21.2",
     "@tanstack/router-plugin": "^1.102.1",
     "@tanstack/zod-adapter": "catalog:",
+    "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "catalog:",
     "fs-extra": "^11.3.1",
@@ -36,7 +38,6 @@
     "recharts": "^3.6.0",
     "workbox-webpack-plugin": "^7.3.0",
     "workbox-window": "^7.3.0",
-    "cmdk": "^1.1.1",
     "zod": "catalog:"
   },
   "optionalDependencies": {
@@ -50,14 +51,18 @@
     "@rsbuild/plugin-react": "catalog:",
     "@rsbuild/plugin-svgr": "^1.2.2",
     "@tanstack/router-devtools": "catalog:",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/date-fns": "^2.6.3",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "jsdom": "^29.0.1",
     "postcss": "catalog:",
     "react-refresh": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -35,10 +35,7 @@ export function calculatePrice(
   decimals: { base: number; quote: number },
   options: FormatNumberOptions,
 ) {
-  return formatNumber(parseUnits(price, decimals.base - decimals.quote), {
-    ...options,
-    minimumTotalDigits: 8,
-  });
+  return formatNumber(parseUnits(price, decimals.base - decimals.quote), options);
 }
 
 export function adjustPrice(price: number, shifting = 6, min = 2) {

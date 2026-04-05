@@ -1,5 +1,6 @@
 import {
   AuthenticatedButton,
+  FormattedNumber,
   Modals,
   useApp,
   useInputs,
@@ -15,7 +16,7 @@ import {
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { Decimal, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
@@ -66,10 +67,9 @@ export const Deposit: React.FC = () => {
 
   const { value: fundsAmount, error } = inputs.amount || {};
 
-  const { toast, showModal, subscriptions, settings } = useApp();
+  const { toast, showModal, subscriptions } = useApp();
   const { coins } = useConfig();
   const { username, userIndex, account, isConnected } = useAccount();
-  const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 
   const { data: balances = {} } = useBalances({
@@ -160,7 +160,7 @@ export const Deposit: React.FC = () => {
             <p>{m["common.available"]()}</p>
             <p className="flex gap-1">
               <span>{coinInfo.symbol}</span>
-              <span>{formatNumber(humanBalance, formatNumberOptions)}</span>
+              <FormattedNumber number={humanBalance} as="span" />
             </p>
           </div>
         }

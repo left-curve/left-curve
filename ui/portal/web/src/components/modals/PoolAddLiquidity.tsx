@@ -1,4 +1,12 @@
-import { Badge, Button, IconButton, IconClose, PairAssets, useApp } from "@left-curve/applets-kit";
+import {
+  Badge,
+  Button,
+  FormattedNumber,
+  IconButton,
+  IconClose,
+  PairAssets,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import { forwardRef, useImperativeHandle } from "react";
 import type { AnyCoin, WithAmount } from "@left-curve/store/types";
@@ -17,9 +25,8 @@ type PoolAddLiquidityProps = {
 
 export const PoolAddLiquidity = forwardRef(
   ({ confirmAddLiquidity, rejectAddLiquidity, coins }: PoolAddLiquidityProps, ref) => {
-    const { hideModal, settings } = useApp();
-    const { formatNumberOptions } = settings;
-    const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+    const { hideModal } = useApp();
+    const { getPrice } = usePrices();
 
     const { base, quote } = coins;
 
@@ -53,9 +60,12 @@ export const PoolAddLiquidity = forwardRef(
                 </p>
                 <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
               </div>
-              <p className="text-ink-tertiary-500 diatype-sm-regular">
-                {getPrice(base.amount, base.denom, { format: true })}
-              </p>
+              <FormattedNumber
+                number={getPrice(base.amount, base.denom)}
+                formatOptions={{ currency: "USD" }}
+                as="span"
+                className="text-ink-tertiary-500 diatype-sm-regular"
+              />
             </div>
             <div className="flex flex-col">
               <div className="w-full flex items-center justify-between">
@@ -64,9 +74,12 @@ export const PoolAddLiquidity = forwardRef(
                 </p>
                 <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8" />
               </div>
-              <p className="text-ink-tertiary-500 diatype-sm-regular">
-                {getPrice(quote.amount, quote.denom, { format: true })}
-              </p>
+              <FormattedNumber
+                number={getPrice(quote.amount, quote.denom)}
+                formatOptions={{ currency: "USD" }}
+                as="span"
+                className="text-ink-tertiary-500 diatype-sm-regular"
+              />
             </div>
           </div>
         </div>

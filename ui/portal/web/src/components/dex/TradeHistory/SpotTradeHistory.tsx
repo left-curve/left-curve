@@ -1,6 +1,12 @@
-import { Cell, useApp } from "@left-curve/applets-kit";
-import { useConfig, usePublicClient, useAccount, useQueryWithPagination, tradePairStore, useTradeCoins } from "@left-curve/store";
-import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
+import { Cell, FormattedNumber, useApp } from "@left-curve/applets-kit";
+import {
+  useConfig,
+  usePublicClient,
+  useAccount,
+  useQueryWithPagination,
+  useTradeCoins,
+} from "@left-curve/store";
+import { calculateTradeSize, Decimal } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TimeInForceOption, type Trade } from "@left-curve/dango/types";
 import { TradeHistoryTable } from "./TradeHistoryTable";
@@ -12,9 +18,8 @@ export const SpotTradeHistory: React.FC = () => {
   const { coins } = useConfig();
   const { account } = useAccount();
   const publicClient = usePublicClient();
-  const pairId = tradePairStore((s) => s.pairId);
 
-  const { baseCoin } = useTradeCoins({ pairId, mode: "spot" });
+  const { baseCoin } = useTradeCoins();
   const { formatNumberOptions } = settings;
 
   const { data, pagination, isLoading } = useQueryWithPagination({
@@ -83,17 +88,19 @@ export const SpotTradeHistory: React.FC = () => {
       header: m["dex.protrade.history.price"](),
       cell: ({ row }) => (
         <Cell.Text
-          text={formatNumber(
-            Decimal(row.original.clearingPrice)
-              .times(
-                Decimal(10).pow(
-                  coins.byDenom[row.original.baseDenom].decimals -
-                    coins.byDenom[row.original.quoteDenom].decimals,
-                ),
-              )
-              .toFixed(),
-            formatNumberOptions,
-          )}
+          text={
+            <FormattedNumber
+              number={Decimal(row.original.clearingPrice)
+                .times(
+                  Decimal(10).pow(
+                    coins.byDenom[row.original.baseDenom].decimals -
+                      coins.byDenom[row.original.quoteDenom].decimals,
+                  ),
+                )
+                .toFixed()}
+              as="span"
+            />
+          }
         />
       ),
     },
@@ -104,6 +111,11 @@ export const SpotTradeHistory: React.FC = () => {
   ];
 
   return (
-    <TradeHistoryTable data={data} columns={columns} pagination={pagination} isLoading={isLoading} />
+    <TradeHistoryTable
+      data={data}
+      columns={columns}
+      pagination={pagination}
+      isLoading={isLoading}
+    />
   );
 };

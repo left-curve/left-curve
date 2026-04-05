@@ -1,4 +1,5 @@
-import { Button, Cell, Pagination, SortHeader, Table } from "@left-curve/applets-kit";
+import { Button, Cell, Pagination, SortHeader, Table, useApp } from "@left-curve/applets-kit";
+import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useEpochPoints } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
@@ -37,6 +38,8 @@ const formatEpochDateRange = (startedAt: string, endedAt: string): string => {
 const PAGE_SIZE = 10;
 
 export const PointsProfileTable: React.FC = () => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const { userIndex } = useAccount();
   const navigate = useNavigate();
   const pointsUrl = window.dango.urls.pointsUrl;
@@ -130,7 +133,7 @@ export const PointsProfileTable: React.FC = () => {
       cell: ({ row }) => (
         <Cell.Text
           className="text-ink-primary-900"
-          text={m["points.profile.xPoints"]({ points: row.original.points.toLocaleString() })}
+          text={m["points.profile.xPoints"]({ points: formatNumber(row.original.points, formatNumberOptions) })}
         />
       ),
     },

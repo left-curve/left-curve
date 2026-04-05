@@ -21,7 +21,7 @@ type ActivityOrderFilledProps = {
 
 export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledProps>(
   ({ activity }, ref) => {
-    const { getCoinInfo } = useConfig();
+    const { coins } = useConfig();
     const { quote_denom, base_denom, clearing_price, time_in_force, direction, cleared } =
       activity.data;
     const { settings } = useApp();
@@ -29,8 +29,8 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
 
     const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
 
-    const base = getCoinInfo(base_denom);
-    const quote = getCoinInfo(quote_denom);
+    const base = coins.getCoinInfo(base_denom);
+    const quote = coins.getCoinInfo(quote_denom);
 
     /*  const fee = calculateFees(
       { amount: fee_base, decimals: base.decimals, price: getPrice(1, base.denom) },

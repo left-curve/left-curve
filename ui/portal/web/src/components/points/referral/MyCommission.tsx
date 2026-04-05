@@ -7,8 +7,10 @@ import {
   Table,
   Tabs,
   twMerge,
+  useApp,
 } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
+import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   useAccount,
@@ -50,17 +52,6 @@ type RebateRow = {
   rebates: string;
   tradingVolume: string;
   date: string;
-};
-
-const formatUSD = (value: number | string): string => {
-  const num = typeof value === "string" ? Number(value) : value;
-  if (Number.isNaN(num)) return "$0.00";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
 };
 
 const formatDate = (timestamp: number): string => {
@@ -109,6 +100,10 @@ const NotConnectedMessage: React.FC = () => (
 );
 
 const CommissionTable: React.FC = () => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const formatUSD = (value: number | string) =>
+    formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [currentPage, setCurrentPage] = useState(1);
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
@@ -221,6 +216,10 @@ const CommissionTable: React.FC = () => {
 };
 
 const MyRefereesTable: React.FC = () => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const formatUSD = (value: number | string) =>
+    formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [currentPage, setCurrentPage] = useState(1);
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;
@@ -318,6 +317,10 @@ const MyRefereesTable: React.FC = () => {
 };
 
 const RebateTable: React.FC = () => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const formatUSD = (value: number | string) =>
+    formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [currentPage, setCurrentPage] = useState(1);
   const { account, isConnected } = useAccount();
   const userIndex = account?.index;

@@ -25,6 +25,7 @@ export type UsePairStatsParameters = {
 
 export type UseAllPairStatsParameters = {
   enabled?: boolean;
+  refetchInterval?: number;
 };
 
 const toPairKey = (baseDenom: string, quoteDenom: string) => `${baseDenom}:${quoteDenom}`;
@@ -92,12 +93,13 @@ export function usePairStats(parameters: UsePairStatsParameters) {
 }
 
 export function useAllPairStats(parameters: UseAllPairStatsParameters = {}) {
-  const { enabled = true } = parameters;
+  const { enabled = true, refetchInterval } = parameters;
   const client = usePublicClient();
   const { coins } = useConfig();
 
   const query = useQuery({
     enabled,
+    refetchInterval,
     queryKey: ["all_pair_stats"],
     queryFn: async () => {
       const allPairStats = await client

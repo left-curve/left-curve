@@ -1,4 +1,4 @@
-import { Modals, numberMask, Skeleton, useApp, useInputs } from "@left-curve/applets-kit";
+import { FormattedNumber, Modals, numberMask, Skeleton, useApp, useInputs } from "@left-curve/applets-kit";
 import { usePoolLiquidityState, usePrices } from "@left-curve/store";
 
 import {
@@ -13,7 +13,7 @@ import {
 } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/dango/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -125,9 +125,7 @@ const PoolLiquidityHeader: React.FC = () => {
 };
 
 const PoolLiquidityUserLiquidity: React.FC = () => {
-  const { settings } = useApp();
   const { state } = usePoolLiquidity();
-  const { formatNumberOptions } = settings;
   const { coins, userHasLiquidity, userLiquidity } = state;
   const { base, quote } = coins;
 
@@ -143,16 +141,13 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   const basePrice = getPrice(innerBase, base.denom);
   const quotePrice = getPrice(innerQuote, quote.denom);
 
-  const totalPrice = formatNumber(Decimal(basePrice).plus(quotePrice).toString(), {
-    ...formatNumberOptions,
-    currency: "USD",
-  });
-
   return (
     <div className="flex p-4 flex-col gap-4 rounded-xl bg-surface-secondary-rice shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
       <div className="flex items-center justify-between">
         <p className="exposure-sm-italic text-ink-tertiary-500">{m["poolLiquidity.liquidity"]()}</p>
-        <p className="h4-bold text-ink-primary-900">{totalPrice}</p>
+        <p className="h4-bold text-ink-primary-900">
+          <FormattedNumber number={Decimal(basePrice).plus(quotePrice).toString()} formatOptions={{ currency: "USD" }} as="span" />
+        </p>
       </div>
       <div className="flex flex-col w-full gap-2">
         <div className="flex items-center justify-between">
@@ -161,9 +156,9 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
             <p className="text-ink-tertiary-500 diatype-m-regular">{base.symbol}</p>
           </div>
           <p className="text-ink-secondary-700 diatype-m-regular">
-            {formatNumber(innerBase, formatNumberOptions)}{" "}
+            <FormattedNumber number={innerBase} as="span" />{" "}
             <span className="text-ink-tertiary-500">
-              ({formatNumber(basePrice, { ...formatNumberOptions, currency: "USD" })})
+              (<FormattedNumber number={basePrice} formatOptions={{ currency: "USD" }} as="span" />)
             </span>
           </p>
         </div>
@@ -173,9 +168,9 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
             <p className="text-ink-tertiary-500 diatype-m-regular">{quote.symbol}</p>
           </div>
           <p className="text-ink-secondary-700 diatype-m-regular">
-            {formatNumber(innerQuote, formatNumberOptions)}{" "}
+            <FormattedNumber number={innerQuote} as="span" />{" "}
             <span className="text-ink-tertiary-500">
-              ({formatNumber(quotePrice, { ...formatNumberOptions, currency: "USD" })})
+              (<FormattedNumber number={quotePrice} formatOptions={{ currency: "USD" }} as="span" />)
             </span>
           </p>
         </div>
@@ -185,14 +180,13 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
 };
 
 const PoolLiquidityDeposit: React.FC = () => {
-  const { settings, showModal } = useApp();
+  const { showModal } = useApp();
   const { state, controllers } = usePoolLiquidity();
-  const { formatNumberOptions } = settings;
   const { coins, action, deposit } = state;
   const { base, quote } = coins;
   const { register, setValue, errors } = controllers;
 
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+  const { getPrice } = usePrices();
 
   if (action !== "deposit") return null;
 
@@ -228,7 +222,7 @@ const PoolLiquidityDeposit: React.FC = () => {
               <div className="w-full flex justify-between pl-4 h-[22px]">
                 <div className="flex gap-1 items-center justify-center diatype-sm-regular text-ink-tertiary-500">
                   <span>
-                    {formatNumber(base.balance, formatNumberOptions)} {base.symbol}
+                    <FormattedNumber number={base.balance} as="span" /> {base.symbol}
                   </span>
                   <Button
                     type="button"
@@ -241,7 +235,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                   </Button>
                 </div>
                 <p className="text-ink-tertiary-500 diatype-sm-regular">
-                  {getPrice(base.amount, base.denom, { format: true })}
+                  <FormattedNumber number={getPrice(base.amount, base.denom)} formatOptions={{ currency: "USD" }} as="span" />
                 </p>
               </div>
             }
@@ -274,7 +268,7 @@ const PoolLiquidityDeposit: React.FC = () => {
               <div className="w-full flex justify-between pl-4 h-[22px]">
                 <div className="flex gap-1 items-center justify-center diatype-sm-regular text-ink-tertiary-500">
                   <span>
-                    {formatNumber(quote.balance, formatNumberOptions)} {quote.symbol}
+                    <FormattedNumber number={quote.balance} as="span" /> {quote.symbol}
                   </span>
                   <Button
                     type="button"
@@ -287,7 +281,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                   </Button>
                 </div>
                 <p className="text-ink-tertiary-500 diatype-sm-regular">
-                  {getPrice(quote.amount, quote.denom, { format: true })}
+                  <FormattedNumber number={getPrice(quote.amount, quote.denom)} formatOptions={{ currency: "USD" }} as="span" />
                 </p>
               </div>
             }

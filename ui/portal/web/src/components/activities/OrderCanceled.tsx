@@ -19,7 +19,7 @@ type ActivityOrderCanceledProps = {
 
 export const ActivityOrderCanceled = forwardRef<ActivityRef, ActivityOrderCanceledProps>(
   ({ activity }, ref) => {
-    const { getCoinInfo } = useConfig();
+    const { coins } = useConfig();
     const { createdAt, blockHeight } = activity;
     const {
       id,
@@ -39,9 +39,9 @@ export const ActivityOrderCanceled = forwardRef<ActivityRef, ActivityOrderCancel
     const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
     const isLimit = kind === OrderType.Limit;
 
-    const base = getCoinInfo(base_denom);
-    const quote = getCoinInfo(quote_denom);
-    const refundCoin = getCoinInfo(refund.denom);
+    const base = coins.getCoinInfo(base_denom);
+    const quote = coins.getCoinInfo(quote_denom);
+    const refundCoin = coins.getCoinInfo(refund.denom);
 
     const limitPrice = isLimit
       ? calculatePrice(price, { base: base.decimals, quote: quote.decimals }, formatNumberOptions)

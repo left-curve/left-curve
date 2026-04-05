@@ -232,8 +232,6 @@ type CreatePerpsDataFeedParameters = {
   client: PublicClient;
   queryClient: QueryClient;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
-  pairId: string;
-  baseSymbol: string;
 };
 
 function perpsSymbolToPairId(symbolName: string): string {

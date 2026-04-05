@@ -7,7 +7,7 @@ import {
   useApp,
   usePortalTarget,
 } from "@left-curve/applets-kit";
-import { useAccount, tradePairStore, tradeInfoStore, useTradeCoins } from "@left-curve/store";
+import { useAccount, tradeInfoStore, useTradeCoins } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
 
@@ -20,9 +20,7 @@ export const TradeButtons: React.FC = () => {
   const { setTradeBarVisibility, showModal } = useApp();
   const { isConnected } = useAccount();
 
-  const mode = tradePairStore((s) => s.mode);
-  const pairId = tradePairStore((s) => s.pairId);
-  const { baseCoin } = useTradeCoins({ pairId, mode });
+  const { baseCoin } = useTradeCoins();
   const changeAction = tradeInfoStore((s) => s.setAction);
 
   const container = usePortalTarget("#trade-buttons");

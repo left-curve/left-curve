@@ -10,18 +10,17 @@ import { createMipdStore } from "./mipd.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type { Client, Denom, PublicClient, Transport } from "@left-curve/dango/types";
+import type { Client, PublicClient, Transport } from "@left-curve/dango/types";
 
 import { subscriptionsStore } from "./subscriptions.js";
-import type { AnyCoin } from "./types/coin.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
 import type { EIP6963ProviderDetail } from "./types/eip6963.js";
 import type { Config, CreateConfigParameters, State, StoreApi } from "./types/store.js";
+import { CoinStore } from "./stores/coinStore.js";
 
-export function createConfig<
-  transport extends Transport = Transport,
-  coin extends AnyCoin = AnyCoin,
->(parameters: CreateConfigParameters<transport, coin>): Config<transport, coin> {
+export function createConfig<transport extends Transport = Transport>(
+  parameters: CreateConfigParameters<transport>,
+): Config<transport> {
   const {
     multiInjectedProviderDiscovery = true,
     version = 0,
@@ -41,13 +40,8 @@ export function createConfig<
   const mipd =
     typeof window !== "undefined" && multiInjectedProviderDiscovery ? createMipdStore() : undefined;
 
-  const coins = createStore(() => ({
-    byDenom: rest.coins || {},
-    bySymbol: Object.values(rest.coins || {}).reduce((acc, coin) => {
-      acc[coin.symbol] = coin;
-      return acc;
-    }, Object.create({})),
-  }));
+  const coinsStore = CoinStore.getState();
+  coinsStore.setCoins(rest.coins);
 
   const connectors = createStore(() => {
     const collection = [];
@@ -313,39 +307,9 @@ export function createConfig<
     });
   }
 
-  function getCoinInfo(denom: Denom): AnyCoin {
-    const allCoins = coins.getState()!;
-    const coin = allCoins.byDenom[denom];
-    if (coin) return coin;
-    if (!coin && !denom.includes("dex")) {
-      return {
-        type: "native",
-        symbol: denom.toUpperCase(),
-        name: denom,
-        denom,
-        decimals: 0,
-      };
-    }
-    const [_, __, baseDenom, quoteDenom] = denom.split("/");
-    const coinsArray = Object.values(allCoins.byDenom);
-    const baseCoin = coinsArray.find((x) => x.denom.includes(baseDenom))!;
-    const quoteCoin = coinsArray.find((x) => x.denom.includes(quoteDenom))!;
-
-    return {
-      type: "lp",
-      symbol: `${baseCoin.symbol}-${quoteCoin.symbol} LP`,
-      name: `${baseCoin.symbol}-${quoteCoin.symbol} Liquidity Shares`,
-      denom,
-      decimals: 0,
-      base: baseCoin,
-      quote: quoteCoin,
-    };
-  }
-
   return {
     get coins() {
-      const state = coins.getState() ?? { byDenom: {}, bySymbol: {} };
-      return state;
+      return CoinStore.getState();
     },
     get subscriptions() {
       return sbStore;
@@ -357,7 +321,6 @@ export function createConfig<
       return connectors.getState();
     },
     storage,
-    getCoinInfo,
     getClient,
     captureError(error: unknown) {
       if (onError) onError(error);

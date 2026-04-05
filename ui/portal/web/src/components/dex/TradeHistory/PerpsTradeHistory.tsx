@@ -1,6 +1,5 @@
-import { Cell, useApp } from "@left-curve/applets-kit";
+import { Cell, FormattedNumber } from "@left-curve/applets-kit";
 import { usePublicClient, useAccount, useQueryWithPagination } from "@left-curve/store";
-import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TradeHistoryTable } from "./TradeHistoryTable";
 
@@ -40,11 +39,8 @@ function getPerpsEventPnl(eventType: string, data: PerpsEvent["data"]): string |
 }
 
 export const PerpsTradeHistory: React.FC = () => {
-  const { settings } = useApp();
   const { account } = useAccount();
   const publicClient = usePublicClient();
-  const { formatNumberOptions } = settings;
-
   const { data, pagination, isLoading } = useQueryWithPagination({
     enabled: !!account,
     queryKey: ["perpsTradeHistory", account?.address as string],
@@ -94,7 +90,7 @@ export const PerpsTradeHistory: React.FC = () => {
         const baseSymbol = row.original.pairId.replace("perp/", "").replace("usd", "").toUpperCase();
         return (
           <Cell.Text
-            text={`${formatNumber(abs, formatNumberOptions)} ${baseSymbol}`}
+            text={<><FormattedNumber number={abs} as="span" /> {baseSymbol}</>}
           />
         );
       },
@@ -104,7 +100,7 @@ export const PerpsTradeHistory: React.FC = () => {
       cell: ({ row }) => {
         const price = getPerpsEventPrice(row.original.eventType, row.original.data);
         if (!price) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
-        return <Cell.Text text={`$${formatNumber(price, formatNumberOptions)}`} />;
+        return <Cell.Text text={<FormattedNumber number={price} formatOptions={{ currency: "USD" }} as="span" />} />;
       },
     },
     {
@@ -115,7 +111,7 @@ export const PerpsTradeHistory: React.FC = () => {
         const isPositive = !pnl.startsWith("-");
         return (
           <Cell.Text
-            text={`${isPositive ? "+" : ""}${formatNumber(pnl, formatNumberOptions)}`}
+            text={<>{isPositive ? "+" : ""}<FormattedNumber number={pnl} as="span" /></>}
             className={isPositive ? "text-green-500" : "text-red-500"}
           />
         );

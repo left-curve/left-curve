@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { useApp, useTheme } from "@left-curve/applets-kit";
-import { useConfig, usePublicClient, useStorage, toPerpsPairId } from "@left-curve/store";
+import { useConfig, usePublicClient, useStorage } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
@@ -60,8 +60,6 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
           client: publicClient,
           queryClient,
           subscriptions,
-          pairId: toPerpsPairId(base.symbol, "USD"),
-          baseSymbol: base.symbol,
         })
       : createTradingViewDataFeed({
           client: publicClient,

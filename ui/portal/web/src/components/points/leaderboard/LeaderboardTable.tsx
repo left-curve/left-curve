@@ -1,4 +1,4 @@
-import { Cell, Pagination, SortHeader, Tab, Table, Tabs } from "@left-curve/applets-kit";
+import { Cell, FormattedNumber, Pagination, SortHeader, Tab, Table, Tabs } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useLeaderboard } from "@left-curve/store";
 import { useMemo } from "react";
@@ -136,7 +136,9 @@ export const LeaderboardTable: React.FC = () => {
         />
       ),
       enableSorting: false,
-      cell: ({ row }) => <Cell.Text text={`$${row.original.volume.toLocaleString()}`} />,
+      cell: ({ row }) => (
+        <Cell.Text text={<FormattedNumber number={row.original.volume} formatOptions={{ currency: "USD" }} as="span" />} />
+      ),
     },
     {
       id: "pnl",
@@ -148,7 +150,9 @@ export const LeaderboardTable: React.FC = () => {
         />
       ),
       enableSorting: false,
-      cell: ({ row }) => <Cell.Text text={`$${row.original.pnl.toLocaleString()}`} />,
+      cell: ({ row }) => (
+        <Cell.Text text={<FormattedNumber number={row.original.pnl} formatOptions={{ currency: "USD" }} as="span" />} />
+      ),
     },
     {
       id: "points",
@@ -162,7 +166,7 @@ export const LeaderboardTable: React.FC = () => {
       ),
       enableSorting: false,
       cell: ({ row }) => (
-        <Cell.Text text={`${row.original.points.toLocaleString()} ${m["points.header.points"]()}`} />
+        <Cell.Text text={<><FormattedNumber number={row.original.points} formatOptions={{ fractionDigits: 0 }} as="span" /> {m["points.header.points"]()}</>} />
       ),
     },
   ];

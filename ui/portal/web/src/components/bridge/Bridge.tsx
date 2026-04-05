@@ -15,6 +15,7 @@ import {
   createContext,
   DepositAddressBox,
   ethAddressMask,
+  FormattedNumber,
   IconDisconnect,
   Modals,
   TruncateText,
@@ -145,8 +146,7 @@ const BitcoinDeposit: React.FC = () => {
 const EvmDeposit: React.FC = () => {
   const { userStatus } = useAccount();
   const { getPrice } = usePrices();
-  const { settings, showModal } = useApp();
-  const { formatNumberOptions } = settings;
+  const { showModal } = useApp();
 
   const { controllers, state } = useBridge();
   const { inputs, errors } = controllers;
@@ -260,12 +260,7 @@ const EvmDeposit: React.FC = () => {
         }
         insideBottomComponent={
           <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-            <p>
-              {getPrice(amount, coin.denom, {
-                format: true,
-                formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
-              })}
-            </p>
+            <FormattedNumber number={getPrice(amount, coin.denom)} formatOptions={{ currency: "USD" }} as="p" />
           </div>
         }
       />
@@ -283,8 +278,6 @@ const EvmDeposit: React.FC = () => {
 };
 
 const BridgeWithdraw: React.FC = () => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
   const { account } = useAccount();
   const { state, controllers } = useBridge();
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -382,12 +375,7 @@ const BridgeWithdraw: React.FC = () => {
             }
             insideBottomComponent={
               <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-                <p>
-                  {getPrice(youGet, coin.denom, {
-                    format: true,
-                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
-                  })}
-                </p>
+                <FormattedNumber number={getPrice(youGet, coin.denom)} formatOptions={{ currency: "USD" }} as="p" />
               </div>
             }
           />

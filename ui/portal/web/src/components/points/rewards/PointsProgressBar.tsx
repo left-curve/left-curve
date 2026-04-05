@@ -359,12 +359,10 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
   const { steps, progress, currentStep, nextStep, segmentProgress, nextTier, remaining } =
     useProgressBarState(currentVolume);
 
-  const formatUsd = (value: number, opts?: Partial<FormatNumberOptions>) =>
+  const formatUsd = (value: number) =>
     formatNumber(value, {
       ...formatNumberOptions,
-      ...opts,
       currency: "USD",
-      minimumTotalDigits: 0,
     });
 
   const integerDigits = (value: number) =>
@@ -373,7 +371,7 @@ export const PointsProgressBar: React.FC<PointsProgressBarProps> = ({
   const tierLabel = TIER_LABELS[nextTier]();
   const remainingLabel = isConnected
     ? m["points.rewards.boxes.volumeUntilNext"]({
-        amount: formatUsd(remaining, { maximumTotalDigits: integerDigits(remaining) }),
+        amount: formatUsd(remaining),
         tier: tierLabel,
       })
     : m["points.rewards.boxes.notLoggedIn"]();

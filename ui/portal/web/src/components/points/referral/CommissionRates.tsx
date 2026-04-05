@@ -1,5 +1,6 @@
-import { Cell, Skeleton, Table } from "@left-curve/applets-kit";
+import { Cell, Skeleton, Table, useApp } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
+import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useReferralParams } from "@left-curve/store";
 import type React from "react";
@@ -12,32 +13,17 @@ type CommissionTier = {
   commission: string;
 };
 
-const formatVolume = (value: string): string => {
-  const num = Number(value);
-  if (Number.isNaN(num) || num === 0) return "0";
-
-  if (num >= 1_000_000_000) {
-    return `~$${(num / 1_000_000_000).toFixed(0)}B`;
-  }
-  if (num >= 1_000_000) {
-    return `~$${(num / 1_000_000).toFixed(0)}M`;
-  }
-  if (num >= 1_000) {
-    return `~$${(num / 1_000).toFixed(0)}K`;
-  }
-  return `~$${num.toLocaleString()}`;
-};
-
 const formatPercent = (value: string): string => {
   const num = Number(value);
   if (Number.isNaN(num)) return "0%";
   return `${(num * 100).toFixed(0)}%`;
 };
 
-const getCommissionTiers = ({
-  minReferrerVolume,
-  referrerCommissionRates,
-}: NonNullable<ReturnType<typeof useReferralParams>["referralParams"]>): CommissionTier[] => {
+const getCommissionTiers = (
+  params: NonNullable<ReturnType<typeof useReferralParams>["referralParams"]>,
+  formatVolume: (value: string) => string,
+): CommissionTier[] => {
+  const { minReferrerVolume, referrerCommissionRates } = params;
   const { base, tiers } = referrerCommissionRates;
   const tierEntries = Object.entries(tiers).sort(([a], [b]) => Number(a) - Number(b));
   const tierOneRow: CommissionTier = {
@@ -66,6 +52,8 @@ const EMPTY_TIERS: CommissionTier[] = [];
 
 export const CommissionRates: React.FC = () => {
   const { isConnected } = useAccount();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const { referralParams, isLoading } = useReferralParams();
 
   const commissionTiers = useMemo<CommissionTier[]>(() => {
@@ -73,8 +61,11 @@ export const CommissionRates: React.FC = () => {
       return EMPTY_TIERS;
     }
 
-    return getCommissionTiers(referralParams);
-  }, [referralParams]);
+    const formatVolume = (value: string) =>
+      formatNumber(value, { ...formatNumberOptions, currency: "USD" });
+
+    return getCommissionTiers(referralParams, formatVolume);
+  }, [referralParams, formatNumberOptions]);
 
   const columns: TableColumn<CommissionTier> = [
     {
