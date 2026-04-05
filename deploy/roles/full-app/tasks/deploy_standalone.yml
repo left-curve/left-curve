@@ -39,14 +39,22 @@
   loop_control:
     label: "{{ item.item.name | default('skipped') }}"
 
+- name: Pull all images (separate from up, for clearer error diagnosis)
+  command: docker compose -p {{ deployment_name }} pull
+  args:
+    chdir: "{{ deployment_dir }}"
+  register: pull_result
+  retries: 3
+  delay: 10
+  until: pull_result.rc == 0
+  changed_when: true
+
 - name: Deploy with new image tag
   community.docker.docker_compose_v2:
     project_name: "{{ deployment_name }}"
     project_src: "{{ deployment_dir }}"
     recreate: always
-    pull: always
-  retries: 3
-  delay: 5
+    pull: never
   register: deploy_result
   ignore_errors: yes
 
