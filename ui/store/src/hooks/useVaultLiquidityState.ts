@@ -29,10 +29,10 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
 
   const { data: signingClient } = useSigningClient();
 
-  const { state: perpsUserState } = perpsUserStateStore();
+  const perpsUserState = perpsUserStateStore((s) => s.userState);
 
-  const depositAmount = inputs.depositAmount?.value || "0";
-  const withdrawShares = inputs.withdrawShares?.value || "0";
+  const depositAmount = Decimal(inputs.depositAmount?.value || "0").toFixed(6);
+  const withdrawShares = Decimal(inputs.withdrawShares?.value || "0").toFixed(0);
 
   const vaultState = useQuery({
     queryKey: ["vaultState"],
@@ -104,6 +104,7 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
       invalidateKeys: [["vaultState"]],
       onSuccess: () => {
         controllers.reset();
+        controllers.setValue("depositAmount", "");
       },
     },
   });
@@ -122,6 +123,7 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
       invalidateKeys: [["vaultState"]],
       onSuccess: () => {
         controllers.reset();
+        controllers.setValue("withdrawShares", "");
       },
     },
   });

@@ -1,23 +1,26 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-
-import { m } from "@left-curve/foundation/paraglide/messages.js";
-
-import { Earn } from "~/components/earn/Earn";
-import { MobileTitle } from "~/components/foundation/MobileTitle";
+import { VaultLiquidity } from "~/components/earn/VaultLiquidity";
 
 export const Route = createLazyFileRoute("/(app)/_app/earn/")({
   component: EarnApplet,
 });
 
 function EarnApplet() {
+  const { action } = Route.useSearch();
   const navigate = useNavigate();
+
+  const onChangeAction = (action: "deposit" | "withdraw") => {
+    navigate({
+      to: "/earn",
+      replace: true,
+      search: { action },
+    });
+  };
+
   return (
-    <div className="w-full md:max-w-[76rem] mx-auto flex flex-col pt-6 mb-16">
-      <MobileTitle title={m["earn.title"]()} />
-      <Earn navigateToVault={() => navigate({ to: "/earn/vault" })}>
-        <Earn.Header />
-        <Earn.VaultCard />
-      </Earn>
-    </div>
+    <VaultLiquidity action={action} onChangeAction={onChangeAction}>
+      <VaultLiquidity.Header />
+      <VaultLiquidity.Content />
+    </VaultLiquidity>
   );
 }
