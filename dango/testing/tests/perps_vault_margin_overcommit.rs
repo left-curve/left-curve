@@ -316,22 +316,34 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
         )
         .should_succeed();
 
+    // With the fix, available margin is $0, so the vault places NO orders.
+    // OLD (incorrect) behavior: the vault would place a ~14.7 ETH bid here
+    // because it sized orders from raw margin ($5,000) instead of available
+    // margin ($0).
+    //
+    // let vault_bid = vault_orders
+    //     .values()
+    //     .find(|o| o.size.is_positive())
+    //     .expect("vault should have a bid");
+    // let round2_bid_size = vault_bid.size;
     let vault_orders: BTreeMap<perps::OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
         .should_succeed();
 
-    let vault_bid = vault_orders
-        .values()
-        .find(|o| o.size.is_positive())
-        .expect("vault should have a bid (the bug — it shouldn't with correct logic)");
-
-    let round2_bid_size = vault_bid.size;
+    assert!(
+        vault_orders.is_empty(),
+        "vault should place no orders when available margin is zero"
+    );
 
     // -------------------------------------------------------------------------
-    // Step 7: Taker fills the over-committed vault bid.
-    //   Vault total position grows to ~27 ETH.
+    // Step 7: Taker attempts to sell into the vault's (now absent) bid.
+    //   With the OLD incorrect logic the vault would have placed a ~14.7 ETH
+    //   bid, this fill would succeed, and the vault's total long position
+    //   would grow to ~27 ETH — pushing equity below maintenance margin
+    //   (unhealthy). With the fix the book is empty, so this market sell
+    //   finds no liquidity and is rejected.
     // -------------------------------------------------------------------------
 
     suite
@@ -340,7 +352,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
                 pair_id: pair.clone(),
-                size: round2_bid_size.checked_neg().unwrap(),
+                size: round1_bid_size.checked_neg().unwrap(),
                 kind: perps::OrderKind::Market {
                     max_slippage: Dimensionless::ONE,
                 },
@@ -350,12 +362,16 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             }),
             Coins::new(),
         )
-        .should_succeed();
+        // OLD (incorrect) behavior: the vault had a bid, so this would succeed.
+        // .should_succeed();
+        .should_fail_with_error("no liquidity");
 
     // -------------------------------------------------------------------------
-    // Step 8: Assert the vault is healthy — EXPECTED TO FAIL.
-    //   After the over-committed fill, the vault's exposure exceeds what its
-    //   equity can support: equity < maintenance_margin.
+    // Step 8: Assert the vault is healthy.
+    //   With the OLD incorrect logic the vault would be unhealthy here:
+    //   equity (~$1,750) < maintenance_margin (~$2,312).
+    //   With the fix the vault's position stays at ~12.5 ETH and equity
+    //   remains above maintenance margin.
     // -------------------------------------------------------------------------
 
     let vault_ext: perps::UserStateExtended = suite

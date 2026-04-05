@@ -1,9 +1,10 @@
 use {
     crate::{
-        core::compute_vault_quotes,
+        core::{compute_available_margin, compute_vault_quotes},
         liquidity_depth::increase_liquidity_depths,
         oracle,
         price::may_invert_price,
+        querier::NoCachePerpQuerier,
         state::{
             ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
             USER_STATES,
@@ -62,9 +63,13 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // ------------- Step 2: Compute the vault's available margin --------------
 
-    // After cancellation, reserved_margin is zero and all vault capital is in
-    // the vault's UserState margin.
-    let vault_margin_value = vault_state.margin;
+    // Compute available margin: equity minus margin consumed by existing
+    // positions. After cancellation reserved_margin is zero, so the formula
+    // simplifies to: max(0, equity - used_margin).
+    let vault_margin_value = {
+        let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
+        compute_available_margin(&mut oracle_querier, &perp_querier, &vault_state)?
+    };
 
     // If vault_total_weight is zero, no pairs have weights configured — skip.
     if param.vault_total_weight.is_zero() || !vault_margin_value.is_positive() {
