@@ -1,10 +1,8 @@
 import {
   useAccount,
   useAppConfig,
-  useConfig,
   usePrices,
-  tradePairStore,
-  toPerpsPairId,
+  TradePairStore,
   tradeInfoStore,
   useTradeCoins,
   useSpotMaxSize,
@@ -116,11 +114,11 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const queryClient = useQueryClient();
   const { account, username } = useAccount();
 
-  const pairId = tradePairStore((s) => s.pairId);
+  const pairId = TradePairStore((s) => s.pairId);
   const action = tradeInfoStore((s) => s.action);
   const operation = tradeInfoStore((s) => s.operation);
 
-  const { baseCoin, quoteCoin } = useTradeCoins({ pairId, mode: "spot" });
+  const { baseCoin, quoteCoin } = useTradeCoins();
 
   const [sizeCoinDenom, setSizeCoinDenom] = useState(pairId.quoteDenom);
 
@@ -211,7 +209,11 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
       <div className="w-full flex flex-col gap-4 px-4">
         <InfoRow
           label={m["dex.protrade.spot.availableToTrade"]()}
-          value={<><FormattedNumber number={availableCoin.amount} as="span" /> {availableCoin.symbol}</>}
+          value={
+            <>
+              <FormattedNumber number={availableCoin.amount} as="span" /> {availableCoin.symbol}
+            </>
+          }
         />
         {operation === "limit" ? (
           <Input
@@ -259,22 +261,40 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <TradeSubmitButton
           action={action}
           label={`${m["dex.protrade.spot.triggerAction"]({ action })} ${baseCoin.symbol}`}
-          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0)) || hasErrors}
+          isDisabled={
+            Decimal(size).lte(0) ||
+            (operation === "limit" && Decimal(priceValue).lte(0)) ||
+            hasErrors
+          }
           isPending={submission.isPending}
           onSubmit={() => submission.mutateAsync()}
         />
         <div className="flex flex-col gap-1 px-4">
           <InfoRow
             label={m["dex.protrade.spot.orderValue"]()}
-            value={<FormattedNumber number={getPrice(size, sizeCoin.denom)} formatOptions={{ currency: "usd" }} as="span" />}
+            value={
+              <FormattedNumber
+                number={getPrice(size, sizeCoin.denom)}
+                formatOptions={{ currency: "USD" }}
+                as="span"
+              />
+            }
           />
           <InfoRow
             label={m["dex.protrade.spot.orderSize"]()}
-            value={<><FormattedNumber number={amount.quote} as="span" /> {quoteCoin.symbol}</>}
+            value={
+              <>
+                <FormattedNumber number={amount.quote} as="span" /> {quoteCoin.symbol}
+              </>
+            }
           />
           <InfoRow
             label=""
-            value={<><FormattedNumber number={amount.base} as="span" /> {baseCoin.symbol}</>}
+            value={
+              <>
+                <FormattedNumber number={amount.base} as="span" /> {baseCoin.symbol}
+              </>
+            }
           />
           {operation === "market" ? (
             <InfoRow label={m["dex.protrade.spot.slippage"]()} value="-" />
@@ -293,14 +313,19 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { isConnected } = useAccount();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions, refetchInterval: 10_000 });
+  const { getPrice } = usePrices({
+    defaultFormatOptions: formatNumberOptions,
+    refetchInterval: 10_000,
+  });
 
-  const pairId = tradePairStore((s) => s.pairId);
+  const { data: appConfig } = useAppConfig();
+
+  const pairId = TradePairStore((s) => s.pairId);
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
   const action = tradeInfoStore((s) => s.action);
   const operation = tradeInfoStore((s) => s.operation);
 
-  const { coins } = useConfig();
-  const { baseCoin, quoteCoin } = useTradeCoins({ pairId, mode: "perps" });
+  const { baseCoin, quoteCoin } = useTradeCoins();
 
   const [sizeCoinDenom, setSizeCoinDenom] = useState("usd");
 
@@ -311,32 +336,22 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const isBaseSize = sizeCoinDenom === baseCoin.denom;
   const currentPrice = getPrice(1, pairId.baseDenom);
 
-  const perpsPairId = useMemo(() => {
-    const baseSymbol = coins.byDenom[pairId.baseDenom]?.symbol;
-    const quoteSymbol = coins.byDenom[pairId.quoteDenom]?.symbol ?? "USD";
-    return baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
-  }, [pairId, coins]);
-
-  const { data: appConfig } = useAppConfig();
-  const perpsPairParam = perpsPairId ? (appConfig as any)?.perpsPairs?.[perpsPairId] : null;
+  const params = appConfig.perpsPairs[getPerpsPairId()];
 
   const userState = perpsUserStateStore((s) => s.userState);
 
-  const userStateExtended = perpsUserStateExtendedStore((s) => ({ equity: s.equity, availableMargin: s.availableMargin }));
-
-  const availableMargin = Number(userStateExtended.availableMargin ?? "0");
-  const equity = userStateExtended.equity ?? "0"
+  const equity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
+  const availableMargin = Number(perpsUserStateExtendedStore((s) => s.availableMargin) ?? "0");
 
   const position = useMemo(() => {
-    if (!userState?.positions?.[perpsPairId]) return null;
-    return userState.positions[perpsPairId];
-  }, [userState, perpsPairId]);
+    if (!userState?.positions?.[getPerpsPairId()]) return null;
+    return userState.positions[getPerpsPairId()];
+  }, [userState, pairId]);
 
   const maxLeverage = useMemo(() => {
-    if (!perpsPairParam?.initialMarginRatio) return 100;
-    const ratio = Number(perpsPairParam.initialMarginRatio);
+    const ratio = Number(params.initialMarginRatio);
     return ratio > 0 ? Math.floor(1 / ratio) : 100;
-  }, [perpsPairParam]);
+  }, [params]);
 
   const [tpslEnabled, setTpslEnabled] = useState(false);
 
@@ -350,7 +365,12 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     setValue("size", "");
   }, []);
 
-  const maxSizeAmount = usePerpsMaxSize({ availableMargin, leverage: maxLeverage, currentPrice, isBaseSize });
+  const maxSizeAmount = usePerpsMaxSize({
+    availableMargin,
+    leverage: maxLeverage,
+    currentPrice,
+    isBaseSize,
+  });
 
   useEffect(() => {
     const currentSize = Number(size);
@@ -384,7 +404,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { account } = useAccount();
 
   const submission = usePerpsSubmission({
-    perpsPairId,
+    perpsPairId: getPerpsPairId(),
     action,
     operation,
     sizeValue,
@@ -417,18 +437,18 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
       operation === "limit" && Number(priceValue) > 0 ? Number(priceValue) : currentPrice;
     if (entryPrice <= 0) return null;
 
-    const mmr = Number(perpsPairParam?.maintenanceMarginRatio ?? 0);
+    const mmr = Number(params.maintenanceMarginRatio ?? 0);
     return action === "buy"
       ? (entryPrice * (1 - 1 / maxLeverage)) / (1 - mmr)
       : (entryPrice * (1 + 1 / maxLeverage)) / (1 + mmr);
-  }, [size, maxLeverage, action, operation, priceValue, currentPrice, perpsPairParam]);
+  }, [size, maxLeverage, action, operation, priceValue, currentPrice, params]);
 
   const minSizeAmount = useMemo(() => {
-    if (!perpsPairParam?.minOrderSize) return 0;
-    const minNotional = Number(perpsPairParam.minOrderSize);
+    if (!params.minOrderSize) return 0;
+    const minNotional = Number(params.minOrderSize);
     if (minNotional <= 0 || currentPrice <= 0) return 0;
     return isBaseSize ? minNotional / currentPrice : minNotional;
-  }, [perpsPairParam, isBaseSize, currentPrice]);
+  }, [params, isBaseSize, currentPrice]);
 
   const currentPositionSize = position?.size ?? "0";
 
@@ -438,11 +458,19 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <div className="flex flex-col gap-2">
           <InfoRow
             label="Available to Trade"
-            value={<><FormattedNumber number={availableMargin.toFixed(2)} as="span" /> USDC</>}
+            value={
+              <>
+                <FormattedNumber number={availableMargin.toString()} as="span" /> USDC
+              </>
+            }
           />
           <InfoRow
             label="Current Position"
-            value={<><FormattedNumber number={currentPositionSize} as="span" /> {baseCoin.symbol}</>}
+            value={
+              <>
+                <FormattedNumber number={currentPositionSize} as="span" /> {baseCoin.symbol}
+              </>
+            }
           />
         </div>
         <InputSizeWithMax
@@ -454,7 +482,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           validationMessage="Exceeds available margin"
           label="Size"
           minSizeAmount={minSizeAmount}
-          minSizeMessage={`Min order size: $${perpsPairParam?.minOrderSize ?? "0"}`}
+          minSizeMessage={`Min order size: $${params.minOrderSize}`}
           hideMaxControls
           startContent={
             <CoinSelector
@@ -517,7 +545,11 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <TradeSubmitButton
           action={action}
           label={`${action === "buy" ? "Buy" : "Sell"} ${baseCoin.symbol}`}
-          isDisabled={Decimal(size).lte(0) || (operation === "limit" && Decimal(priceValue).lte(0)) || hasErrors}
+          isDisabled={
+            Decimal(size).lte(0) ||
+            (operation === "limit" && Decimal(priceValue).lte(0)) ||
+            hasErrors
+          }
           isPending={submission.isPending}
           onSubmit={() => submission.mutateAsync()}
         />
@@ -526,13 +558,25 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           {requiredMargin !== null ? (
             <InfoRow
               label="Required Margin"
-              value={<FormattedNumber number={requiredMargin.toString()} formatOptions={{ currency: "usd" }} as="span" />}
+              value={
+                <FormattedNumber
+                  number={requiredMargin.toString()}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
+              }
             />
           ) : null}
           {estLiquidationPrice !== null ? (
             <InfoRow
               label="Est. Liq. Price"
-              value={<FormattedNumber number={estLiquidationPrice.toFixed(2)} formatOptions={{ currency: "usd" }} as="span" />}
+              value={
+                <FormattedNumber
+                  number={estLiquidationPrice.toString()}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
+              }
             />
           ) : null}
           {operation === "market" ? <InfoRow label="Slippage" value="Max: 0.1%" /> : null}
@@ -541,7 +585,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <div className="flex flex-col gap-1 px-4 border-t border-outline-tertiary-rice pt-3">
           <InfoRow
             label="Account Equity"
-            value={<FormattedNumber number={equity} formatOptions={{ currency: "usd" }} as="span" />}
+            value={
+              <FormattedNumber number={equity} formatOptions={{ currency: "USD" }} as="span" />
+            }
           />
           <InfoRow label="Max Leverage" value={`${maxLeverage}x`} />
           <div className="flex items-center justify-between gap-2">
@@ -552,7 +598,11 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
                 Number(unrealizedPnl) >= 0 ? "text-utility-success-600" : "text-utility-error-600",
               )}
             >
-              <FormattedNumber number={unrealizedPnl} formatOptions={{ currency: "usd" }} as="span" />
+              <FormattedNumber
+                number={unrealizedPnl}
+                formatOptions={{ currency: "USD" }}
+                as="span"
+              />
             </p>
           </div>
         </div>
@@ -565,7 +615,7 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
 
-  const mode = tradePairStore((s) => s.mode);
+  const mode = TradePairStore((s) => s.mode);
   const action = tradeInfoStore((s) => s.action);
   const operation = tradeInfoStore((s) => s.operation);
   const setAction = tradeInfoStore((s) => s.setAction);

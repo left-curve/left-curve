@@ -21,6 +21,7 @@ export type UsePerpsPairStatsParameters = {
 
 export type UseAllPerpsPairStatsParameters = {
   enabled?: boolean;
+  refetchInterval?: number;
 };
 
 function asDecimal(value: string | null | undefined) {
@@ -70,11 +71,12 @@ export function usePerpsPairStats(parameters: UsePerpsPairStatsParameters) {
 }
 
 export function useAllPerpsPairStats(parameters: UseAllPerpsPairStatsParameters = {}) {
-  const { enabled = true } = parameters;
+  const { enabled = true, refetchInterval } = parameters;
   const client = usePublicClient();
 
   const query = useQuery({
     enabled,
+    refetchInterval,
     queryKey: ["all_perps_pair_stats"],
     queryFn: async () => {
       const allStats = await client

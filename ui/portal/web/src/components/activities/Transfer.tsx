@@ -27,7 +27,7 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
   ({ activity }, ref) => {
     const { showModal } = useApp();
     const { navigate } = useRouter();
-    const { getCoinInfo } = useConfig();
+    const config = useConfig();
     const { blockHeight, txHash, createdAt } = activity;
     const { coins, type, fromAddress, toAddress } = activity.data;
     const isSent = type === "sent";
@@ -69,7 +69,7 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
           </span>
           <div className="flex flex-col items-start">
             {Object.entries(coins).map(([denom, amount]) => {
-              const coin = getCoinInfo(denom);
+              const coin = config.coins.getCoinInfo(denom);
               return (
                 <p
                   key={denom}
@@ -93,7 +93,9 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
                       />
                     )}
                   </span>
-                  {isSent ? "−" : "+"}<FormattedNumber number={formatUnits(amount, coin.decimals)} as="span" />  {coin.symbol}
+                  {isSent ? "−" : "+"}
+                  <FormattedNumber number={formatUnits(amount, coin.decimals)} as="span" />{" "}
+                  {coin.symbol}
                 </p>
               );
             })}

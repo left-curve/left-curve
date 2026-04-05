@@ -2,17 +2,18 @@ import { useEffect, useRef } from "react";
 import { useConfig } from "./useConfig.js";
 
 import { create } from "zustand";
+import { TradePairStore } from "../stores/tradePairStore.js";
 
-import type { PairId, Trade } from "@left-curve/dango/types";
+import type { Trade } from "@left-curve/dango/types";
 
-export type UseLiveTradesStoreState = {
+export type UseLiveSpotTradesStoreState = {
   trades: Trade[];
   addTrades: (trades: Trade[]) => void;
   getTrades: () => Trade[];
   clearTrades: () => void;
 };
 
-export const liveTradesStore = create<UseLiveTradesStoreState>((set, get) => ({
+export const liveSpotTradesStore = create<UseLiveSpotTradesStoreState>((set, get) => ({
   trades: [],
   addTrades: (trades) => set((state) => ({ trades: [...trades, ...state.trades].slice(0, 50) })),
   getTrades: () => get().trades,
@@ -20,17 +21,17 @@ export const liveTradesStore = create<UseLiveTradesStoreState>((set, get) => ({
 }));
 
 export type UseLiveTradesStateParameters = {
-  pairId: PairId;
   subscribe?: boolean;
 };
 
-export function useLiveTradesState(parameters: UseLiveTradesStateParameters) {
-  const { pairId, subscribe } = parameters;
+export function useLiveSpotTradesState(parameters: UseLiveTradesStateParameters) {
+  const { subscribe } = parameters;
   const { subscriptions, coins } = useConfig();
   const tradesBuffer = useRef<Trade[]>([]);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const { addTrades, clearTrades } = liveTradesStore();
+  const pairId = TradePairStore((s) => s.pairId);
+  const { addTrades, clearTrades } = liveSpotTradesStore();
 
   const baseCoin = coins.byDenom[pairId.baseDenom];
   const quoteCoin = coins.byDenom[pairId.quoteDenom];
@@ -64,5 +65,5 @@ export function useLiveTradesState(parameters: UseLiveTradesStateParameters) {
     };
   }, [baseCoin, quoteCoin]);
 
-  return { liveTradesStore };
+  return { liveSpotTradesStore };
 }

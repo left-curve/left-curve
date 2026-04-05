@@ -104,8 +104,8 @@ function intlFormatToParts(
  * Tiers:
  * 1. num < 0.0001 → subscript notation: 0.0ₙXXXX (4 sig digits)
  * 2. 0.0001 ≤ num < 1 → 4 significant digits
- * 3. 1 ≤ num < 100 → 4 decimal places
- * 4. 100 ≤ num < 10,000 → 2 decimal places + grouping
+ * 3. 1 ≤ num < 100 → up to 4 decimal places
+ * 4. 100 ≤ num < 10,000 → up to 2 decimal places + grouping
  * 5. 10,000 ≤ num < 1,000,000 → integer + grouping
  * 6. ≥ 1,000,000 → compact (M/B/T) + 2 decimal places
  *
@@ -154,19 +154,17 @@ export function formatDisplayNumber(
     });
   }
 
-  // Tier 3: 1 ≤ num < 100 — 4 decimal places
+  // Tier 3: 1 ≤ num < 100 — up to 4 decimal places
   if (absAmount.lt(100)) {
     return intlFormatToParts(numValue, language, currency, mask, {
-      minimumFractionDigits: 4,
       maximumFractionDigits: 4,
       useGrouping: false,
     });
   }
 
-  // Tier 4: 100 ≤ num < 10,000 — 2 decimal places
+  // Tier 4: 100 ≤ num < 10,000 — up to 2 decimal places
   if (absAmount.lt(10000)) {
     return intlFormatToParts(numValue, language, currency, mask, {
-      minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   }

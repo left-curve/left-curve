@@ -96,7 +96,7 @@ const TransferSend: React.FC = () => {
   const { register, reset, handleSubmit, inputs } = controllers;
 
   const { account, username, isConnected } = useAccount();
-  const { coins, getCoinInfo } = useConfig();
+  const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
   const publicClient = usePublicClient();
 
@@ -196,7 +196,7 @@ const TransferSend: React.FC = () => {
                 coins={
                   isConnected
                     ? Object.keys({ "bridge/usdc": "", ...balances }).map((denom) =>
-                        getCoinInfo(denom),
+                        coins.getCoinInfo(denom),
                       )
                     : [coins.byDenom[selectedDenom]]
                 }

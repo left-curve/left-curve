@@ -9,11 +9,12 @@ import type {
   UserStatus,
 } from "@left-curve/dango/types";
 
-import type { AnyCoin } from "./coin.js";
+import type { NativeCoin } from "./coin.js";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";
 import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";
 import type { SubscriptionStore } from "./subscriptions.js";
+import type { CoinStore } from "../stores/coinStore.js";
 
 export const ConnectionStatus = {
   Connected: "connected",
@@ -39,12 +40,9 @@ export type State = {
   status: ConnectionStatusType;
 };
 
-export type Config<transport extends Transport = Transport, coin extends AnyCoin = AnyCoin> = {
+export type Config<transport extends Transport = Transport> = {
   readonly chain: Chain;
-  readonly coins: {
-    byDenom: Record<Denom, coin>;
-    bySymbol: Record<string, coin>;
-  };
+  readonly coins: CoinStore;
   readonly connectors: readonly Connector[];
   readonly storage: Storage;
   readonly state: State;
@@ -58,18 +56,14 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
       equalityFn?: (a: state, b: state) => boolean;
     },
   ): () => void;
-  getCoinInfo(denom: Denom): AnyCoin;
   getClient(): Client<transport>;
   captureError(error: unknown): void;
   _internal: Internal<transport>;
 };
-export type CreateConfigParameters<
-  transport extends Transport = Transport,
-  coin extends AnyCoin = AnyCoin,
-> = {
+export type CreateConfigParameters<transport extends Transport = Transport> = {
   version?: number;
   chain: Chain;
-  coins?: Record<Denom, coin>;
+  coins: Record<Denom, NativeCoin>;
   transport: transport;
   ssr?: boolean;
   batch?: boolean;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SearchToken } from "./SearchToken";
 import {
   Badge,
+  FormattedNumber,
   IconChevronDownFill,
   PairStatValue,
   twMerge,
@@ -9,53 +10,38 @@ import {
 } from "@left-curve/applets-kit";
 import { useProTrade } from "./ProTrade";
 import { AnimatePresence, motion } from "framer-motion";
+import { OpenInterestDisplay } from "./OpenInterestDisplay";
+import { FundingCountdown } from "./FundingCountdown";
 import { Decimal } from "@left-curve/dango/utils";
-import { FormattedNumber } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
-  useConfig,
   useCurrentPrice,
-  usePairStats,
-  usePerpsPairStats,
-  tradePairStore,
-  toPerpsPairId,
+  useAllPairStats,
+  useAllPerpsPairStats,
+  TradePairStore,
 } from "@left-curve/store";
 import type React from "react";
 import type { SearchTokenRow } from "./SearchToken";
-
-import { OpenInterestDisplay } from "./OpenInterestDisplay";
-import { FundingCountdown } from "./FundingCountdown";
 
 export const TradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
 
-  const mode = tradePairStore((s) => s.mode);
-  const pairId = tradePairStore((s) => s.pairId);
-  const { coins } = useConfig();
+  const mode = TradePairStore((s) => s.mode);
+  const pairId = TradePairStore((s) => s.pairId);
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 
   const { onChangePairId } = useProTrade();
 
-  const perpsPairId = useMemo(() => {
-    const baseSymbol = coins.byDenom[pairId.baseDenom]?.symbol;
-    const quoteSymbol = coins.byDenom[pairId.quoteDenom]?.symbol ?? "USD";
-    return baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
-  }, [pairId, coins]);
+  const { statsByPair } = useAllPairStats({ refetchInterval: 5_000 });
+  const { statsByPairId } = useAllPerpsPairStats({ refetchInterval: 5_000 });
 
-  const spotStats = usePairStats({
-    baseDenom: pairId.baseDenom,
-    quoteDenom: pairId.quoteDenom,
-    enabled: mode === "spot",
-  });
-
-  const perpsStats = usePerpsPairStats({
-    pairId: perpsPairId,
-    enabled: mode === "perps" && !!perpsPairId,
-  });
-
-  const pairStats = mode === "perps" ? perpsStats : spotStats;
+  const pairStatsData =
+    mode === "perps"
+      ? statsByPairId[getPerpsPairId()]
+      : statsByPair[`${pairId.baseDenom}:${pairId.quoteDenom}`];
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -105,9 +91,9 @@ export const TradeHeader: React.FC = () => {
             <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
             <HeaderPrice />
             <Header24hChange
-              currentPrice={pairStats.data?.currentPrice}
-              price24HAgo={pairStats.data?.price24HAgo}
-              priceChange24H={pairStats.data?.priceChange24H}
+              currentPrice={pairStatsData?.currentPrice}
+              price24HAgo={pairStatsData?.price24HAgo}
+              priceChange24H={pairStatsData?.priceChange24H}
             />
             <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
               <p className="diatype-xs-medium text-ink-tertiary-500">
@@ -115,14 +101,14 @@ export const TradeHeader: React.FC = () => {
               </p>
               <PairStatValue
                 kind="volume24h"
-                value={pairStats.data?.volume24H}
+                value={pairStatsData?.volume24H}
                 className="diatype-xs-medium text-center"
               />
             </div>
-            {mode === "perps" && perpsPairId && (
+            {mode === "perps" && (
               <>
-                <OpenInterestDisplay pairId={perpsPairId} />
-                <FundingCountdown pairId={perpsPairId} />
+                <OpenInterestDisplay />
+                <FundingCountdown />
               </>
             )}
           </motion.div>
@@ -165,9 +151,6 @@ const Header24hChange: React.FC<Header24hChangeProps> = ({
   price24HAgo,
   priceChange24H,
 }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-
   const { absoluteChange, isPositive } = useMemo(() => {
     if (!currentPrice || !price24HAgo) {
       return { absoluteChange: null, isPositive: true };
@@ -183,21 +166,6 @@ const Header24hChange: React.FC<Header24hChangeProps> = ({
     };
   }, [currentPrice, price24HAgo]);
 
-  const formattedAbsoluteChange = useMemo(() => {
-    if (!absoluteChange) return null;
-
-    const prefix = isPositive ? "+" : "";
-    return `${prefix}${formatNumber(absoluteChange, formatNumberOptions)}`;
-  }, [absoluteChange, isPositive, formatNumberOptions]);
-
-  const formattedPercentage = useMemo(() => {
-    if (!priceChange24H) return null;
-
-    const change = Decimal(priceChange24H);
-    const prefix = change.gte(0) ? "+" : "";
-    return `${prefix}${formatNumber(priceChange24H, formatNumberOptions)}%`;
-  }, [priceChange24H, formatNumberOptions]);
-
   const colorClass = useMemo(() => {
     if (!priceChange24H) return "text-ink-secondary-700";
     return Decimal(priceChange24H).gte(0) ? "text-status-success" : "text-status-fail";
@@ -209,9 +177,24 @@ const Header24hChange: React.FC<Header24hChangeProps> = ({
         {m["dex.protrade.spot.24hChange"]()}
       </p>
       <p className={twMerge("diatype-xs-medium", colorClass)}>
-        {formattedAbsoluteChange && formattedPercentage
-          ? `${formattedAbsoluteChange} / ${formattedPercentage}`
-          : formattedPercentage ?? "-"}
+        {absoluteChange && priceChange24H ? (
+          <>
+            {isPositive ? "+" : ""}
+            <FormattedNumber number={absoluteChange} as="span" />
+            {" / "}
+            {Decimal(priceChange24H).gte(0) ? "+" : ""}
+            <FormattedNumber number={priceChange24H} as="span" />
+            {"%"}
+          </>
+        ) : priceChange24H ? (
+          <>
+            {Decimal(priceChange24H).gte(0) ? "+" : ""}
+            <FormattedNumber number={priceChange24H} as="span" />
+            {"%"}
+          </>
+        ) : (
+          "-"
+        )}
       </p>
     </div>
   );

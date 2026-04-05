@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useConfig } from "./useConfig.js";
-import { toPerpsPairId } from "../stores/tradePairStore.js";
 
 import { create } from "zustand";
+import { TradePairStore } from "../stores/tradePairStore.js";
 
-import type { PairId, PerpsTrade } from "@left-curve/dango/types";
+import type { PerpsTrade } from "@left-curve/dango/types";
 
 export type UseLivePerpsTradesStoreState = {
   trades: PerpsTrade[];
@@ -34,26 +34,23 @@ export const livePerpsTradesStore = create<UseLivePerpsTradesStoreState>((set, g
 }));
 
 export type UseLivePerpsTradesStateParameters = {
-  pairId: PairId;
   subscribe?: boolean;
 };
 
 export function useLivePerpsTradesState(parameters: UseLivePerpsTradesStateParameters) {
-  const { pairId, subscribe } = parameters;
-  const { subscriptions, coins } = useConfig();
+  const { subscribe } = parameters;
+  const { subscriptions } = useConfig();
 
-  const perpsPairId = useMemo(() => {
-    const baseSymbol = coins.byDenom[pairId.baseDenom]?.symbol;
-    const quoteSymbol = coins.byDenom[pairId.quoteDenom]?.symbol ?? "USD";
-    return baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
-  }, [pairId, coins]);
+  const pairId = TradePairStore((s) => s.pairId);
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
+
   const tradesBuffer = useRef<PerpsTrade[]>([]);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   const { addTrades, clearTrades } = livePerpsTradesStore();
 
   useEffect(() => {
-    if (!subscribe || !perpsPairId) return;
+    if (!subscribe || !pairId) return;
     const processBuffer = () => {
       if (tradesBuffer.current.length > 0) {
         addTrades(tradesBuffer.current);
@@ -63,7 +60,7 @@ export function useLivePerpsTradesState(parameters: UseLivePerpsTradesStateParam
     };
 
     const unsubscribe = subscriptions.subscribe("perpsTrades", {
-      params: { pairId: perpsPairId },
+      params: { pairId: getPerpsPairId() },
       listener: async ({ perpsTrades: trade }) => {
         tradesBuffer.current.unshift(trade);
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -76,7 +73,7 @@ export function useLivePerpsTradesState(parameters: UseLivePerpsTradesStateParam
       clearTrades();
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [perpsPairId, subscribe]);
+  }, [pairId, subscribe]);
 
   return { livePerpsTradesStore };
 }

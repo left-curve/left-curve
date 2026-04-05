@@ -6,20 +6,24 @@ import { Direction, type PairId } from "@left-curve/dango/types";
 import {
   liquidityDepthStore,
   useLiquidityDepthState,
-  useLiveTradesState,
   livePerpsTradesStore,
   useOrderBookState,
   useCurrentPrice,
   useTradeCoins,
   useAppConfig,
-  useConfig,
-  tradePairStore,
-  toPerpsPairId,
-  usePerpsLiquidityDepth,
   perpsLiquidityDepthStore,
   useStorage,
+  TradePairStore,
+  liveSpotTradesStore,
+  usePerpsLiquidityDepth,
 } from "@left-curve/store";
-import { bucketSizeToFractionDigits, calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
+import {
+  bucketSizeToFractionDigits,
+  calculateTradeSize,
+  Decimal,
+  formatNumber,
+  parseUnits,
+} from "@left-curve/dango/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -37,39 +41,29 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
 
   const { isLg, is3XlTall } = useMediaQuery();
 
-  const mode = tradePairStore((s) => s.mode);
-  const pairId = tradePairStore((s) => s.pairId);
+  const mode = TradePairStore((s) => s.mode);
+  const pairId = TradePairStore((s) => s.pairId);
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
   const { data: appConfig } = useAppConfig();
-  const { coins } = useConfig();
 
-  const { baseCoin, quoteCoin } = useTradeCoins({ pairId, mode });
+  const { baseCoin, quoteCoin } = useTradeCoins();
 
-  const perpsPairId = useMemo(() => {
-    if (mode !== "perps") return null;
-    const baseSymbol = coins.byDenom[pairId.baseDenom]?.symbol;
-    const quoteSymbol = coins.byDenom[pairId.quoteDenom]?.symbol ?? "USD";
-    return baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : null;
-  }, [mode, pairId, coins]);
-
-  const pair =
-    mode === "spot"
-      ? appConfig?.pairs[pairId.baseDenom]
-      : perpsPairId
-        ? (appConfig as any)?.perpsPairs?.[perpsPairId]
-        : null;
+  const pairInfo =
+    mode === "spot" ? appConfig.pairs[pairId.baseDenom] : appConfig.perpsPairs[getPerpsPairId()];
 
   const bucketSizes: string[] =
-    pair && "params" in pair ? pair.params.bucketSizes : ((pair as any)?.bucketSizes ?? []);
-  const [bucketSize, setBucketSize] = useState(bucketSizes[0] ?? "1");
+    pairInfo && "params" in pairInfo ? pairInfo.params.bucketSizes : pairInfo.bucketSizes;
+
+  const [bucketSize, setBucketSize] = useState(bucketSizes[0]);
 
   useEffect(() => {
-    if (bucketSizes[0]) setBucketSize(bucketSizes[0]);
-  }, [bucketSizes[0]]);
+    setBucketSize(bucketSizes[0]);
+  }, [bucketSizes]);
 
   usePerpsLiquidityDepth({
-    pairId: perpsPairId ?? "",
+    pairId: getPerpsPairId(),
     bucketSize,
-    subscribe: mode === "perps" && !!perpsPairId,
+    subscribe: mode === "perps",
   });
 
   useEffect(() => {
@@ -126,7 +120,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
             />
           )}
           {activeTab === "trades" && (
-            <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} pairId={pairId} mode={mode} />
+            <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} mode={mode} />
           )}
         </>
       )}
@@ -140,7 +134,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
             fullWidth
             classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
           />
-          <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} pairId={pairId} mode={mode} />
+          <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} mode={mode} />
         </>
       )}
     </ResizerContainer>
@@ -322,7 +316,6 @@ const OrderBook: React.FC<OrderBookProps> = ({
 type LiveTradesProps = {
   baseCoin: AnyCoin & { amount: string };
   quoteCoin: AnyCoin & { amount: string };
-  pairId: PairId;
   mode: "spot" | "perps";
 };
 
@@ -330,7 +323,7 @@ const LiveTrades: React.FC<LiveTradesProps> = (props) => {
   return props.mode === "perps" ? <PerpsLiveTrades {...props} /> : <SpotLiveTrades {...props} />;
 };
 
-const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, pairId }) => {
+const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
   const { is3XlTall } = useMediaQuery();
@@ -388,15 +381,13 @@ const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, pairId }) => {
   );
 };
 
-const SpotLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin, pairId }) => {
+const SpotLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
   const { is3XlTall } = useMediaQuery();
   const { timeFormat } = settings;
 
-  const { liveTradesStore } = useLiveTradesState({ pairId, subscribe: true });
-
-  const liveTrades = liveTradesStore((s) => s.trades);
+  const liveTrades = liveSpotTradesStore((s) => s.trades);
   const trades = useDeferredValue(liveTrades);
 
   return (
@@ -544,13 +535,13 @@ type SpreadProps = {
   mode: "spot" | "perps";
 };
 
-const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
+const Spread: React.FC<SpreadProps> = ({ base, quote, mode }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
   const { currentPrice, previousPrice } = useCurrentPrice();
 
-  const { orderBookStore } = useOrderBookState({ pairId });
+  const { orderBookStore } = useOrderBookState();
   const orderBook = orderBookStore((s) => s.orderBook);
   const perpsDepth = perpsLiquidityDepthStore((s) => s.liquidityDepth);
 
@@ -589,7 +580,9 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote, mode }) => {
     if (!currentPrice) return null;
     return mode === "perps"
       ? currentPrice
-      : Decimal(currentPrice).mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed();
+      : Decimal(currentPrice)
+          .mul(Decimal(10).pow(base.decimals - quote.decimals))
+          .toFixed();
   }, [currentPrice, mode, base.decimals, quote.decimals]);
 
   return (

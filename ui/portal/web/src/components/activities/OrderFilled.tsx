@@ -26,7 +26,7 @@ type ActivityOrderFilledProps = {
 
 export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledProps>(
   ({ activity }, ref) => {
-    const { getCoinInfo } = useConfig();
+    const { coins } = useConfig();
     const { createdAt, blockHeight } = activity;
     const {
       id,
@@ -51,8 +51,8 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
 
     const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
 
-    const base = getCoinInfo(base_denom);
-    const quote = getCoinInfo(quote_denom);
+    const base = coins.getCoinInfo(base_denom);
+    const quote = coins.getCoinInfo(quote_denom);
 
     const fee = calculateFees(
       { amount: fee_base, decimals: base.decimals, price: getPrice(1, base.denom) },
@@ -137,7 +137,10 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
           {!cleared && (
             <div className="flex gap-1 text-ink-tertiary-500">
               <span>{m["common.width"]()}</span>
-              <span className="diatype-m-bold"><FormattedNumber number={formatUnits(remaining, base.decimals)} as="span" /> {base.symbol}</span>
+              <span className="diatype-m-bold">
+                <FormattedNumber number={formatUnits(remaining, base.decimals)} as="span" />{" "}
+                {base.symbol}
+              </span>
               <span>{m["activities.activity.orderFilled.remaining"]()}</span>
             </div>
           )}

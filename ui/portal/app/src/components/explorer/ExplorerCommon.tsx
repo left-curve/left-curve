@@ -5,7 +5,14 @@ import { useConfig, usePrices } from "@left-curve/store";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { AddressVisualizer } from "~/components/foundation/AddressVisualizer";
-import { Badge, Button, GlobalText, IconChevronDown, IconLink, TextCopy } from "~/components/foundation";
+import {
+  Badge,
+  Button,
+  GlobalText,
+  IconChevronDown,
+  IconLink,
+  TextCopy,
+} from "~/components/foundation";
 
 import type { Address, Coins, IndexedTransaction } from "@left-curve/dango/types";
 import type React from "react";
@@ -50,7 +57,9 @@ export const ExplorerNotFound: React.FC<{ title: string; description: React.Reac
 }) => {
   return (
     <ExplorerSectionCard className="items-center justify-center min-h-[300px]">
-      <GlobalText className="exposure-m-italic text-ink-secondary-700 text-center">{title}</GlobalText>
+      <GlobalText className="exposure-m-italic text-ink-secondary-700 text-center">
+        {title}
+      </GlobalText>
       <GlobalText className="diatype-m-medium text-ink-tertiary-500 text-center">
         {description}
       </GlobalText>
@@ -84,7 +93,9 @@ export const ExplorerAccordion: React.FC<
         onPress={() => setExpanded((v) => !v)}
       >
         <GlobalText className="diatype-m-bold capitalize">{title}</GlobalText>
-        <IconChevronDown className={`w-5 h-5 text-ink-tertiary-500 ${expanded ? "rotate-180" : ""}`} />
+        <IconChevronDown
+          className={`w-5 h-5 text-ink-tertiary-500 ${expanded ? "rotate-180" : ""}`}
+        />
       </Pressable>
       {expanded ? children : null}
     </View>
@@ -92,13 +103,13 @@ export const ExplorerAccordion: React.FC<
 };
 
 export const ExplorerAssetsList: React.FC<{ balances: Coins }> = ({ balances }) => {
-  const { getCoinInfo } = useConfig();
+  const { coins } = useConfig();
   const { getPrice } = usePrices();
   const { settings } = useApp();
 
   const data = useMemo(() => {
     return Object.entries(balances).map(([denom, amount]) => {
-      const coin = getCoinInfo(denom);
+      const coin = coins.getCoinInfo(denom);
       const humanizedAmount = formatUnits(amount, coin.decimals);
       const price = getPrice(humanizedAmount, denom, {
         format: true,
@@ -112,7 +123,7 @@ export const ExplorerAssetsList: React.FC<{ balances: Coins }> = ({ balances }) 
         price,
       };
     });
-  }, [balances, getCoinInfo, getPrice, settings.formatNumberOptions]);
+  }, [balances, coins, getPrice, settings.formatNumberOptions]);
 
   if (!data.length) return null;
 
@@ -125,8 +136,12 @@ export const ExplorerAssetsList: React.FC<{ balances: Coins }> = ({ balances }) 
         >
           <GlobalText className="diatype-m-bold">{asset.symbol}</GlobalText>
           <View className="items-end">
-            <GlobalText className="diatype-sm-medium text-ink-secondary-700">{asset.amount}</GlobalText>
-            <GlobalText className="diatype-sm-regular text-ink-tertiary-500">${asset.price}</GlobalText>
+            <GlobalText className="diatype-sm-medium text-ink-secondary-700">
+              {asset.amount}
+            </GlobalText>
+            <GlobalText className="diatype-sm-regular text-ink-tertiary-500">
+              ${asset.price}
+            </GlobalText>
           </View>
         </View>
       ))}
@@ -163,14 +178,21 @@ export const ExplorerTransactionsList: React.FC<TransactionsListProps> = ({
         <View key={tx.hash} className="rounded-md border border-outline-secondary-gray p-3 gap-2">
           <ExplorerKeyValueRow label="Hash">
             <Pressable className="flex-row items-center gap-1" onPress={() => onOpenTx(tx.hash)}>
-              <GlobalText className="diatype-sm-bold text-ink-secondary-blue">{tx.hash.slice(0, 18)}...</GlobalText>
+              <GlobalText className="diatype-sm-bold text-ink-secondary-blue">
+                {tx.hash.slice(0, 18)}...
+              </GlobalText>
               <IconLink className="w-4 h-4 text-ink-secondary-blue" />
             </Pressable>
           </ExplorerKeyValueRow>
 
           <ExplorerKeyValueRow label={m["explorer.txs.block"]()}>
-            <Pressable className="flex-row items-center gap-1" onPress={() => onOpenBlock(tx.blockHeight)}>
-              <GlobalText className="diatype-sm-bold text-ink-secondary-blue">{tx.blockHeight}</GlobalText>
+            <Pressable
+              className="flex-row items-center gap-1"
+              onPress={() => onOpenBlock(tx.blockHeight)}
+            >
+              <GlobalText className="diatype-sm-bold text-ink-secondary-blue">
+                {tx.blockHeight}
+              </GlobalText>
               <IconLink className="w-4 h-4 text-ink-secondary-blue" />
             </Pressable>
           </ExplorerKeyValueRow>

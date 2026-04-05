@@ -13,9 +13,9 @@ interface SpotProps {
 }
 
 const Spot: React.FC<SpotProps> = ({ coin }) => {
-  const { getCoinInfo } = useConfig();
+  const { coins } = useConfig();
 
-  const coinInfo = getCoinInfo(coin.denom);
+  const coinInfo = coins.getCoinInfo(coin.denom);
 
   const humanAmount = formatUnits(coin.amount, coinInfo.decimals);
 
@@ -38,7 +38,11 @@ const Spot: React.FC<SpotProps> = ({ coin }) => {
           </div>
         </div>
         <div className="flex flex-col items-end text-ink-primary-900">
-          <FormattedNumber className="diatype-m-bold" number={getPrice(humanAmount, coin.denom)} formatOptions={{ currency: "USD" }} />
+          <FormattedNumber
+            className="diatype-m-bold"
+            number={getPrice(humanAmount, coin.denom)}
+            formatOptions={{ currency: "USD" }}
+          />
           <FormattedNumber number={humanAmount} />
         </div>
       </div>

@@ -46,9 +46,9 @@ type CellAssetProps = Prettify<
 >;
 
 const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
-  const { getCoinInfo } = useConfig();
+  const { coins } = useConfig();
 
-  const coin = asset || getCoinInfo(denom as string);
+  const coin = asset || coins.getCoinInfo(denom as string);
 
   if (!coin) return <div className="flex h-full items-center diatype-sm-medium ">-</div>;
 
@@ -174,7 +174,10 @@ const MarketPrice: React.FC<CellMarketPriceProps> = ({ denom, className, formatO
         className,
       )}
     >
-      <FormattedNumber number={price.humanizedPrice || 0} formatOptions={{ ...formatOptions, currency: "usd" }} />
+      <FormattedNumber
+        number={price.humanizedPrice || 0}
+        formatOptions={{ ...formatOptions, currency: "usd" }}
+      />
     </div>
   );
 };

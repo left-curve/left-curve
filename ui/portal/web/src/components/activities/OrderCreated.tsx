@@ -19,7 +19,7 @@ type ActivityOrderCreatedProps = {
 export const ActivityOrderCreated = forwardRef<ActivityRef, ActivityOrderCreatedProps>(
   ({ activity }, ref) => {
     const { navigate } = useRouter();
-    const { getCoinInfo } = useConfig();
+    const { coins } = useConfig();
     const { settings, showModal } = useApp();
     const { blockHeight, createdAt } = activity;
     const { id, quote_denom, base_denom, price, time_in_force, direction, amount } = activity.data;
@@ -28,8 +28,8 @@ export const ActivityOrderCreated = forwardRef<ActivityRef, ActivityOrderCreated
     const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
     const isLimit = kind === OrderType.Limit;
 
-    const base = getCoinInfo(base_denom);
-    const quote = getCoinInfo(quote_denom);
+    const base = coins.getCoinInfo(base_denom);
+    const quote = coins.getCoinInfo(quote_denom);
 
     const limitPrice = isLimit
       ? calculatePrice(price, { base: base.decimals, quote: quote.decimals }, formatNumberOptions)

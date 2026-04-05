@@ -31,7 +31,7 @@ type ActivityTransferModalProps = {
 export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModalProps>(
   ({ action = "received", from, to, time, txHash, coins, blockHeight, navigate: _navigate_ }) => {
     const { hideModal, setSidebarVisibility, settings } = useApp();
-    const { getCoinInfo } = useConfig();
+    const config = useConfig();
     const { getPrice } = usePrices();
     const { timeFormat, dateFormat } = settings;
 
@@ -58,7 +58,7 @@ export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModal
           </h2>
           <div className="flex flex-col gap-4">
             {Object.entries(coins).map(([denom, amount]) => {
-              const coin = getCoinInfo(denom);
+              const coin = config.coins.getCoinInfo(denom);
               const humanAmount = formatUnits(amount, coin.decimals);
               return (
                 <div className="flex flex-col gap-2 w-full" key={`transfer-coin-${denom}`}>

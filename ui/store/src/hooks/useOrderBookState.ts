@@ -8,11 +8,11 @@ import {
   snakeCaseJsonSerialization,
 } from "@left-curve/dango/encoding";
 
-import type { PairId, QueryRequest, RestingOrderBookState } from "@left-curve/dango/types";
+import type { QueryRequest, RestingOrderBookState } from "@left-curve/dango/types";
 import { parseUnits } from "@left-curve/dango/utils";
+import { TradePairStore } from "../index.js";
 
 type UseOrderBookStateParameters = {
-  pairId: PairId;
   subscribe?: boolean;
 };
 
@@ -25,15 +25,17 @@ export const orderBookStore = createBlockStore({
   beforeUpdate: (prev) => ({ previousPrice: prev.currentPrice }),
 });
 
-export function useOrderBookState(parameters: UseOrderBookStateParameters) {
-  const { pairId, subscribe } = parameters;
+export function useOrderBookState(parameters?: UseOrderBookStateParameters) {
+  const { subscribe } = parameters || {};
   const { subscriptions, coins } = useConfig();
   const { data: appConfig } = useAppConfig();
+
+  const pairId = TradePairStore((s) => s.pairId);
 
   const { setState } = orderBookStore();
 
   useEffect(() => {
-    if (!subscribe || !pairId.baseDenom || !pairId.quoteDenom) return;
+    if (!subscribe || !pairId) return;
 
     const { addresses } = appConfig;
     const unsubscribe = subscriptions.subscribe("queryApp", {

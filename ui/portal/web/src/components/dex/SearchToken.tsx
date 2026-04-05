@@ -1,4 +1,4 @@
-import { useAppConfig, useConfig, tradePairStore, perpsMarginAsset } from "@left-curve/store";
+import { useAppConfig, useConfig, perpsMarginAsset, TradePairStore } from "@left-curve/store";
 import { useRef, useState } from "react";
 
 import { IconSearch, Input, Popover, Tabs, useMediaQuery } from "@left-curve/applets-kit";
@@ -19,7 +19,7 @@ type SearchTokenHeaderProps = {
 
 const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId }) => {
   const { coins } = useConfig();
-  const mode = tradePairStore((s) => s.mode);
+  const mode = TradePairStore((s) => s.mode);
 
   const baseCoin = coins.byDenom[pairId.baseDenom];
   const quoteCoin =

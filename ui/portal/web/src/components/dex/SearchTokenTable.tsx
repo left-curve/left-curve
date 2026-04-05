@@ -2,11 +2,7 @@ import {
   useAllPairStats,
   useAllPerpsPairStats,
   useFavPairs,
-  usePrices,
-  livePerpsTradesStore,
-  tradePairStore,
-  toPerpsPairId,
-  useConfig,
+  TradePairStore,
 } from "@left-curve/store";
 import {
   Badge,
@@ -17,7 +13,6 @@ import {
   PairStatValue,
   SortHeader,
   Table,
-  useApp,
 } from "@left-curve/applets-kit";
 import { memo, useMemo } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -63,36 +58,29 @@ const PerpsPairNameWithFav: React.FC<{
 });
 
 function useRowPairStats(row: SearchTokenRow) {
-  const { coins } = useConfig();
-  const { statsByPair } = useAllPairStats();
-  const { statsByPairId: perpStatsByPairId } = useAllPerpsPairStats();
+  const { statsByPair } = useAllPairStats({ refetchInterval: 5_000 });
+  const { statsByPairId: perpStatsByPairId } = useAllPerpsPairStats({ refetchInterval: 5_000 });
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 
-  if (row.mode === "perps") {
-    const baseSymbol = coins.byDenom[row.pairId.baseDenom]?.symbol;
-    const quoteSymbol = coins.byDenom[row.pairId.quoteDenom]?.symbol ?? "USD";
-    const perpsPairId = baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
-    return perpsPairId ? perpStatsByPairId[perpsPairId] : undefined;
-  }
-  return statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
+  return row.mode === "perps"
+    ? perpStatsByPairId[getPerpsPairId(row.pairId)]
+    : statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
 }
 
 const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
-  const activePerpsPrice = livePerpsTradesStore((s) => s.currentPrice);
-  const activePairId = tradePairStore((s) => s.pairId);
-  const activeMode = tradePairStore((s) => s.mode);
+  const stats = useRowPairStats(row);
 
-  if (
-    row.mode === "perps" &&
-    activeMode === "perps" &&
-    row.pairId.baseDenom === activePairId.baseDenom &&
-    activePerpsPrice !== null
-  ) {
-    return <Cell.Text text={<FormattedNumber number={activePerpsPrice} formatOptions={{ currency: "USD" }} as="span" />} />;
-  }
-  return <Cell.Text text={<FormattedNumber number={getPrice(1, row.baseCoin.denom)} formatOptions={{ currency: "USD" }} as="span" />} />;
+  return (
+    <Cell.Text
+      text={
+        <FormattedNumber
+          number={stats?.currentPrice ?? "0"}
+          formatOptions={{ currency: "USD" }}
+          as="span"
+        />
+      }
+    />
+  );
 });
 
 const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {
@@ -137,24 +125,19 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
   data: rows,
   onChangePairId,
 }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const { favPairs } = useFavPairs();
-  const { coins } = useConfig();
-  const { statsByPair } = useAllPairStats();
-  const { statsByPairId: perpStatsByPairId } = useAllPerpsPairStats();
+
+  const { statsByPair } = useAllPairStats({ refetchInterval: 5_000 });
+  const { statsByPairId: perpStatsByPairId } = useAllPerpsPairStats({ refetchInterval: 5_000 });
+
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 
   const data = useMemo(() => [...rows], [rows, favPairs]);
 
   const getPairStats = (row: SearchTokenRow) => {
-    if (row.mode === "perps") {
-      const baseSymbol = coins.byDenom[row.pairId.baseDenom]?.symbol;
-      const quoteSymbol = coins.byDenom[row.pairId.quoteDenom]?.symbol ?? "USD";
-      const perpsPairId = baseSymbol ? toPerpsPairId(baseSymbol, quoteSymbol) : "";
-      return perpsPairId ? perpStatsByPairId[perpsPairId] : undefined;
-    }
-    return statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
+    return row.mode === "perps"
+      ? perpStatsByPairId[getPerpsPairId(row.pairId)]
+      : statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
   };
 
   const columns: TableColumn<SearchTokenRow> = [
@@ -202,7 +185,7 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
         />
       ),
       cell: ({ row }) => <PriceCell row={row.original} />,
-      accessorFn: (row) => getPrice(1, row.baseCoin.denom, { format: false }),
+      accessorFn: (row) => Number(getPairStats(row)?.currentPrice ?? 0),
     },
     {
       id: "change24h",

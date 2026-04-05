@@ -27,9 +27,9 @@ type ConfirmSendProps = {
 export const ConfirmSend = forwardRef(
   ({ amount, denom, to, confirmSend, rejectSend }: ConfirmSendProps, ref) => {
     const { hideModal } = useApp();
-    const { getCoinInfo } = useConfig();
+    const { coins } = useConfig();
     const client = usePublicClient();
-    const coin = getCoinInfo(denom);
+    const coin = coins.getCoinInfo(denom);
 
     const { data: username, isLoading } = useQuery({
       queryKey: ["username", to],

@@ -1,4 +1,4 @@
-import { Button, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
+import { Button, FormattedNumber, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
@@ -62,7 +62,12 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(
             <p
               className={`diatype-sm-medium ${isProfit ? "text-utility-success-600" : "text-utility-error-600"}`}
             >
-              {isProfit ? "+" : ""}${pnl.toFixed(2)}
+              {isProfit ? "+" : ""}
+              <FormattedNumber
+                number={pnl.toString()}
+                formatOptions={{ currency: "USD" }}
+                as="span"
+              />
             </p>
           </div>
         </div>

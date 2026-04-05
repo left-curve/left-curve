@@ -1,9 +1,9 @@
 import { orderBookStore } from "./useOrderBookState.js";
 import { livePerpsTradesStore } from "./useLivePerpsTradesState.js";
-import { tradePairStore } from "../stores/tradePairStore.js";
+import { TradePairStore } from "../stores/tradePairStore.js";
 
 export function useCurrentPrice() {
-  const mode = tradePairStore((s) => s.mode);
+  const mode = TradePairStore((s) => s.mode);
 
   const spotCurrent = orderBookStore((s) => s.currentPrice);
   const spotPrevious = orderBookStore((s) => s.previousPrice);
