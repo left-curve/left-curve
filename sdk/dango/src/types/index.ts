@@ -153,6 +153,7 @@ export type {
 export type {
   RateSchedule,
   PerpsUserState,
+  PerpsUserStateExtended,
   PerpsPosition,
   PerpsUnlock,
   PerpsOrderKind,
@@ -168,6 +169,7 @@ export type {
   PerpsCancelOrderRequest,
   PerpsQueryMsg,
   GetPerpsQueryMsg,
+  PerpsVaultState,
 } from "./perps.js";
 
 export type {

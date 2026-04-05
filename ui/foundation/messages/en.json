@@ -177,9 +177,9 @@
       "id": "earn",
       "img": "/images/emojis/simple/pig.svg",
       "title": "Earn",
-      "description": "Earn tokens by lending or providing liquidity",
+      "description": "Provide liquidity and earn yields",
       "path": "/earn",
-      "keywords": "earn,staking,liquidity,lending"
+      "keywords": "vault,earn,liquidity,lp,provider,dango"
     },
     "transfer": {
       "id": "transfer",
@@ -748,6 +748,41 @@
     "myPosition": "My Position",
     "tvl": "TVL",
     "manage": "Manage"
+  },
+  "vaultLiquidity": {
+    "title": "Dango Liquidity Provider",
+    "apy": "APY",
+    "tvl": "TVL",
+    "toDeposit": "To deposit",
+    "toGet": "To get",
+    "sharesToBurn": "Shares to burn",
+    "usdToReceive": "USD to receive",
+    "liquidity": "My liquidity",
+    "vaultShares": "Vault Shares",
+    "vaultShare": "Vault Share",
+    "networkFee": "Network Fee",
+    "withdrawalAmount": "Withdrawal amount",
+    "myWithdrawals": "My withdrawals",
+    "withdrawalsDescription": "Once cooldown finishes, the fund is automatically sent to your perp account.",
+    "usdAmount": "USD Amount",
+    "cooldownEndTime": "Cooldown End Time",
+    "noWithdrawals": "You haven't made any withdrawals yet",
+    "paused": "This vault has paused activity due to abnormal risk conditions. Your funds remain safe.",
+    "modal": {
+      "addLiquidity": "Add Liquidity",
+      "depositing": "Depositing",
+      "toReceive": "To receive",
+      "destination": "To",
+      "withdrawLiquidity": "Withdraw Liquidity",
+      "withdrawing": "Withdrawing",
+      "from": "From",
+      "cooldownTitle": "3-day cooldown applies",
+      "cooldownDescription": "Funds will be automatically sent to your perp account once the cooldown period ends.",
+      "earlyWithdrawalTitle": "Early Withdrawal - Penalty",
+      "earlyWithdrawalDescription": "Withdrawing before {date} incurs an early exit penalty.",
+      "penalty": "Penalty",
+      "youReceive": "You Receive"
+    }
   },
   "poolLiquidity": {
     "apy": "APY",

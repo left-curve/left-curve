@@ -20,6 +20,12 @@ export type PerpsUserState = {
   openOrderCount: number;
 };
 
+export type PerpsUserStateExtended = {
+  raw: PerpsUserState;
+  equity: string | null;
+  availableMargin: string | null;
+};
+
 export type PerpsOrderKind =
   | { market: { maxSlippage: string } }
   | { limit: { limitPrice: string; postOnly: boolean } };
@@ -73,6 +79,16 @@ export type PerpsState = {
   treasury: string;
 };
 
+export type PerpsVaultState = {
+  shareSupply: string;
+  equity: string;
+  depositWithdrawalActive: boolean;
+  margin: string;
+  positions: Record<string, PerpsPosition>;
+  reservedMargin: string;
+  openOrderCount: number;
+};
+
 export type PerpsOrderResponse = {
   orderId: string;
   pairId: string;
@@ -107,6 +123,7 @@ export type PerpsCancelOrderRequest = { one: string } | "all";
 
 export type PerpsQueryMsg =
   | { userState: { user: Address } }
+  | { userStateExtended: { user: Address; includeEquity: boolean; includeAvailableMargin: boolean } }
   | { userStates: { startAfter?: Address; limit?: number } }
   | { param: Record<string, never> }
   | { pairParam: { pairId: string } }
@@ -117,7 +134,8 @@ export type PerpsQueryMsg =
   | { order: { orderId: string } }
   | { ordersByUser: { user: Address } }
   | { liquidityDepth: { pairId: string; bucketSize: string; limit?: number } }
-  | { volume: { user: Address; since?: string } };
+  | { volume: { user: Address; since?: string } }
+  | { vaultState: Record<string, never> };
 
 export type GetPerpsQueryMsg<K extends KeyOfUnion<PerpsQueryMsg>> = ExtractFromUnion<
   PerpsQueryMsg,

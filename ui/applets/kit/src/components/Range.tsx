@@ -52,6 +52,7 @@ export type RangeProps = {
     base?: string;
     input?: string;
     inputWrapper?: string;
+    track?: string;
   };
   withInput?: boolean;
   inputEndContent?: ReactNode;
@@ -228,6 +229,7 @@ export const Range: React.FC<RangeProps> = ({
             className={twMerge(
               "relative h-1 rounded-full",
               isDisabled ? "bg-surface-disabled-gray" : "bg-outline-secondary-gray cursor-pointer",
+              classNames?.track,
             )}
             onMouseDown={handleSliderMouseDown}
             onTouchStart={handleSliderMouseDown}

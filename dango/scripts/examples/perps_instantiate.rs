@@ -42,6 +42,7 @@ fn param() -> Param {
         },
         protocol_fee_rate: Dimensionless::new_percent(25), // 25% to treasury, 75% to vault
         liquidation_fee_rate: Dimensionless::new_permille(5), // 0.5% of notional
+        liquidation_buffer_ratio: Dimensionless::new_percent(5), // 5%
         funding_period: Duration::from_hours(1),
         vault_total_weight: Dimensionless::new_int(10), // 4 + 3 + 2 + 1
         vault_cooldown_period: Duration::from_days(3),

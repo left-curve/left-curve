@@ -171,6 +171,11 @@ export {
 } from "./hooks/usePoolLiquidityState.js";
 
 export {
+  type UseVaultLiquidityStateParameters,
+  useVaultLiquidityState,
+} from "./hooks/useVaultLiquidityState.js";
+
+export {
   type UsePairStatsParameters,
   type UseAllPairStatsParameters,
   type NormalizedPairStats,
@@ -246,6 +251,10 @@ export {
   perpsUserStateStore,
   perpsMarginAsset,
 } from "./hooks/usePerpsUserState.js";
+export {
+  usePerpsUserStateExtended,
+  perpsUserStateExtendedStore,
+} from "./hooks/usePerpsUserStateExtended.js";
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
 export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";

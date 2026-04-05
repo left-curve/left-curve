@@ -886,6 +886,7 @@
             },
             "param": {
               "funding_period": "3600",
+              "liquidation_buffer_ratio": "0.05",
               "liquidation_fee_rate": "0.01",
               "maker_fee_rates": {
                 "base": "0",
