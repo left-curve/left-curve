@@ -11,6 +11,7 @@ import {
   usePerpsSubmission,
   perpsUserStateStore,
   perpsUserStateExtendedStore,
+  useAllPerpsPairStats,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -313,10 +314,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { isConnected } = useAccount();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { getPrice } = usePrices({
-    defaultFormatOptions: formatNumberOptions,
-    refetchInterval: 10_000,
-  });
 
   const { data: appConfig } = useAppConfig();
 
@@ -334,9 +331,12 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [pairId]);
 
   const isBaseSize = sizeCoinDenom === baseCoin.denom;
-  const currentPrice = getPrice(1, pairId.baseDenom);
 
-  const params = appConfig.perpsPairs[getPerpsPairId()];
+  const { statsByPairId } = useAllPerpsPairStats({ refetchInterval: 5_000 });
+  const perpsPairId = getPerpsPairId();
+  const currentPrice = Number(statsByPairId[perpsPairId]?.currentPrice ?? 0);
+
+  const params = appConfig.perpsPairs[perpsPairId];
 
   const userState = perpsUserStateStore((s) => s.userState);
 
@@ -387,12 +387,10 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [size, isBaseSize, currentPrice, formatNumberOptions]);
 
   const unrealizedPnl = useMemo(() => {
-    if (!position) return "0";
-    const currentPrice = getPrice(1, pairId.baseDenom);
-    if (!currentPrice || currentPrice === 0) return "0";
+    if (!position || currentPrice <= 0) return "0";
     const pnl = Decimal(position.size).mul(Decimal(currentPrice).minus(position.entryPrice));
     return pnl.toFixed();
-  }, [position, pairId, getPrice]);
+  }, [position, currentPrice]);
 
   const sizeValue = useMemo(() => {
     if (isBaseSize) return size;
