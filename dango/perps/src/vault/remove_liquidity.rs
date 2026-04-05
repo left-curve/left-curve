@@ -9,10 +9,13 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Dimensionless, UsdValue,
+        UsdValue,
         perps::{LiquidityUnlocking, Param, Unlock, UserState},
     },
-    grug::{IsZero, MutableCtx, Number as _, Response, Timestamp, Uint128},
+    grug::{
+        Dec128_6, Int128, IsZero, MultiplyRatio, MutableCtx, Number as _, Response, Timestamp,
+        Uint128,
+    },
 };
 
 /// Request to withdraw liquidity from the counterparty vault.
@@ -130,13 +133,17 @@ fn _remove_liquidity(
 
     // ------------------- Step 3. Compute amount to release -------------------
 
-    // Compute the proportional USD value to release.
-    // ratio = shares_to_burn / effective_supply
+    // Multiply first, then divide, to avoid precision loss from intermediate
+    // rounding in Dec128_6 (6 decimal places).
     let amount_to_release = {
-        let ratio = Dimensionless::new_raw(i128::try_from(shares_to_burn.0)?)
-            .checked_div(Dimensionless::new_raw(i128::try_from(effective_supply.0)?))?;
-        // floor-rounded for safety
-        effective_equity.checked_mul(ratio)?
+        let raw = effective_equity
+            .into_inner()
+            .0
+            .checked_multiply_ratio_floor(
+                Int128::new(i128::try_from(shares_to_burn.0)?),
+                Int128::new(i128::try_from(effective_supply.0)?),
+            )?;
+        UsdValue::new(Dec128_6::raw(raw))
     };
 
     ensure!(
@@ -334,6 +341,43 @@ mod tests {
         .unwrap_err();
 
         assert!(err.to_string().contains("too many"));
+    }
+
+    // ---- Test: small burn should not lose precision ----
+    #[test]
+    fn small_burn_precision() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        // Vault: $2 margin, 2M shares.
+        // effective_supply = 2M + 1M = 3M
+        // effective_equity = $2 + $1 = $3 (raw = 3_000_000)
+        //
+        // Burn 1 share.
+        // Correct: floor(3_000_000 * 1 / 3_000_000) = 1 raw = $0.000001.
+        // Buggy (divide-first): ratio = 1 * 10^6 / 3_000_000 = 0 → amount = $0.
+        let mut vault_share_supply = Uint128::new(2_000_000);
+        let param = default_param();
+        let mut user_state = UserState {
+            vault_shares: Uint128::new(1),
+            ..Default::default()
+        };
+        let mut vault_user_state = vault_state_with_margin(2);
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        let (amount, _end_time) = _remove_liquidity(
+            Timestamp::from_seconds(0),
+            &mut oracle_querier,
+            &param,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(1),
+        )
+        .unwrap();
+
+        assert_eq!(amount, UsdValue::new_raw(1));
     }
 
     // ---- Test 12: unlock end_time is correct ----
