@@ -75,11 +75,13 @@ Each block, after the oracle update, the vault cancels all existing quotes and r
 
 ### Margin allocation
 
-Total vault margin is split across pairs by weight:
+Total vault **available margin** is split across pairs by weight:
 
 $$
-\mathtt{pairMargin} = \mathtt{vaultMarginValue} \times \frac{\mathtt{vaultLiquidityWeight}}{\mathtt{vaultTotalWeight}}
+\mathtt{pairMargin} = \mathtt{vaultAvailableMargin} \times \frac{\mathtt{vaultLiquidityWeight}}{\mathtt{vaultTotalWeight}}
 $$
+
+where $\mathtt{vaultAvailableMargin} = \max(0,\; \mathtt{equity} - \mathtt{usedMargin})$ and $\mathtt{usedMargin}$ is the sum of initial margin across all vault positions (see [Margin §8](1-margin.md#8-available-margin)).
 
 ### Quote size
 
