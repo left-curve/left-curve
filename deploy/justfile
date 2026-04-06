@@ -93,6 +93,14 @@ drop-db-full-points-bot network:
 delete-points-bot network:
   ansible-playbook delete-points-bot.yml -e '{"points_bot_networks": ["{{network}}"]}' --limit points-bot-{{network}}
 
+# ------------------------------ Perp Liquidator -------------------------------
+
+# Redeploy only the perp-liquidator container (pull new image, recreate)
+# Usage: just deploy-perp-liquidator devnet
+#        just deploy-perp-liquidator testnet v1.2.3
+deploy-perp-liquidator network tag="latest":
+  ansible-playbook redeploy-perp-liquidator.yml -e dango_network={{network}} -e perp_liquidator_tag={{tag}} --limit perp-liquidator-{{network}}
+
 # ---------------------------------- Testnet -----------------------------------
 
 deploy-testnet:

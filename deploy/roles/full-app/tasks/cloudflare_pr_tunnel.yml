@@ -67,4 +67,4 @@
     proxied: true
     state: present
     api_token: "{{ cloudflare_api_token }}"
-  loop: ["graphiql", "www", "api", "faucet"]
+  loop: ["graphiql", "www", "api", "faucet", "liquidator"]

@@ -9,8 +9,8 @@
     dest: "/tmp/{{ script_name }}"
     mode: '0755'
 
-- name: Find 12 available ports
-  command: "/tmp/{{ script_name }} {{ port_start }} 12"
+- name: Find 13 available ports
+  command: "/tmp/{{ script_name }} {{ port_start }} 13"
   register: available_ports_result
 
 - name: Set available ports as list
@@ -36,3 +36,4 @@
     quest_port: "{{ available_ports[9] }}"
     clickhouse_metrics_port: "{{ available_ports[10] }}"
     graphiql_port: "{{ available_ports[11] }}"
+    perp_liquidator_http_port: "{{ available_ports[12] }}"

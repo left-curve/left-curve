@@ -1,12 +1,60 @@
 # Quick redeploy for existing deployments
+- name: Log bot image tags
+  debug:
+    msg:
+      faucet-bot: "{{ faucet_bot_tag }}"
+      dex-bot: "{{ dex_bot_tag }}"
+      perps-bot: "{{ perps_bot_tag }}"
+      perp-liquidator: "{{ perp_liquidator_tag }}"
+  run_once: true
+
+- name: Verify GHCR access for bot images
+  command: "docker pull --quiet {{ item.image }}"
+  loop:
+    - image: "ghcr.io/left-curve/bots/faucet:{{ faucet_bot_tag }}"
+      name: faucet-bot
+      enabled: "{{ faucet_bot_enabled }}"
+    - image: "ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }}"
+      name: dex-bot
+      enabled: "{{ dex_bot_enabled and inventory_hostname == dex_bot_host }}"
+    - image: "ghcr.io/left-curve/bots/perps:{{ perps_bot_tag }}"
+      name: perps-bot
+      enabled: "{{ perps_bot_enabled and inventory_hostname == perps_bot_host }}"
+    - image: "ghcr.io/left-curve/bots/perps-liquidator:{{ perp_liquidator_tag }}"
+      name: perp-liquidator
+      enabled: "{{ inventory_hostname == perp_liquidator_host }}"
+  when: item.enabled | bool
+  register: ghcr_check
+  ignore_errors: true
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Report GHCR access failures
+  fail:
+    msg: >-
+      Cannot pull image for {{ item.item.name }} ({{ item.item.image }}).
+      Check that the GHCR package has read access for the deploy token.
+  loop: "{{ ghcr_check.results }}"
+  when: item.failed is defined and item.failed
+  loop_control:
+    label: "{{ item.item.name | default('skipped') }}"
+
+- name: Pull all images (separate from up, for clearer error diagnosis)
+  command: docker compose -p {{ deployment_name }} pull
+  args:
+    chdir: "{{ deployment_dir }}"
+  register: pull_result
+  retries: 3
+  delay: 10
+  until: pull_result.rc == 0
+  changed_when: true
+
 - name: Deploy with new image tag
   community.docker.docker_compose_v2:
     project_name: "{{ deployment_name }}"
     project_src: "{{ deployment_dir }}"
     recreate: always
-    pull: always
-  retries: 3
-  delay: 5
+    pull: never
   register: deploy_result
   ignore_errors: yes
 
