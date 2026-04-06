@@ -112,6 +112,37 @@ pub fn compute_close_schedule(
     Ok(schedule)
 }
 
+/// Compute the user's equity from in-memory state and accumulated PnL/fees.
+///
+/// This is the "raw" equity computation used during liquidation, where oracle
+/// prices are already resolved and funding has been settled into `user_pnl`.
+///
+/// ```plain
+/// equity = margin + user_pnl - user_fees + Σ(size × (oracle - entry))
+/// ```
+pub fn compute_user_equity_with_pnl(
+    user_state: &UserState,
+    oracle_prices: &BTreeMap<PairId, UsdPrice>,
+    user_pnl: UsdValue,
+    user_fees: UsdValue,
+) -> MathResult<UsdValue> {
+    let mut equity = user_state
+        .margin
+        .checked_add(user_pnl)?
+        .checked_sub(user_fees)?;
+
+    for (pid, pos) in &user_state.positions {
+        let oracle_price = oracle_prices[pid];
+        let unrealized = pos
+            .size
+            .checked_mul(oracle_price.checked_sub(pos.entry_price)?)?;
+
+        equity.checked_add_assign(unrealized)?;
+    }
+
+    Ok(equity)
+}
+
 /// Compute the bankruptcy price for a position being closed during liquidation.
 ///
 /// This is the fill price at which the user's total equity would be exactly
@@ -127,20 +158,7 @@ pub fn compute_bankruptcy_price(
     user_pnl: UsdValue,
     user_fees: UsdValue,
 ) -> MathResult<UsdPrice> {
-    // Compute current equity including accumulated PnL/fees from prior fills.
-    let mut equity = user_state
-        .margin
-        .checked_add(user_pnl)?
-        .checked_sub(user_fees)?;
-
-    for (pid, pos) in &user_state.positions {
-        let oracle_price = oracle_prices[pid];
-        let unrealized = pos
-            .size
-            .checked_mul(oracle_price.checked_sub(pos.entry_price)?)?;
-
-        equity.checked_add_assign(unrealized)?;
-    }
+    let equity = compute_user_equity_with_pnl(user_state, oracle_prices, user_pnl, user_fees)?;
 
     let position = &user_state.positions[pair_id];
     let oracle_price = oracle_prices[pair_id];
