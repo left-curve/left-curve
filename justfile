@@ -34,6 +34,7 @@ test-dango:
 
 # Run dango perp tests
 test-perps:
+  RUST_BACKTRACE=1 cargo test --all-features -p dango-types perps::tests -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features -p dango-perps -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features -p dango-testing --test perps -- --nocapture
 
