@@ -638,6 +638,9 @@ pub enum MaintainerMsg {
     /// Unfilled positions are ADL'd against counter-parties at the bankruptcy
     /// price. Any remaining bad debt is absorbed by the insurance fund.
     Liquidate { user: Addr },
+
+    /// Replenish the insurance fund from the sender's margin.
+    ReplenishInsuranceFund { amount: UsdValue },
 }
 
 #[grug::derive(Serde)]
@@ -645,7 +648,11 @@ pub enum TraderMsg {
     /// Deposit settlement currency into the trader's margin account.
     /// The deposited tokens are converted to USD at the current oracle price
     /// and credited to `user_state.margin`.
-    Deposit {},
+    Deposit {
+        /// Optional: the perp account address this deposit should go to.
+        /// Default to the sender himself's.
+        to: Option<Addr>,
+    },
 
     /// Withdraw margin from the trader's margin account.
     /// The requested USD amount is converted to settlement currency at the
@@ -949,6 +956,8 @@ pub struct LiquidityDepthResponse {
 #[grug::event("deposited")]
 #[grug::derive(Serde)]
 pub struct Deposited {
+    /// This means the user whose perp account received the deposit, who is
+    /// usually, but not necessarily always, the user who makes the deposit.
     pub user: Addr,
     pub amount: UsdValue,
 }

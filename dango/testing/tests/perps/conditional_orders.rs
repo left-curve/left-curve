@@ -24,7 +24,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -34,7 +34,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -192,7 +192,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -202,7 +202,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -338,7 +338,7 @@ fn conditional_orders_follow_price_time_priority() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -347,7 +347,7 @@ fn conditional_orders_follow_price_time_priority() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -356,7 +356,7 @@ fn conditional_orders_follow_price_time_priority() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -603,7 +603,7 @@ fn conditional_order_failure_does_not_block_others() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -612,7 +612,7 @@ fn conditional_order_failure_does_not_block_others() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -621,7 +621,7 @@ fn conditional_order_failure_does_not_block_others() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -874,7 +874,7 @@ fn child_order_market_with_tp_triggers() {
             .execute(
                 user,
                 contracts.perps,
-                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
             .should_succeed();
@@ -992,7 +992,7 @@ fn child_order_market_with_sl_triggers() {
             .execute(
                 user,
                 contracts.perps,
-                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
             .should_succeed();
@@ -1107,7 +1107,7 @@ fn child_order_ignored_when_position_closed() {
             .execute(
                 user,
                 contracts.perps,
-                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
             .should_succeed();
@@ -1223,7 +1223,7 @@ fn child_order_overwrites_existing() {
             .execute(
                 user,
                 contracts.perps,
-                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
             .should_succeed();
@@ -1341,7 +1341,7 @@ fn conditional_order_overwrite_same_direction() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1350,7 +1350,7 @@ fn conditional_order_overwrite_same_direction() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1454,7 +1454,7 @@ fn conditional_order_size_exceeds_position_allowed() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1463,7 +1463,7 @@ fn conditional_order_size_exceeds_position_allowed() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();

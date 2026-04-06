@@ -1259,7 +1259,7 @@ fn deposit_margin(
         .execute(
             user,
             perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), amount).unwrap(),
         )
         .should_succeed();
