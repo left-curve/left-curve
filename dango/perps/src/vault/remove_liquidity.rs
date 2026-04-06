@@ -10,9 +10,12 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         UsdValue,
-        perps::{LiquidityUnlocking, Unlock},
+        perps::{LiquidityUnlocking, Param, Unlock, UserState},
     },
-    grug::{Dec128_6, Int128, IsZero, MultiplyRatio, MutableCtx, Number as _, Response, Uint128},
+    grug::{
+        Dec128_6, Int128, IsZero, MultiplyRatio, MutableCtx, Number as _, Response, Timestamp,
+        Uint128,
+    },
 };
 
 /// Request to withdraw liquidity from the counterparty vault.
@@ -38,6 +41,62 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
+    // --------------------------- 2. Business logic ---------------------------
+
+    let (amount, end_time) = _remove_liquidity(
+        ctx.block.timestamp,
+        &mut oracle_querier,
+        &param,
+        &mut state.vault_share_supply,
+        &perp_querier,
+        &mut user_state,
+        &mut vault_user_state,
+        shares_to_burn,
+    )?;
+
+    // ------------------------ 3. Apply state changes -------------------------
+
+    STATE.save(ctx.storage, &state)?;
+    USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
+    USER_STATES.save(ctx.storage, ctx.contract, &vault_user_state)?;
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            user = %ctx.sender,
+            %shares_to_burn,
+            %amount,
+            "Liquidity removal queued"
+        );
+    }
+
+    Ok(Response::new().add_event(LiquidityUnlocking {
+        user: ctx.sender,
+        amount,
+        shares_burned: shares_to_burn,
+        end_time,
+    })?)
+}
+
+/// The actual logic for handling the remove-liquidity operation.
+///
+/// Mutates:
+///
+/// - `vault_share_supply`
+/// - `user_state` (vault_shares, unlock queue)
+/// - `vault_user_state` (margin)
+///
+/// Returns: `(amount_to_release, end_time)`.
+fn _remove_liquidity(
+    current_time: Timestamp,
+    oracle_querier: &mut OracleQuerier,
+    param: &Param,
+    vault_share_supply: &mut Uint128,
+    perp_querier: &NoCachePerpQuerier,
+    user_state: &mut UserState,
+    vault_user_state: &mut UserState,
+    shares_to_burn: Uint128,
+) -> anyhow::Result<(UsdValue, Timestamp)> {
     // -------------------- Step 1. Validate shares to burn --------------------
 
     ensure!(
@@ -61,9 +120,9 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
-    let vault_equity = compute_user_equity(&mut oracle_querier, &perp_querier, &vault_user_state)?;
+    let vault_equity = compute_user_equity(oracle_querier, perp_querier, vault_user_state)?;
 
-    let effective_supply = state.vault_share_supply.checked_add(VIRTUAL_SHARES)?;
+    let effective_supply = vault_share_supply.checked_add(VIRTUAL_SHARES)?;
 
     let effective_equity = vault_equity.checked_add(VIRTUAL_ASSETS)?;
 
@@ -94,7 +153,7 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
         amount_to_release
     );
 
-    let end_time = ctx.block.timestamp + param.vault_cooldown_period;
+    let end_time = current_time + param.vault_cooldown_period;
 
     let unlock = Unlock {
         amount_to_release,
@@ -105,35 +164,13 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
     vault_user_state
         .margin
         .checked_sub_assign(amount_to_release)?;
-    state
-        .vault_share_supply
-        .checked_sub_assign(shares_to_burn)?;
+    vault_share_supply.checked_sub_assign(shares_to_burn)?;
 
     // Update user state.
     user_state.vault_shares.checked_sub_assign(shares_to_burn)?;
     user_state.unlocks.push_back(unlock);
 
-    // Save all state changes to storage.
-    STATE.save(ctx.storage, &state)?;
-    USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
-    USER_STATES.save(ctx.storage, ctx.contract, &vault_user_state)?;
-
-    #[cfg(feature = "tracing")]
-    {
-        tracing::info!(
-            user = %ctx.sender,
-            %shares_to_burn,
-            %amount_to_release,
-            "Liquidity removal queued"
-        );
-    }
-
-    Ok(Response::new().add_event(LiquidityUnlocking {
-        user: ctx.sender,
-        amount: amount_to_release,
-        shares_burned: shares_to_burn,
-        end_time,
-    })?)
+    Ok((amount_to_release, end_time))
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -141,20 +178,11 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 #[cfg(test)]
 mod tests {
     use {
-        crate::state::{PARAM, STATE, USER_STATES},
-        dango_types::{
-            UsdValue,
-            config::AppConfig,
-            perps::{Param, State, Unlock, UserState},
-        },
-        grug::{Addr, Coins, Duration, MockContext, MockQuerier, ResultExt, Timestamp, Uint128},
+        super::*,
+        dango_types::UsdValue,
+        grug::{Duration, MockStorage, Uint128, hash_map},
         std::collections::VecDeque,
     };
-
-    use super::remove_liquidity;
-
-    const CONTRACT: Addr = Addr::mock(0);
-    const USER: Addr = Addr::mock(1);
 
     fn default_param() -> Param {
         Param {
@@ -164,40 +192,11 @@ mod tests {
         }
     }
 
-    fn mock_querier() -> MockQuerier {
-        MockQuerier::new()
-            .with_app_config(AppConfig::default())
-            .unwrap()
-    }
-
-    /// Pre-populate storage with PARAM, STATE, and USER_STATES.
-    fn setup(
-        storage: &mut dyn grug::Storage,
-        param: &Param,
-        vault_share_supply: u128,
-        user_state: UserState,
-        vault_margin: i128,
-    ) {
-        PARAM.save(storage, param).unwrap();
-
-        STATE
-            .save(storage, &State {
-                vault_share_supply: Uint128::new(vault_share_supply),
-                ..Default::default()
-            })
-            .unwrap();
-
-        if !user_state.is_empty() {
-            USER_STATES.save(storage, USER, &user_state).unwrap();
-        }
-
-        if vault_margin != 0 {
-            USER_STATES
-                .save(storage, CONTRACT, &UserState {
-                    margin: UsdValue::new_int(vault_margin),
-                    ..Default::default()
-                })
-                .unwrap();
+    /// Helper: create a vault UserState with the given margin.
+    fn vault_state_with_margin(margin: i128) -> UserState {
+        UserState {
+            margin: UsdValue::new_int(margin),
+            ..Default::default()
         }
     }
 
@@ -209,27 +208,30 @@ mod tests {
     // amount_to_release = floor($2 * 1_000_000 / 2_000_000) = $1
     #[test]
     fn first_withdrawal_symmetric() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::new(1_000_000);
         let param = default_param();
-        let mut ctx = MockContext::new()
-            .with_querier(mock_querier())
-            .with_contract(CONTRACT)
-            .with_sender(USER)
-            .with_funds(Coins::default());
+        let mut user_state = UserState {
+            vault_shares: Uint128::new(1_000_000),
+            ..Default::default()
+        };
+        let mut vault_user_state = vault_state_with_margin(1);
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
-        setup(
-            &mut ctx.storage,
+        _remove_liquidity(
+            Timestamp::from_seconds(0),
+            &mut oracle_querier,
             &param,
-            1_000_000,
-            UserState {
-                vault_shares: Uint128::new(1_000_000),
-                ..Default::default()
-            },
-            1,
-        );
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(1_000_000),
+        )
+        .unwrap();
 
-        remove_liquidity(ctx.as_mutable(), Uint128::new(1_000_000)).should_succeed();
-
-        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let unlock = user_state.unlocks.back().unwrap();
         assert_eq!(unlock.amount_to_release, UsdValue::new_int(1));
     }
@@ -237,27 +239,30 @@ mod tests {
     // ---- Test 2: partial withdrawal ----
     #[test]
     fn partial_withdrawal() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::new(1_000_000);
         let param = default_param();
-        let mut ctx = MockContext::new()
-            .with_querier(mock_querier())
-            .with_contract(CONTRACT)
-            .with_sender(USER)
-            .with_funds(Coins::default());
+        let mut user_state = UserState {
+            vault_shares: Uint128::new(500_000),
+            ..Default::default()
+        };
+        let mut vault_user_state = vault_state_with_margin(1);
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
-        setup(
-            &mut ctx.storage,
+        _remove_liquidity(
+            Timestamp::from_seconds(0),
+            &mut oracle_querier,
             &param,
-            1_000_000,
-            UserState {
-                vault_shares: Uint128::new(500_000),
-                ..Default::default()
-            },
-            1,
-        );
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(500_000),
+        )
+        .unwrap();
 
-        remove_liquidity(ctx.as_mutable(), Uint128::new(500_000)).should_succeed();
-
-        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let unlock = user_state.unlocks.back().unwrap();
         assert!(unlock.amount_to_release > UsdValue::ZERO);
     }
@@ -265,69 +270,84 @@ mod tests {
     // ---- Test 3: zero shares rejected ----
     #[test]
     fn zero_shares_rejected() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::new(1_000_000);
         let param = default_param();
-        let mut ctx = MockContext::new()
-            .with_querier(mock_querier())
-            .with_contract(CONTRACT)
-            .with_sender(USER)
-            .with_funds(Coins::default());
+        let mut user_state = UserState::default();
+        let mut vault_user_state = vault_state_with_margin(1);
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
-        setup(&mut ctx.storage, &param, 1_000_000, UserState::default(), 1);
+        let err = _remove_liquidity(
+            Timestamp::from_seconds(0),
+            &mut oracle_querier,
+            &param,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(0),
+        )
+        .unwrap_err();
 
-        remove_liquidity(ctx.as_mutable(), Uint128::new(0))
-            .should_fail_with_error("amount of shares to burn must be positive");
+        assert!(
+            err.to_string()
+                .contains("amount of shares to burn must be positive")
+        );
     }
 
     // ---- Test 7: max unlocks exceeded ----
     #[test]
     fn max_unlocks_exceeded() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::new(1_000_000);
         let param = Param {
             max_unlocks: 2,
             vault_cooldown_period: Duration::from_seconds(86400),
             ..Default::default()
         };
-
-        let mut ctx = MockContext::new()
-            .with_querier(mock_querier())
-            .with_contract(CONTRACT)
-            .with_sender(USER)
-            .with_funds(Coins::default());
+        let mut vault_user_state = vault_state_with_margin(1);
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
         // Already at max_unlocks (2 existing unlocks).
-        setup(
-            &mut ctx.storage,
-            &param,
-            1_000_000,
-            UserState {
-                vault_shares: Uint128::new(500_000),
-                unlocks: VecDeque::from([
-                    Unlock {
-                        amount_to_release: UsdValue::new_int(100),
-                        end_time: Timestamp::from_seconds(100),
-                    },
-                    Unlock {
-                        amount_to_release: UsdValue::new_int(200),
-                        end_time: Timestamp::from_seconds(200),
-                    },
-                ]),
-                ..Default::default()
-            },
-            1,
-        );
+        let mut user_state = UserState {
+            vault_shares: Uint128::new(500_000),
+            unlocks: VecDeque::from([
+                Unlock {
+                    amount_to_release: UsdValue::new_int(100),
+                    end_time: Timestamp::from_seconds(100),
+                },
+                Unlock {
+                    amount_to_release: UsdValue::new_int(200),
+                    end_time: Timestamp::from_seconds(200),
+                },
+            ]),
+            ..Default::default()
+        };
 
-        remove_liquidity(ctx.as_mutable(), Uint128::new(500_000))
-            .should_fail_with_error("too many");
+        let err = _remove_liquidity(
+            Timestamp::from_seconds(0),
+            &mut oracle_querier,
+            &param,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(500_000),
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("too many"));
     }
 
     // ---- Test: small burn should not lose precision ----
     #[test]
     fn small_burn_precision() {
-        let param = default_param();
-        let mut ctx = MockContext::new()
-            .with_querier(mock_querier())
-            .with_contract(CONTRACT)
-            .with_sender(USER)
-            .with_funds(Coins::default());
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         // Vault: $2 margin, 2M shares.
         // effective_supply = 2M + 1M = 3M
@@ -336,54 +356,61 @@ mod tests {
         // Burn 1 share.
         // Correct: floor(3_000_000 * 1 / 3_000_000) = 1 raw = $0.000001.
         // Buggy (divide-first): ratio = 1 * 10^6 / 3_000_000 = 0 → amount = $0.
-        setup(
-            &mut ctx.storage,
+        let mut vault_share_supply = Uint128::new(2_000_000);
+        let param = default_param();
+        let mut user_state = UserState {
+            vault_shares: Uint128::new(1),
+            ..Default::default()
+        };
+        let mut vault_user_state = vault_state_with_margin(2);
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        let (amount, _end_time) = _remove_liquidity(
+            Timestamp::from_seconds(0),
+            &mut oracle_querier,
             &param,
-            2_000_000,
-            UserState {
-                vault_shares: Uint128::new(1),
-                ..Default::default()
-            },
-            2,
-        );
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(1),
+        )
+        .unwrap();
 
-        remove_liquidity(ctx.as_mutable(), Uint128::new(1)).should_succeed();
-
-        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        let unlock = user_state.unlocks.back().unwrap();
-        assert_eq!(unlock.amount_to_release, UsdValue::new_raw(1));
+        assert_eq!(amount, UsdValue::new_raw(1));
     }
 
     // ---- Test 12: unlock end_time is correct ----
     #[test]
     fn unlock_end_time_correct() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::new(1_000_000);
         let param = Param {
             vault_cooldown_period: Duration::from_seconds(172_800), // 2 days
             max_unlocks: 10,
             ..Default::default()
         };
+        let mut user_state = UserState {
+            vault_shares: Uint128::new(500_000),
+            ..Default::default()
+        };
+        let mut vault_user_state = vault_state_with_margin(1);
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
 
-        let mut ctx = MockContext::new()
-            .with_querier(mock_querier())
-            .with_contract(CONTRACT)
-            .with_sender(USER)
-            .with_funds(Coins::default());
-        ctx.block.timestamp = Timestamp::from_seconds(1_000_000);
-
-        setup(
-            &mut ctx.storage,
+        _remove_liquidity(
+            Timestamp::from_seconds(1_000_000),
+            &mut oracle_querier,
             &param,
-            1_000_000,
-            UserState {
-                vault_shares: Uint128::new(500_000),
-                ..Default::default()
-            },
-            1,
-        );
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(500_000),
+        )
+        .unwrap();
 
-        remove_liquidity(ctx.as_mutable(), Uint128::new(500_000)).should_succeed();
-
-        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         let unlock = user_state.unlocks.back().unwrap();
         assert_eq!(unlock.end_time, Timestamp::from_seconds(1_172_800));
     }
