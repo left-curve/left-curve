@@ -274,6 +274,7 @@ concrete (commands to run, UI paths to click, and expected results).
 - OpenTelemetry: `opentelemetry = 0.31`, `opentelemetry_sdk = 0.31`, `opentelemetry-otlp = 0.31` (`grpc-tonic`, `trace`), `tracing-opentelemetry = 0.32`.
 - Sentry: `sentry = 0.38`.
 - Tokio: `1.x`.
+
 If adding/upgrading these, align versions across crates to avoid trait/type mismatches.
 
 ## Config Locations
@@ -308,9 +309,8 @@ If adding/upgrading these, align versions across crates to avoid trait/type mism
 
 ## Useful Commands
 
-- Format: `cargo +nightly fmt --all`
-- Lint all: `cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings`
-- Typical `just` recipes: `just fmt`, `just lint`, `just test`
+- Format: `just fmt`
+- Lint: `just lint`
 
 ---
 
