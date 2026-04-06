@@ -128,7 +128,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             MaintainerMsg::Liquidate { user } => maintain::liquidate(ctx, user),
         },
         ExecuteMsg::Trade(msg) => match msg {
-            TraderMsg::Deposit {} => trade::deposit(ctx),
+            TraderMsg::Deposit { to } => trade::deposit(ctx, to),
             TraderMsg::Withdraw { amount } => trade::withdraw(ctx, amount),
             TraderMsg::SubmitOrder {
                 pair_id,

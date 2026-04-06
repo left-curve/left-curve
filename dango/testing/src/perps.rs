@@ -48,7 +48,7 @@ pub fn setup_perps_env(
             .execute(
                 account,
                 contracts.perps,
-                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), amount).unwrap(),
             )
             .should_succeed();

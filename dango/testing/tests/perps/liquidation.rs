@@ -66,7 +66,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user4,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -87,7 +87,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(3_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -100,7 +100,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -182,7 +182,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -344,7 +344,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user4,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(1_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -369,7 +369,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(1_100_000_000)).unwrap(),
         )
         .should_succeed();
@@ -382,7 +382,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -444,7 +444,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -609,7 +609,7 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user4,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -630,7 +630,7 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(3_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -640,7 +640,7 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -739,7 +739,7 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -846,7 +846,7 @@ fn vault_liquidation_on_order_book() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(5_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -924,7 +924,7 @@ fn vault_liquidation_on_order_book() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -1013,7 +1013,7 @@ fn vault_liquidation_on_order_book() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();

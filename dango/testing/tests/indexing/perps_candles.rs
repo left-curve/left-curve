@@ -659,7 +659,7 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
             .execute(
                 account,
                 contracts.perps,
-                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), grug::Uint128::new(100_000 * 1_000_000)).unwrap(),
             )
             .should_succeed();
