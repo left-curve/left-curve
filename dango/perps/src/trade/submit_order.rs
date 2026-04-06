@@ -1725,6 +1725,14 @@ mod tests {
 
         // Position fully closed.
         assert!(!taker_state.positions.contains_key(&pair_id()));
+
+        // No resting order created (reduce-only market, fully filled).
+        assert!(
+            ASKS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
     }
 
     // ============= Reduce-only with no position errors =======================
