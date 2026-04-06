@@ -10,6 +10,7 @@ use {
     grug::{Coins, Duration, NumberConst, ResultExt, Timestamp, Udec128, btree_map},
 };
 
+mod adl_bug_reproduction;
 mod conditional_orders;
 mod liquidation;
 mod referral;
