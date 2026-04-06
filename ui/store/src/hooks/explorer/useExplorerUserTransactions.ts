@@ -32,16 +32,11 @@ export function useExplorerUserTransactions(addresses: Address[]) {
       .filter((q) => q.data)
       .flatMap((q) => q.data as IndexedTransaction[]);
 
-    return txs.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return txs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [transactionQueries]);
 
   const totalPages = Math.ceil(allTransactions.length / PAGE_SIZE);
-  const paginatedTransactions = allTransactions.slice(
-    page * PAGE_SIZE,
-    (page + 1) * PAGE_SIZE
-  );
+  const paginatedTransactions = allTransactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const pagination = {
     isLoading,

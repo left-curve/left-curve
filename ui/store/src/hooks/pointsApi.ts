@@ -41,6 +41,32 @@ export type OatEntry = {
   registered_at: string;
 };
 
+export class OatRateLimitError extends Error {
+  retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number) {
+    super(`Address already linked recently. Retry in ${retryAfterSeconds} seconds.`);
+    this.name = "OatRateLimitError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+export class NoOatsFoundError extends Error {
+  constructor() {
+    super("No OATs found for this address");
+    this.name = "NoOatsFoundError";
+  }
+}
+
+function parseRetrySeconds(message: string): number {
+  const match = message.match(/retry in (\d+) second/i);
+  return match ? Number.parseInt(match[1], 10) : 60;
+}
+
+function isNoOatsFoundError(text: string): boolean {
+  return text.includes("empty_address_or_galxe_id");
+}
+
 export const fetchUserStats = async (baseUrl: string, userIndex: number): Promise<UserPoints> => {
   const res = await fetch(`${baseUrl}/stats/user/${userIndex}`);
   if (!res.ok) throw new Error(`Failed to fetch user stats: ${res.status}`);
@@ -123,7 +149,21 @@ export const registerOat = async (
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Failed to register OAT: ${res.status}`);
+
+  if (!res.ok) {
+    const text = await res.text();
+
+    if (res.status === 429) {
+      throw new OatRateLimitError(parseRetrySeconds(text));
+    }
+
+    if (isNoOatsFoundError(text)) {
+      throw new NoOatsFoundError();
+    }
+
+    throw new Error(`Failed to register OAT: ${res.status}`);
+  }
+
   return res.json();
 };
 

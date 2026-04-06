@@ -24,9 +24,7 @@ type UsePerpsUserStateExtendedParameters = {
   includeAvailableMargin?: boolean;
 };
 
-export function usePerpsUserStateExtended(
-  parameters?: UsePerpsUserStateExtendedParameters,
-) {
+export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtendedParameters) {
   const {
     subscribe = true,
     includeEquity = false,

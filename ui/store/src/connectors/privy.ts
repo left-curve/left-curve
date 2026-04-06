@@ -80,7 +80,14 @@ export function privy(parameters: PrivyConnectorParameters) {
         const account = accounts[0];
         const userStatus = await client.getAccountStatus({ address: account.address });
 
-        emitter.emit("connect", { accounts, chainId, userIndex, keyHash, userStatus, username: user.name });
+        emitter.emit("connect", {
+          accounts,
+          chainId,
+          userIndex,
+          keyHash,
+          userStatus,
+          username: user.name,
+        });
       },
       async disconnect() {
         emitter.emit("disconnect");
