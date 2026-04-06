@@ -5,9 +5,9 @@ use {
     grug::{MutableCtx, Response},
 };
 
-/// Donate margin from the sender's account to the insurance fund.
-pub fn donate_to_insurance_fund(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
-    ensure!(amount.is_non_zero(), "nothing to donate");
+/// Replenish the insurance fund from the sender's margin.
+pub fn replenish_insurance_fund(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
+    ensure!(amount.is_non_zero(), "nothing to replenish");
 
     // Deduct the user's margin.
     {

@@ -1,5 +1,5 @@
 mod configure;
-mod donate_to_insurance_fund;
+mod replenish_insurance_fund;
 mod liquidate;
 
-pub use {configure::*, donate_to_insurance_fund::*, liquidate::*};
+pub use {configure::*, replenish_insurance_fund::*, liquidate::*};

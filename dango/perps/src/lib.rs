@@ -126,8 +126,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 maintain::configure(ctx, param, pair_params)
             },
             MaintainerMsg::Liquidate { user } => maintain::liquidate(ctx, user),
-            MaintainerMsg::DonateToInsuranceFund { amount } => {
-                maintain::donate_to_insurance_fund(ctx, amount)
+            MaintainerMsg::ReplenishInsuranceFund { amount } => {
+                maintain::replenish_insurance_fund(ctx, amount)
             },
         },
         ExecuteMsg::Trade(msg) => match msg {

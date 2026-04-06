@@ -639,8 +639,8 @@ pub enum MaintainerMsg {
     /// price. Any remaining bad debt is absorbed by the insurance fund.
     Liquidate { user: Addr },
 
-    /// Donate a USD amount to the insurance fund from the sender's margin.
-    DonateToInsuranceFund { amount: UsdValue },
+    /// Replenish the insurance fund from the sender's margin.
+    ReplenishInsuranceFund { amount: UsdValue },
 }
 
 #[grug::derive(Serde)]
