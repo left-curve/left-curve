@@ -2,7 +2,7 @@ use {
     crate::{
         core::{
             compute_bankruptcy_price, compute_close_schedule, compute_maintenance_margin,
-            compute_user_equity, is_liquidatable,
+            compute_user_equity, compute_user_equity_with_pnl, is_liquidatable,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
@@ -500,10 +500,41 @@ fn execute_close_schedule(
         let oracle_price = oracle_prices[pair_id];
 
         let taker_is_bid = close_size.is_positive();
-        let target_price = if taker_is_bid {
-            UsdPrice::MAX
+
+        // Compute the bankruptcy price BEFORE book fills, using the total
+        // scheduled close amount. This price serves two roles:
+        //
+        // 1. When equity > 0 (timely liquidation): bp sits between oracle and
+        //    the entry price, and is used as both the target_price for book
+        //    matching AND the ADL fill price. This prevents matching against
+        //    absurd resting orders and guarantees equity_after >= 0.
+        //
+        // 2. When equity <= 0 (late liquidation): bp overshoots oracle (above
+        //    oracle for longs, below for shorts), which would block valid
+        //    oracle-adjacent book fills. In this case we fall back to the
+        //    oracle price as target_price and use bp only for ADL.
+        //
+        // Previously bp was computed AFTER book fills from post-fill equity,
+        // which allowed absurd book fills to destroy equity and produce
+        // extreme negative ADL prices.
+        let user_pnl_pre = all_pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
+        let user_fee_pre = all_fees.get(&user).copied().unwrap_or(UsdValue::ZERO);
+        let bankruptcy_price = compute_bankruptcy_price(
+            user_state,
+            pair_id,
+            close_size.checked_abs()?,
+            oracle_prices,
+            user_pnl_pre,
+            user_fee_pre,
+        )?;
+
+        let equity =
+            compute_user_equity_with_pnl(user_state, oracle_prices, user_pnl_pre, user_fee_pre)?;
+
+        let target_price = if equity.is_positive() {
+            bankruptcy_price
         } else {
-            UsdPrice::ZERO
+            oracle_price
         };
 
         let (unfilled, pnls, fees, volumes, order_mutations, index_updates) = match_order(
@@ -563,9 +594,8 @@ fn execute_close_schedule(
         // ADL: if there is unfilled remainder, ADL against counter-positions
         // at the bankruptcy price.
         if unfilled.is_non_zero() {
-            // Snapshot the user's accumulated PnL/fees before passing mutable refs.
+            // Snapshot PnL before ADL to compute the delta for the Liquidated event.
             let user_pnl_snapshot = all_pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
-            let user_fee_snapshot = all_fees.get(&user).copied().unwrap_or(UsdValue::ZERO);
 
             let (adl_size, adl_price) = execute_adl(
                 storage,
@@ -575,9 +605,7 @@ fn execute_close_schedule(
                 user_state,
                 maker_states,
                 unfilled,
-                oracle_prices,
-                user_pnl_snapshot,
-                user_fee_snapshot,
+                bankruptcy_price,
                 &mut all_pnls,
                 &mut all_fees,
                 &mut all_volumes,
@@ -643,26 +671,13 @@ fn execute_adl(
     user_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
     unfilled: Quantity,
-    oracle_prices: &BTreeMap<PairId, UsdPrice>,
-    // Snapshot of the user's accumulated PnL/fees before this ADL round.
-    user_pnl_snapshot: UsdValue,
-    user_fee_snapshot: UsdValue,
-    // Mutable PnL/fee/volume maps to accumulate ADL results.
+    bankruptcy_price: UsdPrice,
     all_pnls: &mut BTreeMap<Addr, UsdValue>,
     all_fees: &mut BTreeMap<Addr, UsdValue>,
     all_volumes: &mut BTreeMap<Addr, UsdValue>,
     index_updates: &mut Vec<PositionIndexUpdate>,
     events: &mut EventBuilder,
 ) -> anyhow::Result<(Quantity, UsdPrice)> {
-    let bankruptcy_price = compute_bankruptcy_price(
-        user_state,
-        pair_id,
-        unfilled.checked_abs()?,
-        oracle_prices,
-        user_pnl_snapshot,
-        user_fee_snapshot,
-    )?;
-
     let mut remaining = unfilled;
     let taker_is_selling = unfilled.is_negative();
 
