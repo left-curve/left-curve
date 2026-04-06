@@ -7,16 +7,9 @@ use {
 use {
     crate::{
         core::{compute_funding_delta, compute_impact_price, compute_premium},
-        liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
-        position_index::apply_position_index_updates,
         price::may_invert_price,
-        referral::apply_fee_commissions,
-        state::{
-            ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-            USER_STATES,
-        },
-        trade::_submit_order,
-        volume::flush_volumes,
+        state::{ASKS, BIDS, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+        trade::execute_order,
     },
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -471,9 +464,10 @@ fn process_triggered_order(
         oracle_price,
     })?;
 
-    // Execute as a market order via `_submit_order`.
-    let result = _submit_order(
+    // Execute as a market order via `execute_order`.
+    let result = execute_order(
         storage,
+        querier,
         user,
         contract,
         current_time,
@@ -495,108 +489,30 @@ fn process_triggered_order(
         events,
     );
 
-    let (
-        mut maker_states,
-        order_mutations,
-        _order_to_store,
-        next_order_id,
-        index_updates,
-        volumes,
-        fee_breakdowns,
-    ) = match result {
-        Err(_) => {
-            // Order couldn't fill (slippage exceeded or no liquidity).
-            // Cancel it gracefully — don't block other orders.
-            events.push(ConditionalOrderRemoved {
-                pair_id: pair_id.clone(),
-                user,
-                trigger_direction,
-                reason: ReasonForOrderRemoval::SlippageExceeded,
-            })?;
+    if result.is_err() {
+        // Order couldn't fill (slippage exceeded or no liquidity).
+        // Cancel it gracefully — don't block other orders.
+        events.push(ConditionalOrderRemoved {
+            pair_id: pair_id.clone(),
+            user,
+            trigger_direction,
+            reason: ReasonForOrderRemoval::SlippageExceeded,
+        })?;
 
-            if user_state.is_empty() {
-                USER_STATES.remove(storage, user)?;
-            } else {
-                USER_STATES.save(storage, user, &user_state)?;
-            }
+        if user_state.is_empty() {
+            USER_STATES.remove(storage, user)?;
+        } else {
+            USER_STATES.save(storage, user, &user_state)?;
+        }
 
-            #[cfg(feature = "tracing")]
-            {
-                tracing::info!(
-                    %pair_id,
-                    %user,
-                    ?trigger_direction,
-                    "Conditional order cancelled: slippage exceeded"
-                );
-            }
-
-            return Ok(());
-        },
-        Ok(tuple) => tuple,
-    };
-
-    // Apply state changes (same pattern as submit_order's section 3).
-    flush_volumes(storage, current_time, &volumes)?;
-
-    maker_states.insert(user, user_state);
-
-    apply_fee_commissions(
-        storage,
-        querier,
-        contract,
-        current_time,
-        param,
-        &mut maker_states,
-        fee_breakdowns,
-        &volumes,
-        events,
-    )?;
-
-    NEXT_ORDER_ID.save(storage, &next_order_id)?;
-
-    for (addr, user_state) in &maker_states {
-        USER_STATES.save(storage, *addr, user_state)?;
-    }
-
-    apply_position_index_updates(storage, &index_updates)?;
-
-    let is_buy = clamped_size.is_positive();
-    let (maker_book, _taker_book) = if is_buy {
-        (ASKS, BIDS)
-    } else {
-        (BIDS, ASKS)
-    };
-
-    for (stored_price, maker_order_id, mutation, pre_fill_abs_size) in order_mutations {
-        let order_key = (pair_id.clone(), stored_price, maker_order_id);
-        let maker_is_bid = !is_buy;
-        let real_price = may_invert_price(stored_price, maker_is_bid);
-
-        decrease_liquidity_depths(
-            storage,
-            pair_id,
-            maker_is_bid,
-            real_price,
-            pre_fill_abs_size,
-            &pair_param.bucket_sizes,
-        )?;
-
-        match mutation {
-            Some(maker_order) => {
-                increase_liquidity_depths(
-                    storage,
-                    pair_id,
-                    maker_is_bid,
-                    real_price,
-                    maker_order.size.checked_abs()?,
-                    &pair_param.bucket_sizes,
-                )?;
-
-                maker_book.save(storage, order_key, &maker_order)?;
-            },
-            None => {
-                maker_book.remove(storage, order_key)?;
-            },
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                %pair_id,
+                %user,
+                ?trigger_direction,
+                "Conditional order cancelled: slippage exceeded"
+            );
         }
     }
 
