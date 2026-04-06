@@ -76,7 +76,7 @@ fn adl_bug_absurd_book_price() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
@@ -112,7 +112,7 @@ fn adl_bug_absurd_book_price() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(1_050_000_000)).unwrap(),
         )
         .should_succeed();
@@ -167,7 +167,7 @@ fn adl_bug_absurd_book_price() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit {}),
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(50_000_000_000)).unwrap(),
         )
         .should_succeed();
