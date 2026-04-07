@@ -343,6 +343,7 @@ export {
 
 export {
   type UseReferrerParameters,
+  type UseVolumeParameters,
   type UseReferralDataParameters,
   type UseRefereeStatsParameters,
   type UseReferralSettingsParameters,
@@ -350,6 +351,7 @@ export {
   type UseSetReferralParameters,
   type UseSetFeeShareRatioParameters,
   useReferrer,
+  useVolume,
   useReferralData,
   useRefereeStats,
   useReferralSettings,
@@ -373,6 +375,7 @@ export type {
 
 export {
   queryReferrer,
+  queryVolume,
   queryReferralData,
   queryRefereeStats,
   queryReferralSettings,

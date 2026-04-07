@@ -13,8 +13,7 @@ const formatPercent = (value: string | undefined): string => {
 
 export const EditCommissionRate = forwardRef((_props, _ref) => {
   const { hideModal } = useApp();
-  const { account } = useAccount();
-  const userIndex = account?.index;
+  const { userIndex } = useAccount();
 
   const { settings, isLoading } = useReferralSettings({ userIndex });
 

@@ -62,8 +62,7 @@ const periodToDays: Record<string, number> = {
 export const StatisticsChart: React.FC<StatisticsChartProps> = ({ metric, period }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { account } = useAccount();
-  const userIndex = account?.index;
+  const { userIndex } = useAccount();
 
   const pointsUrl = window.dango.urls.pointsUrl;
   const { epochPoints, isLoading } = useEpochPoints({

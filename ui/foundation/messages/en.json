@@ -1135,6 +1135,9 @@
     "affiliateSection": {
       "unlockTitle": "Unlock your referral code with $10k volume!",
       "unlockDescription": "Invite your friends and earn up to {percent} commission.",
+      "setCommissionTitle": "Set your commission rate to become a referrer!",
+      "setCommissionDescription": "You've reached the volume threshold. Set your commission rate to activate your referral code and start earning.",
+      "setCommissionRate": "Set Commission Rate",
       "tradeNow": "Trade now",
       "logIn": "Log In"
     },
