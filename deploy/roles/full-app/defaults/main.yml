@@ -6,32 +6,48 @@ perp_liquidator_host: "{{ ansible_play_hosts_all | first }}"
 # Per-network non-secret configuration for perp-liquidator
 perp_liquidator_config:
   devnet:
+    name: "liquidator-devnet"
     http_url: "http://dango:8080"
     liquidation_cooldown: 20
+    liquidation_delay_blocks: 0
     event_driven: "true"
+    query_timeout: 1
+    query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 1
+    notification_timeout: 10
     frontend_url: "https://dev.dango.exchange"
   testnet:
+    name: "liquidator-testnet"
     http_url: "http://dango:8080"
     liquidation_cooldown: 20
+    liquidation_delay_blocks: 0
     event_driven: "true"
+    query_timeout: 1
+    query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 1
+    notification_timeout: 10
     frontend_url: "https://test.dango.exchange"
   mainnet:
+    name: "liquidator-mainnet"
     http_url: "http://dango:8080"
-    liquidation_cooldown: 20
+    liquidation_cooldown: 5
+    liquidation_delay_blocks: 0
     event_driven: "true"
+    query_timeout: 1
+    query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 1
+    notification_timeout: 10
     frontend_url: "https://dango.exchange"
   previewnet:
+    name: "liquidator-previewnet"
     http_url: "http://dango:8080"
     liquidation_cooldown: 20
+    liquidation_delay_blocks: 0
     event_driven: "true"
+    query_timeout: 1
+    query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 1
+    notification_timeout: 10
     frontend_url: ""
 
 perp_liquidator_http_port: 9310
