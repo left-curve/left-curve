@@ -76,7 +76,20 @@ const calculateCycleSteps = (currentVolume: number): { steps: Step[]; cycleStart
 
 const calculateProgress = (currentVolume: number, cycleStart: number): number => {
   const progressInCycle = currentVolume - cycleStart;
-  return Math.min((progressInCycle / CYCLE_SIZE) * 100, 100);
+  const numSteps = TIER_OFFSETS.length;
+  const segmentWidth = 100 / (numSteps - 1);
+
+  // Find which segment we're in and interpolate within it
+  for (let i = numSteps - 1; i >= 0; i--) {
+    if (progressInCycle >= TIER_OFFSETS[i].offset) {
+      if (i === numSteps - 1) return 100;
+      const segmentStart = TIER_OFFSETS[i].offset;
+      const segmentEnd = TIER_OFFSETS[i + 1].offset;
+      const segmentProgress = (progressInCycle - segmentStart) / (segmentEnd - segmentStart);
+      return i * segmentWidth + segmentProgress * segmentWidth;
+    }
+  }
+  return 0;
 };
 
 const getCurrentAndNextStep = (
