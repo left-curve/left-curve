@@ -113,7 +113,9 @@ const AffiliateLockedBanner: React.FC<AffiliateLockedBannerProps> = ({
         <p className="text-ink-tertiary-500 diatype-m-regular max-w-sm">
           {needsCommissionSetup
             ? m["referral.affiliateSection.setCommissionDescription"]()
-            : m["referral.affiliateSection.unlockDescription"]({ percent: "30%" })}
+            : m["referral.affiliateSection.unlockDescription"]({
+                percent: "30%",
+              })}
         </p>
       </div>
       {!isConnected ? (
@@ -160,32 +162,49 @@ export const AffiliateStats: React.FC = () => {
   const { account, userIndex, isConnected } = useAccount();
   const userAddress = account?.address;
 
-  const { referralData, isLoading: dataLoading } = useReferralData({ userIndex });
+  const { referralData, isLoading: dataLoading } = useReferralData({
+    userIndex,
+  });
   const { volume: perpsVolume, isLoading: volumeLoading } = useVolume({
     userAddress,
     since: undefined,
     enabled: isConnected,
   });
 
-  const since30d = useMemo(() => Math.floor(Date.now() / 1000) - COMMISSION_LOOKBACK_SECONDS, []);
-  const { referralData: referralData30d, isLoading: data30dLoading } = useReferralData({
-    userIndex,
-    since: since30d,
-    enabled: isConnected,
-  });
+  const since30d = useMemo(
+    () => Math.floor(Date.now() / 1000) - COMMISSION_LOOKBACK_SECONDS,
+    [],
+  );
+  const { referralData: referralData30d, isLoading: data30dLoading } =
+    useReferralData({
+      userIndex,
+      since: since30d,
+      enabled: isConnected,
+    });
 
-  const { settings, isLoading: settingsLoading } = useReferralSettings({ userIndex });
+  const { settings, isLoading: settingsLoading } = useReferralSettings({
+    userIndex,
+  });
   const { referralParams, isLoading: paramsLoading } = useReferralParams();
 
-  const minReferrerVolume = Number(referralParams?.minReferrerVolume ?? "10000");
+  const minReferrerVolume = Number(
+    referralParams?.minReferrerVolume ?? "10000",
+  );
   const currentVolume = Number(perpsVolume ?? "0");
-  const hasReachedVolumeThreshold = isConnected && currentVolume > 0 && currentVolume >= minReferrerVolume;
-  const isReferrer = hasReachedVolumeThreshold && !settingsLoading && settings != null;
-  const needsCommissionSetup = hasReachedVolumeThreshold && !settingsLoading && settings == null;
+  const hasReachedVolumeThreshold =
+    isConnected && currentVolume > 0 && currentVolume >= minReferrerVolume;
+  const isReferrer =
+    hasReachedVolumeThreshold && !settingsLoading && settings != null;
+  const needsCommissionSetup =
+    hasReachedVolumeThreshold && !settingsLoading && settings == null;
 
   const isLoading =
     isConnected &&
-    (dataLoading || volumeLoading || settingsLoading || paramsLoading || (isReferrer && data30dLoading));
+    (dataLoading ||
+      volumeLoading ||
+      settingsLoading ||
+      paramsLoading ||
+      (isReferrer && data30dLoading));
 
   const sortedThresholds = useMemo(() => {
     const tiers = referralParams?.referrerCommissionRates.tiers;
@@ -199,7 +218,11 @@ export const AffiliateStats: React.FC = () => {
   const rollingRefereesVolume = Number(referralData30d?.refereesVolume ?? "0");
 
   const currentTierFromContract = useMemo(
-    () => deriveTierFromRate(settings?.commissionRate, referralParams?.referrerCommissionRates),
+    () =>
+      deriveTierFromRate(
+        settings?.commissionRate,
+        referralParams?.referrerCommissionRates,
+      ),
     [settings?.commissionRate, referralParams?.referrerCommissionRates],
   );
 
@@ -210,15 +233,21 @@ export const AffiliateStats: React.FC = () => {
 
   const currentTier = isReferrer ? currentTierFromContract : localTier;
 
-  const targetVolume = hasReachedVolumeThreshold ? nextTierVolume : minReferrerVolume;
-  const progressValue = hasReachedVolumeThreshold ? rollingRefereesVolume : currentVolume;
+  const targetVolume = hasReachedVolumeThreshold
+    ? nextTierVolume
+    : minReferrerVolume;
+  const progressValue = hasReachedVolumeThreshold
+    ? rollingRefereesVolume
+    : currentVolume;
   const progress =
     isConnected && targetVolume
       ? Math.min((progressValue / targetVolume) * 100, 100)
       : isConnected && hasReachedVolumeThreshold && !targetVolume
         ? 100
         : 0;
-  const remaining = targetVolume ? Math.max(targetVolume - progressValue, 0) : 0;
+  const remaining = targetVolume
+    ? Math.max(targetVolume - progressValue, 0)
+    : 0;
 
   const referralCode = getReferralCode(userIndex);
   const referralLink = getReferralLink(userIndex);
@@ -239,22 +268,29 @@ export const AffiliateStats: React.FC = () => {
   const progressLeftLabel = isConnected
     ? hasReachedVolumeThreshold
       ? nextTierVolume
-        ? m["referral.stats.volumeUntilNextTier"]({ amount: formatUSD(remaining), tier: nextTierLabel })
+        ? m["referral.stats.volumeUntilNextTier"]({
+            amount: formatUSD(remaining),
+            tier: nextTierLabel,
+          })
         : m["referral.stats.maxTierReached"]()
       : m["referral.stats.volumeUntilTier1"]({ amount: formatUSD(remaining) })
     : m["referral.stats.notLoggedIn"]();
-  const progressRightLabel = targetVolume ? `$${(targetVolume / 1000).toFixed(0)}K` : "";
+  const progressRightLabel = targetVolume
+    ? `$${(targetVolume / 1000).toFixed(0)}K`
+    : "";
 
   return (
     <div className="flex flex-col gap-4 w-full">
       <div className="w-full rounded-xl bg-surface-disabled-gray p-4 lg:p-6 flex flex-col gap-6 shadow-account-card relative">
-                <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-between">
+        <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-between">
           <div className="flex flex-col items-center lg:items-start">
             <div className="flex items-center gap-1">
               {isLoading ? (
                 <Skeleton className="w-24 h-8" />
               ) : (
-                <p className="text-primitives-warning-500 h3-bold">{rateDisplay}</p>
+                <p className="text-primitives-warning-500 h3-bold">
+                  {rateDisplay}
+                </p>
               )}
               {isConnected && hasReachedVolumeThreshold && (
                 <IconEdit
@@ -273,7 +309,11 @@ export const AffiliateStats: React.FC = () => {
             ) : (
               <p className="text-ink-primary-900 h3-bold">
                 {isConnected ? (
-                  <FormattedNumber number={totalCommission} formatOptions={{ currency: "USD" }} as="span" />
+                  <FormattedNumber
+                    number={totalCommission}
+                    formatOptions={{ currency: "USD" }}
+                    as="span"
+                  />
                 ) : (
                   "--"
                 )}
@@ -289,7 +329,11 @@ export const AffiliateStats: React.FC = () => {
             ) : (
               <p className="text-primitives-warning-500 h3-bold">
                 {isConnected ? (
-                  <FormattedNumber number={totalRefereesVolume} formatOptions={{ currency: "USD" }} as="span" />
+                  <FormattedNumber
+                    number={totalRefereesVolume}
+                    formatOptions={{ currency: "USD" }}
+                    as="span"
+                  />
                 ) : (
                   "--"
                 )}
@@ -312,7 +356,6 @@ export const AffiliateStats: React.FC = () => {
           }}
         />
 
-        {/* Referees stats */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
@@ -341,7 +384,6 @@ export const AffiliateStats: React.FC = () => {
             </div>
           </div>
 
-          {/* Referral credentials or locked banner */}
           {isLoading ? (
             <AffiliateCredentialsLoading />
           ) : isReferrer ? (
@@ -351,7 +393,9 @@ export const AffiliateStats: React.FC = () => {
                   {m["referral.stats.myReferralLink"]()}
                 </p>
                 <div className="flex items-center gap-2">
-                  <p className="text-ink-primary-900 diatype-m-bold">{truncatedLink}</p>
+                  <p className="text-ink-primary-900 diatype-m-bold">
+                    {truncatedLink}
+                  </p>
                   <TextCopy
                     copyText={referralLink}
                     className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
@@ -363,8 +407,13 @@ export const AffiliateStats: React.FC = () => {
                   {m["referral.stats.myReferralCode"]()}
                 </p>
                 <div className="flex items-center gap-2">
-                  <p className="text-ink-primary-900 diatype-m-bold">{referralCode}</p>
-                  <TextCopy copyText={referralCode} className="w-5 h-5 text-ink-tertiary-500" />
+                  <p className="text-ink-primary-900 diatype-m-bold">
+                    {referralCode}
+                  </p>
+                  <TextCopy
+                    copyText={referralCode}
+                    className="w-5 h-5 text-ink-tertiary-500"
+                  />
                 </div>
               </div>
             </div>
@@ -373,7 +422,9 @@ export const AffiliateStats: React.FC = () => {
               isConnected={isConnected}
               needsCommissionSetup={needsCommissionSetup}
               onTrade={() => navigate("/trade")}
-              onLogin={() => showModal(Modals.Authenticate, { action: "signin" })}
+              onLogin={() =>
+                showModal(Modals.Authenticate, { action: "signin" })
+              }
               onSetCommission={() => showModal(Modals.EditCommissionRate)}
             />
           )}
@@ -392,18 +443,27 @@ export const TraderStats: React.FC = () => {
   const [referralCodeInput, setReferralCodeInput] = useState("");
   const { userIndex, isConnected } = useAccount();
 
-  const { referrer, hasReferrer, isLoading: referrerLoading } = useReferrer({ userIndex });
-  const { referralData, isLoading: dataLoading } = useReferralData({ userIndex });
+  const {
+    referrer,
+    hasReferrer,
+    isLoading: referrerLoading,
+  } = useReferrer({ userIndex });
+  const { referralData, isLoading: dataLoading } = useReferralData({
+    userIndex,
+  });
   const { settings, isLoading: settingsLoading } = useReferralSettings({
     userIndex: referrer ?? undefined,
     enabled: hasReferrer,
   });
 
-  const { mutate: submitSetReferral, isPending: isSubmitting } = useSetReferral({
-    onSuccess: () => setReferralCodeInput(""),
-  });
+  const { mutate: submitSetReferral, isPending: isSubmitting } = useSetReferral(
+    {
+      onSuccess: () => setReferralCodeInput(""),
+    },
+  );
 
-  const isLoading = isConnected && (referrerLoading || dataLoading || settingsLoading);
+  const isLoading =
+    isConnected && (referrerLoading || dataLoading || settingsLoading);
 
   const rebateRate = settings?.shareRatio ?? "0";
   const totalRebates = referralData?.commissionSharedByReferrer ?? "0";
@@ -424,7 +484,7 @@ export const TraderStats: React.FC = () => {
         showNoReferrerSection && "pb-[153px] lg:pb-0",
       )}
     >
-            <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-between">
+      <div className="flex flex-col gap-4 items-center lg:flex-row lg:justify-between">
         <div className="flex flex-col items-center lg:items-start">
           {isLoading ? (
             <Skeleton className="w-16 h-8" />
@@ -443,7 +503,11 @@ export const TraderStats: React.FC = () => {
           ) : (
             <p className="text-utility-warning-600 h3-bold">
               {isConnected ? (
-                <FormattedNumber number={totalRebates} formatOptions={{ currency: "USD" }} as="span" />
+                <FormattedNumber
+                  number={totalRebates}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
               ) : (
                 "--"
               )}
@@ -459,7 +523,11 @@ export const TraderStats: React.FC = () => {
           ) : (
             <p className="text-utility-warning-600 h3-bold">
               {isConnected ? (
-                <FormattedNumber number={totalVolume} formatOptions={{ currency: "USD" }} as="span" />
+                <FormattedNumber
+                  number={totalVolume}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
               ) : (
                 "--"
               )}
@@ -471,7 +539,6 @@ export const TraderStats: React.FC = () => {
         </div>
       </div>
 
-      {/* Referrer info or referral code input */}
       {isConnected && hasReferrer ? (
         <div className="w-full rounded-xl bg-surface-tertiary-gray px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -480,7 +547,11 @@ export const TraderStats: React.FC = () => {
               {m["referral.stats.yourReferrer"]()}
             </p>
           </div>
-          {isLoading ? <Skeleton className="w-20 h-6" /> : <Badge text={referrerDisplay} color="blue" />}
+          {isLoading ? (
+            <Skeleton className="w-20 h-6" />
+          ) : (
+            <Badge text={referrerDisplay} color="blue" />
+          )}
         </div>
       ) : (
         <>
@@ -492,7 +563,9 @@ export const TraderStats: React.FC = () => {
                   {m["referral.traderSection.referTitle"]()}
                 </h3>
                 <p className="text-ink-tertiary-500 diatype-m-regular max-w-sm">
-                  {m["referral.traderSection.referDescription"]({ percent: "15%" })}
+                  {m["referral.traderSection.referDescription"]({
+                    percent: "15%",
+                  })}
                 </p>
               </div>
               {isConnected ? (
@@ -500,7 +573,9 @@ export const TraderStats: React.FC = () => {
                   label={m["referral.traderSection.referralCodeLabel"]()}
                   value={referralCodeInput}
                   onChange={(e) => setReferralCodeInput(e.target.value)}
-                  placeholder={m["referral.traderSection.referralCodePlaceholder"]()}
+                  placeholder={m[
+                    "referral.traderSection.referralCodePlaceholder"
+                  ]()}
                   endContent={
                     <Button
                       variant="link"
@@ -508,7 +583,9 @@ export const TraderStats: React.FC = () => {
                       onClick={handleSubmitReferralCode}
                       disabled={isSubmitting || !referralCodeInput}
                     >
-                      {isSubmitting ? m["referral.submitting"]() : m["referral.traderSection.submit"]()}
+                      {isSubmitting
+                        ? m["referral.submitting"]()
+                        : m["referral.traderSection.submit"]()}
                     </Button>
                   }
                 />
@@ -516,7 +593,9 @@ export const TraderStats: React.FC = () => {
                 <Button
                   variant="primary"
                   size="sm"
-                  onClick={() => showModal(Modals.Authenticate, { action: "signin" })}
+                  onClick={() =>
+                    showModal(Modals.Authenticate, { action: "signin" })
+                  }
                 >
                   {m["referral.affiliateSection.logIn"]()}
                 </Button>
@@ -534,7 +613,10 @@ export const TraderStats: React.FC = () => {
   );
 };
 
-export const ReferralStats: React.FC<ReferralStatsProps> = ({ mode, onModeChange }) => {
+export const ReferralStats: React.FC<ReferralStatsProps> = ({
+  mode,
+  onModeChange,
+}) => {
   const { account, userIndex, isConnected } = useAccount();
   const userAddress = account?.address;
 
@@ -545,15 +627,25 @@ export const ReferralStats: React.FC<ReferralStatsProps> = ({ mode, onModeChange
   });
 
   const { referralParams } = useReferralParams();
-  const { settings, isLoading: settingsLoading } = useReferralSettings({ userIndex });
+  const { settings, isLoading: settingsLoading } = useReferralSettings({
+    userIndex,
+  });
 
-  const minReferrerVolume = Number(referralParams?.minReferrerVolume ?? "10000");
+  const minReferrerVolume = Number(
+    referralParams?.minReferrerVolume ?? "10000",
+  );
   const currentVolume = Number(perpsVolume ?? "0");
-  const hasReachedVolumeThreshold = isConnected && currentVolume > 0 && currentVolume >= minReferrerVolume;
-  const isReferrer = hasReachedVolumeThreshold && !settingsLoading && settings != null;
+  const hasReachedVolumeThreshold =
+    isConnected && currentVolume > 0 && currentVolume >= minReferrerVolume;
+  const isReferrer =
+    hasReachedVolumeThreshold && !settingsLoading && settings != null;
 
   const currentTier = useMemo(
-    () => deriveTierFromRate(settings?.commissionRate, referralParams?.referrerCommissionRates),
+    () =>
+      deriveTierFromRate(
+        settings?.commissionRate,
+        referralParams?.referrerCommissionRates,
+      ),
     [settings?.commissionRate, referralParams?.referrerCommissionRates],
   );
 
