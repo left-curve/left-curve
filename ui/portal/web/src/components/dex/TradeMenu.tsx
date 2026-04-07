@@ -12,7 +12,7 @@ import {
   perpsUserStateStore,
   perpsUserStateExtendedStore,
   perpsTradeSettingsStore,
-  useAllPerpsPairStats,
+  allPerpsPairStatsStore,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -333,7 +333,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const isBaseSize = sizeCoinDenom === baseCoin.denom;
 
-  const { statsByPairId } = useAllPerpsPairStats({ refetchInterval: 5_000 });
+  const statsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
   const perpsPairId = getPerpsPairId();
   const currentPrice = Number(statsByPairId[perpsPairId]?.currentPrice ?? 0);
 
@@ -376,6 +376,15 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const slPrice = inputs.slPrice?.value || "";
   const slPercent = inputs.slPercent?.value || "";
   const hasErrors = Object.keys(errors).length > 0;
+
+  useEffect(() => {
+    setTpslEnabled(false);
+    setReduceOnly(false);
+    setValue("tpPrice", "");
+    setValue("tpPercent", "");
+    setValue("slPrice", "");
+    setValue("slPercent", "");
+  }, [pairId]);
 
   const referencePrice = useMemo(() => {
     if (operation === "limit" && Number(priceValue) > 0) return Number(priceValue);

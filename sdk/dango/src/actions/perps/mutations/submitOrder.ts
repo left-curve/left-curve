@@ -34,6 +34,12 @@ export async function submitPerpsOrder<transport extends Transport>(
   const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
   const { addresses } = await getAppConfigAction<AppConfig>({});
 
+  const buildChildOrder = (child: ChildOrder) => ({
+    triggerPrice: child.triggerPrice,
+    maxSlippage: child.maxSlippage,
+    ...(child.size ? { size: child.size } : {}),
+  });
+
   const msg = {
     trade: {
       submitOrder: {
@@ -41,8 +47,8 @@ export async function submitPerpsOrder<transport extends Transport>(
         size,
         kind,
         reduceOnly,
-        ...(tp ? { tp: { triggerPrice: tp.triggerPrice, maxSlippage: tp.maxSlippage } } : {}),
-        ...(sl ? { sl: { triggerPrice: sl.triggerPrice, maxSlippage: sl.maxSlippage } } : {}),
+        ...(tp ? { tp: buildChildOrder(tp) } : {}),
+        ...(sl ? { sl: buildChildOrder(sl) } : {}),
       },
     },
   };
@@ -60,9 +66,10 @@ export async function submitPerpsOrder<transport extends Transport>(
         ],
       };
 
-  const childOrderType = [
+  const childOrderTypeFor = (child: ChildOrder) => [
     { name: "triggerPrice", type: "string" },
     { name: "maxSlippage", type: "string" },
+    ...(child.size ? [{ name: "size", type: "string" }] : []),
   ];
 
   const submitOrderFields = [
@@ -70,8 +77,8 @@ export async function submitPerpsOrder<transport extends Transport>(
     { name: "size", type: "string" },
     { name: "kind", type: "Kind" },
     { name: "reduceOnly", type: "bool" },
-    ...(tp ? [{ name: "tp", type: "ChildOrder" }] : []),
-    ...(sl ? [{ name: "sl", type: "ChildOrder" }] : []),
+    ...(tp ? [{ name: "tp", type: "ChildOrderTp" }] : []),
+    ...(sl ? [{ name: "sl", type: "ChildOrderSl" }] : []),
   ];
 
   const typedData: TypedDataParameter = {
@@ -82,7 +89,8 @@ export async function submitPerpsOrder<transport extends Transport>(
       Kind: kindTypedData.kind,
       ...(kindTypedData.Market ? { Market: kindTypedData.Market } : {}),
       ...(kindTypedData.Limit ? { Limit: kindTypedData.Limit } : {}),
-      ...(tp || sl ? { ChildOrder: childOrderType } : {}),
+      ...(tp ? { ChildOrderTp: childOrderTypeFor(tp) } : {}),
+      ...(sl ? { ChildOrderSl: childOrderTypeFor(sl) } : {}),
     },
   };
 

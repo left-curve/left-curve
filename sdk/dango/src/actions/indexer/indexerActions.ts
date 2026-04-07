@@ -63,6 +63,18 @@ import {
   type PerpsTradesSubscriptionReturnType,
 } from "./subscriptions/perpsTrades.js";
 
+import {
+  allPairStatsSubscription,
+  type AllPairStatsSubscriptionParameters,
+  type AllPairStatsSubscriptionReturnType,
+} from "./subscriptions/allPairStats.js";
+
+import {
+  allPerpsPairStatsSubscription,
+  type AllPerpsPairStatsSubscriptionParameters,
+  type AllPerpsPairStatsSubscriptionReturnType,
+} from "./subscriptions/allPerpsPairStats.js";
+
 export type IndexerActions = {
   accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
   blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
@@ -77,6 +89,12 @@ export type IndexerActions = {
   perpsTradesSubscription: (
     args: PerpsTradesSubscriptionParameters,
   ) => PerpsTradesSubscriptionReturnType;
+  allPairStatsSubscription: (
+    args: AllPairStatsSubscriptionParameters,
+  ) => AllPairStatsSubscriptionReturnType;
+  allPerpsPairStatsSubscription: (
+    args: AllPerpsPairStatsSubscriptionParameters,
+  ) => AllPerpsPairStatsSubscriptionReturnType;
   searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
   tradesSubscription: (args: TradesSubscriptionParameters) => TradesSubscriptionReturnType;
   transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
@@ -95,6 +113,8 @@ export function indexerActions<transport extends Transport = Transport>(
     eventsByAddressesSubscription: (args) => eventsByAddressesSubscription(client, args),
     perpsCandlesSubscription: (args) => perpsCandlesSubscription(client, args),
     perpsTradesSubscription: (args) => perpsTradesSubscription(client, args),
+    allPairStatsSubscription: (args) => allPairStatsSubscription(client, args),
+    allPerpsPairStatsSubscription: (args) => allPerpsPairStatsSubscription(client, args),
     searchTxs: (args) => searchTxs(client, args),
     tradesSubscription: (args) => tradesSubscription(client, args),
     transferSubscription: (args) => transferSubscription(client, args),

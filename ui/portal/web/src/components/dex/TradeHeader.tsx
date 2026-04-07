@@ -18,8 +18,8 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
   useCurrentPrice,
-  useAllPairStats,
-  useAllPerpsPairStats,
+  allPairStatsStore,
+  allPerpsPairStatsStore,
   TradePairStore,
 } from "@left-curve/store";
 import type React from "react";
@@ -35,8 +35,8 @@ export const TradeHeader: React.FC = () => {
 
   const { onChangePairId } = useProTrade();
 
-  const { statsByPair } = useAllPairStats({ refetchInterval: 5_000 });
-  const { statsByPairId } = useAllPerpsPairStats({ refetchInterval: 5_000 });
+  const statsByPair = allPairStatsStore((s) => s.pairStatsByKey);
+  const statsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
 
   const pairStatsData =
     mode === "perps"

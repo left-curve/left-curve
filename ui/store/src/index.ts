@@ -186,6 +186,7 @@ export {
   type NormalizedPairStats,
   usePairStats,
   useAllPairStats,
+  allPairStatsStore,
 } from "./hooks/usePairStats.js";
 
 export {
@@ -194,6 +195,7 @@ export {
   type NormalizedPerpsPairStats,
   usePerpsPairStats,
   useAllPerpsPairStats,
+  allPerpsPairStatsStore,
 } from "./hooks/usePerpsPairStats.js";
 
 export {

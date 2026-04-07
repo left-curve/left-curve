@@ -21,12 +21,14 @@ import {
   usePerpsOrdersByUser,
   perpsOrdersByUserStore,
   perpsUserStateStore,
-  usePrices,
   TradePairStore,
   tradeInfoStore,
   useTradeCoins,
   useLiveSpotTradesState,
   usePerpsPairState,
+  useAllPairStats,
+  useAllPerpsPairStats,
+  allPerpsPairStatsStore,
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
@@ -44,7 +46,6 @@ import { SpotTradeHistory, PerpsTradeHistory } from "./TradeHistory";
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { ConditionalOrder, OrderId, PairId } from "@left-curve/dango/types";
-
 
 const [ProTradeProvider, useProTrade] = createContext<{
   controllers: ReturnType<typeof useInputs>;
@@ -71,6 +72,9 @@ const TradeSubscriptions: React.FC = () => {
   });
   usePerpsPairState({ subscribe: mode === "perps" });
   usePerpsOrdersByUser({ subscribe: mode === "perps" });
+
+  useAllPairStats();
+  useAllPerpsPairStats();
 
   return null;
 };
@@ -241,9 +245,9 @@ const PerpsPositionsTable: React.FC = () => {
   const { showModal, settings } = useApp();
   const { coins } = useConfig();
   const { formatNumberOptions } = settings;
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
   const userState = perpsUserStateStore((s) => s.userState);
+  const perpsStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
 
   const symbolToDenom = useMemo(() => {
     const map: Record<string, string> = {};
@@ -261,22 +265,22 @@ const PerpsPositionsTable: React.FC = () => {
       const baseSymbol = pairId.replace("perp/", "").replace(/usd$/i, "");
       const baseDenom = symbolToDenom[baseSymbol] ?? baseSymbol;
       const coinSymbol = coins.byDenom[baseDenom]?.symbol ?? baseSymbol.toUpperCase();
-      const currentPrice = getPrice(1, baseDenom) || Number(pos.entryPrice);
+      const markPrice = Number(perpsStatsByPairId[pairId]?.currentPrice ?? pos.entryPrice);
       const size = Number(pos.size);
-      const pnl = size * (currentPrice - Number(pos.entryPrice));
+      const pnl = size * (markPrice - Number(pos.entryPrice));
       result.push({
         pairId,
         symbol: coinSymbol,
         size: pos.size,
         entryPrice: pos.entryPrice,
-        currentPrice,
+        currentPrice: markPrice,
         pnl,
         conditionalOrderAbove: pos.conditionalOrderAbove,
         conditionalOrderBelow: pos.conditionalOrderBelow,
       });
     }
     return result;
-  }, [userState, getPrice, symbolToDenom]);
+  }, [userState, perpsStatsByPairId, symbolToDenom, coins.byDenom]);
 
   const columns: TableColumn<PerpsPositionRow> = [
     {
