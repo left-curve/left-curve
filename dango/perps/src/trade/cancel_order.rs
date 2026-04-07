@@ -38,7 +38,7 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
     let mut events = EventBuilder::new();
 
     update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
-        _cancel_one_order(
+        cancel_one_order_inner(
             storage,
             user_state,
             order_key,
@@ -60,7 +60,7 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
 ///   to the user state before saving.
 /// - Remove the order from the `BIDS` or `ASKS` map.
 /// - Remove liquidity depth contributed by this order.
-fn _cancel_one_order<F>(
+fn cancel_one_order_inner<F>(
     storage: &mut dyn Storage,
     user_state: &mut UserState,
     order_key: OrderKey,
@@ -115,7 +115,7 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut events = EventBuilder::new();
 
     update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
-        _cancel_all_orders(
+        cancel_all_resting_orders(
             storage,
             ctx.sender,
             user_state,
@@ -131,7 +131,7 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 ///
 /// Writes to `BIDS` / `ASKS` in storage but does **not** persist `user_state`
 /// — the caller is responsible for saving or removing it.
-pub fn _cancel_all_orders(
+pub fn cancel_all_resting_orders(
     storage: &mut dyn Storage,
     user: Addr,
     user_state: &mut UserState,
@@ -172,7 +172,7 @@ pub fn _cancel_all_orders(
 
     // Now mutate storage: update depths, remove orders, update user state.
     for (order_key, order) in bids.into_iter().chain(asks) {
-        _cancel_one_order(
+        cancel_one_order_inner(
             storage,
             user_state,
             order_key,

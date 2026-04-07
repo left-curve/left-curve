@@ -29,8 +29,8 @@ use {
         },
     },
     grug::{
-        Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder, Response,
-        Storage, Timestamp,
+        Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder,
+        QuerierWrapper, Response, Storage, Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
@@ -47,36 +47,20 @@ pub fn submit_order(
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
 
-    // ---------------------------- 1. Preparation -----------------------------
-
     let param = PARAM.load(ctx.storage)?;
     let mut state = STATE.load(ctx.storage)?;
-
     let pair_param = PAIR_PARAMS.load(ctx.storage, &pair_id)?;
     let mut pair_state = PAIR_STATES.load(ctx.storage, &pair_id)?;
-
     let mut taker_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
-
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
-
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
-
     let mut events = EventBuilder::new();
 
-    // --------------------------- 2. Business logic ---------------------------
-
-    let (
-        mut maker_states,
-        order_mutations,
-        order_to_store,
-        next_order_id,
-        index_updates,
-        volumes,
-        fee_breakdowns,
-    ) = _submit_order(
+    execute_order(
         ctx.storage,
+        ctx.querier,
         ctx.sender,
         ctx.contract,
         ctx.block.timestamp,
@@ -95,110 +79,6 @@ pub fn submit_order(
         sl,
         &mut events,
     )?;
-
-    // ------------------------ 3. Apply state changes -------------------------
-
-    flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
-
-    maker_states.insert(ctx.sender, taker_state);
-
-    apply_fee_commissions(
-        ctx.storage,
-        ctx.querier,
-        ctx.contract,
-        ctx.block.timestamp,
-        &param,
-        &mut maker_states,
-        fee_breakdowns,
-        &volumes,
-        &mut events,
-    )?;
-
-    NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
-
-    STATE.save(ctx.storage, &state)?;
-
-    PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
-
-    for (addr, user_state) in &maker_states {
-        USER_STATES.save(ctx.storage, *addr, user_state)?;
-    }
-
-    apply_position_index_updates(ctx.storage, &index_updates)?;
-
-    let (taker_book, maker_book) = if size.is_positive() {
-        (BIDS, ASKS)
-    } else {
-        (ASKS, BIDS)
-    };
-
-    for (stored_price, order_id, mutation, pre_fill_abs_size) in order_mutations {
-        let order_key = (pair_id.clone(), stored_price, order_id);
-
-        // The maker is on the opposite side of the taker.
-        let maker_is_bid = !size.is_positive();
-        let real_price = may_invert_price(stored_price, maker_is_bid);
-
-        // Completely remove the old order's liquidity depth contribution.
-        // If the order still has some size remaining, we re-add it.
-        // Why don't we simply subtract the delta? To avoid a situation known as
-        // notional drift. See `../liquidity_depth.rs`, test function `partial_fill_no_residual_depth`
-        // for detail.
-        decrease_liquidity_depths(
-            ctx.storage,
-            &pair_id,
-            maker_is_bid,
-            real_price,
-            pre_fill_abs_size,
-            &pair_param.bucket_sizes,
-        )?;
-
-        match mutation {
-            Some(order) => {
-                increase_liquidity_depths(
-                    ctx.storage,
-                    &pair_id,
-                    maker_is_bid,
-                    real_price,
-                    order.size.checked_abs()?,
-                    &pair_param.bucket_sizes,
-                )?;
-
-                maker_book.save(ctx.storage, order_key, &order)?;
-            },
-            None => {
-                maker_book.remove(ctx.storage, order_key)?;
-            },
-        }
-    }
-
-    if let Some((stored_price, order_id, order)) = order_to_store {
-        let is_bid = size.is_positive();
-        let limit_price = may_invert_price(stored_price, is_bid);
-
-        increase_liquidity_depths(
-            ctx.storage,
-            &pair_id,
-            is_bid,
-            limit_price,
-            order.size.checked_abs()?,
-            &pair_param.bucket_sizes,
-        )?;
-
-        taker_book.save(
-            ctx.storage,
-            (pair_id.clone(), stored_price, order_id),
-            &order,
-        )?;
-
-        events.push(OrderPersisted {
-            order_id,
-            pair_id: pair_id.clone(),
-            user: ctx.sender,
-            limit_price,
-            size: order.size,
-        })?;
-    }
 
     #[cfg(feature = "tracing")]
     {
@@ -243,25 +123,19 @@ pub fn submit_order(
     Ok(Response::new().add_events(events)?)
 }
 
-/// Semi-pure order submission: reads from storage but does not write.
-/// All storage mutations are returned as deferred side-effects.
+/// Execute an order: match against the book, settle PnL/fees, and persist
+/// all state changes to storage.
 ///
-/// Mutates (in-memory only):
+/// Mutates:
 ///
+/// - `state` — global protocol state (e.g. next order ID).
 /// - `pair_state` — funding accrued; `long_oi` / `short_oi` updated.
-/// - `taker_state.positions` — opened / closed / flipped per fill.
-/// - `taker_state.reserved_margin` / `open_order_count` — updated if a
-///   limit order remainder is stored.
-///
-/// Returns:
-///
-/// - Maker `UserState`s to persist (includes the vault's `UserState`):
-///   `BTreeMap<Addr, UserState>`.
-/// - Order mutations to apply: `Vec<(OrderKey, Option<LimitOrder>)>`.
-/// - GTC order to store: `Option<(stored_price, order_id, LimitOrder)>`.
-#[allow(clippy::type_complexity)]
-pub(crate) fn _submit_order(
-    storage: &dyn Storage,
+/// - `taker_state` — positions opened/closed/flipped, reserved margin,
+///   open order count, and margin (after fee commissions).
+/// - Storage — order book, user states, volumes, depths, position indices.
+pub(crate) fn execute_order(
+    storage: &mut dyn Storage,
+    querier: QuerierWrapper,
     taker: Addr,
     contract: Addr,
     current_time: Timestamp,
@@ -279,15 +153,7 @@ pub(crate) fn _submit_order(
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
     events: &mut EventBuilder,
-) -> anyhow::Result<(
-    BTreeMap<Addr, UserState>,
-    Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
-    Option<(UsdPrice, OrderId, LimitOrder)>,
-    OrderId,
-    Vec<PositionIndexUpdate>,
-    BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, FeeBreakdown>,
-)> {
+) -> anyhow::Result<()> {
     // -------------- Step 1. Check minimum order size -------------------------
 
     if !reduce_only {
@@ -325,7 +191,7 @@ pub(crate) fn _submit_order(
     // ---------------------- Step 4. Post-only fast path ----------------------
 
     if let Some(limit_price) = kind.post_only_price() {
-        let order_to_store = store_post_only_limit_order(
+        let (stored_price, order_id, order) = store_post_only_limit_order(
             storage,
             taker,
             current_time,
@@ -342,15 +208,40 @@ pub(crate) fn _submit_order(
             sl,
         )?;
 
-        return Ok((
-            BTreeMap::new(),
-            Vec::new(),
-            Some(order_to_store),
-            taker_order_id + OrderId::ONE,
-            Vec::new(),
-            BTreeMap::new(),
-            BTreeMap::new(),
-        ));
+        let next_order_id = taker_order_id + OrderId::ONE;
+
+        NEXT_ORDER_ID.save(storage, &next_order_id)?;
+        STATE.save(storage, state)?;
+        PAIR_STATES.save(storage, pair_id, pair_state)?;
+        USER_STATES.save(storage, taker, taker_state)?;
+
+        let is_bid = fillable_size.is_positive();
+        let taker_book = if is_bid {
+            BIDS
+        } else {
+            ASKS
+        };
+
+        increase_liquidity_depths(
+            storage,
+            pair_id,
+            is_bid,
+            limit_price,
+            order.size.checked_abs()?,
+            &pair_param.bucket_sizes,
+        )?;
+
+        taker_book.save(storage, (pair_id.clone(), stored_price, order_id), &order)?;
+
+        events.push(OrderPersisted {
+            order_id,
+            pair_id: pair_id.clone(),
+            user: taker,
+            limit_price,
+            size: order.size,
+        })?;
+
+        return Ok(());
     }
 
     // ----------------- Step 5: Pre-match taker margin check ------------------
@@ -477,15 +368,106 @@ pub(crate) fn _submit_order(
         fees,
     )?;
 
-    Ok((
-        maker_states,
-        order_mutations,
-        order_to_store,
-        next_order_id,
-        index_updates,
-        volumes,
+    // ------------------- Apply state changes to storage ---------------------
+
+    flush_volumes(storage, current_time, &volumes)?;
+
+    maker_states.insert(taker, taker_state.clone());
+
+    apply_fee_commissions(
+        storage,
+        querier,
+        contract,
+        current_time,
+        param,
+        &mut maker_states,
         fee_breakdowns,
-    ))
+        &volumes,
+        events,
+    )?;
+
+    // Copy back any taker changes from apply_fee_commissions.
+    if let Some(updated) = maker_states.remove(&taker) {
+        *taker_state = updated;
+    }
+
+    NEXT_ORDER_ID.save(storage, &next_order_id)?;
+    STATE.save(storage, state)?;
+    PAIR_STATES.save(storage, pair_id, pair_state)?;
+
+    // Save the taker (removed from maker_states above so it's not in the loop).
+    USER_STATES.save(storage, taker, taker_state)?;
+
+    for (addr, user_state) in &maker_states {
+        USER_STATES.save(storage, *addr, user_state)?;
+    }
+
+    apply_position_index_updates(storage, &index_updates)?;
+
+    // Apply order mutations (depth + book)
+    let (taker_book, maker_book) = if size.is_positive() {
+        (BIDS, ASKS)
+    } else {
+        (ASKS, BIDS)
+    };
+
+    for (stored_price, order_id, mutation, pre_fill_abs_size) in order_mutations {
+        let order_key = (pair_id.clone(), stored_price, order_id);
+        let maker_is_bid = !size.is_positive();
+        let real_price = may_invert_price(stored_price, maker_is_bid);
+
+        decrease_liquidity_depths(
+            storage,
+            pair_id,
+            maker_is_bid,
+            real_price,
+            pre_fill_abs_size,
+            &pair_param.bucket_sizes,
+        )?;
+
+        match mutation {
+            Some(order) => {
+                increase_liquidity_depths(
+                    storage,
+                    pair_id,
+                    maker_is_bid,
+                    real_price,
+                    order.size.checked_abs()?,
+                    &pair_param.bucket_sizes,
+                )?;
+                maker_book.save(storage, order_key, &order)?;
+            },
+            None => {
+                maker_book.remove(storage, order_key)?;
+            },
+        }
+    }
+
+    if let Some((stored_price, order_id, order)) = order_to_store {
+        let is_bid = size.is_positive();
+        let limit_price = may_invert_price(stored_price, is_bid);
+
+        increase_liquidity_depths(
+            storage,
+            pair_id,
+            is_bid,
+            limit_price,
+            order.size.checked_abs()?,
+            &pair_param.bucket_sizes,
+        )?;
+
+        taker_book.save(storage, (pair_id.clone(), stored_price, order_id), &order)?;
+
+        events.push(OrderPersisted {
+            order_id,
+            pair_id: pair_id.clone(),
+            user: taker,
+            limit_price,
+            size: order.size,
+        })?;
+    }
+
+    Ok(())
 }
 
 /// Mutates:
@@ -1215,7 +1197,6 @@ fn emit_child_order_events(
 mod tests {
     use {
         super::*,
-        crate::USER_STATES,
         dango_types::{
             Dimensionless, FundingPerUnit,
             oracle::PrecisionedPrice,
@@ -1276,6 +1257,7 @@ mod tests {
             .save(storage, &pair_id(), &PairState::default())
             .unwrap();
         NEXT_ORDER_ID.save(storage, &Uint64::new(1)).unwrap();
+        STATE.save(storage, &State::default()).unwrap();
     }
 
     /// Place a resting ask (sell) order on the book.
@@ -1351,8 +1333,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1380,15 +1363,24 @@ mod tests {
         assert_eq!(pos.size, Quantity::new_int(10));
         assert_eq!(pos.entry_price, UsdPrice::new_int(50_000));
 
-        // No order stored (market order, fully filled).
-        assert!(order_to_store.is_none());
+        // No order stored (market order, fully filled) — taker's order should not be in BIDS.
+        assert!(
+            BIDS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
 
         // OI updated.
         assert_eq!(pair_state.long_oi, Quantity::new_int(10));
 
-        // Ask should be removed from book (1 removal mutation).
-        assert_eq!(order_mutations.len(), 1);
-        assert!(order_mutations[0].2.is_none());
+        // Ask should be removed from book.
+        assert!(
+            ASKS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
     }
 
     // ============= Market buy: partial fill (IOC cancels remainder) ===========
@@ -1411,8 +1403,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1439,7 +1432,13 @@ mod tests {
         let pos = taker_state.positions.get(&pair_id()).unwrap();
         assert_eq!(pos.size, Quantity::new_int(5));
 
-        assert!(order_to_store.is_none());
+        // No order stored (market order, IOC remainder canceled).
+        assert!(
+            BIDS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
     }
 
     // ============= Market buy: no liquidity at acceptable price ==============
@@ -1461,8 +1460,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
-            &ctx.storage,
+        let err = execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1512,8 +1512,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1540,7 +1541,13 @@ mod tests {
         let pos = taker_state.positions.get(&pair_id()).unwrap();
         assert_eq!(pos.size, Quantity::new_int(10));
 
-        assert!(order_to_store.is_none());
+        // No order stored (fully filled).
+        assert!(
+            BIDS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
     }
 
     // ============ Limit buy: partial fill, remainder stored as GTC ============
@@ -1563,8 +1570,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1592,10 +1600,14 @@ mod tests {
         let pos = taker_state.positions.get(&pair_id()).unwrap();
         assert_eq!(pos.size, Quantity::new_int(5));
 
-        // Remainder (5) stored as GTC.
-        assert!(order_to_store.is_some());
-        let (_, _, order) = order_to_store.unwrap();
-        assert_eq!(order.size, Quantity::new_int(5));
+        // Remainder (5) stored as GTC in BIDS.
+        let resting: Vec<_> = BIDS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(resting.len(), 1);
+        assert_eq!(resting[0].1.size, Quantity::new_int(5));
     }
 
     // ====== Limit buy: no matchable orders, entire order stored ==============
@@ -1618,8 +1630,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1646,10 +1659,14 @@ mod tests {
         // No position (nothing filled).
         assert!(!taker_state.positions.contains_key(&pair_id()));
 
-        // Entire order stored.
-        assert!(order_to_store.is_some());
-        let (_, _, order) = order_to_store.unwrap();
-        assert_eq!(order.size, Quantity::new_int(10));
+        // Entire order stored in BIDS.
+        let resting: Vec<_> = BIDS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(resting.len(), 1);
+        assert_eq!(resting[0].1.size, Quantity::new_int(10));
     }
 
     // ================== Reduce-only: only closes existing ====================
@@ -1681,8 +1698,9 @@ mod tests {
         });
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1707,7 +1725,14 @@ mod tests {
 
         // Position fully closed.
         assert!(!taker_state.positions.contains_key(&pair_id()));
-        assert!(order_to_store.is_none());
+
+        // No resting order created (reduce-only market, fully filled).
+        assert!(
+            ASKS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
     }
 
     // ============= Reduce-only with no position errors =======================
@@ -1729,8 +1754,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
-            &ctx.storage,
+        let err = execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1780,8 +1806,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1809,12 +1836,22 @@ mod tests {
         assert_eq!(pos.size, Quantity::new_int(-10));
         assert_eq!(pos.entry_price, UsdPrice::new_int(50_000));
 
-        assert!(order_to_store.is_none());
+        // No order stored (market order, fully filled) — no taker asks in book.
+        assert!(
+            ASKS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
         assert_eq!(pair_state.short_oi, Quantity::new_int(10));
 
-        // Bid removed from book (1 removal mutation).
-        assert_eq!(order_mutations.len(), 1);
-        assert!(order_mutations[0].2.is_none());
+        // Bid removed from book.
+        assert!(
+            BIDS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
     }
 
     // =========== Two-sided settlement: both positions updated =================
@@ -1837,8 +1874,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1866,7 +1904,8 @@ mod tests {
         assert_eq!(taker_pos.size, Quantity::new_int(10));
 
         // Maker: short 10 @ 50000
-        let maker_pos = maker_states[&MAKER_A].positions.get(&pair_id()).unwrap();
+        let maker_a_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
+        let maker_pos = maker_a_state.positions.get(&pair_id()).unwrap();
         assert_eq!(maker_pos.size, Quantity::new_int(-10));
         assert_eq!(maker_pos.entry_price, UsdPrice::new_int(50_000));
     }
@@ -1891,8 +1930,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -1925,7 +1965,8 @@ mod tests {
         );
 
         // Fee goes to vault.
-        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(500));
+        let vault_state = USER_STATES.load(&ctx.storage, CONTRACT).unwrap();
+        assert_eq!(vault_state.margin, UsdValue::new_int(500));
     }
 
     // ======== Tick size enforcement for limit orders =========================
@@ -1953,8 +1994,9 @@ mod tests {
         let mut oq = test_oracle_querier();
 
         // 50,100 is a valid multiple of tick size 100 — should succeed.
-        let result = _submit_order(
-            &ctx.storage,
+        let result = execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2002,8 +2044,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
-            &ctx.storage,
+        let err = execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2055,8 +2098,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2085,12 +2129,21 @@ mod tests {
         // Weighted avg entry: (5*50000 + 5*50100) / 10 = 50050
         assert_eq!(pos.entry_price, UsdPrice::new_int(50_050));
 
-        assert!(order_to_store.is_none());
+        // No order stored (market order, fully filled).
+        assert!(
+            BIDS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
 
-        // Both asks fully filled (2 removal mutations).
-        assert_eq!(order_mutations.len(), 2);
-        assert!(order_mutations[0].2.is_none());
-        assert!(order_mutations[1].2.is_none());
+        // Both asks fully filled — no asks remaining.
+        assert!(
+            ASKS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none()
+        );
     }
 
     // ======= Maker reserved margin release: full fill ========================
@@ -2117,8 +2170,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2141,8 +2195,9 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(maker_states[&MAKER_A].reserved_margin, UsdValue::ZERO);
-        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+        let maker_a_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
+        assert_eq!(maker_a_state.reserved_margin, UsdValue::ZERO);
+        assert_eq!(maker_a_state.open_order_count, 0);
     }
 
     // ======= Maker reserved margin release: partial fill =====================
@@ -2165,8 +2220,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2189,14 +2245,12 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(maker_states[&MAKER_A].open_order_count, 1);
+        let maker_a_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
+        assert_eq!(maker_a_state.open_order_count, 1);
 
         // initial_margin = 10 * 50000 / 20 = 25000 USD
         // 40% released, 60% remaining = 15000
-        assert_eq!(
-            maker_states[&MAKER_A].reserved_margin,
-            UsdValue::new_int(15_000)
-        );
+        assert_eq!(maker_a_state.reserved_margin, UsdValue::new_int(15_000));
     }
 
     // ======= Market buy: price beyond slippage ===============================
@@ -2219,8 +2273,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
-            &ctx.storage,
+        let err = execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2674,7 +2729,7 @@ mod tests {
         assert_eq!(state.treasury, UsdValue::new_int(4));
     }
 
-    // ====== Negative maker fee: full _submit_order integration ===============
+    // ====== Negative maker fee: full execute_order integration ===============
 
     #[test]
     fn negative_maker_fee_rebate_on_market_buy() {
@@ -2708,6 +2763,7 @@ mod tests {
         NEXT_ORDER_ID
             .save(&mut ctx.storage, &Uint64::new(1))
             .unwrap();
+        STATE.save(&mut ctx.storage, &State::default()).unwrap();
 
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
@@ -2720,8 +2776,9 @@ mod tests {
         let mut state = State::default();
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2757,19 +2814,22 @@ mod tests {
         );
 
         // Maker margin: 0 - (-$50) = +$50 (receives rebate).
-        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::new_int(50));
+        let maker_a_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
+        assert_eq!(maker_a_state.margin, UsdValue::new_int(50));
 
         // Vault receives:
         //   taker vault_fee = $150 * 80% = $120
         //   maker vault_fee = -$50 * 80% = -$40
         //   total = $80
-        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(80));
+        let vault_state = USER_STATES.load(&ctx.storage, CONTRACT).unwrap();
+        assert_eq!(vault_state.margin, UsdValue::new_int(80));
 
         // Treasury:
         //   taker protocol_fee = $150 * 20% = $30
         //   maker protocol_fee = -$50 * 20% = -$10
         //   total = $20
-        assert_eq!(state.treasury, UsdValue::new_int(20));
+        let saved_state = STATE.load(&ctx.storage).unwrap();
+        assert_eq!(saved_state.treasury, UsdValue::new_int(20));
 
         // Positions are correct.
         let taker_pos = taker_state.positions.get(&pair_id()).unwrap();
@@ -2797,8 +2857,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2824,12 +2885,23 @@ mod tests {
 
         // No fills — order rests.
         assert!(!taker_state.positions.contains_key(&pair_id()));
-        assert!(order_to_store.is_some());
-        let (_, _, order) = order_to_store.unwrap();
-        assert_eq!(order.size, Quantity::new_int(10));
 
-        // No mutations.
-        assert!(order_mutations.is_empty());
+        // Order stored in BIDS (buy side).
+        let resting: Vec<_> = BIDS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(resting.len(), 1);
+        assert_eq!(resting[0].1.size, Quantity::new_int(10));
+
+        // Maker ask unchanged (no mutations).
+        let asks: Vec<_> = ASKS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(asks.len(), 1);
     }
 
     #[test]
@@ -2850,8 +2922,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
-            &ctx.storage,
+        let err = execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2896,8 +2969,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
-            &ctx.storage,
+        let err = execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2942,8 +3016,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -2969,11 +3044,26 @@ mod tests {
 
         // No fills — order rests.
         assert!(!taker_state.positions.contains_key(&pair_id()));
-        assert!(order_to_store.is_some());
-        let (_, _, order) = order_to_store.unwrap();
-        assert_eq!(order.size, Quantity::new_int(-10));
 
-        assert!(order_mutations.is_empty());
+        // Order stored in ASKS (sell side).
+        let resting: Vec<_> = ASKS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        // 1 original maker bid + the taker's ask should not appear in ASKS prefix
+        // Actually, maker placed a BID not an ask. The taker's sell order rests in ASKS.
+        // The original bid is in BIDS. So ASKS should have exactly 1 entry (the taker's).
+        assert_eq!(resting.len(), 1);
+        assert_eq!(resting[0].1.size, Quantity::new_int(-10));
+
+        // Maker bid unchanged.
+        let bids: Vec<_> = BIDS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(bids.len(), 1);
     }
 
     #[test]
@@ -2994,8 +3084,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
-            &ctx.storage,
+        let err = execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -3040,8 +3131,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -3065,9 +3157,14 @@ mod tests {
         )
         .unwrap();
 
-        assert!(order_to_store.is_some());
-        let (_, _, order) = order_to_store.unwrap();
-        assert_eq!(order.size, Quantity::new_int(10));
+        // Order stored in BIDS.
+        let resting: Vec<_> = BIDS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(resting.len(), 1);
+        assert_eq!(resting[0].1.size, Quantity::new_int(10));
     }
 
     #[test]
@@ -3097,8 +3194,9 @@ mod tests {
         });
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -3122,11 +3220,15 @@ mod tests {
         )
         .unwrap();
 
-        // Order rests, reduce_only flag preserved.
-        assert!(order_to_store.is_some());
-        let (_, _, order) = order_to_store.unwrap();
-        assert_eq!(order.size, Quantity::new_int(-5));
-        assert!(order.reduce_only);
+        // Order rests in ASKS, reduce_only flag preserved.
+        let resting: Vec<_> = ASKS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(resting.len(), 1);
+        assert_eq!(resting[0].1.size, Quantity::new_int(-5));
+        assert!(resting[0].1.reduce_only);
     }
 
     // ======= Post-only insufficient margin rejected ==========================
@@ -3156,8 +3258,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
-            &ctx.storage,
+        let err = execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -3218,8 +3321,9 @@ mod tests {
         taker_state.margin = LARGE_COLLATERAL;
         let mut oq = test_oracle_querier();
 
-        let (maker_states, order_mutations, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -3242,11 +3346,14 @@ mod tests {
         )
         .unwrap();
 
-        // 1) Taker's own ask was cancelled (mutation = None).
-        assert_eq!(order_mutations.len(), 2);
+        // 1) Taker's own ask was cancelled and MAKER_A's ask was fully filled.
+        //    Both should be removed from the book.
         assert!(
-            order_mutations[0].2.is_none(),
-            "taker's resting order should be removed"
+            ASKS.prefix(pair_id())
+                .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                .next()
+                .is_none(),
+            "both asks should be removed from book"
         );
 
         // 2) Taker's open_order_count was decremented (the resting order
@@ -3264,12 +3371,9 @@ mod tests {
         assert_eq!(pos.size, Quantity::new_int(10));
         assert_eq!(pos.entry_price, UsdPrice::new_int(50_100));
 
-        // 5) MAKER_A's ask was fully filled (second mutation = None).
-        assert!(
-            order_mutations[1].2.is_none(),
-            "MAKER_A's order should be fully filled"
-        );
-        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+        // 5) MAKER_A's ask was fully filled.
+        let maker_a_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
+        assert_eq!(maker_a_state.open_order_count, 0);
     }
 
     // ======= Vault-as-maker PnL settlement ===================================
@@ -3317,8 +3421,9 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, order_mutations, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
@@ -3341,23 +3446,7 @@ mod tests {
         )
         .unwrap();
 
-        // Persist side-effects so step 2 can load them.
-        PAIR_STATES
-            .save(&mut ctx.storage, &pair_id(), &pair_state)
-            .unwrap();
-        USER_STATES
-            .save(&mut ctx.storage, TAKER, &taker_state)
-            .unwrap();
-        for (addr, ms) in &maker_states {
-            USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
-        }
-        for (stored_price, order_id, mutation, _) in order_mutations {
-            let key = (pair_id(), stored_price, order_id);
-            match mutation {
-                Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
-                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
-            }
-        }
+        // execute_order persists all side-effects to storage automatically.
 
         // Vault must now have a short position.
         let vault_state = USER_STATES.load(&ctx.storage, CONTRACT).unwrap();
@@ -3370,16 +3459,18 @@ mod tests {
 
         let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let mut state = STATE.load(&ctx.storage).unwrap();
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &mut state,
             &pair_id(),
             &pair_param,
             &mut pair_state,
@@ -3396,7 +3487,8 @@ mod tests {
         )
         .unwrap();
 
-        maker_states[&CONTRACT].margin
+        let vault_state = USER_STATES.load(&ctx.storage, CONTRACT).unwrap();
+        vault_state.margin
     }
 
     /// Vault opens short at $50,000 then closes at $49,000 → profit of $10,000.
@@ -3500,8 +3592,9 @@ mod tests {
         // MAKER_B sells -10 → matches vault bid at $51,000.
         //   vault: closes short at $51,000 → loss = -$10,000
         //   MAKER_B: opens new short → PnL = 0, fee = |10| × $51,000 × 0.001 = $510
-        let (maker_states, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             MAKER_B,
             CONTRACT,
             Timestamp::ZERO,
@@ -3529,7 +3622,8 @@ mod tests {
         //
         // PnL loop: vault loss = $10,000
         //   vault margin = $1,510 - $10,000 = -$8,490
-        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(-8_490));
+        let vault_state = USER_STATES.load(&ctx.storage, CONTRACT).unwrap();
+        assert_eq!(vault_state.margin, UsdValue::new_int(-8_490));
     }
 
     // ===================== Regression: phantom order IDs =====================
@@ -3541,7 +3635,7 @@ mod tests {
     /// was never actually consumed, so a subsequent order could reuse the
     /// same ID.
     ///
-    /// After the fix, `_submit_order` always increments the order ID counter,
+    /// After the fix, `execute_order` always increments the order ID counter,
     /// regardless of whether the order enters the book.
     #[test]
     fn orders_not_entering_book_should_increment_next_order_id() {
@@ -3565,8 +3659,9 @@ mod tests {
             };
             let mut oq = test_oracle_querier();
 
-            let (_, _, order_to_store, next_order_id, ..) = _submit_order(
-                &ctx.storage,
+            execute_order(
+                &mut ctx.storage,
+                QuerierWrapper::new(&ctx.querier),
                 TAKER,
                 CONTRACT,
                 Timestamp::ZERO,
@@ -3589,32 +3684,23 @@ mod tests {
             )
             .unwrap();
 
+            // Market order should not enter book.
             assert!(
-                order_to_store.is_none(),
+                BIDS.prefix(pair_id())
+                    .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                    .next()
+                    .is_none(),
                 "market order should not enter book"
             );
+
+            let next_order_id = NEXT_ORDER_ID.load(&ctx.storage).unwrap();
             assert_eq!(
                 next_order_id,
                 OrderId::new(2),
                 "next_order_id must advance even when order doesn't enter book"
             );
 
-            // Persist for case 2.
-            NEXT_ORDER_ID
-                .save(&mut ctx.storage, &next_order_id)
-                .unwrap();
-            PAIR_STATES
-                .save(&mut ctx.storage, &pair_id(), &pair_state)
-                .unwrap();
-
-            // Clean up the filled ask.
-            ASKS.remove(
-                &mut ctx.storage,
-                (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100)),
-            )
-            .unwrap();
-
-            // Place a fresh ask for case 2.
+            // execute_order persists all state; place a fresh ask for case 2.
             place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 200);
         }
 
@@ -3625,16 +3711,18 @@ mod tests {
                 margin: LARGE_COLLATERAL,
                 ..Default::default()
             };
+            let mut state = STATE.load(&ctx.storage).unwrap();
             let mut oq = test_oracle_querier();
 
-            let (_, _, order_to_store, next_order_id, ..) = _submit_order(
-                &ctx.storage,
+            execute_order(
+                &mut ctx.storage,
+                QuerierWrapper::new(&ctx.querier),
                 TAKER,
                 CONTRACT,
                 Timestamp::ZERO,
                 &mut oq,
                 &param,
-                &mut State::default(),
+                &mut state,
                 &pair_id(),
                 &pair_param,
                 &mut pair_state,
@@ -3652,10 +3740,16 @@ mod tests {
             )
             .unwrap();
 
+            // Fully-filled limit should not enter book.
             assert!(
-                order_to_store.is_none(),
+                BIDS.prefix(pair_id())
+                    .range(&ctx.storage, None, None, IterationOrder::Ascending)
+                    .next()
+                    .is_none(),
                 "fully-filled limit should not enter book"
             );
+
+            let next_order_id = NEXT_ORDER_ID.load(&ctx.storage).unwrap();
             assert_eq!(
                 next_order_id,
                 OrderId::new(3),
@@ -3696,8 +3790,9 @@ mod tests {
 
         let mut ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -3746,8 +3841,9 @@ mod tests {
 
         let mut ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -3815,8 +3911,9 @@ mod tests {
 
         let mut ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -3859,8 +3956,9 @@ mod tests {
 
         let mut ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -3905,8 +4003,9 @@ mod tests {
 
         let mut ts = taker_state(&ctx.storage);
 
-        let (_, _, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -3935,10 +4034,15 @@ mod tests {
         assert!(pos.conditional_order_above.is_some());
         assert!(pos.conditional_order_below.is_some());
 
-        // Resting order should also carry TP/SL.
-        let (_, _, resting_order) = order_to_store.expect("should have resting order");
-        assert!(resting_order.tp.is_some());
-        assert!(resting_order.sl.is_some());
+        // Resting order should also carry TP/SL — check BIDS.
+        let resting: Vec<_> = BIDS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(resting.len(), 1, "should have resting order");
+        assert!(resting[0].1.tp.is_some());
+        assert!(resting[0].1.sl.is_some());
     }
 
     /// Limit order doesn't fill at all → TP/SL NOT applied to any existing
@@ -3967,8 +4071,9 @@ mod tests {
         // Place a buy limit at 49_000 — no asks below that so nothing fills.
         let mut ts = taker_state(&ctx.storage);
 
-        let (_, _, order_to_store, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -3997,10 +4102,15 @@ mod tests {
         assert!(pos.conditional_order_above.is_none());
         assert!(pos.conditional_order_below.is_none());
 
-        // Resting order carries TP/SL for later.
-        let (_, _, resting_order) = order_to_store.expect("should have resting order");
-        assert!(resting_order.tp.is_some());
-        assert!(resting_order.sl.is_some());
+        // Resting order carries TP/SL for later — check BIDS.
+        let resting: Vec<_> = BIDS
+            .prefix(pair_id())
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(resting.len(), 1, "should have resting order");
+        assert!(resting[0].1.tp.is_some());
+        assert!(resting[0].1.sl.is_some());
     }
 
     /// Maker's resting limit order with TP/SL gets filled → TP/SL applied to
@@ -4039,8 +4149,10 @@ mod tests {
             .unwrap();
 
         // Taker buys 10 → fills maker's ask.
-        let (maker_states, ..) = _submit_order(
-            &ctx.storage,
+        let mut ts = taker_state(&ctx.storage);
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -4050,7 +4162,7 @@ mod tests {
             &pair_id(),
             &test_pair_param(),
             &mut PairState::default(),
-            &mut taker_state(&ctx.storage),
+            &mut ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -4064,7 +4176,7 @@ mod tests {
         .unwrap();
 
         // Maker should have a short position with TP/SL.
-        let maker_state = maker_states.get(&MAKER_A).unwrap();
+        let maker_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
         let pos = maker_state.positions.get(&pair_id()).unwrap();
         assert!(pos.size.is_negative(), "maker should be short");
 
@@ -4090,8 +4202,9 @@ mod tests {
 
         let mut ts = taker_state(&ctx.storage);
 
-        let (_, _, _, next_order_id, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -4115,6 +4228,7 @@ mod tests {
         .unwrap();
 
         // ID 1 = taker order, ID 2 = TP child, ID 3 = SL child → next = 4
+        let next_order_id = NEXT_ORDER_ID.load(&ctx.storage).unwrap();
         assert_eq!(next_order_id, OrderId::new(4));
     }
 
@@ -4156,8 +4270,9 @@ mod tests {
 
         let mut ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -4234,8 +4349,9 @@ mod tests {
         let mut ts = taker_state(&ctx.storage);
 
         // Buy 5 with TP/SL intended for a long.
-        let (..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -4320,8 +4436,9 @@ mod tests {
         // Taker sells 5 → fills Maker_A's bid.
         let mut ts = taker_state(&ctx.storage);
 
-        let (maker_states, ..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
@@ -4349,7 +4466,7 @@ mod tests {
 
         // Maker_A bought 5, reducing short from -10 to -5. Still short →
         // direction mismatch → TP/SL NOT applied.
-        let maker_state = maker_states.get(&MAKER_A).unwrap();
+        let maker_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
         let pos = maker_state.positions.get(&pair_id()).unwrap();
         assert_eq!(pos.size, Quantity::new_int(-5));
         assert!(pos.conditional_order_above.is_none());
@@ -4393,8 +4510,9 @@ mod tests {
 
         // Market buy 10 with SL @ $49k. The fill price ($48k) is below the
         // SL trigger ($49k), so the SL condition is already met.
-        let (..) = _submit_order(
-            &ctx.storage,
+        execute_order(
+            &mut ctx.storage,
+            QuerierWrapper::new(&ctx.querier),
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
