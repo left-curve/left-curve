@@ -87,6 +87,9 @@ localdango/**/data
 localdango/**/indexer
 localdango/**/logs
 
+# Ansible deploy logs (captured by `just deploy-*`, `just restart-*`, etc.)
+deploy/logs/
+
 # GraphiQL
 docker/graphiql/dist
 
