@@ -59,7 +59,7 @@ export const NFTsSection: React.FC<NFTsSectionProps> = ({ nfts = defaultNFTs }) 
   return (
     <div className="flex flex-col gap-3">
       <p className="h4-bold text-ink-primary-900">{m["points.rewards.nfts.title"]()}</p>
-      <div className="grid grid-cols-2 lg:flex lg:flex-wrap gap-4 md:gap-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
         {nfts.map((nft) => (
           <NFTCard
             key={nft.rarity}
