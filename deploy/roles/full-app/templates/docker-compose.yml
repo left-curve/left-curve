@@ -315,10 +315,9 @@ services:
     restart: always
     env_file:
       - ./perp-liquidator/.env
-{% if expose_ports %}
     ports:
-      - "${PERP_LIQUIDATOR_HTTP_PORT:-0}:9310"
-{% endif %}
+      - "${WIREGUARD_IP}:${PERP_LIQUIDATOR_HTTP_PORT:-0}:9310"
+      - "${TAILSCALE_IP}:${PERP_LIQUIDATOR_HTTP_PORT:-0}:9310"
     networks:
       - default
       - traefik
