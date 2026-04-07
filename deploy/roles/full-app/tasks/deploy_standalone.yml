@@ -22,7 +22,7 @@
       enabled: "{{ perps_bot_enabled and inventory_hostname == perps_bot_host }}"
     - image: "ghcr.io/left-curve/bots/perps-liquidator:{{ perp_liquidator_tag }}"
       name: perp-liquidator
-      enabled: "{{ inventory_hostname == perp_liquidator_host }}"
+      enabled: "{{ inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default([])) }}"
   when: item.enabled | bool
   register: ghcr_check
   ignore_errors: true

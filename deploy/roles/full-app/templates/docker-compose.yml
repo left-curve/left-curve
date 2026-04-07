@@ -303,7 +303,8 @@ services:
       - ./perps-bot/config.json:/root/.dango-perps/config.json
 {% endif %}
 
-{% if inventory_hostname == perp_liquidator_host %}
+{% set liq_hosts = groups['perp-liquidator-' ~ dango_network] | default([]) %}
+{% if inventory_hostname in liq_hosts %}
   perp-liquidator:
     image: ghcr.io/left-curve/bots/perps-liquidator:${PERP_LIQUIDATOR_TAG:-latest}
     labels:
@@ -316,13 +317,13 @@ services:
     env_file:
       - ./perp-liquidator/.env
     ports:
-      - "${WIREGUARD_IP}:${PERP_LIQUIDATOR_HTTP_PORT:-0}:9310"
-      - "${TAILSCALE_IP}:${PERP_LIQUIDATOR_HTTP_PORT:-0}:9310"
+      - "${WIREGUARD_IP}:{{ perp_liquidator_http_port }}:{{ perp_liquidator_http_port }}"
+      - "${TAILSCALE_IP}:{{ perp_liquidator_http_port }}:{{ perp_liquidator_http_port }}"
     networks:
       - default
       - traefik
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9310/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:{{ perp_liquidator_http_port }}/health"]
       interval: 10s
       timeout: 5s
       retries: 3

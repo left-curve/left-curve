@@ -1,54 +1,71 @@
 ---
 dex_bot_host: "{{ ansible_play_hosts_all | first }}"
 perps_bot_host: "{{ ansible_play_hosts_all | first }}"
-perp_liquidator_host: "{{ ansible_play_hosts_all | first }}"
 
-# Per-network non-secret configuration for perp-liquidator
+# Per-network non-secret configuration for perp-liquidator.
+# Each network has a shared base config and a list of instances.
+# Per-instance fields: name, liquidation_delay_blocks.
 perp_liquidator_config:
   devnet:
-    name: "liquidator-devnet"
     http_url: "http://dango:8080"
     liquidation_cooldown: 20
-    liquidation_delay_blocks: 0
     event_driven: "true"
     query_timeout: 1
     query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 10
+    notification_timeout: 1
     frontend_url: "https://dev.dango.exchange"
+    instances:
+      - name: "devnet-1"
+        liquidation_delay_blocks: 0
+      - name: "devnet-2"
+        liquidation_delay_blocks: 5
   testnet:
-    name: "liquidator-testnet"
     http_url: "http://dango:8080"
     liquidation_cooldown: 20
-    liquidation_delay_blocks: 0
     event_driven: "true"
     query_timeout: 1
     query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 10
+    notification_timeout: 1
     frontend_url: "https://test.dango.exchange"
+    instances:
+      - name: "testnet-1"
+        liquidation_delay_blocks: 0
+      - name: "testnet-2"
+        liquidation_delay_blocks: 5
   mainnet:
-    name: "liquidator-mainnet"
     http_url: "http://dango:8080"
     liquidation_cooldown: 5
-    liquidation_delay_blocks: 0
     event_driven: "true"
     query_timeout: 1
     query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 10
+    notification_timeout: 1
     frontend_url: "https://dango.exchange"
+    instances:
+      - name: "mainnet-1"
+        liquidation_delay_blocks: 0
+      - name: "mainnet-2"
+        liquidation_delay_blocks: 2
+      - name: "mainnet-3"
+        liquidation_delay_blocks: 5
+      - name: "mainnet-4"
+        liquidation_delay_blocks: 10
   previewnet:
-    name: "liquidator-previewnet"
     http_url: "http://dango:8080"
     liquidation_cooldown: 20
-    liquidation_delay_blocks: 0
     event_driven: "true"
     query_timeout: 1
     query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 10
+    notification_timeout: 1
     frontend_url: ""
+    instances:
+      - name: "PR-1"
+        liquidation_delay_blocks: 0
+      - name: "PR-2"
+        liquidation_delay_blocks: 5
 
 perp_liquidator_http_port: 9310
 postgres_host: "postgres"

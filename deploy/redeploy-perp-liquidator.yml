@@ -14,6 +14,16 @@
       set_fact:
         deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
   tasks:
+    - name: Set perp-liquidator instance index
+      set_fact:
+        perp_liquidator_instance_index: >-
+          {{ (groups['perp-liquidator-' ~ dango_network] | default([])).index(inventory_hostname) }}
+      when: inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default([]))
+
+    - name: Skip hosts without a liquidator instance
+      meta: end_host
+      when: perp_liquidator_instance_index is not defined
+
     - name: Read current deploy
       include_role:
         name: full-app

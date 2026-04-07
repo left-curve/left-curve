@@ -38,7 +38,7 @@ add-passwords:
 # ---------------------------------- Secrets -----------------------------------
 
 edit-secrets:
-  ansible-vault edit group_vars/all/vault.yml
+  EDITOR="code --wait" ansible-vault edit group_vars/all/vault.yml
 
 edit-hyperlane-secrets:
   ansible-vault edit group_vars/hyperlane/vault.yml
