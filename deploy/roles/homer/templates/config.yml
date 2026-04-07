@@ -132,6 +132,13 @@ services:
         url: "http://ovh2:26657"
         target: "_blank"
 
+      - name: "Perp Liquidator"
+        icon: "fas fa-robot"
+        subtitle: "Port 9310"
+        tag: "testnet"
+        url: "http://hetzner2:9310/status"
+        target: "_blank"
+
   - name: "Devnet"
     icon: "fas fa-code"
     items:
@@ -171,6 +178,13 @@ services:
         subtitle: "Port 26657"
         tag: "devnet"
         url: "http://ovh1:26657"
+        target: "_blank"
+
+      - name: "Perp Liquidator"
+        icon: "fas fa-robot"
+        subtitle: "Port 9310"
+        tag: "devnet"
+        url: "http://ovh1:9310/status"
         target: "_blank"
 
   - name: "Logging Stack"
@@ -347,6 +361,20 @@ services:
         subtitle: "Port 26660"
         tag: "exporter"
         url: "http://ovh1:26660"
+        target: "_blank"
+
+      - name: "Testnet Perp Liquidator"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/prometheus.png"
+        subtitle: "Port 9310"
+        tag: "exporter"
+        url: "http://hetzner2:9310/metrics"
+        target: "_blank"
+
+      - name: "Devnet Perp Liquidator"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/prometheus.png"
+        subtitle: "Port 9310"
+        tag: "exporter"
+        url: "http://ovh1:9310/metrics"
         target: "_blank"
 
   - name: "Public Endpoints"
