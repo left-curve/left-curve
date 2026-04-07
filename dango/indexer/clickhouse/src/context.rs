@@ -4,7 +4,8 @@ use {
     crate::{
         entities::{pair_price::PairPrice, perps_pair_price::PerpsPairPrice, trade::Trade},
         indexer::{
-            candles::cache::CandleCache, perps_candles::cache::PerpsCandleCache,
+            candles::cache::CandleCache, pair_stats::cache::PairStatsCache,
+            perps_candles::cache::PerpsCandleCache, perps_pair_stats::cache::PerpsPairStatsCache,
             trades::cache::TradeCache,
         },
     },
@@ -31,6 +32,8 @@ pub struct Context {
     pub candle_cache: Arc<RwLock<CandleCache>>,
     pub perps_candle_cache: Arc<RwLock<PerpsCandleCache>>,
     pub trade_cache: Arc<RwLock<TradeCache>>,
+    pub pair_stats_cache: Arc<RwLock<PairStatsCache>>,
+    pub perps_pair_stats_cache: Arc<RwLock<PerpsPairStatsCache>>,
 }
 
 impl Context {
@@ -53,6 +56,8 @@ impl Context {
             candle_cache: Default::default(),
             perps_candle_cache: Default::default(),
             trade_cache: Default::default(),
+            pair_stats_cache: Default::default(),
+            perps_pair_stats_cache: Default::default(),
         }
     }
 
@@ -84,6 +89,8 @@ impl Context {
             candle_cache: Default::default(),
             perps_candle_cache: Default::default(),
             trade_cache: Default::default(),
+            pair_stats_cache: Default::default(),
+            perps_pair_stats_cache: Default::default(),
         }
     }
 
@@ -109,6 +116,16 @@ impl Context {
         trade_cache.preload(self.clickhouse_client()).await?;
         drop(trade_cache);
 
+        let mut pair_stats_cache = self.pair_stats_cache.write().await;
+        pair_stats_cache.refresh(self.clickhouse_client()).await?;
+        drop(pair_stats_cache);
+
+        let mut perps_pair_stats_cache = self.perps_pair_stats_cache.write().await;
+        perps_pair_stats_cache
+            .refresh(self.clickhouse_client())
+            .await?;
+        drop(perps_pair_stats_cache);
+
         Ok(())
     }
 
@@ -132,6 +149,8 @@ impl Context {
             candle_cache: self.candle_cache,
             perps_candle_cache: self.perps_candle_cache,
             trade_cache: self.trade_cache,
+            pair_stats_cache: self.pair_stats_cache,
+            perps_pair_stats_cache: self.perps_pair_stats_cache,
         }
     }
 
@@ -160,6 +179,8 @@ impl Context {
             candle_cache: self.candle_cache,
             perps_candle_cache: self.perps_candle_cache,
             trade_cache: self.trade_cache,
+            pair_stats_cache: self.pair_stats_cache,
+            perps_pair_stats_cache: self.perps_pair_stats_cache,
         })
     }
 
