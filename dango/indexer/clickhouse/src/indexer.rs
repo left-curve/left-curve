@@ -12,7 +12,9 @@ use {
 };
 
 pub mod candles;
+pub mod pair_stats;
 pub mod perps_candles;
+pub mod perps_pair_stats;
 pub mod trades;
 
 pub struct Indexer {
@@ -153,6 +155,36 @@ impl grug_app::Indexer for Indexer {
             Self::store_perps_candles(&app_cfg.addresses.perps, &ctx, &context)
         )
         .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+
+        // Refresh pair-stats caches so subscription consumers read from memory.
+        let clickhouse_client = context.clickhouse_client();
+        let (pair_res, perps_res) = tokio::join!(
+            async {
+                context
+                    .pair_stats_cache
+                    .write()
+                    .await
+                    .refresh(clickhouse_client)
+                    .await
+            },
+            async {
+                context
+                    .perps_pair_stats_cache
+                    .write()
+                    .await
+                    .refresh(clickhouse_client)
+                    .await
+            },
+        );
+
+        if let Err(_err) = pair_res {
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = %_err, block_height, "Failed to refresh pair stats cache");
+        }
+        if let Err(_err) = perps_res {
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = %_err, block_height, "Failed to refresh perps pair stats cache");
+        }
 
         #[cfg(feature = "metrics")]
         histogram!("indexer.clickhouse.post_indexing.duration")
