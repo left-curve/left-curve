@@ -847,6 +847,13 @@
                   "precision": 6
                 }
               },
+              "perp/btcusd": {
+                "pyth": {
+                  "channel": "real_time",
+                  "id": 1,
+                  "precision": 8
+                }
+              },
               "perp/ethusd": {
                 "pyth": {
                   "channel": "real_time",
@@ -870,6 +877,23 @@
           "label": "dango/perps",
           "msg": {
             "pair_params": {
+              "perp/btcusd": {
+                "bucket_sizes": [
+                  "1",
+                  "10",
+                  "100"
+                ],
+                "impact_size": "50000",
+                "initial_margin_ratio": "0.05",
+                "maintenance_margin_ratio": "0.025",
+                "max_abs_funding_rate": "0.01667",
+                "max_abs_oi": "500",
+                "min_order_size": "50",
+                "tick_size": "1",
+                "vault_half_spread": "0.0005",
+                "vault_liquidity_weight": "4",
+                "vault_max_quote_size": "200"
+              },
               "perp/ethusd": {
                 "bucket_sizes": [
                   "1",
@@ -883,9 +907,9 @@
                 "max_abs_oi": "1000000",
                 "min_order_size": "0",
                 "tick_size": "1",
-                "vault_half_spread": "0",
-                "vault_liquidity_weight": "0",
-                "vault_max_quote_size": "0"
+                "vault_half_spread": "0.0006",
+                "vault_liquidity_weight": "3",
+                "vault_max_quote_size": "2000"
               }
             },
             "param": {
@@ -910,7 +934,7 @@
                 "tiers": {}
               },
               "vault_cooldown_period": "86400",
-              "vault_total_weight": "0"
+              "vault_total_weight": "7"
             }
           },
           "salt": "ZGFuZ28vcGVycHM="
