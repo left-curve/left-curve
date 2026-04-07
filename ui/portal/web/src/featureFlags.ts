@@ -1,11 +1,4 @@
-const FEATURE_IDS = [
-  "points",
-  "referral",
-  "stopLoss",
-  "triggerOrders",
-  "orderTimestamp",
-  "perpsOriginalSize",
-] as const;
+const FEATURE_IDS = [] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
 

@@ -167,9 +167,13 @@ export type {
   PerpsLiquidityDepth,
   PerpsLiquidityDepthResponse,
   PerpsCancelOrderRequest,
+  PerpsCancelConditionalOrderRequest,
   PerpsQueryMsg,
   GetPerpsQueryMsg,
   PerpsVaultState,
+  TriggerDirection,
+  ChildOrder,
+  ConditionalOrder,
 } from "./perps.js";
 
 export type {

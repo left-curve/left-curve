@@ -576,14 +576,7 @@ const Spread: React.FC<SpreadProps> = ({ base, quote, mode }) => {
     return `${formatNumber(+spreadValue, formatNumberOptions)} (${formatNumber(spreadPercent.toFixed(), formatNumberOptions)}%)`;
   }, [spread, spreadPercent, mode, base.decimals, quote.decimals, formatNumberOptions]);
 
-  const midPriceDisplay = useMemo(() => {
-    if (!currentPrice) return null;
-    return mode === "perps"
-      ? currentPrice
-      : Decimal(currentPrice)
-          .mul(Decimal(10).pow(base.decimals - quote.decimals))
-          .toFixed();
-  }, [currentPrice, mode, base.decimals, quote.decimals]);
+  const midPriceDisplay = currentPrice ?? null;
 
   return (
     <div className="hidden lg:flex w-full py-1 items-center justify-between relative order-2 px-4">

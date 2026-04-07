@@ -267,6 +267,16 @@ export {
   type CancelPerpsOrderParameters,
   type CancelPerpsOrderReturnType,
   cancelPerpsOrder,
+  type SubmitConditionalOrderParameters,
+  type SubmitConditionalOrderReturnType,
+  submitConditionalOrder,
+  type SubmitConditionalOrderInput,
+  type SubmitConditionalOrdersParameters,
+  type SubmitConditionalOrdersReturnType,
+  submitConditionalOrders,
+  type CancelConditionalOrderParameters,
+  type CancelConditionalOrderReturnType,
+  cancelConditionalOrder,
 } from "./perps/index.js";
 
 /* -------------------------------------------------------------------------- */

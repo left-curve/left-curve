@@ -6,6 +6,7 @@ import type { Address, Transport } from "@left-curve/sdk/types";
 import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
 import type {
   AppConfig,
+  ChildOrder,
   DangoClient,
   PerpsOrderKind,
   Signer,
@@ -18,6 +19,8 @@ export type SubmitPerpsOrderParameters = {
   size: string;
   kind: PerpsOrderKind;
   reduceOnly: boolean;
+  tp?: ChildOrder;
+  sl?: ChildOrder;
 };
 
 export type SubmitPerpsOrderReturnType = SignAndBroadcastTxReturnType;
@@ -26,7 +29,7 @@ export async function submitPerpsOrder<transport extends Transport>(
   client: DangoClient<transport, Signer>,
   parameters: SubmitPerpsOrderParameters,
 ): SubmitPerpsOrderReturnType {
-  const { sender, pairId, size, kind, reduceOnly } = parameters;
+  const { sender, pairId, size, kind, reduceOnly, tp, sl } = parameters;
 
   const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
   const { addresses } = await getAppConfigAction<AppConfig>({});
@@ -38,6 +41,8 @@ export async function submitPerpsOrder<transport extends Transport>(
         size,
         kind,
         reduceOnly,
+        ...(tp ? { tp: { triggerPrice: tp.triggerPrice, maxSlippage: tp.maxSlippage } } : {}),
+        ...(sl ? { sl: { triggerPrice: sl.triggerPrice, maxSlippage: sl.maxSlippage } } : {}),
       },
     },
   };
@@ -55,19 +60,29 @@ export async function submitPerpsOrder<transport extends Transport>(
         ],
       };
 
+  const childOrderType = [
+    { name: "triggerPrice", type: "string" },
+    { name: "maxSlippage", type: "string" },
+  ];
+
+  const submitOrderFields = [
+    { name: "pairId", type: "string" },
+    { name: "size", type: "string" },
+    { name: "kind", type: "Kind" },
+    { name: "reduceOnly", type: "bool" },
+    ...(tp ? [{ name: "tp", type: "ChildOrder" }] : []),
+    ...(sl ? [{ name: "sl", type: "ChildOrder" }] : []),
+  ];
+
   const typedData: TypedDataParameter = {
     type: [{ name: "trade", type: "Trade" }],
     extraTypes: {
       Trade: [{ name: "submitOrder", type: "SubmitOrder" }],
-      SubmitOrder: [
-        { name: "pairId", type: "string" },
-        { name: "size", type: "string" },
-        { name: "kind", type: "Kind" },
-        { name: "reduceOnly", type: "bool" },
-      ],
+      SubmitOrder: submitOrderFields,
       Kind: kindTypedData.kind,
       ...(kindTypedData.Market ? { Market: kindTypedData.Market } : {}),
       ...(kindTypedData.Limit ? { Limit: kindTypedData.Limit } : {}),
+      ...(tp || sl ? { ChildOrder: childOrderType } : {}),
     },
   };
 

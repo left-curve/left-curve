@@ -11,6 +11,7 @@ import {
   usePerpsSubmission,
   perpsUserStateStore,
   perpsUserStateExtendedStore,
+  perpsTradeSettingsStore,
   useAllPerpsPairStats,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -40,8 +41,8 @@ import { Sheet } from "react-modal-sheet";
 import { Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
+import { useTPSLPriceSync } from "./useTPSLPriceSync";
 
-import { isFeatureEnabled } from "~/featureFlags";
 import type React from "react";
 
 const InfoRow: React.FC<{
@@ -220,7 +221,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           <Input
             placeholder="0"
             isDisabled={!isConnected || submission.isPending}
-            label="Price"
+            label={m["dex.protrade.spot.price"]()}
             {...register("price", { mask: numberMask })}
             startText="right"
             endContent={quoteCoin.symbol}
@@ -353,12 +354,67 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return ratio > 0 ? Math.floor(1 / ratio) : 100;
   }, [params]);
 
+  const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[perpsPairId]);
+  const selectedLeverage = useMemo(() => {
+    if (!storedLeverage) return maxLeverage;
+    return Math.min(Math.max(Math.round(storedLeverage), 1), maxLeverage);
+  }, [storedLeverage, maxLeverage]);
+
+  const takerFeeRate = useMemo(() => {
+    const rate = Number(appConfig?.perpsParam?.takerFeeRates?.base ?? 0);
+    return Number.isFinite(rate) ? rate : 0;
+  }, [appConfig?.perpsParam]);
+
   const [tpslEnabled, setTpslEnabled] = useState(false);
+  const [reduceOnly, setReduceOnly] = useState(false);
 
   const { register, setValue, inputs, errors } = controllers;
   const size = inputs.size?.value || "0";
   const priceValue = inputs.price?.value || "0";
+  const tpPrice = inputs.tpPrice?.value || "";
+  const tpPercent = inputs.tpPercent?.value || "";
+  const slPrice = inputs.slPrice?.value || "";
+  const slPercent = inputs.slPercent?.value || "";
   const hasErrors = Object.keys(errors).length > 0;
+
+  const referencePrice = useMemo(() => {
+    if (operation === "limit" && Number(priceValue) > 0) return Number(priceValue);
+    return currentPrice;
+  }, [operation, priceValue, currentPrice]);
+
+  useTPSLPriceSync({
+    setValue,
+    tpPrice,
+    tpPercent,
+    slPrice,
+    slPercent,
+    referencePrice,
+    isBuyDirection: action === "buy",
+    enabled: tpslEnabled,
+  });
+
+  const tpslError = useMemo(() => {
+    if (!tpslEnabled) return null;
+    const tp = Number(tpPrice);
+    const sl = Number(slPrice);
+    if (tp > 0 && referencePrice > 0) {
+      if (action === "buy" && tp <= referencePrice) {
+        return m["dex.protrade.perps.errors.tpAboveForLongs"]();
+      }
+      if (action === "sell" && tp >= referencePrice) {
+        return m["dex.protrade.perps.errors.tpBelowForShorts"]();
+      }
+    }
+    if (sl > 0 && referencePrice > 0) {
+      if (action === "buy" && sl >= referencePrice) {
+        return m["dex.protrade.perps.errors.slBelowForLongs"]();
+      }
+      if (action === "sell" && sl <= referencePrice) {
+        return m["dex.protrade.perps.errors.slAboveForShorts"]();
+      }
+    }
+    return null;
+  }, [tpPrice, slPrice, action, referencePrice, tpslEnabled]);
 
   const changeSizeCoin = useCallback((denom: string) => {
     setSizeCoinDenom(denom);
@@ -367,8 +423,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const maxSizeAmount = usePerpsMaxSize({
     availableMargin,
-    leverage: maxLeverage,
+    leverage: selectedLeverage,
     currentPrice,
+    takerFeeRate,
     isBaseSize,
   });
 
@@ -407,6 +464,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     operation,
     sizeValue,
     priceValue,
+    tpPrice: tpslEnabled && Number(tpPrice) > 0 ? tpPrice : undefined,
+    slPrice: tpslEnabled && Number(slPrice) > 0 ? slPrice : undefined,
+    reduceOnly,
     controllers,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
@@ -425,21 +485,21 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     const s = Number(size);
     if (s <= 0) return null;
     const notional = isBaseSize ? s * currentPrice : s;
-    return notional / maxLeverage;
-  }, [size, isBaseSize, currentPrice, maxLeverage]);
+    return notional / selectedLeverage;
+  }, [size, isBaseSize, currentPrice, selectedLeverage]);
 
   const estLiquidationPrice = useMemo(() => {
     const s = Number(size);
-    if (s <= 0 || maxLeverage <= 1) return null;
+    if (s <= 0 || selectedLeverage <= 1) return null;
     const entryPrice =
       operation === "limit" && Number(priceValue) > 0 ? Number(priceValue) : currentPrice;
     if (entryPrice <= 0) return null;
 
     const mmr = Number(params.maintenanceMarginRatio ?? 0);
     return action === "buy"
-      ? (entryPrice * (1 - 1 / maxLeverage)) / (1 - mmr)
-      : (entryPrice * (1 + 1 / maxLeverage)) / (1 + mmr);
-  }, [size, maxLeverage, action, operation, priceValue, currentPrice, params]);
+      ? (entryPrice * (1 - 1 / selectedLeverage)) / (1 - mmr)
+      : (entryPrice * (1 + 1 / selectedLeverage)) / (1 + mmr);
+  }, [size, selectedLeverage, action, operation, priceValue, currentPrice, params]);
 
   const minSizeAmount = useMemo(() => {
     if (!params.minOrderSize) return 0;
@@ -450,12 +510,27 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const currentPositionSize = position?.size ?? "0";
 
+  const sizeRangeValue = useMemo(() => {
+    if (maxSizeAmount === 0) return 0;
+    return Math.min(100, (Number(size) / maxSizeAmount) * 100);
+  }, [maxSizeAmount, size]);
+
+  const onSizeRangeChange = useCallback(
+    (percent: number) => {
+      const clamped = Math.min(100, Math.max(0, percent));
+      const sizeVal = Decimal(maxSizeAmount).mul(Decimal(clamped).div(100));
+      const decimals = sizeVal.toFixed().split(".")[1]?.length || 0;
+      setValue("size", sizeVal.toFixed(decimals < 19 ? decimals : 18));
+    },
+    [maxSizeAmount, setValue],
+  );
+
   return (
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
       <div className="w-full flex flex-col gap-4 px-4">
         <div className="flex flex-col gap-2">
           <InfoRow
-            label="Available to Trade"
+            label={m["dex.protrade.perps.availableToTrade"]()}
             value={
               <>
                 <FormattedNumber number={availableMargin.toString()} as="span" /> USDC
@@ -463,7 +538,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             }
           />
           <InfoRow
-            label="Current Position"
+            label={m["dex.protrade.perps.currentPosition"]()}
             value={
               <>
                 <FormattedNumber number={currentPositionSize} as="span" /> {baseCoin.symbol}
@@ -477,10 +552,12 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           availableAmount={maxSizeAmount.toString()}
           register={register}
           setValue={setValue}
-          validationMessage="Exceeds available margin"
-          label="Size"
+          validationMessage={m["dex.protrade.perps.errors.exceedsMargin"]()}
+          label={m["dex.protrade.perps.size"]()}
           minSizeAmount={minSizeAmount}
-          minSizeMessage={`Min order size: $${params.minOrderSize}`}
+          minSizeMessage={m["dex.protrade.perps.errors.minOrderSize"]({
+            minOrderSize: params.minOrderSize,
+          })}
           hideMaxControls
           startContent={
             <CoinSelector
@@ -491,71 +568,100 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             />
           }
         />
+        <Range
+          isDisabled={!isConnected || submission.isPending || maxSizeAmount === 0}
+          minValue={0}
+          maxValue={100}
+          step={1}
+          defaultValue={0}
+          withInput
+          inputEndContent="%"
+          showSteps={[
+            { value: 0, label: "0%" },
+            { value: 25, label: "25%" },
+            { value: 50, label: "50%" },
+            { value: 75, label: "75%" },
+            { value: 100, label: "100%" },
+          ]}
+          value={sizeRangeValue}
+          onChange={onSizeRangeChange}
+        />
         {operation === "limit" ? (
           <Input
             placeholder="0"
             isDisabled={!isConnected || submission.isPending}
-            label="Price"
+            label={m["dex.protrade.perps.price"]()}
             {...register("price", { mask: numberMask })}
             startText="right"
             endContent="USD"
           />
         ) : null}
-        {isFeatureEnabled("stopLoss") ? (
-          <>
-            <Checkbox
-              radius="md"
-              size="sm"
-              label="Take Profit/Stop Loss"
-              checked={tpslEnabled}
-              onChange={() => setTpslEnabled(!tpslEnabled)}
-            />
-            {tpslEnabled ? (
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  placeholder="0"
-                  label="TP Price"
-                  {...register("tpPrice", { mask: numberMask })}
-                />
-                <Input
-                  placeholder="0"
-                  label="Gain"
-                  endContent="%"
-                  {...register("tpPercent", { mask: numberMask })}
-                />
-                <Input
-                  placeholder="0"
-                  label="SL Price"
-                  {...register("slPrice", { mask: numberMask })}
-                />
-                <Input
-                  placeholder="0"
-                  label="Loss"
-                  endContent="%"
-                  {...register("slPercent", { mask: numberMask })}
-                />
-              </div>
+        <Checkbox
+          radius="md"
+          size="sm"
+          isDisabled={!isConnected || submission.isPending}
+          label={m["dex.protrade.perps.reduceOnly"]()}
+          checked={reduceOnly}
+          onChange={() => setReduceOnly((prev) => !prev)}
+        />
+        <Checkbox
+          radius="md"
+          size="sm"
+          isDisabled={!isConnected || submission.isPending}
+          label={m["dex.protrade.perps.tpsl"]()}
+          checked={tpslEnabled}
+          onChange={() => setTpslEnabled((prev) => !prev)}
+        />
+        {tpslEnabled ? (
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                placeholder="0"
+                label={m["dex.protrade.perps.tpPrice"]()}
+                {...register("tpPrice", { mask: numberMask })}
+              />
+              <Input
+                placeholder="0"
+                label={m["dex.protrade.perps.gain"]()}
+                endContent="%"
+                {...register("tpPercent", { mask: numberMask })}
+              />
+              <Input
+                placeholder="0"
+                label={m["dex.protrade.perps.slPrice"]()}
+                {...register("slPrice", { mask: numberMask })}
+              />
+              <Input
+                placeholder="0"
+                label={m["dex.protrade.perps.loss"]()}
+                endContent="%"
+                {...register("slPercent", { mask: numberMask })}
+              />
+            </div>
+            {tpslError ? (
+              <p className="diatype-xs-regular text-utility-error-600">{tpslError}</p>
             ) : null}
-          </>
+          </div>
         ) : null}
       </div>
       <div className="flex flex-col gap-4 pb-4 lg:pb-6">
         <TradeSubmitButton
           action={action}
-          label={`${action === "buy" ? "Buy" : "Sell"} ${baseCoin.symbol}`}
+          label={`${m["dex.protrade.perps.triggerAction"]({ action })} ${baseCoin.symbol}`}
           isDisabled={
             Decimal(size).lte(0) ||
             (operation === "limit" && Decimal(priceValue).lte(0)) ||
-            hasErrors
+            hasErrors ||
+            tpslError !== null
           }
           isPending={submission.isPending}
           onSubmit={() => submission.mutateAsync()}
         />
         <div className="flex flex-col gap-1 px-4">
-          <InfoRow label="Order Value" value={orderValue} />
+          <InfoRow label={m["dex.protrade.perps.orderValue"]()} value={orderValue} />
           {requiredMargin !== null ? (
             <InfoRow
-              label="Required Margin"
+              label={m["dex.protrade.perps.requiredMargin"]()}
               value={
                 <FormattedNumber
                   number={requiredMargin.toString()}
@@ -567,7 +673,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           ) : null}
           {estLiquidationPrice !== null ? (
             <InfoRow
-              label="Est. Liq. Price"
+              label={m["dex.protrade.perps.estLiqPrice"]()}
               value={
                 <FormattedNumber
                   number={estLiquidationPrice.toString()}
@@ -577,19 +683,22 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
               }
             />
           ) : null}
-          {operation === "market" ? <InfoRow label="Slippage" value="Max: 0.1%" /> : null}
-          <InfoRow label="Fees" value={feesDisplay} />
+          {operation === "market" ? (
+            <InfoRow label={m["dex.protrade.perps.slippage"]()} value="Max: 0.1%" />
+          ) : null}
+          <InfoRow label={m["dex.protrade.perps.fees"]()} value={feesDisplay} />
         </div>
         <div className="flex flex-col gap-1 px-4 border-t border-outline-tertiary-rice pt-3">
           <InfoRow
-            label="Account Equity"
+            label={m["dex.protrade.perps.accountEquity"]()}
             value={
               <FormattedNumber number={equity} formatOptions={{ currency: "USD" }} as="span" />
             }
           />
-          <InfoRow label="Max Leverage" value={`${maxLeverage}x`} />
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-ink-tertiary-500">Unrealized PnL</p>
+            <p className="diatype-xs-regular text-ink-tertiary-500">
+              {m["dex.protrade.perps.unrealizedPnl"]()}
+            </p>
             <p
               className={twMerge(
                 "diatype-xs-medium",
@@ -609,6 +718,61 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   );
 };
 
+const PerpsTopPills: React.FC = () => {
+  const { showModal } = useApp();
+  const { data: appConfig } = useAppConfig();
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
+  const { baseCoin, quoteCoin } = useTradeCoins();
+
+  const perpsPairId = getPerpsPairId();
+  const params = appConfig.perpsPairs[perpsPairId];
+
+  const maxLeverage = useMemo(() => {
+    const ratio = Number(params?.initialMarginRatio);
+    return ratio > 0 ? Math.floor(1 / ratio) : 100;
+  }, [params]);
+
+  const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[perpsPairId]);
+  const selectedLeverage = useMemo(() => {
+    if (!storedLeverage) return maxLeverage;
+    return Math.min(Math.max(Math.round(storedLeverage), 1), maxLeverage);
+  }, [storedLeverage, maxLeverage]);
+
+  const marginMode = perpsTradeSettingsStore((s) => s.marginModeByPair[perpsPairId]) ?? "cross";
+
+  const pairSymbol = `${baseCoin.symbol}-${quoteCoin.symbol}`;
+
+  const openMarginModeModal = useCallback(() => {
+    showModal(Modals.PerpsMarginMode, { perpsPairId, pairSymbol });
+  }, [showModal, perpsPairId, pairSymbol]);
+
+  const openAdjustLeverageModal = useCallback(() => {
+    showModal(Modals.PerpsAdjustLeverage, {
+      perpsPairId,
+      baseSymbol: baseCoin.symbol,
+      maxLeverage,
+    });
+  }, [showModal, perpsPairId, baseCoin.symbol, maxLeverage]);
+
+  return (
+    <div className="w-full flex items-center gap-2 px-4">
+      <Button
+        variant="secondary"
+        size="sm"
+        radius="sm"
+        fullWidth
+        onClick={openMarginModeModal}
+        className="capitalize"
+      >
+        {marginMode}
+      </Button>
+      <Button variant="secondary" size="sm" radius="sm" fullWidth onClick={openAdjustLeverageModal}>
+        {selectedLeverage}x
+      </Button>
+    </div>
+  );
+};
+
 const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
@@ -621,6 +785,7 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
+      {mode === "perps" ? <PerpsTopPills /> : null}
       <div className="w-full flex items-center justify-between px-4 gap-2">
         <Tabs
           layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}

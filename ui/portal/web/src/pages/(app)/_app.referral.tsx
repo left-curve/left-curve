@@ -1,9 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { NotFound } from "~/components/foundation/NotFound";
 import { ReferralCampaign } from "~/components/referral/ReferralCampaign";
-import { isFeatureEnabled } from "~/featureFlags";
 
 export const Route = createFileRoute("/(app)/_app/referral")({
   component: RouteComponent,
@@ -15,8 +13,6 @@ export const Route = createFileRoute("/(app)/_app/referral")({
 function RouteComponent() {
   const { tab } = Route.useSearch();
   const navigate = useNavigate();
-
-  if (!isFeatureEnabled("referral")) return <NotFound />;
 
   const handleTabChange = (newTab: "affiliate" | "trader") => {
     navigate({ search: { tab: newTab }, replace: true });

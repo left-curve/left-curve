@@ -1,9 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { NotFound } from "~/components/foundation/NotFound";
 import { PointsCampaign } from "~/components/points/PointsCampaign";
-import { isFeatureEnabled } from "~/featureFlags";
 
 export const Route = createFileRoute("/(app)/_app/points")({
   component: RouteComponent,
@@ -15,8 +13,6 @@ export const Route = createFileRoute("/(app)/_app/points")({
 function RouteComponent() {
   const { tab } = Route.useSearch();
   const navigate = useNavigate();
-
-  if (!isFeatureEnabled("points")) return <NotFound />;
 
   const handleTabChange = (newTab: "profile" | "rewards" | "leaderboard") => {
     navigate({ search: { tab: newTab }, replace: true });

@@ -3,6 +3,11 @@ export { createEventBus } from "./createEventBus.js";
 export { createBlockStore, type BlockGuardedState } from "./hooks/createBlockStore.js";
 export { TradePairStore, type TradePairState } from "./stores/tradePairStore.js";
 export { tradeInfoStore, type TradeInfoState } from "./stores/tradeInfoStore.js";
+export {
+  perpsTradeSettingsStore,
+  type PerpsTradeSettingsState,
+  type MarginMode,
+} from "./stores/perpsTradeSettingsStore.js";
 
 export { WebCryptoECDH } from "./ecdh.js";
 

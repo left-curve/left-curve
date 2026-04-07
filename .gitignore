@@ -77,6 +77,7 @@ dango/scripts/examples/*.json
 dango/scripts/examples/*.tar
 dango/scripts/examples/*.tar.gz
 !pyth/client/testdata/
+.playwright-mcp
 
 # LocalDango
 localdango/**/configs/cometbft/config/addrbook.json

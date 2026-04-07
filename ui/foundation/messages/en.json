@@ -390,6 +390,57 @@
       "title": "Close Order",
       "description": "This will close the order.",
       "action": "Confirm Close Order"
+    },
+    "tpsl": {
+      "title": "TP/SL for Position",
+      "coin": "Coin",
+      "position": "Position",
+      "long": "Long",
+      "short": "Short",
+      "entryPrice": "Entry Price",
+      "markPrice": "Mark Price",
+      "tpPrice": "TP Price",
+      "gain": "Gain",
+      "slPrice": "SL Price",
+      "loss": "Loss",
+      "expectedPl": "Expected P/L:",
+      "zeroUsd": "0.00 USD",
+      "configureAmount": "Configure Amount",
+      "confirm": "Confirm",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "add": "Add",
+      "takeProfit": "Take Profit",
+      "stopLoss": "Stop Loss",
+      "priceAbove": "Price above",
+      "priceBelow": "Price below",
+      "noTakeProfitSet": "No Take Profit set",
+      "noStopLossSet": "No Stop Loss set",
+      "tpslUpdated": "TP/SL updated successfully",
+      "orderCanceled": "Conditional order canceled",
+      "helpDefault": "By default take-profit and stop-loss orders apply to the entire position. Take-profit and stop-loss automatically cancel after closing the position. A market order is triggered when the stop loss or take profit price is reached.",
+      "helpConfigured": "If the order size is configured above, the TP/SL order will be for that size no matter how the position changes in the future.",
+      "errors": {
+        "tpAboveForLongs": "TP must be above entry price for longs",
+        "tpBelowForShorts": "TP must be below entry price for shorts",
+        "slBelowForLongs": "SL must be below entry price for longs",
+        "slAboveForShorts": "SL must be above entry price for shorts"
+      }
+    },
+    "marginMode": {
+      "title": "{symbol} Margin Mode",
+      "cross": "Cross",
+      "crossDescription": "All cross positions share the same cross margin as collateral. In the event of liquidation, your cross margin balance and any remaining open positions under assets in this mode may be forfeited.",
+      "isolated": "Isolated (Coming Soon)",
+      "isolatedDescription": "This feature is currently under development. We're working hard to bring it to you soon.",
+      "confirm": "Confirm"
+    },
+    "adjustLeverage": {
+      "title": "Adjust Leverage",
+      "description": "Control the leverage used for {symbol} positions. The maximum leverage is {maxLeverage}x.",
+      "subDescription": "Max position size decreases the higher your leverage.",
+      "confirm": "Confirm",
+      "warning": "Note that setting a higher leverage increases the risk of liquidation."
     }
   },
   "signin": {
@@ -1063,6 +1114,7 @@
         "noOpenOrders": "No open orders yet"
       },
       "spot": {
+        "price": "Price",
         "24hChange": "24h Change",
         "volume": "24h Volume",
         "openInterest": "Open Interest (Long / Short / Total)",
@@ -1101,6 +1153,82 @@
         "price": "Price",
         "24hChange": "24h Change",
         "volume": "Volume"
+      },
+      "perps": {
+        "availableToTrade": "Available to Trade",
+        "currentPosition": "Current Position",
+        "size": "Size",
+        "price": "Price",
+        "reduceOnly": "Reduce Only",
+        "tpsl": "Take Profit/Stop Loss",
+        "tpPrice": "TP Price",
+        "gain": "Gain",
+        "slPrice": "SL Price",
+        "loss": "Loss",
+        "orderValue": "Order Value",
+        "requiredMargin": "Required Margin",
+        "estLiqPrice": "Est. Liq. Price",
+        "slippage": "Slippage",
+        "fees": "Fees",
+        "accountEquity": "Account Equity",
+        "maxLeverage": "Max Leverage",
+        "unrealizedPnl": "Unrealized PnL",
+        "triggerAction": [
+          {
+            "declarations": ["input action"],
+            "selectors": ["action"],
+            "match": {
+              "action=buy": "Buy",
+              "action=sell": "Sell"
+            }
+          }
+        ],
+        "errors": {
+          "exceedsMargin": "Exceeds available margin",
+          "minOrderSize": "Min order size: ${minOrderSize}",
+          "tpAboveForLongs": "TP must be above reference price for longs",
+          "tpBelowForShorts": "TP must be below reference price for shorts",
+          "slBelowForLongs": "SL must be below reference price for longs",
+          "slAboveForShorts": "SL must be above reference price for shorts"
+        }
+      },
+      "positions": {
+        "title": "Positions",
+        "pair": "Pair",
+        "side": "Side",
+        "size": "Size",
+        "entryPrice": "Entry Price",
+        "markPrice": "Mark Price",
+        "pnl": "PNL",
+        "tpsl": "TP/SL",
+        "margin": "Margin",
+        "liqPrice": "Liq. Price",
+        "funding": "Funding",
+        "long": "Long",
+        "short": "Short",
+        "edit": "Edit",
+        "close": "Close",
+        "closeAll": "Close All",
+        "noOpenPositions": "No open positions"
+      },
+      "orders": {
+        "market": "Market",
+        "pair": "Pair",
+        "side": "Side",
+        "type": "Type",
+        "price": "Price",
+        "size": "Size",
+        "filled": "Filled",
+        "reduceOnly": "Reduce Only",
+        "tpsl": "TP/SL",
+        "showAllPairs": "Show all pairs",
+        "long": "Long",
+        "short": "Short",
+        "buy": "Buy",
+        "sell": "Sell",
+        "limit": "Limit",
+        "spot": "Spot",
+        "perp": "Perp"
       }
     },
     "errors": {
