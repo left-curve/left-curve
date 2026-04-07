@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect } from "react";
+import { create } from "zustand";
 import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 
@@ -25,10 +26,27 @@ export type UsePairStatsParameters = {
 
 export type UseAllPairStatsParameters = {
   enabled?: boolean;
-  refetchInterval?: number;
 };
 
 const toPairKey = (baseDenom: string, quoteDenom: string) => `${baseDenom}:${quoteDenom}`;
+
+type AllPairStatsStoreState = {
+  pairStats: NormalizedPairStats[];
+  pairStatsByKey: Record<string, NormalizedPairStats>;
+  setPairStats: (pairStats: NormalizedPairStats[]) => void;
+};
+
+export const allPairStatsStore = create<AllPairStatsStoreState>((set) => ({
+  pairStats: [],
+  pairStatsByKey: {},
+  setPairStats: (pairStats) =>
+    set({
+      pairStats,
+      pairStatsByKey: Object.fromEntries(
+        pairStats.map((stats) => [toPairKey(stats.baseDenom, stats.quoteDenom), stats]),
+      ),
+    }),
+}));
 
 function asDecimal(value: string | null | undefined) {
   if (!value) return null;
@@ -92,37 +110,20 @@ export function usePairStats(parameters: UsePairStatsParameters) {
   });
 }
 
-export function useAllPairStats(parameters: UseAllPairStatsParameters = {}) {
-  const { enabled = true, refetchInterval } = parameters;
-  const client = usePublicClient();
-  const { coins } = useConfig();
+export function useAllPairStats(parameters: UseAllPairStatsParameters = {}): void {
+  const { enabled = true } = parameters;
+  const { coins, subscriptions } = useConfig();
 
-  const query = useQuery({
-    enabled,
-    refetchInterval,
-    queryKey: ["all_pair_stats"],
-    queryFn: async () => {
-      const allPairStats = await client
-        .getAllPairStats()
-        .then((value) => value)
-        .catch(() => []);
-
-      return allPairStats.map((pairStats) => normalizePairStats(pairStats, coins.byDenom));
-    },
-  });
-
-  const statsByPair = useMemo(
-    () =>
-      Object.fromEntries(
-        (query.data ?? []).map((pairStats) => [
-          toPairKey(pairStats.baseDenom, pairStats.quoteDenom),
-          pairStats,
-        ]),
-      ),
-    [query.data],
-  );
-
-  return { ...query, statsByPair };
+  useEffect(() => {
+    if (!enabled) return;
+    const unsubscribe = subscriptions.subscribe("allPairStats", {
+      listener: ({ allPairStats }) =>
+        allPairStatsStore
+          .getState()
+          .setPairStats(allPairStats.map((stats) => normalizePairStats(stats, coins.byDenom))),
+    });
+    return () => unsubscribe();
+  }, [enabled, subscriptions, coins.byDenom]);
 }
 
 export { toPairKey };

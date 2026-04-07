@@ -27,6 +27,8 @@ import {
   useTradeCoins,
   useLiveSpotTradesState,
   usePerpsPairState,
+  useAllPairStats,
+  useAllPerpsPairStats,
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
@@ -44,7 +46,6 @@ import { SpotTradeHistory, PerpsTradeHistory } from "./TradeHistory";
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { ConditionalOrder, OrderId, PairId } from "@left-curve/dango/types";
-
 
 const [ProTradeProvider, useProTrade] = createContext<{
   controllers: ReturnType<typeof useInputs>;
@@ -71,6 +72,9 @@ const TradeSubscriptions: React.FC = () => {
   });
   usePerpsPairState({ subscribe: mode === "perps" });
   usePerpsOrdersByUser({ subscribe: mode === "perps" });
+
+  useAllPairStats();
+  useAllPerpsPairStats();
 
   return null;
 };

@@ -8,7 +8,9 @@ import type {
   IndexedBlock,
   IndexedEvent,
   IndexedTransferEvent,
+  PairStats,
   PerpsCandle,
+  PerpsPairStats,
   PerpsTrade,
   PublicClient,
   QueryRequest,
@@ -95,6 +97,16 @@ export type SubscriptionSchema = [
       interval?: number;
     };
     listener: (event: { response: QueryResponse; blockHeight: number }) => void;
+  },
+  {
+    key: "allPairStats";
+    params?: undefined;
+    listener: (event: { allPairStats: PairStats[] }) => void;
+  },
+  {
+    key: "allPerpsPairStats";
+    params?: undefined;
+    listener: (event: { allPerpsPairStats: PerpsPairStats[] }) => void;
   },
 ];
 

@@ -239,6 +239,34 @@ const queryAppSubscriptionExecutor: SubscriptionExecutor<"queryApp"> = ({
   });
 };
 
+const allPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPairStats"> = ({
+  client,
+  getListeners,
+  onError,
+}) => {
+  return client.allPairStatsSubscription({
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+    error: onError,
+  });
+};
+
+const allPerpsPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPerpsPairStats"> = ({
+  client,
+  getListeners,
+  onError,
+}) => {
+  return client.allPerpsPairStatsSubscription({
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+    error: onError,
+  });
+};
+
 const SubscriptionExecutors = {
   account: accountSubscriptionExecutor,
   block: blockSubscriptionExecutor,
@@ -251,4 +279,6 @@ const SubscriptionExecutors = {
   trades: tradesSubscriptionExecutor,
   transfer: transferSubscriptionExecutor,
   queryApp: queryAppSubscriptionExecutor,
+  allPairStats: allPairStatsSubscriptionExecutor,
+  allPerpsPairStats: allPerpsPairStatsSubscriptionExecutor,
 };

@@ -1,6 +1,6 @@
 import {
-  useAllPairStats,
-  useAllPerpsPairStats,
+  allPairStatsStore,
+  allPerpsPairStatsStore,
   useFavPairs,
   TradePairStore,
 } from "@left-curve/store";
@@ -58,8 +58,8 @@ const PerpsPairNameWithFav: React.FC<{
 });
 
 function useRowPairStats(row: SearchTokenRow) {
-  const { statsByPair } = useAllPairStats({ refetchInterval: 5_000 });
-  const { statsByPairId: perpStatsByPairId } = useAllPerpsPairStats({ refetchInterval: 5_000 });
+  const statsByPair = allPairStatsStore((s) => s.pairStatsByKey);
+  const perpStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
   const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 
   return row.mode === "perps"
@@ -127,8 +127,8 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
 }) => {
   const { favPairs } = useFavPairs();
 
-  const { statsByPair } = useAllPairStats({ refetchInterval: 5_000 });
-  const { statsByPairId: perpStatsByPairId } = useAllPerpsPairStats({ refetchInterval: 5_000 });
+  const statsByPair = allPairStatsStore((s) => s.pairStatsByKey);
+  const perpStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
 
   const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 

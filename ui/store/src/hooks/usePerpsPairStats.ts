@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect } from "react";
+import { create } from "zustand";
+import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 
 import { Decimal } from "@left-curve/dango/utils";
@@ -21,8 +23,25 @@ export type UsePerpsPairStatsParameters = {
 
 export type UseAllPerpsPairStatsParameters = {
   enabled?: boolean;
-  refetchInterval?: number;
 };
+
+type AllPerpsPairStatsStoreState = {
+  perpsPairStats: NormalizedPerpsPairStats[];
+  perpsPairStatsByPairId: Record<string, NormalizedPerpsPairStats>;
+  setPerpsPairStats: (stats: NormalizedPerpsPairStats[]) => void;
+};
+
+export const allPerpsPairStatsStore = create<AllPerpsPairStatsStoreState>((set) => ({
+  perpsPairStats: [],
+  perpsPairStatsByPairId: {},
+  setPerpsPairStats: (perpsPairStats) =>
+    set({
+      perpsPairStats,
+      perpsPairStatsByPairId: Object.fromEntries(
+        perpsPairStats.map((stats) => [stats.pairId, stats]),
+      ),
+    }),
+}));
 
 function asDecimal(value: string | null | undefined) {
   if (!value) return null;
@@ -70,28 +89,18 @@ export function usePerpsPairStats(parameters: UsePerpsPairStatsParameters) {
   });
 }
 
-export function useAllPerpsPairStats(parameters: UseAllPerpsPairStatsParameters = {}) {
-  const { enabled = true, refetchInterval } = parameters;
-  const client = usePublicClient();
+export function useAllPerpsPairStats(parameters: UseAllPerpsPairStatsParameters = {}): void {
+  const { enabled = true } = parameters;
+  const { subscriptions } = useConfig();
 
-  const query = useQuery({
-    enabled,
-    refetchInterval,
-    queryKey: ["all_perps_pair_stats"],
-    queryFn: async () => {
-      const allStats = await client
-        .getAllPerpsPairStats()
-        .then((value) => value)
-        .catch(() => []);
-
-      return allStats.map((stats) => normalizePerpsPairStats(stats));
-    },
-  });
-
-  const statsByPairId = useMemo(
-    () => Object.fromEntries((query.data ?? []).map((stats) => [stats.pairId, stats])),
-    [query.data],
-  );
-
-  return { ...query, statsByPairId };
+  useEffect(() => {
+    if (!enabled) return;
+    const unsubscribe = subscriptions.subscribe("allPerpsPairStats", {
+      listener: ({ allPerpsPairStats }) =>
+        allPerpsPairStatsStore
+          .getState()
+          .setPerpsPairStats(allPerpsPairStats.map(normalizePerpsPairStats)),
+    });
+    return () => unsubscribe();
+  }, [enabled, subscriptions]);
 }

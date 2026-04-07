@@ -12,7 +12,7 @@ import {
   perpsUserStateStore,
   perpsUserStateExtendedStore,
   perpsTradeSettingsStore,
-  useAllPerpsPairStats,
+  allPerpsPairStatsStore,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -333,7 +333,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const isBaseSize = sizeCoinDenom === baseCoin.denom;
 
-  const { statsByPairId } = useAllPerpsPairStats({ refetchInterval: 5_000 });
+  const statsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
   const perpsPairId = getPerpsPairId();
   const currentPrice = Number(statsByPairId[perpsPairId]?.currentPrice ?? 0);
 
