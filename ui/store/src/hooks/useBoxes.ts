@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { type BoxReward, fetchUserBoxes } from "./pointsApi.js";
+import { type BoxesResponse, fetchUserBoxes } from "./pointsApi.js";
 
 export type UseBoxesParameters = {
   pointsUrl: string;
@@ -23,7 +23,7 @@ export type NFTItem = {
 export function useBoxes(parameters: UseBoxesParameters) {
   const { pointsUrl, userIndex, enabled = true } = parameters;
 
-  const { data: boxes = [], isLoading } = useQuery({
+  const { data: boxesData = {}, isLoading } = useQuery<BoxesResponse>({
     queryKey: ["boxes", userIndex],
     queryFn: () => fetchUserBoxes(pointsUrl, userIndex!),
     enabled: enabled && !!userIndex,
@@ -31,10 +31,9 @@ export function useBoxes(parameters: UseBoxesParameters) {
 
   const nfts = useMemo((): NFTItem[] => {
     const counts: Record<string, number> = {};
-    for (const box of boxes) {
-      if (box.opened) {
-        const rarity = box.loot.toLowerCase();
-        counts[rarity] = (counts[rarity] ?? 0) + 1;
+    for (const loots of Object.values(boxesData)) {
+      for (const [loot, info] of Object.entries(loots)) {
+        counts[loot] = (counts[loot] ?? 0) + info.opened;
       }
     }
     return RARITY_ORDER.map((rarity) => ({
@@ -43,18 +42,28 @@ export function useBoxes(parameters: UseBoxesParameters) {
       imageSrc: `/images/points/nft/${rarity}.png`,
       frameSrc: `/images/points/nft/frame-${rarity}.png`,
     }));
-  }, [boxes]);
+  }, [boxesData]);
 
-  const unopenedBoxes = useMemo(() => {
-    const grouped: Record<string, BoxReward[]> = {};
-    for (const box of boxes) {
-      if (!box.opened) {
-        const chest = box.chest.toLowerCase();
-        grouped[chest] = [...(grouped[chest] ?? []), box];
+  const unopenedBoxes = useMemo((): Record<string, Record<string, number>> => {
+    const result: Record<string, Record<string, number>> = {};
+    for (const [chest, loots] of Object.entries(boxesData)) {
+      const remaining: Record<string, number> = {};
+      for (const [loot, info] of Object.entries(loots)) {
+        const rem = info.total - info.opened;
+        if (rem > 0) remaining[loot] = rem;
       }
+      if (Object.keys(remaining).length > 0) result[chest] = remaining;
     }
-    return grouped;
-  }, [boxes]);
+    return result;
+  }, [boxesData]);
+
+  const unopenedCounts = useMemo((): Record<string, number> => {
+    const counts: Record<string, number> = {};
+    for (const [chest, loots] of Object.entries(unopenedBoxes)) {
+      counts[chest] = Object.values(loots).reduce((sum, n) => sum + n, 0);
+    }
+    return counts;
+  }, [unopenedBoxes]);
 
   const estimatedVolume = useMemo(() => {
     const thresholds: Record<string, number> = {
@@ -64,12 +73,12 @@ export function useBoxes(parameters: UseBoxesParameters) {
       crystal: 500_000,
     };
     let volume = 0;
-    for (const box of boxes) {
-      const chest = box.chest.toLowerCase();
-      volume += thresholds[chest] ?? 0;
+    for (const [chest, loots] of Object.entries(boxesData)) {
+      const totalBoxes = Object.values(loots).reduce((sum, info) => sum + info.total, 0);
+      volume += totalBoxes * (thresholds[chest] ?? 0);
     }
     return volume;
-  }, [boxes]);
+  }, [boxesData]);
 
-  return { boxes, nfts, unopenedBoxes, estimatedVolume, isLoading };
+  return { boxesData, nfts, unopenedBoxes, unopenedCounts, estimatedVolume, isLoading };
 }

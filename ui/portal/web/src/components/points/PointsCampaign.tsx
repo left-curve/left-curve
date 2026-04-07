@@ -70,7 +70,7 @@ const ChestOpeningProviderWrapper: React.FC<PropsWithChildren<{ userIndex?: numb
   const { unopenedBoxes } = useBoxes({ pointsUrl, userIndex });
 
   return (
-    <ChestOpeningProvider userIndex={userIndex} unopenedBoxes={unopenedBoxes}>
+    <ChestOpeningProvider userIndex={userIndex} unopenedBoxes={unopenedBoxes} >
       {children}
     </ChestOpeningProvider>
   );
@@ -118,7 +118,7 @@ const ProfileTable: React.FC = () => {
 const RewardsLoot: React.FC = () => {
   const { userIndex } = useAccount();
   const pointsUrl = window.dango.urls.pointsUrl;
-  const { nfts, unopenedBoxes } = useBoxes({ pointsUrl, userIndex });
+  const { nfts, unopenedCounts } = useBoxes({ pointsUrl, userIndex });
   const { oatStatuses } = useOats({ pointsUrl, userIndex });
   const { volume } = useUserPoints();
 
@@ -127,7 +127,7 @@ const RewardsLoot: React.FC = () => {
       <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl shadow-account-card">
         <PointsProgressBar currentVolume={volume} />
       </div>
-      <BoxesSection unopenedBoxes={unopenedBoxes} />
+      <BoxesSection unopenedBoxes={unopenedCounts} />
       <NFTsSection nfts={nfts} />
       <OATsSection oatStatuses={oatStatuses} />
     </div>

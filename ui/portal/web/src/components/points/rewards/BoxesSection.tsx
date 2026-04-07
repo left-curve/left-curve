@@ -1,10 +1,10 @@
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAccount, type BoxReward } from "@left-curve/store";
+import { useAccount } from "@left-curve/store";
 import type React from "react";
 import { BoxCard, type BoxVariant } from "./BoxCard";
 
 type BoxesSectionProps = {
-  unopenedBoxes: Record<string, BoxReward[]>;
+  unopenedBoxes: Record<string, number>;
 };
 
 const VARIANTS: BoxVariant[] = ["bronze", "silver", "gold", "crystal"];
@@ -20,7 +20,7 @@ export const BoxesSection: React.FC<BoxesSectionProps> = ({ unopenedBoxes }) => 
           <BoxCard
             key={variant}
             variant={variant}
-            quantity={unopenedBoxes[variant]?.length ?? 0}
+            quantity={unopenedBoxes[variant] ?? 0}
             isUserLocked={!isConnected}
           />
         ))}

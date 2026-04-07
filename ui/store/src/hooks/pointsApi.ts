@@ -27,12 +27,12 @@ export type UserPoints = {
   rank: number;
 };
 
-export type BoxReward = {
-  box_id: string;
-  chest: "Bronze" | "Silver" | "Gold" | "Crystal";
-  loot: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Mythic";
-  opened: boolean;
+export type BoxCount = {
+  total: number;
+  opened: number;
 };
+
+export type BoxesResponse = Record<string, Record<string, BoxCount>>;
 
 export type OatEntry = {
   collection_id: number;
@@ -76,11 +76,12 @@ export const fetchUserStats = async (baseUrl: string, userIndex: number): Promis
 export const fetchEpochPoints = async (
   baseUrl: string,
   userIndex: number,
-  params?: { min?: number; max?: number },
+  params?: { min?: number; max?: number; order?: "asc" | "desc" },
 ): Promise<[number, EpochUserStats][]> => {
   const url = new URL(`${baseUrl}/stats/user/${userIndex}/epochs`);
   if (params?.min !== undefined) url.searchParams.set("min", String(params.min));
   if (params?.max !== undefined) url.searchParams.set("max", String(params.max));
+  if (params?.order) url.searchParams.set("order", params.order);
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`Failed to fetch epoch points: ${res.status}`);
   return res.json();
@@ -104,23 +105,23 @@ export const fetchTotalUsersWithPoints = async (baseUrl: string): Promise<number
   return res.json();
 };
 
-export const fetchUserBoxes = async (baseUrl: string, userIndex: number): Promise<BoxReward[]> => {
+export const fetchUserBoxes = async (baseUrl: string, userIndex: number): Promise<BoxesResponse> => {
   const res = await fetch(`${baseUrl}/boxes/${userIndex}`);
   if (!res.ok) throw new Error(`Failed to fetch boxes: ${res.status}`);
   return res.json();
 };
 
-export const openBox = async (
+export const openBoxes = async (
   baseUrl: string,
   userIndex: number,
-  boxId: string,
+  boxes: Record<string, Record<string, number>>,
 ): Promise<{ success: boolean }> => {
   const res = await fetch(`${baseUrl}/boxes/open`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_index: userIndex, box_id: boxId }),
+    body: JSON.stringify({ user_index: userIndex, boxes }),
   });
-  if (!res.ok) throw new Error(`Failed to open box: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to open boxes: ${res.status}`);
   return res.json();
 };
 

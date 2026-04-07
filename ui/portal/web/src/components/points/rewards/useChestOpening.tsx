@@ -4,7 +4,7 @@ import type React from "react";
 import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { type BoxReward, openBox } from "@left-curve/store";
+import { openBoxes } from "@left-curve/store";
 import { ChestOpeningOverlay } from "./ChestOpeningOverlay";
 
 type NFTRarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
@@ -73,6 +73,44 @@ const prefetchImages = () => {
   });
 };
 
+function pickRandomLoot(remaining: Record<string, number>): string | null {
+  const entries = Object.entries(remaining).filter(([_, n]) => n > 0);
+  if (entries.length === 0) return null;
+  const total = entries.reduce((sum, [_, n]) => sum + n, 0);
+  let roll = Math.random() * total;
+  for (const [loot, count] of entries) {
+    roll -= count;
+    if (roll <= 0) return loot;
+  }
+  return entries.at(-1)![0];
+}
+
+function generateLootSequence(
+  remaining: Record<string, number>,
+  count: number,
+): string[] {
+  const pool = { ...remaining };
+  const sequence: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const loot = pickRandomLoot(pool);
+    if (!loot) break;
+    sequence.push(loot);
+    pool[loot]--;
+  }
+  return sequence;
+}
+
+function aggregateLootSequence(
+  variant: string,
+  sequence: string[],
+): Record<string, Record<string, number>> {
+  const counts: Record<string, number> = {};
+  for (const loot of sequence) {
+    counts[loot] = (counts[loot] ?? 0) + 1;
+  }
+  return { [variant]: counts };
+}
+
 type ChestOpeningContextValue = {
   openChest: (variant: BoxVariant) => void;
   openAllChests: (variant: BoxVariant) => void;
@@ -93,7 +131,7 @@ const [ChestOpeningContextProvider, useChestOpeningContext] =
 
 type ChestOpeningProviderProps = PropsWithChildren<{
   userIndex?: number;
-  unopenedBoxes?: Record<string, BoxReward[]>;
+  unopenedBoxes?: Record<string, Record<string, number>>;
 }>;
 
 export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
@@ -104,7 +142,7 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
   const queryClient = useQueryClient();
   const pointsUrl = window.dango.urls.pointsUrl;
   const [currentVariant, setCurrentVariant] = useState<BoxVariant | null>(null);
-  const [currentBox, setCurrentBox] = useState<BoxReward | null>(null);
+  const [selectedLoot, setSelectedLoot] = useState<string | null>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [animationComplete, setAnimationComplete] = useState(false);
   const animationRef = useRef<number | null>(null);
@@ -114,7 +152,10 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
   const [isOpenAllMode, setIsOpenAllMode] = useState(false);
   const [currentBoxIndex, setCurrentBoxIndex] = useState(0);
   const [totalBoxesToOpen, setTotalBoxesToOpen] = useState(1);
-  const [boxesToOpen, setBoxesToOpen] = useState<BoxReward[]>([]);
+  const [lootSequence, setLootSequence] = useState<string[]>([]);
+  const [pendingOpenPayload, setPendingOpenPayload] = useState<
+    Record<string, Record<string, number>>
+  >({});
 
   const isOpen = currentVariant !== null;
   const animationFrames = currentVariant ? (ANIMATION_FRAMES[currentVariant] ?? null) : null;
@@ -129,19 +170,23 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
       legendary: 0,
       mythic: 0,
     };
-    if (!isOpenAllMode || boxesToOpen.length === 0) return counts;
-    for (const box of boxesToOpen) {
-      const rarity = box.loot?.toLowerCase() as NFTRarity | undefined;
-      if (rarity && rarity in counts) {
-        counts[rarity]++;
+    if (!isOpenAllMode || !currentVariant) return counts;
+    const variantPayload = pendingOpenPayload[currentVariant];
+    if (!variantPayload) return counts;
+    for (const [loot, count] of Object.entries(variantPayload)) {
+      if (loot in counts) {
+        counts[loot as NFTRarity] = count;
       }
     }
     return counts;
-  }, [isOpenAllMode, boxesToOpen]);
+  }, [isOpenAllMode, currentVariant, pendingOpenPayload]);
 
-  const openBoxMutation = useMutation({
-    mutationFn: ({ boxUserIndex, boxId }: { boxUserIndex: number; boxId: string }) =>
-      openBox(pointsUrl, boxUserIndex, boxId),
+  const openBoxesMutation = useMutation({
+    mutationFn: ({
+      boxUserIndex,
+      boxes,
+    }: { boxUserIndex: number; boxes: Record<string, Record<string, number>> }) =>
+      openBoxes(pointsUrl, boxUserIndex, boxes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["boxes", userIndex] });
     },
@@ -192,11 +237,14 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
 
   const openChest = useCallback(
     (variant: BoxVariant) => {
-      const boxes = unopenedBoxes[variant];
-      if (!boxes || boxes.length === 0) return;
+      const remaining = unopenedBoxes[variant];
+      if (!remaining) return;
 
-      const box = boxes[0];
-      setCurrentBox(box);
+      const loot = pickRandomLoot(remaining);
+      if (!loot) return;
+
+      setSelectedLoot(loot);
+      setPendingOpenPayload({ [variant]: { [loot]: 1 } });
       setCurrentFrame(0);
       setAnimationComplete(false);
       lastFrameTimeRef.current = 0;
@@ -204,23 +252,28 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
       setIsOpenAllMode(false);
       setCurrentBoxIndex(0);
       setTotalBoxesToOpen(1);
-      setBoxesToOpen([]);
+      setLootSequence([]);
     },
     [unopenedBoxes],
   );
 
   const openAllChests = useCallback(
     (variant: BoxVariant) => {
-      const boxes = unopenedBoxes[variant];
-      if (!boxes || boxes.length === 0) return;
+      const remaining = unopenedBoxes[variant];
+      if (!remaining) return;
 
-      setBoxesToOpen([...boxes]);
-      setTotalBoxesToOpen(boxes.length);
+      const total = Object.values(remaining).reduce((sum, n) => sum + n, 0);
+      if (total === 0) return;
+
+      const sequence = generateLootSequence(remaining, total);
+      const payload = aggregateLootSequence(variant, sequence);
+
+      setLootSequence(sequence);
+      setPendingOpenPayload(payload);
+      setTotalBoxesToOpen(total);
       setCurrentBoxIndex(0);
       setIsOpenAllMode(true);
-
-      const box = boxes[0];
-      setCurrentBox(box);
+      setSelectedLoot(sequence[0]);
       setCurrentFrame(0);
       setAnimationComplete(false);
       lastFrameTimeRef.current = 0;
@@ -232,59 +285,44 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
   const openNextBox = useCallback(() => {
     if (!isOpenAllMode || !currentVariant) return;
 
-    // Mark current box as opened
-    if (currentBox && userIndex) {
-      openBoxMutation.mutate({ boxUserIndex: userIndex, boxId: currentBox.box_id });
-    }
-
     const nextIndex = currentBoxIndex + 1;
-    if (nextIndex >= boxesToOpen.length) {
-      // No more boxes, close
+    if (nextIndex >= lootSequence.length) {
       closeChestInternal();
       return;
     }
 
-    // Open next box
     setCurrentBoxIndex(nextIndex);
-    const nextBox = boxesToOpen[nextIndex];
-    setCurrentBox(nextBox);
+    setSelectedLoot(lootSequence[nextIndex]);
     setCurrentFrame(0);
     setAnimationComplete(false);
     lastFrameTimeRef.current = 0;
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
-  }, [isOpenAllMode, currentVariant, currentBox, userIndex, currentBoxIndex, boxesToOpen, openBoxMutation]);
+  }, [isOpenAllMode, currentVariant, currentBoxIndex, lootSequence]);
 
   const closeChestInternal = useCallback(() => {
     setCurrentVariant(null);
-    setCurrentBox(null);
+    setSelectedLoot(null);
     setCurrentFrame(0);
     setAnimationComplete(false);
     lastFrameTimeRef.current = 0;
     setIsOpenAllMode(false);
     setCurrentBoxIndex(0);
     setTotalBoxesToOpen(1);
-    setBoxesToOpen([]);
+    setLootSequence([]);
+    setPendingOpenPayload({});
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
   }, []);
 
   const closeChest = useCallback(() => {
-    if (userIndex) {
-      if (isBulkMode && boxesToOpen.length > 0) {
-        // In bulk mode, open all boxes at once
-        for (const box of boxesToOpen) {
-          openBoxMutation.mutate({ boxUserIndex: userIndex, boxId: box.box_id });
-        }
-      } else if (currentBox) {
-        // Single box mode
-        openBoxMutation.mutate({ boxUserIndex: userIndex, boxId: currentBox.box_id });
-      }
+    if (userIndex && Object.keys(pendingOpenPayload).length > 0) {
+      openBoxesMutation.mutate({ boxUserIndex: userIndex, boxes: pendingOpenPayload });
     }
     closeChestInternal();
-  }, [currentBox, userIndex, openBoxMutation, closeChestInternal, isBulkMode, boxesToOpen]);
+  }, [userIndex, pendingOpenPayload, openBoxesMutation, closeChestInternal]);
 
   const onAnimationComplete = useCallback(() => {
     setAnimationComplete(true);
@@ -310,7 +348,7 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
         createPortal(
           <ChestOpeningOverlay
             variant={currentVariant!}
-            loot={currentBox?.loot ?? null}
+            loot={selectedLoot}
             onClose={closeChest}
             currentFrame={currentFrame}
             animationFrames={animationFrames}
