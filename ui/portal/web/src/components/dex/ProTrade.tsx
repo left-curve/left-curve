@@ -381,7 +381,7 @@ const PerpsPositionsTable: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-[1.5rem] max-h-[9.5rem] overflow-y-scroll",
+        base: "pb-[1.5rem] max-h-[18rem] overflow-y-scroll",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !rows.length,
         }),
@@ -626,7 +626,7 @@ const UnifiedOpenOrders: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-[1.5rem] max-h-[9.5rem] overflow-y-scroll",
+        base: "pb-[1.5rem] max-h-[18rem] overflow-y-scroll",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !unifiedRows.length,
         }),
