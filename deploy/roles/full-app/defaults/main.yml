@@ -52,20 +52,6 @@ perp_liquidator_config:
         liquidation_delay_blocks: 5
       - name: "mainnet-4"
         liquidation_delay_blocks: 10
-  previewnet:
-    http_url: "http://dango:8080"
-    liquidation_cooldown: 20
-    event_driven: "true"
-    query_timeout: 1
-    query_timeout_heavy: 5
-    http_port: 9310
-    notification_timeout: 1
-    frontend_url: ""
-    instances:
-      - name: "PR-1"
-        liquidation_delay_blocks: 0
-      - name: "PR-2"
-        liquidation_delay_blocks: 5
 
 perp_liquidator_http_port: 9310
 postgres_host: "postgres"

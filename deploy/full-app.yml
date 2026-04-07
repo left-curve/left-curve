@@ -641,7 +641,7 @@
           loop: "{{ target_hosts }}"
         - name: Create Perp-liquidator prometheus targets
           vars:
-            liq_hosts: "{{ groups['perp-liquidator-' ~ dango_network] | default([]) }}"
+            liq_hosts: "{{ groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([])) }}"
           copy:
             content: |
               {% for liq_host in liq_hosts %}

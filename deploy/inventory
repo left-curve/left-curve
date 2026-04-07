@@ -124,15 +124,10 @@ points-bot-mainnet
 100.126.8.2    # hetzner1
 100.76.197.30  # hetzner3
 
-[perp-liquidator-previewnet]
-100.96.253.40  # ovh1
-100.107.248.71 # ovh2
-
 [perp-liquidator:children]
 perp-liquidator-devnet
 perp-liquidator-testnet
 perp-liquidator-mainnet
-perp-liquidator-previewnet
 
 [hyperlane]
 100.89.7.33    # inter1

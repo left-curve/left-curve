@@ -17,8 +17,8 @@
     - name: Set perp-liquidator instance index
       set_fact:
         perp_liquidator_instance_index: >-
-          {{ (groups['perp-liquidator-' ~ dango_network] | default([])).index(inventory_hostname) }}
-      when: inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default([]))
+          {{ (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([]))).index(inventory_hostname) }}
+      when: inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([])))
 
     - name: Skip hosts without a liquidator instance
       meta: end_host

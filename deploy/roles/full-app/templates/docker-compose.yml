@@ -303,7 +303,7 @@ services:
       - ./perps-bot/config.json:/root/.dango-perps/config.json
 {% endif %}
 
-{% set liq_hosts = groups['perp-liquidator-' ~ dango_network] | default([]) %}
+{% set liq_hosts = groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([])) %}
 {% if inventory_hostname in liq_hosts %}
   perp-liquidator:
     image: ghcr.io/left-curve/bots/perps-liquidator:${PERP_LIQUIDATOR_TAG:-latest}

@@ -12,7 +12,7 @@ ingress:
     service: http://faucet-bot:8082
   - hostname: graphiql-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
     service: http://graphiql:80
-{% if inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default([])) %}
+{% if inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([]))) %}
   - hostname: liquidator-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
     service: http://perp-liquidator:9310
 {% endif %}
