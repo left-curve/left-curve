@@ -166,6 +166,10 @@ scrape_configs:
           dango_network: 'testnet'
           validator_index: '2'
 
+  - job_name: 'preview-perp-liquidator'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-perp-liquidator.yml']
+
   - job_name: 'preview-clickhouse'
     file_sd_configs:
       - files: ['/etc/prometheus/targets/*-clickhouse.yml']
