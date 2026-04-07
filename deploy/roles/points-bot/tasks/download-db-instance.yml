@@ -1,0 +1,29 @@
+---
+- name: "{{ network }} - Stop stack"
+  community.docker.docker_compose_v2:
+    project_src: "{{ points_bot_dir }}/{{ network }}"
+    state: stopped
+    pull: never
+
+- name: "{{ network }} - Compress db directory"
+  archive:
+    path: "{{ points_bot_dir }}/{{ network }}/db"
+    dest: "{{ points_bot_dir }}/{{ network }}/db.tar.gz"
+    format: gz
+
+- name: "{{ network }} - Restart stack"
+  community.docker.docker_compose_v2:
+    project_src: "{{ points_bot_dir }}/{{ network }}"
+    state: present
+    pull: never
+
+- name: "{{ network }} - Download db archive"
+  fetch:
+    src: "{{ points_bot_dir }}/{{ network }}/db.tar.gz"
+    dest: "{{ download_dest | default('./') }}/points-bot-{{ network }}-db.tar.gz"
+    flat: true
+
+- name: "{{ network }} - Remove remote archive"
+  file:
+    path: "{{ points_bot_dir }}/{{ network }}/db.tar.gz"
+    state: absent
