@@ -435,11 +435,7 @@ export const AffiliateStats: React.FC = () => {
 };
 
 export const TraderStats: React.FC = () => {
-  const { showModal, settings: appSettings } = useApp();
-  const { formatNumberOptions } = appSettings;
-  const formatUSD = (value: number | string) =>
-    formatNumber(value, { ...formatNumberOptions, currency: "USD" });
-
+  const { showModal } = useApp();
   const [referralCodeInput, setReferralCodeInput] = useState("");
   const { userIndex, isConnected } = useAccount();
 
