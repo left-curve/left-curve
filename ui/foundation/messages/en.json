@@ -426,6 +426,21 @@
         "slBelowForLongs": "SL must be below entry price for longs",
         "slAboveForShorts": "SL must be above entry price for shorts"
       }
+    },
+    "marginMode": {
+      "title": "{symbol} Margin Mode",
+      "cross": "Cross",
+      "crossDescription": "All cross positions share the same cross margin as collateral. In the event of liquidation, your cross margin balance and any remaining open positions under assets in this mode may be forfeited.",
+      "isolated": "Isolated (Coming Soon)",
+      "isolatedDescription": "This feature is currently under development. We're working hard to bring it to you soon.",
+      "confirm": "Confirm"
+    },
+    "adjustLeverage": {
+      "title": "Adjust Leverage",
+      "description": "Control the leverage used for {symbol} positions. The maximum leverage is {maxLeverage}x.",
+      "subDescription": "Max position size decreases the higher your leverage.",
+      "confirm": "Confirm",
+      "warning": "Note that setting a higher leverage increases the risk of liquidation."
     }
   },
   "signin": {

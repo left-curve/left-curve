@@ -11,6 +11,7 @@ import {
   usePerpsSubmission,
   perpsUserStateStore,
   perpsUserStateExtendedStore,
+  perpsTradeSettingsStore,
   useAllPerpsPairStats,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -353,6 +354,17 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return ratio > 0 ? Math.floor(1 / ratio) : 100;
   }, [params]);
 
+  const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[perpsPairId]);
+  const selectedLeverage = useMemo(() => {
+    if (!storedLeverage) return maxLeverage;
+    return Math.min(Math.max(Math.round(storedLeverage), 1), maxLeverage);
+  }, [storedLeverage, maxLeverage]);
+
+  const takerFeeRate = useMemo(() => {
+    const rate = Number(appConfig?.perpsParam?.takerFeeRates?.base ?? 0);
+    return Number.isFinite(rate) ? rate : 0;
+  }, [appConfig?.perpsParam]);
+
   const [tpslEnabled, setTpslEnabled] = useState(false);
   const [reduceOnly, setReduceOnly] = useState(false);
 
@@ -411,8 +423,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const maxSizeAmount = usePerpsMaxSize({
     availableMargin,
-    leverage: maxLeverage,
+    leverage: selectedLeverage,
     currentPrice,
+    takerFeeRate,
     isBaseSize,
   });
 
@@ -472,21 +485,21 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     const s = Number(size);
     if (s <= 0) return null;
     const notional = isBaseSize ? s * currentPrice : s;
-    return notional / maxLeverage;
-  }, [size, isBaseSize, currentPrice, maxLeverage]);
+    return notional / selectedLeverage;
+  }, [size, isBaseSize, currentPrice, selectedLeverage]);
 
   const estLiquidationPrice = useMemo(() => {
     const s = Number(size);
-    if (s <= 0 || maxLeverage <= 1) return null;
+    if (s <= 0 || selectedLeverage <= 1) return null;
     const entryPrice =
       operation === "limit" && Number(priceValue) > 0 ? Number(priceValue) : currentPrice;
     if (entryPrice <= 0) return null;
 
     const mmr = Number(params.maintenanceMarginRatio ?? 0);
     return action === "buy"
-      ? (entryPrice * (1 - 1 / maxLeverage)) / (1 - mmr)
-      : (entryPrice * (1 + 1 / maxLeverage)) / (1 + mmr);
-  }, [size, maxLeverage, action, operation, priceValue, currentPrice, params]);
+      ? (entryPrice * (1 - 1 / selectedLeverage)) / (1 - mmr)
+      : (entryPrice * (1 + 1 / selectedLeverage)) / (1 + mmr);
+  }, [size, selectedLeverage, action, operation, priceValue, currentPrice, params]);
 
   const minSizeAmount = useMemo(() => {
     if (!params.minOrderSize) return 0;
@@ -496,6 +509,21 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [params, isBaseSize, currentPrice]);
 
   const currentPositionSize = position?.size ?? "0";
+
+  const sizeRangeValue = useMemo(() => {
+    if (maxSizeAmount === 0) return 0;
+    return Math.min(100, (Number(size) / maxSizeAmount) * 100);
+  }, [maxSizeAmount, size]);
+
+  const onSizeRangeChange = useCallback(
+    (percent: number) => {
+      const clamped = Math.min(100, Math.max(0, percent));
+      const sizeVal = Decimal(maxSizeAmount).mul(Decimal(clamped).div(100));
+      const decimals = sizeVal.toFixed().split(".")[1]?.length || 0;
+      setValue("size", sizeVal.toFixed(decimals < 19 ? decimals : 18));
+    },
+    [maxSizeAmount, setValue],
+  );
 
   return (
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
@@ -527,7 +555,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           validationMessage={m["dex.protrade.perps.errors.exceedsMargin"]()}
           label={m["dex.protrade.perps.size"]()}
           minSizeAmount={minSizeAmount}
-          minSizeMessage={m["dex.protrade.perps.errors.minOrderSize"]({ minOrderSize: params.minOrderSize })}
+          minSizeMessage={m["dex.protrade.perps.errors.minOrderSize"]({
+            minOrderSize: params.minOrderSize,
+          })}
           hideMaxControls
           startContent={
             <CoinSelector
@@ -537,6 +567,24 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
               coins={[baseCoin, quoteCoin]}
             />
           }
+        />
+        <Range
+          isDisabled={!isConnected || submission.isPending || maxSizeAmount === 0}
+          minValue={0}
+          maxValue={100}
+          step={1}
+          defaultValue={0}
+          withInput
+          inputEndContent="%"
+          showSteps={[
+            { value: 0, label: "0%" },
+            { value: 25, label: "25%" },
+            { value: 50, label: "50%" },
+            { value: 75, label: "75%" },
+            { value: 100, label: "100%" },
+          ]}
+          value={sizeRangeValue}
+          onChange={onSizeRangeChange}
         />
         {operation === "limit" ? (
           <Input
@@ -635,7 +683,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
               }
             />
           ) : null}
-          {operation === "market" ? <InfoRow label={m["dex.protrade.perps.slippage"]()} value="Max: 0.1%" /> : null}
+          {operation === "market" ? (
+            <InfoRow label={m["dex.protrade.perps.slippage"]()} value="Max: 0.1%" />
+          ) : null}
           <InfoRow label={m["dex.protrade.perps.fees"]()} value={feesDisplay} />
         </div>
         <div className="flex flex-col gap-1 px-4 border-t border-outline-tertiary-rice pt-3">
@@ -645,9 +695,10 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
               <FormattedNumber number={equity} formatOptions={{ currency: "USD" }} as="span" />
             }
           />
-          <InfoRow label={m["dex.protrade.perps.maxLeverage"]()} value={`${maxLeverage}x`} />
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-ink-tertiary-500">{m["dex.protrade.perps.unrealizedPnl"]()}</p>
+            <p className="diatype-xs-regular text-ink-tertiary-500">
+              {m["dex.protrade.perps.unrealizedPnl"]()}
+            </p>
             <p
               className={twMerge(
                 "diatype-xs-medium",
@@ -667,6 +718,61 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   );
 };
 
+const PerpsTopPills: React.FC = () => {
+  const { showModal } = useApp();
+  const { data: appConfig } = useAppConfig();
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
+  const { baseCoin, quoteCoin } = useTradeCoins();
+
+  const perpsPairId = getPerpsPairId();
+  const params = appConfig.perpsPairs[perpsPairId];
+
+  const maxLeverage = useMemo(() => {
+    const ratio = Number(params?.initialMarginRatio);
+    return ratio > 0 ? Math.floor(1 / ratio) : 100;
+  }, [params]);
+
+  const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[perpsPairId]);
+  const selectedLeverage = useMemo(() => {
+    if (!storedLeverage) return maxLeverage;
+    return Math.min(Math.max(Math.round(storedLeverage), 1), maxLeverage);
+  }, [storedLeverage, maxLeverage]);
+
+  const marginMode = perpsTradeSettingsStore((s) => s.marginModeByPair[perpsPairId]) ?? "cross";
+
+  const pairSymbol = `${baseCoin.symbol}-${quoteCoin.symbol}`;
+
+  const openMarginModeModal = useCallback(() => {
+    showModal(Modals.PerpsMarginMode, { perpsPairId, pairSymbol });
+  }, [showModal, perpsPairId, pairSymbol]);
+
+  const openAdjustLeverageModal = useCallback(() => {
+    showModal(Modals.PerpsAdjustLeverage, {
+      perpsPairId,
+      baseSymbol: baseCoin.symbol,
+      maxLeverage,
+    });
+  }, [showModal, perpsPairId, baseCoin.symbol, maxLeverage]);
+
+  return (
+    <div className="w-full flex items-center gap-2 px-4">
+      <Button
+        variant="secondary"
+        size="sm"
+        radius="sm"
+        fullWidth
+        onClick={openMarginModeModal}
+        className="capitalize"
+      >
+        {marginMode}
+      </Button>
+      <Button variant="secondary" size="sm" radius="sm" fullWidth onClick={openAdjustLeverageModal}>
+        {selectedLeverage}x
+      </Button>
+    </div>
+  );
+};
+
 const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
@@ -679,6 +785,7 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
+      {mode === "perps" ? <PerpsTopPills /> : null}
       <div className="w-full flex items-center justify-between px-4 gap-2">
         <Tabs
           layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}

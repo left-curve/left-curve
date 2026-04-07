@@ -268,6 +268,20 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.PerpsMarginMode]: {
+    component: lazy(() =>
+      import("./PerpsMarginMode").then(({ PerpsMarginMode }) => ({
+        default: PerpsMarginMode,
+      })),
+    ),
+  },
+  [Modals.PerpsAdjustLeverage]: {
+    component: lazy(() =>
+      import("./PerpsAdjustLeverage").then(({ PerpsAdjustLeverage }) => ({
+        default: PerpsAdjustLeverage,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {
