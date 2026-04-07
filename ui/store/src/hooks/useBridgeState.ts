@@ -32,15 +32,16 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     config: { evm },
   } = params;
 
+  const isTestnet = ["Devnet", "Testnet"].includes(dangoChain.name);
+
   const { current: networks } = useRef([
-    { name: "Ethereum Network", id: "1", time: "6 blocks | 1-3 mins" },
+    ...(isTestnet
+      ? [{ name: "Sepolia Network", id: "11155111", time: "5-30 mins" }]
+      : [{ name: "Ethereum Network", id: "1", time: "6 blocks | 1-3 mins" }]),
     /*   { name: "Base Network", id: "8453", time: "5-30 mins" },
     { name: "Arbitrum Network", id: "42161", time: "5-30 mins" },
     { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
     { name: "Solana Network", id: "solana", time: "2-10 mins" }, */
-    ...(["Devnet", "Testnet"].includes(dangoChain.name)
-      ? [{ name: "Sepolia Network", id: "11155111", time: "5-30 mins" }]
-      : []),
   ]);
 
   const [network, setNetwork] = useState<string>();
