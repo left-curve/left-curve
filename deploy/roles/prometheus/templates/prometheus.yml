@@ -166,6 +166,10 @@ scrape_configs:
           dango_network: 'testnet'
           validator_index: '2'
 
+  - job_name: 'preview-perp-liquidator'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-perp-liquidator.yml']
+
   - job_name: 'preview-clickhouse'
     file_sd_configs:
       - files: ['/etc/prometheus/targets/*-clickhouse.yml']
@@ -377,6 +381,27 @@ scrape_configs:
           environment: 'production'
           network: 'testnet'
           dango_network: 'testnet'
+
+  - job_name: 'perp-liquidator'
+    static_configs:
+      - targets: ['ovh1:9310']
+        labels:
+          service: 'perp-liquidator'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['hetzner2:9310']
+        labels:
+          service: 'perp-liquidator'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['inter1:9310']
+        labels:
+          service: 'perp-liquidator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
 
   - job_name: 'points-bot'
     static_configs:

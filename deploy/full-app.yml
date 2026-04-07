@@ -639,5 +639,20 @@
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
           loop: "{{ target_hosts }}"
+        - name: Create Perp-liquidator prometheus targets
+          vars:
+            liq_host: "{{ target_hosts[0] }}"
+          copy:
+            content: |
+              - targets: ['{{ hostvars[liq_host].wireguard_ip }}:{{ hostvars[liq_host].perp_liquidator_http_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'perp-liquidator'
+                  environment: 'preview'
+                  dango_network: '{{ dango_network }}'
+                  hostname: '{{ hostvars[liq_host].hostname }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[liq_host].hostname }}-perp-liquidator.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
       when:
         - hostvars[target_hosts[0]]['expose_ports'] == true
