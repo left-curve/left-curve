@@ -1,6 +1,7 @@
 services:
   validator:
     image: "ghcr.io/left-curve/left-curve/hyperlane-agents:${HYPERLANE_AGENTS_TAG}"
+    pull_policy: always
     container_name: "${HYPERLANE_INSTANCE_NAME}"
     env_file:
       - .env

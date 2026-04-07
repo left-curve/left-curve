@@ -146,31 +146,34 @@ delete-pr number:
 
 # --------------------------------- Hyperlane ----------------------------------
 
-# Deploy Hyperlane agent locally
-# Usage: just hyperlane-local testnet relayer
-#        just hyperlane-local testnet validator 1
+# Deploy Hyperlane agent
+# Usage: just deploy-hyperlane testnet relayer <limit>
+#        just deploy-hyperlane testnet validator <limit> 1
+#        just deploy-hyperlane testnet validator <limit> 1 v1.2.3
 # Valid values:
 #   network: testnet, mainnet
 #   agent: relayer, validator
 #   index: required for validator (e.g. "1", "2"), optional for relayer
-deploy-hyperlane network agent limit index="":
+#   tag: docker image tag (default: "latest")
+deploy-hyperlane network agent limit index="" tag="latest":
   ansible-playbook -i inventory hyperlane.yml \
     -e hyperlane_agents_network={{network}} \
     -e hyperlane_agent_type={{agent}} \
     -e hyperlane_validator_index={{index}} \
+    -e hyperlane_agents_tag={{tag}} \
     --limit {{limit}}
 
-deploy-hyperlane-mainnet:
-  just deploy-hyperlane mainnet validator 100.89.7.33 1
-  just deploy-hyperlane mainnet validator 100.66.234.16 2
-  just deploy-hyperlane mainnet validator 100.126.8.2 3
-  just deploy-hyperlane mainnet validator 100.76.197.30 4
-  just deploy-hyperlane mainnet relayer 100.76.197.30
+deploy-hyperlane-mainnet tag="latest":
+  just deploy-hyperlane mainnet validator 100.89.7.33 1 {{tag}}
+  just deploy-hyperlane mainnet validator 100.66.234.16 2 {{tag}}
+  just deploy-hyperlane mainnet validator 100.126.8.2 3 {{tag}}
+  just deploy-hyperlane mainnet validator 100.76.197.30 4 {{tag}}
+  just deploy-hyperlane mainnet relayer 100.76.197.30 "" {{tag}}
 
-deploy-hyperlane-testnet:
-  just deploy-hyperlane testnet validator 100.90.163.19 1
-  just deploy-hyperlane testnet validator 100.109.200.70 2
-  just deploy-hyperlane testnet relayer 100.109.200.70
+deploy-hyperlane-testnet tag="latest":
+  just deploy-hyperlane testnet validator 100.90.163.19 1 {{tag}}
+  just deploy-hyperlane testnet validator 100.109.200.70 2 {{tag}}
+  just deploy-hyperlane testnet relayer 100.109.200.70 "" {{tag}}
 
 # Print validator address from AWS KMS (cast)
 # Usage: just hyperlane-kms-address testnet 1
