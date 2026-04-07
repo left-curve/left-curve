@@ -317,8 +317,13 @@ services:
     env_file:
       - ./perp-liquidator/.env
     ports:
-      - "${WIREGUARD_IP}:{{ perp_liquidator_http_port }}:{{ perp_liquidator_http_port }}"
-      - "${TAILSCALE_IP}:{{ perp_liquidator_http_port }}:{{ perp_liquidator_http_port }}"
+{% if expose_ports %}
+      - "${WIREGUARD_IP}:0:9310"
+      - "${TAILSCALE_IP}:0:9310"
+{% else %}
+      - "${WIREGUARD_IP}:{{ perp_liquidator_http_port }}:9310"
+      - "${TAILSCALE_IP}:{{ perp_liquidator_http_port }}:9310"
+{% endif %}
     networks:
       - default
       - traefik
