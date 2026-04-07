@@ -551,6 +551,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <Checkbox
           radius="md"
           size="sm"
+          isDisabled={!isConnected || submission.isPending}
           label={m["dex.protrade.perps.reduceOnly"]()}
           checked={reduceOnly}
           onChange={() => setReduceOnly((prev) => !prev)}
@@ -558,6 +559,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <Checkbox
           radius="md"
           size="sm"
+          isDisabled={!isConnected || submission.isPending}
           label={m["dex.protrade.perps.tpsl"]()}
           checked={tpslEnabled}
           onChange={() => setTpslEnabled((prev) => !prev)}

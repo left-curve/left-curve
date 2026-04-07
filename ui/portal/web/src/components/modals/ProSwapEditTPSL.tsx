@@ -17,7 +17,7 @@ import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useEffect, useMemo, useState } from "react";
 
-import type { TriggerDirection } from "@left-curve/dango/types";
+import type { SubmitConditionalOrderInput } from "@left-curve/dango/actions";
 
 import { TPSLPositionInfo } from "./TPSLPositionInfo";
 import { useTPSLPriceSync } from "../dex/useTPSLPriceSync";
@@ -128,33 +128,38 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
           const tp = Number(tpPrice);
           const sl = Number(slPrice);
 
-          const promises: Promise<unknown>[] = [];
+          const sizeField = orderSize
+            ? { size: isLong ? `-${orderSize}` : orderSize }
+            : {};
+
+          const orders: SubmitConditionalOrderInput[] = [];
 
           if (tp > 0) {
-            const triggerDirection: TriggerDirection = isLong ? "above" : "below";
-            promises.push(signingClient.submitConditionalOrder({
-              sender: account.address,
+            orders.push({
               pairId,
               triggerPrice: tpPrice,
-              triggerDirection,
+              triggerDirection: isLong ? "above" : "below",
               maxSlippage: DEFAULT_TPSL_SLIPPAGE,
-              ...(orderSize ? { size: isLong ? `-${orderSize}` : orderSize } : {}),
-            }));
+              ...sizeField,
+            });
           }
 
           if (sl > 0) {
-            const triggerDirection: TriggerDirection = isLong ? "below" : "above";
-            promises.push(signingClient.submitConditionalOrder({
-              sender: account.address,
+            orders.push({
               pairId,
               triggerPrice: slPrice,
-              triggerDirection,
+              triggerDirection: isLong ? "below" : "above",
               maxSlippage: DEFAULT_TPSL_SLIPPAGE,
-              ...(orderSize ? { size: isLong ? `-${orderSize}` : orderSize } : {}),
-            }));
+              ...sizeField,
+            });
           }
 
-          await Promise.all(promises);
+          if (orders.length === 0) return;
+
+          await signingClient.submitConditionalOrders({
+            sender: account.address,
+            orders,
+          });
         },
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ["prices"] });

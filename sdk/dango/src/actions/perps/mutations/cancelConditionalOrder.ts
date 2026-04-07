@@ -10,6 +10,7 @@ import type {
   PerpsCancelConditionalOrderRequest,
   Signer,
   TypedDataParameter,
+  TypedDataProperty,
 } from "../../../types/index.js";
 
 export type CancelConditionalOrderParameters = {
@@ -34,7 +35,7 @@ export async function cancelConditionalOrder<transport extends Transport>(
     },
   };
 
-  const cancelConditionalOrderTypedData = (() => {
+  const cancelConditionalOrderTypedData = ((): Record<string, TypedDataProperty[]> => {
     if (request === "all") {
       return { CancelConditionalOrder: [] };
     }

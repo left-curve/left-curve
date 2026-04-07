@@ -134,6 +134,12 @@ import {
 } from "./mutations/submitConditionalOrder.js";
 
 import {
+  type SubmitConditionalOrdersParameters,
+  type SubmitConditionalOrdersReturnType,
+  submitConditionalOrders,
+} from "./mutations/submitConditionalOrders.js";
+
+import {
   type CancelConditionalOrderParameters,
   type CancelConditionalOrderReturnType,
   cancelConditionalOrder,
@@ -189,6 +195,9 @@ export type PerpsMutationActions = {
   submitConditionalOrder: (
     args: SubmitConditionalOrderParameters,
   ) => SubmitConditionalOrderReturnType;
+  submitConditionalOrders: (
+    args: SubmitConditionalOrdersParameters,
+  ) => SubmitConditionalOrdersReturnType;
   cancelConditionalOrder: (
     args: CancelConditionalOrderParameters,
   ) => CancelConditionalOrderReturnType;
@@ -207,6 +216,7 @@ export function perpsMutationActions<transport extends Transport = Transport>(
     vaultAddLiquidity: (args) => vaultAddLiquidity(client, args),
     vaultRemoveLiquidity: (args) => vaultRemoveLiquidity(client, args),
     submitConditionalOrder: (args) => submitConditionalOrder(client, args),
+    submitConditionalOrders: (args) => submitConditionalOrders(client, args),
     cancelConditionalOrder: (args) => cancelConditionalOrder(client, args),
   };
 }

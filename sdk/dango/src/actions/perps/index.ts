@@ -137,6 +137,13 @@ export {
 } from "./mutations/submitConditionalOrder.js";
 
 export {
+  type SubmitConditionalOrderInput,
+  type SubmitConditionalOrdersParameters,
+  type SubmitConditionalOrdersReturnType,
+  submitConditionalOrders,
+} from "./mutations/submitConditionalOrders.js";
+
+export {
   type CancelConditionalOrderParameters,
   type CancelConditionalOrderReturnType,
   cancelConditionalOrder,
