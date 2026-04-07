@@ -7,6 +7,7 @@ import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
 import {
+  queryVolume,
   queryReferrer,
   queryReferralData,
   queryRefereeStats,
@@ -47,6 +48,40 @@ export function useReferrer(parameters: UseReferrerParameters) {
   };
 }
 
+export type UseVolumeParameters = {
+  userAddress: string | undefined;
+  since?: number;
+  enabled?: boolean;
+};
+
+/**
+ * Hook to query a user's cumulative perps trading volume.
+ * Returns lifetime volume if `since` is undefined, or volume since the given timestamp.
+ *
+ * This is used to determine if a user has reached the minimum volume threshold
+ * to become a referrer (e.g., $10,000 lifetime volume).
+ */
+export function useVolume(parameters: UseVolumeParameters) {
+  const { userAddress, since, enabled = true } = parameters;
+  const client = usePublicClient();
+  const { data: appConfig } = useAppConfig();
+
+  const perpsAddress = appConfig?.addresses?.perps;
+
+  const { data, isLoading, isError, error } = useQuery<string>({
+    queryKey: ["perpsVolume", userAddress, since],
+    queryFn: () => queryVolume(client!, perpsAddress!, userAddress!, since),
+    enabled: enabled && !!userAddress && !!client && !!perpsAddress,
+  });
+
+  return {
+    volume: data,
+    isLoading,
+    isError,
+    error,
+  };
+}
+
 export type UseReferralDataParameters = {
   userIndex: number | undefined;
   since?: number;
@@ -58,10 +93,12 @@ export function useReferralData(parameters: UseReferralDataParameters) {
   const client = usePublicClient();
   const { data: appConfig } = useAppConfig();
 
+  const perpsAddress = appConfig?.addresses?.perps;
+
   const { data, isLoading, isError, error } = useQuery<UserReferralData>({
     queryKey: ["referralData", userIndex, since],
-    queryFn: () => queryReferralData(client!, appConfig.addresses.perps, userIndex!, since),
-    enabled: enabled && !!userIndex && !!client,
+    queryFn: () => queryReferralData(client!, perpsAddress!, userIndex!, since),
+    enabled: enabled && !!userIndex && !!client && !!perpsAddress,
   });
 
   return {
@@ -112,10 +149,12 @@ export function useReferralSettings(parameters: UseReferralSettingsParameters) {
   const client = usePublicClient();
   const { data: appConfig } = useAppConfig();
 
+  const perpsAddress = appConfig?.addresses?.perps;
+
   const { data, isLoading, isError, error } = useQuery<ReferrerSettings | null>({
     queryKey: ["referralSettings", userIndex],
-    queryFn: () => queryReferralSettings(client!, appConfig.addresses.perps, userIndex!),
-    enabled: enabled && !!userIndex && !!client,
+    queryFn: () => queryReferralSettings(client!, perpsAddress!, userIndex!),
+    enabled: enabled && !!userIndex && !!client && !!perpsAddress,
   });
 
   return {

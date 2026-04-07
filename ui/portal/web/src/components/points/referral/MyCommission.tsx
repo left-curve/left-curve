@@ -105,8 +105,7 @@ const CommissionTable: React.FC = () => {
   const formatUSD = (value: number | string) =>
     formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [currentPage, setCurrentPage] = useState(1);
-  const { account, isConnected } = useAccount();
-  const userIndex = account?.index;
+  const { userIndex, isConnected } = useAccount();
   const client = usePublicClient();
   const { data: appConfig } = useAppConfig();
 
@@ -221,8 +220,7 @@ const MyRefereesTable: React.FC = () => {
   const formatUSD = (value: number | string) =>
     formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [currentPage, setCurrentPage] = useState(1);
-  const { account, isConnected } = useAccount();
-  const userIndex = account?.index;
+  const { userIndex, isConnected } = useAccount();
 
   const { referees, isLoading } = useRefereeStats({
     referrerIndex: userIndex,
@@ -322,8 +320,7 @@ const RebateTable: React.FC = () => {
   const formatUSD = (value: number | string) =>
     formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [currentPage, setCurrentPage] = useState(1);
-  const { account, isConnected } = useAccount();
-  const userIndex = account?.index;
+  const { userIndex, isConnected } = useAccount();
 
   const { referralData, isLoading } = useReferralData({ userIndex });
 
