@@ -127,6 +127,18 @@ import {
   vaultRemoveLiquidity,
 } from "./mutations/vaultRemoveLiquidity.js";
 
+import {
+  type SubmitConditionalOrderParameters,
+  type SubmitConditionalOrderReturnType,
+  submitConditionalOrder,
+} from "./mutations/submitConditionalOrder.js";
+
+import {
+  type CancelConditionalOrderParameters,
+  type CancelConditionalOrderReturnType,
+  cancelConditionalOrder,
+} from "./mutations/cancelConditionalOrder.js";
+
 export type PerpsQueryActions = {
   getPerpsUserState: (args: GetPerpsUserStateParameters) => GetPerpsUserStateReturnType;
   getPerpsOrdersByUser: (args: GetPerpsOrdersByUserParameters) => GetPerpsOrdersByUserReturnType;
@@ -174,6 +186,12 @@ export type PerpsMutationActions = {
   setFeeShareRatio: (args: SetFeeShareRatioParameters) => SetFeeShareRatioReturnType;
   vaultAddLiquidity: (args: VaultAddLiquidityParameters) => VaultAddLiquidityReturnType;
   vaultRemoveLiquidity: (args: VaultRemoveLiquidityParameters) => VaultRemoveLiquidityReturnType;
+  submitConditionalOrder: (
+    args: SubmitConditionalOrderParameters,
+  ) => SubmitConditionalOrderReturnType;
+  cancelConditionalOrder: (
+    args: CancelConditionalOrderParameters,
+  ) => CancelConditionalOrderReturnType;
 };
 
 export function perpsMutationActions<transport extends Transport = Transport>(
@@ -188,5 +206,7 @@ export function perpsMutationActions<transport extends Transport = Transport>(
     setFeeShareRatio: (args) => setFeeShareRatio(client, args),
     vaultAddLiquidity: (args) => vaultAddLiquidity(client, args),
     vaultRemoveLiquidity: (args) => vaultRemoveLiquidity(client, args),
+    submitConditionalOrder: (args) => submitConditionalOrder(client, args),
+    cancelConditionalOrder: (args) => cancelConditionalOrder(client, args),
   };
 }

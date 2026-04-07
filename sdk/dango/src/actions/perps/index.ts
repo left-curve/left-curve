@@ -129,3 +129,15 @@ export {
   type VaultRemoveLiquidityReturnType,
   vaultRemoveLiquidity,
 } from "./mutations/vaultRemoveLiquidity.js";
+
+export {
+  type SubmitConditionalOrderParameters,
+  type SubmitConditionalOrderReturnType,
+  submitConditionalOrder,
+} from "./mutations/submitConditionalOrder.js";
+
+export {
+  type CancelConditionalOrderParameters,
+  type CancelConditionalOrderReturnType,
+  cancelConditionalOrder,
+} from "./mutations/cancelConditionalOrder.js";

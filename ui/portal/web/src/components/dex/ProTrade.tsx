@@ -43,7 +43,8 @@ import { SpotTradeHistory, PerpsTradeHistory } from "./TradeHistory";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { OrderId, PairId } from "@left-curve/dango/types";
+import type { ConditionalOrder, OrderId, PairId } from "@left-curve/dango/types";
+
 
 const [ProTradeProvider, useProTrade] = createContext<{
   controllers: ReturnType<typeof useInputs>;
@@ -210,7 +211,7 @@ const ProTradeHistory: React.FC = () => {
           selectedTab={activeTab}
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
         >
-          {mode === "perps" ? <Tab title="positions">Positions</Tab> : null}
+          {mode === "perps" ? <Tab title="positions">{m["dex.protrade.positions.title"]()}</Tab> : null}
           <Tab title="open-orders">{m["dex.protrade.openOrders"]()}</Tab>
           <Tab title="trade-history">{m["dex.protrade.tradeHistory.title"]()}</Tab>
         </Tabs>
@@ -227,10 +228,13 @@ const ProTradeHistory: React.FC = () => {
 
 type PerpsPositionRow = {
   pairId: string;
+  symbol: string;
   size: string;
   entryPrice: string;
   currentPrice: number;
   pnl: number;
+  conditionalOrderAbove?: ConditionalOrder;
+  conditionalOrderBelow?: ConditionalOrder;
 };
 
 const PerpsPositionsTable: React.FC = () => {
@@ -256,15 +260,19 @@ const PerpsPositionsTable: React.FC = () => {
     for (const [pairId, pos] of Object.entries(userState.positions)) {
       const baseSymbol = pairId.replace("perp/", "").replace(/usd$/i, "");
       const baseDenom = symbolToDenom[baseSymbol] ?? baseSymbol;
+      const coinSymbol = coins.byDenom[baseDenom]?.symbol ?? baseSymbol.toUpperCase();
       const currentPrice = getPrice(1, baseDenom) || Number(pos.entryPrice);
       const size = Number(pos.size);
       const pnl = size * (currentPrice - Number(pos.entryPrice));
       result.push({
         pairId,
+        symbol: coinSymbol,
         size: pos.size,
         entryPrice: pos.entryPrice,
         currentPrice,
         pnl,
+        conditionalOrderAbove: pos.conditionalOrderAbove,
+        conditionalOrderBelow: pos.conditionalOrderBelow,
       });
     }
     return result;
@@ -272,7 +280,7 @@ const PerpsPositionsTable: React.FC = () => {
 
   const columns: TableColumn<PerpsPositionRow> = [
     {
-      header: "Pair",
+      header: m["dex.protrade.positions.pair"](),
       cell: ({ row }) => {
         const label = row.original.pairId
           .replace("perp/", "")
@@ -282,19 +290,19 @@ const PerpsPositionsTable: React.FC = () => {
       },
     },
     {
-      header: "Side",
+      header: m["dex.protrade.positions.side"](),
       cell: ({ row }) => {
         const isLong = Number(row.original.size) > 0;
         return (
           <Cell.Text
-            text={isLong ? "Long" : "Short"}
+            text={isLong ? m["dex.protrade.positions.long"]() : m["dex.protrade.positions.short"]()}
             className={isLong ? "text-utility-success-600" : "text-utility-error-600"}
           />
         );
       },
     },
     {
-      header: "Size",
+      header: m["dex.protrade.positions.size"](),
       cell: ({ row }) => (
         <Cell.Number
           formatOptions={formatNumberOptions}
@@ -303,7 +311,7 @@ const PerpsPositionsTable: React.FC = () => {
       ),
     },
     {
-      header: "Entry Price",
+      header: m["dex.protrade.positions.entryPrice"](),
       cell: ({ row }) => (
         <Cell.Text
           text={
@@ -317,7 +325,7 @@ const PerpsPositionsTable: React.FC = () => {
       ),
     },
     {
-      header: "Mark Price",
+      header: m["dex.protrade.positions.markPrice"](),
       cell: ({ row }) => (
         <Cell.Text
           text={
@@ -331,7 +339,7 @@ const PerpsPositionsTable: React.FC = () => {
       ),
     },
     {
-      header: "PNL",
+      header: m["dex.protrade.positions.pnl"](),
       cell: ({ row }) => {
         const isPositive = row.original.pnl >= 0;
         return (
@@ -352,6 +360,53 @@ const PerpsPositionsTable: React.FC = () => {
       },
     },
     {
+      header: m["dex.protrade.positions.tpsl"](),
+      cell: ({ row }: { row: { original: PerpsPositionRow } }) => {
+        const { size, conditionalOrderAbove, conditionalOrderBelow } = row.original;
+        const isLong = Number(size) > 0;
+        const tp = isLong ? conditionalOrderAbove : conditionalOrderBelow;
+        const sl = isLong ? conditionalOrderBelow : conditionalOrderAbove;
+        const tpDisplay = tp ? formatNumber(tp.triggerPrice, formatNumberOptions) : "--";
+        const slDisplay = sl ? formatNumber(sl.triggerPrice, formatNumberOptions) : "--";
+        return (
+          <div className="flex items-center gap-1">
+            <Cell.Text text={`${tpDisplay}/${slDisplay}`} />
+            <button
+              type="button"
+              className="text-ink-tertiary-500 hover:text-ink-secondary-700 diatype-xs-regular underline ml-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                const hasAny = conditionalOrderAbove || conditionalOrderBelow;
+                if (hasAny) {
+                  showModal(Modals.ProSwapEditedSL, {
+                    pairId: row.original.pairId,
+                    symbol: row.original.symbol,
+                    entryPrice: row.original.entryPrice,
+                    markPrice: row.original.currentPrice.toString(),
+                    size: row.original.size,
+                    conditionalOrderAbove,
+                    conditionalOrderBelow,
+                  });
+                } else {
+                  showModal(Modals.ProSwapEditTPSL, {
+                    pairId: row.original.pairId,
+                    symbol: row.original.symbol,
+                    entryPrice: row.original.entryPrice,
+                    markPrice: row.original.currentPrice.toString(),
+                    size: row.original.size,
+                    conditionalOrderAbove,
+                    conditionalOrderBelow,
+                  });
+                }
+              }}
+            >
+              {m["dex.protrade.positions.edit"]()}
+            </button>
+          </div>
+        );
+      },
+    },
+    {
       id: "close-position",
       header: () => <Cell.Text text="" />,
       cell: ({ row }) => (
@@ -363,7 +418,7 @@ const PerpsPositionsTable: React.FC = () => {
               pnl: row.original.pnl,
             })
           }
-          label="Close"
+          label={m["dex.protrade.positions.close"]()}
           classNames={{
             cell: "items-end",
             button: "!exposure-xs-italic m-0 p-0 px-1 h-fit",
@@ -386,7 +441,7 @@ const PerpsPositionsTable: React.FC = () => {
           "group-hover:bg-transparent": !rows.length,
         }),
       }}
-      emptyComponent={<EmptyPlaceholder component="No open positions" className="h-[3.5rem]" />}
+      emptyComponent={<EmptyPlaceholder component={m["dex.protrade.positions.noOpenPositions"]()} className="h-[3.5rem]" />}
     />
   );
 };
@@ -499,29 +554,29 @@ const UnifiedOpenOrders: React.FC = () => {
 
   const columns: TableColumn<UnifiedOrder> = [
     {
-      header: "Market",
+      header: m["dex.protrade.orders.market"](),
       cell: ({ row }) => (
         <Badge
-          text={row.original.market === "spot" ? "Spot" : "Perp"}
+          text={row.original.market === "spot" ? m["dex.protrade.orders.spot"]() : m["dex.protrade.orders.perp"]()}
           color={row.original.market === "spot" ? "blue" : "green"}
           size="s"
         />
       ),
     },
     {
-      header: "Pair",
+      header: m["dex.protrade.orders.pair"](),
       cell: ({ row }) => (
         <Cell.Text text={row.original.pairDisplay} className="diatype-xs-medium" />
       ),
     },
     {
-      header: "Side",
+      header: m["dex.protrade.orders.side"](),
       cell: ({ row }) => {
         const isBuy = row.original.side === "buy";
         return (
           <Cell.Text
             text={
-              row.original.market === "perps" ? (isBuy ? "Long" : "Short") : isBuy ? "Buy" : "Sell"
+              row.original.market === "perps" ? (isBuy ? m["dex.protrade.orders.long"]() : m["dex.protrade.orders.short"]()) : isBuy ? m["dex.protrade.orders.buy"]() : m["dex.protrade.orders.sell"]()
             }
             className={isBuy ? "text-utility-success-600" : "text-utility-error-600"}
           />
@@ -529,21 +584,21 @@ const UnifiedOpenOrders: React.FC = () => {
       },
     },
     {
-      header: "Type",
-      cell: () => <Cell.Text text="Limit" />,
+      header: m["dex.protrade.orders.type"](),
+      cell: () => <Cell.Text text={m["dex.protrade.orders.limit"]()} />,
     },
     {
-      header: "Price",
+      header: m["dex.protrade.orders.price"](),
       cell: ({ row }) => <Cell.Text text={row.original.price} />,
     },
     {
-      header: "Size",
+      header: m["dex.protrade.orders.size"](),
       cell: ({ row }) => (
         <Cell.Number formatOptions={formatNumberOptions} value={row.original.size} />
       ),
     },
     {
-      header: "Filled",
+      header: m["dex.protrade.orders.filled"](),
       cell: ({ row }) =>
         row.original.filled !== null ? (
           <Cell.Number formatOptions={formatNumberOptions} value={row.original.filled} />
@@ -554,13 +609,19 @@ const UnifiedOpenOrders: React.FC = () => {
     ...(mode === "perps"
       ? [
           {
-            header: "Reduce Only",
+            header: m["dex.protrade.orders.reduceOnly"](),
             cell: ({ row }: { row: { original: UnifiedOrder } }) =>
               row.original.reduceOnly ? (
                 <Badge text="Yes" color="warning" size="s" />
               ) : (
                 <Cell.Text text="-" className="text-ink-tertiary-500" />
               ),
+          },
+          {
+            header: m["dex.protrade.orders.tpsl"](),
+            cell: () => (
+              <Cell.Text text="--/--" className="text-ink-tertiary-500" />
+            ),
           },
         ]
       : []),
@@ -576,7 +637,7 @@ const UnifiedOpenOrders: React.FC = () => {
                 onChange={(e) => setShowAllPairs(e.target.checked)}
                 className="accent-primitives-red-light-500 w-3 h-3"
               />
-              Show all pairs
+              {m["dex.protrade.orders.showAllPairs"]()}
             </label>
           )}
           <Cell.Action

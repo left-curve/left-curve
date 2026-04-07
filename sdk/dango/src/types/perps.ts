@@ -1,9 +1,26 @@
 import type { Address, ExtractFromUnion, KeyOfUnion } from "@left-curve/sdk/types";
 
+export type TriggerDirection = "above" | "below";
+
+export type ChildOrder = {
+  triggerPrice: string;
+  maxSlippage: string;
+  size?: string;
+};
+
+export type ConditionalOrder = {
+  orderId: string;
+  size?: string;
+  triggerPrice: string;
+  maxSlippage: string;
+};
+
 export type PerpsPosition = {
   size: string;
   entryPrice: string;
   entryFundingPerUnit: string;
+  conditionalOrderAbove?: ConditionalOrder;
+  conditionalOrderBelow?: ConditionalOrder;
 };
 
 export type PerpsUnlock = {
@@ -59,7 +76,7 @@ export type RateSchedule = {
 export type PerpsParam = {
   maxUnlocks: number;
   maxOpenOrders: number;
-  maxConditionalOrders: number;
+  liquidationBufferRatio: string;
   makerFeeRates: RateSchedule;
   takerFeeRates: RateSchedule;
   protocolFeeRate: string;
@@ -120,6 +137,11 @@ export type PerpsLiquidityDepthResponse = {
 };
 
 export type PerpsCancelOrderRequest = { one: string } | "all";
+
+export type PerpsCancelConditionalOrderRequest =
+  | { one: { pairId: string; triggerDirection: TriggerDirection } }
+  | { allForPair: { pairId: string } }
+  | "all";
 
 export type PerpsQueryMsg =
   | { userState: { user: Address } }
