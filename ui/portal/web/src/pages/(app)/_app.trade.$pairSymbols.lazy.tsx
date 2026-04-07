@@ -78,8 +78,7 @@ function ProTradeApplet() {
           <ProTrade.History />
         </div>
         <div
-          className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] bg-surface-primary-rice shadow-account-card z-20 md:sticky"
-          style={{ maxHeight: `calc(100vh - ${headerHeight}px)`, top: headerHeight }}
+          className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] bg-surface-primary-rice shadow-account-card z-20 self-stretch"
         >
           <ProTrade.TradeMenu />
         </div>
