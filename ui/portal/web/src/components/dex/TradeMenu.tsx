@@ -377,6 +377,15 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const slPercent = inputs.slPercent?.value || "";
   const hasErrors = Object.keys(errors).length > 0;
 
+  useEffect(() => {
+    setTpslEnabled(false);
+    setReduceOnly(false);
+    setValue("tpPrice", "");
+    setValue("tpPercent", "");
+    setValue("slPrice", "");
+    setValue("slPercent", "");
+  }, [pairId]);
+
   const referencePrice = useMemo(() => {
     if (operation === "limit" && Number(priceValue) > 0) return Number(priceValue);
     return currentPrice;

@@ -35,7 +35,15 @@ type ProSwapEditTPSLProps = {
 const DEFAULT_TPSL_SLIPPAGE = "0.05";
 
 export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
-  ({ pairId, symbol, entryPrice, markPrice, size, conditionalOrderAbove, conditionalOrderBelow }) => {
+  ({
+    pairId,
+    symbol,
+    entryPrice,
+    markPrice,
+    size,
+    conditionalOrderAbove,
+    conditionalOrderBelow,
+  }) => {
     const { hideModal } = useApp();
     const { account } = useAccount();
     const { data: signingClient } = useSigningClient();
@@ -45,6 +53,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     const isLong = sizeNum > 0;
     const absSize = Math.abs(sizeNum);
     const entryPriceNum = Number(entryPrice);
+    const markPriceNum = Number(markPrice);
 
     const existingTp = isLong ? conditionalOrderAbove : conditionalOrderBelow;
     const existingSl = isLong ? conditionalOrderBelow : conditionalOrderAbove;
@@ -75,7 +84,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
       tpPercent,
       slPrice,
       slPercent,
-      referencePrice: entryPriceNum,
+      referencePrice: markPriceNum > 0 ? markPriceNum : entryPriceNum,
       isBuyDirection: isLong,
     });
 
@@ -87,33 +96,31 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     const validationError = useMemo(() => {
       const tp = Number(tpPrice);
       const sl = Number(slPrice);
+
+      const reference = markPriceNum > 0 ? markPriceNum : entryPriceNum;
       if (tp > 0) {
-        if (isLong && tp <= entryPriceNum) return m["modals.tpsl.errors.tpAboveForLongs"]();
-        if (!isLong && tp >= entryPriceNum) return m["modals.tpsl.errors.tpBelowForShorts"]();
+        if (isLong && tp <= reference) return m["modals.tpsl.errors.tpAboveForLongs"]();
+        if (!isLong && tp >= reference) return m["modals.tpsl.errors.tpBelowForShorts"]();
       }
       if (sl > 0) {
-        if (isLong && sl >= entryPriceNum) return m["modals.tpsl.errors.slBelowForLongs"]();
-        if (!isLong && sl <= entryPriceNum) return m["modals.tpsl.errors.slAboveForShorts"]();
+        if (isLong && sl >= reference) return m["modals.tpsl.errors.slBelowForLongs"]();
+        if (!isLong && sl <= reference) return m["modals.tpsl.errors.slAboveForShorts"]();
       }
       return null;
-    }, [tpPrice, slPrice, isLong, entryPriceNum]);
+    }, [tpPrice, slPrice, isLong, markPriceNum, entryPriceNum]);
 
     const expectedTpPnl = useMemo(() => {
       const tp = Number(tpPrice);
       if (tp <= 0) return null;
       const effectiveSize = orderSize ? Number(orderSize) : absSize;
-      return isLong
-        ? (tp - entryPriceNum) * effectiveSize
-        : (entryPriceNum - tp) * effectiveSize;
+      return isLong ? (tp - entryPriceNum) * effectiveSize : (entryPriceNum - tp) * effectiveSize;
     }, [tpPrice, entryPriceNum, isLong, absSize, orderSize]);
 
     const expectedSlPnl = useMemo(() => {
       const sl = Number(slPrice);
       if (sl <= 0) return null;
       const effectiveSize = orderSize ? Number(orderSize) : absSize;
-      return isLong
-        ? (sl - entryPriceNum) * effectiveSize
-        : (entryPriceNum - sl) * effectiveSize;
+      return isLong ? (sl - entryPriceNum) * effectiveSize : (entryPriceNum - sl) * effectiveSize;
     }, [slPrice, entryPriceNum, isLong, absSize, orderSize]);
 
     const { isPending, mutateAsync: submitOrders } = useSubmitTx({
@@ -128,9 +135,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
           const tp = Number(tpPrice);
           const sl = Number(slPrice);
 
-          const sizeField = orderSize
-            ? { size: isLong ? `-${orderSize}` : orderSize }
-            : {};
+          const sizeField = orderSize ? { size: isLong ? `-${orderSize}` : orderSize } : {};
 
           const orders: SubmitConditionalOrderInput[] = [];
 
