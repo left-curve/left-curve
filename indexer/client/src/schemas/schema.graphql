@@ -382,27 +382,29 @@ type PageInfo {
 
 """
 Represents 24h statistics for a trading pair.
-Fields are fetched lazily when requested via GraphQL.
+
+Fields are fetched lazily when requested via GraphQL **unless** the struct
+was created with [`PairStats::resolved`], in which case the pre-computed
+values are returned directly (used by the subscription cache).
 """
 type PairStats {
 	quoteDenom: String!
 	baseDenom: String!
 	"""
-	Current price as a BigDecimal with 24 decimal places (fetched lazily)
+	Current price as a BigDecimal with 24 decimal places.
 	"""
 	currentPrice: BigDecimal
 	"""
-	Price from 24 hours ago as a BigDecimal with 24 decimal places (fetched lazily)
+	Price from 24 hours ago as a BigDecimal with 24 decimal places.
 	"""
 	price24HAgo: BigDecimal
 	"""
-	24h volume in quote asset as a BigDecimal with 6 decimal places (fetched lazily)
+	24h volume in quote asset as a BigDecimal with 6 decimal places.
 	"""
 	volume24H: BigDecimal!
 	"""
-	24h price change as a percentage (e.g., 5.25 means +5.25%)
+	24h price change as a percentage (e.g., 5.25 means +5.25%).
 	Calculated as: (current_price - price_24h_ago) / price_24h_ago * 100
-	Fetches both prices lazily.
 	"""
 	priceChange24H: BigDecimal
 }
@@ -516,26 +518,28 @@ enum PerpsEventSortBy {
 
 """
 Represents 24h statistics for a perps trading pair.
-Fields are fetched lazily when requested via GraphQL.
+
+Fields are fetched lazily when requested via GraphQL **unless** the struct
+was created with [`PerpsPairStats::resolved`], in which case the
+pre-computed values are returned directly (used by the subscription cache).
 """
 type PerpsPairStats {
 	pairId: String!
 	"""
-	Current close price as a BigDecimal with 6 decimal places (fetched lazily)
+	Current close price as a BigDecimal with 6 decimal places.
 	"""
 	currentPrice: BigDecimal
 	"""
-	Close price from 24 hours ago as a BigDecimal with 6 decimal places (fetched lazily)
+	Close price from 24 hours ago as a BigDecimal with 6 decimal places.
 	"""
 	price24HAgo: BigDecimal
 	"""
-	24h volume in USD as a BigDecimal with 6 decimal places (fetched lazily)
+	24h volume in USD as a BigDecimal with 6 decimal places.
 	"""
 	volume24H: BigDecimal!
 	"""
-	24h price change as a percentage (e.g., 5.25 means +5.25%)
+	24h price change as a percentage (e.g., 5.25 means +5.25%).
 	Calculated as: (current_price - price_24h_ago) / price_24h_ago * 100
-	Fetches both prices lazily.
 	"""
 	priceChange24H: BigDecimal
 }
@@ -934,6 +938,20 @@ type Subscription {
 	Get perps candles for a given pair_id and interval
 	"""
 	perpsCandles(pairId: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [PerpsCandle!]!
+	"""
+	Stream real-time 24h statistics for all trading pairs.
+	
+	Returns the current cached snapshot immediately, then emits an updated
+	snapshot each time a new block is indexed.
+	"""
+	allPairStats: [PairStats!]!
+	"""
+	Stream real-time 24h statistics for all perps trading pairs.
+	
+	Returns the current cached snapshot immediately, then emits an updated
+	snapshot each time a new block is indexed.
+	"""
+	allPerpsPairStats: [PerpsPairStats!]!
 	accounts(userIndex: Int, sinceBlockHeight: Int): [Account!]!
 	transfers(address: String, userIndex: Int, sinceBlockHeight: Int): [Transfer!]!
 	"""
