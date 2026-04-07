@@ -183,6 +183,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+      # `run_dango_httpd_server` in dango/cli/src/start.rs serially preloads
+      # the ClickHouse candle/trade/pair-stats caches before binding :8080,
+      # which on testnet (months of accumulated data) takes well over the
+      # 30s default grace window. Give it room until the cache warm-up is
+      # moved off the HTTP-bind critical path.
+      start_period: 180s
 
   dango-frontend:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
