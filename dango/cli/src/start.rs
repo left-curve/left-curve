@@ -352,6 +352,14 @@ impl StartCmd {
 
     /// Run the full-featured HTTP server (with indexer features)
     /// The shutdown flag should be set when signals are received to return 503 for new requests.
+    ///
+    /// The HTTP port is bound immediately; the ClickHouse and perps trade
+    /// cache preloads run concurrently in a background task. `/up` does not
+    /// touch any of those caches (it only reads
+    /// `grug_app.last_finalized_block()` and a Postgres blocks query), and
+    /// the GraphQL handlers that do read from them already fall through to
+    /// ClickHouse / return empty state on a cache miss, so handlers reading
+    /// during warm-up see the same state as a freshly indexed node.
     async fn run_dango_httpd_server(
         cfg: &HttpdConfig,
         dango_httpd_context: dango_httpd::context::Context,
@@ -363,12 +371,47 @@ impl StartCmd {
             cfg.port
         );
 
-        dango_httpd_context
-            .indexer_clickhouse_context
-            .start_cache()
-            .await?;
+        // Spawn the cache warm-up so it does not block the HTTP server from
+        // binding. Both contexts and their cache fields are `Arc<RwLock<…>>`
+        // under the hood, so the cloned context shares state with the one
+        // handed to `run_server`.
+        let warmup_ctx = dango_httpd_context.clone();
+        tokio::spawn(async move {
+            let warmup_start = std::time::Instant::now();
+            metrics::gauge!("dango_httpd.cache_warmup.in_progress").set(1.0);
 
-        dango_httpd_context.start_perps_trade_cache().await?;
+            tracing::info!("Starting dango HTTP cache warm-up");
+
+            // The two preloads hit different databases (ClickHouse and
+            // Postgres), so run them concurrently to halve wall-time.
+            let (clickhouse_result, perps_trade_result) = tokio::join!(
+                warmup_ctx.indexer_clickhouse_context.start_cache(),
+                warmup_ctx.start_perps_trade_cache(),
+            );
+
+            if let Err(err) = clickhouse_result {
+                tracing::warn!(
+                    %err,
+                    "ClickHouse cache preload failed; handlers will fall back to live queries"
+                );
+            }
+            if let Err(err) = perps_trade_result {
+                tracing::warn!(
+                    %err,
+                    "Perps trade cache preload failed; new subscribers will see empty initial state until the next trade"
+                );
+            }
+
+            let elapsed = warmup_start.elapsed();
+            metrics::gauge!("dango_httpd.cache_warmup.in_progress").set(0.0);
+            metrics::histogram!("dango_httpd.cache_warmup.duration_seconds")
+                .record(elapsed.as_secs_f64());
+
+            tracing::info!(
+                elapsed_secs = elapsed.as_secs_f64(),
+                "Dango HTTP cache warm-up complete"
+            );
+        });
 
         dango_httpd::server::run_server(
             &cfg.ip,
