@@ -74,23 +74,22 @@ test.describe("Referral Page", () => {
       await sharedPage.waitForLoadState("networkidle");
 
       // This test requires the user to be a referrer (has trading volume and commission settings).
-      // If the "Commission Rate" section isn't visible, skip the test gracefully since
-      // the preconditions aren't met (e.g., new user with no trading volume).
+      // The edit icon only appears when the user has reached the volume threshold.
+      // Look for the edit icon (SVG) next to Commission Rate - if not found, skip the test.
       const commissionRateLabel = sharedPage.getByText("Commission Rate", { exact: false }).first();
-      const isVisible = await commissionRateLabel
+      const editIcon = commissionRateLabel.locator("xpath=preceding-sibling::div//*[name()='svg']").first();
+
+      const isEditIconVisible = await editIcon
         .waitFor({ state: "visible", timeout: 5000 })
         .then(() => true)
         .catch(() => false);
 
-      if (!isVisible) {
-        test.skip(true, "User is not a referrer - Commission Rate section not visible");
+      if (!isEditIconVisible) {
+        test.skip(true, "User is not a referrer - Edit icon not visible (no trading volume)");
         return;
       }
 
-      await commissionRateLabel
-        .locator("xpath=preceding-sibling::div//*[name()='svg']")
-        .first()
-        .click();
+      await editIcon.click();
 
       const refereeReceivesInput = sharedPage.locator('.fixed.z-\\[60\\] input[type="number"]').first();
       await expect(refereeReceivesInput).toBeVisible();
