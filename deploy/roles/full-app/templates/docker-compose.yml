@@ -328,7 +328,7 @@ services:
       - default
       - traefik
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:{{ perp_liquidator_http_port }}/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9310/health"]
       interval: 10s
       timeout: 5s
       retries: 3
