@@ -1,4 +1,11 @@
-import { twMerge, useApp, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
+import {
+  twMerge,
+  useAnimateOnce,
+  useApp,
+  useClickAway,
+  useMediaQuery,
+  usePreserveScroll,
+} from "@left-curve/applets-kit";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useFavApplets, useSearchBar } from "@left-curve/store";
@@ -197,141 +204,147 @@ const Body: React.FC<SearchMenuBodyProps> = ({
 }) => {
   const navigate = useNavigate();
   const { applets, block, txs, account, contracts, user } = searchResult;
+  const scrollRef = usePreserveScroll([applets, contracts, allApplets]);
+  const hasAnimated = useAnimateOnce(isVisible);
 
   return (
     <AnimatePresence mode="wait" custom={isVisible}>
       {isVisible && (
         <motion.div
-          layout
           initial={{ height: 0 }}
           animate={{ height: "auto" }}
           exit={{ height: 0 }}
           transition={{ duration: 0.1 }}
-          className="menu w-full overflow-hidden md:max-h-[25.15rem] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-outline-secondary-gray scrollbar-track-transparent"
+          className="menu w-full overflow-hidden"
         >
-          <motion.div
-            className="lg:p-1 w-full flex items-center flex-col gap-1"
-            variants={{
-              hidden: {},
-              visible: {
-                transition: {
-                  delayChildren: 0.1,
-                  staggerChildren: 0.05,
-                },
-              },
-            }}
-            initial="hidden"
-            animate="visible"
+          <div
+            ref={scrollRef}
+            className="md:max-h-[25.15rem] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-outline-secondary-gray scrollbar-track-transparent"
           >
-            <Command.List className="w-full">
-              <Command.Empty>
-                {isLoading ? (
-                  <div className="flex items-center justify-center w-full p-2">
-                    <Spinner color="pink" size="lg" />
-                  </div>
-                ) : (
-                  <p className="text-ink-tertiary-500 diatype-m-regular p-2 text-center">
-                    {m["searchBar.noResult"]()}
-                  </p>
-                )}
-              </Command.Empty>
-              {applets.length ? (
-                <Command.Group heading={isSearching ? "Applets" : "Favorite Applets"}>
-                  {applets.map((applet) => (
-                    <Command.Item
-                      key={applet.title}
-                      value={applet.title}
-                      className="group"
-                      onSelect={() => [navigate({ to: applet.path }), hideMenu()]}
-                    >
-                      <SearchItem.Applet key={applet.title} {...applet} />
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-              ) : null}
-              {!isSearching && allApplets.length ? (
-                <Command.Group heading="Applets">
-                  {allApplets.map((applet) => (
-                    <Command.Item
-                      key={applet.title}
-                      value={applet.title}
-                      className="group"
-                      onSelect={() => [navigate({ to: applet.path }), hideMenu()]}
-                    >
-                      <SearchItem.Applet key={applet.title} {...applet} />
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-              ) : null}
-              {block ? (
-                <Command.Group heading="Block">
-                  <Command.Item
-                    key={block.hash}
-                    value={block.hash}
-                    className="group"
-                    onSelect={() => [navigate({ to: `/block/${block.blockHeight}` }), hideMenu()]}
-                  >
-                    <SearchItem.Block height={block.blockHeight} hash={block.hash} />
-                  </Command.Item>
-                </Command.Group>
-              ) : null}
-              {txs.length
-                ? txs.map((tx) => (
-                    <Command.Group heading="Transactions" key={tx.hash}>
+            <motion.div
+              className="lg:p-1 w-full flex items-center flex-col gap-1"
+              variants={{
+                hidden: {},
+                visible: {
+                  transition: {
+                    delayChildren: 0.1,
+                    staggerChildren: 0.05,
+                  },
+                },
+              }}
+              initial={hasAnimated ? false : "hidden"}
+              animate="visible"
+            >
+              <Command.List className="w-full">
+                <Command.Empty>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center w-full p-2">
+                      <Spinner color="pink" size="lg" />
+                    </div>
+                  ) : (
+                    <p className="text-ink-tertiary-500 diatype-m-regular p-2 text-center">
+                      {m["searchBar.noResult"]()}
+                    </p>
+                  )}
+                </Command.Empty>
+                {applets.length ? (
+                  <Command.Group heading={isSearching ? "Applets" : "Favorite Applets"}>
+                    {applets.map((applet) => (
                       <Command.Item
-                        key={tx.hash}
-                        value={tx.hash}
+                        key={applet.title}
+                        value={applet.title}
                         className="group"
-                        onSelect={() => [navigate({ to: `/tx/${tx.hash}` }), hideMenu()]}
+                        onSelect={() => [navigate({ to: applet.path }), hideMenu()]}
                       >
-                        <SearchItem.Transaction height={tx.blockHeight} hash={tx.hash} />
+                        <SearchItem.Applet key={applet.title} {...applet} />
                       </Command.Item>
-                    </Command.Group>
-                  ))
-                : null}
-              {account ? (
-                <Command.Group heading="Accounts">
-                  <Command.Item
-                    key={account.address}
-                    value={account.address}
-                    className="group"
-                    onSelect={() => [navigate({ to: `/account/${account.address}` }), hideMenu()]}
-                  >
-                    <SearchItem.Account account={account} />
-                  </Command.Item>
-                </Command.Group>
-              ) : null}
-              {user ? (
-                <Command.Group heading="Users">
-                  <Command.Item
-                    key={user.name}
-                    value={user.name}
-                    className="group"
-                    onSelect={() => [navigate({ to: `/user/${user.name}` }), hideMenu()]}
-                  >
-                    <SearchItem.User user={user} />
-                  </Command.Item>
-                </Command.Group>
-              ) : null}
-              {contracts.length ? (
-                <Command.Group heading="Contracts">
-                  {contracts.map((contract) => (
+                    ))}
+                  </Command.Group>
+                ) : null}
+                {!isSearching && allApplets.length ? (
+                  <Command.Group heading="Applets">
+                    {allApplets.map((applet) => (
+                      <Command.Item
+                        key={applet.title}
+                        value={applet.title}
+                        className="group"
+                        onSelect={() => [navigate({ to: applet.path }), hideMenu()]}
+                      >
+                        <SearchItem.Applet key={applet.title} {...applet} />
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                ) : null}
+                {block ? (
+                  <Command.Group heading="Block">
                     <Command.Item
-                      key={contract.address}
-                      value={contract.address}
+                      key={block.hash}
+                      value={block.hash}
                       className="group"
-                      onSelect={() => [
-                        navigate({ to: `/contract/${contract.address}` }),
-                        hideMenu(),
-                      ]}
+                      onSelect={() => [navigate({ to: `/block/${block.blockHeight}` }), hideMenu()]}
                     >
-                      <SearchItem.Contract contract={contract} />
+                      <SearchItem.Block height={block.blockHeight} hash={block.hash} />
                     </Command.Item>
-                  ))}
-                </Command.Group>
-              ) : null}
-            </Command.List>
-          </motion.div>
+                  </Command.Group>
+                ) : null}
+                {txs.length
+                  ? txs.map((tx) => (
+                      <Command.Group heading="Transactions" key={tx.hash}>
+                        <Command.Item
+                          key={tx.hash}
+                          value={tx.hash}
+                          className="group"
+                          onSelect={() => [navigate({ to: `/tx/${tx.hash}` }), hideMenu()]}
+                        >
+                          <SearchItem.Transaction height={tx.blockHeight} hash={tx.hash} />
+                        </Command.Item>
+                      </Command.Group>
+                    ))
+                  : null}
+                {account ? (
+                  <Command.Group heading="Accounts">
+                    <Command.Item
+                      key={account.address}
+                      value={account.address}
+                      className="group"
+                      onSelect={() => [navigate({ to: `/account/${account.address}` }), hideMenu()]}
+                    >
+                      <SearchItem.Account account={account} />
+                    </Command.Item>
+                  </Command.Group>
+                ) : null}
+                {user ? (
+                  <Command.Group heading="Users">
+                    <Command.Item
+                      key={user.name}
+                      value={user.name}
+                      className="group"
+                      onSelect={() => [navigate({ to: `/user/${user.name}` }), hideMenu()]}
+                    >
+                      <SearchItem.User user={user} />
+                    </Command.Item>
+                  </Command.Group>
+                ) : null}
+                {contracts.length ? (
+                  <Command.Group heading="Contracts">
+                    {contracts.map((contract) => (
+                      <Command.Item
+                        key={contract.address}
+                        value={contract.address}
+                        className="group"
+                        onSelect={() => [
+                          navigate({ to: `/contract/${contract.address}` }),
+                          hideMenu(),
+                        ]}
+                      >
+                        <SearchItem.Contract contract={contract} />
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                ) : null}
+              </Command.List>
+            </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

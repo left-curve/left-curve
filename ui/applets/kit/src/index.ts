@@ -12,5 +12,7 @@ export { useInfiniteScroll } from "./hooks/useInfiniteScroll";
 export { useHeaderHeight } from "./hooks/useHeaderHeight";
 export { useBodyScrollLock } from "./hooks/useBodyScrollLock";
 export { useDebounceFn } from "./hooks/useDebounceFn";
+export { usePreserveScroll } from "./hooks/usePreserveScroll";
+export { useAnimateOnce } from "./hooks/useAnimateOnce";
 
 export { toast, useToastStore } from "./providers/toast";
