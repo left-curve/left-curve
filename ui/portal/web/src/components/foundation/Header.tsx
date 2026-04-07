@@ -1,4 +1,4 @@
-import { useAccount } from "@left-curve/store";
+import { useAccount, useConfig } from "@left-curve/store";
 import { useRouterState } from "@tanstack/react-router";
 import {
   IconGift,
@@ -6,6 +6,7 @@ import {
   Modals,
   useApp,
   useMediaQuery,
+  Tooltip,
 } from "@left-curve/applets-kit";
 
 import { Button, IconButton, twMerge } from "@left-curve/applets-kit";
@@ -21,13 +22,17 @@ interface HeaderProps {
   isScrolled: boolean;
 }
 
+const CAMPAIGN_START_DATE = "April 14";
+
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected, isUserActive } = useAccount();
+  const { chain } = useConfig();
 
   const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
   const { isLg } = useMediaQuery();
 
+  const isMainnet = !["Devnet", "Testnet"].includes(chain.name);
   const isProSwap = location.pathname.includes("trade");
   const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
 
@@ -69,15 +74,31 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           ) : null}
           {!isSearchBarVisible ? (
             <div className="flex gap-2 lg:hidden">
-              <IconButton
-                as={Link}
-                to="/points"
-                size="lg"
-                type="button"
-                className="rounded-lg shadow-account-card"
-              >
-                <IconGift />
-              </IconButton>
+              {isMainnet ? (
+                <Tooltip
+                  content={m["points.campaignStartsOn"]({ date: CAMPAIGN_START_DATE })}
+                  placement="top"
+                >
+                  <IconButton
+                    size="lg"
+                    type="button"
+                    className="rounded-lg shadow-account-card"
+                    isDisabled
+                  >
+                    <IconGift />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <IconButton
+                  as={Link}
+                  to="/points"
+                  size="lg"
+                  type="button"
+                  className="rounded-lg shadow-account-card"
+                >
+                  <IconGift />
+                </IconButton>
+              )}
               <IconButton
                 onClick={() =>
                   isConnected ? setSidebarVisibility(true) : showModal(Modals.Authenticate)
@@ -93,9 +114,20 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           ) : null}
         </div>
         <div className="hidden lg:flex gap-4 items-center justify-end order-2 lg:order-3">
-          <Button as={Link} to="/points" size="lg" className="rounded-lg">
-            {m["points.campaign"]()}
-          </Button>
+          {isMainnet ? (
+            <Tooltip
+              content={m["points.campaignStartsOn"]({ date: CAMPAIGN_START_DATE })}
+              placement="bottom"
+            >
+              <Button size="lg" className="rounded-lg" isDisabled>
+                {m["points.campaign"]()}
+              </Button>
+            </Tooltip>
+          ) : (
+            <Button as={Link} to="/points" size="lg" className="rounded-lg">
+              {m["points.campaign"]()}
+            </Button>
+          )}
           <Button
             dng-connect-button="true"
             variant="utility"

@@ -1339,6 +1339,7 @@
   "points": {
     "mobileTitle": "Points",
     "campaign": "Campaign",
+    "campaignStartsOn": "Campaign starts on {date}",
     "header": {
       "welcome": "Welcome to Dango's",
       "title": "POINTS PROGRAM",
