@@ -4,10 +4,8 @@ use {
     crate::{
         entities::{pair_price::PairPrice, perps_pair_price::PerpsPairPrice, trade::Trade},
         indexer::{
-            candles::cache::CandleCache,
-            pair_stats::cache::PairStatsCache,
-            perps_candles::cache::PerpsCandleCache,
-            perps_pair_stats::cache::PerpsPairStatsCache,
+            candles::cache::CandleCache, pair_stats::cache::PairStatsCache,
+            perps_candles::cache::PerpsCandleCache, perps_pair_stats::cache::PerpsPairStatsCache,
             trades::cache::TradeCache,
         },
     },

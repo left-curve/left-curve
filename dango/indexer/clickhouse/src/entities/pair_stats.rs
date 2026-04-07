@@ -319,18 +319,11 @@ impl PairStats {
                 _ => {
                     let app_ctx = ctx.data::<Context>()?;
                     let client = app_ctx.clickhouse_client();
-                    let cp = Self::fetch_current_price(
-                        client,
-                        &self.base_denom,
-                        &self.quote_denom,
-                    )
-                    .await?;
-                    let p24 = Self::fetch_price_24h_ago(
-                        client,
-                        &self.base_denom,
-                        &self.quote_denom,
-                    )
-                    .await?;
+                    let cp = Self::fetch_current_price(client, &self.base_denom, &self.quote_denom)
+                        .await?;
+                    let p24 =
+                        Self::fetch_price_24h_ago(client, &self.base_denom, &self.quote_denom)
+                            .await?;
                     (cp, p24)
                 },
             };

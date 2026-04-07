@@ -68,9 +68,7 @@ impl PairStatsCache {
             .collect();
 
         // Stable ordering for deterministic results.
-        stats.sort_by(|a, b| {
-            (&a.base_denom, &a.quote_denom).cmp(&(&b.base_denom, &b.quote_denom))
-        });
+        stats.sort_by(|a, b| (&a.base_denom, &a.quote_denom).cmp(&(&b.base_denom, &b.quote_denom)));
         self.stats = stats;
 
         Ok(())

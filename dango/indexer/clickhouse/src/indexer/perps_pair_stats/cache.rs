@@ -68,9 +68,7 @@ impl PerpsPairStatsCache {
     // -- batch helpers --------------------------------------------------------
 
     /// Latest close price per pair (the one with the highest block_height).
-    async fn fetch_current_prices(
-        client: &clickhouse::Client,
-    ) -> Result<HashMap<String, u128>> {
+    async fn fetch_current_prices(client: &clickhouse::Client) -> Result<HashMap<String, u128>> {
         let rows: Vec<PerpsPriceRow> = client
             .query(
                 r#"
@@ -87,9 +85,7 @@ impl PerpsPairStatsCache {
     }
 
     /// Close price closest to (but not after) 24 h ago, per pair.
-    async fn fetch_prices_24h_ago(
-        client: &clickhouse::Client,
-    ) -> Result<HashMap<String, u128>> {
+    async fn fetch_prices_24h_ago(client: &clickhouse::Client) -> Result<HashMap<String, u128>> {
         let ts = chrono::Utc::now() - chrono::Duration::hours(24);
 
         let rows: Vec<PerpsPriceRow> = client
@@ -110,9 +106,7 @@ impl PerpsPairStatsCache {
     }
 
     /// Earliest close price per pair – fallback when no data from 24 h ago.
-    async fn fetch_earliest_prices(
-        client: &clickhouse::Client,
-    ) -> Result<HashMap<String, u128>> {
+    async fn fetch_earliest_prices(client: &clickhouse::Client) -> Result<HashMap<String, u128>> {
         let rows: Vec<PerpsPriceRow> = client
             .query(
                 r#"
@@ -129,9 +123,7 @@ impl PerpsPairStatsCache {
     }
 
     /// Sum of `volume_usd` from `perps_pair_prices` in the last 24 h, per pair.
-    async fn fetch_volumes_24h(
-        client: &clickhouse::Client,
-    ) -> Result<HashMap<String, u128>> {
+    async fn fetch_volumes_24h(client: &clickhouse::Client) -> Result<HashMap<String, u128>> {
         let ts = chrono::Utc::now() - chrono::Duration::hours(24);
 
         let rows: Vec<PerpsVolumeRow> = client
