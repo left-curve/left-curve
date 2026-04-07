@@ -7,7 +7,9 @@ use {
         constants::perp_eth,
         perps::{self, PairId, PairParam},
     },
-    grug::{BroadcastClientExt, Coins, GasOption, JsonSerExt, Message, QueryClientExt, SearchTxClient},
+    grug::{
+        BroadcastClientExt, Coins, GasOption, JsonSerExt, Message, QueryClientExt, SearchTxClient,
+    },
     grug_app::GAS_COSTS,
     indexer_client::HttpClient,
     std::collections::BTreeMap,
@@ -20,7 +22,10 @@ async fn main() -> anyhow::Result<()> {
     let client = HttpClient::new(API_URL)?;
 
     let status = client.query_status(None).await?;
-    println!("Connected to devnet. Height: {}", status.last_finalized_block.height);
+    println!(
+        "Connected to devnet. Height: {}",
+        status.last_finalized_block.height
+    );
 
     let config = client.query_config(None).await?;
     let owner_address = config.owner;
@@ -64,10 +69,7 @@ async fn main() -> anyhow::Result<()> {
 
     let msg = Message::execute(
         perps_addr,
-        &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
-            param,
-            pair_params,
-        }),
+        &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure { param, pair_params }),
         Coins::new(),
     )?;
 
