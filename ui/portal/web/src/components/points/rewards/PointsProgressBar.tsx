@@ -171,6 +171,7 @@ const ProgressThumb: React.FC<ProgressThumbProps> = ({ progress }) => (
 const STEP_PX = 140;
 const EDGE_PX = 70;
 const BAR_LEFT_EXTEND = 24;
+const BAR_RIGHT_FADE = 60;
 
 type HorizontalProgressBarProps = {
   steps: Step[];
@@ -269,8 +270,13 @@ const HorizontalProgressBar: React.FC<HorizontalProgressBarProps> = ({
         <div className="relative h-8">
           <div className="absolute inset-y-0" style={{ left: EDGE_PX, right: EDGE_PX }}>
             <div
-              className="absolute top-1/2 -translate-y-1/2 right-0 h-3 bg-ink-placeholder-400 border border-brand-green rounded-full overflow-hidden"
-              style={{ left: -BAR_LEFT_EXTEND }}
+              className="absolute top-1/2 -translate-y-1/2 h-3 bg-ink-placeholder-400 border border-brand-green rounded-full overflow-hidden"
+              style={{
+                left: -BAR_LEFT_EXTEND,
+                right: -BAR_RIGHT_FADE,
+                maskImage: `linear-gradient(to right, black 0, black calc(100% - ${BAR_RIGHT_FADE}px), transparent 100%)`,
+                WebkitMaskImage: `linear-gradient(to right, black 0, black calc(100% - ${BAR_RIGHT_FADE}px), transparent 100%)`,
+              }}
             >
               <div
                 className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(321.22deg,_#AFB244_26.16%,_#F9F8EC_111.55%)] transition-all duration-300"
