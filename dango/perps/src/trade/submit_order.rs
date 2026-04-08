@@ -345,7 +345,17 @@ pub(crate) fn _submit_order(
     // ---------------------- Step 4. Post-only fast path ----------------------
 
     if let Some(limit_price) = kind.post_only_price() {
-        let order_to_store = store_post_only_limit_order(
+        // `store_post_only_limit_order` is now pure w.r.t. `user_state` — we
+        // take the updated copy out of the outcome and write it back through
+        // the caller's `&mut UserState`. `_submit_order` itself is still
+        // `&mut` at this commit; it will become pure in a later commit in
+        // the same stack.
+        let StoreLimitOrderOutcome {
+            user_state: updated_taker_state,
+            stored_price,
+            order_id,
+            order,
+        } = store_post_only_limit_order(
             storage,
             taker,
             current_time,
@@ -362,10 +372,12 @@ pub(crate) fn _submit_order(
             sl,
         )?;
 
+        *taker_state = updated_taker_state;
+
         return Ok((
             BTreeMap::new(),
             Vec::new(),
-            Some(order_to_store),
+            Some((stored_price, order_id, order)),
             taker_order_id + OrderId::ONE,
             Vec::new(),
             BTreeMap::new(),
@@ -428,21 +440,35 @@ pub(crate) fn _submit_order(
 
     let order_to_store = if unfilled.is_non_zero() {
         match kind {
-            OrderKind::Limit { limit_price, .. } => Some(store_limit_order(
-                storage,
-                taker,
-                current_time,
-                oracle_querier,
-                param,
-                pair_param,
-                taker_state,
-                unfilled,
-                limit_price,
-                reduce_only,
-                taker_order_id,
-                tp.clone(),
-                sl.clone(),
-            )?),
+            OrderKind::Limit { limit_price, .. } => {
+                // Write the updated `user_state` back through the caller's
+                // `&mut UserState`. `_submit_order` is still `&mut` at this
+                // commit; it will become pure later in the stack.
+                let StoreLimitOrderOutcome {
+                    user_state: updated_taker_state,
+                    stored_price,
+                    order_id,
+                    order,
+                } = store_limit_order(
+                    storage,
+                    taker,
+                    current_time,
+                    oracle_querier,
+                    param,
+                    pair_param,
+                    taker_state,
+                    unfilled,
+                    limit_price,
+                    reduce_only,
+                    taker_order_id,
+                    tp.clone(),
+                    sl.clone(),
+                )?;
+
+                *taker_state = updated_taker_state;
+
+                Some((stored_price, order_id, order))
+            },
             OrderKind::Market { .. } => {
                 ensure!(
                     unfilled < fillable_size,
@@ -1011,16 +1037,8 @@ pub fn settle_pnls(
 
 /// Validate and store a post-only limit order. Rejects if the limit price
 /// would cross the best resting order on the opposite side of the book.
-///
-/// Mutates:
-///
-/// - `taker_state.reserved_margin` — increased by the margin reserved for
-///   the resting order.
-/// - `taker_state.open_order_count` — incremented by one.
-///
-/// Returns:
-///
-/// - `(stored_price, order_id, LimitOrder)` — the resting order to persist.
+/// Pure w.r.t. the caller's `UserState` — delegates to `store_limit_order`
+/// and returns the same `StoreLimitOrderOutcome`.
 fn store_post_only_limit_order(
     storage: &dyn Storage,
     taker: Addr,
@@ -1029,14 +1047,14 @@ fn store_post_only_limit_order(
     param: &Param,
     pair_id: &PairId,
     pair_param: &PairParam,
-    taker_state: &mut UserState,
+    taker_state: &UserState,
     size: Quantity,
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
-) -> anyhow::Result<(UsdPrice, OrderId, LimitOrder)> {
+) -> anyhow::Result<StoreLimitOrderOutcome> {
     let taker_is_bid = size.is_positive();
     let maker_is_bid = !taker_is_bid;
 
@@ -1096,15 +1114,14 @@ pub struct StoreLimitOrderOutcome {
     pub order: LimitOrder,
 }
 
-/// Mutates:
+/// Validate the caller, compute the reserved margin, and produce an
+/// updated `UserState` with the new resting order accounted for (incremented
+/// `open_order_count`, added `reserved_margin`). Pure w.r.t. the caller's
+/// `UserState` — takes `&UserState` and returns the updated copy in the
+/// outcome, so a failed call leaves the caller's state untouched.
 ///
-/// - `user_state.reserved_margin` — increased by the margin reserved for
-///   the resting order.
-/// - `user_state.open_order_count` — incremented by one.
-///
-/// Returns:
-///
-/// - `(stored_price, order_id, LimitOrder)` — the resting order to persist.
+/// The caller is responsible for persisting `outcome.user_state` back to
+/// `USER_STATES` and writing the returned `order` to `BIDS` / `ASKS`.
 fn store_limit_order(
     storage: &dyn Storage,
     user: Addr,
@@ -1112,14 +1129,14 @@ fn store_limit_order(
     oracle_querier: &mut OracleQuerier,
     param: &Param,
     pair_param: &PairParam,
-    user_state: &mut UserState,
+    user_state: &UserState,
     size: Quantity,
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
-) -> anyhow::Result<(UsdPrice, OrderId, LimitOrder)> {
+) -> anyhow::Result<StoreLimitOrderOutcome> {
     ensure!(
         user_state.open_order_count < param.max_open_orders,
         "too many open orders! max allowed: {}",
@@ -1153,21 +1170,32 @@ fn store_limit_order(
         );
     }
 
+    // Clone the user state and mutate the local copy. On `Err` the clone is
+    // dropped with the rest of the call frame; the caller's `&UserState`
+    // is never touched.
+    let mut user_state = user_state.clone();
     user_state.open_order_count += 1;
-    (user_state.reserved_margin).checked_add_assign(margin_to_reserve)?;
+    user_state
+        .reserved_margin
+        .checked_add_assign(margin_to_reserve)?;
 
     // Invert price for buy orders so storage order matches price-time priority.
     let stored_price = may_invert_price(limit_price, size.is_positive());
 
-    Ok((stored_price, order_id, LimitOrder {
-        user,
-        size,
-        reduce_only,
-        reserved_margin: margin_to_reserve,
-        created_at: current_time,
-        tp,
-        sl,
-    }))
+    Ok(StoreLimitOrderOutcome {
+        user_state,
+        stored_price,
+        order_id,
+        order: LimitOrder {
+            user,
+            size,
+            reduce_only,
+            reserved_margin: margin_to_reserve,
+            created_at: current_time,
+            tp,
+            sl,
+        },
+    })
 }
 
 /// Map TP/SL child order params to above/below conditional orders based on
