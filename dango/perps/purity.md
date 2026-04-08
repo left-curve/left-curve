@@ -46,10 +46,14 @@ fields each. The clone cost at function entry is negligible.
 | --------------------------------------- | ---------------------------------------------------------------------------------- |
 | `src/trade/submit_order.rs`             | `_submit_order`, `match_order`, `store_limit_order`, `store_post_only_limit_order` |
 | `src/trade/cancel_order.rs`             | `_cancel_all_orders`                                                               |
-| `src/maintain/liquidate.rs`             | `_liquidate`, `execute_close_schedule`, `execute_adl`                              |
+| `src/maintain/liquidate.rs`             | `_liquidate`                                                                       |
 | `src/cron.rs`                           | `process_triggered_order`, `process_unlock_for_user`                               |
-| `src/vault/refresh.rs`                  | `_refresh_orders` (extracted from the `refresh_orders` entry point)                |
 | `src/referral/apply_fee_commissions.rs` | `apply_fee_commissions`                                                            |
+
+`refresh_orders` (in `src/vault/refresh.rs`) is not in the pure set: it's a
+simple entry point with a single read/mutate path and no post-mutation
+failure point, so the bug class doesn't apply and the ceremony of splitting
+it into inner/outer wouldn't earn its keep.
 
 ### Leaf-helper exception (pragmatic tier)
 
@@ -67,6 +71,10 @@ Current leaf exceptions:
 - `_cancel_one_order` — only called from `_cancel_all_orders`
   (which owns the local `user_state`) and from `cancel_one_order`
   (a top-level one-shot that doesn't compose into a failing ancestor).
+- `execute_close_schedule` / `execute_adl` — private helpers of
+  `_liquidate`. The ancestor `_liquidate` clones its inputs at entry,
+  so any error discards the helpers' partial writes along with the
+  rest of `_liquidate`'s locals.
 - `vault::_add_liquidity` / `vault::_remove_liquidity` — kept out of
   the previous refactor's revert for the same reason: single-path,
   no post-mutation failure point.

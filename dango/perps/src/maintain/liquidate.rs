@@ -473,37 +473,14 @@ fn _liquidate(
     })
 }
 
-/// Owned outcome of an `execute_close_schedule` call. Carries the rolling
-/// `user_state` / `maker_states` / `pair_states` snapshots after every
-/// iteration of the close schedule, plus the accumulated PnL/fee/volume
-/// deltas for the caller (`_liquidate`) to feed into `settle_pnls`.
-/// `closed_notional` is used downstream to compute the liquidation fee.
-#[derive(Debug)]
-pub struct ExecuteCloseScheduleOutcome {
-    pub pair_states: BTreeMap<PairId, PairState>,
-    pub user_state: UserState,
-    pub maker_states: BTreeMap<Addr, UserState>,
-    pub pnls: BTreeMap<Addr, UsdValue>,
-    pub fees: BTreeMap<Addr, UsdValue>,
-    pub volumes: BTreeMap<Addr, UsdValue>,
-    pub order_mutations: Vec<(
-        PairId,
-        bool,
-        UsdPrice,
-        OrderId,
-        Option<LimitOrder>,
-        Quantity,
-    )>,
-    pub index_updates: Vec<PositionIndexUpdate>,
-    pub closed_notional: UsdValue,
-    pub next_order_id: OrderId,
-}
-
 /// Execute the close schedule against the order book, with ADL for any unfilled
 /// remainder.
 ///
 /// `maker_states` is a shared map of maker `UserState`s that persists across
 /// `match_order` calls.
+///
+/// This is a leaf helper private to `_liquidate` and keeps `&mut` parameters
+/// by design; it is not part of the pure set.
 fn execute_close_schedule(
     storage: &dyn Storage,
     user: Addr,
@@ -734,26 +711,12 @@ fn execute_close_schedule(
     ))
 }
 
-/// Owned outcome of an `execute_adl` call. The `*_delta` maps are the
-/// per-counter-party contributions from this ADL pass, to be merged by
-/// `execute_close_schedule` into its running `all_pnls` / `all_fees` /
-/// `all_volumes` totals.
-#[derive(Debug)]
-pub struct ExecuteAdlOutcome {
-    pub pair_state: PairState,
-    pub user_state: UserState,
-    pub maker_states: BTreeMap<Addr, UserState>,
-    pub pnls_delta: BTreeMap<Addr, UsdValue>,
-    pub fees_delta: BTreeMap<Addr, UsdValue>,
-    pub volumes_delta: BTreeMap<Addr, UsdValue>,
-    pub index_updates: Vec<PositionIndexUpdate>,
-    pub total_adl_size: Quantity,
-    pub adl_price: UsdPrice,
-}
-
 /// ADL the unfilled remainder of a liquidation against counter-positions.
 ///
 /// Returns: (total ADL size, bankruptcy price used).
+///
+/// This is a leaf helper private to `execute_close_schedule` and keeps `&mut`
+/// parameters by design; it is not part of the pure set.
 fn execute_adl(
     storage: &dyn Storage,
     user: Addr,

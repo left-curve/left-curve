@@ -14,28 +14,11 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        Quantity, UsdPrice, UsdValue,
-        perps::{LimitOrder, OrderId, PairId, ReasonForOrderRemoval, UserState},
+        UsdValue,
+        perps::{LimitOrder, ReasonForOrderRemoval},
     },
     grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
 };
-
-/// Owned outcome of a `_refresh_orders` call. The vault's new bid/ask
-/// placements are returned as a plan instead of being written inline,
-/// because placing orders requires reading `BIDS`/`ASKS` between pairs
-/// (to compute best-bid/best-ask quotes) and we keep that read/write
-/// split clean by deferring the writes here. The `cancellation` field
-/// carries the post-cancel `vault_state` from the earlier
-/// `_cancel_all_orders` call.
-#[derive(Debug)]
-pub struct RefreshOrdersOutcome {
-    pub vault_state: UserState,
-    pub bids_to_place: Vec<(PairId, UsdPrice, OrderId, LimitOrder)>,
-    pub asks_to_place: Vec<(PairId, UsdPrice, OrderId, LimitOrder)>,
-    pub depth_increases: Vec<(PairId, bool, UsdPrice, Quantity)>,
-    pub next_order_id: OrderId,
-    pub cancellation: CancelAllOrdersOutcome,
-}
 
 /// Entry point for vault market-making, triggered at the beginning of each
 /// block after the oracle update.
