@@ -6,7 +6,7 @@ use {
     bip32::{Mnemonic, PublicKey, XPrv},
     dango_auth::EIP155_CHAIN_ID,
     dango_types::auth::{Eip712Signature, Key, SignDoc, Signature},
-    grug::{ByteArray, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt, SignData, json},
+    grug::{Addr, ByteArray, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt, SignData, json},
     identity::Identity256,
     k256::{ecdsa::signature::DigestSigner, schnorr::CryptoRngCore},
     rand::rngs::OsRng,
@@ -163,7 +163,7 @@ impl Secret for Eip712 {
     }
 
     fn key_hash(&self) -> Hash256 {
-        self.address.hash256()
+        Addr::from(self.address).to_string().as_bytes().hash256()
     }
 
     fn sign_transaction(&self, sign_doc: SignDoc) -> anyhow::Result<Signature> {
