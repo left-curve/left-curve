@@ -417,9 +417,9 @@ scrape_configs:
           environment: 'production'
           network: 'testnet'
           dango_network: 'testnet'
-      # - targets: ['ovh2:9302']
-      #   labels:
-      #     service: 'points-bot'
-      #     environment: 'production'
-      #     network: 'mainnet'
-      #     dango_network: 'mainnet'
+      - targets: ['hetzner1:9302']
+        labels:
+          service: 'points-bot'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
