@@ -545,6 +545,56 @@ mod tests {
         assert_eq!(schedule[0].1, Quantity::new_int(-2));
     }
 
+    /// Regression for the silent-exit `liquidate` bug observed on mainnet.
+    ///
+    /// When the deficit is smaller than one ULP of `denom = oracle_price × mmr`,
+    /// floor division of `deficit / denom` collapses `close_amount` to zero
+    /// and `compute_close_schedule` returns an empty `Vec`. Combined with a
+    /// liquidatable user that has no resting orders or conditionals, the
+    /// outer `liquidate` handler then writes unchanged state and returns
+    /// `Ok` with an empty `EventBuilder` — a successful tx that emits no
+    /// events.
+    ///
+    /// This test pins down the **current (buggy)** behavior. The follow-up
+    /// commit switches `compute_close_schedule` to ceil division and flips
+    /// the assertion to a one-ULP close.
+    ///
+    /// Setup: long 1 BTC, oracle $60k, mmr 5% → denom = $3,000.
+    /// Deficit = $0.001 (raw 1_000 in `Dec128_6`'s 6-decimal representation).
+    ///
+    /// - `floor(deficit / denom) = floor(1_000 × 10⁶ / 3_000_000_000) = floor(1/3) = 0`
+    /// - `ceil (deficit / denom) = ceil (1/3) = 1` raw ULP of `Quantity`
+    #[test]
+    fn sub_ulp_deficit_floors_to_empty_schedule() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(1),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! { pair_btc() => btc_pair_param() };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(60_000) };
+
+        // $0.001 — one milli-dollar, well below `denom × 1 ULP = $0.003`.
+        let deficit = UsdValue::new_raw(1_000);
+
+        let schedule =
+            compute_close_schedule(&user_state, &pair_params, &oracle_prices, deficit).unwrap();
+
+        // BUG: floor rounding collapses `close_amount` to 0, so the schedule
+        // is empty even though the user is liquidatable. The next commit
+        // flips `compute_close_schedule` to ceil division and this assertion
+        // becomes `assert_eq!(schedule.len(), 1)` with a one-ULP close.
+        assert!(schedule.is_empty());
+    }
+
     // ==================== `compute_bankruptcy_price` tests ====================
 
     #[test]
