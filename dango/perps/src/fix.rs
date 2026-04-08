@@ -80,7 +80,7 @@ const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
 /// will execute on the first `execute` or `cron_execute` call at or after
 /// this height; it does not need to hit the exact height. The flag below
 /// then prevents any subsequent re-runs.
-const TESTNET_FIX_MIN_HEIGHT: u64 = 21991499;
+const TESTNET_FIX_MIN_HEIGHT: u64 = 20191499;
 
 /// The one user whose `UserState` was corrupted by the STP leak. Identified
 /// by offline diagnosis of the node's RocksDB snapshot (see
