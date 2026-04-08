@@ -51,6 +51,12 @@
         regexp: '^PERP_LIQUIDATOR_TAG='
         line: "PERP_LIQUIDATOR_TAG={{ perp_liquidator_tag }}"
 
+    - name: Login to GHCR
+      community.docker.docker_login:
+        registry: ghcr.io
+        username: "{{ ghcr_user }}"
+        password: "{{ ghcr_token }}"
+
     - name: Redeploy perp-liquidator service
       community.docker.docker_compose_v2:
         project_name: "{{ current_deployment }}"
