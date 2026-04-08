@@ -22,6 +22,14 @@ use {
 /// commissions.
 const MAX_REFERRAL_CHAIN_DEPTH: usize = 5;
 
+/// Owned outcome of an `apply_fee_commissions` call. The map carries
+/// every user state that was credited a commission (or had its margin
+/// debited as the payer / vault), ready for the caller to persist.
+#[derive(Debug)]
+pub struct FeeCommissionsOutcome {
+    pub user_states: BTreeMap<Addr, UserState>,
+}
+
 /// Calculate and apply fee commissions for all fee-paying users based on the
 /// referral chain.
 ///
@@ -45,13 +53,18 @@ pub fn apply_fee_commissions(
     perps_contract: Addr,
     current_time: Timestamp,
     param: &Param,
-    user_states: &mut BTreeMap<Addr, UserState>,
+    user_states: &BTreeMap<Addr, UserState>,
     fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
     volumes: &BTreeMap<Addr, UsdValue>,
     events: &mut EventBuilder,
-) -> StdResult<()> {
+) -> StdResult<FeeCommissionsOutcome> {
+    // Clone at entry and mutate the local copy. On `Err` the clone is
+    // dropped with the rest of the call frame; the caller's
+    // `&BTreeMap<Addr, UserState>` is never touched.
+    let mut user_states = user_states.clone();
+
     if !param.referral_active {
-        return Ok(());
+        return Ok(FeeCommissionsOutcome { user_states });
     }
 
     let mut total_vault_deduction = UsdValue::ZERO;
@@ -106,7 +119,7 @@ pub fn apply_fee_commissions(
 
         // Credit the referee.
         if referee_share.is_non_zero() {
-            credit_commission(storage, user_states, payer, referee_share)?;
+            credit_commission(storage, &mut user_states, payer, referee_share)?;
             total_vault_deduction.checked_add_assign(referee_share)?;
         }
 
@@ -115,7 +128,12 @@ pub fn apply_fee_commissions(
             && let Some(referrer_addr) =
                 super::retrieve_master_account(querier, first_referrer, account_factory)
         {
-            credit_commission(storage, user_states, referrer_addr, referrer_commission)?;
+            credit_commission(
+                storage,
+                &mut user_states,
+                referrer_addr,
+                referrer_commission,
+            )?;
             total_vault_deduction.checked_add_assign(referrer_commission)?;
         }
 
@@ -184,7 +202,7 @@ pub fn apply_fee_commissions(
                     if let Some(addr) =
                         super::retrieve_master_account(querier, next_referrer, account_factory)
                     {
-                        credit_commission(storage, user_states, addr, upstream_commission)?;
+                        credit_commission(storage, &mut user_states, addr, upstream_commission)?;
                         total_vault_deduction.checked_add_assign(upstream_commission)?;
                     }
 
@@ -225,7 +243,7 @@ pub fn apply_fee_commissions(
             .checked_sub_assign(total_vault_deduction)?;
     }
 
-    Ok(())
+    Ok(FeeCommissionsOutcome { user_states })
 }
 
 /// Look up or compute referrer settings for a user, with caching.

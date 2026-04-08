@@ -14,7 +14,7 @@ use {
         price::may_invert_price,
         querier::NoCachePerpQuerier,
         query::query_volume,
-        referral::apply_fee_commissions,
+        referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{ASKS, BIDS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
         volume::flush_volumes,
     },
@@ -50,12 +50,12 @@ pub fn submit_order(
     // ---------------------------- 1. Preparation -----------------------------
 
     let param = PARAM.load(ctx.storage)?;
-    let mut state = STATE.load(ctx.storage)?;
+    let state = STATE.load(ctx.storage)?;
 
     let pair_param = PAIR_PARAMS.load(ctx.storage, &pair_id)?;
-    let mut pair_state = PAIR_STATES.load(ctx.storage, &pair_id)?;
+    let pair_state = PAIR_STATES.load(ctx.storage, &pair_id)?;
 
-    let mut taker_state = USER_STATES
+    let taker_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
@@ -67,7 +67,10 @@ pub fn submit_order(
 
     // --------------------------- 2. Business logic ---------------------------
 
-    let (
+    let SubmitOrderOutcome {
+        state,
+        pair_state,
+        taker_state,
         mut maker_states,
         order_mutations,
         order_to_store,
@@ -75,18 +78,18 @@ pub fn submit_order(
         index_updates,
         volumes,
         fee_breakdowns,
-    ) = _submit_order(
+    } = _submit_order(
         ctx.storage,
         ctx.sender,
         ctx.contract,
         ctx.block.timestamp,
         &mut oracle_querier,
         &param,
-        &mut state,
+        &state,
         &pair_id,
         &pair_param,
-        &mut pair_state,
-        &mut taker_state,
+        &pair_state,
+        &taker_state,
         oracle_price,
         size,
         kind,
@@ -102,17 +105,21 @@ pub fn submit_order(
 
     maker_states.insert(ctx.sender, taker_state);
 
-    apply_fee_commissions(
+    let FeeCommissionsOutcome {
+        user_states: updated_maker_states,
+    } = apply_fee_commissions(
         ctx.storage,
         ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
         &param,
-        &mut maker_states,
+        &maker_states,
         fee_breakdowns,
         &volumes,
         &mut events,
     )?;
+
+    maker_states = updated_maker_states;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
 
@@ -243,23 +250,37 @@ pub fn submit_order(
     Ok(Response::new().add_events(events)?)
 }
 
-/// Semi-pure order submission: reads from storage but does not write.
-/// All storage mutations are returned as deferred side-effects.
+/// Owned outcome of a `_submit_order` call. Every piece of
+/// caller-persistable state that the call may have updated is returned in
+/// this struct, so that a failed call can discard everything at once
+/// simply by dropping the `Err` variant — no partial mutations can leak
+/// into the caller's `&mut` parameters. See
+/// [`dango/perps/purity.md`](../../purity.md) for the full rationale.
+#[derive(Debug)]
+pub struct SubmitOrderOutcome {
+    pub state: State,
+    pub pair_state: PairState,
+    pub taker_state: UserState,
+    pub maker_states: BTreeMap<Addr, UserState>,
+    pub order_mutations: Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
+    pub order_to_store: Option<(UsdPrice, OrderId, LimitOrder)>,
+    pub next_order_id: OrderId,
+    pub index_updates: Vec<PositionIndexUpdate>,
+    pub volumes: BTreeMap<Addr, UsdValue>,
+    pub fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
+}
+
+/// Pure order submission: reads from storage but does not write.
+/// Takes the dense state structs (`State`, `PairState`, `UserState`) by
+/// shared reference, clones them at entry, and returns the updated
+/// copies in [`SubmitOrderOutcome`] alongside the deferred order-book
+/// mutations and PnL/fee accumulators. A failed call leaves the
+/// caller's inputs untouched — see `dango/perps/purity.md`.
 ///
-/// Mutates (in-memory only):
-///
-/// - `pair_state` — funding accrued; `long_oi` / `short_oi` updated.
-/// - `taker_state.positions` — opened / closed / flipped per fill.
-/// - `taker_state.reserved_margin` / `open_order_count` — updated if a
-///   limit order remainder is stored.
-///
-/// Returns:
-///
-/// - Maker `UserState`s to persist (includes the vault's `UserState`):
-///   `BTreeMap<Addr, UserState>`.
-/// - Order mutations to apply: `Vec<(OrderKey, Option<LimitOrder>)>`.
-/// - GTC order to store: `Option<(stored_price, order_id, LimitOrder)>`.
-#[allow(clippy::type_complexity)]
+/// `apply_fee_commissions` is still called by the entry point on the
+/// returned `maker_states`; moving it inside is left as a follow-up
+/// since that requires lifting `&mut Storage` and `QuerierWrapper`
+/// into the signature and re-plumbing every test call site.
 pub(crate) fn _submit_order(
     storage: &dyn Storage,
     taker: Addr,
@@ -267,11 +288,11 @@ pub(crate) fn _submit_order(
     current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
     param: &Param,
-    state: &mut State,
+    state: &State,
     pair_id: &PairId,
     pair_param: &PairParam,
-    pair_state: &mut PairState,
-    taker_state: &mut UserState,
+    pair_state: &PairState,
+    taker_state: &UserState,
     oracle_price: UsdPrice,
     size: Quantity,
     kind: OrderKind,
@@ -279,15 +300,13 @@ pub(crate) fn _submit_order(
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
     events: &mut EventBuilder,
-) -> anyhow::Result<(
-    BTreeMap<Addr, UserState>,
-    Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
-    Option<(UsdPrice, OrderId, LimitOrder)>,
-    OrderId,
-    Vec<PositionIndexUpdate>,
-    BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, FeeBreakdown>,
-)> {
+) -> anyhow::Result<SubmitOrderOutcome> {
+    // Clone at entry and mutate locals freely. `events` is the one
+    // deliberate `&mut` on caller state per the purity rule exception.
+    let mut state = state.clone();
+    let mut pair_state = pair_state.clone();
+    let mut taker_state = taker_state.clone();
+
     // -------------- Step 1. Check minimum order size -------------------------
 
     if !reduce_only {
@@ -315,7 +334,7 @@ pub(crate) fn _submit_order(
 
     // -------------- Step 3. Check OI constraint for opening ------------------
 
-    check_oi_constraint(opening_size, pair_state, pair_param)?;
+    check_oi_constraint(opening_size, &pair_state, pair_param)?;
 
     // --------------- Step 3½. Allocate a unique order ID ---------------------
 
@@ -325,7 +344,12 @@ pub(crate) fn _submit_order(
     // ---------------------- Step 4. Post-only fast path ----------------------
 
     if let Some(limit_price) = kind.post_only_price() {
-        let order_to_store = store_post_only_limit_order(
+        let StoreLimitOrderOutcome {
+            user_state: updated_taker_state,
+            stored_price,
+            order_id,
+            order,
+        } = store_post_only_limit_order(
             storage,
             taker,
             current_time,
@@ -333,7 +357,7 @@ pub(crate) fn _submit_order(
             param,
             pair_id,
             pair_param,
-            taker_state,
+            &taker_state,
             fillable_size,
             limit_price,
             reduce_only,
@@ -342,15 +366,20 @@ pub(crate) fn _submit_order(
             sl,
         )?;
 
-        return Ok((
-            BTreeMap::new(),
-            Vec::new(),
-            Some(order_to_store),
-            taker_order_id + OrderId::ONE,
-            Vec::new(),
-            BTreeMap::new(),
-            BTreeMap::new(),
-        ));
+        taker_state = updated_taker_state;
+
+        return Ok(SubmitOrderOutcome {
+            state,
+            pair_state,
+            taker_state,
+            maker_states: BTreeMap::new(),
+            order_mutations: Vec::new(),
+            order_to_store: Some((stored_price, order_id, order)),
+            next_order_id: taker_order_id + OrderId::ONE,
+            index_updates: Vec::new(),
+            volumes: BTreeMap::new(),
+            fee_breakdowns: BTreeMap::new(),
+        });
     }
 
     // ----------------- Step 5: Pre-match taker margin check ------------------
@@ -370,7 +399,7 @@ pub(crate) fn _submit_order(
             oracle_querier,
             pair_id,
             &perp_querier,
-            taker_state,
+            &taker_state,
             taker_fee_rate,
             oracle_price,
             size,
@@ -384,45 +413,69 @@ pub(crate) fn _submit_order(
 
     // ---------------------- Step 7. Match against book -----------------------
 
-    let mut maker_states = BTreeMap::new();
-
-    let (unfilled, pnls, fees, volumes, order_mutations, index_updates) = match_order(
+    let MatchOrderOutcome {
+        pair_state: updated_pair_state,
+        taker_state: updated_taker_state,
+        mut maker_states,
+        unfilled,
+        pnls,
+        fees,
+        volumes,
+        order_mutations,
+        index_updates,
+        next_order_id: updated_next_order_id,
+    } = match_order(
         storage,
         taker,
         contract,
         current_time,
         param,
         pair_id,
-        pair_state,
-        taker_state,
+        &pair_state,
+        &taker_state,
         taker_is_bid,
         taker_order_id,
-        &mut maker_states,
+        &BTreeMap::new(),
         target_price,
         fillable_size,
-        &mut next_order_id,
+        next_order_id,
         events,
     )?;
+
+    pair_state = updated_pair_state;
+    taker_state = updated_taker_state;
+    next_order_id = updated_next_order_id;
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
 
     let order_to_store = if unfilled.is_non_zero() {
         match kind {
-            OrderKind::Limit { limit_price, .. } => Some(store_limit_order(
-                storage,
-                taker,
-                current_time,
-                oracle_querier,
-                param,
-                pair_param,
-                taker_state,
-                unfilled,
-                limit_price,
-                reduce_only,
-                taker_order_id,
-                tp.clone(),
-                sl.clone(),
-            )?),
+            OrderKind::Limit { limit_price, .. } => {
+                let StoreLimitOrderOutcome {
+                    user_state: updated_taker_state,
+                    stored_price,
+                    order_id,
+                    order,
+                } = store_limit_order(
+                    storage,
+                    taker,
+                    current_time,
+                    oracle_querier,
+                    param,
+                    pair_param,
+                    &taker_state,
+                    unfilled,
+                    limit_price,
+                    reduce_only,
+                    taker_order_id,
+                    tp.clone(),
+                    sl.clone(),
+                )?;
+
+                taker_state = updated_taker_state;
+
+                Some((stored_price, order_id, order))
+            },
             OrderKind::Market { .. } => {
                 ensure!(
                     unfilled < fillable_size,
@@ -469,15 +522,18 @@ pub(crate) fn _submit_order(
     let fee_breakdowns = settle_pnls(
         contract,
         param,
-        state,
+        &mut state,
         taker,
-        taker_state,
+        &mut taker_state,
         &mut maker_states,
         pnls,
         fees,
     )?;
 
-    Ok((
+    Ok(SubmitOrderOutcome {
+        state,
+        pair_state,
+        taker_state,
         maker_states,
         order_mutations,
         order_to_store,
@@ -485,33 +541,41 @@ pub(crate) fn _submit_order(
         index_updates,
         volumes,
         fee_breakdowns,
-    ))
+    })
 }
 
-/// Mutates:
-///
-/// - `pair_state.long_oi` / `pair_state.short_oi` — updated per fill.
-/// - `taker_state.positions` — opened / closed / flipped per fill.
-/// - `maker_states` — each matched maker's `UserState` is loaded from storage
-///   (if not already present) and updated in place.
-///
-/// Returns:
-///
-/// - Remaining (unfilled) size (same sign convention as taker's order).
-/// - Per-user position PnL in USD (`BTreeMap<Addr, UsdValue>`).
-/// - Per-user trading fees in USD (`BTreeMap<Addr, UsdValue>`).
-/// - Order mutations to apply. Each entry is
-///   `(StoredPrice, OrderId, Option<LimitOrder>, pre_fill_abs_size)`:
-///   `None` = remove (fully filled / self-trade), `Some` = update (partially
-///   filled). `pre_fill_abs_size` is the maker order's absolute size *before*
-///   this match, used for depth bookkeeping.
-/// - Position index updates (`Vec<PositionIndexUpdate>`): deferred LONGS/SHORTS
-///   index changes for each taker and maker fill. The caller must apply these
-///   to storage via `apply_position_index_updates`.
+/// Owned outcome of a `match_order` call. Carries post-match copies of
+/// `pair_state`, `taker_state`, and `maker_states`, plus the per-fill
+/// accumulators (`pnls`, `fees`, `volumes`) that the caller feeds into
+/// `settle_pnls` / `apply_fee_commissions` or merges into its own running
+/// totals (`execute_close_schedule`).
+#[derive(Debug)]
+pub struct MatchOrderOutcome {
+    pub pair_state: PairState,
+    pub taker_state: UserState,
+    pub maker_states: BTreeMap<Addr, UserState>,
+    pub unfilled: Quantity,
+    pub pnls: BTreeMap<Addr, UsdValue>,
+    pub fees: BTreeMap<Addr, UsdValue>,
+    pub volumes: BTreeMap<Addr, UsdValue>,
+    pub order_mutations: Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
+    pub index_updates: Vec<PositionIndexUpdate>,
+    pub next_order_id: OrderId,
+}
+
+/// Iterate the opposite-side order book in price-time priority and match
+/// the taker against resting orders, accumulating fills, self-trade
+/// cancellations, and the associated PnL / fee / volume / position-index
+/// deltas. Pure w.r.t. the caller's dense state: takes `&PairState`,
+/// `&UserState`, `&BTreeMap<Addr, UserState>`, and an owned
+/// `next_order_id`; clones each at entry and returns the updated copies
+/// in [`MatchOrderOutcome`]. A failed call drops the locals and leaves
+/// the caller's inputs untouched — see `dango/perps/purity.md`.
 ///
 /// Self-trade prevention (EXPIRE_MAKER): if a resting order belongs to
 /// the taker, the order is cancelled and the taker continues matching
-/// deeper in the book.
+/// deeper in the book. This is consistent with Binance's EXPIRE_MAKER
+/// mode: <https://developers.binance.com/docs/binance-spot-api-docs/faqs/stp_faq>
 pub fn match_order(
     storage: &dyn Storage,
     taker: Addr,
@@ -519,23 +583,22 @@ pub fn match_order(
     current_time: Timestamp,
     param: &Param,
     pair_id: &PairId,
-    pair_state: &mut PairState,
-    taker_state: &mut UserState,
+    pair_state: &PairState,
+    taker_state: &UserState,
     taker_is_bid: bool,
     taker_order_id: OrderId,
-    maker_states: &mut BTreeMap<Addr, UserState>,
+    maker_states: &BTreeMap<Addr, UserState>,
     target_price: UsdPrice,
     mut remaining_size: Quantity,
-    next_order_id: &mut OrderId,
+    mut next_order_id: OrderId,
     events: &mut EventBuilder,
-) -> anyhow::Result<(
-    Quantity,
-    BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UsdValue>,
-    Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
-    Vec<PositionIndexUpdate>,
-)> {
+) -> anyhow::Result<MatchOrderOutcome> {
+    // Clone at entry and mutate locals freely. `events` is the one
+    // deliberate `&mut` on caller state per the purity rule exception.
+    let mut pair_state = pair_state.clone();
+    let mut taker_state = taker_state.clone();
+    let mut maker_states = maker_states.clone();
+
     let mut pnls = BTreeMap::new();
     let mut fees = BTreeMap::new();
     let mut volumes = BTreeMap::new();
@@ -621,8 +684,8 @@ pub fn match_order(
 
         settle_fill(
             pair_id,
-            pair_state,
-            taker_state,
+            &mut pair_state,
+            &mut taker_state,
             taker,
             taker_fill_size,
             resting_price,
@@ -663,7 +726,7 @@ pub fn match_order(
 
         settle_fill(
             pair_id,
-            pair_state,
+            &mut pair_state,
             maker_state,
             maker_order.user,
             maker_fill_size,
@@ -694,7 +757,7 @@ pub fn match_order(
                 maker_pos.size,
                 &maker_order.tp,
                 &maker_order.sl,
-                next_order_id,
+                &mut next_order_id,
             );
 
             maker_pos.conditional_order_above = above;
@@ -764,14 +827,18 @@ pub fn match_order(
         remaining_size.checked_sub_assign(taker_fill_size)?;
     }
 
-    Ok((
-        remaining_size,
+    Ok(MatchOrderOutcome {
+        pair_state,
+        taker_state,
+        maker_states,
+        unfilled: remaining_size,
         pnls,
         fees,
         volumes,
         order_mutations,
         index_updates,
-    ))
+        next_order_id,
+    })
 }
 
 /// Mutates:
@@ -972,16 +1039,8 @@ pub fn settle_pnls(
 
 /// Validate and store a post-only limit order. Rejects if the limit price
 /// would cross the best resting order on the opposite side of the book.
-///
-/// Mutates:
-///
-/// - `taker_state.reserved_margin` — increased by the margin reserved for
-///   the resting order.
-/// - `taker_state.open_order_count` — incremented by one.
-///
-/// Returns:
-///
-/// - `(stored_price, order_id, LimitOrder)` — the resting order to persist.
+/// Pure w.r.t. the caller's `UserState` — delegates to `store_limit_order`
+/// and returns the same `StoreLimitOrderOutcome`.
 fn store_post_only_limit_order(
     storage: &dyn Storage,
     taker: Addr,
@@ -990,14 +1049,14 @@ fn store_post_only_limit_order(
     param: &Param,
     pair_id: &PairId,
     pair_param: &PairParam,
-    taker_state: &mut UserState,
+    taker_state: &UserState,
     size: Quantity,
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
-) -> anyhow::Result<(UsdPrice, OrderId, LimitOrder)> {
+) -> anyhow::Result<StoreLimitOrderOutcome> {
     let taker_is_bid = size.is_positive();
     let maker_is_bid = !taker_is_bid;
 
@@ -1045,15 +1104,26 @@ fn store_post_only_limit_order(
     )
 }
 
-/// Mutates:
+/// Owned outcome of a `store_limit_order` call (and, by extension, of
+/// `store_post_only_limit_order`, which delegates). Returned instead of
+/// mutating the caller's `&mut UserState` so that a failed store leaves
+/// the caller's state untouched.
+#[derive(Debug)]
+pub struct StoreLimitOrderOutcome {
+    pub user_state: UserState,
+    pub stored_price: UsdPrice,
+    pub order_id: OrderId,
+    pub order: LimitOrder,
+}
+
+/// Validate the caller, compute the reserved margin, and produce an
+/// updated `UserState` with the new resting order accounted for (incremented
+/// `open_order_count`, added `reserved_margin`). Pure w.r.t. the caller's
+/// `UserState` — takes `&UserState` and returns the updated copy in the
+/// outcome, so a failed call leaves the caller's state untouched.
 ///
-/// - `user_state.reserved_margin` — increased by the margin reserved for
-///   the resting order.
-/// - `user_state.open_order_count` — incremented by one.
-///
-/// Returns:
-///
-/// - `(stored_price, order_id, LimitOrder)` — the resting order to persist.
+/// The caller is responsible for persisting `outcome.user_state` back to
+/// `USER_STATES` and writing the returned `order` to `BIDS` / `ASKS`.
 fn store_limit_order(
     storage: &dyn Storage,
     user: Addr,
@@ -1061,14 +1131,14 @@ fn store_limit_order(
     oracle_querier: &mut OracleQuerier,
     param: &Param,
     pair_param: &PairParam,
-    user_state: &mut UserState,
+    user_state: &UserState,
     size: Quantity,
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
-) -> anyhow::Result<(UsdPrice, OrderId, LimitOrder)> {
+) -> anyhow::Result<StoreLimitOrderOutcome> {
     ensure!(
         user_state.open_order_count < param.max_open_orders,
         "too many open orders! max allowed: {}",
@@ -1102,21 +1172,32 @@ fn store_limit_order(
         );
     }
 
+    // Clone the user state and mutate the local copy. On `Err` the clone is
+    // dropped with the rest of the call frame; the caller's `&UserState`
+    // is never touched.
+    let mut user_state = user_state.clone();
     user_state.open_order_count += 1;
-    (user_state.reserved_margin).checked_add_assign(margin_to_reserve)?;
+    user_state
+        .reserved_margin
+        .checked_add_assign(margin_to_reserve)?;
 
     // Invert price for buy orders so storage order matches price-time priority.
     let stored_price = may_invert_price(limit_price, size.is_positive());
 
-    Ok((stored_price, order_id, LimitOrder {
-        user,
-        size,
-        reduce_only,
-        reserved_margin: margin_to_reserve,
-        created_at: current_time,
-        tp,
-        sl,
-    }))
+    Ok(StoreLimitOrderOutcome {
+        user_state,
+        stored_price,
+        order_id,
+        order: LimitOrder {
+            user,
+            size,
+            reduce_only,
+            reserved_margin: margin_to_reserve,
+            created_at: current_time,
+            tp,
+            sl,
+        },
+    })
 }
 
 /// Map TP/SL child order params to above/below conditional orders based on
@@ -1344,25 +1425,31 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            order_mutations,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -1404,25 +1491,30 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -1454,8 +1546,8 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
@@ -1468,11 +1560,11 @@ mod tests {
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -1505,25 +1597,30 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -1556,25 +1653,30 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -1611,25 +1713,30 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -1681,18 +1788,23 @@ mod tests {
         });
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Market {
@@ -1722,8 +1834,8 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
@@ -1736,11 +1848,11 @@ mod tests {
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -1773,25 +1885,31 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            order_mutations,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Market {
@@ -1830,25 +1948,30 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            maker_states,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -1884,25 +2007,30 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            maker_states,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -1945,8 +2073,8 @@ mod tests {
             .save(&mut ctx.storage, &pair_id(), &pair_param)
             .unwrap();
 
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
@@ -1960,11 +2088,11 @@ mod tests {
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -1995,8 +2123,8 @@ mod tests {
             .save(&mut ctx.storage, &pair_id(), &pair_param)
             .unwrap();
 
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
@@ -2009,11 +2137,11 @@ mod tests {
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -2048,25 +2176,31 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            order_mutations,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_100),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -2110,25 +2244,30 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state: _,
+            maker_states,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -2158,25 +2297,30 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state: _,
+            maker_states,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(4),
             OrderKind::Market {
@@ -2212,8 +2356,8 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
@@ -2226,11 +2370,11 @@ mod tests {
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -2712,26 +2856,32 @@ mod tests {
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut state = State::default();
+        let state = State::default();
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            state,
+            pair_state: _,
+            taker_state,
+            maker_states,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut state,
+            &state,
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -2790,25 +2940,31 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            order_mutations,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -2843,8 +2999,8 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
@@ -2857,11 +3013,11 @@ mod tests {
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -2889,8 +3045,8 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
@@ -2903,11 +3059,11 @@ mod tests {
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -2935,25 +3091,31 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, order_mutations, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            order_mutations,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Limit {
@@ -2987,8 +3149,8 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
@@ -3001,11 +3163,11 @@ mod tests {
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Limit {
@@ -3033,25 +3195,30 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state: _,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -3097,18 +3264,23 @@ mod tests {
         });
         let mut oq = test_oracle_querier();
 
-        let (_, _, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state: _,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(-5),
             OrderKind::Limit {
@@ -3149,8 +3321,8 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: UsdValue::new_int(1_000), // insufficient collateral
             ..Default::default()
         };
@@ -3163,11 +3335,11 @@ mod tests {
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -3210,7 +3382,7 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
 
         // Start with the taker state from storage (has the resting order's
         // reserved margin and open_order_count).
@@ -3218,18 +3390,24 @@ mod tests {
         taker_state.margin = LARGE_COLLATERAL;
         let mut oq = test_oracle_querier();
 
-        let (maker_states, order_mutations, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(50_100),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -3310,25 +3488,31 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
         let mut oq = test_oracle_querier();
 
-        let (maker_states, order_mutations, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(open_price),
             Quantity::new_int(size),
             OrderKind::Market {
@@ -3368,22 +3552,27 @@ mod tests {
 
         place_bid(&mut ctx.storage, CONTRACT, close_price, size, 200);
 
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
         let mut oq = test_oracle_querier();
 
-        let (maker_states, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state: _,
+            maker_states,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(close_price),
             Quantity::new_int(-size),
             OrderKind::Market {
@@ -3490,8 +3679,8 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut taker_state = UserState {
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
@@ -3500,18 +3689,23 @@ mod tests {
         // MAKER_B sells -10 → matches vault bid at $51,000.
         //   vault: closes short at $51,000 → loss = -$10,000
         //   MAKER_B: opens new short → PnL = 0, fee = |10| × $51,000 × 0.001 = $510
-        let (maker_states, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state: _,
+            maker_states,
+            ..
+        } = _submit_order(
             &ctx.storage,
             MAKER_B,
             CONTRACT,
             Timestamp::ZERO,
             &mut oq,
             &param,
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &pair_param,
-            &mut pair_state,
-            &mut taker_state,
+            &pair_state,
+            &taker_state,
             UsdPrice::new_int(51_000),
             Quantity::new_int(-10),
             OrderKind::Market {
@@ -3558,25 +3752,31 @@ mod tests {
         {
             place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
-            let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-            let mut taker_state = UserState {
+            let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+            let taker_state = UserState {
                 margin: LARGE_COLLATERAL,
                 ..Default::default()
             };
             let mut oq = test_oracle_querier();
 
-            let (_, _, order_to_store, next_order_id, ..) = _submit_order(
+            let SubmitOrderOutcome {
+                pair_state,
+                taker_state: _,
+                order_to_store,
+                next_order_id,
+                ..
+            } = _submit_order(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
                 Timestamp::ZERO,
                 &mut oq,
                 &param,
-                &mut State::default(),
+                &State::default(),
                 &pair_id(),
                 &pair_param,
-                &mut pair_state,
-                &mut taker_state,
+                &pair_state,
+                &taker_state,
                 UsdPrice::new_int(50_000),
                 Quantity::new_int(10),
                 OrderKind::Market {
@@ -3620,25 +3820,31 @@ mod tests {
 
         // Case 2: Limit order that fully fills (nothing enters book).
         {
-            let mut pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-            let mut taker_state = UserState {
+            let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+            let taker_state = UserState {
                 margin: LARGE_COLLATERAL,
                 ..Default::default()
             };
             let mut oq = test_oracle_querier();
 
-            let (_, _, order_to_store, next_order_id, ..) = _submit_order(
+            let SubmitOrderOutcome {
+                pair_state: _,
+                taker_state: _,
+                order_to_store,
+                next_order_id,
+                ..
+            } = _submit_order(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
                 Timestamp::ZERO,
                 &mut oq,
                 &param,
-                &mut State::default(),
+                &State::default(),
                 &pair_id(),
                 &pair_param,
-                &mut pair_state,
-                &mut taker_state,
+                &pair_state,
+                &taker_state,
                 UsdPrice::new_int(50_000),
                 Quantity::new_int(10),
                 OrderKind::Limit {
@@ -3694,20 +3900,22 @@ mod tests {
         setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
+        let SubmitOrderOutcome {
+            taker_state: ts, ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState::default(),
-            &mut ts,
+            &PairState::default(),
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -3744,20 +3952,22 @@ mod tests {
         setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
         place_bid(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
+        let SubmitOrderOutcome {
+            taker_state: ts, ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState::default(),
-            &mut ts,
+            &PairState::default(),
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Market {
@@ -3808,25 +4018,27 @@ mod tests {
         place_bid(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
         // Sell 10 (closes the long). TP/SL should be dropped.
-        let mut pair_state = PairState {
+        let pair_state = PairState {
             long_oi: Quantity::new_int(10),
             ..Default::default()
         };
 
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
+        let SubmitOrderOutcome {
+            taker_state: ts, ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut pair_state,
-            &mut ts,
+            &pair_state,
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
             OrderKind::Market {
@@ -3857,20 +4069,22 @@ mod tests {
         setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
+        let SubmitOrderOutcome {
+            taker_state: ts, ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState::default(),
-            &mut ts,
+            &PairState::default(),
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -3903,20 +4117,24 @@ mod tests {
         // Only 5 available on the ask side, taker wants 10.
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 5, 100);
 
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
-        let (_, _, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            taker_state: ts,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState::default(),
-            &mut ts,
+            &PairState::default(),
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -3965,20 +4183,24 @@ mod tests {
         USER_STATES.save(&mut ctx.storage, TAKER, &ts).unwrap();
 
         // Place a buy limit at 49_000 — no asks below that so nothing fills.
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
-        let (_, _, order_to_store, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            taker_state: ts,
+            order_to_store,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState::default(),
-            &mut ts,
+            &PairState::default(),
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Limit {
@@ -4039,18 +4261,23 @@ mod tests {
             .unwrap();
 
         // Taker buys 10 → fills maker's ask.
-        let (maker_states, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state: _,
+            maker_states,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState::default(),
-            &mut taker_state(&ctx.storage),
+            &PairState::default(),
+            &taker_state(&ctx.storage),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -4088,20 +4315,25 @@ mod tests {
         setup_taker(&mut ctx.storage, LARGE_COLLATERAL);
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
-        let (_, _, _, next_order_id, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state: _,
+            next_order_id,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState::default(),
-            &mut ts,
+            &PairState::default(),
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
             OrderKind::Market {
@@ -4154,23 +4386,25 @@ mod tests {
         // Buy more with different TP/SL.
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 5, 100);
 
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
-        let (..) = _submit_order(
+        let SubmitOrderOutcome {
+            taker_state: ts, ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState {
+            &PairState {
                 long_oi: Quantity::new_int(5),
                 ..Default::default()
             },
-            &mut ts,
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(5),
             OrderKind::Market {
@@ -4231,24 +4465,26 @@ mod tests {
         // Place ask to fill the taker's buy.
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 5, 100);
 
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
         // Buy 5 with TP/SL intended for a long.
-        let (..) = _submit_order(
+        let SubmitOrderOutcome {
+            taker_state: ts, ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState {
+            &PairState {
                 short_oi: Quantity::new_int(10),
                 ..Default::default()
             },
-            &mut ts,
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(5), // buy
             OrderKind::Market {
@@ -4318,23 +4554,28 @@ mod tests {
         BIDS.save(&mut ctx.storage, key, &order).unwrap();
 
         // Taker sells 5 → fills Maker_A's bid.
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
-        let (maker_states, ..) = _submit_order(
+        let SubmitOrderOutcome {
+            pair_state: _,
+            taker_state: _,
+            maker_states,
+            ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut test_oracle_querier(),
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState {
+            &PairState {
                 short_oi: Quantity::new_int(10),
                 ..Default::default()
             },
-            &mut ts,
+            &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(-5), // sell
             OrderKind::Market {
@@ -4380,7 +4621,7 @@ mod tests {
         // Resting ask at $48k — the fill will happen at this price.
         place_ask(&mut ctx.storage, MAKER_A, 48_000, 10, 100);
 
-        let mut ts = taker_state(&ctx.storage);
+        let ts = taker_state(&ctx.storage);
 
         // Oracle at $48k (matches the fill price).
         let mut oracle = OracleQuerier::new_mock(hash_map! {
@@ -4393,18 +4634,20 @@ mod tests {
 
         // Market buy 10 with SL @ $49k. The fill price ($48k) is below the
         // SL trigger ($49k), so the SL condition is already met.
-        let (..) = _submit_order(
+        let SubmitOrderOutcome {
+            taker_state: ts, ..
+        } = _submit_order(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
             &mut oracle,
             &test_param(),
-            &mut State::default(),
+            &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState::default(),
-            &mut ts,
+            &PairState::default(),
+            &ts,
             UsdPrice::new_int(48_000),
             Quantity::new_int(10),
             OrderKind::Market {

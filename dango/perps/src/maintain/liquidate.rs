@@ -15,7 +15,10 @@ use {
             ASKS, BIDS, LONGS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE,
             USER_STATES,
         },
-        trade::{_cancel_all_orders, match_order, settle_fill, settle_pnls},
+        trade::{
+            _cancel_all_orders, CancelAllOrdersOutcome, MatchOrderOutcome, match_order,
+            settle_fill, settle_pnls,
+        },
         volume::flush_volumes,
     },
     anyhow::ensure,
@@ -51,9 +54,9 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // --------------------- 1. Preparation + basic checks ---------------------
 
     let param = PARAM.load(ctx.storage)?;
-    let mut state = STATE.load(ctx.storage)?;
+    let state = STATE.load(ctx.storage)?;
 
-    let mut user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
+    let user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
 
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
@@ -61,10 +64,10 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
-    _cancel_all_orders(
+    let CancelAllOrdersOutcome { mut user_state } = _cancel_all_orders(
         ctx.storage,
         user,
-        &mut user_state,
+        &user_state,
         Some(&mut events),
         ReasonForOrderRemoval::Liquidated,
     )?;
@@ -119,17 +122,26 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // --------------------------- 5. Business logic ---------------------------
 
-    let (maker_states, order_mutations, index_updates, volumes, next_order_id) = _liquidate(
+    let LiquidateOutcome {
+        state,
+        pair_states,
+        user_state,
+        maker_states,
+        order_mutations,
+        index_updates,
+        volumes,
+        next_order_id,
+    } = _liquidate(
         ctx.storage,
         user,
         ctx.contract,
         ctx.block.timestamp,
         &mut oracle_querier,
         &param,
-        &mut state,
+        &state,
         &pair_params,
-        &mut pair_states,
-        &mut user_state,
+        &pair_states,
+        &user_state,
         &oracle_prices,
         &mut events,
     )?;
@@ -250,35 +262,18 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     Ok(Response::new().add_events(events)?)
 }
 
-/// Mutates:
-///
-/// - `state.insurance_fund` — receives liquidation fee, covers bad debt.
-/// - `pair_states` — OI updated per fill.
-/// - `user_state.positions` — closed (partially or fully) per the schedule.
-/// - `user_state.margin` — adjusted by settled PnLs, fees, and bad debt.
-///
-/// Returns:
-///
-/// - Maker `UserState`s to persist (includes any book makers and ADL counter-parties).
-/// - Order mutations to apply.
-/// - Position index updates to apply.
-/// - Per-user volumes.
-fn _liquidate(
-    storage: &dyn Storage,
-    user: Addr,
-    contract: Addr,
-    current_time: Timestamp,
-    oracle_querier: &mut OracleQuerier,
-    param: &Param,
-    state: &mut State,
-    pair_params: &BTreeMap<PairId, PairParam>,
-    pair_states: &mut BTreeMap<PairId, PairState>,
-    user_state: &mut UserState,
-    oracle_prices: &BTreeMap<PairId, UsdPrice>,
-    events: &mut EventBuilder,
-) -> anyhow::Result<(
-    BTreeMap<Addr, UserState>,
-    Vec<(
+/// Owned outcome of a `_liquidate` call. Returns every piece of
+/// caller-persistable state the liquidation may have updated, so failure
+/// leaves no trace in the caller's locals. The `order_mutations` list is
+/// tagged with `(pair_id, taker_is_bid, ...)` because a liquidation can
+/// close positions across multiple pairs in a single call.
+#[derive(Debug)]
+pub struct LiquidateOutcome {
+    pub state: State,
+    pub pair_states: BTreeMap<PairId, PairState>,
+    pub user_state: UserState,
+    pub maker_states: BTreeMap<Addr, UserState>,
+    pub order_mutations: Vec<(
         PairId,
         bool,
         UsdPrice,
@@ -286,16 +281,45 @@ fn _liquidate(
         Option<LimitOrder>,
         Quantity,
     )>,
-    Vec<PositionIndexUpdate>,
-    BTreeMap<Addr, UsdValue>,
-    OrderId,
-)> {
+    pub index_updates: Vec<PositionIndexUpdate>,
+    pub volumes: BTreeMap<Addr, UsdValue>,
+    pub next_order_id: OrderId,
+}
+
+/// Pure liquidation core: takes the dense state structs by `&` and
+/// returns the updated copies in [`LiquidateOutcome`]. The body clones
+/// `state`, `pair_states`, and `user_state` at entry and mutates the
+/// locals. Inner helpers `execute_close_schedule`, `execute_adl`,
+/// `settle_pnls`, and `settle_fill` continue to take `&mut` parameters
+/// — they are leaf helpers operating on `_liquidate`'s own local
+/// buffers, so the pragmatic exception in `dango/perps/purity.md`
+/// applies and the bug class is still impossible.
+fn _liquidate(
+    storage: &dyn Storage,
+    user: Addr,
+    contract: Addr,
+    current_time: Timestamp,
+    oracle_querier: &mut OracleQuerier,
+    param: &Param,
+    state: &State,
+    pair_params: &BTreeMap<PairId, PairParam>,
+    pair_states: &BTreeMap<PairId, PairState>,
+    user_state: &UserState,
+    oracle_prices: &BTreeMap<PairId, UsdPrice>,
+    events: &mut EventBuilder,
+) -> anyhow::Result<LiquidateOutcome> {
+    // Clone at entry and mutate locals freely. `events` is the one
+    // deliberate `&mut` on caller state per the purity rule exception.
+    let mut state = state.clone();
+    let mut pair_states = pair_states.clone();
+    let mut user_state = user_state.clone();
+
     // -------------------- Step 1: Assert liquidatable ------------------------
 
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
     ensure!(
-        is_liquidatable(oracle_querier, &perp_querier, user_state)?,
+        is_liquidatable(oracle_querier, &perp_querier, &user_state)?,
         "user is not liquidatable"
     );
 
@@ -305,15 +329,15 @@ fn _liquidate(
     // maintenance margin (MM) + a buffer.
     // We need to close positions such that MM + buffer <= equity.
     let deficit = {
-        let equity = compute_user_equity(oracle_querier, &perp_querier, user_state)?;
-        let mm = compute_maintenance_margin(oracle_querier, &perp_querier, user_state)?;
+        let equity = compute_user_equity(oracle_querier, &perp_querier, &user_state)?;
+        let mm = compute_maintenance_margin(oracle_querier, &perp_querier, &user_state)?;
         let one_plus_buffer = Dimensionless::ONE.checked_add(param.liquidation_buffer_ratio)?;
         let effective_equity = equity.checked_div(one_plus_buffer)?;
         mm.checked_sub(effective_equity)?
     };
 
     // Compute which positions to close and how much to close based on the deficit.
-    let schedule = compute_close_schedule(user_state, pair_params, oracle_prices, deficit)?;
+    let schedule = compute_close_schedule(&user_state, pair_params, oracle_prices, deficit)?;
 
     // -------- Step 3: Execute closes via the order book + ADL ----------------
 
@@ -333,8 +357,8 @@ fn _liquidate(
         contract,
         current_time,
         param,
-        pair_states,
-        user_state,
+        &mut pair_states,
+        &mut user_state,
         &mut all_maker_states,
         &schedule,
         oracle_prices,
@@ -379,9 +403,9 @@ fn _liquidate(
     let _ = settle_pnls(
         contract,
         param,
-        state,
+        &mut state,
         user,
-        user_state,
+        &mut user_state,
         &mut all_maker_states,
         all_pnls,
         all_fees,
@@ -437,13 +461,16 @@ fn _liquidate(
         }
     }
 
-    Ok((
-        all_maker_states,
-        all_order_mutations,
-        all_index_updates,
-        all_volumes,
+    Ok(LiquidateOutcome {
+        state,
+        pair_states,
+        user_state,
+        maker_states: all_maker_states,
+        order_mutations: all_order_mutations,
+        index_updates: all_index_updates,
+        volumes: all_volumes,
         next_order_id,
-    ))
+    })
 }
 
 /// Execute the close schedule against the order book, with ADL for any unfilled
@@ -451,6 +478,9 @@ fn _liquidate(
 ///
 /// `maker_states` is a shared map of maker `UserState`s that persists across
 /// `match_order` calls.
+///
+/// This is a leaf helper private to `_liquidate` and keeps `&mut` parameters
+/// by design; it is not part of the pure set.
 fn execute_close_schedule(
     storage: &dyn Storage,
     user: Addr,
@@ -537,7 +567,23 @@ fn execute_close_schedule(
             oracle_price
         };
 
-        let (unfilled, pnls, fees, volumes, order_mutations, index_updates) = match_order(
+        // `match_order` is now pure — destructure its outcome and write the
+        // dense-state fields back through the caller's `&mut`s so the rest
+        // of `execute_close_schedule`'s body (still `&mut` at this commit)
+        // keeps working. The liquidated user IS the taker, so
+        // `updated_taker_state` goes into `*user_state`.
+        let MatchOrderOutcome {
+            pair_state: updated_pair_state,
+            taker_state: updated_user_state,
+            maker_states: updated_maker_states,
+            unfilled,
+            pnls,
+            fees,
+            volumes,
+            order_mutations,
+            index_updates,
+            next_order_id: updated_next_order_id,
+        } = match_order(
             storage,
             user,
             contract,
@@ -551,9 +597,14 @@ fn execute_close_schedule(
             maker_states,
             target_price,
             *close_size,
-            &mut next_order_id,
+            next_order_id,
             events,
         )?;
+
+        *pair_state = updated_pair_state;
+        *user_state = updated_user_state;
+        *maker_states = updated_maker_states;
+        next_order_id = updated_next_order_id;
 
         // Merge PnLs.
         for (addr, pnl) in pnls {
@@ -663,6 +714,9 @@ fn execute_close_schedule(
 /// ADL the unfilled remainder of a liquidation against counter-positions.
 ///
 /// Returns: (total ADL size, bankruptcy price used).
+///
+/// This is a leaf helper private to `execute_close_schedule` and keeps `&mut`
+/// parameters by design; it is not part of the pure set.
 fn execute_adl(
     storage: &dyn Storage,
     user: Addr,
@@ -1013,7 +1067,7 @@ mod tests {
         user_state.margin = UsdValue::new_int(10_000);
 
         let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 50_000)]);
-        let mut state = STATE.load(&ctx.storage).unwrap();
+        let state = STATE.load(&ctx.storage).unwrap();
 
         let result = _liquidate(
             &ctx.storage,
@@ -1022,10 +1076,10 @@ mod tests {
             Timestamp::ZERO,
             &mut oracle_querier,
             &param,
-            &mut state,
+            &state,
             &pair_params,
-            &mut pair_states,
-            &mut user_state,
+            &pair_states,
+            &user_state,
             &oracle_prices,
             &mut EventBuilder::new(),
         );
@@ -1084,24 +1138,23 @@ mod tests {
         user_state.margin = UsdValue::new_int(2_400);
 
         let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
-        let mut state = STATE.load(&ctx.storage).unwrap();
+        let state = STATE.load(&ctx.storage).unwrap();
 
-        let result = _liquidate(
+        let LiquidateOutcome { user_state, .. } = _liquidate(
             &ctx.storage,
             USER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oracle_querier,
             &param,
-            &mut state,
+            &state,
             &pair_params,
-            &mut pair_states,
-            &mut user_state,
+            &pair_states,
+            &user_state,
             &oracle_prices,
             &mut EventBuilder::new(),
-        );
-
-        assert!(result.is_ok(), "liquidation failed: {:?}", result.err());
+        )
+        .expect("liquidation should succeed");
 
         // User's position should be closed.
         assert!(
@@ -1155,7 +1208,7 @@ mod tests {
         user_state.margin = UsdValue::new_int(2_400);
 
         let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
-        let mut state = STATE.load(&ctx.storage).unwrap();
+        let state = STATE.load(&ctx.storage).unwrap();
 
         let result = _liquidate(
             &ctx.storage,
@@ -1164,17 +1217,21 @@ mod tests {
             Timestamp::ZERO,
             &mut oracle_querier,
             &param,
-            &mut state,
+            &state,
             &pair_params,
-            &mut pair_states,
-            &mut user_state,
+            &pair_states,
+            &user_state,
             &oracle_prices,
             &mut EventBuilder::new(),
         );
 
         assert!(result.is_ok(), "ADL failed: {:?}", result.err());
 
-        let (maker_states, ..) = result.unwrap();
+        let LiquidateOutcome {
+            user_state,
+            maker_states,
+            ..
+        } = result.unwrap();
 
         // User's position should be closed.
         assert!(user_state.positions.is_empty());
@@ -1240,24 +1297,23 @@ mod tests {
         user_state.margin = UsdValue::new_int(2_500);
 
         let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
-        let mut state = STATE.load(&ctx.storage).unwrap();
+        let state = STATE.load(&ctx.storage).unwrap();
 
-        let result = _liquidate(
+        let LiquidateOutcome { state, .. } = _liquidate(
             &ctx.storage,
             USER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oracle_querier,
             &param,
-            &mut state,
+            &state,
             &pair_params,
-            &mut pair_states,
-            &mut user_state,
+            &pair_states,
+            &user_state,
             &oracle_prices,
             &mut EventBuilder::new(),
-        );
-
-        assert!(result.is_ok(), "liq fee test failed: {:?}", result.err());
+        )
+        .expect("liq fee test should succeed");
 
         // Fill at $49,000: PnL = 1*($49,000-$50,000) = -$1,000.
         // Remaining margin = $2,500 - $1,000 = $1,500.
@@ -1326,22 +1382,23 @@ mod tests {
 
         let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
 
-        let result = _liquidate(
+        let LiquidateOutcome {
+            state, user_state, ..
+        } = _liquidate(
             &ctx.storage,
             USER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oracle_querier,
             &param,
-            &mut state,
+            &state,
             &pair_params,
-            &mut pair_states,
-            &mut user_state,
+            &pair_states,
+            &user_state,
             &oracle_prices,
             &mut EventBuilder::new(),
-        );
-
-        assert!(result.is_ok(), "bad debt test failed: {:?}", result.err());
+        )
+        .expect("bad debt test should succeed");
 
         // User margin should be floored at zero.
         assert_eq!(user_state.margin, UsdValue::ZERO);
@@ -1406,14 +1463,17 @@ mod tests {
 
         // Step 1: Cancel all user orders (mirrors the public `liquidate` flow).
         let mut events = EventBuilder::new();
-        _cancel_all_orders(
+        let CancelAllOrdersOutcome {
+            user_state: updated_user_state,
+        } = _cancel_all_orders(
             &mut ctx.storage,
             USER,
-            &mut user_state,
+            &user_state,
             Some(&mut events),
             ReasonForOrderRemoval::Liquidated,
         )
         .unwrap();
+        user_state = updated_user_state;
 
         // The user's ask should be gone from the book.
         let user_asks: Vec<_> = ASKS
@@ -1440,7 +1500,7 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_500));
 
         let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
-        let mut state = STATE.load(&ctx.storage).unwrap();
+        let state = STATE.load(&ctx.storage).unwrap();
 
         let result = _liquidate(
             &ctx.storage,
@@ -1449,17 +1509,21 @@ mod tests {
             Timestamp::ZERO,
             &mut oracle_querier,
             &param,
-            &mut state,
+            &state,
             &pair_params,
-            &mut pair_states,
-            &mut user_state,
+            &pair_states,
+            &user_state,
             &oracle_prices,
             &mut EventBuilder::new(),
         );
 
         assert!(result.is_ok(), "liquidation failed: {:?}", result.err());
 
-        let (maker_states, ..) = result.unwrap();
+        let LiquidateOutcome {
+            user_state,
+            maker_states,
+            ..
+        } = result.unwrap();
 
         // User's position should be fully closed against MAKER's bid.
         assert!(
@@ -1546,19 +1610,23 @@ mod tests {
         user_state.margin = UsdValue::new_int(2_400);
 
         let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
-        let mut state = STATE.load(&ctx.storage).unwrap();
+        let state = STATE.load(&ctx.storage).unwrap();
 
-        let (maker_states, _, _, _, next_order_id) = _liquidate(
+        let LiquidateOutcome {
+            maker_states,
+            next_order_id,
+            ..
+        } = _liquidate(
             &ctx.storage,
             USER,
             CONTRACT,
             Timestamp::ZERO,
             &mut oracle_querier,
             &param,
-            &mut state,
+            &state,
             &pair_params,
-            &mut pair_states,
-            &mut user_state,
+            &pair_states,
+            &user_state,
             &oracle_prices,
             &mut EventBuilder::new(),
         )
@@ -1656,23 +1724,23 @@ mod tests {
             user_state.margin = UsdValue::new_int(25_000);
 
             let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
-            let mut state = STATE.load(&ctx.storage).unwrap();
+            let state = STATE.load(&ctx.storage).unwrap();
 
-            let result = _liquidate(
+            let LiquidateOutcome { user_state, .. } = _liquidate(
                 &ctx.storage,
                 USER,
                 CONTRACT,
                 Timestamp::ZERO,
                 &mut oracle_querier,
                 &param,
-                &mut state,
+                &state,
                 &pair_params,
-                &mut pair_states,
-                &mut user_state,
+                &pair_states,
+                &user_state,
                 &oracle_prices,
                 &mut EventBuilder::new(),
-            );
-            assert!(result.is_ok(), "no-buffer liq failed: {:?}", result.err());
+            )
+            .expect("no-buffer liq should succeed");
 
             user_state
                 .positions
@@ -1727,23 +1795,23 @@ mod tests {
             user_state.margin = UsdValue::new_int(25_000);
 
             let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
-            let mut state = STATE.load(&ctx.storage).unwrap();
+            let state = STATE.load(&ctx.storage).unwrap();
 
-            let result = _liquidate(
+            let LiquidateOutcome { user_state, .. } = _liquidate(
                 &ctx.storage,
                 USER,
                 CONTRACT,
                 Timestamp::ZERO,
                 &mut oracle_querier,
                 &param,
-                &mut state,
+                &state,
                 &pair_params,
-                &mut pair_states,
-                &mut user_state,
+                &pair_states,
+                &user_state,
                 &oracle_prices,
                 &mut EventBuilder::new(),
-            );
-            assert!(result.is_ok(), "buffered liq failed: {:?}", result.err());
+            )
+            .expect("buffered liq should succeed");
 
             user_state
                 .positions

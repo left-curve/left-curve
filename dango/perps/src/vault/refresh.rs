@@ -9,7 +9,7 @@ use {
             ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
             USER_STATES,
         },
-        trade::_cancel_all_orders,
+        trade::{_cancel_all_orders, CancelAllOrdersOutcome},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -53,13 +53,17 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
-    _cancel_all_orders(
+    let CancelAllOrdersOutcome {
+        user_state: updated_vault_state,
+    } = _cancel_all_orders(
         ctx.storage,
         ctx.contract,
-        &mut vault_state,
+        &vault_state,
         None, // Vault order churn is not user-facing — no events emitted.
         ReasonForOrderRemoval::Canceled,
     )?;
+
+    vault_state = updated_vault_state;
 
     // ------------- Step 2: Compute the vault's available margin --------------
 
