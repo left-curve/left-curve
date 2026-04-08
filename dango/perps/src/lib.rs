@@ -1,5 +1,6 @@
 pub mod core;
 pub mod cron;
+pub mod fix;
 pub mod liquidity_depth;
 pub mod maintain;
 #[cfg(feature = "metrics")]
@@ -93,6 +94,14 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
 
+    // One-shot state repair for the testnet STP leak. See `fix.rs` for the
+    // full rationale. Called from both `cron_execute` and `execute` so the
+    // repair still lands even if the upgrade block happens to contain no
+    // perps-targeting user txs. Guarded by chain_id + height + storage
+    // flag, so it's a trivial no-op on mainnet and on every call after the
+    // first successful repair.
+    fix::apply_fix(ctx.storage, &ctx.chain_id, ctx.block.height)?;
+
     let mut events = EventBuilder::new();
 
     cron::process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
@@ -120,6 +129,12 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    // One-shot state repair for the testnet STP leak. See `fix.rs` for the
+    // full rationale. Guarded by chain_id + height + storage flag, so it's
+    // a trivial no-op on mainnet and on every call after the first
+    // successful repair.
+    fix::apply_fix(ctx.storage, &ctx.chain_id, ctx.block.height)?;
+
     match msg {
         ExecuteMsg::Maintain(msg) => match msg {
             MaintainerMsg::Configure { param, pair_params } => {
