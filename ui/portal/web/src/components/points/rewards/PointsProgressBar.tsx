@@ -168,8 +168,8 @@ const ProgressThumb: React.FC<ProgressThumbProps> = ({ progress }) => (
   />
 );
 
-const STEP_PX = 140;
-const EDGE_PX = 70;
+const STEP_PX = 170;
+const EDGE_PX = 85;
 const BAR_LEFT_EXTEND = 24;
 const BAR_RIGHT_FADE = 60;
 
