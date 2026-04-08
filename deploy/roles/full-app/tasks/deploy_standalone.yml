@@ -59,7 +59,7 @@
   ignore_errors: yes
 
 - name: Get all container logs on failure
-  command: docker compose -p {{ deployment_name }} logs --tail=100
+  command: docker compose -p {{ deployment_name }} logs --tail=200
   args:
     chdir: "{{ deployment_dir }}"
   when: deploy_result.failed
