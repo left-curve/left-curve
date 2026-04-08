@@ -372,9 +372,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const size = inputs.size?.value || "0";
   const priceValue = inputs.price?.value || "0";
   const tpPrice = inputs.tpPrice?.value || "";
-  const tpPercent = inputs.tpPercent?.value || "";
   const slPrice = inputs.slPrice?.value || "";
-  const slPercent = inputs.slPercent?.value || "";
   const hasErrors = Object.keys(errors).length > 0;
 
   useEffect(() => {
@@ -391,16 +389,13 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return currentPrice;
   }, [operation, priceValue, currentPrice]);
 
-  useTPSLPriceSync({
-    setValue,
-    tpPrice,
-    tpPercent,
-    slPrice,
-    slPercent,
-    referencePrice,
-    isBuyDirection: action === "buy",
-    enabled: tpslEnabled,
-  });
+  const { onTpPriceChange, onTpPercentChange, onSlPriceChange, onSlPercentChange } =
+    useTPSLPriceSync({
+      setValue,
+      referencePrice,
+      isBuyDirection: action === "buy",
+      enabled: tpslEnabled,
+    });
 
   const tpslError = useMemo(() => {
     if (!tpslEnabled) return null;
@@ -628,23 +623,35 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
                 placeholder="0"
                 label={m["dex.protrade.perps.tpPrice"]()}
                 {...register("tpPrice", { mask: numberMask })}
+                onChange={(e) =>
+                  onTpPriceChange(typeof e === "string" ? e : e.target.value)
+                }
               />
               <Input
                 placeholder="0"
                 label={m["dex.protrade.perps.gain"]()}
                 endContent="%"
                 {...register("tpPercent", { mask: numberMask })}
+                onChange={(e) =>
+                  onTpPercentChange(typeof e === "string" ? e : e.target.value)
+                }
               />
               <Input
                 placeholder="0"
                 label={m["dex.protrade.perps.slPrice"]()}
                 {...register("slPrice", { mask: numberMask })}
+                onChange={(e) =>
+                  onSlPriceChange(typeof e === "string" ? e : e.target.value)
+                }
               />
               <Input
                 placeholder="0"
                 label={m["dex.protrade.perps.loss"]()}
                 endContent="%"
                 {...register("slPercent", { mask: numberMask })}
+                onChange={(e) =>
+                  onSlPercentChange(typeof e === "string" ? e : e.target.value)
+                }
               />
             </div>
             {tpslError ? (
