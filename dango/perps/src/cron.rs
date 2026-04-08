@@ -471,6 +471,24 @@ fn process_triggered_order(
         oracle_price,
     })?;
 
+    // Snapshot `user_state` and `pair_state` before calling `_submit_order`.
+    //
+    // `_submit_order` takes both as `&mut` and `match_order` may partially
+    // mutate them in-memory (self-trade prevention decrements
+    // `open_order_count` / `reserved_margin`, `settle_fill` updates
+    // positions and OI, etc.) before bailing out with `Err`. When the error
+    // is swallowed below, we must not persist those partial mutations —
+    // otherwise the user's `open_order_count` / `reserved_margin` drift out
+    // of sync with the order book, which later panics in `match_order` at
+    // `maker_state.open_order_count -= 1`. See the regression test
+    // `conditional_order_self_trade_failure_preserves_user_state`.
+    //
+    // The snapshots are taken *after* clearing the conditional order field
+    // (above), so the restored `user_state` still has the field cleared —
+    // which is what we want on the graceful-cancel path.
+    let user_state_snapshot = user_state.clone();
+    let pair_state_snapshot = pair_state.clone();
+
     // Execute as a market order via `_submit_order`.
     let result = _submit_order(
         storage,
@@ -505,6 +523,11 @@ fn process_triggered_order(
         fee_breakdowns,
     ) = match result {
         Err(_) => {
+            // Roll back the in-memory mutations `_submit_order` made before
+            // it errored.
+            user_state = user_state_snapshot;
+            *pair_state = pair_state_snapshot;
+
             // Order couldn't fill (slippage exceeded or no liquidity).
             // Cancel it gracefully — don't block other orders.
             events.push(ConditionalOrderRemoved {
