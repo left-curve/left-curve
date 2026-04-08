@@ -60,9 +60,9 @@ const checkBoxVariants = tv(
     base: "flex items-center justify-center group transition-all border-2 outline-none cursor-pointer",
     variants: {
       color: {
-        red: "bg-white data-[checked]:bg-primitives-red-light-400 border-primitives-red-light-400",
-        blue: "bg-white data-[checked]:bg-primitives-blue-light-500  border-primitives-blue-light-500",
-        grey: "bg-white data-[checked]:bg-primitives-gray-light-500  border-primitives-gray-light-500",
+        red: "bg-surface-primary-rice data-[checked]:bg-primitives-red-light-400 border-primitives-red-light-400",
+        blue: "bg-surface-primary-rice data-[checked]:bg-primitives-blue-light-500  border-primitives-blue-light-500",
+        grey: "bg-surface-primary-rice data-[checked]:bg-primitives-gray-light-500  border-primitives-gray-light-500",
       },
       size: {
         sm: "w-4 h-4",
