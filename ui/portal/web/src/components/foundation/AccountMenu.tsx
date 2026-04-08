@@ -5,6 +5,9 @@ import {
   useOrdersByUser,
   usePerpsUserState,
   perpsUserStateStore,
+  usePerpsUserStateExtended,
+  perpsUserStateExtendedStore,
+  usePerpsVaultUserShares,
   usePrices,
   useSessionKey,
 } from "@left-curve/store";
@@ -46,7 +49,7 @@ import { Direction } from "@left-curve/dango/types";
 
 import type React from "react";
 import type { Coins } from "@left-curve/dango/types";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
 const [AccountMenuProvider, useAccountMenu] = createContext<{
   balances: Coins;
@@ -59,6 +62,9 @@ const Container: React.FC = () => {
   const { account } = useAccount();
   const { calculateBalance } = usePrices();
   usePerpsUserState();
+  usePerpsUserStateExtended({ includeEquity: true });
+  const perpsEquity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
+  const { userSharesValue } = usePerpsVaultUserShares();
 
   const { formatNumberOptions } = settings;
 
@@ -96,17 +102,17 @@ const Container: React.FC = () => {
     );
   }, [balances, orders]);
 
-  const totalBalance = useMemo(
-    () =>
-      calculateBalance(allBalances, {
-        format: true,
-        formatOptions: {
-          ...formatNumberOptions,
-          currency: "USD",
-        },
-      }),
-    [allBalances],
-  );
+  const totalBalance = useMemo(() => {
+    const spotValue = calculateBalance(allBalances, { format: false });
+    const totalValue = Decimal(spotValue)
+      .plus(perpsEquity || "0")
+      .plus(userSharesValue || "0")
+      .toNumber();
+    return formatNumber(totalValue, {
+      ...formatNumberOptions,
+      currency: "USD",
+    });
+  }, [allBalances, perpsEquity, userSharesValue]);
 
   return (
     <AccountMenuProvider value={{ balances: allBalances, totalBalance }}>
@@ -350,6 +356,7 @@ export const WalletTab: React.FC = () => {
   const balances = Object.entries(context.balances);
   const { calculateBalance } = usePrices();
   const perpsState = perpsUserStateStore((s) => s.userState);
+  const { userVaultShares, userSharesValue } = usePerpsVaultUserShares();
 
   const sortedBalances = useMemo(() => {
     return balances.sort(([denomA, amountA], [denomB, amountB]) => {
@@ -365,6 +372,7 @@ export const WalletTab: React.FC = () => {
       <div className="flex flex-col w-full">
         <SectionHeader title={m["accountMenu.perpAccount"]()} />
         <AssetCard.Perp amount={perpsState?.margin ?? "0"} />
+        <AssetCard.Vault shares={userVaultShares} usdValue={userSharesValue} />
       </div>
       <div className="w-full px-4 py-1">
         <div className="w-full h-px bg-outline-secondary-gray" />

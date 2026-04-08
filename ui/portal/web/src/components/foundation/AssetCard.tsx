@@ -74,4 +74,41 @@ const Perp: React.FC<PerpsProps> = ({ amount }) => {
   );
 };
 
-export const AssetCard = Object.assign(Spot, { Spot, Perp });
+interface VaultProps {
+  shares: string;
+  usdValue: string;
+}
+
+const Vault: React.FC<VaultProps> = ({ shares, usdValue }) => {
+  return (
+    <motion.div layout="position" className="flex flex-col p-4 w-full">
+      <div className={twMerge("flex items-center justify-between transition-all")}>
+        <div className="flex gap-2 items-center">
+          <div className="flex h-8 w-12">
+            <img
+              src={perpsMarginAsset.logoURI}
+              className="h-8 w-8"
+              alt="DLP"
+            />
+          </div>
+          <div className="flex flex-col">
+            <p className="text-ink-primary-900 diatype-m-bold">DLP</p>
+            <p className="text-ink-tertiary-500 diatype-m-regular">
+              Dango Liquidity Provider
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end text-ink-primary-900">
+          <FormattedNumber
+            className="diatype-m-bold"
+            number={usdValue}
+            formatOptions={{ currency: "USD" }}
+          />
+          <FormattedNumber number={shares} />
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+export const AssetCard = Object.assign(Spot, { Spot, Perp, Vault });
