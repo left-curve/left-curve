@@ -98,17 +98,31 @@ const FIX_ALREADY_APPLIED: Item<bool> = Item::new("fix_stp_leak_applied");
 pub fn apply_fix(storage: &mut dyn Storage, chain_id: &str, height: u64) -> StdResult<()> {
     // Mainnet (and any other chain) → no-op.
     if chain_id != TESTNET_CHAIN_ID {
+        tracing::info!(
+            chain_id,
+            TESTNET_CHAIN_ID,
+            "Skipping fix: chain ID != TESTNET_CHAIN_ID"
+        );
+
         return Ok(());
     }
 
     // Pre-upgrade blocks on testnet → no-op. After the upgrade height, the
     // first invocation falls through and the storage flag prevents re-runs.
     if height < TESTNET_FIX_MIN_HEIGHT {
+        tracing::info!(
+            height,
+            TESTNET_FIX_MIN_HEIGHT,
+            "Skipping fix: height < TESTNET_FIX_MIN_HEIGHT"
+        );
+
         return Ok(());
     }
 
     // Already applied → no-op.
     if FIX_ALREADY_APPLIED.may_load(storage)?.is_some() {
+        tracing::info!("Skipping fix: fix already applied");
+
         return Ok(());
     }
 
