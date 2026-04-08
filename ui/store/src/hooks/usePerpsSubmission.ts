@@ -19,6 +19,22 @@ type UsePerpsSubmissionParameters = {
 
 const DEFAULT_TPSL_SLIPPAGE = "0.05";
 
+// On-chain `Dec<i128, 6>` allows at most 6 fractional digits. Truncate (don't
+// round) so we never exceed the user's intended/available size.
+const SIZE_DECIMALS = 6;
+function truncateSize(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  const negative = trimmed.startsWith("-");
+  const unsigned = negative ? trimmed.slice(1) : trimmed;
+  const [intPart, fracPart = ""] = unsigned.split(".");
+  const truncated =
+    fracPart.length > SIZE_DECIMALS
+      ? `${intPart}.${fracPart.slice(0, SIZE_DECIMALS)}`
+      : unsigned;
+  return negative ? `-${truncated}` : truncated;
+}
+
 export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
   const {
     perpsPairId,
@@ -42,7 +58,8 @@ export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
         if (!signingClient) throw new Error("No signing client available");
         if (!account) throw new Error("No account found");
 
-        const signedSize = action === "buy" ? sizeValue : `-${sizeValue}`;
+        const truncatedSize = truncateSize(sizeValue);
+        const signedSize = action === "buy" ? truncatedSize : `-${truncatedSize}`;
 
         const kind: PerpsOrderKind =
           operation === "market"
