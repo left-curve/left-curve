@@ -19,18 +19,16 @@ export const OpenInterestDisplay: React.FC = () => {
 
   const { data: pairParam } = usePerpsPairParam({ pairId: getPerpsPairId() });
 
-  const { longOiUsd, shortOiUsd, totalOiUsd, isAtLimit } = useMemo(() => {
+  const { totalOiUsd, isAtLimit } = useMemo(() => {
     if (!pairState || !currentPrice) {
-      return { longOiUsd: null, shortOiUsd: null, totalOiUsd: null, isAtLimit: false };
+      return { totalOiUsd: null, isAtLimit: false };
     }
 
     const price = Decimal(currentPrice);
     const longOi = Decimal(pairState.longOi);
     const shortOi = Decimal(pairState.shortOi);
 
-    const longOiUsd = longOi.mul(price);
-    const shortOiUsd = shortOi.mul(price);
-    const totalOiUsd = longOiUsd.plus(shortOiUsd);
+    const totalOiUsd = longOi.plus(shortOi).mul(price);
 
     // Check if OI is at limit
     let isAtLimit = false;
@@ -40,17 +38,10 @@ export const OpenInterestDisplay: React.FC = () => {
     }
 
     return {
-      longOiUsd: longOiUsd.toString(),
-      shortOiUsd: shortOiUsd.toString(),
       totalOiUsd: totalOiUsd.toString(),
       isAtLimit,
     };
   }, [pairState, currentPrice, pairParam]);
-
-  const OiValue: React.FC<{ value: string | null }> = ({ value }) => {
-    if (!value) return "-";
-    return <FormattedNumber number={value} formatOptions={{ currency: "USD" }} as="span" />;
-  };
 
   return (
     <div className="flex gap-1 flex-col items-start lg:min-w-[4rem] col-span-3 lg:col-span-1">
@@ -64,8 +55,15 @@ export const OpenInterestDisplay: React.FC = () => {
             isAtLimit ? "text-status-fail" : "text-ink-secondary-700",
           )}
         >
-          <OiValue value={longOiUsd} /> / <OiValue value={shortOiUsd} /> /{" "}
-          <OiValue value={totalOiUsd} />
+          {totalOiUsd ? (
+            <FormattedNumber
+              number={totalOiUsd}
+              formatOptions={{ currency: "USD" }}
+              as="span"
+            />
+          ) : (
+            "-"
+          )}
         </p>
         {isAtLimit && (
           <Tooltip
