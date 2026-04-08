@@ -108,7 +108,7 @@ export const VaultWithdrawLiquidityWithPenalty = forwardRef(
               {m["vaultLiquidity.networkFee"]()}
             </p>
             <p className="text-ink-secondary-700 diatype-sm-medium">
-              {formatNumber("0.02", { ...formatNumberOptions, currency: "USD" })}
+              {formatNumber("0.00", { ...formatNumberOptions, currency: "USD" })}
             </p>
           </div>
         </div>

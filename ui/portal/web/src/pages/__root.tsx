@@ -1,6 +1,11 @@
 import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { getAppConfigQueryOptions, useAccount, useActivities, useSessionKey } from "@left-curve/store";
+import {
+  getAppConfigQueryOptions,
+  useAccount,
+  useActivities,
+  useSessionKey,
+} from "@left-curve/store";
 
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";

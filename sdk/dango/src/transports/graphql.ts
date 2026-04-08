@@ -1,5 +1,10 @@
 import { createTransport } from "@left-curve/sdk";
-import { UrlRequiredError, createBatchScheduler, wait } from "@left-curve/sdk/utils";
+import {
+  HttpRequestError,
+  UrlRequiredError,
+  createBatchScheduler,
+  wait,
+} from "@left-curve/sdk/utils";
 import { createClient } from "graphql-ws";
 import { graphqlClient } from "../http/graphqlClient.js";
 import { EventEmitter } from "eventemitter3";
@@ -111,9 +116,17 @@ export function graphql(
       const fn = async (body: GraphqlOperation) =>
         batch ? schedule(body) : [await client.request({ body })];
 
-      const [{ data }] = (await fn(body as any)) as GraphQLClientResponse<
+      const [{ data, errors }] = (await fn(body as any)) as GraphQLClientResponse<
         CometBftRpcSchema[number]["ReturnType"]
       >[];
+
+      if (errors?.length) {
+        throw new HttpRequestError({
+          body: body as Record<string, unknown>,
+          details: errors.map((e) => e?.message ?? JSON.stringify(e)).join("; "),
+          url,
+        });
+      }
 
       return data;
     }) as RequestFn<CometBftRpcSchema>;

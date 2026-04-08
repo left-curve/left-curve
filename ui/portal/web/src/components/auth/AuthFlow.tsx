@@ -37,13 +37,21 @@ type AuthFlowProps = {
   referrer?: number;
 };
 
+const getReferrerFromQuery = (): number | undefined => {
+  if (typeof window === "undefined") return undefined;
+  const ref = new URLSearchParams(window.location.search).get("ref");
+  if (!ref) return undefined;
+  const parsed = Number.parseInt(ref, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+};
+
 export const AuthFlow: React.FC<AuthFlowProps> = ({ onFinish, referrer }) => {
   const { settings, toast, changeSettings } = useApp();
 
   const state = useAuthState({
     expiration: DEFAULT_SESSION_EXPIRATION,
     session: settings.useSessionKey,
-    referrer,
+    referrer: referrer ?? getReferrerFromQuery(),
     onSuccess: () => onFinish(),
     onError: (e) =>
       toast.error({
@@ -295,8 +303,6 @@ const CreateAccountScreen: React.FC = () => {
   const { createAccount, identifier, referrer, setReferrer, setScreen } = useAuth();
   const { settings, changeSettings } = useApp();
 
-  const hasReferrer = referrer !== undefined;
-
   return (
     <>
       <div className="flex flex-col gap-7 items-center justify-center w-full text-center">
@@ -317,18 +323,18 @@ const CreateAccountScreen: React.FC = () => {
         >
           {m["common.continue"]()}
         </Button>
+        <Input
+          fullWidth
+          placeholder={m["auth.referralCode"]()}
+          value={referrer?.toString() ?? ""}
+          onChange={(e) => {
+            const val = e.target.value;
+            setReferrer(val ? Number.parseInt(val, 10) || undefined : undefined);
+          }}
+        />
 
-        <ExpandOptions showOptionText={m["signin.advancedOptions"]()} defaultOpen={hasReferrer}>
+        <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
           <div className="flex items-center gap-2 flex-col w-full">
-            <Input
-              fullWidth
-              placeholder={m["auth.referralCode"]()}
-              value={referrer?.toString() ?? ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                setReferrer(val ? Number.parseInt(val, 10) || undefined : undefined);
-              }}
-            />
             <Checkbox
               size="md"
               label={m["common.signinWithSession"]()}
@@ -387,4 +393,3 @@ const AccountPickerScreen: React.FC = () => {
     </>
   );
 };
-

@@ -305,7 +305,7 @@ const WithdrawForm: React.FC = () => {
         </div>
         <div className="flex justify-between">
           <span>{m["vaultLiquidity.networkFee"]()}</span>
-          <span>{formatNumber("0.02", { ...formatNumberOptions, currency: "USD" })}</span>
+          <span>{formatNumber("0.00", { ...formatNumberOptions, currency: "USD" })}</span>
         </div>
       </div>
 
