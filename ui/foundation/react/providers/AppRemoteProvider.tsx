@@ -1,5 +1,5 @@
 import { createContext } from "../utils/context";
-import { requestRemote, useAppConfig, useConfig, type WindowDangoStore } from "@left-curve/store";
+import { requestRemote, useConfig, type WindowDangoStore } from "@left-curve/store";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";
@@ -41,14 +41,12 @@ export { useRemoteApp };
 
 export const AppRemoteProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const { subscriptions } = useConfig();
-  const config = useAppConfig();
 
   return (
     <RemoteContextProvider
       value={
         {
           subscriptions,
-          config,
           toast,
           settings: window.dango.settings,
           navigate,
