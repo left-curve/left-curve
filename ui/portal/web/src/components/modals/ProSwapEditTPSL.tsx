@@ -62,31 +62,26 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     const { register, setValue, inputs } = controllers;
 
     const tpPrice = inputs.tpPrice?.value || "";
-    const tpPercent = inputs.tpPercent?.value || "";
     const slPrice = inputs.slPrice?.value || "";
-    const slPercent = inputs.slPercent?.value || "";
 
     const [configureAmount, setConfigureAmount] = useState(false);
     const [sizePercent, setSizePercent] = useState(100);
 
+    const { onTpPriceChange, onTpPercentChange, onSlPriceChange, onSlPercentChange } =
+      useTPSLPriceSync({
+        setValue,
+        referencePrice: markPriceNum > 0 ? markPriceNum : entryPriceNum,
+        isBuyDirection: isLong,
+      });
+
     useEffect(() => {
       if (existingTp) {
-        setValue("tpPrice", existingTp.triggerPrice);
+        onTpPriceChange(existingTp.triggerPrice);
       }
       if (existingSl) {
-        setValue("slPrice", existingSl.triggerPrice);
+        onSlPriceChange(existingSl.triggerPrice);
       }
     }, []);
-
-    useTPSLPriceSync({
-      setValue,
-      tpPrice,
-      tpPercent,
-      slPrice,
-      slPercent,
-      referencePrice: markPriceNum > 0 ? markPriceNum : entryPriceNum,
-      isBuyDirection: isLong,
-    });
 
     const orderSize = useMemo(() => {
       if (!configureAmount) return undefined;
@@ -194,6 +189,9 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
                 placeholder="0"
                 label={m["modals.tpsl.tpPrice"]()}
                 {...register("tpPrice", { mask: numberMask })}
+                onChange={(e) =>
+                  onTpPriceChange(typeof e === "string" ? e : e.target.value)
+                }
               />
               <Input
                 placeholder="0"
@@ -201,6 +199,9 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
                 classNames={{ base: "max-w-[6rem]" }}
                 endContent="%"
                 {...register("tpPercent", { mask: numberMask })}
+                onChange={(e) =>
+                  onTpPercentChange(typeof e === "string" ? e : e.target.value)
+                }
               />
             </div>
             <p className="text-ink-tertiary-500 diatype-sm-regular text-right">
@@ -222,6 +223,9 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
                 placeholder="0"
                 label={m["modals.tpsl.slPrice"]()}
                 {...register("slPrice", { mask: numberMask })}
+                onChange={(e) =>
+                  onSlPriceChange(typeof e === "string" ? e : e.target.value)
+                }
               />
               <Input
                 placeholder="0"
@@ -229,6 +233,9 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
                 classNames={{ base: "max-w-[6rem]" }}
                 endContent="%"
                 {...register("slPercent", { mask: numberMask })}
+                onChange={(e) =>
+                  onSlPercentChange(typeof e === "string" ? e : e.target.value)
+                }
               />
             </div>
             <p className="text-ink-tertiary-500 diatype-sm-regular text-right">

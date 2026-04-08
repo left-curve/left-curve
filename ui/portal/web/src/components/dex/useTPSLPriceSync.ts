@@ -1,86 +1,89 @@
-import { useEffect, useRef } from "react";
+import { useCallback } from "react";
 
 type UseTPSLPriceSyncParams = {
   setValue: (name: string, value: string) => void;
-  tpPrice: string;
-  tpPercent: string;
-  slPrice: string;
-  slPercent: string;
   referencePrice: number;
   isBuyDirection: boolean;
   enabled?: boolean;
 };
 
+/**
+ * Returns onChange handlers that keep TP/SL price <-> percent fields in sync.
+ *
+ * The field the user is editing is written verbatim (so the input never gets
+ * reformatted while typing); only the *other* field of the pair is recomputed.
+ */
 export function useTPSLPriceSync({
   setValue,
-  tpPrice,
-  tpPercent,
-  slPrice,
-  slPercent,
   referencePrice,
   isBuyDirection,
   enabled = true,
 }: UseTPSLPriceSyncParams) {
-  const tpSyncingRef = useRef(false);
-  const slSyncingRef = useRef(false);
+  const canCompute = enabled && referencePrice > 0;
 
-  useEffect(() => {
-    if (tpSyncingRef.current || !enabled || referencePrice <= 0) return;
-    const pct = Number(tpPercent);
-    if (pct > 0) {
-      const computed = isBuyDirection
-        ? referencePrice * (1 + pct / 100)
-        : referencePrice * (1 - pct / 100);
-      tpSyncingRef.current = true;
-      setValue("tpPrice", computed.toFixed(4));
-      requestAnimationFrame(() => {
-        tpSyncingRef.current = false;
-      });
-    }
-  }, [tpPercent]);
+  // Format with up to N decimals, stripping trailing zeros so exact values
+  // (e.g. 5, 100) display without padding like "5.00" / "100.0000".
+  const trim = (n: number, maxDecimals: number) => {
+    if (!Number.isFinite(n)) return "";
+    const fixed = n.toFixed(maxDecimals);
+    return fixed.includes(".") ? fixed.replace(/\.?0+$/, "") : fixed;
+  };
 
-  useEffect(() => {
-    if (tpSyncingRef.current || !enabled || referencePrice <= 0) return;
-    const tp = Number(tpPrice);
-    if (tp > 0) {
-      const pct = isBuyDirection
-        ? ((tp - referencePrice) / referencePrice) * 100
-        : ((referencePrice - tp) / referencePrice) * 100;
-      tpSyncingRef.current = true;
-      setValue("tpPercent", Math.max(0, pct).toFixed(2));
-      requestAnimationFrame(() => {
-        tpSyncingRef.current = false;
-      });
-    }
-  }, [tpPrice]);
+  const pctFromPrice = (price: number, isTakeProfit: boolean) => {
+    const isUpside = isTakeProfit ? isBuyDirection : !isBuyDirection;
+    const pct = isUpside
+      ? ((price - referencePrice) / referencePrice) * 100
+      : ((referencePrice - price) / referencePrice) * 100;
+    return trim(Math.max(0, pct), 2);
+  };
 
-  useEffect(() => {
-    if (slSyncingRef.current || !enabled || referencePrice <= 0) return;
-    const pct = Number(slPercent);
-    if (pct > 0) {
-      const computed = isBuyDirection
-        ? referencePrice * (1 - pct / 100)
-        : referencePrice * (1 + pct / 100);
-      slSyncingRef.current = true;
-      setValue("slPrice", computed.toFixed(4));
-      requestAnimationFrame(() => {
-        slSyncingRef.current = false;
-      });
-    }
-  }, [slPercent]);
+  const priceFromPct = (pct: number, isTakeProfit: boolean) => {
+    const isUpside = isTakeProfit ? isBuyDirection : !isBuyDirection;
+    const computed = isUpside
+      ? referencePrice * (1 + pct / 100)
+      : referencePrice * (1 - pct / 100);
+    return trim(computed, 4);
+  };
 
-  useEffect(() => {
-    if (slSyncingRef.current || !enabled || referencePrice <= 0) return;
-    const sl = Number(slPrice);
-    if (sl > 0) {
-      const pct = isBuyDirection
-        ? ((referencePrice - sl) / referencePrice) * 100
-        : ((sl - referencePrice) / referencePrice) * 100;
-      slSyncingRef.current = true;
-      setValue("slPercent", Math.max(0, pct).toFixed(2));
-      requestAnimationFrame(() => {
-        slSyncingRef.current = false;
-      });
-    }
-  }, [slPrice]);
+  const onTpPriceChange = useCallback(
+    (value: string) => {
+      setValue("tpPrice", value);
+      if (!canCompute) return;
+      const tp = Number(value);
+      setValue("tpPercent", tp > 0 ? pctFromPrice(tp, true) : "");
+    },
+    [setValue, canCompute, referencePrice, isBuyDirection],
+  );
+
+  const onTpPercentChange = useCallback(
+    (value: string) => {
+      setValue("tpPercent", value);
+      if (!canCompute) return;
+      const pct = Number(value);
+      setValue("tpPrice", pct > 0 ? priceFromPct(pct, true) : "");
+    },
+    [setValue, canCompute, referencePrice, isBuyDirection],
+  );
+
+  const onSlPriceChange = useCallback(
+    (value: string) => {
+      setValue("slPrice", value);
+      if (!canCompute) return;
+      const sl = Number(value);
+      setValue("slPercent", sl > 0 ? pctFromPrice(sl, false) : "");
+    },
+    [setValue, canCompute, referencePrice, isBuyDirection],
+  );
+
+  const onSlPercentChange = useCallback(
+    (value: string) => {
+      setValue("slPercent", value);
+      if (!canCompute) return;
+      const pct = Number(value);
+      setValue("slPrice", pct > 0 ? priceFromPct(pct, false) : "");
+    },
+    [setValue, canCompute, referencePrice, isBuyDirection],
+  );
+
+  return { onTpPriceChange, onTpPercentChange, onSlPriceChange, onSlPercentChange };
 }

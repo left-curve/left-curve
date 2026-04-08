@@ -19,6 +19,22 @@ type UsePerpsSubmissionParameters = {
 
 const DEFAULT_TPSL_SLIPPAGE = "0.05";
 
+// On-chain `Dec<i128, 6>` allows at most 6 fractional digits. Truncate (don't
+// round) so we never exceed the user's intended/available value.
+const DEC_FRACTIONAL_DIGITS = 6;
+function truncateDec(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  const negative = trimmed.startsWith("-");
+  const unsigned = negative ? trimmed.slice(1) : trimmed;
+  const [intPart, fracPart = ""] = unsigned.split(".");
+  const truncated =
+    fracPart.length > DEC_FRACTIONAL_DIGITS
+      ? `${intPart}.${fracPart.slice(0, DEC_FRACTIONAL_DIGITS)}`
+      : unsigned;
+  return negative ? `-${truncated}` : truncated;
+}
+
 export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
   const {
     perpsPairId,
@@ -42,21 +58,22 @@ export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
         if (!signingClient) throw new Error("No signing client available");
         if (!account) throw new Error("No account found");
 
-        const signedSize = action === "buy" ? sizeValue : `-${sizeValue}`;
+        const truncatedSize = truncateDec(sizeValue);
+        const signedSize = action === "buy" ? truncatedSize : `-${truncatedSize}`;
 
         const kind: PerpsOrderKind =
           operation === "market"
             ? { market: { maxSlippage: "0.05" } }
-            : { limit: { limitPrice: priceValue, postOnly: false } };
+            : { limit: { limitPrice: truncateDec(priceValue), postOnly: false } };
 
         const tp: ChildOrder | undefined =
           tpPrice && Number(tpPrice) > 0
-            ? { triggerPrice: tpPrice, maxSlippage: DEFAULT_TPSL_SLIPPAGE }
+            ? { triggerPrice: truncateDec(tpPrice), maxSlippage: DEFAULT_TPSL_SLIPPAGE }
             : undefined;
 
         const sl: ChildOrder | undefined =
           slPrice && Number(slPrice) > 0
-            ? { triggerPrice: slPrice, maxSlippage: DEFAULT_TPSL_SLIPPAGE }
+            ? { triggerPrice: truncateDec(slPrice), maxSlippage: DEFAULT_TPSL_SLIPPAGE }
             : undefined;
 
         await signingClient.submitPerpsOrder({
