@@ -4400,7 +4400,7 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState {
+            &PairState {
                 long_oi: Quantity::new_int(5),
                 ..Default::default()
             },
@@ -4480,7 +4480,7 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState {
+            &PairState {
                 short_oi: Quantity::new_int(10),
                 ..Default::default()
             },
@@ -4571,7 +4571,7 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &mut PairState {
+            &PairState {
                 short_oi: Quantity::new_int(10),
                 ..Default::default()
             },

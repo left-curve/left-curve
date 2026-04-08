@@ -22,9 +22,9 @@ use {
     dango_types::{
         Days, UsdPrice, UsdValue,
         perps::{
-            ConditionalOrderRemoved, ConditionalOrderTriggered, LiquidityReleased, OrderId,
-            OrderKind, PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State,
-            TriggerDirection, UserState,
+            ConditionalOrderRemoved, ConditionalOrderTriggered, LiquidityReleased, OrderKind,
+            PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State, TriggerDirection,
+            UserState,
         },
     },
     grug::{
@@ -60,7 +60,23 @@ pub fn process_unlocks(
     let num_users = users.len();
 
     for (user, user_state) in users {
-        process_unlock_for_user(storage, current_time, user, user_state, events)?;
+        let UnlockOutcome {
+            user_state,
+            amount_usd,
+        } = process_unlock_for_user(current_time, &user_state)?;
+
+        if amount_usd.is_positive() {
+            events.push(LiquidityReleased {
+                user,
+                amount: amount_usd,
+            })?;
+        }
+
+        if user_state.is_empty() {
+            USER_STATES.remove(storage, user)?;
+        } else {
+            USER_STATES.save(storage, user, &user_state)?;
+        }
     }
 
     #[cfg(feature = "tracing")]
@@ -74,20 +90,22 @@ pub fn process_unlocks(
 /// Owned outcome of a `process_unlock_for_user` call. Returns the
 /// updated `user_state` (with matured unlocks popped and `margin`
 /// credited) and the total USD value released (used to emit the
-/// `LiquidityReleased` event at the caller site).
+/// `LiquidityReleased` event and decide whether to delete the user
+/// state at the caller site).
 #[derive(Debug)]
 pub struct UnlockOutcome {
     pub user_state: UserState,
     pub amount_usd: UsdValue,
 }
 
+/// Pure: takes `&UserState`, clones, pops matured unlocks, credits
+/// margin, returns the updated copy in [`UnlockOutcome`]. Storage and
+/// event emission happen at the caller site.
 fn process_unlock_for_user(
-    storage: &mut dyn Storage,
     current_time: Timestamp,
-    user: Addr,
-    mut user_state: UserState,
-    events: &mut EventBuilder,
-) -> anyhow::Result<()> {
+    user_state: &UserState,
+) -> anyhow::Result<UnlockOutcome> {
+    let mut user_state = user_state.clone();
     let mut amount_usd = UsdValue::ZERO;
 
     // Loop through unlocks, pop the ones that have matured, sum up USD value
@@ -104,21 +122,10 @@ fn process_unlock_for_user(
     // Credit the released USD value back to the user's trading margin.
     user_state.margin.checked_add_assign(amount_usd)?;
 
-    if amount_usd.is_positive() {
-        events.push(LiquidityReleased {
-            user,
-            amount: amount_usd,
-        })?;
-    }
-
-    // Save the updated user state to storage.
-    if user_state.is_empty() {
-        USER_STATES.remove(storage, user)?;
-    } else {
-        USER_STATES.save(storage, user, &user_state)?;
-    }
-
-    Ok(())
+    Ok(UnlockOutcome {
+        user_state,
+        amount_usd,
+    })
 }
 
 /// Compute and apply funding deltas for each trading pair using a point-in-time
@@ -303,7 +310,10 @@ fn process_conditional_orders_for_pair(
         .collect::<StdResult<Vec<_>>>()?;
 
     for (user, _user_state) in above_triggered {
-        process_triggered_order(
+        let TriggeredOrderOutcome {
+            state: updated_state,
+            pair_state: updated_pair_state,
+        } = process_triggered_order(
             storage,
             querier,
             contract,
@@ -313,12 +323,14 @@ fn process_conditional_orders_for_pair(
             state,
             pair_id,
             &pair_param,
-            &mut pair_state,
+            &pair_state,
             user,
             TriggerDirection::Above,
             oracle_price,
             events,
         )?;
+        *state = updated_state;
+        pair_state = updated_pair_state;
     }
 
     // BELOW orders: trigger when oracle_price <= trigger_price.
@@ -344,7 +356,10 @@ fn process_conditional_orders_for_pair(
         .collect::<StdResult<Vec<_>>>()?;
 
     for (user, _user_state) in below_triggered {
-        process_triggered_order(
+        let TriggeredOrderOutcome {
+            state: updated_state,
+            pair_state: updated_pair_state,
+        } = process_triggered_order(
             storage,
             querier,
             contract,
@@ -354,12 +369,14 @@ fn process_conditional_orders_for_pair(
             state,
             pair_id,
             &pair_param,
-            &mut pair_state,
+            &pair_state,
             user,
             TriggerDirection::Below,
             oracle_price,
             events,
         )?;
+        *state = updated_state;
+        pair_state = updated_pair_state;
     }
 
     PAIR_STATES.save(storage, pair_id, &pair_state)?;
@@ -369,25 +386,26 @@ fn process_conditional_orders_for_pair(
 
 /// Owned outcome of a `process_triggered_order` call.
 ///
-/// On the happy path, `submit_outcome` is `Some(...)` — the inner
-/// `_submit_order` completed successfully and the caller applies the
-/// outcome to storage. On the graceful-cancel path (the inner
-/// `_submit_order` errored out, e.g. with "no liquidity at acceptable
-/// price!"), `submit_outcome` is `None`; the caller still saves
-/// `user_state` (which has had the conditional order field cleared)
-/// and emits a `ConditionalOrderRemoved` event. `delete_user` indicates
-/// whether the final `user_state` is empty and should be removed from
-/// storage entirely.
+/// Carries only the post-call copies of `state` and `pair_state` —
+/// every other piece of state the function touches is loaded inside
+/// the function (`user_state` from `USER_STATES`, `next_order_id`
+/// from `NEXT_ORDER_ID`) and written back to storage inline. The
+/// caller (`process_conditional_orders_for_pair`) maintains a rolling
+/// `state` / `pair_state` across multiple invocations and writes them
+/// back at the end of the per-pair loop, so we have to thread the
+/// updated copies out via the outcome.
 #[derive(Debug)]
 pub struct TriggeredOrderOutcome {
-    pub submit_outcome: Option<SubmitOrderOutcome>,
-    pub user_state: UserState,
-    pub next_order_id: OrderId,
-    pub delete_user: bool,
+    pub state: State,
+    pub pair_state: PairState,
 }
 
 /// Process a single triggered conditional order: verify position, clamp size,
-/// submit a market order to close.
+/// submit a market order to close. Pure w.r.t. `state` and `pair_state` —
+/// takes them by `&` and returns the updated copies in the outcome. On the
+/// graceful-cancel path (slippage / no liquidity / position closed), the
+/// returned `state` and `pair_state` equal the inputs because `_submit_order`
+/// is itself pure and never touched them.
 fn process_triggered_order(
     storage: &mut dyn Storage,
     querier: QuerierWrapper,
@@ -395,15 +413,15 @@ fn process_triggered_order(
     current_time: Timestamp,
     oracle_querier: &mut OracleQuerier,
     param: &Param,
-    state: &mut State,
+    state: &State,
     pair_id: &PairId,
     pair_param: &PairParam,
-    pair_state: &mut PairState,
+    pair_state: &PairState,
     user: Addr,
     trigger_direction: TriggerDirection,
     oracle_price: UsdPrice,
     events: &mut EventBuilder,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<TriggeredOrderOutcome> {
     let mut user_state = USER_STATES.may_load(storage, user)?.unwrap_or_default();
 
     // Extract the conditional order and position size info before mutating.
@@ -466,7 +484,11 @@ fn process_triggered_order(
             );
         }
 
-        return Ok(());
+        // Graceful cancel: caller's `state` / `pair_state` are unchanged.
+        return Ok(TriggeredOrderOutcome {
+            state: state.clone(),
+            pair_state: pair_state.clone(),
+        });
     }
 
     let order = order.unwrap();
@@ -500,17 +522,17 @@ fn process_triggered_order(
         oracle_price,
     })?;
 
-    // `_submit_order` is now pure w.r.t. `state` / `pair_state` /
-    // `user_state` — it takes them by `&` and returns updated copies in
-    // its outcome. The snapshot/restore workaround for the STP-leak bug
-    // (see `conditional_order_self_trade_failure_preserves_user_state`)
-    // is structurally redundant in this commit; it will be removed in
-    // a follow-up commit when `process_triggered_order` itself is
-    // pure-ified.
+    // `_submit_order` is pure: takes `state` / `pair_state` / `user_state`
+    // by `&` and returns updated copies in its outcome. On `Err`, the
+    // caller's locals are untouched by construction, so the graceful-cancel
+    // path can simply discard the outcome and return the input `state` /
+    // `pair_state` unchanged. (This is the structural fix for the
+    // testnet STP-leak bug — the snapshot/restore workaround that used to
+    // live here is no longer necessary.)
     let SubmitOrderOutcome {
-        state: updated_state,
-        pair_state: updated_pair_state,
-        taker_state: updated_user_state,
+        state,
+        pair_state,
+        taker_state: user_state,
         mut maker_states,
         order_mutations,
         order_to_store: _order_to_store,
@@ -542,9 +564,7 @@ fn process_triggered_order(
     ) {
         Err(_) => {
             // Order couldn't fill (slippage exceeded or no liquidity).
-            // Cancel it gracefully — don't block other orders. Because
-            // `_submit_order` is now pure, the caller's `user_state` /
-            // `pair_state` / `state` are guaranteed untouched on `Err`.
+            // Cancel it gracefully — don't block other orders.
             events.push(ConditionalOrderRemoved {
                 pair_id: pair_id.clone(),
                 user,
@@ -568,14 +588,13 @@ fn process_triggered_order(
                 );
             }
 
-            return Ok(());
+            return Ok(TriggeredOrderOutcome {
+                state: state.clone(),
+                pair_state: pair_state.clone(),
+            });
         },
         Ok(outcome) => outcome,
     };
-
-    *state = updated_state;
-    *pair_state = updated_pair_state;
-    user_state = updated_user_state;
 
     // Apply state changes (same pattern as submit_order's section 3).
     flush_volumes(storage, current_time, &volumes)?;
@@ -645,7 +664,7 @@ fn process_triggered_order(
         }
     }
 
-    Ok(())
+    Ok(TriggeredOrderOutcome { state, pair_state })
 }
 
 /// Emit metrics gauges and histograms captured during cron execution.
