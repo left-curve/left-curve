@@ -10,7 +10,7 @@ use {
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::apply_position_index_updates,
         price::may_invert_price,
-        referral::apply_fee_commissions,
+        referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{
             ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
             USER_STATES,
@@ -500,26 +500,25 @@ fn process_triggered_order(
         oracle_price,
     })?;
 
-    // Snapshot `user_state` and `pair_state` before calling `_submit_order`.
-    //
-    // `_submit_order` takes both as `&mut` and `match_order` may partially
-    // mutate them in-memory (self-trade prevention decrements
-    // `open_order_count` / `reserved_margin`, `settle_fill` updates
-    // positions and OI, etc.) before bailing out with `Err`. When the error
-    // is swallowed below, we must not persist those partial mutations —
-    // otherwise the user's `open_order_count` / `reserved_margin` drift out
-    // of sync with the order book, which later panics in `match_order` at
-    // `maker_state.open_order_count -= 1`. See the regression test
-    // `conditional_order_self_trade_failure_preserves_user_state`.
-    //
-    // The snapshots are taken *after* clearing the conditional order field
-    // (above), so the restored `user_state` still has the field cleared —
-    // which is what we want on the graceful-cancel path.
-    let user_state_snapshot = user_state.clone();
-    let pair_state_snapshot = pair_state.clone();
-
-    // Execute as a market order via `_submit_order`.
-    let result = _submit_order(
+    // `_submit_order` is now pure w.r.t. `state` / `pair_state` /
+    // `user_state` — it takes them by `&` and returns updated copies in
+    // its outcome. The snapshot/restore workaround for the STP-leak bug
+    // (see `conditional_order_self_trade_failure_preserves_user_state`)
+    // is structurally redundant in this commit; it will be removed in
+    // a follow-up commit when `process_triggered_order` itself is
+    // pure-ified.
+    let SubmitOrderOutcome {
+        state: updated_state,
+        pair_state: updated_pair_state,
+        taker_state: updated_user_state,
+        mut maker_states,
+        order_mutations,
+        order_to_store: _order_to_store,
+        next_order_id,
+        index_updates,
+        volumes,
+        fee_breakdowns,
+    } = match _submit_order(
         storage,
         user,
         contract,
@@ -530,7 +529,7 @@ fn process_triggered_order(
         pair_id,
         pair_param,
         pair_state,
-        &mut user_state,
+        &user_state,
         oracle_price,
         clamped_size,
         OrderKind::Market {
@@ -540,25 +539,12 @@ fn process_triggered_order(
         None, // tp
         None, // sl
         events,
-    );
-
-    let (
-        mut maker_states,
-        order_mutations,
-        _order_to_store,
-        next_order_id,
-        index_updates,
-        volumes,
-        fee_breakdowns,
-    ) = match result {
+    ) {
         Err(_) => {
-            // Roll back the in-memory mutations `_submit_order` made before
-            // it errored.
-            user_state = user_state_snapshot;
-            *pair_state = pair_state_snapshot;
-
             // Order couldn't fill (slippage exceeded or no liquidity).
-            // Cancel it gracefully — don't block other orders.
+            // Cancel it gracefully — don't block other orders. Because
+            // `_submit_order` is now pure, the caller's `user_state` /
+            // `pair_state` / `state` are guaranteed untouched on `Err`.
             events.push(ConditionalOrderRemoved {
                 pair_id: pair_id.clone(),
                 user,
@@ -584,25 +570,32 @@ fn process_triggered_order(
 
             return Ok(());
         },
-        Ok(tuple) => tuple,
+        Ok(outcome) => outcome,
     };
+
+    *state = updated_state;
+    *pair_state = updated_pair_state;
+    user_state = updated_user_state;
 
     // Apply state changes (same pattern as submit_order's section 3).
     flush_volumes(storage, current_time, &volumes)?;
 
     maker_states.insert(user, user_state);
 
-    apply_fee_commissions(
+    let FeeCommissionsOutcome {
+        user_states: updated_maker_states,
+    } = apply_fee_commissions(
         storage,
         querier,
         contract,
         current_time,
         param,
-        &mut maker_states,
+        &maker_states,
         fee_breakdowns,
         &volumes,
         events,
     )?;
+    maker_states = updated_maker_states;
 
     NEXT_ORDER_ID.save(storage, &next_order_id)?;
 

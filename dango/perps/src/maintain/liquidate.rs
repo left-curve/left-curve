@@ -15,7 +15,10 @@ use {
             ASKS, BIDS, LONGS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE,
             USER_STATES,
         },
-        trade::{_cancel_all_orders, MatchOrderOutcome, match_order, settle_fill, settle_pnls},
+        trade::{
+            _cancel_all_orders, CancelAllOrdersOutcome, MatchOrderOutcome, match_order,
+            settle_fill, settle_pnls,
+        },
         volume::flush_volumes,
     },
     anyhow::ensure,
@@ -61,13 +64,16 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
-    _cancel_all_orders(
+    let CancelAllOrdersOutcome {
+        user_state: updated_user_state,
+    } = _cancel_all_orders(
         ctx.storage,
         user,
-        &mut user_state,
+        &user_state,
         Some(&mut events),
         ReasonForOrderRemoval::Liquidated,
     )?;
+    user_state = updated_user_state;
 
     // Cancel all embedded conditional orders. Positions may survive partial
     // liquidation, so we must explicitly clear the fields.
@@ -1494,14 +1500,17 @@ mod tests {
 
         // Step 1: Cancel all user orders (mirrors the public `liquidate` flow).
         let mut events = EventBuilder::new();
-        _cancel_all_orders(
+        let CancelAllOrdersOutcome {
+            user_state: updated_user_state,
+        } = _cancel_all_orders(
             &mut ctx.storage,
             USER,
-            &mut user_state,
+            &user_state,
             Some(&mut events),
             ReasonForOrderRemoval::Liquidated,
         )
         .unwrap();
+        user_state = updated_user_state;
 
         // The user's ask should be gone from the book.
         let user_asks: Vec<_> = ASKS

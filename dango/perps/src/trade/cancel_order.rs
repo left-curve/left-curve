@@ -115,13 +115,19 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut events = EventBuilder::new();
 
     update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
-        _cancel_all_orders(
+        let CancelAllOrdersOutcome {
+            user_state: updated_user_state,
+        } = _cancel_all_orders(
             storage,
             ctx.sender,
             user_state,
             Some(&mut events),
             ReasonForOrderRemoval::Canceled,
-        )
+        )?;
+
+        *user_state = updated_user_state;
+
+        Ok(())
     })?;
 
     Ok(Response::new().add_events(events)?)
@@ -137,17 +143,28 @@ pub struct CancelAllOrdersOutcome {
     pub user_state: UserState,
 }
 
-/// Cancel all resting orders for a user, updating the in-memory `user_state`.
+/// Cancel all resting orders for a user, returning the updated
+/// `UserState` in a [`CancelAllOrdersOutcome`]. Writes to `BIDS` / `ASKS`
+/// and the liquidity-depth maps happen inline inside the function —
+/// storage has tx-level rollback, so they don't need to be deferred.
 ///
-/// Writes to `BIDS` / `ASKS` in storage but does **not** persist `user_state`
-/// — the caller is responsible for saving or removing it.
+/// Pure w.r.t. the caller's `UserState`: takes `&UserState`, clones
+/// internally, and returns the updated copy in the outcome. The
+/// caller is responsible for saving or removing
+/// `outcome.user_state`. See `dango/perps/purity.md` for the full
+/// rationale.
 pub fn _cancel_all_orders(
     storage: &mut dyn Storage,
     user: Addr,
-    user_state: &mut UserState,
+    user_state: &UserState,
     mut events: Option<&mut EventBuilder>,
     reason: ReasonForOrderRemoval,
-) -> StdResult<()> {
+) -> StdResult<CancelAllOrdersOutcome> {
+    // Clone the user state and mutate the local copy. On `Err` the clone
+    // is dropped with the rest of the call frame; the caller's
+    // `&UserState` is never touched.
+    let mut user_state = user_state.clone();
+
     // Collect all orders from the caller.
     let bids = BIDS
         .idx
@@ -184,7 +201,7 @@ pub fn _cancel_all_orders(
     for (order_key, order) in bids.into_iter().chain(asks) {
         _cancel_one_order(
             storage,
-            user_state,
+            &mut user_state,
             order_key,
             order,
             events.as_deref_mut(),
@@ -193,7 +210,7 @@ pub fn _cancel_all_orders(
         )?;
     }
 
-    Ok(())
+    Ok(CancelAllOrdersOutcome { user_state })
 }
 
 // ----------------------------------- tests -----------------------------------
