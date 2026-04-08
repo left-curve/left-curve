@@ -1,0 +1,13 @@
+services:
+  perps-bot:
+    image: {{ perps_bot_image }}:{{ perps_bot_tag }}
+    pull_policy: always
+    container_name: perps-bot-mainnet
+    restart: always
+    labels:
+      dango_network: "mainnet"
+      service_name: "perps_bot"
+    environment:
+      - private_key__eip712={{ perps_bot_private_key }}
+    volumes:
+      - ./config.json:/root/.dango-perps/config.json

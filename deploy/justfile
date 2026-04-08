@@ -49,6 +49,9 @@ edit-hyperlane-secrets:
 edit-points-bot-secrets:
   EDITOR="cursor --wait" ansible-vault edit group_vars/points-bot/vault.yml
 
+edit-perps-bot-secrets:
+  EDITOR="cursor --wait" ansible-vault edit group_vars/perps-bot/vault.yml
+
 edit-root-key:
   ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
 
@@ -142,6 +145,19 @@ delete-points-bot network:
       -e '{"points_bot_networks": ["{{network}}"]}' \
       --limit points-bot-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-points-bot.log
+
+# -------------------------------- Perps Bot ----------------------------------
+
+deploy-perps-bot tag="latest":
+  mkdir -p {{justfile_directory()}}/logs \
+    && ansible-playbook perps-bot.yml \
+      -e perps_bot_tag={{tag}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-perps-bot.log
+
+stop-perps-bot:
+  mkdir -p {{justfile_directory()}}/logs \
+    && ansible-playbook stop-perps-bot.yml \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-perps-bot.log
 
 # ------------------------------ Perp Liquidator -------------------------------
 

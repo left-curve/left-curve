@@ -1,0 +1,37 @@
+---
+- name: Create perps-bot directory
+  file:
+    path: "{{ perps_bot_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Copy config.json
+  copy:
+    src: config.json
+    dest: "{{ perps_bot_dir }}/config.json"
+    mode: "0644"
+
+- name: Template docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ perps_bot_dir }}/docker-compose.yml"
+    mode: "0644"
+
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ perps_bot_ghcr_user }}"
+    password: "{{ perps_bot_ghcr_token }}"
+  no_log: true
+
+- name: Launch stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ perps_bot_dir }}"
+    pull: always
+    state: present
+    recreate: always
+
+- name: Logout from GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    state: absent

@@ -110,6 +110,9 @@ points-bot-devnet
 points-bot-testnet
 points-bot-mainnet
 
+[perps-bot]
+100.126.8.2    # hetzner1
+
 [perp-liquidator-devnet]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2

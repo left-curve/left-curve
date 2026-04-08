@@ -1,0 +1,11 @@
+{
+  "app_settings": {
+    "sleep": "10s",
+    "max_slippage": "1%",
+    "margin_usage": "50%",
+    "liquidity_sleep": "5s",
+    "min_order_usd": "6",
+    "max_order_usd": "7"
+  },
+  "http_url": "https://api-mainnet.dango.zone"
+}
