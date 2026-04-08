@@ -856,6 +856,242 @@ fn conditional_order_failure_does_not_block_others() {
     // orders to check — absence of position is sufficient.
 }
 
+/// Regression: when a triggered conditional order's `execute_order` call fails
+/// *after* self-trade prevention has decremented the taker's in-memory
+/// `open_order_count` / `reserved_margin`, `process_triggered_order` must
+/// discard the partial mutations. Otherwise the user's saved `UserState` drifts
+/// out of sync with the order book: `open_order_count` is too low while the
+/// resting order is still on the book, and a later fill of that order panics
+/// with "attempt to subtract with overflow" at
+/// `maker_state.open_order_count -= 1`.
+///
+/// Scenario:
+///  1. User1 goes long 5 ETH @ $2,000.
+///  2. User1 places a resting bid at $1,950 (intending to add to the long).
+///  3. User1 places a stop-loss BELOW $1,960, size -5, slippage 5%.
+///     Acceptable bids at trigger: ≥ $1,960 × 0.95 = $1,862, so User1's own
+///     bid at $1,950 is in range.
+///  4. Oracle drops to $1,960 → SL triggers → market sell.
+///  5. `match_order` iterates bids, hits User1's own bid first → STP cancels it
+///     in-memory (decrement count + release reserved margin), but no other bids
+///     are in range → `unfilled == fillable_size` → `execute_order` returns
+///     `Err("no liquidity at acceptable price")`.
+///  6. With the fix: the pre-call snapshot of `user_state` is restored, so
+///     `open_order_count == 1` and the resting bid is still in the book.
+///  7. A subsequent market sell from User3 fills User1's bid without panicking.
+#[test]
+fn conditional_order_self_trade_failure_preserves_user_state() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Deposits.
+    for (user, amount) in [
+        (&mut accounts.user1, 10_000_000_000u128),
+        (&mut accounts.user2, 100_000_000_000u128),
+        (&mut accounts.user3, 10_000_000_000u128),
+    ] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(amount)).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Maker (user2) places ask @ $2,000 so User1 can open a long.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User1 market-buys 5 ETH → long 5 @ $2,000.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User1 places a resting bid at $1,950 (would add to long if filled).
+    // This is the "self-trade bait" that the stop-loss market sell will hit.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_950),
+                    post_only: true,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Snapshot User1's state: should have 1 resting bid, reserved_margin > 0.
+    let state_before: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    assert_eq!(
+        state_before.open_order_count, 1,
+        "User1 should have 1 resting bid before the stop-loss triggers"
+    );
+    let reserved_before = state_before.reserved_margin;
+    assert!(
+        reserved_before.is_non_zero(),
+        "User1's reserved_margin should be non-zero before trigger"
+    );
+
+    // User1 places a stop-loss BELOW $1,960, size -5, 5% slippage.
+    // At trigger, acceptable bids are ≥ $1,862 — User1's own bid at $1,950
+    // is in range, so STP will fire on it.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Some(Quantity::new_int(-5)),
+                trigger_price: UsdPrice::new_int(1_960),
+                trigger_direction: perps::TriggerDirection::Below,
+                max_slippage: Dimensionless::new_percent(5),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Oracle drops to $1,960 → SL triggers. No other bids in range ($1,862+) —
+    // only User1's own bid at $1,950. Self-trade prevention cancels it in
+    // memory, `match_order` has no more liquidity, `ensure!` fails, and
+    // `process_triggered_order` gracefully cancels the conditional order via
+    // `SlippageExceeded`.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_960);
+    suite.increase_time(Duration::from_minutes(2));
+
+    // --- Post-trigger assertions ---
+
+    let state_after: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    // Position unchanged (market sell did not actually fill).
+    assert_eq!(
+        state_after.positions.get(&pair).unwrap().size,
+        Quantity::new_int(5),
+        "User1 should still be long 5 (sell failed to fill)"
+    );
+
+    // Stop-loss conditional order is cleared (graceful cancel).
+    assert!(
+        state_after
+            .positions
+            .get(&pair)
+            .unwrap()
+            .conditional_order_below
+            .is_none(),
+        "User1's stop-loss should be cleared after graceful cancel"
+    );
+
+    // CRITICAL: open_order_count and reserved_margin must be restored to their
+    // pre-call values — otherwise the in-memory STP decrement leaked into
+    // storage and the invariant with BIDS/ASKS is broken.
+    assert_eq!(
+        state_after.open_order_count, 1,
+        "open_order_count must be restored after failed conditional order"
+    );
+    assert_eq!(
+        state_after.reserved_margin, reserved_before,
+        "reserved_margin must be restored after failed conditional order"
+    );
+
+    // User1's resting bid must still be on the book.
+    let orders: std::collections::BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> =
+        suite
+            .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            })
+            .should_succeed();
+    assert_eq!(
+        orders.len(),
+        1,
+        "User1's resting bid must still be on the book after the failed SL"
+    );
+
+    // Finally, User3 market-sells 1 ETH which must fill User1's still-resting
+    // bid without panicking on `open_order_count -= 1` underflow.
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-1),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::ONE,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // After the fill, User1's resting bid should be gone and
+    // open_order_count == 0.
+    let state_final: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    assert_eq!(
+        state_final.open_order_count, 0,
+        "open_order_count should be 0 after the resting bid is filled"
+    );
+}
+
 // ===================== Child order e2e tests ================================
 
 /// Market buy with TP child order → position has conditional_order_above →
