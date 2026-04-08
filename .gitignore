@@ -90,6 +90,9 @@ localdango/**/logs
 # Ansible deploy logs (captured by `just deploy-*`, `just restart-*`, etc.)
 deploy/logs/
 
+# Downloaded database archives (captured by `just download-db-*`)
+deploy/downloaded-db/
+
 # GraphiQL
 docker/graphiql/dist
 
