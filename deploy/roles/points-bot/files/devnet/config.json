@@ -67,7 +67,8 @@
   "http_url": "https://api-devnet.dango.zone",
   "httpd": {
     "register_cache_delta": "1m",
-    "rest_url": "0.0.0.0:8080"
+    "rest_url": "0.0.0.0:8080",
+    "leaderboard_refresh_interval": "1m"
   },
   "log_level": "info",
   "referral": {
