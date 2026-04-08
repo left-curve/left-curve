@@ -315,6 +315,13 @@ fn _liquidate(
     // Compute which positions to close and how much to close based on the deficit.
     let schedule = compute_close_schedule(user_state, pair_params, oracle_prices, deficit)?;
 
+    // `compute_close_schedule` is supposed to produce at least one entry
+    // whenever `deficit > 0`, which is implied by `is_liquidatable` passing above.
+    ensure!(
+        !schedule.is_empty(),
+        "close schedule is empty despite `is_liquidatable` passing — invariant violated"
+    );
+
     // -------- Step 3: Execute closes via the order book + ADL ----------------
 
     let mut all_maker_states = BTreeMap::new();
