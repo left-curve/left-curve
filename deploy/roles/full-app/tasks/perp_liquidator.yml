@@ -1,14 +1,20 @@
 ---
+- name: Set perp-liquidator instance index
+  set_fact:
+    perp_liquidator_instance_index: >-
+      {{ (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([]))).index(inventory_hostname) }}
+  when: inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([])))
+
 - name: Create perp-liquidator config directory
   file:
     path: "{{ deployment_dir }}/perp-liquidator"
     state: directory
     mode: '0755'
-  when: inventory_hostname == perp_liquidator_host
+  when: perp_liquidator_instance_index is defined
 
 - name: Template perp-liquidator .env
   template:
     src: perp-liquidator.env.j2
     dest: "{{ deployment_dir }}/perp-liquidator/.env"
     mode: '0600'
-  when: inventory_hostname == perp_liquidator_host
+  when: perp_liquidator_instance_index is defined
