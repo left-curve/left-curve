@@ -9,7 +9,7 @@ use {
             ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
             USER_STATES,
         },
-        trade::cancel_all_resting_orders,
+        trade::_cancel_all_orders,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -53,7 +53,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
-    cancel_all_resting_orders(
+    _cancel_all_orders(
         ctx.storage,
         ctx.contract,
         &mut vault_state,
