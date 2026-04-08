@@ -3,7 +3,8 @@
 use {
     grug::{
         Dec128_6, Duration, Exponentiate, Inner, Int128, IsZero, MathError, MathResult,
-        Number as _, NumberConst, PrimaryKey, RawKey, Sign, Signed, StdResult, Uint128, Unsigned,
+        MultiplyFraction, Number as _, NumberConst, PrimaryKey, RawKey, Sign, Signed, StdResult,
+        Uint128, Unsigned,
     },
     std::{
         fmt,
@@ -127,6 +128,18 @@ impl<Q, U, D> Number<Q, U, D> {
         self.inner.checked_mul(rhs.inner).map(Number::new)
     }
 
+    /// Divide `self` by `rhs`, returning the typed quotient.
+    ///
+    /// The result is **truncated towards zero** (Rust integer-division
+    /// semantics on the underlying fixed-point representation):
+    ///
+    /// - positive results round down: `7.5 → 7` (floor)
+    /// - negative results round up: `-7.5 → -7` (ceil)
+    ///
+    /// In other words, the *magnitude* of the result is always floored. If
+    /// you need the magnitude to round up — e.g. to preserve an invariant of
+    /// the form `result × rhs ≥ self` — use
+    /// [`checked_div_ceil`](Self::checked_div_ceil) instead.
     pub fn checked_div<Q1, U1, D1>(
         self,
         rhs: Number<Q1, U1, D1>,
@@ -137,6 +150,30 @@ impl<Q, U, D> Number<Q, U, D> {
         D: Sub<D1>,
     {
         self.inner.checked_div(rhs.inner).map(Number::new)
+    }
+
+    /// Like [`checked_div`](Self::checked_div), but rounds the result towards
+    /// positive infinity instead of towards zero:
+    ///
+    /// - positive results round up: `7.5 → 8`
+    /// - negative results round up: `-7.5 → -7`
+    ///
+    /// Use this when an under-rounded quotient would silently violate an
+    /// invariant of the form `result × rhs ≥ self`. For example, computing
+    /// the close size needed to cover a maintenance-margin deficit during
+    /// liquidation: a truncated quotient can collapse to zero and leave the
+    /// deficit uncovered, while a ceiled quotient guarantees at least one
+    /// ULP of progress whenever `self > 0`.
+    pub fn checked_div_ceil<Q1, U1, D1>(
+        self,
+        rhs: Number<Q1, U1, D1>,
+    ) -> MathResult<Number<<Q as Sub<Q1>>::Output, <U as Sub<U1>>::Output, <D as Sub<D1>>::Output>>
+    where
+        Q: Sub<Q1>,
+        U: Sub<U1>,
+        D: Sub<D1>,
+    {
+        self.inner.checked_div_dec_ceil(rhs.inner).map(Number::new)
     }
 
     pub fn checked_rem(self, rhs: Self) -> MathResult<Self> {

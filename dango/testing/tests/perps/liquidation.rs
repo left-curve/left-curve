@@ -210,13 +210,15 @@ fn liquidation_on_order_book() {
     // Step 6: Liquidate trader (user1).
     //
     // Partial liquidation: deficit = MM - equity = $362.50 - $240 = $122.50
-    // close_amount = $122.50 / ($1,450 * 5%) = 1.689655 ETH
+    // close_amount = ceil($122.50 / ($1,450 * 5%)) = 1.689656 ETH
+    // (ceil rounding guarantees at least one ULP of progress; see
+    // `compute_close_schedule` in `dango/perps/src/core/closure.rs`).
     //
     // Matched against bidder's bid at $1,450 (zero taker/maker fee for liq fills).
-    // Realized PnL = 1.689655 * ($1,450 - $2,000) = -$929.310250
-    // Closed notional = 1.689655 * $1,450 = $2,449.999750
-    // Liq fee = $2,449.999750 * 1% = $24.499997
-    // Trader margin after = $2,990 - $929.310250 - $24.499997 = $2,036.189753
+    // Realized PnL = 1.689656 * ($1,450 - $2,000) = -$929.310800
+    // Closed notional = 1.689656 * $1,450 = $2,450.001200
+    // Liq fee = $2,450.001200 * 1% = $24.500012
+    // Trader margin after = $2,990 - $929.310800 - $24.500012 = $2,036.189188
     // -------------------------------------------------------------------------
 
     // Capture vault margin before liquidation.
@@ -251,17 +253,19 @@ fn liquidation_on_order_book() {
         .get(&pair)
         .expect("trader should still have a reduced ETH position");
 
-    // 5.000000 - 1.689655 = 3.310345 ETH remaining.
+    // 5.000000 - 1.689656 = 3.310344 ETH remaining.
+    // (close_amount rounded up by 1 ULP vs floor division; see
+    // `compute_close_schedule` ceil rounding.)
     assert_eq!(
         pos.size,
-        Quantity::new_raw(3_310_345),
+        Quantity::new_raw(3_310_344),
         "trader should have ~3.31 ETH after partial liquidation"
     );
 
-    // Trader margin = $2,036.189753 (raw 2_036_189_753).
+    // Trader margin = $2,036.189188 (raw 2_036_189_188).
     assert_eq!(
         state.margin,
-        UsdValue::new_raw(2_036_189_753),
+        UsdValue::new_raw(2_036_189_188),
         "trader margin should be ~$2,036.19 after partial liquidation"
     );
 
@@ -272,7 +276,7 @@ fn liquidation_on_order_book() {
 
     assert_eq!(
         global_state.insurance_fund,
-        UsdValue::new_raw(24_499_997),
+        UsdValue::new_raw(24_500_012),
         "insurance fund should receive ~$24.50 liquidation fee"
     );
 
@@ -303,7 +307,7 @@ fn liquidation_on_order_book() {
 
     assert_eq!(
         bidder_pos.size,
-        Quantity::new_raw(1_689_655),
+        Quantity::new_raw(1_689_656),
         "bidder should have ~1.69 ETH long from partial fill"
     );
     assert_eq!(

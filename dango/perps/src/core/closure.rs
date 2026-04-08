@@ -81,9 +81,14 @@ pub fn compute_close_schedule(
         let abs_size = position.size.checked_abs()?;
 
         // close_amount = min(ceil(deficit / (P × mmr)), |size|)
+        //
+        // Ceiling rounding is load-bearing: with floor division, a sub-ULP
+        // deficit collapses `close_amount` to zero, leaves the schedule
+        // empty, and causes `liquidate` to silently exit with no events.
+        // Ceil guarantees at least 1 ULP of progress whenever `deficit > 0`.
         let close_amount = {
-            let denom = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
-            deficit.checked_div(denom)?.min(abs_size)
+            let denominator = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
+            deficit.checked_div_ceil(denominator)?.min(abs_size)
         };
 
         // close_size = -sign(size) × close_amount (opposite direction to close)
@@ -543,6 +548,57 @@ mod tests {
         assert_eq!(schedule[0].0, pair_btc());
         // Only 2 of 10 BTC closed
         assert_eq!(schedule[0].1, Quantity::new_int(-2));
+    }
+
+    /// Regression for the silent-exit `liquidate` bug observed on mainnet.
+    ///
+    /// When the deficit is smaller than one ULP of the denominator
+    /// `oracle_price × mmr`, floor division of `deficit / denominator` used
+    /// to collapse `close_amount` to zero, leaving `compute_close_schedule`
+    /// to return an empty `Vec`. Combined with a liquidatable user that has
+    /// no resting orders or conditionals, the outer `liquidate` handler
+    /// would then write unchanged state and return `Ok` with an empty
+    /// `EventBuilder` — a successful tx that emitted no events.
+    ///
+    /// `compute_close_schedule` now uses ceiling division (matching the doc
+    /// comment), which guarantees at least one ULP of close size whenever the
+    /// user is liquidatable.
+    ///
+    /// Setup: long 1 BTC, oracle $60k, mmr 5% → denominator = $3,000.
+    /// Deficit = $0.001 (raw 1_000 in `Dec128_6`'s 6-decimal representation).
+    ///
+    /// - `floor(deficit / denominator) = floor(1_000 × 10⁶ / 3_000_000_000) = floor(1/3) = 0` (old, buggy)
+    /// - `ceil (deficit / denominator) = ceil (1/3) = 1` raw ULP of `Quantity` (new)
+    #[test]
+    fn sub_ulp_deficit_produces_one_ulp_close() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(1),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! { pair_btc() => btc_pair_param() };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(60_000) };
+
+        // $0.001 — one milli-dollar, well below `denominator × 1 ULP = $0.003`.
+        let deficit = UsdValue::new_raw(1_000);
+
+        let schedule =
+            compute_close_schedule(&user_state, &pair_params, &oracle_prices, deficit).unwrap();
+
+        // With ceil division, the schedule contains exactly one entry of the
+        // smallest representable close size (1 raw ULP = 0.000001 Quantity),
+        // in the opposite direction of the long position.
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].0, pair_btc());
+        assert_eq!(schedule[0].1, Quantity::new_raw(-1));
     }
 
     // ==================== `compute_bankruptcy_price` tests ====================
