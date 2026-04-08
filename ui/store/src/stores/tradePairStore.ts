@@ -13,7 +13,17 @@ export type TradePairState = {
 export const TradePairStore = create<TradePairState>((set, get) => ({
   mode: "spot",
   pairId: { baseDenom: "", quoteDenom: "" },
-  setPair: (pairId, mode) => set({ pairId, mode }),
+  setPair: (pairId, mode) => {
+    const current = get();
+    if (
+      current.pairId.baseDenom === pairId.baseDenom &&
+      current.pairId.quoteDenom === pairId.quoteDenom &&
+      current.mode === mode
+    ) {
+      return;
+    }
+    set({ pairId, mode });
+  },
   getPerpsPairId: (_pairId_) => {
     const pairId = _pairId_ ?? get().pairId;
     const coinStore = CoinStore.getState();

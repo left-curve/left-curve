@@ -130,7 +130,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   useEffect(() => {
     setSizeCoinDenom(action === "buy" ? pairId.quoteDenom : pairId.baseDenom);
-    controllers.setValue("size", "");
   }, [action]);
 
   const sizeCoin = sizeCoinDenom === baseCoin.denom ? baseCoin : quoteCoin;
