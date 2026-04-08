@@ -22,6 +22,14 @@ use {
 /// commissions.
 const MAX_REFERRAL_CHAIN_DEPTH: usize = 5;
 
+/// Owned outcome of an `apply_fee_commissions` call. The map carries
+/// every user state that was credited a commission (or had its margin
+/// debited as the payer / vault), ready for the caller to persist.
+#[derive(Debug)]
+pub struct FeeCommissionsOutcome {
+    pub user_states: BTreeMap<Addr, UserState>,
+}
+
 /// Calculate and apply fee commissions for all fee-paying users based on the
 /// referral chain.
 ///

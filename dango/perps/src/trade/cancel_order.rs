@@ -127,6 +127,16 @@ pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     Ok(Response::new().add_events(events)?)
 }
 
+/// Owned outcome of a `_cancel_all_orders` call. Carries only the
+/// updated `user_state` — storage mutations (`BIDS` / `ASKS` removal,
+/// liquidity-depth decrement) happen *inside* the function because
+/// storage has tx-level rollback at the block boundary and there is no
+/// point deferring them.
+#[derive(Debug)]
+pub struct CancelAllOrdersOutcome {
+    pub user_state: UserState,
+}
+
 /// Cancel all resting orders for a user, updating the in-memory `user_state`.
 ///
 /// Writes to `BIDS` / `ASKS` in storage but does **not** persist `user_state`

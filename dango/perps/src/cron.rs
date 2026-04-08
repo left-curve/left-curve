@@ -15,16 +15,16 @@ use {
             ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
             USER_STATES,
         },
-        trade::_submit_order,
+        trade::{_submit_order, SubmitOrderOutcome},
         volume::flush_volumes,
     },
     dango_oracle::OracleQuerier,
     dango_types::{
         Days, UsdPrice, UsdValue,
         perps::{
-            ConditionalOrderRemoved, ConditionalOrderTriggered, LiquidityReleased, OrderKind,
-            PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State, TriggerDirection,
-            UserState,
+            ConditionalOrderRemoved, ConditionalOrderTriggered, LiquidityReleased, OrderId,
+            OrderKind, PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State,
+            TriggerDirection, UserState,
         },
     },
     grug::{
@@ -69,6 +69,16 @@ pub fn process_unlocks(
     }
 
     Ok(())
+}
+
+/// Owned outcome of a `process_unlock_for_user` call. Returns the
+/// updated `user_state` (with matured unlocks popped and `margin`
+/// credited) and the total USD value released (used to emit the
+/// `LiquidityReleased` event at the caller site).
+#[derive(Debug)]
+pub struct UnlockOutcome {
+    pub user_state: UserState,
+    pub amount_usd: UsdValue,
 }
 
 fn process_unlock_for_user(
@@ -355,6 +365,25 @@ fn process_conditional_orders_for_pair(
     PAIR_STATES.save(storage, pair_id, &pair_state)?;
 
     Ok(())
+}
+
+/// Owned outcome of a `process_triggered_order` call.
+///
+/// On the happy path, `submit_outcome` is `Some(...)` — the inner
+/// `_submit_order` completed successfully and the caller applies the
+/// outcome to storage. On the graceful-cancel path (the inner
+/// `_submit_order` errored out, e.g. with "no liquidity at acceptable
+/// price!"), `submit_outcome` is `None`; the caller still saves
+/// `user_state` (which has had the conditional order field cleared)
+/// and emits a `ConditionalOrderRemoved` event. `delete_user` indicates
+/// whether the final `user_state` is empty and should be removed from
+/// storage entirely.
+#[derive(Debug)]
+pub struct TriggeredOrderOutcome {
+    pub submit_outcome: Option<SubmitOrderOutcome>,
+    pub user_state: UserState,
+    pub next_order_id: OrderId,
+    pub delete_user: bool,
 }
 
 /// Process a single triggered conditional order: verify position, clamp size,

@@ -250,6 +250,30 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     Ok(Response::new().add_events(events)?)
 }
 
+/// Owned outcome of a `_liquidate` call. Returns every piece of
+/// caller-persistable state the liquidation may have updated, so failure
+/// leaves no trace in the caller's locals. The `order_mutations` list is
+/// tagged with `(pair_id, taker_is_bid, ...)` because a liquidation can
+/// close positions across multiple pairs in a single call.
+#[derive(Debug)]
+pub struct LiquidateOutcome {
+    pub state: State,
+    pub pair_states: BTreeMap<PairId, PairState>,
+    pub user_state: UserState,
+    pub maker_states: BTreeMap<Addr, UserState>,
+    pub order_mutations: Vec<(
+        PairId,
+        bool,
+        UsdPrice,
+        OrderId,
+        Option<LimitOrder>,
+        Quantity,
+    )>,
+    pub index_updates: Vec<PositionIndexUpdate>,
+    pub volumes: BTreeMap<Addr, UsdValue>,
+    pub next_order_id: OrderId,
+}
+
 /// Mutates:
 ///
 /// - `state.insurance_fund` — receives liquidation fee, covers bad debt.
@@ -444,6 +468,32 @@ fn _liquidate(
         all_volumes,
         next_order_id,
     ))
+}
+
+/// Owned outcome of an `execute_close_schedule` call. Carries the rolling
+/// `user_state` / `maker_states` / `pair_states` snapshots after every
+/// iteration of the close schedule, plus the accumulated PnL/fee/volume
+/// deltas for the caller (`_liquidate`) to feed into `settle_pnls`.
+/// `closed_notional` is used downstream to compute the liquidation fee.
+#[derive(Debug)]
+pub struct ExecuteCloseScheduleOutcome {
+    pub pair_states: BTreeMap<PairId, PairState>,
+    pub user_state: UserState,
+    pub maker_states: BTreeMap<Addr, UserState>,
+    pub pnls: BTreeMap<Addr, UsdValue>,
+    pub fees: BTreeMap<Addr, UsdValue>,
+    pub volumes: BTreeMap<Addr, UsdValue>,
+    pub order_mutations: Vec<(
+        PairId,
+        bool,
+        UsdPrice,
+        OrderId,
+        Option<LimitOrder>,
+        Quantity,
+    )>,
+    pub index_updates: Vec<PositionIndexUpdate>,
+    pub closed_notional: UsdValue,
+    pub next_order_id: OrderId,
 }
 
 /// Execute the close schedule against the order book, with ADL for any unfilled
@@ -658,6 +708,23 @@ fn execute_close_schedule(
         all_volumes,
         next_order_id,
     ))
+}
+
+/// Owned outcome of an `execute_adl` call. The `*_delta` maps are the
+/// per-counter-party contributions from this ADL pass, to be merged by
+/// `execute_close_schedule` into its running `all_pnls` / `all_fees` /
+/// `all_volumes` totals.
+#[derive(Debug)]
+pub struct ExecuteAdlOutcome {
+    pub pair_state: PairState,
+    pub user_state: UserState,
+    pub maker_states: BTreeMap<Addr, UserState>,
+    pub pnls_delta: BTreeMap<Addr, UsdValue>,
+    pub fees_delta: BTreeMap<Addr, UsdValue>,
+    pub volumes_delta: BTreeMap<Addr, UsdValue>,
+    pub index_updates: Vec<PositionIndexUpdate>,
+    pub total_adl_size: Quantity,
+    pub adl_price: UsdPrice,
 }
 
 /// ADL the unfilled remainder of a liquidation against counter-positions.

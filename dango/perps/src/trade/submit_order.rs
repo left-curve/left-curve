@@ -243,6 +243,26 @@ pub fn submit_order(
     Ok(Response::new().add_events(events)?)
 }
 
+/// Owned outcome of a `_submit_order` call. Every piece of
+/// caller-persistable state that the call may have updated is returned in
+/// this struct, so that a failed call can discard everything at once
+/// simply by dropping the `Err` variant — no partial mutations can leak
+/// into the caller's `&mut` parameters. See
+/// [`dango/perps/purity.md`](../../purity.md) for the full rationale.
+#[derive(Debug)]
+pub struct SubmitOrderOutcome {
+    pub state: State,
+    pub pair_state: PairState,
+    pub taker_state: UserState,
+    pub maker_states: BTreeMap<Addr, UserState>,
+    pub order_mutations: Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
+    pub order_to_store: Option<(UsdPrice, OrderId, LimitOrder)>,
+    pub next_order_id: OrderId,
+    pub index_updates: Vec<PositionIndexUpdate>,
+    pub volumes: BTreeMap<Addr, UsdValue>,
+    pub fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
+}
+
 /// Semi-pure order submission: reads from storage but does not write.
 /// All storage mutations are returned as deferred side-effects.
 ///
@@ -486,6 +506,25 @@ pub(crate) fn _submit_order(
         volumes,
         fee_breakdowns,
     ))
+}
+
+/// Owned outcome of a `match_order` call. Carries post-match copies of
+/// `pair_state`, `taker_state`, and `maker_states`, plus the per-fill
+/// accumulators (`pnls`, `fees`, `volumes`) that the caller feeds into
+/// `settle_pnls` / `apply_fee_commissions` or merges into its own running
+/// totals (`execute_close_schedule`).
+#[derive(Debug)]
+pub struct MatchOrderOutcome {
+    pub pair_state: PairState,
+    pub taker_state: UserState,
+    pub maker_states: BTreeMap<Addr, UserState>,
+    pub unfilled: Quantity,
+    pub pnls: BTreeMap<Addr, UsdValue>,
+    pub fees: BTreeMap<Addr, UsdValue>,
+    pub volumes: BTreeMap<Addr, UsdValue>,
+    pub order_mutations: Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
+    pub index_updates: Vec<PositionIndexUpdate>,
+    pub next_order_id: OrderId,
 }
 
 /// Mutates:
@@ -1043,6 +1082,18 @@ fn store_post_only_limit_order(
         tp,
         sl,
     )
+}
+
+/// Owned outcome of a `store_limit_order` call (and, by extension, of
+/// `store_post_only_limit_order`, which delegates). Returned instead of
+/// mutating the caller's `&mut UserState` so that a failed store leaves
+/// the caller's state untouched.
+#[derive(Debug)]
+pub struct StoreLimitOrderOutcome {
+    pub user_state: UserState,
+    pub stored_price: UsdPrice,
+    pub order_id: OrderId,
+    pub order: LimitOrder,
 }
 
 /// Mutates:
