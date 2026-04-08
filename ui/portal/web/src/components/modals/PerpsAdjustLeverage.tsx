@@ -1,4 +1,11 @@
-import { Button, IconButton, IconClose, Range, useApp } from "@left-curve/applets-kit";
+import {
+  Button,
+  IconButton,
+  IconClose,
+  Range,
+  WarningContainer,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { perpsTradeSettingsStore } from "@left-curve/store";
@@ -26,17 +33,17 @@ export const PerpsAdjustLeverage = forwardRef<void, PerpsAdjustLeverageProps>(
 
     return (
       <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[28rem]">
-        <div className="flex flex-col gap-2 text-center">
+        <div className="flex flex-col gap-2">
           <h2 className="text-ink-primary-900 h4-bold w-full">
             {m["modals.adjustLeverage.title"]()}
           </h2>
-          <p className="diatype-sm-regular text-ink-tertiary-500">
+          <p className="diatype-sm-regular text-ink-tertiary-500 text-left">
             {m["modals.adjustLeverage.description"]({
               symbol: baseSymbol,
               maxLeverage: String(maxLeverage),
             })}
           </p>
-          <p className="diatype-sm-regular text-ink-tertiary-500">
+          <p className="diatype-sm-regular text-ink-tertiary-500 text-left">
             {m["modals.adjustLeverage.subDescription"]()}
           </p>
         </div>
@@ -65,11 +72,7 @@ export const PerpsAdjustLeverage = forwardRef<void, PerpsAdjustLeverageProps>(
           {m["modals.adjustLeverage.confirm"]()}
         </Button>
 
-        <div className="border border-utility-error-300 rounded-lg p-3">
-          <p className="diatype-xs-regular text-utility-error-600 text-center">
-            {m["modals.adjustLeverage.warning"]()}
-          </p>
-        </div>
+        <WarningContainer color="error" description={m["modals.adjustLeverage.warning"]()} />
       </div>
     );
   },
