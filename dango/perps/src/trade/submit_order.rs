@@ -416,9 +416,22 @@ pub(crate) fn _submit_order(
 
     // ---------------------- Step 7. Match against book -----------------------
 
-    let mut maker_states = BTreeMap::new();
-
-    let (unfilled, pnls, fees, volumes, order_mutations, index_updates) = match_order(
+    // `match_order` is now pure — destructure its outcome and write the
+    // dense-state fields back through the caller's `&mut`s so the rest of
+    // `_submit_order`'s body (still `&mut` at this commit) keeps working.
+    // `_submit_order` itself will become pure later in the stack.
+    let MatchOrderOutcome {
+        pair_state: updated_pair_state,
+        taker_state: updated_taker_state,
+        mut maker_states,
+        unfilled,
+        pnls,
+        fees,
+        volumes,
+        order_mutations,
+        index_updates,
+        next_order_id: updated_next_order_id,
+    } = match_order(
         storage,
         taker,
         contract,
@@ -429,12 +442,16 @@ pub(crate) fn _submit_order(
         taker_state,
         taker_is_bid,
         taker_order_id,
-        &mut maker_states,
+        &BTreeMap::new(),
         target_price,
         fillable_size,
-        &mut next_order_id,
+        next_order_id,
         events,
     )?;
+
+    *pair_state = updated_pair_state;
+    *taker_state = updated_taker_state;
+    next_order_id = updated_next_order_id;
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
 
@@ -553,30 +570,19 @@ pub struct MatchOrderOutcome {
     pub next_order_id: OrderId,
 }
 
-/// Mutates:
-///
-/// - `pair_state.long_oi` / `pair_state.short_oi` — updated per fill.
-/// - `taker_state.positions` — opened / closed / flipped per fill.
-/// - `maker_states` — each matched maker's `UserState` is loaded from storage
-///   (if not already present) and updated in place.
-///
-/// Returns:
-///
-/// - Remaining (unfilled) size (same sign convention as taker's order).
-/// - Per-user position PnL in USD (`BTreeMap<Addr, UsdValue>`).
-/// - Per-user trading fees in USD (`BTreeMap<Addr, UsdValue>`).
-/// - Order mutations to apply. Each entry is
-///   `(StoredPrice, OrderId, Option<LimitOrder>, pre_fill_abs_size)`:
-///   `None` = remove (fully filled / self-trade), `Some` = update (partially
-///   filled). `pre_fill_abs_size` is the maker order's absolute size *before*
-///   this match, used for depth bookkeeping.
-/// - Position index updates (`Vec<PositionIndexUpdate>`): deferred LONGS/SHORTS
-///   index changes for each taker and maker fill. The caller must apply these
-///   to storage via `apply_position_index_updates`.
+/// Iterate the opposite-side order book in price-time priority and match
+/// the taker against resting orders, accumulating fills, self-trade
+/// cancellations, and the associated PnL / fee / volume / position-index
+/// deltas. Pure w.r.t. the caller's dense state: takes `&PairState`,
+/// `&UserState`, `&BTreeMap<Addr, UserState>`, and an owned
+/// `next_order_id`; clones each at entry and returns the updated copies
+/// in [`MatchOrderOutcome`]. A failed call drops the locals and leaves
+/// the caller's inputs untouched — see `dango/perps/purity.md`.
 ///
 /// Self-trade prevention (EXPIRE_MAKER): if a resting order belongs to
 /// the taker, the order is cancelled and the taker continues matching
-/// deeper in the book.
+/// deeper in the book. This is consistent with Binance's EXPIRE_MAKER
+/// mode: <https://developers.binance.com/docs/binance-spot-api-docs/faqs/stp_faq>
 pub fn match_order(
     storage: &dyn Storage,
     taker: Addr,
@@ -584,23 +590,22 @@ pub fn match_order(
     current_time: Timestamp,
     param: &Param,
     pair_id: &PairId,
-    pair_state: &mut PairState,
-    taker_state: &mut UserState,
+    pair_state: &PairState,
+    taker_state: &UserState,
     taker_is_bid: bool,
     taker_order_id: OrderId,
-    maker_states: &mut BTreeMap<Addr, UserState>,
+    maker_states: &BTreeMap<Addr, UserState>,
     target_price: UsdPrice,
     mut remaining_size: Quantity,
-    next_order_id: &mut OrderId,
+    mut next_order_id: OrderId,
     events: &mut EventBuilder,
-) -> anyhow::Result<(
-    Quantity,
-    BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UsdValue>,
-    Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
-    Vec<PositionIndexUpdate>,
-)> {
+) -> anyhow::Result<MatchOrderOutcome> {
+    // Clone at entry and mutate locals freely. `events` is the one
+    // deliberate `&mut` on caller state per the purity rule exception.
+    let mut pair_state = pair_state.clone();
+    let mut taker_state = taker_state.clone();
+    let mut maker_states = maker_states.clone();
+
     let mut pnls = BTreeMap::new();
     let mut fees = BTreeMap::new();
     let mut volumes = BTreeMap::new();
@@ -686,8 +691,8 @@ pub fn match_order(
 
         settle_fill(
             pair_id,
-            pair_state,
-            taker_state,
+            &mut pair_state,
+            &mut taker_state,
             taker,
             taker_fill_size,
             resting_price,
@@ -728,7 +733,7 @@ pub fn match_order(
 
         settle_fill(
             pair_id,
-            pair_state,
+            &mut pair_state,
             maker_state,
             maker_order.user,
             maker_fill_size,
@@ -759,7 +764,7 @@ pub fn match_order(
                 maker_pos.size,
                 &maker_order.tp,
                 &maker_order.sl,
-                next_order_id,
+                &mut next_order_id,
             );
 
             maker_pos.conditional_order_above = above;
@@ -829,14 +834,18 @@ pub fn match_order(
         remaining_size.checked_sub_assign(taker_fill_size)?;
     }
 
-    Ok((
-        remaining_size,
+    Ok(MatchOrderOutcome {
+        pair_state,
+        taker_state,
+        maker_states,
+        unfilled: remaining_size,
         pnls,
         fees,
         volumes,
         order_mutations,
         index_updates,
-    ))
+        next_order_id,
+    })
 }
 
 /// Mutates:

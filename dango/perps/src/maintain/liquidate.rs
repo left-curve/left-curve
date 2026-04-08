@@ -15,7 +15,7 @@ use {
             ASKS, BIDS, LONGS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE,
             USER_STATES,
         },
-        trade::{_cancel_all_orders, match_order, settle_fill, settle_pnls},
+        trade::{_cancel_all_orders, MatchOrderOutcome, match_order, settle_fill, settle_pnls},
         volume::flush_volumes,
     },
     anyhow::ensure,
@@ -587,7 +587,23 @@ fn execute_close_schedule(
             oracle_price
         };
 
-        let (unfilled, pnls, fees, volumes, order_mutations, index_updates) = match_order(
+        // `match_order` is now pure — destructure its outcome and write the
+        // dense-state fields back through the caller's `&mut`s so the rest
+        // of `execute_close_schedule`'s body (still `&mut` at this commit)
+        // keeps working. The liquidated user IS the taker, so
+        // `updated_taker_state` goes into `*user_state`.
+        let MatchOrderOutcome {
+            pair_state: updated_pair_state,
+            taker_state: updated_user_state,
+            maker_states: updated_maker_states,
+            unfilled,
+            pnls,
+            fees,
+            volumes,
+            order_mutations,
+            index_updates,
+            next_order_id: updated_next_order_id,
+        } = match_order(
             storage,
             user,
             contract,
@@ -601,9 +617,14 @@ fn execute_close_schedule(
             maker_states,
             target_price,
             *close_size,
-            &mut next_order_id,
+            next_order_id,
             events,
         )?;
+
+        *pair_state = updated_pair_state;
+        *user_state = updated_user_state;
+        *maker_states = updated_maker_states;
+        next_order_id = updated_next_order_id;
 
         // Merge PnLs.
         for (addr, pnl) in pnls {
