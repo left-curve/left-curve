@@ -1165,6 +1165,7 @@
         "gain": "Gain",
         "slPrice": "SL Price",
         "loss": "Loss",
+        "tpslMarketSlippageNote": "Gain/Loss % is computed at the current price and your selected leverage. Actual ROI at trigger may vary with fill slippage.",
         "orderValue": "Order Value",
         "requiredMargin": "Required Margin",
         "estLiqPrice": "Est. Liq. Price",

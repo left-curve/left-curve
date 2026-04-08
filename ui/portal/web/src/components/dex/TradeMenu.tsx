@@ -393,6 +393,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     useTPSLPriceSync({
       setValue,
       referencePrice,
+      leverage: selectedLeverage,
       isBuyDirection: action === "buy",
       enabled: tpslEnabled,
     });
@@ -623,37 +624,34 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
                 placeholder="0"
                 label={m["dex.protrade.perps.tpPrice"]()}
                 {...register("tpPrice", { mask: numberMask })}
-                onChange={(e) =>
-                  onTpPriceChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onTpPriceChange(typeof e === "string" ? e : e.target.value)}
               />
               <Input
                 placeholder="0"
                 label={m["dex.protrade.perps.gain"]()}
                 endContent="%"
                 {...register("tpPercent", { mask: numberMask })}
-                onChange={(e) =>
-                  onTpPercentChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onTpPercentChange(typeof e === "string" ? e : e.target.value)}
               />
               <Input
                 placeholder="0"
                 label={m["dex.protrade.perps.slPrice"]()}
                 {...register("slPrice", { mask: numberMask })}
-                onChange={(e) =>
-                  onSlPriceChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onSlPriceChange(typeof e === "string" ? e : e.target.value)}
               />
               <Input
                 placeholder="0"
                 label={m["dex.protrade.perps.loss"]()}
                 endContent="%"
                 {...register("slPercent", { mask: numberMask })}
-                onChange={(e) =>
-                  onSlPercentChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onSlPercentChange(typeof e === "string" ? e : e.target.value)}
               />
             </div>
+            {operation === "market" ? (
+              <p className="diatype-xs-regular text-ink-tertiary-500">
+                {m["dex.protrade.perps.tpslMarketSlippageNote"]()}
+              </p>
+            ) : null}
             {tpslError ? (
               <p className="diatype-xs-regular text-utility-error-600">{tpslError}</p>
             ) : null}
