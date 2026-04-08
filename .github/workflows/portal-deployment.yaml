@@ -75,6 +75,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Unit tests
+        run: pnpm --filter portal-web test
+
       - name: Build Portal
         run: pnpm build:portal-web
         env:
