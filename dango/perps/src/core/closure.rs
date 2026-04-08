@@ -87,8 +87,8 @@ pub fn compute_close_schedule(
         // empty, and causes `liquidate` to silently exit with no events.
         // Ceil guarantees at least 1 ULP of progress whenever `deficit > 0`.
         let close_amount = {
-            let denom = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
-            deficit.checked_div_ceil(denom)?.min(abs_size)
+            let denominator = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
+            deficit.checked_div_ceil(denominator)?.min(abs_size)
         };
 
         // close_size = -sign(size) × close_amount (opposite direction to close)
@@ -552,23 +552,23 @@ mod tests {
 
     /// Regression for the silent-exit `liquidate` bug observed on mainnet.
     ///
-    /// When the deficit is smaller than one ULP of `denom = oracle_price × mmr`,
-    /// floor division of `deficit / denom` used to collapse `close_amount` to
-    /// zero, leaving `compute_close_schedule` to return an empty `Vec`.
-    /// Combined with a liquidatable user that has no resting orders or
-    /// conditionals, the outer `liquidate` handler would then write unchanged
-    /// state and return `Ok` with an empty `EventBuilder` — a successful tx
-    /// that emitted no events.
+    /// When the deficit is smaller than one ULP of the denominator
+    /// `oracle_price × mmr`, floor division of `deficit / denominator` used
+    /// to collapse `close_amount` to zero, leaving `compute_close_schedule`
+    /// to return an empty `Vec`. Combined with a liquidatable user that has
+    /// no resting orders or conditionals, the outer `liquidate` handler
+    /// would then write unchanged state and return `Ok` with an empty
+    /// `EventBuilder` — a successful tx that emitted no events.
     ///
     /// `compute_close_schedule` now uses ceiling division (matching the doc
     /// comment), which guarantees at least one ULP of close size whenever the
     /// user is liquidatable.
     ///
-    /// Setup: long 1 BTC, oracle $60k, mmr 5% → denom = $3,000.
+    /// Setup: long 1 BTC, oracle $60k, mmr 5% → denominator = $3,000.
     /// Deficit = $0.001 (raw 1_000 in `Dec128_6`'s 6-decimal representation).
     ///
-    /// - `floor(deficit / denom) = floor(1_000 × 10⁶ / 3_000_000_000) = floor(1/3) = 0` (old, buggy)
-    /// - `ceil (deficit / denom) = ceil (1/3) = 1` raw ULP of `Quantity` (new)
+    /// - `floor(deficit / denominator) = floor(1_000 × 10⁶ / 3_000_000_000) = floor(1/3) = 0` (old, buggy)
+    /// - `ceil (deficit / denominator) = ceil (1/3) = 1` raw ULP of `Quantity` (new)
     #[test]
     fn sub_ulp_deficit_produces_one_ulp_close() {
         let user_state = UserState {
@@ -587,7 +587,7 @@ mod tests {
         let pair_params = btree_map! { pair_btc() => btc_pair_param() };
         let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(60_000) };
 
-        // $0.001 — one milli-dollar, well below `denom × 1 ULP = $0.003`.
+        // $0.001 — one milli-dollar, well below `denominator × 1 ULP = $0.003`.
         let deficit = UsdValue::new_raw(1_000);
 
         let schedule =

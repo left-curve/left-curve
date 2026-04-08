@@ -128,6 +128,18 @@ impl<Q, U, D> Number<Q, U, D> {
         self.inner.checked_mul(rhs.inner).map(Number::new)
     }
 
+    /// Divide `self` by `rhs`, returning the typed quotient.
+    ///
+    /// The result is **truncated towards zero** (Rust integer-division
+    /// semantics on the underlying fixed-point representation):
+    ///
+    /// - positive results round down: `7.5 → 7` (floor)
+    /// - negative results round up: `-7.5 → -7` (ceil)
+    ///
+    /// In other words, the *magnitude* of the result is always floored. If
+    /// you need the magnitude to round up — e.g. to preserve an invariant of
+    /// the form `result × rhs ≥ self` — use
+    /// [`checked_div_ceil`](Self::checked_div_ceil) instead.
     pub fn checked_div<Q1, U1, D1>(
         self,
         rhs: Number<Q1, U1, D1>,
@@ -141,12 +153,15 @@ impl<Q, U, D> Number<Q, U, D> {
     }
 
     /// Like [`checked_div`](Self::checked_div), but rounds the result towards
-    /// positive infinity instead of towards zero.
+    /// positive infinity instead of towards zero:
+    ///
+    /// - positive results round up: `7.5 → 8`
+    /// - negative results round up: `-7.5 → -7`
     ///
     /// Use this when an under-rounded quotient would silently violate an
-    /// invariant of the form "result × rhs ≥ self". For example, computing
+    /// invariant of the form `result × rhs ≥ self`. For example, computing
     /// the close size needed to cover a maintenance-margin deficit during
-    /// liquidation: a floored quotient can collapse to zero and leave the
+    /// liquidation: a truncated quotient can collapse to zero and leave the
     /// deficit uncovered, while a ceiled quotient guarantees at least one
     /// ULP of progress whenever `self > 0`.
     pub fn checked_div_ceil<Q1, U1, D1>(
