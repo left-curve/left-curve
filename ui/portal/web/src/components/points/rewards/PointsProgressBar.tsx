@@ -2,7 +2,7 @@ import { formatNumber } from "@left-curve/dango/utils";
 import { twMerge, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount } from "@left-curve/store";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type React from "react";
 
 type TierKey = "bronze" | "silver" | "gold" | "crystal";
@@ -194,21 +194,58 @@ const HorizontalProgressBar: React.FC<HorizontalProgressBarProps> = ({
   const trackWidth = innerWidth + EDGE_PX * 2;
   const fillWidth = (progress / 100) * innerWidth + BAR_LEFT_EXTEND;
 
+  const centerOnThumb = useCallback(
+    (smooth: boolean) => {
+      const viewport = viewportRef.current;
+      if (!viewport || isDraggingRef.current) return;
+      if (viewport.clientWidth === 0) return;
+
+      const thumbX = EDGE_PX + (progress / 100) * innerWidth;
+      const target = thumbX - viewport.clientWidth / 2;
+      const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+      const clamped = Math.max(0, Math.min(maxScroll, target));
+
+      viewport.scrollTo({ left: clamped, behavior: smooth ? "smooth" : "auto" });
+    },
+    [progress, innerWidth],
+  );
+
+  useEffect(() => {
+    centerOnThumb(hasAutoCenteredRef.current);
+    hasAutoCenteredRef.current = true;
+  }, [centerOnThumb]);
+
+  // Re-center when the page becomes visible again, when the window regains
+  // focus, or when the bar scrolls back into view (covers tab switching, SPA
+  // navigation that keeps the component mounted, and viewport restoration).
   useEffect(() => {
     const viewport = viewportRef.current;
-    if (!viewport || isDraggingRef.current) return;
+    if (!viewport) return;
 
-    const thumbX = EDGE_PX + (progress / 100) * innerWidth;
-    const target = thumbX - viewport.clientWidth / 2;
-    const maxScroll = viewport.scrollWidth - viewport.clientWidth;
-    const clamped = Math.max(0, Math.min(maxScroll, target));
+    const recenter = () => centerOnThumb(false);
 
-    viewport.scrollTo({
-      left: clamped,
-      behavior: hasAutoCenteredRef.current ? "smooth" : "auto",
-    });
-    hasAutoCenteredRef.current = true;
-  }, [progress, steps.length]);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") recenter();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", recenter);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) recenter();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(viewport);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", recenter);
+      observer.disconnect();
+    };
+  }, [centerOnThumb]);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== "mouse") return;
