@@ -598,7 +598,89 @@ query {
 
 The `keyType` enum values are: `SECP256R1`, `SECP256K1`, `ETHEREUM`.
 
-### 3.6 Query accounts
+### 3.6 Query user by username
+
+Look up a user by their username via a smart contract query against the account factory:
+
+```graphql
+query {
+  queryApp(request: {
+    wasm_smart: {
+      contract: "ACCOUNT_FACTORY_CONTRACT",
+      msg: {
+        user: {
+          name: "alice"
+        }
+      }
+    }
+  })
+}
+```
+
+**Response:**
+
+```json
+{
+  "index": 42,
+  "name": "alice",
+  "accounts": {
+    "100": "0xabcd...1234"
+  },
+  "keys": {
+    "A1B2C3...": {
+      "ethereum": "0x1234...abcd"
+    }
+  }
+}
+```
+
+You can also look up by index: `{ "user": { "index": 42 } }`.
+
+### 3.7 Query users by key
+
+Search for users by public key or key hash. Useful when you know a user's key but not their index or username.
+
+```graphql
+query {
+  users(publicKeyHash: "A1B2C3D4...64HEX", first: 10) {
+    nodes {
+      userIndex
+      createdBlockHeight
+      createdAt
+      publicKeys {
+        keyHash
+        publicKey
+        keyType
+        createdBlockHeight
+        createdAt
+      }
+      accounts {
+        accountIndex
+        address
+        createdBlockHeight
+        createdTxHash
+        createdAt
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+```
+
+Filter by `publicKeyHash` or by `publicKey` (the raw key value). The key hash is computed differently depending on key type:
+
+| Key type    | Input to SHA-256                                            |
+| ----------- | ----------------------------------------------------------- |
+| `ETHEREUM`  | UTF-8 bytes of the lowercase hex address (with `0x` prefix) |
+| `SECP256K1` | Compressed public key bytes (33 bytes)                      |
+| `SECP256R1` | WebAuthn credential ID bytes                                |
+
+The resulting hash is hex-encoded in uppercase.
+
+### 3.8 Query accounts
 
 ```graphql
 query {
