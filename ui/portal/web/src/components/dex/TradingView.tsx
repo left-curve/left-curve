@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { useApp, useTheme } from "@left-curve/applets-kit";
-import { useConfig, usePublicClient, useStorage } from "@left-curve/store";
+import { useConfig, usePublicClient } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
@@ -32,19 +32,11 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
   const { base, quote } = coins;
   const { timeFormat, timeZone } = settings;
 
-  const [chartState, setChartState, hasLoaded] = useStorage<object>(`tv_v1.${pairSymbol}`, {
-    sync: true,
-    version: 1.2,
-    migrations: {
-      "*": () => ({}),
-    },
-  });
+  const storageKey = `tv_v1.${pairSymbol}_${mode}`;
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
 
   useEffect(() => {
-    if (!hasLoaded) return;
-
     try {
       localStorage.setItem(
         "tradingview.time_hours_format",
@@ -98,7 +90,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
         "trading_account_manager",
         "create_volume_indicator_by_default",
       ],
-      saved_data: chartState ? chartState : undefined,
+      saved_data: JSON.parse(localStorage.getItem(storageKey) || "null"),
       overrides: {
         "mainSeriesProperties.candleStyle.upColor": "#27AE60",
         "mainSeriesProperties.candleStyle.downColor": "#EB5757",
@@ -119,7 +111,12 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
       },
     });
 
-    const saveFn = () => widget.save(setChartState);
+    const saveFn = () =>
+      widget.save((state) => {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(state));
+        } catch {}
+      });
 
     const invalidateCandles = () => {
       widget.resetCache();
@@ -151,7 +148,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
       widgetRef.current?.remove();
       widgetRef.current = null;
     };
-  }, [theme, hasLoaded, mode]);
+  }, [theme, mode]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
