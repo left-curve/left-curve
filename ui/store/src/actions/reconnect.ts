@@ -52,7 +52,9 @@ export async function reconnect<config extends Config>(
     if (!isAuthorized) continue;
 
     try {
-      connector.emitter.off("connect", config._internal.events.connect);
+      // The `connect` listener is attached once in setup() and is intentionally
+      // never stripped — removing it during reconnect used to cause future
+      // login attempts to silently drop the `connect` event.
       connector.emitter.on("change", config._internal.events.change);
       connector.emitter.on("disconnect", config._internal.events.disconnect);
 
