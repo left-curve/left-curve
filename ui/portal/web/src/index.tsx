@@ -29,13 +29,19 @@ if (SENTRY_DSN && SENTRY_ENV) {
   });
 }
 
-let refreshing = false;
-navigator?.serviceWorker?.addEventListener("controllerchange", () => {
-  if (!refreshing) {
+if (
+  process.env.NODE_ENV === "production" &&
+  !window.location.origin.includes("localhost") &&
+  "serviceWorker" in navigator
+) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
     refreshing = true;
     window.location.reload();
-  }
-});
+  });
+  navigator.serviceWorker.register("/service-worker.js");
+}
 
 const container = document.getElementById("root");
 if (!container) throw new Error("No root element found");
