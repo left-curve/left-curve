@@ -1115,6 +1115,10 @@
       },
       "spot": {
         "price": "Price",
+        "lastPrice": "Mark",
+        "lastPriceTooltip": "Price of the last filled order",
+        "oraclePrice": "Oracle",
+        "oraclePriceTooltip": "Price reported by offchain oracle. Used for computing margin requirement, unrealized PnL, liquidation and TP/SL trigger.",
         "24hChange": "24h Change",
         "volume": "24h Volume",
         "openInterest": "Open Interest",
