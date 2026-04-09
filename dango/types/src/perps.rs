@@ -81,7 +81,6 @@ pub enum TimeInForce {
 }
 
 #[grug::derive(Serde)]
-#[derive(Copy)]
 pub enum OrderKind {
     /// Trade at the best available prices in the order book, optionally
     /// with a slippage tolerance relative to the oracle price.
@@ -102,18 +101,26 @@ pub enum OrderKind {
         ///   limit price crosses best offer).
         #[serde(default)]
         time_in_force: TimeInForce,
+
+        /// Optional user-supplied identifier. Must be unique among the sender's
+        /// active orders. Max 36 characters, alphanumeric plus hyphen and
+        /// underscore. Allows cancellation before the system-allocated order ID
+        /// is known.
+        #[serde(default)]
+        client_order_id: Option<String>,
     },
 }
 
 impl OrderKind {
     /// If this is a post-only limit order, return the limit price.
     /// Otherwise, return `None`.
-    pub fn post_only_price(self) -> Option<UsdPrice> {
+    pub fn post_only_price(&self) -> Option<UsdPrice> {
         match self {
             OrderKind::Limit {
                 limit_price,
                 time_in_force: TimeInForce::PostOnly,
-            } => Some(limit_price),
+                ..
+            } => Some(*limit_price),
             _ => None,
         }
     }
@@ -759,13 +766,6 @@ pub enum TraderMsg {
         /// If false, the order must be executed in full. If any of the risk
         /// parameters is violated, the entire order is aborted.
         reduce_only: bool,
-
-        /// Optional user-supplied identifier. Must be unique among the sender's
-        /// active orders. Max 36 characters, alphanumeric plus hyphen and
-        /// underscore. Allows cancellation before the system-allocated order ID
-        /// is known.
-        #[serde(default)]
-        client_order_id: Option<String>,
 
         /// Take-profit child order. Applied to the resulting position after fill.
         tp: Option<ChildOrder>,

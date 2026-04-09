@@ -47,9 +47,9 @@ fn place_ask(
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(price),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: client_order_id.map(String::from),
                 },
                 reduce_only: false,
-                client_order_id: client_order_id.map(String::from),
                 tp: None,
                 sl: None,
             }),
@@ -77,9 +77,9 @@ fn place_bid(
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(price),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: client_order_id.map(String::from),
                 },
                 reduce_only: false,
-                client_order_id: client_order_id.map(String::from),
                 tp: None,
                 sl: None,
             }),
@@ -200,9 +200,9 @@ fn duplicate_client_order_id_rejected() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_900),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: Some("dup-id".into()),
                 },
                 reduce_only: false,
-                client_order_id: Some("dup-id".into()),
                 tp: None,
                 sl: None,
             }),

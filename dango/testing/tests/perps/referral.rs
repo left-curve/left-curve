@@ -1282,9 +1282,9 @@ fn place_ask_order(
                 kind: perps::OrderKind::Limit {
                     limit_price: price,
                     time_in_force: perps::TimeInForce::PostOnly,
+                client_order_id: None,
                 },
                 reduce_only: false,
-                client_order_id: None,
                 tp: None,
                 sl: None,
             }),
@@ -1310,7 +1310,6 @@ fn place_market_buy(
                     max_slippage: Dimensionless::ONE,
                 },
                 reduce_only: false,
-                client_order_id: None,
                 tp: None,
                 sl: None,
             }),

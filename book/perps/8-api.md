@@ -188,12 +188,13 @@ The primary message type for interacting with contracts is `execute`:
           "pair_id": "perp/btcusd",
           "size": "0.100000",
           "kind": {
-            "market": {
-              "max_slippage": "0.010000"
+            "limit": {
+              "limit_price": "65000.000000",
+              "time_in_force": "GTC",
+              "client_order_id": "my-order-1"
             }
           },
-          "reduce_only": false,
-          "client_order_id": "my-order-1"
+          "reduce_only": false
         }
       }
     },
@@ -1530,15 +1531,14 @@ Buy or sell at the best available prices with a slippage tolerance:
 }
 ```
 
-| Field             | Type            | Description                                                                                                                                                                    |
-| ----------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pair_id`         | `PairId`        | Trading pair (e.g. `"perp/btcusd"`)                                                                                                                                            |
-| `size`            | `Quantity`      | Contract size — **positive = buy, negative = sell**                                                                                                                            |
-| `max_slippage`    | `Dimensionless` | Maximum slippage as a fraction of oracle price (0.01 = 1%)                                                                                                                     |
-| `reduce_only`     | `bool`          | If `true`, only the position-closing portion executes                                                                                                                          |
-| `client_order_id` | `String?`       | Optional user-supplied identifier (max 36 chars, `[a-zA-Z0-9_-]`). Unique among the sender's active orders. Allows cancellation before the system-allocated order ID is known. |
-| `tp`              | `ChildOrder?`   | Optional take-profit child order (see below)                                                                                                                                   |
-| `sl`              | `ChildOrder?`   | Optional stop-loss child order (see below)                                                                                                                                     |
+| Field          | Type            | Description                                                |
+| -------------- | --------------- | ---------------------------------------------------------- |
+| `pair_id`      | `PairId`        | Trading pair (e.g. `"perp/btcusd"`)                        |
+| `size`         | `Quantity`      | Contract size — **positive = buy, negative = sell**        |
+| `max_slippage` | `Dimensionless` | Maximum slippage as a fraction of oracle price (0.01 = 1%) |
+| `reduce_only`  | `bool`          | If `true`, only the position-closing portion executes      |
+| `tp`           | `ChildOrder?`   | Optional take-profit child order (see below)               |
+| `sl`           | `ChildOrder?`   | Optional stop-loss child order (see below)                 |
 
 Market orders execute immediately (IOC behavior). Any unfilled remainder is discarded. If nothing fills, the transaction reverts.
 
@@ -1583,11 +1583,11 @@ Place a resting order on the book:
           "kind": {
             "limit": {
               "limit_price": "65000.000000",
-              "time_in_force": "GTC"
+              "time_in_force": "GTC",
+              "client_order_id": "my-order-1"
             }
           },
-          "reduce_only": false,
-          "client_order_id": "my-order-1"
+          "reduce_only": false
         }
       }
     },
@@ -1596,14 +1596,14 @@ Place a resting order on the book:
 }
 ```
 
-| Field             | Type          | Description                                                             |
-| ----------------- | ------------- | ----------------------------------------------------------------------- |
-| `limit_price`     | `UsdPrice`    | Limit price — must be aligned to `tick_size`                            |
-| `time_in_force`   | `TimeInForce` | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                     |
-| `reduce_only`     | `bool`        | If `true`, only position-closing portion is kept                        |
-| `client_order_id` | `String?`     | Optional user-supplied identifier (see [§6.3](#63-submit-market-order)) |
-| `tp`              | `ChildOrder?` | Optional take-profit child order (see [§6.3](#63-submit-market-order))  |
-| `sl`              | `ChildOrder?` | Optional stop-loss child order (see [§6.3](#63-submit-market-order))    |
+| Field              | Type          | Description                                                                                                                                                                    |
+| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `limit_price`      | `UsdPrice`    | Limit price — must be aligned to `tick_size`                                                                                                                                   |
+| `time_in_force`    | `TimeInForce` | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                                                                                                                           |
+| `client_order_id`  | `String?`     | Optional user-supplied identifier (max 36 chars, `[a-zA-Z0-9_-]`). Unique among the sender's active orders. Allows cancellation before the system-allocated order ID is known. |
+| `reduce_only`      | `bool`        | If `true`, only position-closing portion is kept                                                                                                                               |
+| `tp`               | `ChildOrder?` | Optional take-profit child order (see [§6.3](#63-submit-market-order))                                                                                                         |
+| `sl`               | `ChildOrder?` | Optional stop-loss child order (see [§6.3](#63-submit-market-order))                                                                                                           |
 
 **Time-in-force options:**
 

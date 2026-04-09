@@ -15,19 +15,19 @@ use {
 ///
 /// For limit orders, the target price is simply the limit price.
 pub fn compute_target_price(
-    kind: OrderKind,
+    kind: &OrderKind,
     oracle_price: UsdPrice,
     is_bid: bool,
 ) -> MathResult<UsdPrice> {
     match kind {
         OrderKind::Market { max_slippage } => {
             if is_bid {
-                oracle_price.checked_mul(Dimensionless::ONE.checked_add(max_slippage)?)
+                oracle_price.checked_mul(Dimensionless::ONE.checked_add(*max_slippage)?)
             } else {
-                oracle_price.checked_mul(Dimensionless::ONE.checked_sub(max_slippage)?)
+                oracle_price.checked_mul(Dimensionless::ONE.checked_sub(*max_slippage)?)
             }
         },
-        OrderKind::Limit { limit_price, .. } => Ok(limit_price),
+        OrderKind::Limit { limit_price, .. } => Ok(*limit_price),
     }
 }
 
@@ -64,7 +64,7 @@ mod tests {
     ) {
         assert_eq!(
             compute_target_price(
-                OrderKind::Market {
+                &OrderKind::Market {
                     max_slippage: Dimensionless::new_permille(slippage_permille),
                 },
                 UsdPrice::new_int(100),
@@ -81,9 +81,10 @@ mod tests {
     fn compute_target_price_limit_works(limit: i128, is_bid: bool, expected_raw: i128) {
         assert_eq!(
             compute_target_price(
-                OrderKind::Limit {
+                &OrderKind::Limit {
                     limit_price: UsdPrice::new_int(limit),
                     time_in_force: TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
                 },
                 UsdPrice::new_int(100),
                 is_bid

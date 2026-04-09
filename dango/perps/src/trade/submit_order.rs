@@ -45,7 +45,6 @@ pub fn submit_order(
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
-    client_order_id: Option<String>,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
 ) -> anyhow::Result<Response> {
@@ -53,6 +52,13 @@ pub fn submit_order(
     let start = std::time::Instant::now();
 
     // ---------------------- 0. Validate client_order_id ----------------------
+
+    let client_order_id = match &kind {
+        OrderKind::Limit {
+            client_order_id, ..
+        } => client_order_id.clone(),
+        _ => None,
+    };
 
     if let Some(ref coid) = client_order_id {
         ensure!(
@@ -120,7 +126,6 @@ pub fn submit_order(
         size,
         kind,
         reduce_only,
-        client_order_id,
         tp,
         sl,
         &mut events,
@@ -337,7 +342,6 @@ pub(crate) fn _submit_order(
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
-    client_order_id: Option<String>,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
     events: &mut EventBuilder,
@@ -385,6 +389,13 @@ pub(crate) fn _submit_order(
     // ---------------------- Step 4. Post-only fast path ----------------------
 
     if let Some(limit_price) = kind.post_only_price() {
+        let client_order_id = match kind {
+            OrderKind::Limit {
+                client_order_id, ..
+            } => client_order_id,
+            _ => None,
+        };
+
         let StoreLimitOrderOutcome {
             user_state: updated_taker_state,
             stored_price,
@@ -451,7 +462,7 @@ pub(crate) fn _submit_order(
     // --------------------- Step 6. Compute target price ----------------------
 
     let taker_is_bid = size.is_positive();
-    let target_price = compute_target_price(kind, oracle_price, taker_is_bid)?;
+    let target_price = compute_target_price(&kind, oracle_price, taker_is_bid)?;
 
     // ---------------------- Step 7. Match against book -----------------------
 
@@ -508,6 +519,7 @@ pub(crate) fn _submit_order(
             OrderKind::Limit {
                 limit_price,
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id,
             } => {
                 let StoreLimitOrderOutcome {
                     user_state: updated_taker_state,
@@ -1520,7 +1532,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1586,7 +1597,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1635,7 +1645,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(10),
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1691,9 +1700,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1748,9 +1757,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1809,9 +1818,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1868,9 +1877,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1927,9 +1936,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1997,7 +2006,6 @@ mod tests {
             true,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2044,7 +2052,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(10),
             },
             true,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2102,7 +2109,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2167,7 +2173,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2225,7 +2230,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2287,9 +2291,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_100),
                 time_in_force: TimeInForce::GoodTilCanceled,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2337,9 +2341,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_050),
                 time_in_force: TimeInForce::GoodTilCanceled,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2398,7 +2402,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2468,7 +2471,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2520,7 +2522,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2575,7 +2576,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(10), // 1%
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3085,7 +3085,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3166,9 +3165,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3220,9 +3219,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3267,9 +3266,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3320,9 +3319,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3373,9 +3372,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3425,9 +3424,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3488,9 +3487,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+            client_order_id: None,
             },
             true,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3548,9 +3547,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+            client_order_id: None,
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3618,7 +3617,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100), // 10%
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3726,7 +3724,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3785,7 +3782,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3921,7 +3917,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3993,7 +3988,6 @@ mod tests {
                 false,
                 None,
                 None,
-                None,
                 &mut EventBuilder::new(),
             )
             .unwrap();
@@ -4059,9 +4053,9 @@ mod tests {
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(50_000),
                     time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
                 },
                 false,
-                None,
                 None,
                 None,
                 &mut EventBuilder::new(),
@@ -4132,7 +4126,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4185,7 +4178,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             make_tp(45_000),
             make_sl(55_000),
             &mut EventBuilder::new(),
@@ -4257,7 +4249,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             make_tp(45_000),
             make_sl(55_000),
             &mut EventBuilder::new(),
@@ -4304,7 +4295,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             make_tp(55_000),
             None, // no SL
             &mut EventBuilder::new(),
@@ -4354,9 +4344,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+            client_order_id: None,
             },
             false,
-            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4421,9 +4411,9 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+            client_order_id: None,
             },
             false,
-            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4503,7 +4493,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -4558,7 +4547,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4630,7 +4618,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             make_tp(58_000), // different from existing 60k
             make_sl(42_000), // different from existing 40k
             &mut EventBuilder::new(),
@@ -4711,7 +4698,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4806,7 +4792,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -4877,7 +4862,6 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
-            None,
             None,
             make_sl(49_000),
             &mut EventBuilder::new(),
