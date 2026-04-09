@@ -43,9 +43,11 @@ export type PerpsUserStateExtended = {
   availableMargin: string | null;
 };
 
+export type PerpsTimeInForce = "GTC" | "IOC" | "POST";
+
 export type PerpsOrderKind =
   | { market: { maxSlippage: string } }
-  | { limit: { limitPrice: string; postOnly: boolean } };
+  | { limit: { limitPrice: string; timeInForce?: PerpsTimeInForce } };
 
 export type PerpsPairParam = {
   tickSize: string;

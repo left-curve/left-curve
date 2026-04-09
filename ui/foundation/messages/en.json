@@ -1159,6 +1159,7 @@
         "currentPosition": "Current Position",
         "size": "Size",
         "price": "Price",
+        "timeInForce": "Time In Force",
         "reduceOnly": "Reduce Only",
         "tpsl": "Take Profit/Stop Loss",
         "tpPrice": "TP Price",

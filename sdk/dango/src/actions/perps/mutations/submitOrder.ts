@@ -62,7 +62,9 @@ export async function submitPerpsOrder<transport extends Transport>(
         kind: [{ name: "limit", type: "Limit" }],
         Limit: [
           { name: "limitPrice", type: "string" },
-          { name: "postOnly", type: "bool" },
+          ...("limit" in kind && kind.limit.timeInForce
+            ? [{ name: "timeInForce", type: "string" }]
+            : []),
         ],
       };
 
