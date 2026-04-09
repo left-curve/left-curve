@@ -2,9 +2,10 @@ use {
     crate::{
         VOLUME_LOOKBACK,
         core::{
-            check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
-            compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
-            decompose_fill, execute_fill, is_price_constraint_violated,
+            check_margin, check_minimum_position_size, check_oi_constraint,
+            compute_available_margin, compute_notional, compute_required_margin,
+            compute_target_price, compute_trading_fee, decompose_fill, execute_fill,
+            is_price_constraint_violated,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
@@ -307,10 +308,15 @@ pub(crate) fn _submit_order(
     let mut pair_state = pair_state.clone();
     let mut taker_state = taker_state.clone();
 
-    // -------------- Step 1. Check minimum order size -------------------------
+    // -------------- Step 1. Check minimum position size -----------------------
 
-    if !reduce_only {
-        check_minimum_order_size(size, oracle_price, pair_param)?;
+    {
+        let current_position = taker_state
+            .positions
+            .get(pair_id)
+            .map(|p| p.size)
+            .unwrap_or_default();
+        check_minimum_position_size(current_position, size, oracle_price, pair_param)?;
     }
 
     // ----------------------- Step 2. Decompose order -------------------------
@@ -1315,7 +1321,7 @@ mod tests {
             oracle::PrecisionedPrice,
             perps::{Position, RateSchedule},
         },
-        grug::{Coins, MockContext, Timestamp, Udec128, Uint64, hash_map},
+        grug::{Coins, MockContext, Timestamp, Udec128, Uint64, btree_map, hash_map},
     };
 
     const CONTRACT: Addr = Addr::mock(0);
@@ -4809,5 +4815,149 @@ mod tests {
             ..Default::default()
         };
         USER_STATES.save(storage, TAKER, &ts).unwrap();
+    }
+
+    // =================== Dust prevention: min_position_size ====================
+
+    /// Reduce-only sell that would leave a dust position is rejected.
+    /// User has long 10 BTC. Sells 9 BTC reduce-only. Resulting position =
+    /// 1 BTC * $50,000 = $50,000 < min_position_size $100,000 → rejected.
+    #[test]
+    fn reduce_only_rejected_when_leaving_dust() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        let mut pair_param = test_pair_param();
+        pair_param.min_position_size = UsdValue::new_int(100_000);
+
+        // Save param/pair to storage.
+        PARAM.save(&mut ctx.storage, &test_param()).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &pair_param)
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+
+        place_bid(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            positions: btree_map! {
+                pair_id() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let result = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(-9), // sell 9 of 10 → leaves 1 BTC = $50k < $100k
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            true, // reduce_only
+            None,
+            None,
+            &mut EventBuilder::new(),
+        );
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("resulting position notional is below minimum")
+        );
+    }
+
+    /// Reduce-only full close always passes regardless of min_position_size.
+    /// User has long 10 BTC. Sells all 10 BTC. Resulting position = 0 → pass.
+    #[test]
+    fn reduce_only_full_close_passes() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        let mut pair_param = test_pair_param();
+        pair_param.min_position_size = UsdValue::new_int(100_000);
+
+        PARAM.save(&mut ctx.storage, &test_param()).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &pair_param)
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+
+        place_bid(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            positions: btree_map! {
+                pair_id() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let result = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(-10), // sell all 10 → result = 0, always allowed
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            true, // reduce_only
+            None,
+            None,
+            &mut EventBuilder::new(),
+        );
+
+        assert!(result.is_ok());
     }
 }

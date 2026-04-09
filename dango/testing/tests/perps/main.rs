@@ -12,6 +12,7 @@ use {
 
 mod adl_bug_reproduction;
 mod conditional_orders;
+mod dust_prevention;
 mod liquidation;
 mod referral;
 mod trading;

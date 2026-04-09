@@ -846,7 +846,7 @@ query {
 ```json
 {
   "tick_size": "1.000000",
-  "min_order_size": "10.000000",
+  "min_position_size": "10.000000",
   "max_abs_oi": "1000000.000000",
   "max_abs_funding_rate": "0.000500",
   "initial_margin_ratio": "0.050000",
@@ -862,7 +862,7 @@ query {
 | Field                      | Type            | Description                                   |
 | -------------------------- | --------------- | --------------------------------------------- |
 | `tick_size`                | `UsdPrice`      | Minimum price increment for limit orders      |
-| `min_order_size`           | `UsdValue`      | Minimum notional value (reduce-only exempt)   |
+| `min_position_size`        | `UsdValue`      | Minimum resulting position notional           |
 | `max_abs_oi`               | `Quantity`      | Maximum open interest per side                |
 | `max_abs_funding_rate`     | `FundingRate`   | Daily funding rate cap                        |
 | `initial_margin_ratio`     | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage) |
@@ -1420,28 +1420,28 @@ query {
 }
 ```
 
-| Field              | Type                                   | Description                                                                     |
-| ------------------ | -------------------------------------- | ------------------------------------------------------------------------------- |
-| `margin`           | `UsdValue`                             | The user's deposited margin                                                     |
-| `vault_shares`     | `Uint128`                              | Vault shares owned by this user                                                 |
-| `unlocks`          | `[Unlock]`                             | Pending vault withdrawal cooldowns                                              |
-| `reserved_margin`  | `UsdValue`                             | Margin reserved for resting limit orders                                        |
-| `open_order_count` | `usize`                                | Number of resting limit orders                                                  |
-| `equity`           | `UsdValue\|null`                       | margin + unrealized PnL − unrealized funding; `null` if not requested           |
-| `available_margin` | `UsdValue\|null`                       | margin − initial margin requirements − reserved margin; `null` if not requested |
-| `positions`        | `Map<PairId, PositionExtended>`        | Open positions with optional computed data (see below)                          |
+| Field              | Type                            | Description                                                                     |
+| ------------------ | ------------------------------- | ------------------------------------------------------------------------------- |
+| `margin`           | `UsdValue`                      | The user's deposited margin                                                     |
+| `vault_shares`     | `Uint128`                       | Vault shares owned by this user                                                 |
+| `unlocks`          | `[Unlock]`                      | Pending vault withdrawal cooldowns                                              |
+| `reserved_margin`  | `UsdValue`                      | Margin reserved for resting limit orders                                        |
+| `open_order_count` | `usize`                         | Number of resting limit orders                                                  |
+| `equity`           | `UsdValue\|null`                | margin + unrealized PnL − unrealized funding; `null` if not requested           |
+| `available_margin` | `UsdValue\|null`                | margin − initial margin requirements − reserved margin; `null` if not requested |
+| `positions`        | `Map<PairId, PositionExtended>` | Open positions with optional computed data (see below)                          |
 
 **PositionExtended:**
 
-| Field                     | Type                     | Description                                                                                            |
-| ------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `size`                    | `Quantity`               | Positive = long, negative = short                                                                      |
-| `entry_price`             | `UsdPrice`               | Average entry price                                                                                    |
-| `entry_funding_per_unit`  | `FundingPerUnit`         | Funding accumulator at last update                                                                     |
-| `conditional_order_above` | `ConditionalOrder\|null` | TP/SL that triggers when oracle >= trigger_price                                                       |
-| `conditional_order_below` | `ConditionalOrder\|null` | TP/SL that triggers when oracle <= trigger_price                                                       |
-| `unrealized_pnl`          | `UsdValue\|null`         | `size * (oracle_price - entry_price)`; positive = profit; `null` if not requested                      |
-| `unrealized_funding`      | `UsdValue\|null`         | `size * (current_funding_per_unit - entry_funding_per_unit)`; positive = cost; `null` if not requested |
+| Field                     | Type                     | Description                                                                                                                   |
+| ------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `size`                    | `Quantity`               | Positive = long, negative = short                                                                                             |
+| `entry_price`             | `UsdPrice`               | Average entry price                                                                                                           |
+| `entry_funding_per_unit`  | `FundingPerUnit`         | Funding accumulator at last update                                                                                            |
+| `conditional_order_above` | `ConditionalOrder\|null` | TP/SL that triggers when oracle >= trigger_price                                                                              |
+| `conditional_order_below` | `ConditionalOrder\|null` | TP/SL that triggers when oracle <= trigger_price                                                                              |
+| `unrealized_pnl`          | `UsdValue\|null`         | `size * (oracle_price - entry_price)`; positive = profit; `null` if not requested                                             |
+| `unrealized_funding`      | `UsdValue\|null`         | `size * (current_funding_per_unit - entry_funding_per_unit)`; positive = cost; `null` if not requested                        |
 | `liquidation_price`       | `UsdPrice\|null`         | Oracle price that triggers account liquidation (other prices held constant); `null` if not requested or no valid price exists |
 
 `equity` reflects the total account value including unrealized positions. `available_margin` is the amount the user can withdraw or use for new orders.
@@ -1589,13 +1589,13 @@ Place a resting order on the book:
 }
 ```
 
-| Field         | Type          | Description                                                            |
-| ------------- | ------------- | ---------------------------------------------------------------------- |
-| `limit_price`   | `UsdPrice`      | Limit price — must be aligned to `tick_size`                           |
-| `time_in_force` | `TimeInForce`   | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                   |
-| `reduce_only`   | `bool`          | If `true`, only position-closing portion is kept                       |
-| `tp`            | `ChildOrder?`   | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
-| `sl`            | `ChildOrder?`   | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
+| Field           | Type          | Description                                                            |
+| --------------- | ------------- | ---------------------------------------------------------------------- |
+| `limit_price`   | `UsdPrice`    | Limit price — must be aligned to `tick_size`                           |
+| `time_in_force` | `TimeInForce` | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                    |
+| `reduce_only`   | `bool`        | If `true`, only position-closing portion is kept                       |
+| `tp`            | `ChildOrder?` | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
+| `sl`            | `ChildOrder?` | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
 
 **Time-in-force options:**
 

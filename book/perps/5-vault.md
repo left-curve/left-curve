@@ -141,6 +141,6 @@ Skip if notional is below the minimum order size.
 | `vault_liquidity_weight` | Weight for margin allocation across pairs   |
 | `tick_size`              | Price granularity for snapping              |
 | `initial_margin_ratio`   | Used to compute margin-constrained size     |
-| `min_order_size`         | Minimum notional to place an order          |
+| `min_position_size`      | Minimum notional to place a quote           |
 
 If any of `vault_half_spread`, `vault_max_quote_size`, `vault_liquidity_weight`, `tick_size`, or the allocated margin is zero, the vault skips quoting for that pair.

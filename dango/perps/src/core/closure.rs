@@ -1,6 +1,6 @@
 use {
     crate::{
-        core::{compute_maintenance_margin, compute_user_equity},
+        core::{compute_maintenance_margin, compute_user_equity, snap_to_full_close},
         querier::NoCachePerpQuerier,
     },
     dango_oracle::OracleQuerier,
@@ -86,9 +86,12 @@ pub fn compute_close_schedule(
         // deficit collapses `close_amount` to zero, leaves the schedule
         // empty, and causes `liquidate` to silently exit with no events.
         // Ceil guarantees at least 1 ULP of progress whenever `deficit > 0`.
+        //
+        // Snap to full close if the remainder would be below min_position_size.
         let close_amount = {
             let denominator = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
-            deficit.checked_div_ceil(denominator)?.min(abs_size)
+            let raw_close_amount = deficit.checked_div_ceil(denominator)?.min(abs_size);
+            snap_to_full_close(raw_close_amount, abs_size, oracle_price, pair_param)?
         };
 
         // close_size = -sign(size) × close_amount (opposite direction to close)
@@ -599,6 +602,98 @@ mod tests {
         assert_eq!(schedule.len(), 1);
         assert_eq!(schedule[0].0, pair_btc());
         assert_eq!(schedule[0].1, Quantity::new_raw(-1));
+    }
+
+    // ============ `compute_close_schedule` snap-to-full-close tests ============
+
+    /// Deficit requires closing 9.5 of 10 BTC. Remainder 0.5 BTC * $50,000 =
+    /// $25,000 < min_position_size $30,000 → snaps to full close.
+    ///
+    /// BTC: long 10 @ oracle $50,000, MMR = 5%
+    /// MM per unit = $50,000 * 0.05 = $2,500
+    /// deficit = $23,750 → close_amount = ceil(23750 / 2500) = 10 (snapped)
+    ///
+    /// Without snap: ceil(23750 / 2500) = 9.5 → close 9.5, leave 0.5 BTC
+    /// ($25k notional < $30k min) → snap to 10.
+    #[test]
+    fn liquidation_snaps_dust_to_full_close() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
+                min_position_size: UsdValue::new_int(30_000),
+                ..Default::default()
+            },
+        };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(50_000) };
+
+        // deficit = $23,750 → without snap: close 9.5 BTC (leaving 0.5).
+        // Remainder 0.5 * $50k = $25k < $30k min → snap to full close.
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(23_750),
+        )
+        .unwrap();
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].0, pair_btc());
+        // Full close (all 10 BTC) because remainder would be dust.
+        assert_eq!(schedule[0].1, Quantity::new_int(-10));
+    }
+
+    /// Deficit requires closing 5 of 10 BTC. Remainder 5 BTC * $50,000 =
+    /// $250,000 >= min_position_size $30,000 → no snap.
+    #[test]
+    fn liquidation_no_snap_when_remainder_above_min() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
+                min_position_size: UsdValue::new_int(30_000),
+                ..Default::default()
+            },
+        };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(50_000) };
+
+        // deficit = $12,500 → close 5 BTC. Remainder 5 * $50k = $250k >= $30k.
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(12_500),
+        )
+        .unwrap();
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].0, pair_btc());
+        // Partial close: only 5 BTC.
+        assert_eq!(schedule[0].1, Quantity::new_int(-5));
     }
 
     // ==================== `compute_bankruptcy_price` tests ====================

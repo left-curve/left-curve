@@ -298,9 +298,10 @@ pub struct PairParam {
     /// prices must be an integer multiple of `tick_size`.
     pub tick_size: UsdPrice,
 
-    /// Minimum notional value for an order. Reduce-only orders are exempt.
-    /// Prevents dust orders from cluttering the order book.
-    pub min_order_size: UsdValue,
+    /// Minimum notional value for a resulting position. Orders that would
+    /// leave a non-zero position below this threshold are rejected. During
+    /// liquidation and ADL, positions below this threshold are fully closed.
+    pub min_position_size: UsdValue,
 
     /// The maximum allowed open interest for both long and short.
     /// I.e. the following must be satisfied:

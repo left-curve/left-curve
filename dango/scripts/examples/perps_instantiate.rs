@@ -74,7 +74,7 @@ fn pair_params() -> BTreeMap<PairId, PairParam> {
                 vault_max_quote_size:      Quantity::new_int(200),            // 200 BTC
                 // -- non-risk (shared) --
                 tick_size:                 UsdPrice::new_int(1),              // $1
-                min_order_size:            UsdValue::new_int(50),             // $50
+                min_position_size:         UsdValue::new_int(50),             // $50
                 impact_size:               UsdValue::new_int(50_000),         // $50k
                 vault_liquidity_weight:    Dimensionless::new_int(4),
                 bucket_sizes:              btree_set! {
@@ -96,7 +96,7 @@ fn pair_params() -> BTreeMap<PairId, PairParam> {
                 vault_max_quote_size:      Quantity::new_int(2_000),          // 2,000 ETH
                 // -- non-risk (shared) --
                 tick_size:                 UsdPrice::new_raw(100_000),        // $0.10
-                min_order_size:            UsdValue::new_int(25),             // $25
+                min_position_size:         UsdValue::new_int(25),             // $25
                 impact_size:               UsdValue::new_int(25_000),         // $25k
                 vault_liquidity_weight:    Dimensionless::new_int(3),
                 bucket_sizes:              btree_set! {
@@ -118,7 +118,7 @@ fn pair_params() -> BTreeMap<PairId, PairParam> {
                 vault_max_quote_size:      Quantity::new_int(40_000),         // 40k SOL
                 // -- non-risk (shared) --
                 tick_size:                 UsdPrice::new_raw(10_000),         // $0.01
-                min_order_size:            UsdValue::new_int(10),             // $10
+                min_position_size:         UsdValue::new_int(10),             // $10
                 impact_size:               UsdValue::new_int(10_000),         // $10k
                 vault_liquidity_weight:    Dimensionless::new_int(2),
                 bucket_sizes:              btree_set! {
@@ -140,7 +140,7 @@ fn pair_params() -> BTreeMap<PairId, PairParam> {
                 vault_max_quote_size:      Quantity::new_int(80_000),         // 80k HYPE
                 // -- non-risk (shared) --
                 tick_size:                 UsdPrice::new_raw(10_000),         // $0.01
-                min_order_size:            UsdValue::new_int(10),             // $10
+                min_position_size:         UsdValue::new_int(10),             // $10
                 impact_size:               UsdValue::new_int(5_000),          // $5k
                 vault_liquidity_weight:    Dimensionless::new_int(1),
                 bucket_sizes:              btree_set! {

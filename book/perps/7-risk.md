@@ -115,9 +115,9 @@ where $w_{\mathrm{pair}}$ is the pair's weight fraction and $\mathtt{tailLossFac
 
 Start conservatively — it is easy to raise OI caps but dangerous to lower them (existing positions above the cap cannot be force-closed).
 
-### 4.2 Min order size
+### 4.2 Min position size
 
-Prevents dust orders. Set to a notional value that covers at least 2× the gas cost of processing the order. Typical values: \$10–\$100.
+Prevents dust positions. An order is rejected if the resulting position (current size + order size) would have a non-zero notional below this threshold. Full closes (resulting position = 0) are always allowed. During liquidation and ADL, partial closes that would leave a position below this threshold are snapped to full closes. Set to a notional value that covers at least 2× the gas cost of processing the order. Typical values: \$10–\$100.
 
 ### 4.3 Tick size
 
@@ -182,7 +182,7 @@ The following checklist produces a complete parameter set from scratch:
 
 6. **Size exposure** — Set `max_abs_oi` from vault equity and tail-risk tolerance ([§4.1](#41-max-open-interest)).
 
-7. **Set order constraints** — Choose `min_order_size` and `tick_size` ([§4.2](#42-min-order-size), [§4.3](#43-tick-size)).
+7. **Set order constraints** — Choose `min_position_size` and `tick_size` ([§4.2](#42-min-position-size), [§4.3](#43-tick-size)).
 
 8. **Configure vault** — Set `vault_half_spread`, `vault_max_quote_size`, and `vault_liquidity_weight` per pair ([§5](#5-vault-parameters)), and `vault_cooldown_period` globally.
 

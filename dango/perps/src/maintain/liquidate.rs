@@ -2,7 +2,7 @@ use {
     crate::{
         core::{
             compute_bankruptcy_price, compute_close_schedule, compute_maintenance_margin,
-            compute_user_equity, compute_user_equity_with_pnl, is_liquidatable,
+            compute_user_equity, compute_user_equity_with_pnl, is_liquidatable, snap_to_full_close,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
@@ -364,6 +364,7 @@ fn _liquidate(
         contract,
         current_time,
         param,
+        pair_params,
         &mut pair_states,
         &mut user_state,
         &mut all_maker_states,
@@ -494,6 +495,7 @@ fn execute_close_schedule(
     contract: Addr,
     current_time: Timestamp,
     param: &Param,
+    pair_params: &BTreeMap<PairId, PairParam>,
     pair_states: &mut BTreeMap<PairId, PairState>,
     user_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
@@ -533,6 +535,7 @@ fn execute_close_schedule(
     let mut all_index_updates = Vec::new();
 
     for (pair_id, close_size) in schedule {
+        let pair_param = &pair_params[pair_id];
         let pair_state = pair_states.get_mut(pair_id).unwrap();
         let oracle_price = oracle_prices[pair_id];
 
@@ -659,10 +662,12 @@ fn execute_close_schedule(
                 storage,
                 user,
                 pair_id,
+                pair_param,
                 pair_state,
                 user_state,
                 maker_states,
                 unfilled,
+                oracle_price,
                 bankruptcy_price,
                 &mut all_pnls,
                 &mut all_fees,
@@ -728,10 +733,12 @@ fn execute_adl(
     storage: &dyn Storage,
     user: Addr,
     pair_id: &PairId,
+    pair_param: &PairParam,
     pair_state: &mut PairState,
     user_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
     unfilled: Quantity,
+    oracle_price: UsdPrice,
     bankruptcy_price: UsdPrice,
     all_pnls: &mut BTreeMap<Addr, UsdValue>,
     all_fees: &mut BTreeMap<Addr, UsdValue>,
@@ -787,7 +794,13 @@ fn execute_adl(
 
         let user_close = {
             let counter_size = counter_position.size.checked_abs()?;
-            let fill_amount = remaining.checked_abs()?.min(counter_size);
+
+            // Snap to full close if partial ADL would leave dust on counter-party.
+            let fill_amount = {
+                let raw_fill_amount = remaining.checked_abs()?.min(counter_size);
+                snap_to_full_close(raw_fill_amount, counter_size, oracle_price, pair_param)?
+            };
+
             if taker_is_selling {
                 fill_amount.checked_neg()?
             } else {
