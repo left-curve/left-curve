@@ -29,11 +29,7 @@ if (SENTRY_DSN && SENTRY_ENV) {
   });
 }
 
-if (
-  process.env.NODE_ENV === "production" &&
-  !window.location.origin.includes("localhost") &&
-  "serviceWorker" in navigator
-) {
+if (!window.location.origin.includes("localhost") && "serviceWorker" in navigator) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (refreshing) return;
