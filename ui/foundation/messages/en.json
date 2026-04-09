@@ -1161,7 +1161,7 @@
         "price": "Price",
         "timeInForce": "Time In Force",
         "reduceOnly": "Reduce Only",
-        "tpsl": "Take Profit/Stop Loss",
+        "tpsl": "Take Profit / Stop Loss",
         "tpPrice": "TP Price",
         "gain": "Gain",
         "slPrice": "SL Price",
