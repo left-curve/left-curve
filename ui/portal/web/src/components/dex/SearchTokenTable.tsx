@@ -231,7 +231,7 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
         variable: [{ id: "pairName", desc: false }],
       }}
       initialColumnVisibility={{ isFavorite: false }}
-      onRowClick={(row) => {
+      onRowPointerDown={(row) => {
         onChangePairId(row.original);
       }}
     />
