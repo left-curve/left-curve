@@ -877,12 +877,10 @@ pub fn settle_fill(
         pair_id, pair_state, user_state, fill_price, closing, opening,
     )?;
 
-    // Contract does not pay fees.
+    // The vault is exempt from trading fees.
     let fee = if user != contract {
         let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
-
         fees.entry(user).or_default().checked_add_assign(fee)?;
-
         fee
     } else {
         UsdValue::ZERO
