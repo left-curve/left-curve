@@ -9,8 +9,8 @@ use {
         querier::NoCachePerpQuerier,
         referral::calculate_commission_rate,
         state::{
-            ASKS, BIDS, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS, PAIR_STATES, REFEREE_TO_REFERRER,
-            COMMISSION_RATE_OVERRIDES, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA,
+            ASKS, BIDS, COMMISSION_RATE_OVERRIDES, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS,
+            PAIR_STATES, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA,
             USER_STATES, VOLUMES,
         },
         volume::round_to_day,
