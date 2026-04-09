@@ -328,6 +328,20 @@ pub fn query_commission_rate_override(
     COMMISSION_RATE_OVERRIDES.may_load(storage, user)
 }
 
+pub fn query_commission_rate_overrides(
+    ctx: ImmutableCtx,
+    start_after: Option<UserIndex>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<UserIndex, CommissionRate>> {
+    let start = start_after.map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    COMMISSION_RATE_OVERRIDES
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .collect()
+}
+
 pub fn query_referral_data(
     ctx: ImmutableCtx,
     user: UserIndex,
