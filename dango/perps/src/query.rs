@@ -1,6 +1,9 @@
 use {
     crate::{
-        core::{compute_available_margin, compute_user_equity},
+        core::{
+            compute_available_margin, compute_position_unrealized_funding,
+            compute_position_unrealized_pnl, compute_user_equity,
+        },
         oracle,
         querier::NoCachePerpQuerier,
         referral::calculate_commission_rate,
@@ -17,9 +20,9 @@ use {
         account_factory::UserIndex,
         perps::{
             LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId, PairParam,
-            PairState, QueryOrderResponse, QueryOrdersByUserResponseItem, Referee, RefereeStats,
-            Referrer, ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex,
-            UserReferralData, UserState, UserStateExtended,
+            PairState, PositionExtended, QueryOrderResponse, QueryOrdersByUserResponseItem,
+            Referee, RefereeStats, Referrer, ReferrerSettings, ReferrerStatsOrderBy,
+            ReferrerStatsOrderIndex, UserReferralData, UserState, UserStateExtended,
         },
     },
     grug::{
@@ -76,6 +79,8 @@ pub fn query_user_state_extended(
     user: Addr,
     include_equity: bool,
     include_available_margin: bool,
+    include_unrealized_pnl: bool,
+    include_unrealized_funding: bool,
 ) -> anyhow::Result<UserStateExtended> {
     let user_state = USER_STATES.load(ctx.storage, user)?;
 
@@ -102,10 +107,45 @@ pub fn query_user_state_extended(
         None
     };
 
+    let positions = user_state
+        .positions
+        .iter()
+        .map(|(pair_id, position)| {
+            let unrealized_pnl = if include_unrealized_pnl {
+                let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+                Some(compute_position_unrealized_pnl(position, oracle_price)?)
+            } else {
+                None
+            };
+
+            let unrealized_funding = if include_unrealized_funding {
+                let pair_state = perp_querier.query_pair_state(pair_id)?;
+                Some(compute_position_unrealized_funding(position, &pair_state)?)
+            } else {
+                None
+            };
+
+            Ok((pair_id.clone(), PositionExtended {
+                size: position.size,
+                entry_price: position.entry_price,
+                entry_funding_per_unit: position.entry_funding_per_unit,
+                conditional_order_above: position.conditional_order_above.clone(),
+                conditional_order_below: position.conditional_order_below.clone(),
+                unrealized_pnl,
+                unrealized_funding,
+            }))
+        })
+        .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
+
     Ok(UserStateExtended {
-        raw: user_state,
+        margin: user_state.margin,
+        vault_shares: user_state.vault_shares,
+        unlocks: user_state.unlocks,
+        reserved_margin: user_state.reserved_margin,
+        open_order_count: user_state.open_order_count,
         equity,
         available_margin,
+        positions,
     })
 }
 

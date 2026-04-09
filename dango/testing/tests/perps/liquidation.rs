@@ -982,11 +982,13 @@ fn vault_liquidation_on_order_book() {
             user: contracts.perps,
             include_equity: true,
             include_available_margin: false,
+            include_unrealized_pnl: false,
+            include_unrealized_funding: false,
         })
         .should_succeed();
 
     let equity = vault_ext.equity.unwrap();
-    let vault_pos = vault_ext.raw.positions.get(&pair).unwrap();
+    let vault_pos = vault_ext.positions.get(&pair).unwrap();
     let mm = vault_pos
         .size
         .checked_abs()
@@ -1071,8 +1073,8 @@ fn vault_liquidation_on_order_book() {
 
     let vault_pos_after = vault_state_after.positions.get(&pair);
     let position_reduced = match vault_pos_after {
-        None => true,                                                // fully closed
-        Some(pos) => pos.size < vault_ext.raw.positions[&pair].size, // partially closed
+        None => true,                                            // fully closed
+        Some(pos) => pos.size < vault_ext.positions[&pair].size, // partially closed
     };
 
     assert!(
@@ -1096,11 +1098,13 @@ fn vault_liquidation_on_order_book() {
             user: contracts.perps,
             include_equity: true,
             include_available_margin: false,
+            include_unrealized_pnl: false,
+            include_unrealized_funding: false,
         })
         .should_succeed();
 
     let equity_after = vault_ext_after.equity.unwrap();
-    let mm_after = match vault_ext_after.raw.positions.get(&pair) {
+    let mm_after = match vault_ext_after.positions.get(&pair) {
         Some(pos) => pos
             .size
             .checked_abs()

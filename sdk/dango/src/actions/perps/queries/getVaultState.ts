@@ -40,6 +40,8 @@ export async function getPerpsVaultState<
       user: perpsContract,
       includeEquity: true,
       includeAvailableMargin: false,
+      includeUnrealizedPnl: false,
+      includeUnrealizedFunding: false,
     },
   };
   const vaultUserState: PerpsUserStateExtended | null = await queryWasmSmart(client, {
@@ -52,9 +54,9 @@ export async function getPerpsVaultState<
     shareSupply: state.vaultShareSupply,
     equity: vaultUserState?.equity ?? "0",
     depositWithdrawalActive: true,
-    margin: vaultUserState?.raw.margin ?? "0",
-    positions: vaultUserState?.raw.positions ?? {},
-    reservedMargin: vaultUserState?.raw.reservedMargin ?? "0",
-    openOrderCount: vaultUserState?.raw.openOrderCount ?? 0,
+    margin: vaultUserState?.margin ?? "0",
+    positions: vaultUserState?.positions ?? {},
+    reservedMargin: vaultUserState?.reservedMargin ?? "0",
+    openOrderCount: vaultUserState?.openOrderCount ?? 0,
   };
 }

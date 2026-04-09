@@ -234,12 +234,16 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             user,
             include_equity,
             include_available_margin,
+            include_unrealized_pnl,
+            include_unrealized_funding,
         } => {
             let res = query::query_user_state_extended(
                 ctx,
                 user,
                 include_equity,
                 include_available_margin,
+                include_unrealized_pnl,
+                include_unrealized_funding,
             )?;
             res.to_json_value()
         },

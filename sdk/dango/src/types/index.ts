@@ -155,6 +155,7 @@ export type {
   PerpsUserState,
   PerpsUserStateExtended,
   PerpsPosition,
+  PerpsPositionExtended,
   PerpsUnlock,
   PerpsOrderKind,
   PerpsPairParam,
