@@ -683,6 +683,7 @@ pub fn match_order(
         let old_taker_pos = taker_state.positions.get(pair_id).cloned();
 
         settle_fill(
+            contract,
             pair_id,
             &mut pair_state,
             &mut taker_state,
@@ -725,6 +726,7 @@ pub fn match_order(
         };
 
         settle_fill(
+            contract,
             pair_id,
             &mut pair_state,
             maker_state,
@@ -849,6 +851,7 @@ pub fn match_order(
 /// - `fees` — trading fee added for `user`.
 /// - `events` — `OrderFilled` event pushed (if `Some`).
 pub fn settle_fill(
+    contract: Addr,
     pair_id: &PairId,
     pair_state: &mut PairState,
     user_state: &mut UserState,
@@ -874,13 +877,20 @@ pub fn settle_fill(
         pair_id, pair_state, user_state, fill_price, closing, opening,
     )?;
 
-    let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
+    // Contract does not pay fees.
+    let fee = if user != contract {
+        let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
+
+        fees.entry(user).or_default().checked_add_assign(fee)?;
+
+        fee
+    } else {
+        UsdValue::ZERO
+    };
 
     let volume = compute_notional(fill_size, fill_price)?;
 
     pnls.entry(user).or_default().checked_add_assign(pnl)?;
-
-    fees.entry(user).or_default().checked_add_assign(fee)?;
 
     volumes
         .entry(user)
