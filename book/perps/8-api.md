@@ -1294,7 +1294,8 @@ query {
           include_equity: true,
           include_available_margin: true,
           include_unrealized_pnl: true,
-          include_unrealized_funding: true
+          include_unrealized_funding: true,
+          include_liquidation_price: true
         }
       }
     }
@@ -1309,6 +1310,7 @@ query {
 | `include_available_margin`   | `bool` | Compute and return the user's free margin                |
 | `include_unrealized_pnl`     | `bool` | Compute and return per-position unrealized PnL           |
 | `include_unrealized_funding` | `bool` | Compute and return per-position unrealized funding costs |
+| `include_liquidation_price`  | `bool` | Compute and return per-position liquidation price        |
 
 **Response:**
 
@@ -1329,7 +1331,8 @@ query {
       "conditional_order_above": null,
       "conditional_order_below": null,
       "unrealized_pnl": "250.000000",
-      "unrealized_funding": "0.000000"
+      "unrealized_funding": "0.000000",
+      "liquidation_price": "1052.631578"
     }
   }
 }
@@ -1357,6 +1360,7 @@ query {
 | `conditional_order_below` | `ConditionalOrder\|null` | TP/SL that triggers when oracle <= trigger_price                                                       |
 | `unrealized_pnl`          | `UsdValue\|null`         | `size * (oracle_price - entry_price)`; positive = profit; `null` if not requested                      |
 | `unrealized_funding`      | `UsdValue\|null`         | `size * (current_funding_per_unit - entry_funding_per_unit)`; positive = cost; `null` if not requested |
+| `liquidation_price`       | `UsdPrice\|null`         | Oracle price that triggers account liquidation (other prices held constant); `null` if not requested or no valid price exists |
 
 `equity` reflects the total account value including unrealized positions. `available_margin` is the amount the user can withdraw or use for new orders.
 

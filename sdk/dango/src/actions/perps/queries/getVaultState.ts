@@ -42,6 +42,7 @@ export async function getPerpsVaultState<
       includeAvailableMargin: false,
       includeUnrealizedPnl: false,
       includeUnrealizedFunding: false,
+      includeLiquidationPrice: false,
     },
   };
   const vaultUserState: PerpsUserStateExtended | null = await queryWasmSmart(client, {

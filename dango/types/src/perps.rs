@@ -506,6 +506,14 @@ pub struct PositionExtended {
     ///
     /// `None` if the client elects not to compute this in `QueryMsg::UserStateExtended`.
     pub unrealized_funding: Option<UsdValue>,
+
+    /// The oracle price of this pair at which the account-level liquidation
+    /// condition triggers, assuming all other pair prices remain constant
+    /// (cross-margin partial-derivative approach).
+    ///
+    /// `None` if the client elects not to compute this, or if no valid
+    /// liquidation price exists (the position alone cannot trigger liquidation).
+    pub liquidation_price: Option<UsdPrice>,
 }
 
 /// A pending withdrawal of liquidity from the counterparty vault, awaiting the
@@ -852,6 +860,7 @@ pub enum QueryMsg {
         include_available_margin: bool,
         include_unrealized_pnl: bool,
         include_unrealized_funding: bool,
+        include_liquidation_price: bool,
     },
 
     /// Query a single limit order by ID.

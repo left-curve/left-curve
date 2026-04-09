@@ -984,6 +984,7 @@ fn vault_liquidation_on_order_book() {
             include_available_margin: false,
             include_unrealized_pnl: false,
             include_unrealized_funding: false,
+            include_liquidation_price: false,
         })
         .should_succeed();
 
@@ -1100,6 +1101,7 @@ fn vault_liquidation_on_order_book() {
             include_available_margin: false,
             include_unrealized_pnl: false,
             include_unrealized_funding: false,
+            include_liquidation_price: false,
         })
         .should_succeed();
 

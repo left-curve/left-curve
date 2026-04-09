@@ -1,8 +1,9 @@
 use {
     crate::{
         core::{
-            compute_available_margin, compute_position_unrealized_funding,
-            compute_position_unrealized_pnl, compute_user_equity,
+            compute_available_margin, compute_liquidation_price,
+            compute_position_unrealized_funding, compute_position_unrealized_pnl,
+            compute_user_equity,
         },
         oracle,
         querier::NoCachePerpQuerier,
@@ -81,6 +82,7 @@ pub fn query_user_state_extended(
     include_available_margin: bool,
     include_unrealized_pnl: bool,
     include_unrealized_funding: bool,
+    include_liquidation_price: bool,
 ) -> anyhow::Result<UserStateExtended> {
     let user_state = USER_STATES.load(ctx.storage, user)?;
 
@@ -125,6 +127,12 @@ pub fn query_user_state_extended(
                 None
             };
 
+            let liquidation_price = if include_liquidation_price {
+                compute_liquidation_price(pair_id, &user_state, &mut oracle_querier, &perp_querier)?
+            } else {
+                None
+            };
+
             Ok((pair_id.clone(), PositionExtended {
                 size: position.size,
                 entry_price: position.entry_price,
@@ -133,6 +141,7 @@ pub fn query_user_state_extended(
                 conditional_order_below: position.conditional_order_below.clone(),
                 unrealized_pnl,
                 unrealized_funding,
+                liquidation_price,
             }))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;

@@ -24,6 +24,7 @@ type UsePerpsUserStateExtendedParameters = {
   includeAvailableMargin?: boolean;
   includeUnrealizedPnl?: boolean;
   includeUnrealizedFunding?: boolean;
+  includeLiquidationPrice?: boolean;
 };
 
 export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtendedParameters) {
@@ -33,6 +34,7 @@ export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtended
     includeAvailableMargin = false,
     includeUnrealizedPnl = false,
     includeUnrealizedFunding = false,
+    includeLiquidationPrice = false,
   } = parameters ?? {};
   const { subscriptions } = useConfig();
   const { data: appConfig } = useAppConfig();
@@ -57,6 +59,7 @@ export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtended
                 includeAvailableMargin,
                 includeUnrealizedPnl,
                 includeUnrealizedFunding,
+                includeLiquidationPrice,
               },
             },
           },
@@ -77,7 +80,7 @@ export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtended
     });
 
     return () => unsubscribe();
-  }, [appConfig.addresses, subscribe, account, includeEquity, includeAvailableMargin, includeUnrealizedPnl, includeUnrealizedFunding]);
+  }, [appConfig.addresses, subscribe, account, includeEquity, includeAvailableMargin, includeUnrealizedPnl, includeUnrealizedFunding, includeLiquidationPrice]);
 
   return { perpsUserStateExtendedStore };
 }

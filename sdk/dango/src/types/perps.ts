@@ -45,6 +45,7 @@ export type PerpsPositionExtended = {
   conditionalOrderBelow?: ConditionalOrder;
   unrealizedPnl: string | null;
   unrealizedFunding: string | null;
+  liquidationPrice: string | null;
 };
 
 export type PerpsUserStateExtended = {
@@ -160,7 +161,7 @@ export type PerpsCancelConditionalOrderRequest =
 
 export type PerpsQueryMsg =
   | { userState: { user: Address } }
-  | { userStateExtended: { user: Address; includeEquity: boolean; includeAvailableMargin: boolean; includeUnrealizedPnl: boolean; includeUnrealizedFunding: boolean } }
+  | { userStateExtended: { user: Address; includeEquity: boolean; includeAvailableMargin: boolean; includeUnrealizedPnl: boolean; includeUnrealizedFunding: boolean; includeLiquidationPrice: boolean } }
   | { userStates: { startAfter?: Address; limit?: number } }
   | { param: Record<string, never> }
   | { pairParam: { pairId: string } }
