@@ -45,6 +45,7 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   initialColumnVisibility?: Record<string, boolean>;
   onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
   onRowClick?: (row: Row<T>) => void;
+  onRowPointerDown?: (row: Row<T>) => void;
   classNames?: TableClassNames;
   isLoading?: boolean;
   skeletonType?: "row" | "cell";
@@ -61,6 +62,7 @@ export const Table = <T,>({
   columnFilters,
   onColumnFiltersChange,
   onRowClick,
+  onRowPointerDown,
   isLoading = false,
   emptyComponent,
   initialSortState = { fixed: [], variable: [] },
@@ -175,9 +177,17 @@ export const Table = <T,>({
                 <tr
                   key={`td-${row.id}`}
                   className={twMerge(styles.row(), classNames?.row, {
-                    "cursor-pointer": onRowClick,
+                    "cursor-pointer": onRowClick || onRowPointerDown,
                   })}
-                  onClick={() => onRowClick?.(row)}
+                  onClick={onRowPointerDown ? undefined : () => onRowClick?.(row)}
+                  onPointerDown={
+                    onRowPointerDown
+                      ? (e) => {
+                          if (e.button !== 0) return;
+                          onRowPointerDown(row);
+                        }
+                      : undefined
+                  }
                 >
                   {cells.map((cell) => {
                     return (

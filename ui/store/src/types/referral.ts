@@ -69,7 +69,7 @@ export type ReferralParams = {
  * Ordering options for the `ReferrerToRefereeStats` query.
  */
 export type ReferrerStatsOrderBy = {
-  order: "ascending" | "descending";
+  order: "Ascending" | "Descending";
   limit?: number;
   index: ReferrerStatsOrderIndex;
 };

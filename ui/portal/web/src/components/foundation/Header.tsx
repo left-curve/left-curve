@@ -1,16 +1,18 @@
-import { useAccount, useConfig } from "@left-curve/store";
+import { useAccount, useConfig, useCurrentEpoch } from "@left-curve/store";
 import { useRouterState } from "@tanstack/react-router";
 import {
   IconGift,
   IconWalletWithCross,
   Modals,
   useApp,
+  useCountdown,
   useMediaQuery,
   Tooltip,
 } from "@left-curve/applets-kit";
 
 import { Button, IconButton, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { AccountMenu } from "./AccountMenu";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
@@ -22,17 +24,70 @@ interface HeaderProps {
   isScrolled: boolean;
 }
 
-const CAMPAIGN_START_DATE = "April 14";
+const BLOCK_TIME_MS = 500;
 
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected, isUserActive } = useAccount();
   const { chain } = useConfig();
 
-  const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
+  const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible, subscriptions } =
+    useApp();
   const { location } = useRouterState();
   const { isLg } = useMediaQuery();
 
   const isMainnet = !["Devnet", "Testnet"].includes(chain.name);
+
+  const pointsUrl = window.dango.urls.pointsUrl;
+  const { isStarted, startsAt } = useCurrentEpoch({ pointsUrl, enabled: isMainnet });
+
+  const [startDate, setStartDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (!startsAt) {
+      setStartDate(null);
+      return;
+    }
+    if ("timestamp" in startsAt) {
+      // Backend returns a unix timestamp in seconds as a string.
+      setStartDate(new Date(Number(startsAt.timestamp) * 1000));
+      return;
+    }
+    const targetBlock = startsAt.block;
+    const unsubscribe = subscriptions.subscribe("block", {
+      listener: ({ blockHeight }) => {
+        const blockDiff = Math.max(0, targetBlock - blockHeight);
+        setStartDate(new Date(Date.now() + blockDiff * BLOCK_TIME_MS));
+      },
+    });
+    return () => unsubscribe();
+  }, [startsAt, subscriptions]);
+
+  const countdown = useCountdown({ date: startDate ?? undefined });
+
+  const campaignStartLabel = useMemo(() => {
+    if (!startDate) return null;
+    const dateLabel = startDate.toLocaleDateString(undefined, {
+      month: "long",
+      day: "numeric",
+    });
+
+    const days = Number(countdown.days);
+    const hours = Number(countdown.hours);
+    const minutes = Number(countdown.minutes);
+    const seconds = Number(countdown.seconds);
+
+    let remaining: string | null = null;
+    if (Number.isFinite(days + hours + minutes + seconds)) {
+      if (days > 0) remaining = `${days}d ${hours}h ${minutes}m`;
+      else if (hours > 0) remaining = `${hours}h ${minutes}m ${seconds}s`;
+      else if (minutes > 0) remaining = `${minutes}m ${seconds}s`;
+      else if (seconds > 0) remaining = `${seconds}s`;
+    }
+
+    return remaining ? `${dateLabel} · ${remaining}` : dateLabel;
+  }, [startDate, countdown]);
+
+  const isCampaignLocked = isMainnet && !isStarted;
   const isProSwap = location.pathname.includes("trade");
   const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
 
@@ -74,9 +129,13 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           ) : null}
           {!isSearchBarVisible ? (
             <div className="flex gap-2 lg:hidden">
-              {isMainnet ? (
+              {isCampaignLocked ? (
                 <Tooltip
-                  content={m["points.campaignStartsOn"]({ date: CAMPAIGN_START_DATE })}
+                  content={
+                    campaignStartLabel
+                      ? m["points.campaignStartsOn"]({ date: campaignStartLabel })
+                      : m["points.campaign"]()
+                  }
                   placement="top"
                 >
                   <IconButton
@@ -114,9 +173,13 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           ) : null}
         </div>
         <div className="hidden lg:flex gap-4 items-center justify-end order-2 lg:order-3">
-          {isMainnet ? (
+          {isCampaignLocked ? (
             <Tooltip
-              content={m["points.campaignStartsOn"]({ date: CAMPAIGN_START_DATE })}
+              content={
+                campaignStartLabel
+                  ? m["points.campaignStartsOn"]({ date: campaignStartLabel })
+                  : m["points.campaign"]()
+              }
               placement="bottom"
             >
               <Button size="lg" className="rounded-lg" isDisabled>

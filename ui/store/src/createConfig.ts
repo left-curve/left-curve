@@ -197,9 +197,14 @@ export function createConfig<transport extends Transport = Transport>(
         newConnectors.push(connector);
       }
 
-      if (storage && !store.persist.hasHydrated()) return;
+      // The `connectors` vanilla store is not persisted, so its update does
+      // not need to wait for hydration. Always apply it — dropping MIPD
+      // connectors on the floor during the hydration window used to cause
+      // silent wallet-login failures on first page load.
       connectors.setState((x) => [...x, ...newConnectors], true);
-      store.setState((x) => ({ ...x, isMipdLoaded: true }));
+      if (!storage || store.persist.hasHydrated()) {
+        store.setState((x) => ({ ...x, isMipdLoaded: true }));
+      }
     });
   }
 
@@ -233,40 +238,46 @@ export function createConfig<transport extends Transport = Transport>(
     });
   }
   function connect(data: EventData<ConnectorEventMap, "connect">) {
-    store.setState((x) => {
-      const connector = connectors.getState().find((x) => x.uid === data.uid);
-      if (!connector) return x;
+    const connector = connectors.getState().find((c) => c.uid === data.uid);
+    if (!connector) {
+      // A `connect` event fired for a connector that isn't in the list.
+      // This used to silently swallow the event — surface it loudly instead
+      // so any remaining race or lifecycle bug shows up in telemetry.
+      const error = new Error(
+        `connect event received for unknown connector uid: ${data.uid}`,
+      );
+      if (onError) onError(error);
+      else console.error(error);
+      return;
+    }
 
-      if (connector.emitter.listenerCount("connect")) {
-        connector.emitter.off("connect", change);
-      }
+    // Wire ongoing change/disconnect listeners outside the setState reducer so
+    // the reducer stays pure. Listeners are idempotent via listenerCount check.
+    if (!connector.emitter.listenerCount("change")) {
+      connector.emitter.on("change", change);
+    }
+    if (!connector.emitter.listenerCount("disconnect")) {
+      connector.emitter.on("disconnect", disconnect);
+    }
 
-      if (!connector.emitter.listenerCount("change")) {
-        connector.emitter.on("change", change);
-      }
-      if (!connector.emitter.listenerCount("disconnect")) {
-        connector.emitter.on("disconnect", disconnect);
-      }
-
-      return {
-        ...x,
-        current: data.uid,
-        user: {
-          index: data.userIndex,
-          username: data.username,
-          status: data.userStatus,
-        },
-        connectors: new Map(x.connectors).set(data.uid, {
-          keyHash: data.keyHash,
-          account: data.accounts[0],
-          accounts: data.accounts,
-          chainId: data.chainId,
-          connector: connector,
-        }),
+    store.setState((x) => ({
+      ...x,
+      current: data.uid,
+      user: {
+        index: data.userIndex,
+        username: data.username,
+        status: data.userStatus,
+      },
+      connectors: new Map(x.connectors).set(data.uid, {
+        keyHash: data.keyHash,
+        account: data.accounts[0],
+        accounts: data.accounts,
         chainId: data.chainId,
-        status: ConnectionStatus.Connected,
-      };
-    });
+        connector,
+      }),
+      chainId: data.chainId,
+      status: ConnectionStatus.Connected,
+    }));
   }
   function disconnect(data: EventData<ConnectorEventMap, "disconnect">) {
     store.setState((x) => {
@@ -279,9 +290,8 @@ export function createConfig<transport extends Transport = Transport>(
         if (connector.emitter.listenerCount("disconnect")) {
           connection.connector.emitter.off("disconnect", disconnect);
         }
-        if (!connector.emitter.listenerCount("connect")) {
-          connection.connector.emitter.on("connect", connect);
-        }
+        // The `connect` listener is attached once in setup() and never
+        // removed, so there's no need to re-attach it here.
       }
 
       x.connectors.delete(data.uid);

@@ -130,7 +130,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   useEffect(() => {
     setSizeCoinDenom(action === "buy" ? pairId.quoteDenom : pairId.baseDenom);
-    controllers.setValue("size", "");
   }, [action]);
 
   const sizeCoin = sizeCoinDenom === baseCoin.denom ? baseCoin : quoteCoin;
@@ -324,6 +323,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const operation = tradeInfoStore((s) => s.operation);
 
   const { baseCoin, quoteCoin } = useTradeCoins();
+  const { getPrice } = usePrices();
 
   const [sizeCoinDenom, setSizeCoinDenom] = useState("usd");
 
@@ -335,7 +335,13 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const statsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
   const perpsPairId = getPerpsPairId();
-  const currentPrice = Number(statsByPairId[perpsPairId]?.currentPrice ?? 0);
+
+  const currentPrice = useMemo(() => {
+    const fromStats = Number(statsByPairId[perpsPairId]?.currentPrice ?? 0);
+    if (fromStats > 0) return fromStats;
+    const oraclePrice = Number(getPrice(1, baseCoin.denom) ?? 0);
+    return Number.isFinite(oraclePrice) ? oraclePrice : 0;
+  }, [statsByPairId, perpsPairId, getPrice, baseCoin.denom]);
 
   const params = appConfig.perpsPairs[perpsPairId];
 
@@ -623,35 +629,27 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
                 placeholder="0"
                 label={m["dex.protrade.perps.tpPrice"]()}
                 {...register("tpPrice", { mask: numberMask })}
-                onChange={(e) =>
-                  onTpPriceChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onTpPriceChange(typeof e === "string" ? e : e.target.value)}
               />
               <Input
                 placeholder="0"
                 label={m["dex.protrade.perps.gain"]()}
                 endContent="%"
                 {...register("tpPercent", { mask: numberMask })}
-                onChange={(e) =>
-                  onTpPercentChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onTpPercentChange(typeof e === "string" ? e : e.target.value)}
               />
               <Input
                 placeholder="0"
                 label={m["dex.protrade.perps.slPrice"]()}
                 {...register("slPrice", { mask: numberMask })}
-                onChange={(e) =>
-                  onSlPriceChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onSlPriceChange(typeof e === "string" ? e : e.target.value)}
               />
               <Input
                 placeholder="0"
                 label={m["dex.protrade.perps.loss"]()}
                 endContent="%"
                 {...register("slPercent", { mask: numberMask })}
-                onChange={(e) =>
-                  onSlPercentChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onSlPercentChange(typeof e === "string" ? e : e.target.value)}
               />
             </div>
             {tpslError ? (

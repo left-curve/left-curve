@@ -116,7 +116,7 @@ export type UseRefereeStatsParameters = {
 };
 
 const DEFAULT_ORDER_BY: ReferrerStatsOrderBy = {
-  order: "descending",
+  order: "Descending",
   index: { volume: {} },
 };
 

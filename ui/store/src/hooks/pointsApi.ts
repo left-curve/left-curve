@@ -179,7 +179,7 @@ export const checkOat = async (
 
 export type EpochInfoNotStarted = {
   status: "not_started";
-  starts_at: { Block: number } | { Timestamp: string };
+  starts_at: { block: number } | { timestamp: string };
 };
 
 export type EpochInfoActive = {
