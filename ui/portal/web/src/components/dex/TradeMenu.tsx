@@ -399,6 +399,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     useTPSLPriceSync({
       setValue,
       referencePrice,
+      leverage: selectedLeverage,
       isBuyDirection: action === "buy",
       enabled: tpslEnabled,
     });
@@ -652,6 +653,11 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
                 onChange={(e) => onSlPercentChange(typeof e === "string" ? e : e.target.value)}
               />
             </div>
+            {operation === "market" ? (
+              <p className="diatype-xs-regular text-ink-tertiary-500">
+                {m["dex.protrade.perps.tpslMarketSlippageNote"]()}
+              </p>
+            ) : null}
             {tpslError ? (
               <p className="diatype-xs-regular text-utility-error-600">{tpslError}</p>
             ) : null}

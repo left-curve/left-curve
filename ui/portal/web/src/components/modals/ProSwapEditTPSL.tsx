@@ -13,7 +13,13 @@ import {
 
 import { Decimal } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
+import {
+  perpsTradeSettingsStore,
+  useAccount,
+  useAppConfig,
+  useSigningClient,
+  useSubmitTx,
+} from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useEffect, useMemo, useState } from "react";
 
@@ -48,12 +54,30 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     const { account } = useAccount();
     const { data: signingClient } = useSigningClient();
     const queryClient = useQueryClient();
+    const { data: appConfig } = useAppConfig();
 
     const sizeNum = Number(size);
     const isLong = sizeNum > 0;
     const absSize = Math.abs(sizeNum);
     const entryPriceNum = Number(entryPrice);
     const markPriceNum = Number(markPrice);
+
+    // Effective leverage on this position. Dango is cross-margin only
+    // (isolated is "Coming Soon"), so positions don't carry a stored
+    // leverage — we use the user's currently-selected leverage for the
+    // pair, falling back to max leverage (1 / initialMarginRatio) when
+    // nothing is stored. This matches the logic in TradeMenu.tsx and
+    // keeps the two TP/SL entry points consistent.
+    const maxLeverage = useMemo(() => {
+      const params = appConfig?.perpsPairs?.[pairId];
+      const ratio = Number(params?.initialMarginRatio ?? 0);
+      return ratio > 0 ? Math.floor(1 / ratio) : 100;
+    }, [appConfig, pairId]);
+    const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[pairId]);
+    const selectedLeverage = useMemo(() => {
+      if (!storedLeverage) return maxLeverage;
+      return Math.min(Math.max(Math.round(storedLeverage), 1), maxLeverage);
+    }, [storedLeverage, maxLeverage]);
 
     const existingTp = isLong ? conditionalOrderAbove : conditionalOrderBelow;
     const existingSl = isLong ? conditionalOrderBelow : conditionalOrderAbove;
@@ -70,7 +94,13 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     const { onTpPriceChange, onTpPercentChange, onSlPriceChange, onSlPercentChange } =
       useTPSLPriceSync({
         setValue,
-        referencePrice: markPriceNum > 0 ? markPriceNum : entryPriceNum,
+        // Use entry price (not mark) as the reference so the ROI% shown
+        // in the input matches the "Expected P/L" USD line below, which
+        // is also computed relative to entry. Validation still guards
+        // against immediate triggers by comparing to the mark price
+        // separately, below.
+        referencePrice: entryPriceNum,
+        leverage: selectedLeverage,
         isBuyDirection: isLong,
       });
 
@@ -92,14 +122,19 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
       const tp = Number(tpPrice);
       const sl = Number(slPrice);
 
-      const reference = markPriceNum > 0 ? markPriceNum : entryPriceNum;
+      // Validation uses mark price (falling back to entry) because its job
+      // is to reject triggers that would fire immediately against the
+      // *current* market. This is intentionally different from the ROI
+      // reference used for percent display, which is entry-based so that
+      // the percent and the Expected P/L USD line agree.
+      const validationReference = markPriceNum > 0 ? markPriceNum : entryPriceNum;
       if (tp > 0) {
-        if (isLong && tp <= reference) return m["modals.tpsl.errors.tpAboveForLongs"]();
-        if (!isLong && tp >= reference) return m["modals.tpsl.errors.tpBelowForShorts"]();
+        if (isLong && tp <= validationReference) return m["modals.tpsl.errors.tpAboveForLongs"]();
+        if (!isLong && tp >= validationReference) return m["modals.tpsl.errors.tpBelowForShorts"]();
       }
       if (sl > 0) {
-        if (isLong && sl >= reference) return m["modals.tpsl.errors.slBelowForLongs"]();
-        if (!isLong && sl <= reference) return m["modals.tpsl.errors.slAboveForShorts"]();
+        if (isLong && sl >= validationReference) return m["modals.tpsl.errors.slBelowForLongs"]();
+        if (!isLong && sl <= validationReference) return m["modals.tpsl.errors.slAboveForShorts"]();
       }
       return null;
     }, [tpPrice, slPrice, isLong, markPriceNum, entryPriceNum]);
@@ -189,9 +224,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
                 placeholder="0"
                 label={m["modals.tpsl.tpPrice"]()}
                 {...register("tpPrice", { mask: numberMask })}
-                onChange={(e) =>
-                  onTpPriceChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onTpPriceChange(typeof e === "string" ? e : e.target.value)}
               />
               <Input
                 placeholder="0"
@@ -199,9 +232,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
                 classNames={{ base: "max-w-[6rem]" }}
                 endContent="%"
                 {...register("tpPercent", { mask: numberMask })}
-                onChange={(e) =>
-                  onTpPercentChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onTpPercentChange(typeof e === "string" ? e : e.target.value)}
               />
             </div>
             <p className="text-ink-tertiary-500 diatype-sm-regular text-right">
@@ -223,9 +254,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
                 placeholder="0"
                 label={m["modals.tpsl.slPrice"]()}
                 {...register("slPrice", { mask: numberMask })}
-                onChange={(e) =>
-                  onSlPriceChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onSlPriceChange(typeof e === "string" ? e : e.target.value)}
               />
               <Input
                 placeholder="0"
@@ -233,9 +262,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
                 classNames={{ base: "max-w-[6rem]" }}
                 endContent="%"
                 {...register("slPercent", { mask: numberMask })}
-                onChange={(e) =>
-                  onSlPercentChange(typeof e === "string" ? e : e.target.value)
-                }
+                onChange={(e) => onSlPercentChange(typeof e === "string" ? e : e.target.value)}
               />
             </div>
             <p className="text-ink-tertiary-500 diatype-sm-regular text-right">

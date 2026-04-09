@@ -1,21 +1,42 @@
 import { useCallback } from "react";
 
+import { priceFromRoi, roiFromPrice, type TpslKind } from "./tpslMath";
+
 type UseTPSLPriceSyncParams = {
   setValue: (name: string, value: string) => void;
   referencePrice: number;
+  /**
+   * Effective leverage on the position. The percent field is computed as
+   * `price_delta_pct × leverage`, matching how Binance / Bybit / Hyperliquid /
+   * dYdX display TP/SL ROI on capital. A missing or zero leverage degrades
+   * gracefully to the "raw price delta" behavior (`clampLeverage` in
+   * `./tpslMath`).
+   */
+  leverage: number;
   isBuyDirection: boolean;
   enabled?: boolean;
 };
 
 /**
- * Returns onChange handlers that keep TP/SL price <-> percent fields in sync.
+ * Returns onChange handlers that keep TP/SL price ↔ percent fields in sync.
+ *
+ * The percent represents **ROI% on capital** (price delta × leverage), not
+ * the raw price change. Actual math is delegated to `./tpslMath` so it can
+ * be exhaustively unit-tested without a renderer.
  *
  * The field the user is editing is written verbatim (so the input never gets
  * reformatted while typing); only the *other* field of the pair is recomputed.
+ *
+ * Note: handlers do not react to later changes in `leverage` or
+ * `referencePrice` — the percent label becomes stale until the user re-types.
+ * This matches the pre-existing behavior of the hook w.r.t. `referencePrice`
+ * and is a known limitation; a follow-up can add a leverage-change effect
+ * once we pick whether to preserve the price or the percent.
  */
 export function useTPSLPriceSync({
   setValue,
   referencePrice,
+  leverage,
   isBuyDirection,
   enabled = true,
 }: UseTPSLPriceSyncParams) {
@@ -29,20 +50,27 @@ export function useTPSLPriceSync({
     return fixed.includes(".") ? fixed.replace(/\.?0+$/, "") : fixed;
   };
 
-  const pctFromPrice = (price: number, isTakeProfit: boolean) => {
-    const isUpside = isTakeProfit ? isBuyDirection : !isBuyDirection;
-    const pct = isUpside
-      ? ((price - referencePrice) / referencePrice) * 100
-      : ((referencePrice - price) / referencePrice) * 100;
-    return trim(Math.max(0, pct), 2);
+  const pctField = (price: number, kind: TpslKind) => {
+    const roi = roiFromPrice(price, {
+      referencePrice,
+      leverage,
+      isLong: isBuyDirection,
+      kind,
+    });
+    // Clamp to 0 for display: a negative ROI means a wrong-side trigger
+    // (e.g. long TP below entry). Validation rejects the submission — we
+    // just don't want to show a negative percent while the user is typing.
+    return trim(Math.max(0, roi), 2);
   };
 
-  const priceFromPct = (pct: number, isTakeProfit: boolean) => {
-    const isUpside = isTakeProfit ? isBuyDirection : !isBuyDirection;
-    const computed = isUpside
-      ? referencePrice * (1 + pct / 100)
-      : referencePrice * (1 - pct / 100);
-    return trim(computed, 4);
+  const priceField = (roi: number, kind: TpslKind) => {
+    const price = priceFromRoi(roi, {
+      referencePrice,
+      leverage,
+      isLong: isBuyDirection,
+      kind,
+    });
+    return trim(price, 4);
   };
 
   const onTpPriceChange = useCallback(
@@ -50,19 +78,19 @@ export function useTPSLPriceSync({
       setValue("tpPrice", value);
       if (!canCompute) return;
       const tp = Number(value);
-      setValue("tpPercent", tp > 0 ? pctFromPrice(tp, true) : "");
+      setValue("tpPercent", tp > 0 ? pctField(tp, "tp") : "");
     },
-    [setValue, canCompute, referencePrice, isBuyDirection],
+    [setValue, canCompute, referencePrice, leverage, isBuyDirection],
   );
 
   const onTpPercentChange = useCallback(
     (value: string) => {
       setValue("tpPercent", value);
       if (!canCompute) return;
-      const pct = Number(value);
-      setValue("tpPrice", pct > 0 ? priceFromPct(pct, true) : "");
+      const roi = Number(value);
+      setValue("tpPrice", roi > 0 ? priceField(roi, "tp") : "");
     },
-    [setValue, canCompute, referencePrice, isBuyDirection],
+    [setValue, canCompute, referencePrice, leverage, isBuyDirection],
   );
 
   const onSlPriceChange = useCallback(
@@ -70,19 +98,19 @@ export function useTPSLPriceSync({
       setValue("slPrice", value);
       if (!canCompute) return;
       const sl = Number(value);
-      setValue("slPercent", sl > 0 ? pctFromPrice(sl, false) : "");
+      setValue("slPercent", sl > 0 ? pctField(sl, "sl") : "");
     },
-    [setValue, canCompute, referencePrice, isBuyDirection],
+    [setValue, canCompute, referencePrice, leverage, isBuyDirection],
   );
 
   const onSlPercentChange = useCallback(
     (value: string) => {
       setValue("slPercent", value);
       if (!canCompute) return;
-      const pct = Number(value);
-      setValue("slPrice", pct > 0 ? priceFromPct(pct, false) : "");
+      const roi = Number(value);
+      setValue("slPrice", roi > 0 ? priceField(roi, "sl") : "");
     },
-    [setValue, canCompute, referencePrice, isBuyDirection],
+    [setValue, canCompute, referencePrice, leverage, isBuyDirection],
   );
 
   return { onTpPriceChange, onTpPercentChange, onSlPriceChange, onSlPercentChange };
