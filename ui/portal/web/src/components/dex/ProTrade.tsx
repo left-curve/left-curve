@@ -10,7 +10,7 @@ import {
   useMediaQuery,
   usePortalTarget,
 } from "@left-curve/applets-kit";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   useConfig,
   useOrderBookState,
@@ -29,6 +29,7 @@ import {
   useAllPairStats,
   useAllPerpsPairStats,
   allPerpsPairStatsStore,
+  useCurrentPrice,
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
@@ -55,6 +56,38 @@ const [ProTradeProvider, useProTrade] = createContext<{
 });
 
 export { useProTrade };
+
+const TradeDocumentTitle: React.FC = () => {
+  const mode = TradePairStore((s) => s.mode);
+  const pairId = TradePairStore((s) => s.pairId);
+  const { baseCoin, quoteCoin } = useTradeCoins();
+  const { currentPrice } = useCurrentPrice();
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    const symbol =
+      mode === "perps" ? `${baseCoin.symbol}-USD` : `${baseCoin.symbol}-${quoteCoin.symbol}`;
+
+    if (currentPrice) {
+      const priceNum = Number(currentPrice);
+      const formatted = Number.isFinite(priceNum)
+        ? priceNum.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: priceNum < 1 ? 6 : 2,
+          })
+        : currentPrice;
+      document.title = `${formatted} | ${symbol} | Dango`;
+    } else {
+      document.title = `${symbol} · Dango`;
+    }
+
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [mode, pairId, baseCoin.symbol, quoteCoin.symbol, currentPrice]);
+
+  return null;
+};
 
 const TradeSubscriptions: React.FC = () => {
   const mode = TradePairStore((s) => s.mode);
@@ -125,6 +158,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   return (
     <ProTradeProvider value={{ controllers, onChangePairId }}>
       <TradeSubscriptions />
+      <TradeDocumentTitle />
       {children}
     </ProTradeProvider>
   );
@@ -215,7 +249,9 @@ const ProTradeHistory: React.FC = () => {
           selectedTab={activeTab}
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
         >
-          {mode === "perps" ? <Tab title="positions">{m["dex.protrade.positions.title"]()}</Tab> : null}
+          {mode === "perps" ? (
+            <Tab title="positions">{m["dex.protrade.positions.title"]()}</Tab>
+          ) : null}
           <Tab title="open-orders">{m["dex.protrade.openOrders"]()}</Tab>
           <Tab title="trade-history">{m["dex.protrade.tradeHistory.title"]()}</Tab>
         </Tabs>
@@ -245,6 +281,7 @@ const PerpsPositionsTable: React.FC = () => {
   const { showModal, settings } = useApp();
   const { coins } = useConfig();
   const { formatNumberOptions } = settings;
+  const { onChangePairId } = useProTrade();
 
   const userState = perpsUserStateStore((s) => s.userState);
   const perpsStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
@@ -282,161 +319,178 @@ const PerpsPositionsTable: React.FC = () => {
     return result;
   }, [userState, perpsStatsByPairId, symbolToDenom, coins.byDenom]);
 
-  const columns: TableColumn<PerpsPositionRow> = [
-    {
-      header: m["dex.protrade.positions.pair"](),
-      cell: ({ row }) => {
-        const label = row.original.pairId
-          .replace("perp/", "")
-          .replace(/usd$/i, "/USD")
-          .toUpperCase();
-        return <Cell.Text text={label} className="diatype-xs-medium" />;
+  const columns: TableColumn<PerpsPositionRow> = useMemo(
+    () => [
+      {
+        header: m["dex.protrade.positions.pair"](),
+        cell: ({ row }) => {
+          const label = row.original.pairId
+            .replace("perp/", "")
+            .replace(/usd$/i, "/USD")
+            .toUpperCase();
+          return <Cell.Text text={label} className="diatype-xs-medium" />;
+        },
       },
-    },
-    {
-      header: m["dex.protrade.positions.side"](),
-      cell: ({ row }) => {
-        const isLong = Number(row.original.size) > 0;
-        return (
-          <Cell.Text
-            text={isLong ? m["dex.protrade.positions.long"]() : m["dex.protrade.positions.short"]()}
-            className={isLong ? "text-utility-success-600" : "text-utility-error-600"}
+      {
+        header: m["dex.protrade.positions.side"](),
+        cell: ({ row }) => {
+          const isLong = Number(row.original.size) > 0;
+          return (
+            <Cell.Text
+              text={
+                isLong ? m["dex.protrade.positions.long"]() : m["dex.protrade.positions.short"]()
+              }
+              className={isLong ? "text-utility-success-600" : "text-utility-error-600"}
+            />
+          );
+        },
+      },
+      {
+        header: m["dex.protrade.positions.size"](),
+        cell: ({ row }) => (
+          <Cell.Number
+            formatOptions={formatNumberOptions}
+            value={Math.abs(Number(row.original.size)).toString()}
           />
-        );
+        ),
       },
-    },
-    {
-      header: m["dex.protrade.positions.size"](),
-      cell: ({ row }) => (
-        <Cell.Number
-          formatOptions={formatNumberOptions}
-          value={Math.abs(Number(row.original.size)).toString()}
-        />
-      ),
-    },
-    {
-      header: m["dex.protrade.positions.entryPrice"](),
-      cell: ({ row }) => (
-        <Cell.Text
-          text={
-            <FormattedNumber
-              number={row.original.entryPrice}
-              formatOptions={{ currency: "USD" }}
-              as="span"
-            />
-          }
-        />
-      ),
-    },
-    {
-      header: m["dex.protrade.positions.markPrice"](),
-      cell: ({ row }) => (
-        <Cell.Text
-          text={
-            <FormattedNumber
-              number={row.original.currentPrice.toString()}
-              formatOptions={{ currency: "USD" }}
-              as="span"
-            />
-          }
-        />
-      ),
-    },
-    {
-      header: m["dex.protrade.positions.pnl"](),
-      cell: ({ row }) => {
-        const isPositive = row.original.pnl >= 0;
-        return (
+      {
+        header: m["dex.protrade.positions.entryPrice"](),
+        cell: ({ row }) => (
           <Cell.Text
             text={
-              <>
-                {isPositive ? "+" : ""}
+              <FormattedNumber
+                number={row.original.entryPrice}
+                formatOptions={{ currency: "USD" }}
+                as="span"
+              />
+            }
+          />
+        ),
+      },
+      {
+        header: m["dex.protrade.positions.markPrice"](),
+        cell: ({ row }) => (
+          <Cell.Text
+            text={
+              <span className="inline-block min-w-[6rem] tabular-nums">
                 <FormattedNumber
-                  number={row.original.pnl.toString()}
+                  number={row.original.currentPrice.toString()}
                   formatOptions={{ currency: "USD" }}
                   as="span"
                 />
-              </>
+              </span>
             }
-            className={isPositive ? "text-utility-success-600" : "text-utility-error-600"}
           />
-        );
+        ),
       },
-    },
-    {
-      header: m["dex.protrade.positions.tpsl"](),
-      cell: ({ row }: { row: { original: PerpsPositionRow } }) => {
-        const { size, conditionalOrderAbove, conditionalOrderBelow } = row.original;
-        const isLong = Number(size) > 0;
-        const tp = isLong ? conditionalOrderAbove : conditionalOrderBelow;
-        const sl = isLong ? conditionalOrderBelow : conditionalOrderAbove;
-        const tpDisplay = tp ? formatNumber(tp.triggerPrice, formatNumberOptions) : "--";
-        const slDisplay = sl ? formatNumber(sl.triggerPrice, formatNumberOptions) : "--";
-        return (
-          <div className="flex items-center gap-1">
-            <Cell.Text text={`${tpDisplay}/${slDisplay}`} />
-            <button
-              type="button"
-              className="text-ink-tertiary-500 hover:text-ink-secondary-700 diatype-xs-regular underline ml-1"
-              onClick={(e) => {
-                e.stopPropagation();
-                const hasAny = conditionalOrderAbove || conditionalOrderBelow;
-                if (hasAny) {
-                  showModal(Modals.ProSwapEditedSL, {
-                    pairId: row.original.pairId,
-                    symbol: row.original.symbol,
-                    entryPrice: row.original.entryPrice,
-                    markPrice: row.original.currentPrice.toString(),
-                    size: row.original.size,
-                    conditionalOrderAbove,
-                    conditionalOrderBelow,
-                  });
-                } else {
-                  showModal(Modals.ProSwapEditTPSL, {
-                    pairId: row.original.pairId,
-                    symbol: row.original.symbol,
-                    entryPrice: row.original.entryPrice,
-                    markPrice: row.original.currentPrice.toString(),
-                    size: row.original.size,
-                    conditionalOrderAbove,
-                    conditionalOrderBelow,
-                  });
-                }
+      {
+        header: m["dex.protrade.positions.pnl"](),
+        cell: ({ row }) => {
+          const isPositive = row.original.pnl >= 0;
+          return (
+            <Cell.Text
+              text={
+                <span className="inline-block min-w-[7rem] tabular-nums">
+                  {isPositive ? "+" : ""}
+                  <FormattedNumber
+                    number={row.original.pnl.toString()}
+                    formatOptions={{ currency: "USD" }}
+                    as="span"
+                  />
+                </span>
+              }
+              className={isPositive ? "text-utility-success-600" : "text-utility-error-600"}
+            />
+          );
+        },
+      },
+      {
+        header: m["dex.protrade.positions.tpsl"](),
+        cell: ({ row }: { row: { original: PerpsPositionRow } }) => {
+          const { size, conditionalOrderAbove, conditionalOrderBelow } = row.original;
+          const isLong = Number(size) > 0;
+          const tp = isLong ? conditionalOrderAbove : conditionalOrderBelow;
+          const sl = isLong ? conditionalOrderBelow : conditionalOrderAbove;
+          const tpDisplay = tp ? formatNumber(tp.triggerPrice, formatNumberOptions) : "--";
+          const slDisplay = sl ? formatNumber(sl.triggerPrice, formatNumberOptions) : "--";
+          return (
+            <div className="flex items-center gap-1">
+              <Cell.Text text={`${tpDisplay}/${slDisplay}`} />
+              <button
+                type="button"
+                className="text-ink-tertiary-500 hover:text-ink-secondary-700 diatype-xs-regular underline ml-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const hasAny = conditionalOrderAbove || conditionalOrderBelow;
+                  if (hasAny) {
+                    showModal(Modals.ProSwapEditedSL, {
+                      pairId: row.original.pairId,
+                      symbol: row.original.symbol,
+                      entryPrice: row.original.entryPrice,
+                      markPrice: row.original.currentPrice.toString(),
+                      size: row.original.size,
+                      conditionalOrderAbove,
+                      conditionalOrderBelow,
+                    });
+                  } else {
+                    showModal(Modals.ProSwapEditTPSL, {
+                      pairId: row.original.pairId,
+                      symbol: row.original.symbol,
+                      entryPrice: row.original.entryPrice,
+                      markPrice: row.original.currentPrice.toString(),
+                      size: row.original.size,
+                      conditionalOrderAbove,
+                      conditionalOrderBelow,
+                    });
+                  }
+                }}
+              >
+                {m["dex.protrade.positions.edit"]()}
+              </button>
+            </div>
+          );
+        },
+      },
+      {
+        id: "close-position",
+        header: () => <Cell.Text text="" />,
+        cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Cell.Action
+              action={() =>
+                showModal(Modals.PerpsClosePosition, {
+                  pairId: row.original.pairId,
+                  size: row.original.size,
+                  pnl: row.original.pnl,
+                })
+              }
+              label={m["dex.protrade.positions.close"]()}
+              classNames={{
+                cell: "items-end",
+                button: "!exposure-xs-italic m-0 p-0 px-1 h-fit",
               }}
-            >
-              {m["dex.protrade.positions.edit"]()}
-            </button>
+            />
           </div>
-        );
+        ),
       },
+    ],
+    [formatNumberOptions, showModal],
+  );
+
+  const handleRowClick = useCallback(
+    (row: { original: PerpsPositionRow }) => {
+      onChangePairId(`${row.original.symbol}-USD`, "perps");
     },
-    {
-      id: "close-position",
-      header: () => <Cell.Text text="" />,
-      cell: ({ row }) => (
-        <Cell.Action
-          action={() =>
-            showModal(Modals.PerpsClosePosition, {
-              pairId: row.original.pairId,
-              size: row.original.size,
-              pnl: row.original.pnl,
-            })
-          }
-          label={m["dex.protrade.positions.close"]()}
-          classNames={{
-            cell: "items-end",
-            button: "!exposure-xs-italic m-0 p-0 px-1 h-fit",
-          }}
-        />
-      ),
-    },
-  ];
+    [onChangePairId],
+  );
 
   return (
     <Table
       data={rows}
       columns={columns}
       style="simple"
+      onRowClick={handleRowClick}
       classNames={{
         row: "h-fit",
         header: "pt-0",
@@ -445,7 +499,12 @@ const PerpsPositionsTable: React.FC = () => {
           "group-hover:bg-transparent": !rows.length,
         }),
       }}
-      emptyComponent={<EmptyPlaceholder component={m["dex.protrade.positions.noOpenPositions"]()} className="h-[3.5rem]" />}
+      emptyComponent={
+        <EmptyPlaceholder
+          component={m["dex.protrade.positions.noOpenPositions"]()}
+          className="h-[3.5rem]"
+        />
+      }
     />
   );
 };
@@ -561,7 +620,11 @@ const UnifiedOpenOrders: React.FC = () => {
       header: m["dex.protrade.orders.market"](),
       cell: ({ row }) => (
         <Badge
-          text={row.original.market === "spot" ? m["dex.protrade.orders.spot"]() : m["dex.protrade.orders.perp"]()}
+          text={
+            row.original.market === "spot"
+              ? m["dex.protrade.orders.spot"]()
+              : m["dex.protrade.orders.perp"]()
+          }
           color={row.original.market === "spot" ? "blue" : "green"}
           size="s"
         />
@@ -580,7 +643,13 @@ const UnifiedOpenOrders: React.FC = () => {
         return (
           <Cell.Text
             text={
-              row.original.market === "perps" ? (isBuy ? m["dex.protrade.orders.long"]() : m["dex.protrade.orders.short"]()) : isBuy ? m["dex.protrade.orders.buy"]() : m["dex.protrade.orders.sell"]()
+              row.original.market === "perps"
+                ? isBuy
+                  ? m["dex.protrade.orders.long"]()
+                  : m["dex.protrade.orders.short"]()
+                : isBuy
+                  ? m["dex.protrade.orders.buy"]()
+                  : m["dex.protrade.orders.sell"]()
             }
             className={isBuy ? "text-utility-success-600" : "text-utility-error-600"}
           />
@@ -623,9 +692,7 @@ const UnifiedOpenOrders: React.FC = () => {
           },
           {
             header: m["dex.protrade.orders.tpsl"](),
-            cell: () => (
-              <Cell.Text text="--/--" className="text-ink-tertiary-500" />
-            ),
+            cell: () => <Cell.Text text="--/--" className="text-ink-tertiary-500" />,
           },
         ]
       : []),
