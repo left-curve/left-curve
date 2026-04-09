@@ -11,6 +11,7 @@ use {
 };
 
 mod adl_bug_reproduction;
+mod client_order_id;
 mod conditional_orders;
 mod liquidation;
 mod referral;
