@@ -832,13 +832,16 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             user: contracts.perps,
             include_equity: true,
             include_available_margin: true,
+            include_unrealized_pnl: false,
+            include_unrealized_funding: false,
+            include_liquidation_price: false,
         })
         .should_succeed();
 
     let equity_before = vault_ext.equity.unwrap();
     let available_before = vault_ext.available_margin.unwrap();
 
-    let vault_pos = vault_ext.raw.positions.get(&pair).unwrap();
+    let vault_pos = vault_ext.positions.get(&pair).unwrap();
     let mm_before = vault_pos
         .size
         .checked_abs()
@@ -936,13 +939,15 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             user: contracts.perps,
             include_equity: true,
             include_available_margin: false,
+            include_unrealized_pnl: false,
+            include_unrealized_funding: false,
+            include_liquidation_price: false,
         })
         .should_succeed();
 
     let equity = vault_ext.equity.unwrap();
 
     let vault_pos = vault_ext
-        .raw
         .positions
         .get(&pair)
         .expect("vault should have a position");

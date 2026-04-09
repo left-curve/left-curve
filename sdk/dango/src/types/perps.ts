@@ -37,10 +37,26 @@ export type PerpsUserState = {
   openOrderCount: number;
 };
 
+export type PerpsPositionExtended = {
+  size: string;
+  entryPrice: string;
+  entryFundingPerUnit: string;
+  conditionalOrderAbove?: ConditionalOrder;
+  conditionalOrderBelow?: ConditionalOrder;
+  unrealizedPnl: string | null;
+  unrealizedFunding: string | null;
+  liquidationPrice: string | null;
+};
+
 export type PerpsUserStateExtended = {
-  raw: PerpsUserState;
+  margin: string;
+  vaultShares: string;
+  unlocks: PerpsUnlock[];
+  reservedMargin: string;
+  openOrderCount: number;
   equity: string | null;
   availableMargin: string | null;
+  positions: Record<string, PerpsPositionExtended>;
 };
 
 export type PerpsOrderKind =
@@ -101,7 +117,7 @@ export type PerpsVaultState = {
   equity: string;
   depositWithdrawalActive: boolean;
   margin: string;
-  positions: Record<string, PerpsPosition>;
+  positions: Record<string, PerpsPositionExtended>;
   reservedMargin: string;
   openOrderCount: number;
 };
@@ -145,7 +161,7 @@ export type PerpsCancelConditionalOrderRequest =
 
 export type PerpsQueryMsg =
   | { userState: { user: Address } }
-  | { userStateExtended: { user: Address; includeEquity: boolean; includeAvailableMargin: boolean } }
+  | { userStateExtended: { user: Address; includeEquity: boolean; includeAvailableMargin: boolean; includeUnrealizedPnl: boolean; includeUnrealizedFunding: boolean; includeLiquidationPrice: boolean } }
   | { userStates: { startAfter?: Address; limit?: number } }
   | { param: Record<string, never> }
   | { pairParam: { pairId: string } }

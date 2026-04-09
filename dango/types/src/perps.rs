@@ -403,12 +403,17 @@ impl UserState {
     }
 }
 
-/// State of s specific user, containing a few fields not saved in contract
+/// State of a specific user, containing a few fields not saved in contract
 /// storage but rather computed on-the-fly at query time. Used in query response.
 #[grug::derive(Serde)]
 pub struct UserStateExtended {
-    /// The raw user state, as saved in contract storage.
-    pub raw: UserState,
+    // These are the same fields from the raw `UserState`, except for `positions`
+    // which is replaced with `PositionExtended` (see below).
+    pub margin: UsdValue,
+    pub vault_shares: Uint128,
+    pub unlocks: VecDeque<Unlock>,
+    pub reserved_margin: UsdValue,
+    pub open_order_count: usize,
 
     /// The user's equity, defined as:
     ///
@@ -440,6 +445,9 @@ pub struct UserStateExtended {
     ///
     /// `None` if the client elects not to compute this in `QueryMsg::UserStateExtended`.
     pub available_margin: Option<UsdValue>,
+
+    /// The user's open positions, enriched with optional computed data.
+    pub positions: BTreeMap<PairId, PositionExtended>,
 }
 
 /// A user's position in a specific trading pair.
@@ -462,6 +470,50 @@ pub struct Position {
     /// Conditional order that triggers when oracle_price <= trigger_price.
     /// Used for: SL on longs, TP on shorts.
     pub conditional_order_below: Option<ConditionalOrder>,
+}
+
+/// A user's position enriched with optional computed data.
+///
+/// Contains all fields from `Position` plus optional position-level metrics
+/// computed on-the-fly at query time.
+#[grug::derive(Serde)]
+pub struct PositionExtended {
+    // These are the same data from the raw `Position`.
+    pub size: Quantity,
+    pub entry_price: UsdPrice,
+    pub entry_funding_per_unit: FundingPerUnit,
+    pub conditional_order_above: Option<ConditionalOrder>,
+    pub conditional_order_below: Option<ConditionalOrder>,
+
+    /// Unrealized PnL for this position:
+    ///
+    /// ```plain
+    /// size * (oracle_price - entry_price)
+    /// ```
+    ///
+    /// Positive = profit, negative = loss. Sign accounts for direction.
+    ///
+    /// `None` if the client elects not to compute this in `QueryMsg::UserStateExtended`.
+    pub unrealized_pnl: Option<UsdValue>,
+
+    /// Unrealized funding accrued by this position since it was last touched:
+    ///
+    /// ```plain
+    /// size * (current_funding_per_unit - entry_funding_per_unit)
+    /// ```
+    ///
+    /// Positive = trader owes (cost), negative = trader is owed (credit).
+    ///
+    /// `None` if the client elects not to compute this in `QueryMsg::UserStateExtended`.
+    pub unrealized_funding: Option<UsdValue>,
+
+    /// The oracle price of this pair at which the account-level liquidation
+    /// condition triggers, assuming all other pair prices remain constant
+    /// (cross-margin partial-derivative approach).
+    ///
+    /// `None` if the client elects not to compute this, or if no valid
+    /// liquidation price exists (the position alone cannot trigger liquidation).
+    pub liquidation_price: Option<UsdPrice>,
 }
 
 /// A pending withdrawal of liquidity from the counterparty vault, awaiting the
@@ -806,6 +858,9 @@ pub enum QueryMsg {
         user: Addr,
         include_equity: bool,
         include_available_margin: bool,
+        include_unrealized_pnl: bool,
+        include_unrealized_funding: bool,
+        include_liquidation_price: bool,
     },
 
     /// Query a single limit order by ID.
