@@ -141,9 +141,16 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 client_order_id,
                 tp,
                 sl,
-            } => {
-                trade::submit_order(ctx, pair_id, size, kind, reduce_only, client_order_id, tp, sl)
-            },
+            } => trade::submit_order(
+                ctx,
+                pair_id,
+                size,
+                kind,
+                reduce_only,
+                client_order_id,
+                tp,
+                sl,
+            ),
             TraderMsg::CancelOrder(CancelOrderRequest::One(order_id)) => {
                 trade::cancel_one_order(ctx, order_id)
             },

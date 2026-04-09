@@ -557,10 +557,10 @@ fn process_triggered_order(
         OrderKind::Market {
             max_slippage: order.max_slippage,
         },
-        true,  // reduce_only
-        None,  // client_order_id
-        None,  // tp
-        None,  // sl
+        true, // reduce_only
+        None, // client_order_id
+        None, // tp
+        None, // sl
         events,
     ) {
         Err(_) => {
