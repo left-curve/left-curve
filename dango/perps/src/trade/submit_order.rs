@@ -25,7 +25,7 @@ use {
         perps::{
             ChildOrder, ConditionalOrder, ConditionalOrderPlaced, LimitOrder, OrderFilled, OrderId,
             OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam, PairState, Param,
-            ReasonForOrderRemoval, State, TriggerDirection, UserState,
+            ReasonForOrderRemoval, State, TimeInForce, TriggerDirection, UserState,
         },
     },
     grug::{
@@ -450,7 +450,23 @@ pub(crate) fn _submit_order(
 
     let order_to_store = if unfilled.is_non_zero() {
         match kind {
-            OrderKind::Limit { limit_price, .. } => {
+            OrderKind::Market { .. }
+            | OrderKind::Limit {
+                time_in_force: TimeInForce::ImmediateOrCancel,
+                ..
+            } => {
+                // IOC: discard unfilled remainder, same as market orders.
+                ensure!(
+                    unfilled < fillable_size,
+                    "no liquidity at acceptable price! target_price: {target_price}"
+                );
+
+                None
+            },
+            OrderKind::Limit {
+                limit_price,
+                time_in_force: TimeInForce::GoodTilCanceled,
+            } => {
                 let StoreLimitOrderOutcome {
                     user_state: updated_taker_state,
                     stored_price,
@@ -476,14 +492,11 @@ pub(crate) fn _submit_order(
 
                 Some((stored_price, order_id, order))
             },
-            OrderKind::Market { .. } => {
-                ensure!(
-                    unfilled < fillable_size,
-                    "no liquidity at acceptable price! target_price: {target_price}"
-                );
-
-                None
-            },
+            // PostOnly is intercepted at Step 4 and never reaches here.
+            OrderKind::Limit {
+                time_in_force: TimeInForce::PostOnly,
+                ..
+            } => unreachable!("post-only handled in Step 4"),
         }
     } else {
         None
@@ -1625,7 +1638,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
-                post_only: false,
+                time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
             None,
@@ -1681,7 +1694,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
-                post_only: false,
+                time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
             None,
@@ -1741,7 +1754,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
-                post_only: false,
+                time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
             None,
@@ -1757,6 +1770,120 @@ mod tests {
         assert!(order_to_store.is_some());
         let (_, _, order) = order_to_store.unwrap();
         assert_eq!(order.size, Quantity::new_int(10));
+    }
+
+    // ======== Limit buy IOC: partial fill, remainder cancelled ================
+
+    #[test]
+    fn limit_buy_ioc_partial_fill_remainder_cancelled() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 5, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            order_to_store,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(50_000),
+                time_in_force: TimeInForce::ImmediateOrCancel,
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // 5 filled.
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+
+        // IOC: remainder discarded, not stored.
+        assert!(order_to_store.is_none());
+
+        // No reserved margin or open orders.
+        assert_eq!(taker_state.reserved_margin, UsdValue::ZERO);
+        assert_eq!(taker_state.open_order_count, 0);
+    }
+
+    // ======== Limit buy IOC: no fills at all → error ========================
+
+    #[test]
+    fn limit_buy_ioc_no_fill_errors() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        // Ask at 51,000 — taker limit at 50,000 won't cross.
+        place_ask(&mut ctx.storage, MAKER_A, 51_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let err = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(50_000),
+                time_in_force: TimeInForce::ImmediateOrCancel,
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        );
+
+        assert!(err.is_err());
+        assert!(
+            err.unwrap_err()
+                .to_string()
+                .contains("no liquidity at acceptable price")
+        );
     }
 
     // ================== Reduce-only: only closes existing ====================
@@ -2097,7 +2224,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_100),
-                post_only: false,
+                time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
             None,
@@ -2146,7 +2273,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_050),
-                post_only: false,
+                time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
             None,
@@ -2969,7 +3096,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
-                post_only: true,
+                time_in_force: TimeInForce::PostOnly,
             },
             false,
             None,
@@ -3022,7 +3149,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
-                post_only: true,
+                time_in_force: TimeInForce::PostOnly,
             },
             false,
             None,
@@ -3068,7 +3195,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
-                post_only: true,
+                time_in_force: TimeInForce::PostOnly,
             },
             false,
             None,
@@ -3120,7 +3247,7 @@ mod tests {
             Quantity::new_int(-10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
-                post_only: true,
+                time_in_force: TimeInForce::PostOnly,
             },
             false,
             None,
@@ -3172,7 +3299,7 @@ mod tests {
             Quantity::new_int(-10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
-                post_only: true,
+                time_in_force: TimeInForce::PostOnly,
             },
             false,
             None,
@@ -3223,7 +3350,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
-                post_only: true,
+                time_in_force: TimeInForce::PostOnly,
             },
             false,
             None,
@@ -3285,7 +3412,7 @@ mod tests {
             Quantity::new_int(-5),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
-                post_only: true,
+                time_in_force: TimeInForce::PostOnly,
             },
             true,
             None,
@@ -3344,7 +3471,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
-                post_only: true,
+                time_in_force: TimeInForce::PostOnly,
             },
             false,
             None,
@@ -3849,7 +3976,7 @@ mod tests {
                 Quantity::new_int(10),
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(50_000),
-                    post_only: false,
+                    time_in_force: TimeInForce::GoodTilCanceled,
                 },
                 false,
                 None,
@@ -4139,7 +4266,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
-                post_only: false,
+                time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
             make_tp(55_000),
@@ -4205,7 +4332,7 @@ mod tests {
             Quantity::new_int(10),
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
-                post_only: false,
+                time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
             make_tp(55_000),

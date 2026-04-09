@@ -1577,7 +1577,7 @@ Place a resting order on the book:
           "kind": {
             "limit": {
               "limit_price": "65000.000000",
-              "post_only": false
+              "time_in_force": "GTC"
             }
           },
           "reduce_only": false
@@ -1591,13 +1591,17 @@ Place a resting order on the book:
 
 | Field         | Type          | Description                                                            |
 | ------------- | ------------- | ---------------------------------------------------------------------- |
-| `limit_price` | `UsdPrice`    | Limit price — must be aligned to `tick_size`                           |
-| `post_only`   | `bool`        | If `true`, rejected if it would match immediately (maker-only)         |
-| `reduce_only` | `bool`        | If `true`, only position-closing portion is kept                       |
-| `tp`          | `ChildOrder?` | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
-| `sl`          | `ChildOrder?` | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
+| `limit_price`   | `UsdPrice`      | Limit price — must be aligned to `tick_size`                           |
+| `time_in_force` | `TimeInForce`   | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                   |
+| `reduce_only`   | `bool`          | If `true`, only position-closing portion is kept                       |
+| `tp`            | `ChildOrder?`   | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
+| `sl`            | `ChildOrder?`   | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
 
-Limit orders are GTC (good-till-cancelled). The matching portion fills immediately; any unfilled remainder is stored on the book. Margin is reserved for the unfilled portion.
+**Time-in-force options:**
+
+- **GTC** (Good-Til-Canceled, default): the matching portion fills immediately; any unfilled remainder is stored on the book. Margin is reserved for the unfilled portion.
+- **IOC** (Immediate-Or-Cancel): fills as much as possible against the book, then discards any unfilled remainder. Errors if nothing fills at all.
+- **POST** (Post-Only): the entire order is placed on the book without matching. Rejected if the limit price would cross the best offer on the opposite side.
 
 ### 6.5 Cancel order
 
@@ -2091,10 +2095,12 @@ Additional integer types:
 {
   "limit": {
     "limit_price": "65000.000000",
-    "post_only": false
+    "time_in_force": "GTC"
   }
 }
 ```
+
+**TimeInForce:** `"GTC"` | `"IOC"` | `"POST"` (defaults to `"GTC"` if omitted)
 
 **TriggerDirection:**
 

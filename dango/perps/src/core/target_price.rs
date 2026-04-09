@@ -48,7 +48,7 @@ pub fn is_price_constraint_violated(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, test_case::test_case};
+    use {super::*, dango_types::perps::TimeInForce, test_case::test_case};
 
     // oracle_price = 100
     #[test_case(  0, true,  100_000_000 ; "zero slippage bid")]
@@ -83,7 +83,7 @@ mod tests {
             compute_target_price(
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(limit),
-                    post_only: false,
+                    time_in_force: TimeInForce::GoodTilCanceled,
                 },
                 UsdPrice::new_int(100),
                 is_bid

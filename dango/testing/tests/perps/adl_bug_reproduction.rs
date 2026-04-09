@@ -90,7 +90,7 @@ fn adl_bug_absurd_book_price() {
                 size: Quantity::new_int(5), // bid (buy)
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: true,
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -181,7 +181,7 @@ fn adl_bug_absurd_book_price() {
                 size: Quantity::new_int(-1), // ask (sell) 1 ETH
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(100_000),
-                    post_only: true,
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,

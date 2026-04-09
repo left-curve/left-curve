@@ -7,7 +7,10 @@ This chapter describes how orders are submitted, matched, filled, and settled in
 An order can be order:
 
 - **Market** — immediate-or-cancel (IOC). Specifies a `max_slippage` relative to the oracle price. Any unfilled remainder after matching is discarded (unless nothing filled at all, which is an error).
-- **Limit** — good-till-cancelled (GTC). Specifies a `limit_price`. Any unfilled remainder is stored as a resting order on the book. If `post_only` is set, the order is rejected if it would cross the best price on the opposite side — it takes a fast path and never enters the matching engine.
+- **Limit** — specifies a `limit_price` and a `time_in_force`:
+  - **GTC** (default): any unfilled remainder is stored as a resting order on the book.
+  - **IOC**: fills as much as possible, then discards the unfilled remainder. Errors if nothing fills.
+  - **Post-only**: the order is to be inserted into the book without entering the matching engine. Reject if it would cross the best price on the opposite side.
 
 Resting orders on the book are stored as:
 
@@ -215,8 +218,8 @@ A negative $\mathtt{vaultMargin}$ represents a deficit (bad debt not yet recover
 
 After matching completes:
 
-- **Market orders:** the unfilled remainder is silently discarded. If nothing was filled at all, the transaction reverts with _"no liquidity at acceptable price"_.
-- **Limit orders (GTC):** the unfilled remainder is stored as a resting order. Storage requires:
+- **Market orders and IOC limit orders:** the unfilled remainder is silently discarded. If nothing was filled at all, the transaction reverts with _"no liquidity at acceptable price"_.
+- **GTC limit orders:** the unfilled remainder is stored as a resting order. Storage requires:
   - `open_order_count` < `max_open_orders`
   - Price is aligned to the pair's tick size ($\mathtt{limitPrice} \bmod \mathtt{tickSize} = 0$)
   - Sufficient available margin (skipped for reduce-only orders) — see below

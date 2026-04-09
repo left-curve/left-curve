@@ -29,6 +29,7 @@ import {
   InputSizeWithMax,
   Modals,
   Range,
+  Select,
   Tabs,
   numberMask,
   twMerge,
@@ -39,6 +40,7 @@ import {
 import { Sheet } from "react-modal-sheet";
 
 import { Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
+import type { PerpsTimeInForce } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
 import { useTPSLPriceSync } from "./useTPSLPriceSync";
@@ -373,6 +375,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const [tpslEnabled, setTpslEnabled] = useState(false);
   const [reduceOnly, setReduceOnly] = useState(false);
+  const [timeInForce, setTimeInForce] = useState<PerpsTimeInForce>("GTC");
+
+  useEffect(() => setTimeInForce("GTC"), [operation]);
 
   const { register, setValue, inputs, errors } = controllers;
   const size = inputs.size?.value || "0";
@@ -478,6 +483,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     tpPrice: tpslEnabled && Number(tpPrice) > 0 ? tpPrice : undefined,
     slPrice: tpslEnabled && Number(slPrice) > 0 ? slPrice : undefined,
     reduceOnly,
+    timeInForce: operation === "limit" ? timeInForce : undefined,
     controllers,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
@@ -606,6 +612,23 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             startText="right"
             endContent="USD"
           />
+        ) : null}
+        {operation === "limit" ? (
+          <div className="flex items-center justify-between">
+            <span className="diatype-sm-regular text-ink-tertiary-500">
+              {m["dex.protrade.perps.timeInForce"]()}
+            </span>
+            <Select
+              value={timeInForce}
+              onChange={(v) => setTimeInForce(v as PerpsTimeInForce)}
+              variant="plain"
+              classNames={{ listboxWrapper: "right-0" }}
+            >
+              <Select.Item value="GTC">GTC</Select.Item>
+              <Select.Item value="IOC">IOC</Select.Item>
+              <Select.Item value="POST">Post Only</Select.Item>
+            </Select>
+          </div>
         ) : null}
         <Checkbox
           radius="md"

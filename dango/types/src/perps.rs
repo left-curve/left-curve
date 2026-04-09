@@ -63,6 +63,24 @@ pub type FeeShareRatio = Dimensionless;
 pub type CommissionRate = Dimensionless;
 
 #[grug::derive(Serde)]
+#[derive(Copy, Default)]
+pub enum TimeInForce {
+    /// Persist the unfilled portion in the order book.
+    #[default]
+    #[serde(rename = "GTC")]
+    GoodTilCanceled,
+
+    /// Cancel the unfilled portion immediately.
+    #[serde(rename = "IOC")]
+    ImmediateOrCancel,
+
+    /// Insert into the book without matching. The limit price must not cross
+    /// the best offer on the other side; reject if violated.
+    #[serde(rename = "POST")]
+    PostOnly,
+}
+
+#[grug::derive(Serde)]
 #[derive(Copy)]
 pub enum OrderKind {
     /// Trade at the best available prices in the order book, optionally
@@ -76,12 +94,14 @@ pub enum OrderKind {
     Limit {
         limit_price: UsdPrice,
 
-        /// Indicates the order is to be inserted into the book as a maker order
-        /// without being matched.
+        /// Controls what happens to the unfilled portion:
         ///
-        /// The order's limit price must not cross the best offer price on the
-        /// other side of the book. Reject if violated.
-        post_only: bool,
+        /// - GTC: persist in the order book;
+        /// - IOC: cancel;
+        /// - PostOnly: skip matching, rest entire order on book (reject if
+        ///   limit price crosses best offer).
+        #[serde(default)]
+        time_in_force: TimeInForce,
     },
 }
 
@@ -92,7 +112,7 @@ impl OrderKind {
         match self {
             OrderKind::Limit {
                 limit_price,
-                post_only: true,
+                time_in_force: TimeInForce::PostOnly,
             } => Some(limit_price),
             _ => None,
         }

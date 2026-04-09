@@ -2,7 +2,7 @@ import { useSubmitTx } from "./useSubmitTx.js";
 import { useAccount } from "./useAccount.js";
 import { useSigningClient } from "./useSigningClient.js";
 
-import type { ChildOrder, PerpsOrderKind } from "@left-curve/dango/types";
+import type { ChildOrder, PerpsOrderKind, PerpsTimeInForce } from "@left-curve/dango/types";
 
 type UsePerpsSubmissionParameters = {
   perpsPairId: string;
@@ -13,6 +13,7 @@ type UsePerpsSubmissionParameters = {
   tpPrice?: string;
   slPrice?: string;
   reduceOnly?: boolean;
+  timeInForce?: PerpsTimeInForce;
   controllers: { reset: () => void };
   onSuccess?: () => void;
 };
@@ -45,6 +46,7 @@ export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
     tpPrice,
     slPrice,
     reduceOnly = false,
+    timeInForce,
     controllers,
     onSuccess,
   } = parameters;
@@ -64,7 +66,7 @@ export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
         const kind: PerpsOrderKind =
           operation === "market"
             ? { market: { maxSlippage: "0.05" } }
-            : { limit: { limitPrice: truncateDec(priceValue), postOnly: false } };
+            : { limit: { limitPrice: truncateDec(priceValue), timeInForce: timeInForce ?? "GTC" } };
 
         const tp: ChildOrder | undefined =
           tpPrice && Number(tpPrice) > 0
