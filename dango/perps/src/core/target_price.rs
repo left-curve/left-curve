@@ -83,7 +83,7 @@ mod tests {
             compute_target_price(
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(limit),
-                    post_only: false,
+                    time_in_force: None,
                 },
                 UsdPrice::new_int(100),
                 is_bid

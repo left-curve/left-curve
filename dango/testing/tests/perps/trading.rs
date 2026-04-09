@@ -74,7 +74,7 @@ fn trading_lifecycle() {
                 size: Quantity::new_int(-10), // sell / ask
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: true,
+                    time_in_force: Some(perps::TimeInForce::PostOnly),
                 },
                 reduce_only: false,
                 tp: None,
@@ -243,7 +243,7 @@ fn limit_order_partial_fill_and_cancel() {
                 size: Quantity::new_int(-5), // sell / ask 5 ETH
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: true,
+                    time_in_force: Some(perps::TimeInForce::PostOnly),
                 },
                 reduce_only: false,
                 tp: None,
@@ -268,7 +268,7 @@ fn limit_order_partial_fill_and_cancel() {
                 size: Quantity::new_int(10), // buy 10 ETH
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: false,
+                    time_in_force: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -448,7 +448,7 @@ fn liquidity_depth_tracking() {
                 size: Quantity::new_int(-3),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: true,
+                    time_in_force: Some(perps::TimeInForce::PostOnly),
                 },
                 reduce_only: false,
                 tp: None,
@@ -486,7 +486,7 @@ fn liquidity_depth_tracking() {
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: true,
+                    time_in_force: Some(perps::TimeInForce::PostOnly),
                 },
                 reduce_only: false,
                 tp: None,
@@ -528,7 +528,7 @@ fn liquidity_depth_tracking() {
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: false,
+                    time_in_force: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -654,7 +654,7 @@ fn protocol_fee_accumulates_across_fills() {
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: true,
+                    time_in_force: Some(perps::TimeInForce::PostOnly),
                 },
                 reduce_only: false,
                 tp: None,
@@ -705,7 +705,7 @@ fn protocol_fee_accumulates_across_fills() {
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: true,
+                    time_in_force: Some(perps::TimeInForce::PostOnly),
                 },
                 reduce_only: false,
                 tp: None,
@@ -826,7 +826,7 @@ fn negative_maker_fee_rebate_lifecycle() {
                 size: Quantity::new_int(-50),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    post_only: true,
+                    time_in_force: Some(perps::TimeInForce::PostOnly),
                 },
                 reduce_only: false,
                 tp: None,
@@ -911,4 +911,132 @@ fn negative_maker_fee_rebate_lifecycle() {
         UsdValue::new_int(4),
         "treasury should be $4 (taker $6 + maker -$2)"
     );
+}
+
+/// IOC limit order: partial fill with unfilled remainder cancelled (not stored).
+///
+/// | Step | Action                                        | Assert                                          |
+/// |------|-----------------------------------------------|-------------------------------------------------|
+/// | 1    | Both users deposit $10,000 USDC               | margin established                              |
+/// | 2    | Maker (user2) places post-only ask: 5 ETH     | ask on book                                     |
+/// | 3    | Taker (user1) IOC limit buy 10 ETH @ $2,000   | 5 fill, 5 cancelled                             |
+/// | 4    | Verify taker state                            | position=5, open_order_count=0, reserved=$0     |
+#[test]
+fn ioc_limit_order_partial_fill() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Step 1: Both users deposit $10,000 USDC.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 2: Maker (user2) places post-only ask: sell 5 ETH @ $2,000.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 3: Taker (user1) IOC limit buy 10 ETH @ $2,000.
+    // 5 fill against maker, 5 unfilled → cancelled (IOC).
+    // Fee = 5 × $2,000 × 0.1% = $10.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: Some(perps::TimeInForce::ImmediateOrCancel),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 4: Verify taker state.
+    // -------------------------------------------------------------------------
+
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("should have ETH position");
+
+    assert_eq!(pos.size, Quantity::new_int(5), "should be 5 ETH long");
+    assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
+    assert_eq!(
+        state.margin,
+        UsdValue::new_int(9_990),
+        "margin should be $9,990 after $10 taker fee"
+    );
+
+    // IOC: no resting order.
+    assert_eq!(
+        state.reserved_margin,
+        UsdValue::ZERO,
+        "reserved_margin should be $0 (IOC cancelled unfilled)"
+    );
+    assert_eq!(state.open_order_count, 0, "should have 0 open orders");
+
+    // Verify no resting orders on book.
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+
+    assert!(orders.is_empty(), "IOC taker should have no resting orders");
 }
