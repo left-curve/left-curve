@@ -1040,3 +1040,48 @@ fn ioc_limit_order_partial_fill() {
 
     assert!(orders.is_empty(), "IOC taker should have no resting orders");
 }
+
+/// IOC limit order with zero fills errors out.
+///
+/// | Step | Action                                          | Assert                         |
+/// |------|-------------------------------------------------|--------------------------------|
+/// | 1    | Taker deposits $10,000 USDC                     | margin established             |
+/// | 2    | Taker IOC limit buy 10 ETH @ $1,900 (empty book)| error: no liquidity            |
+#[test]
+fn ioc_limit_order_no_fill_rejected() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Step 1: Deposit.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Step 2: IOC limit buy against empty book → should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_900),
+                    time_in_force: Some(perps::TimeInForce::ImmediateOrCancel),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_fail_with_error("no liquidity at acceptable price");
+}
