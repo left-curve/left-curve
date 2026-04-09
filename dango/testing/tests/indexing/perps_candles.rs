@@ -46,7 +46,7 @@ fn place_limit_ask(
                 size: Quantity::new_int(-(size as i128)),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(price as i128),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,

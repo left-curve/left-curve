@@ -63,9 +63,10 @@ pub type FeeShareRatio = Dimensionless;
 pub type CommissionRate = Dimensionless;
 
 #[grug::derive(Serde)]
-#[derive(Copy)]
+#[derive(Copy, Default)]
 pub enum TimeInForce {
     /// Persist the unfilled portion in the order book.
+    #[default]
     #[serde(rename = "GTC")]
     GoodTilCanceled,
 
@@ -99,9 +100,8 @@ pub enum OrderKind {
         /// - IOC: cancel;
         /// - PostOnly: skip matching, rest entire order on book (reject if
         ///   limit price crosses best offer).
-        ///
-        /// If unspecified, default to GTC.
-        time_in_force: Option<TimeInForce>,
+        #[serde(default)]
+        time_in_force: TimeInForce,
     },
 }
 
@@ -112,7 +112,7 @@ impl OrderKind {
         match self {
             OrderKind::Limit {
                 limit_price,
-                time_in_force: Some(TimeInForce::PostOnly),
+                time_in_force: TimeInForce::PostOnly,
             } => Some(limit_price),
             _ => None,
         }

@@ -74,7 +74,7 @@ fn trading_lifecycle() {
                 size: Quantity::new_int(-10), // sell / ask
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -243,7 +243,7 @@ fn limit_order_partial_fill_and_cancel() {
                 size: Quantity::new_int(-5), // sell / ask 5 ETH
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -268,7 +268,7 @@ fn limit_order_partial_fill_and_cancel() {
                 size: Quantity::new_int(10), // buy 10 ETH
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: None,
+                    time_in_force: perps::TimeInForce::GoodTilCanceled,
                 },
                 reduce_only: false,
                 tp: None,
@@ -448,7 +448,7 @@ fn liquidity_depth_tracking() {
                 size: Quantity::new_int(-3),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -486,7 +486,7 @@ fn liquidity_depth_tracking() {
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -528,7 +528,7 @@ fn liquidity_depth_tracking() {
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: None,
+                    time_in_force: perps::TimeInForce::GoodTilCanceled,
                 },
                 reduce_only: false,
                 tp: None,
@@ -654,7 +654,7 @@ fn protocol_fee_accumulates_across_fills() {
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -705,7 +705,7 @@ fn protocol_fee_accumulates_across_fills() {
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -826,7 +826,7 @@ fn negative_maker_fee_rebate_lifecycle() {
                 size: Quantity::new_int(-50),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -964,7 +964,7 @@ fn ioc_limit_order_partial_fill() {
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -989,7 +989,7 @@ fn ioc_limit_order_partial_fill() {
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::ImmediateOrCancel),
+                    time_in_force: perps::TimeInForce::ImmediateOrCancel,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1075,7 +1075,7 @@ fn ioc_limit_order_no_fill_rejected() {
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_900),
-                    time_in_force: Some(perps::TimeInForce::ImmediateOrCancel),
+                    time_in_force: perps::TimeInForce::ImmediateOrCancel,
                 },
                 reduce_only: false,
                 tp: None,

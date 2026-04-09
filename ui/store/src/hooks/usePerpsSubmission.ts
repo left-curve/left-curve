@@ -66,7 +66,7 @@ export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
         const kind: PerpsOrderKind =
           operation === "market"
             ? { market: { maxSlippage: "0.05" } }
-            : { limit: { limitPrice: truncateDec(priceValue), timeInForce } };
+            : { limit: { limitPrice: truncateDec(priceValue), timeInForce: timeInForce ?? "GTC" } };
 
         const tp: ChildOrder | undefined =
           tpPrice && Number(tpPrice) > 0

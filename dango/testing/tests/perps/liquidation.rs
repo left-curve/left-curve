@@ -114,7 +114,7 @@ fn liquidation_on_order_book() {
                 size: Quantity::new_int(-5), // sell / ask
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -196,7 +196,7 @@ fn liquidation_on_order_book() {
                 size: Quantity::new_int(5), // buy / bid
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -400,7 +400,7 @@ fn liquidation_with_adl() {
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -465,7 +465,7 @@ fn liquidation_with_adl() {
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -658,7 +658,7 @@ fn liquidation_cancels_conditional_orders() {
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -757,7 +757,7 @@ fn liquidation_cancels_conditional_orders() {
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1031,7 +1031,7 @@ fn vault_liquidation_on_order_book() {
                 size: bid_size, // buy same size as vault's long
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_600),
-                    time_in_force: Some(perps::TimeInForce::PostOnly),
+                    time_in_force: perps::TimeInForce::PostOnly,
                 },
                 reduce_only: false,
                 tp: None,

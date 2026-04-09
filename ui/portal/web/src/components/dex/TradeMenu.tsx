@@ -40,6 +40,7 @@ import {
 import { Sheet } from "react-modal-sheet";
 
 import { Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
+import type { PerpsTimeInForce } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
 import { useTPSLPriceSync } from "./useTPSLPriceSync";
@@ -374,7 +375,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const [tpslEnabled, setTpslEnabled] = useState(false);
   const [reduceOnly, setReduceOnly] = useState(false);
-  const [timeInForce, setTimeInForce] = useState<"GTC" | "IOC" | "POST">("GTC");
+  const [timeInForce, setTimeInForce] = useState<PerpsTimeInForce>("GTC");
 
   useEffect(() => setTimeInForce("GTC"), [operation]);
 
@@ -619,7 +620,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             </span>
             <Select
               value={timeInForce}
-              onChange={(v) => setTimeInForce(v as "GTC" | "IOC" | "POST")}
+              onChange={(v) => setTimeInForce(v as PerpsTimeInForce)}
               variant="plain"
               classNames={{ listboxWrapper: "right-0" }}
             >
