@@ -450,7 +450,8 @@ pub(crate) fn _submit_order(
 
     let order_to_store = if unfilled.is_non_zero() {
         match kind {
-            OrderKind::Limit {
+            OrderKind::Market { .. }
+            | OrderKind::Limit {
                 time_in_force: Some(TimeInForce::ImmediateOrCancel),
                 ..
             } => {
@@ -487,14 +488,6 @@ pub(crate) fn _submit_order(
                 taker_state = updated_taker_state;
 
                 Some((stored_price, order_id, order))
-            },
-            OrderKind::Market { .. } => {
-                ensure!(
-                    unfilled < fillable_size,
-                    "no liquidity at acceptable price! target_price: {target_price}"
-                );
-
-                None
             },
         }
     } else {
