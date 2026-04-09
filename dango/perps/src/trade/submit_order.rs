@@ -15,7 +15,10 @@ use {
         querier::NoCachePerpQuerier,
         query::query_volume,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
-        state::{ASKS, BIDS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+        state::{
+            ASKS, BIDS, CLIENT_ORDER_IDS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
+            USER_STATES,
+        },
         volume::flush_volumes,
     },
     anyhow::ensure,
@@ -23,9 +26,10 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            ChildOrder, ConditionalOrder, ConditionalOrderPlaced, LimitOrder, OrderFilled, OrderId,
-            OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam, PairState, Param,
-            ReasonForOrderRemoval, State, TimeInForce, TriggerDirection, UserState,
+            ChildOrder, ConditionalOrder, ConditionalOrderPlaced, LimitOrder,
+            MAX_CLIENT_ORDER_ID_LEN, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved,
+            PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State, TimeInForce,
+            TriggerDirection, UserState,
         },
     },
     grug::{
@@ -41,11 +45,33 @@ pub fn submit_order(
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
+    client_order_id: Option<String>,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
 ) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
+
+    // ---------------------- 0. Validate client_order_id ----------------------
+
+    if let Some(ref coid) = client_order_id {
+        ensure!(
+            !coid.is_empty() && coid.len() <= MAX_CLIENT_ORDER_ID_LEN,
+            "client_order_id must be 1-{MAX_CLIENT_ORDER_ID_LEN} characters"
+        );
+
+        ensure!(
+            coid.chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
+            "client_order_id may only contain alphanumeric characters, hyphens, and underscores"
+        );
+
+        // Check for duplicates across both sides of the book.
+        ensure!(
+            !CLIENT_ORDER_IDS.has(ctx.storage, (&ctx.sender, coid.as_str())),
+            "duplicate client_order_id: an active order with client_order_id \"{coid}\" already exists"
+        );
+    }
 
     // ---------------------------- 1. Preparation -----------------------------
 
@@ -94,6 +120,7 @@ pub fn submit_order(
         size,
         kind,
         reduce_only,
+        client_order_id,
         tp,
         sl,
         &mut events,
@@ -174,6 +201,13 @@ pub fn submit_order(
                 maker_book.save(ctx.storage, order_key, &order)?;
             },
             None => {
+                // Clean up client_order_id mapping for fully-removed maker orders.
+                // The order is still in storage (pure inner fn didn't write).
+                if let Some(order) = maker_book.may_load(ctx.storage, order_key.clone())? {
+                    if let Some(ref coid) = order.client_order_id {
+                        CLIENT_ORDER_IDS.remove(ctx.storage, (&order.user, coid.as_str()));
+                    }
+                }
                 maker_book.remove(ctx.storage, order_key)?;
             },
         }
@@ -192,6 +226,11 @@ pub fn submit_order(
             &pair_param.bucket_sizes,
         )?;
 
+        // Persist client_order_id -> order_id mapping.
+        if let Some(ref coid) = order.client_order_id {
+            CLIENT_ORDER_IDS.save(ctx.storage, (&ctx.sender, coid.as_str()), &order_id)?;
+        }
+
         taker_book.save(
             ctx.storage,
             (pair_id.clone(), stored_price, order_id),
@@ -204,6 +243,7 @@ pub fn submit_order(
             user: ctx.sender,
             limit_price,
             size: order.size,
+            client_order_id: order.client_order_id,
         })?;
     }
 
@@ -297,6 +337,7 @@ pub(crate) fn _submit_order(
     size: Quantity,
     kind: OrderKind,
     reduce_only: bool,
+    client_order_id: Option<String>,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
     events: &mut EventBuilder,
@@ -362,6 +403,7 @@ pub(crate) fn _submit_order(
             limit_price,
             reduce_only,
             taker_order_id,
+            client_order_id,
             tp,
             sl,
         )?;
@@ -484,6 +526,7 @@ pub(crate) fn _submit_order(
                     limit_price,
                     reduce_only,
                     taker_order_id,
+                    client_order_id,
                     tp.clone(),
                     sl.clone(),
                 )?;
@@ -1067,6 +1110,7 @@ fn store_post_only_limit_order(
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
+    client_order_id: Option<String>,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
 ) -> anyhow::Result<StoreLimitOrderOutcome> {
@@ -1112,6 +1156,7 @@ fn store_post_only_limit_order(
         limit_price,
         reduce_only,
         order_id,
+        client_order_id,
         tp,
         sl,
     )
@@ -1149,6 +1194,7 @@ fn store_limit_order(
     limit_price: UsdPrice,
     reduce_only: bool,
     order_id: OrderId,
+    client_order_id: Option<String>,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
 ) -> anyhow::Result<StoreLimitOrderOutcome> {
@@ -1207,6 +1253,7 @@ fn store_limit_order(
             reduce_only,
             reserved_margin: margin_to_reserve,
             created_at: current_time,
+            client_order_id,
             tp,
             sl,
         },
@@ -1381,6 +1428,7 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(size.abs() * price / 20), // 5% margin
             created_at: Timestamp::from_nanos(0),
+            client_order_id: None,
             tp: None,
             sl: None,
         };
@@ -1408,6 +1456,7 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(size.abs() * price / 20),
             created_at: Timestamp::from_nanos(0),
+            client_order_id: None,
             tp: None,
             sl: None,
         };
@@ -1469,6 +1518,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100), // 10%
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1536,6 +1586,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1584,6 +1635,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(10),
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1643,6 +1695,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1697,6 +1750,7 @@ mod tests {
                 time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1759,6 +1813,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1817,6 +1872,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1873,6 +1929,7 @@ mod tests {
                 time_in_force: TimeInForce::ImmediateOrCancel,
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -1940,6 +1997,7 @@ mod tests {
             true,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -1986,6 +2044,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(10),
             },
             true,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2043,6 +2102,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2107,6 +2167,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2164,6 +2225,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2229,6 +2291,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -2276,6 +2339,7 @@ mod tests {
                 time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2334,6 +2398,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2403,6 +2468,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -2454,6 +2520,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -2508,6 +2575,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(10), // 1%
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3017,6 +3085,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3101,6 +3170,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3154,6 +3224,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -3198,6 +3269,7 @@ mod tests {
                 time_in_force: TimeInForce::PostOnly,
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3252,6 +3324,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3304,6 +3377,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         );
 
@@ -3353,6 +3427,7 @@ mod tests {
                 time_in_force: TimeInForce::PostOnly,
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3417,6 +3492,7 @@ mod tests {
             true,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3474,6 +3550,7 @@ mod tests {
                 time_in_force: TimeInForce::PostOnly,
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3541,6 +3618,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100), // 10%
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3648,6 +3726,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3706,6 +3785,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -3841,6 +3921,7 @@ mod tests {
             false,
             None,
             None,
+            None,
             &mut EventBuilder::new(),
         )
         .unwrap();
@@ -3912,6 +3993,7 @@ mod tests {
                 false,
                 None,
                 None,
+                None,
                 &mut EventBuilder::new(),
             )
             .unwrap();
@@ -3979,6 +4061,7 @@ mod tests {
                     time_in_force: TimeInForce::GoodTilCanceled,
                 },
                 false,
+                None,
                 None,
                 None,
                 &mut EventBuilder::new(),
@@ -4049,6 +4132,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4101,6 +4185,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             make_tp(45_000),
             make_sl(55_000),
             &mut EventBuilder::new(),
@@ -4172,6 +4257,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             make_tp(45_000),
             make_sl(55_000),
             &mut EventBuilder::new(),
@@ -4218,6 +4304,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             make_tp(55_000),
             None, // no SL
             &mut EventBuilder::new(),
@@ -4269,6 +4356,7 @@ mod tests {
                 time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
+            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4335,6 +4423,7 @@ mod tests {
                 time_in_force: TimeInForce::GoodTilCanceled,
             },
             false,
+            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4372,6 +4461,7 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(25_000),
             created_at: Timestamp::from_nanos(0),
+            client_order_id: None,
             tp: make_tp(45_000),
             sl: make_sl(55_000),
         };
@@ -4411,6 +4501,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -4467,6 +4558,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4538,6 +4630,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             make_tp(58_000), // different from existing 60k
             make_sl(42_000), // different from existing 40k
             &mut EventBuilder::new(),
@@ -4618,6 +4711,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             make_tp(55_000),
             make_sl(45_000),
             &mut EventBuilder::new(),
@@ -4675,6 +4769,7 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(12_500),
             created_at: Timestamp::from_nanos(0),
+            client_order_id: None,
             tp: make_tp(55_000),
             sl: make_sl(45_000),
         };
@@ -4709,6 +4804,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             None,
             None,
             &mut EventBuilder::new(),
@@ -4781,6 +4877,7 @@ mod tests {
                 max_slippage: Dimensionless::new_permille(100),
             },
             false,
+            None,
             None,
             make_sl(49_000),
             &mut EventBuilder::new(),

@@ -596,6 +596,9 @@ impl UserReferralData {
     }
 }
 
+/// Maximum length of a client order ID (accommodates UUIDs).
+pub const MAX_CLIENT_ORDER_ID_LEN: usize = 36;
+
 /// A resting limit order, waiting to be fulfilled.
 ///
 /// This struct does not contain the pair ID, order ID, and the limit price,
@@ -608,6 +611,10 @@ pub struct LimitOrder {
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
     pub created_at: Timestamp,
+    /// Optional user-supplied identifier for this order. Must be unique among
+    /// the user's active orders. Max 36 characters, alphanumeric plus hyphen
+    /// and underscore.
+    pub client_order_id: Option<String>,
     /// Take-profit child order to apply when this order fills.
     pub tp: Option<ChildOrder>,
     /// Stop-loss child order to apply when this order fills.
@@ -648,8 +655,11 @@ pub struct ChildOrder {
 
 #[grug::derive(Serde)]
 pub enum CancelOrderRequest {
-    /// Cancel a single order by ID.
+    /// Cancel a single order by system-allocated ID.
     One(OrderId),
+
+    /// Cancel a single order by user-supplied client order ID.
+    ByClientOrderId(String),
 
     /// Cancel all orders associated with the sender.
     All,
@@ -749,6 +759,13 @@ pub enum TraderMsg {
         /// If false, the order must be executed in full. If any of the risk
         /// parameters is violated, the entire order is aborted.
         reduce_only: bool,
+
+        /// Optional user-supplied identifier. Must be unique among the sender's
+        /// active orders. Max 36 characters, alphanumeric plus hyphen and
+        /// underscore. Allows cancellation before the system-allocated order ID
+        /// is known.
+        #[serde(default)]
+        client_order_id: Option<String>,
 
         /// Take-profit child order. Applied to the resulting position after fill.
         tp: Option<ChildOrder>,
@@ -954,6 +971,7 @@ pub struct QueryOrderResponse {
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
     pub created_at: Timestamp,
+    pub client_order_id: Option<String>,
 }
 
 #[grug::derive(Serde)]
@@ -964,6 +982,7 @@ pub struct QueryOrdersByUserResponseItem {
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
     pub created_at: Timestamp,
+    pub client_order_id: Option<String>,
 }
 
 #[grug::derive(Serde)]
@@ -1110,6 +1129,7 @@ pub struct OrderPersisted {
     pub user: Addr,
     pub limit_price: UsdPrice,
     pub size: Quantity,
+    pub client_order_id: Option<String>,
 }
 
 /// Event indicating an order has been removed from the order book.

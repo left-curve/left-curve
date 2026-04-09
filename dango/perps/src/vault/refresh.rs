@@ -136,6 +136,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
                 reduce_only: false,
                 reserved_margin: UsdValue::ZERO,
                 created_at: ctx.block.timestamp,
+                client_order_id: None,
                 tp: None,
                 sl: None,
             };
@@ -167,6 +168,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
                 reduce_only: false,
                 reserved_margin: UsdValue::ZERO,
                 created_at: ctx.block.timestamp,
+                client_order_id: None,
                 tp: None,
                 sl: None,
             };

@@ -222,6 +222,7 @@ fn limit_order_to_response(
         reduce_only: order.reduce_only,
         reserved_margin: order.reserved_margin,
         created_at: order.created_at,
+        client_order_id: order.client_order_id,
     }
 }
 
@@ -237,6 +238,7 @@ fn limit_order_to_item(
         reduce_only: order.reduce_only,
         reserved_margin: order.reserved_margin,
         created_at: order.created_at,
+        client_order_id: order.client_order_id,
     }
 }
 

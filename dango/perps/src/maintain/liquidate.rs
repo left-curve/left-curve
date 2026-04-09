@@ -995,6 +995,7 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
             created_at: Timestamp::ZERO,
+            client_order_id: None,
             tp: None,
             sl: None,
         };
@@ -1018,6 +1019,7 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::ZERO,
             created_at: Timestamp::ZERO,
+            client_order_id: None,
             tp: None,
             sl: None,
         };
@@ -1590,6 +1592,7 @@ mod tests {
                 reduce_only: false,
                 reserved_margin: UsdValue::ZERO,
                 created_at: Timestamp::ZERO,
+                client_order_id: None,
                 tp: Some(ChildOrder {
                     trigger_price: UsdPrice::new_int(55_000),
                     max_slippage: Dimensionless::new_percent(1),

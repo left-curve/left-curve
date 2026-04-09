@@ -2,7 +2,7 @@ use {
     crate::{
         liquidity_depth::decrease_liquidity_depths,
         price::may_invert_price,
-        state::{ASKS, BIDS, OrderKey, PAIR_PARAMS},
+        state::{ASKS, BIDS, CLIENT_ORDER_IDS, OrderKey, PAIR_PARAMS},
         trade::update_user_state_with,
     },
     anyhow::{anyhow, ensure},
@@ -52,6 +52,20 @@ pub fn cancel_one_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Re
     Ok(Response::new().add_events(events)?)
 }
 
+pub fn cancel_by_client_order_id(
+    ctx: MutableCtx,
+    client_order_id: String,
+) -> anyhow::Result<Response> {
+    let order_id = CLIENT_ORDER_IDS
+        .may_load(ctx.storage, (&ctx.sender, client_order_id.as_str()))?
+        .ok_or_else(|| {
+            anyhow!("no active order with client_order_id \"{client_order_id}\" for sender")
+        })?;
+
+    // Reuse the existing cancel-by-order-id logic.
+    cancel_one_order(ctx, order_id)
+}
+
 /// Mutates:
 ///
 /// - User state: releases reserved margin, decrement open order count.
@@ -91,6 +105,11 @@ where
         order.size.checked_abs()?,
         &pair_param.bucket_sizes,
     )?;
+
+    // Clean up client_order_id mapping if present.
+    if let Some(ref coid) = order.client_order_id {
+        CLIENT_ORDER_IDS.remove(storage, (&order.user, coid.as_str()));
+    }
 
     // Remove the order from storage.
     if is_bid {
@@ -268,6 +287,7 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(reserved_margin),
             created_at: Timestamp::from_nanos(0),
+            client_order_id: None,
             tp: None,
             sl: None,
         };
@@ -291,6 +311,7 @@ mod tests {
             reduce_only: false,
             reserved_margin: UsdValue::new_int(reserved_margin),
             created_at: Timestamp::from_nanos(0),
+            client_order_id: None,
             tp: None,
             sl: None,
         };

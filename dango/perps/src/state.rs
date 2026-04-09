@@ -16,6 +16,12 @@ use {
 
 pub const NEXT_ORDER_ID: Item<OrderId> = Item::new("next_order_id");
 
+/// Maps `(user, client_order_id)` → system `OrderId` for orders that carry a
+/// user-supplied client order ID. Populated when a resting limit order with a
+/// `client_order_id` is inserted into the book, and cleaned up when the order
+/// is removed (cancel, fill, liquidation, ADL).
+pub const CLIENT_ORDER_IDS: Map<(&Addr, &str), OrderId> = Map::new("client_oid");
+
 pub const LAST_VAULT_ORDERS_UPDATE: Item<u64> = Item::new("last_vault_orders_update");
 
 pub const PARAM: Item<Param> = Item::new("param");
