@@ -180,6 +180,8 @@ export {
   useVaultLiquidityState,
 } from "./hooks/useVaultLiquidityState.js";
 
+export { usePerpsVaultUserShares } from "./hooks/usePerpsVaultUserShares.js";
+
 export {
   type UsePairStatsParameters,
   type UseAllPairStatsParameters,
