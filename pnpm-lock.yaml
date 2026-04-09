@@ -607,9 +607,6 @@ importers:
       workbox-webpack-plugin:
         specifier: ^7.3.0
         version: 7.3.0(@types/babel__core@7.20.5)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1))
-      workbox-window:
-        specifier: ^7.3.0
-        version: 7.3.0
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -9119,15 +9116,8 @@ packages:
     resolution: {integrity: sha512-n1cw8k1k0x4pgA2+9XrOkFydTerNcJ1zWCO5Nn9scWHTD+5tp8dghT2x1uduQePZTZgd3Tupf+x9BxJjeJi77Q==}
     engines: {node: '>=14.0.0'}
 
-  tldts-core@6.1.68:
-    resolution: {integrity: sha512-85TdlS/DLW/gVdf2oyyzqp3ocS30WxjaL4la85EArl9cHUR/nizifKAJPziWewSZjDZS71U517/i6ciUeqtB5Q==}
-
   tldts-core@7.0.27:
     resolution: {integrity: sha512-YQ7uPjgWUibIK6DW5lrKujGwUKhLevU4hcGbP5O6TcIUb+oTjJYJVWPS4nZsIHrEEEG6myk/oqAJUEQmpZrHsg==}
-
-  tldts@6.1.68:
-    resolution: {integrity: sha512-JKF17jROiYkjJPT73hUTEiTp2OBCf+kAlB+1novk8i6Q6dWjHsgEjw9VLiipV4KTJavazXhY1QUXyQFSem2T7w==}
-    hasBin: true
 
   tldts@7.0.27:
     resolution: {integrity: sha512-I4FZcVFcqCRuT0ph6dCDpPuO4Xgzvh+spkcTr1gK7peIvxWauoloVO0vuy1FQnijT63ss6AsHB6+OIM4aXHbPg==}
@@ -9155,10 +9145,6 @@ packages:
   touch@3.1.1:
     resolution: {integrity: sha512-r0eojU4bI8MnHr8c5bNo7lJDdI2qXlWWJk6a9EAFG7vbhTjElYhBVS3/miuE0uOuoLdb8Mc/rVfsmm6eo5o9GA==}
     hasBin: true
-
-  tough-cookie@5.0.0:
-    resolution: {integrity: sha512-FRKsF7cz96xIIeMZ82ehjC3xW2E+O2+v11udrDYewUbszngYhsGa8z6YUMMzO9QJZzzyd0nGGXnML/TReX6W8Q==}
-    engines: {node: '>=16'}
 
   tough-cookie@6.0.1:
     resolution: {integrity: sha512-LktZQb3IeoUWB9lqR5EWTHgW/VTITCXg4D21M+lvybRVdylLrRMnqaIONLVb5mav8vM19m44HIcGq4qASeu2Qw==}
@@ -10976,7 +10962,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.26.8
       '@babel/helper-plugin-utils': 7.27.1
-      '@babel/types': 7.28.2
+      '@babel/types': 7.28.6
       esutils: 2.0.3
 
   '@babel/preset-react@7.26.3(@babel/core@7.26.8)':
@@ -18450,7 +18436,7 @@ snapshots:
       http-signature: 0.10.1
       oauth-sign: 0.3.0
       stringstream: 0.0.6
-      tough-cookie: 5.0.0
+      tough-cookie: 6.0.1
       tunnel-agent: 0.4.3
     optional: true
 
@@ -19233,15 +19219,7 @@ snapshots:
 
   tinyspy@3.0.2: {}
 
-  tldts-core@6.1.68:
-    optional: true
-
   tldts-core@7.0.27: {}
-
-  tldts@6.1.68:
-    dependencies:
-      tldts-core: 6.1.68
-    optional: true
 
   tldts@7.0.27:
     dependencies:
@@ -19264,11 +19242,6 @@ snapshots:
   totalist@3.0.1: {}
 
   touch@3.1.1: {}
-
-  tough-cookie@5.0.0:
-    dependencies:
-      tldts: 6.1.68
-    optional: true
 
   tough-cookie@6.0.1:
     dependencies:
