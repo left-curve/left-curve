@@ -1,29 +1,31 @@
 use {
-    grug::{Addr, Message, addr},
+    dango_types::{Dimensionless, perps},
+    grug::{Addr, Coins, Message, addr},
     indexer_client::HttpClient,
 };
 
-// Mainnet
 const API_URL: &str = "https://api-mainnet.dango.zone/";
+
 const OWNER_ADDRESS: Addr = addr!("149a2e2bc3ed63aeb0410416b9123d886af1f9cd");
+
 const OWNER_SECRET_PATH: &str = "/Users/larry/.dango/keys/larry.json";
 
-// // Testnet
-// const API_URL: &str = "https://api-testnet.dango.zone/";
-// const OWNER_ADDRESS: Addr = addr!("c4a8f7bbadd1457092a8cd182480230c0a848331");
-// const OWNER_SECRET_PATH: &str = "/Users/larry/.dango/keys/testnet-owner.json";
+const PERPS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbea4f");
 
 struct MessageBuilder;
 
 #[async_trait::async_trait]
 impl dango_scripts::MessageBuilder for MessageBuilder {
     async fn build_message(_client: &HttpClient) -> anyhow::Result<Message> {
-        Ok(Message::upgrade(
-            17223500,
-            "0.10.0",
-            Some("v0.10.0"),
-            Some("https://github.com/left-curve/left-curve/releases/tag/v0.10.0"),
-        ))
+        Ok(Message::execute(
+            PERPS,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::ForceSetFeeShareRatio {
+                // Replace with actual data
+                user: 0,
+                share_ratio: Dimensionless::new_percent(0),
+            }),
+            Coins::new(),
+        )?)
     }
 }
 
