@@ -66,3 +66,4 @@
         pull: always
         state: present
         recreate: always
+        dependencies: false
