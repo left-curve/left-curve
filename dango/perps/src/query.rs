@@ -9,8 +9,9 @@ use {
         querier::NoCachePerpQuerier,
         referral::calculate_commission_rate,
         state::{
-            ASKS, BIDS, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS, PAIR_STATES, REFEREE_TO_REFERRER,
-            REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA, USER_STATES, VOLUMES,
+            ASKS, BIDS, COMMISSION_RATE_OVERRIDES, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS,
+            PAIR_STATES, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA,
+            USER_STATES, VOLUMES,
         },
         volume::round_to_day,
     },
@@ -20,10 +21,11 @@ use {
         UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
-            LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId, PairParam,
-            PairState, PositionExtended, QueryOrderResponse, QueryOrdersByUserResponseItem,
-            Referee, RefereeStats, Referrer, ReferrerSettings, ReferrerStatsOrderBy,
-            ReferrerStatsOrderIndex, UserReferralData, UserState, UserStateExtended,
+            CommissionRate, LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId,
+            PairParam, PairState, PositionExtended, QueryOrderResponse,
+            QueryOrdersByUserResponseItem, Referee, RefereeStats, Referrer, ReferrerSettings,
+            ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData, UserState,
+            UserStateExtended,
         },
     },
     grug::{
@@ -317,6 +319,27 @@ pub fn query_volume(
 
 pub fn query_referrer(storage: &dyn Storage, referee: UserIndex) -> StdResult<Option<Referrer>> {
     REFEREE_TO_REFERRER.may_load(storage, referee)
+}
+
+pub fn query_commission_rate_override(
+    storage: &dyn Storage,
+    user: UserIndex,
+) -> StdResult<Option<CommissionRate>> {
+    COMMISSION_RATE_OVERRIDES.may_load(storage, user)
+}
+
+pub fn query_commission_rate_overrides(
+    ctx: ImmutableCtx,
+    start_after: Option<UserIndex>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<UserIndex, CommissionRate>> {
+    let start = start_after.map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    COMMISSION_RATE_OVERRIDES
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .collect()
 }
 
 pub fn query_referral_data(

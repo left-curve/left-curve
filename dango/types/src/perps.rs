@@ -943,6 +943,17 @@ pub enum QueryMsg {
     /// Return the referral settings if the user is a referrer. Otherwise, return `None`.
     #[returns(Option<ReferrerSettings>)]
     ReferralSettings { user: UserIndex },
+
+    /// Return the commission rate override for a user, if one exists.
+    #[returns(Option<CommissionRate>)]
+    CommissionRateOverride { user: UserIndex },
+
+    /// Enumerate all commission rate overrides, with pagination.
+    #[returns(BTreeMap<UserIndex, CommissionRate>)]
+    CommissionRateOverrides {
+        start_after: Option<UserIndex>,
+        limit: Option<u32>,
+    },
 }
 
 #[grug::derive(Serde)]
