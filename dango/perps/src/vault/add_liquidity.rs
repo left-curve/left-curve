@@ -1,7 +1,7 @@
 use {
     crate::{
         VIRTUAL_ASSETS, VIRTUAL_SHARES,
-        core::compute_user_equity,
+        core::{compute_user_equity, is_liquidatable},
         oracle,
         querier::NoCachePerpQuerier,
         state::{PARAM, STATE, USER_STATES},
@@ -170,6 +170,17 @@ fn _add_liquidity(
     // Update user state.
     user_state.vault_shares.checked_add_assign(shares_to_mint)?;
 
+    // ---------------------- Step 4. Verify user health -----------------------
+
+    // Moving margin into the vault reduces the user's equity. Make sure the
+    // resulting state does not put the user below the maintenance margin of
+    // their open positions (i.e. eligible for liquidation). Users with no open
+    // positions are trivially safe.
+    ensure!(
+        !is_liquidatable(oracle_querier, perp_querier, user_state)?,
+        "user would become liquidatable after adding liquidity"
+    );
+
     Ok(shares_to_mint)
 }
 
@@ -179,8 +190,15 @@ fn _add_liquidity(
 mod tests {
     use {
         super::*,
-        dango_types::perps::UserState,
-        grug::{MockStorage, NumberConst, Uint128, hash_map},
+        dango_types::{
+            Dimensionless, FundingPerUnit, Quantity, UsdPrice,
+            constants::eth,
+            oracle::PrecisionedPrice,
+            perps::{PairParam, PairState, Position, UserState},
+        },
+        grug::{
+            MockStorage, NumberConst, ResultExt, Timestamp, Udec128, Uint128, btree_map, hash_map,
+        },
     };
 
     // ---- Test 1: first deposit into an empty vault (no pairs) ----
@@ -532,6 +550,125 @@ mod tests {
         .unwrap_err();
 
         assert!(err.to_string().contains("vault deposit cap exceeded"));
+    }
+
+    // ---- Test: deposit that would make user liquidatable is rejected ----
+    #[test]
+    fn deposit_that_would_make_user_liquidatable_rejected() {
+        // ETH long, size = 10, entry = $2000, oracle = $2000 (no PnL).
+        // Maintenance margin = |10| * $2000 * 5% = $1000.
+        // User starts with $1100 margin → equity $1100, MM $1000 → healthy.
+        // Depositing $200 leaves $900 → equity $900 < MM $1000 → liquidatable.
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(200_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        let mut vault_share_supply = Uint128::ZERO;
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(1100),
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState::default(),
+            },
+        );
+
+        // Sanity check: the user must be healthy before the deposit so the
+        // failure can only come from the new post-state health check.
+        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+
+        _add_liquidity(
+            &mut oracle_querier,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(200),
+            None,
+            None,
+        )
+        .should_fail_with_error("user would become liquidatable after adding liquidity");
+    }
+
+    // ---- Test: deposit that keeps user healthy succeeds ----
+    #[test]
+    fn deposit_that_keeps_user_healthy_succeeds() {
+        // Same setup as above, but the user starts with $2000 margin and
+        // deposits $500. Post-deposit margin = $1500 → equity $1500 > MM
+        // $1000 → still healthy.
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(200_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        let mut vault_share_supply = Uint128::ZERO;
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(2000),
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    maintenance_margin_ratio: Dimensionless::new_permille(50),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState::default(),
+            },
+        );
+
+        // Sanity check: the user starts healthy.
+        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+
+        let shares = _add_liquidity(
+            &mut oracle_querier,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(500),
+            None,
+            None,
+        )
+        .should_succeed();
+
+        assert!(shares > Uint128::ZERO);
+        assert_eq!(user_state.margin, UsdValue::new_int(1500));
     }
 
     // ---- Test: deposit exactly at cap succeeds ----
