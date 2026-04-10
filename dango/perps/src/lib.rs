@@ -191,6 +191,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 user,
                 commission_rate,
             } => referral::set_commission_rate_override(ctx, user, commission_rate),
+            ReferralMsg::ForceSetFeeShareRatio { user, share_ratio } => {
+                referral::force_set_fee_share_ratio(ctx, user, share_ratio)
+            },
         },
     }
 }
