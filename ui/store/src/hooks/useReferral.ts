@@ -13,6 +13,7 @@ import {
   queryRefereeStats,
   queryReferralSettings,
   queryReferralParams,
+  queryCommissionRateOverride,
 } from "./referralApi.js";
 
 import type {
@@ -247,6 +248,33 @@ export function useSetFeeShareRatio(parameters: UseSetFeeShareRatioParameters = 
       onSuccess,
     },
   });
+}
+
+export type UseCommissionRateOverrideParameters = {
+  userIndex: number | undefined;
+  enabled?: boolean;
+};
+
+export function useCommissionRateOverride(parameters: UseCommissionRateOverrideParameters) {
+  const { userIndex, enabled = true } = parameters;
+  const client = usePublicClient();
+  const { data: appConfig } = useAppConfig();
+
+  const perpsAddress = appConfig?.addresses?.perps;
+
+  const { data, isLoading, isError, error } = useQuery<string | null>({
+    queryKey: ["commissionRateOverride", userIndex],
+    queryFn: () => queryCommissionRateOverride(client!, perpsAddress!, userIndex!),
+    enabled: enabled && !!userIndex && !!client && !!perpsAddress,
+  });
+
+  return {
+    override: data,
+    hasOverride: data != null,
+    isLoading,
+    isError,
+    error,
+  };
 }
 
 export function getReferralCode(userIndex: number | undefined): string {

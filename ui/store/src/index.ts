@@ -359,6 +359,7 @@ export {
   type UseReferralParamsParameters,
   type UseSetReferralParameters,
   type UseSetFeeShareRatioParameters,
+  type UseCommissionRateOverrideParameters,
   useReferrer,
   useVolume,
   useReferralData,
@@ -367,6 +368,7 @@ export {
   useReferralParams,
   useSetReferral,
   useSetFeeShareRatio,
+  useCommissionRateOverride,
   getReferralCode,
   getReferralLink,
 } from "./hooks/useReferral.js";
@@ -389,6 +391,7 @@ export {
   queryRefereeStats,
   queryReferralSettings,
   queryReferralParams,
+  queryCommissionRateOverride,
 } from "./hooks/referralApi.js";
 
 export { rehydrate } from "./rehydrate.js";

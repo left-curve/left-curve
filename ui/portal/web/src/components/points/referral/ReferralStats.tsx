@@ -29,6 +29,7 @@ import {
   useReferrer,
   useSetReferral,
   useVolume,
+  useCommissionRateOverride,
 } from "@left-curve/store";
 
 type ReferralMode = "affiliate" | "trader";
@@ -186,6 +187,10 @@ export const AffiliateStats: React.FC = () => {
     userIndex,
   });
   const { referralParams, isLoading: paramsLoading } = useReferralParams();
+  const { hasOverride, isLoading: overrideLoading } = useCommissionRateOverride({
+    userIndex,
+    enabled: isConnected,
+  });
 
   const minReferrerVolume = Number(
     referralParams?.minReferrerVolume ?? "10000",
@@ -193,10 +198,11 @@ export const AffiliateStats: React.FC = () => {
   const currentVolume = Number(perpsVolume ?? "0");
   const hasReachedVolumeThreshold =
     isConnected && currentVolume > 0 && currentVolume >= minReferrerVolume;
+  const isEligible = hasReachedVolumeThreshold || hasOverride;
   const isReferrer =
-    hasReachedVolumeThreshold && !settingsLoading && settings != null;
+    isConnected && !settingsLoading && settings != null;
   const needsCommissionSetup =
-    hasReachedVolumeThreshold && !settingsLoading && settings == null;
+    isConnected && isEligible && !settingsLoading && settings == null;
 
   const isLoading =
     isConnected &&
@@ -204,6 +210,7 @@ export const AffiliateStats: React.FC = () => {
       volumeLoading ||
       settingsLoading ||
       paramsLoading ||
+      overrideLoading ||
       (isReferrer && data30dLoading));
 
   const sortedThresholds = useMemo(() => {
@@ -233,16 +240,16 @@ export const AffiliateStats: React.FC = () => {
 
   const currentTier = isReferrer ? currentTierFromContract : localTier;
 
-  const targetVolume = hasReachedVolumeThreshold
+  const targetVolume = isEligible
     ? nextTierVolume
     : minReferrerVolume;
-  const progressValue = hasReachedVolumeThreshold
+  const progressValue = isEligible
     ? rollingRefereesVolume
     : currentVolume;
   const progress =
     isConnected && targetVolume
       ? Math.min((progressValue / targetVolume) * 100, 100)
-      : isConnected && hasReachedVolumeThreshold && !targetVolume
+      : isConnected && isEligible && !targetVolume
         ? 100
         : 0;
   const remaining = targetVolume
@@ -266,7 +273,7 @@ export const AffiliateStats: React.FC = () => {
 
   const nextTierLabel = `Tier ${currentTier + 1}`;
   const progressLeftLabel = isConnected
-    ? hasReachedVolumeThreshold
+    ? isEligible
       ? nextTierVolume
         ? m["referral.stats.volumeUntilNextTier"]({
             amount: formatUSD(remaining),
@@ -292,7 +299,7 @@ export const AffiliateStats: React.FC = () => {
                   {rateDisplay}
                 </p>
               )}
-              {isConnected && hasReachedVolumeThreshold && (
+              {isConnected && isEligible && (
                 <IconEdit
                   className="w-6 h-6 text-fg-secondary-500 mb-1 hover:text-ink-secondary-blue cursor-pointer"
                   onClick={() => showModal(Modals.EditCommissionRate)}
@@ -613,28 +620,15 @@ export const ReferralStats: React.FC<ReferralStatsProps> = ({
   mode,
   onModeChange,
 }) => {
-  const { account, userIndex, isConnected } = useAccount();
-  const userAddress = account?.address;
-
-  const { volume: perpsVolume } = useVolume({
-    userAddress,
-    since: undefined,
-    enabled: isConnected,
-  });
+  const { userIndex, isConnected } = useAccount();
 
   const { referralParams } = useReferralParams();
   const { settings, isLoading: settingsLoading } = useReferralSettings({
     userIndex,
   });
 
-  const minReferrerVolume = Number(
-    referralParams?.minReferrerVolume ?? "10000",
-  );
-  const currentVolume = Number(perpsVolume ?? "0");
-  const hasReachedVolumeThreshold =
-    isConnected && currentVolume > 0 && currentVolume >= minReferrerVolume;
   const isReferrer =
-    hasReachedVolumeThreshold && !settingsLoading && settings != null;
+    isConnected && !settingsLoading && settings != null;
 
   const currentTier = useMemo(
     () =>

@@ -107,6 +107,20 @@ export async function queryReferralSettings(
 }
 
 /**
+ * Query the commission rate override for a user, if one exists.
+ * Returns the override rate string or null.
+ */
+export async function queryCommissionRateOverride(
+  client: PublicClient,
+  perpsAddress: string,
+  userIndex: number,
+): Promise<string | null> {
+  return queryPerps<string | null>(client, perpsAddress, {
+    commissionRateOverride: { user: userIndex },
+  });
+}
+
+/**
  * Query referral params from the perps Param query.
  * Extracts referral-related fields from the full Param struct.
  */
