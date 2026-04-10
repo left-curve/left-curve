@@ -1,7 +1,7 @@
 use {
     crate::{
         VIRTUAL_ASSETS, VIRTUAL_SHARES,
-        core::compute_user_equity,
+        core::{compute_available_margin, compute_user_equity},
         oracle,
         querier::NoCachePerpQuerier,
         state::{PARAM, STATE, USER_STATES},
@@ -101,16 +101,19 @@ fn _add_liquidity(
 ) -> anyhow::Result<Uint128> {
     // ----------------------- Step 1. Validate deposit ------------------------
 
+    // 1. Deposit amount must be non-zero.
+    // 2. The user must have enough available margin.
+    // 3. Vault deposit cap must not be exceeded.
+
     ensure!(
         amount.is_positive(),
         "amount of margin to add must be positive"
     );
 
+    let available_margin = compute_available_margin(oracle_querier, perp_querier, user_state)?;
     ensure!(
-        user_state.margin >= amount,
-        "insufficient margin: {} (available) < {} (requested to be added)",
-        user_state.margin,
-        amount
+        available_margin >= amount,
+        "insufficient available margin: {available_margin} (available) < {amount} (requested)"
     );
 
     if let Some(cap) = param.vault_deposit_cap {
@@ -185,8 +188,13 @@ fn _add_liquidity(
 mod tests {
     use {
         super::*,
-        dango_types::perps::UserState,
-        grug::{MockStorage, NumberConst, Uint128, hash_map},
+        dango_types::{
+            Dimensionless, FundingPerUnit, Quantity, UsdPrice,
+            constants::eth,
+            oracle::PrecisionedPrice,
+            perps::{PairParam, PairState, Position, UserState},
+        },
+        grug::{MockStorage, NumberConst, Timestamp, Udec128, Uint128, btree_map, hash_map},
     };
 
     fn default_param() -> Param {
@@ -318,7 +326,7 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(err.to_string().contains("insufficient margin"));
+        assert!(err.to_string().contains("insufficient available margin"));
     }
 
     // ---- Test 6: min_shares passes ----
@@ -608,5 +616,89 @@ mod tests {
 
         assert!(shares > Uint128::ZERO);
         assert_eq!(vault_user_state.margin, UsdValue::new_int(10));
+    }
+
+    /// Regression test for a bug observed on testnet where a user became
+    /// immediately liquidatable after adding liquidity to the vault.
+    ///
+    /// Old logic: `ensure!(user_state.margin >= amount)` — only checks the raw
+    /// margin balance, ignoring unrealized PnL, funding payments, and initial
+    /// margin requirements for open positions.
+    ///
+    /// Consequence: a user with $250 margin, 1 ETH long (entry $2000, oracle
+    /// $1950 → $50 unrealized loss), and 10% initial margin ratio has only $5
+    /// of available margin. The old check would let them deposit $150 into the
+    /// vault (since $250 >= $150), leaving equity of $50 against a $97.50
+    /// maintenance margin — immediately liquidatable.
+    ///
+    /// Fix: `ensure!(compute_available_margin(...) >= amount)` — accounts for
+    /// unrealized PnL, funding, initial margin on open positions, and reserved
+    /// margin for resting orders. The operation is now rejected before any
+    /// state mutation occurs.
+    #[test]
+    fn add_liquidity_rejects_when_available_margin_insufficient() {
+        // User: $250 margin, 1 ETH long @ entry $2000.
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(250),
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(1),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        // Pair: 10% initial margin ratio, 5% maintenance margin ratio.
+        let pair_params = hash_map! {
+            eth::DENOM.clone() => PairParam {
+                initial_margin_ratio: Dimensionless::new_permille(100),
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                ..Default::default()
+            },
+        };
+        let pair_states = hash_map! {
+            eth::DENOM.clone() => PairState {
+                funding_per_unit: FundingPerUnit::new_int(0),
+                ..Default::default()
+            },
+        };
+
+        // Oracle: ETH at $1950 → unrealized loss of $50.
+        // equity = $250 + (-$50) = $200
+        // initial margin used = 1 * $1950 * 10% = $195
+        // available margin = $200 - $195 = $5
+        let oracle_prices = hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(195_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        };
+
+        let perp_querier = NoCachePerpQuerier::new_mock(pair_params, pair_states);
+        let mut oracle_querier = OracleQuerier::new_mock(oracle_prices);
+
+        let param = default_param();
+        let mut state = state_with_supply(0);
+        let mut vault_user_state = UserState::default();
+
+        // Attempting to add $150 when only $5 is available must fail.
+        let err = _add_liquidity(
+            &perp_querier,
+            &mut oracle_querier,
+            &param,
+            &mut state,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(150),
+            None,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("insufficient available margin"));
     }
 }
