@@ -25,6 +25,7 @@ clap            = { workspace = true }
 dango-genesis   = { workspace = true }
 dango-testing   = { workspace = true }
 dango-types     = { workspace = true }
+futures         = { workspace = true }
 grug-db-disk    = { workspace = true }
 grug-db-memory  = { workspace = true, features = ["snapshot"] }
 grug-vm-rust    = { workspace = true }
