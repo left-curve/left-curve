@@ -100,7 +100,7 @@ const SearchMenu: React.FC = () => {
           className={twMerge(
             "flex-col bg-surface-secondary-rice rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative flex-1 lg:shadow-account-card transition-all duration-300",
             !isLg && isSearchBarVisible
-              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-surface-primary-rice p-4 gap-4 rounded-none"
+              ? "h-svh w-full fixed inset-0 z-[100] bg-surface-primary-rice p-4 gap-4 rounded-none"
               : "",
             isLg && location.pathname === "/" ? "lg:top-0" : "lg:top-[-22px]",
           )}
@@ -215,11 +215,11 @@ const Body: React.FC<SearchMenuBodyProps> = ({
           animate={{ height: "auto" }}
           exit={{ height: 0 }}
           transition={{ duration: 0.1 }}
-          className="menu w-full overflow-hidden"
+          className="menu w-full overflow-hidden flex-1 min-h-0"
         >
           <div
             ref={scrollRef}
-            className="md:max-h-[25.15rem] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-outline-secondary-gray scrollbar-track-transparent"
+            className="overflow-y-auto max-h-full md:max-h-[25.15rem] lg:max-h-[25.15rem] scrollbar-thin scrollbar-thumb-outline-secondary-gray scrollbar-track-transparent"
           >
             <motion.div
               className="lg:p-1 w-full flex items-center flex-col gap-1"
