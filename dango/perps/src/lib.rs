@@ -296,6 +296,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query::query_referral_settings(ctx, user)?;
             res.to_json_value()
         },
+        QueryMsg::CommissionRateOverride { user } => {
+            let res = query::query_commission_rate_override(ctx.storage, user)?;
+            res.to_json_value()
+        },
+        QueryMsg::CommissionRateOverrides { start_after, limit } => {
+            let res = query::query_commission_rate_overrides(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
     }
     .map_err(Into::into)
 }

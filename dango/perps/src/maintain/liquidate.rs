@@ -657,6 +657,7 @@ fn execute_close_schedule(
 
             let (adl_size, adl_price) = execute_adl(
                 storage,
+                contract,
                 user,
                 pair_id,
                 pair_state,
@@ -726,6 +727,7 @@ fn execute_close_schedule(
 /// parameters by design; it is not part of the pure set.
 fn execute_adl(
     storage: &dyn Storage,
+    contract: Addr,
     user: Addr,
     pair_id: &PairId,
     pair_state: &mut PairState,
@@ -798,6 +800,7 @@ fn execute_adl(
         // User side:
         let old_user_pos = user_state.positions.get(pair_id).cloned();
         settle_fill(
+            contract,
             pair_id,
             pair_state,
             user_state,
@@ -822,6 +825,7 @@ fn execute_adl(
         // Counter-party side:
         let old_counter_pos = counter_state.positions.get(pair_id).cloned();
         let counter_pnl = settle_fill(
+            contract,
             pair_id,
             pair_state,
             counter_state,
