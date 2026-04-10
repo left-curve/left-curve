@@ -471,4 +471,99 @@ mod tests {
         // floor(3M * 1M / 3M) = 1_000_000 (exact, no rounding needed).
         assert_eq!(user_state.vault_shares, Uint128::new(1_000_000));
     }
+
+    // ---- Test: deposit within cap succeeds ----
+    #[test]
+    fn deposit_within_cap_succeeds() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::ZERO;
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(10),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        let shares = _add_liquidity(
+            &mut oracle_querier,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(5),
+            None,
+            Some(UsdValue::new_int(10)),
+        )
+        .unwrap();
+
+        assert!(shares > Uint128::ZERO);
+        assert_eq!(user_state.margin, UsdValue::new_int(5));
+    }
+
+    // ---- Test: deposit exceeding cap rejected ----
+    #[test]
+    fn deposit_exceeding_cap_rejected() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::ZERO;
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(10),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(5),
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        let err = _add_liquidity(
+            &mut oracle_querier,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(5),
+            None,
+            Some(UsdValue::new_int(8)),
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("vault deposit cap exceeded"));
+    }
+
+    // ---- Test: deposit exactly at cap succeeds ----
+    #[test]
+    fn deposit_exactly_at_cap_succeeds() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::ZERO;
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(10),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(5),
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        let shares = _add_liquidity(
+            &mut oracle_querier,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(5),
+            None,
+            Some(UsdValue::new_int(10)),
+        )
+        .unwrap();
+
+        assert!(shares > Uint128::ZERO);
+        assert_eq!(vault_user_state.margin, UsdValue::new_int(10));
+    }
 }
