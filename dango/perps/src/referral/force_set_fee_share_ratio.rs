@@ -25,11 +25,16 @@ pub fn force_set_fee_share_ratio(
     Ok(Response::new())
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
         super::*,
-        grug::{Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions, ResultExt},
+        grug::{
+            Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
+            ResultExt,
+        },
         std::collections::BTreeMap,
     };
 
