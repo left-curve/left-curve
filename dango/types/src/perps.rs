@@ -359,6 +359,20 @@ pub struct PairParam {
     /// on each side of the book. Limits the vault's exposure per pair.
     pub vault_max_quote_size: Quantity,
 
+    /// How aggressively to tilt order sizes based on inventory.
+    /// 0 = no skew (symmetric), 1 = fully stop quoting on one side at max position.
+    /// Range: [0, 1].
+    pub vault_size_skew_factor: Dimensionless,
+
+    /// How aggressively to tilt spreads based on inventory.
+    /// 0 = no skew (symmetric). Must be < 1 to avoid negative spreads.
+    /// Range: [0, 1).
+    pub vault_spread_skew_factor: Dimensionless,
+
+    /// Position size at which inventory skew saturates.
+    /// When the vault's position reaches this size, skew is at maximum (±1).
+    pub vault_max_skew_size: Quantity,
+
     /// Price bucket sizes for which aggregated order book depth is maintained.
     /// Each entry defines a granularity level for the depth query.
     pub bucket_sizes: BTreeSet<UsdPrice>,

@@ -73,6 +73,10 @@ fn pair_params() -> BTreeMap<PairId, PairParam> {
                 max_abs_funding_rate:      FundingRate::new_raw(16_670),      // ~1.667%/day (IMR/3)
                 vault_half_spread:         Dimensionless::new_raw(500),       // 0.05% (5 bps)
                 vault_max_quote_size:      Quantity::new_int(200),            // 200 BTC
+                // -- inventory skew (disabled until migration sets real values) --
+                vault_size_skew_factor:    Dimensionless::ZERO,
+                vault_spread_skew_factor:  Dimensionless::ZERO,
+                vault_max_skew_size:       Quantity::ZERO,
                 // -- non-risk (shared) --
                 tick_size:                 UsdPrice::new_int(1),              // $1
                 min_order_size:            UsdValue::new_int(50),             // $50
@@ -95,6 +99,10 @@ fn pair_params() -> BTreeMap<PairId, PairParam> {
                 max_abs_funding_rate:      FundingRate::new_raw(16_670),      // ~1.667%/day
                 vault_half_spread:         Dimensionless::new_raw(600),       // 0.06% (6 bps)
                 vault_max_quote_size:      Quantity::new_int(2_000),          // 2,000 ETH
+                // -- inventory skew (disabled until migration sets real values) --
+                vault_size_skew_factor:    Dimensionless::ZERO,
+                vault_spread_skew_factor:  Dimensionless::ZERO,
+                vault_max_skew_size:       Quantity::ZERO,
                 // -- non-risk (shared) --
                 tick_size:                 UsdPrice::new_raw(100_000),        // $0.10
                 min_order_size:            UsdValue::new_int(25),             // $25
@@ -117,6 +125,10 @@ fn pair_params() -> BTreeMap<PairId, PairParam> {
                 max_abs_funding_rate:      FundingRate::new_raw(33_330),      // ~3.333%/day
                 vault_half_spread:         Dimensionless::new_permille(1),    // 0.10% (10 bps)
                 vault_max_quote_size:      Quantity::new_int(40_000),         // 40k SOL
+                // -- inventory skew (disabled until migration sets real values) --
+                vault_size_skew_factor:    Dimensionless::ZERO,
+                vault_spread_skew_factor:  Dimensionless::ZERO,
+                vault_max_skew_size:       Quantity::ZERO,
                 // -- non-risk (shared) --
                 tick_size:                 UsdPrice::new_raw(10_000),         // $0.01
                 min_order_size:            UsdValue::new_int(10),             // $10
@@ -139,6 +151,10 @@ fn pair_params() -> BTreeMap<PairId, PairParam> {
                 max_abs_funding_rate:      FundingRate::new_raw(66_670),      // ~6.667%/day (IMR/3)
                 vault_half_spread:         Dimensionless::new_raw(1_500),     // 0.15% (15 bps)
                 vault_max_quote_size:      Quantity::new_int(80_000),         // 80k HYPE
+                // -- inventory skew (disabled until migration sets real values) --
+                vault_size_skew_factor:    Dimensionless::ZERO,
+                vault_spread_skew_factor:  Dimensionless::ZERO,
+                vault_max_skew_size:       Quantity::ZERO,
                 // -- non-risk (shared) --
                 tick_size:                 UsdPrice::new_raw(10_000),         // $0.01
                 min_order_size:            UsdValue::new_int(10),             // $10
