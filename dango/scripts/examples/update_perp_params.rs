@@ -15,7 +15,6 @@ use {
     },
     grug::{Addr, Coins, Message, QueryClientExt, addr},
     indexer_client::HttpClient,
-    std::collections::BTreeMap,
 };
 
 const API_URL: &str = "https://api-mainnet.dango.zone/";
@@ -32,11 +31,11 @@ struct MessageBuilder;
 impl dango_scripts::MessageBuilder for MessageBuilder {
     async fn build_message(client: &HttpClient) -> anyhow::Result<Message> {
         // Query current global params and all pair params.
-        let param: perps::Param = client
+        let param = client
             .query_wasm_smart(PERPS_ADDRESS, perps::QueryParamRequest {}, None)
             .await?;
 
-        let mut pair_params: BTreeMap<perps::PairId, perps::PairParam> = client
+        let mut pair_params = client
             .query_wasm_smart(
                 PERPS_ADDRESS,
                 perps::QueryPairParamsRequest {
