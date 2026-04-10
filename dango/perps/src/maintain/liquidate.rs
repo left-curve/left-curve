@@ -794,11 +794,14 @@ fn execute_adl(
 
         let user_close = {
             let counter_size = counter_position.size.checked_abs()?;
+            let remaining_abs = remaining.checked_abs()?;
 
             // Snap to full close if partial ADL would leave dust on counter-party.
+            // Cap at remaining_abs to prevent over-closing the liquidated user.
             let fill_amount = {
-                let raw_fill_amount = remaining.checked_abs()?.min(counter_size);
+                let raw_fill_amount = remaining_abs.min(counter_size);
                 snap_to_full_close(raw_fill_amount, counter_size, oracle_price, pair_param)?
+                    .min(remaining_abs)
             };
 
             if taker_is_selling {
@@ -910,6 +913,7 @@ mod tests {
     const USER: Addr = Addr::mock(1);
     const MAKER: Addr = Addr::mock(2);
     const COUNTER: Addr = Addr::mock(3);
+    const COUNTER_B: Addr = Addr::mock(4);
     const CONTRACT: Addr = Addr::mock(0);
 
     fn pair_btc() -> PairId {
@@ -1845,6 +1849,133 @@ mod tests {
             remaining_with_buffer < remaining_without_buffer,
             "buffer should cause more position to be closed: \
              without={remaining_without_buffer}, with={remaining_with_buffer}"
+        );
+    }
+
+    /// ADL snap-to-full-close must not over-close the liquidated user.
+    ///
+    /// Setup:
+    /// - USER: long 10 BTC @ $50k, margin $100, oracle $47.5k → deeply negative
+    ///   equity → full close required (close_amount = 10 BTC).
+    /// - No book liquidity → entire 10 BTC goes to ADL.
+    /// - COUNTER (short 8 BTC @ $50k) absorbs 8 BTC, leaving remaining = 2 BTC.
+    /// - COUNTER_B (short 5 BTC @ $50k): raw_fill = min(2, 5) = 2 BTC.
+    ///   Remainder on COUNTER_B would be 5 - 2 = 3 BTC * $47.5k = $142.5k.
+    ///   With min_position_size = $200k, $142.5k < $200k triggers snap.
+    ///
+    /// Pre-fix (wrong): snap_to_full_close returns 5 (COUNTER_B's full size),
+    /// over-closing by 3 BTC. USER ends up with a short 3 BTC position — dust
+    /// in the opposite direction. remaining flips sign and the loop misbehaves.
+    ///
+    /// Post-fix (correct): fill_amount is capped at remaining (2 BTC). USER's
+    /// position is exactly zero. COUNTER_B keeps 3 BTC of their short.
+    #[test]
+    fn adl_snap_does_not_over_close() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = default_param();
+        let mut pair_param = btc_pair_param();
+        pair_param.min_position_size = UsdValue::new_int(200_000);
+
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(10),
+            short_oi: Quantity::new_int(13), // 8 + 5
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            pair_param.clone(),
+            pair_state.clone(),
+        )]);
+
+        // USER: long 10 BTC @ $50k, deeply underwater at oracle $47.5k.
+        save_position(&mut ctx.storage, USER, &pair_btc(), 10, 50_000);
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(100);
+        USER_STATES
+            .save(&mut ctx.storage, USER, &user_state)
+            .unwrap();
+
+        // COUNTER: short 8 BTC @ $50k (most profitable short, highest entry price).
+        save_position(&mut ctx.storage, COUNTER, &pair_btc(), -8, 50_000);
+        let mut counter_state = USER_STATES.load(&ctx.storage, COUNTER).unwrap();
+        counter_state.margin = UsdValue::new_int(500_000);
+        USER_STATES
+            .save(&mut ctx.storage, COUNTER, &counter_state)
+            .unwrap();
+
+        // COUNTER_B: short 5 BTC @ $49k (less profitable, lower entry price).
+        save_position(&mut ctx.storage, COUNTER_B, &pair_btc(), -5, 49_000);
+        let mut counter_b_state = USER_STATES.load(&ctx.storage, COUNTER_B).unwrap();
+        counter_b_state.margin = UsdValue::new_int(500_000);
+        USER_STATES
+            .save(&mut ctx.storage, COUNTER_B, &counter_b_state)
+            .unwrap();
+
+        // No book orders — forces full ADL.
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), pair_param);
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_500));
+
+        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let result = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut EventBuilder::new(),
+        );
+
+        assert!(
+            result.is_ok(),
+            "liquidation should succeed: {:?}",
+            result.err()
+        );
+
+        let LiquidateOutcome {
+            user_state,
+            maker_states,
+            ..
+        } = result.unwrap();
+
+        // Post-fix: USER should have no positions (exact close, no over-close).
+        //
+        // Pre-fix (wrong): USER would end up with a short ~3 BTC position
+        // because snap_to_full_close over-closed by the difference between
+        // COUNTER_B's full size (5) and the remaining (2).
+        assert!(
+            user_state.positions.is_empty(),
+            "USER should have no positions after liquidation, got: {:?}",
+            user_state.positions
+        );
+
+        // Post-fix: COUNTER_B should still have a short position (partial ADL,
+        // only 2 of 5 BTC absorbed).
+        //
+        // Pre-fix (wrong): COUNTER_B would be fully closed (all 5 BTC absorbed)
+        // because snap inflated the fill from 2 to 5.
+        let counter_b = &maker_states[&COUNTER_B];
+        assert!(
+            counter_b.positions.contains_key(&pair_btc()),
+            "COUNTER_B should still have a position (partial ADL)"
         );
     }
 }
