@@ -934,7 +934,7 @@
                 "tiers": {}
               },
               "vault_cooldown_period": "86400",
-              "vault_deposit_cap": "500000",
+              "vault_deposit_cap": null,
               "vault_total_weight": "7"
             }
           },

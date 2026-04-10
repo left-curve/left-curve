@@ -186,7 +186,7 @@ mod tests {
     use {
         super::*,
         dango_types::perps::UserState,
-        grug::{MockStorage, Uint128, hash_map},
+        grug::{MockStorage, NumberConst, Uint128, hash_map},
     };
 
     fn default_param() -> Param {
@@ -489,5 +489,124 @@ mod tests {
         // effective_supply = 3M, effective_equity = $3
         // floor(3M * 1M / 3M) = 1_000_000 (exact, no rounding needed).
         assert_eq!(user_state.vault_shares, Uint128::new(1_000_000));
+    }
+
+    // ---- Test: deposit within cap succeeds ----
+    #[test]
+    fn deposit_within_cap_succeeds() {
+        let storage = MockStorage::new();
+
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let param = Param {
+            vault_deposit_cap: Some(UsdValue::new_int(10)),
+            ..Default::default()
+        };
+        let mut state = State {
+            vault_share_supply: Uint128::ZERO,
+            ..Default::default()
+        };
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(10),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState::default();
+
+        let shares = _add_liquidity(
+            &perp_querier,
+            &mut oracle_querier,
+            &param,
+            &mut state,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(5),
+            None,
+        )
+        .unwrap();
+
+        assert!(shares > Uint128::ZERO);
+        assert_eq!(user_state.margin, UsdValue::new_int(5));
+    }
+
+    // ---- Test: deposit exceeding cap rejected ----
+    #[test]
+    fn deposit_exceeding_cap_rejected() {
+        let storage = MockStorage::new();
+
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let param = Param {
+            vault_deposit_cap: Some(UsdValue::new_int(8)),
+            ..Default::default()
+        };
+        let mut state = State {
+            vault_share_supply: Uint128::ZERO,
+            ..Default::default()
+        };
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(10),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(5),
+            ..Default::default()
+        };
+
+        let err = _add_liquidity(
+            &perp_querier,
+            &mut oracle_querier,
+            &param,
+            &mut state,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(5),
+            None,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("vault deposit cap exceeded"));
+    }
+
+    // ---- Test: deposit exactly at cap succeeds ----
+    #[test]
+    fn deposit_exactly_at_cap_succeeds() {
+        let storage = MockStorage::new();
+
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let param = Param {
+            vault_deposit_cap: Some(UsdValue::new_int(10)),
+            ..Default::default()
+        };
+        let mut state = State {
+            vault_share_supply: Uint128::ZERO,
+            ..Default::default()
+        };
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(10),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(5),
+            ..Default::default()
+        };
+
+        let shares = _add_liquidity(
+            &perp_querier,
+            &mut oracle_querier,
+            &param,
+            &mut state,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(5),
+            None,
+        )
+        .unwrap();
+
+        assert!(shares > Uint128::ZERO);
+        assert_eq!(vault_user_state.margin, UsdValue::new_int(10));
     }
 }

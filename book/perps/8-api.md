@@ -1420,28 +1420,28 @@ query {
 }
 ```
 
-| Field              | Type                                   | Description                                                                     |
-| ------------------ | -------------------------------------- | ------------------------------------------------------------------------------- |
-| `margin`           | `UsdValue`                             | The user's deposited margin                                                     |
-| `vault_shares`     | `Uint128`                              | Vault shares owned by this user                                                 |
-| `unlocks`          | `[Unlock]`                             | Pending vault withdrawal cooldowns                                              |
-| `reserved_margin`  | `UsdValue`                             | Margin reserved for resting limit orders                                        |
-| `open_order_count` | `usize`                                | Number of resting limit orders                                                  |
-| `equity`           | `UsdValue\|null`                       | margin + unrealized PnL − unrealized funding; `null` if not requested           |
-| `available_margin` | `UsdValue\|null`                       | margin − initial margin requirements − reserved margin; `null` if not requested |
-| `positions`        | `Map<PairId, PositionExtended>`        | Open positions with optional computed data (see below)                          |
+| Field              | Type                            | Description                                                                     |
+| ------------------ | ------------------------------- | ------------------------------------------------------------------------------- |
+| `margin`           | `UsdValue`                      | The user's deposited margin                                                     |
+| `vault_shares`     | `Uint128`                       | Vault shares owned by this user                                                 |
+| `unlocks`          | `[Unlock]`                      | Pending vault withdrawal cooldowns                                              |
+| `reserved_margin`  | `UsdValue`                      | Margin reserved for resting limit orders                                        |
+| `open_order_count` | `usize`                         | Number of resting limit orders                                                  |
+| `equity`           | `UsdValue\|null`                | margin + unrealized PnL − unrealized funding; `null` if not requested           |
+| `available_margin` | `UsdValue\|null`                | margin − initial margin requirements − reserved margin; `null` if not requested |
+| `positions`        | `Map<PairId, PositionExtended>` | Open positions with optional computed data (see below)                          |
 
 **PositionExtended:**
 
-| Field                     | Type                     | Description                                                                                            |
-| ------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `size`                    | `Quantity`               | Positive = long, negative = short                                                                      |
-| `entry_price`             | `UsdPrice`               | Average entry price                                                                                    |
-| `entry_funding_per_unit`  | `FundingPerUnit`         | Funding accumulator at last update                                                                     |
-| `conditional_order_above` | `ConditionalOrder\|null` | TP/SL that triggers when oracle >= trigger_price                                                       |
-| `conditional_order_below` | `ConditionalOrder\|null` | TP/SL that triggers when oracle <= trigger_price                                                       |
-| `unrealized_pnl`          | `UsdValue\|null`         | `size * (oracle_price - entry_price)`; positive = profit; `null` if not requested                      |
-| `unrealized_funding`      | `UsdValue\|null`         | `size * (current_funding_per_unit - entry_funding_per_unit)`; positive = cost; `null` if not requested |
+| Field                     | Type                     | Description                                                                                                                   |
+| ------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `size`                    | `Quantity`               | Positive = long, negative = short                                                                                             |
+| `entry_price`             | `UsdPrice`               | Average entry price                                                                                                           |
+| `entry_funding_per_unit`  | `FundingPerUnit`         | Funding accumulator at last update                                                                                            |
+| `conditional_order_above` | `ConditionalOrder\|null` | TP/SL that triggers when oracle >= trigger_price                                                                              |
+| `conditional_order_below` | `ConditionalOrder\|null` | TP/SL that triggers when oracle <= trigger_price                                                                              |
+| `unrealized_pnl`          | `UsdValue\|null`         | `size * (oracle_price - entry_price)`; positive = profit; `null` if not requested                                             |
+| `unrealized_funding`      | `UsdValue\|null`         | `size * (current_funding_per_unit - entry_funding_per_unit)`; positive = cost; `null` if not requested                        |
 | `liquidation_price`       | `UsdPrice\|null`         | Oracle price that triggers account liquidation (other prices held constant); `null` if not requested or no valid price exists |
 
 `equity` reflects the total account value including unrealized positions. `available_margin` is the amount the user can withdraw or use for new orders.
@@ -1589,13 +1589,13 @@ Place a resting order on the book:
 }
 ```
 
-| Field         | Type          | Description                                                            |
-| ------------- | ------------- | ---------------------------------------------------------------------- |
-| `limit_price`   | `UsdPrice`      | Limit price — must be aligned to `tick_size`                           |
-| `time_in_force` | `TimeInForce`   | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                   |
-| `reduce_only`   | `bool`          | If `true`, only position-closing portion is kept                       |
-| `tp`            | `ChildOrder?`   | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
-| `sl`            | `ChildOrder?`   | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
+| Field           | Type          | Description                                                            |
+| --------------- | ------------- | ---------------------------------------------------------------------- |
+| `limit_price`   | `UsdPrice`    | Limit price — must be aligned to `tick_size`                           |
+| `time_in_force` | `TimeInForce` | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                    |
+| `reduce_only`   | `bool`        | If `true`, only position-closing portion is kept                       |
+| `tp`            | `ChildOrder?` | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
+| `sl`            | `ChildOrder?` | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
 
 **Time-in-force options:**
 
@@ -2307,10 +2307,8 @@ Additional integer types:
 
 ### Contract addresses
 
-These addresses are the same on both mainnet and testnet.
-
-| Name                       | Address                                      |
-| -------------------------- | -------------------------------------------- |
-| `ACCOUNT_FACTORY_CONTRACT` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` |
-| `PERPS_CONTRACT`           | `0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69` |
-| `ORACLE_CONTRACT`          | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` |
+| Name                       | Mainnet                                      | Testnet                                      |
+| -------------------------- | -------------------------------------------- | -------------------------------------------- |
+| `ACCOUNT_FACTORY_CONTRACT` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` |
+| `ORACLE_CONTRACT`          | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` |
+| `PERPS_CONTRACT`           | `0x90bc84df68d1aa59a857e04ed529e9a26edbea4f` | `0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69` |
