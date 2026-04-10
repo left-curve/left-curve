@@ -4,7 +4,8 @@ use {
     anyhow::anyhow,
     dango_client::{Keystore, Secp256k1, Secret, SingleSigner},
     grug::{
-        Addr, BroadcastClientExt, GasOption, JsonSerExt, Message, QueryClientExt, SearchTxClient,
+        Addr, BroadcastClientExt, GasOption, JsonSerExt, Message, NonEmpty, QueryClientExt,
+        SearchTxClient,
     },
     grug_app::GAS_COSTS,
     indexer_client::HttpClient,
@@ -14,11 +15,17 @@ use {
 #[async_trait::async_trait]
 pub trait MessageBuilder {
     async fn build_message(client: &HttpClient) -> anyhow::Result<Message>;
+
+    async fn build_messages(client: &HttpClient) -> anyhow::Result<NonEmpty<Vec<Message>>> {
+        Self::build_message(client)
+            .await
+            .map(|msg| NonEmpty::new_unchecked(vec![msg]))
+    }
 }
 
 pub async fn send_message<T>(api_url: &str, secret_path: &str, sender: Addr) -> anyhow::Result<()>
 where
-    T: MessageBuilder,
+    T: MessageBuilder + Send,
 {
     let client = HttpClient::new(api_url)?;
 
@@ -42,12 +49,12 @@ where
         .with_query_nonce(&client)
         .await?;
 
-    let msg = T::build_message(&client).await?;
+    let msgs = T::build_messages(&client).await?;
 
     let outcome = client
-        .send_message_with_confirmation(
+        .send_messages_with_confirmation(
             &mut sender,
-            msg,
+            msgs,
             GasOption::Simulate {
                 scale: 2.,
                 flat_increase: GAS_COSTS.secp256k1_verify,
