@@ -12,8 +12,8 @@ use {
         price::may_invert_price,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{
-            ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-            USER_STATES,
+            ASKS, BIDS, CLIENT_ORDER_IDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM,
+            STATE, USER_STATES,
         },
         trade::{_submit_order, SubmitOrderOutcome},
         volume::flush_volumes,
@@ -659,6 +659,13 @@ fn process_triggered_order(
                 maker_book.save(storage, order_key, &maker_order)?;
             },
             None => {
+                // Clean up client_order_id mapping for fully-removed maker orders.
+                if let Some(order) = maker_book.may_load(storage, order_key.clone())?
+                    && let Some(ref coid) = order.client_order_id
+                {
+                    CLIENT_ORDER_IDS.remove(storage, (&order.user, coid.as_str()));
+                }
+
                 maker_book.remove(storage, order_key)?;
             },
         }

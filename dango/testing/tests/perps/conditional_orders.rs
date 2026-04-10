@@ -123,7 +123,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
         "should have a conditional order above (TP)"
     );
 
-    // Step 6: Bidder (user2) places bid: 10 ETH @ $2,500.
+    // Step 6: Bidder (user2) places bid: 10 ETH @ $2,500 with client_order_id.
     suite
         .execute(
             &mut accounts.user2,
@@ -134,7 +134,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
                     time_in_force: perps::TimeInForce::PostOnly,
-                    client_order_id: None,
+                    client_order_id: Some("cron-maker-1".into()),
                 },
                 reduce_only: false,
                 tp: None,
@@ -177,6 +177,28 @@ fn conditional_order_tp_triggers_on_price_rise() {
         state.positions.is_empty(),
         "all positions should be gone after TP triggered"
     );
+
+    // Step 11: User2's bid was fully consumed by the TP. Verify the
+    // CLIENT_ORDER_IDS mapping was cleaned up by reusing the same ID.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_400),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: Some("cron-maker-1".into()),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
 }
 
 /// SL triggers on price drop: deposit → buy → place SL → oracle drops →

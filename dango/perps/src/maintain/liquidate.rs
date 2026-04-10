@@ -12,8 +12,8 @@ use {
         price::may_invert_price,
         querier::NoCachePerpQuerier,
         state::{
-            ASKS, BIDS, LONGS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE,
-            USER_STATES,
+            ASKS, BIDS, CLIENT_ORDER_IDS, LONGS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM,
+            SHORTS, STATE, USER_STATES,
         },
         trade::{
             _cancel_all_orders, CancelAllOrdersOutcome, MatchOrderOutcome, match_order,
@@ -216,6 +216,13 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
                 maker_book.save(ctx.storage, order_key, &order)?;
             },
             None => {
+                // Clean up client_order_id mapping for fully-removed maker orders.
+                if let Some(order) = maker_book.may_load(ctx.storage, order_key.clone())?
+                    && let Some(ref coid) = order.client_order_id
+                {
+                    CLIENT_ORDER_IDS.remove(ctx.storage, (&order.user, coid.as_str()));
+                }
+
                 maker_book.remove(ctx.storage, order_key)?;
             },
         }

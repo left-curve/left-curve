@@ -198,7 +198,7 @@ fn liquidation_on_order_book() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
                     time_in_force: perps::TimeInForce::PostOnly,
-                    client_order_id: None,
+                    client_order_id: Some("liq-maker-1".into()),
                 },
                 reduce_only: false,
                 tp: None,
@@ -317,6 +317,48 @@ fn liquidation_on_order_book() {
         UsdPrice::new_int(1_450),
         "bidder entry price should be $1,450"
     );
+
+    // -------------------------------------------------------------------------
+    // Step 7: Second liquidation — drop price further so user1's remaining
+    // ~3.31 ETH position is fully closed against user3's remaining ~3.31 ETH
+    // bid at $1,450, fully consuming it (exercises the `None` branch in the
+    // order mutations loop, which must clean up CLIENT_ORDER_IDS).
+    // -------------------------------------------------------------------------
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_300);
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Liquidate {
+                user: accounts.user1.address(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User3's bid should now be fully consumed. Verify the client_order_id
+    // mapping was cleaned up by reusing the same ID for a new order.
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_200),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: Some("liq-maker-1".into()),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
 }
 
 /// Covers: liquidation with ADL and insurance fund.
