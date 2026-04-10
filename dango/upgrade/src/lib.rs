@@ -1,93 +1,89 @@
 use {
     dango_types::{
-        Dimensionless, UsdValue,
-        perps::{self, RateSchedule},
+        Dimensionless, FundingRate, Quantity, UsdPrice, UsdValue,
+        perps::{self, PairId},
     },
-    grug::{Addr, BlockInfo, Duration, StdResult, Storage, addr},
+    grug::{Addr, BlockInfo, Order as IterationOrder, StdResult, Storage, addr},
     grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
+    std::collections::BTreeSet,
 };
 
 const MAINNET_CHAIN_ID: &str = "dango-1";
 const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbea4f");
-const MAINNET_VAULT_DEPOSIT_CAP: Option<UsdValue> = Some(UsdValue::new_int(500_000));
 
 const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
 const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
-const TESTNET_VAULT_DEPOSIT_CAP: Option<UsdValue> = None;
 
 /// Legacy types matching the pre-upgrade Borsh layout.
+///
+/// `PairParam` before this upgrade does not contain the three inventory
+/// skew fields: `vault_size_skew_factor`, `vault_spread_skew_factor`,
+/// `vault_max_skew_size`.
 mod legacy {
     use super::*;
 
-    pub const PARAM: grug::Item<Param> = grug::Item::new("param");
+    pub const PAIR_PARAMS: grug::Map<&PairId, PairParam> = grug::Map::new("pair_param");
 
-    /// The Param struct before this upgrade, which does not contain the
-    /// `vault_deposit_cap` field.
     #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
-    pub struct Param {
-        pub max_unlocks: usize,
-        pub max_open_orders: usize,
-        pub maker_fee_rates: RateSchedule,
-        pub taker_fee_rates: RateSchedule,
-        pub protocol_fee_rate: Dimensionless,
-        pub liquidation_fee_rate: Dimensionless,
-        pub liquidation_buffer_ratio: Dimensionless,
-        pub funding_period: Duration,
-        pub vault_total_weight: Dimensionless,
-        pub vault_cooldown_period: Duration,
-        pub referral_active: bool,
-        pub min_referrer_volume: UsdValue,
-        pub referrer_commission_rates: RateSchedule,
+    pub struct PairParam {
+        pub tick_size: UsdPrice,
+        pub min_order_size: UsdValue,
+        pub max_abs_oi: Quantity,
+        pub max_abs_funding_rate: FundingRate,
+        pub initial_margin_ratio: Dimensionless,
+        pub maintenance_margin_ratio: Dimensionless,
+        pub impact_size: UsdValue,
+        pub vault_liquidity_weight: Dimensionless,
+        pub vault_half_spread: Dimensionless,
+        pub vault_max_quote_size: Quantity,
+        pub bucket_sizes: BTreeSet<UsdPrice>,
     }
 }
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
     let chain_id = CHAIN_ID.load(&storage)?;
 
-    let (perps_address, vault_deposit_cap) = match chain_id.as_str() {
-        MAINNET_CHAIN_ID => (MAINNET_PERPS_ADDRESS, MAINNET_VAULT_DEPOSIT_CAP),
-        TESTNET_CHAIN_ID => (TESTNET_PERPS_ADDRESS, TESTNET_VAULT_DEPOSIT_CAP),
+    let perps_address = match chain_id.as_str() {
+        MAINNET_CHAIN_ID => MAINNET_PERPS_ADDRESS,
+        TESTNET_CHAIN_ID => TESTNET_PERPS_ADDRESS,
         _ => panic!("unknown chain id: {chain_id}"),
     };
 
     let mut storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
 
-    Ok(_do_upgrade(&mut storage, vault_deposit_cap)?)
+    Ok(_do_upgrade(&mut storage)?)
 }
 
-fn _do_upgrade(storage: &mut dyn Storage, vault_deposit_cap: Option<UsdValue>) -> StdResult<()> {
-    let old_param = legacy::PARAM.load(storage)?;
+fn _do_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
+    let old_params: Vec<_> = legacy::PAIR_PARAMS
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<_>>()?;
 
-    let new_param = perps::Param {
-        // New!
-        vault_deposit_cap,
+    let count = old_params.len();
 
-        // Fields copied directly from the old `Param`.
-        max_unlocks: old_param.max_unlocks,
-        max_open_orders: old_param.max_open_orders,
-        maker_fee_rates: old_param.maker_fee_rates,
-        taker_fee_rates: old_param.taker_fee_rates,
-        protocol_fee_rate: old_param.protocol_fee_rate,
-        liquidation_fee_rate: old_param.liquidation_fee_rate,
-        liquidation_buffer_ratio: old_param.liquidation_buffer_ratio,
-        funding_period: old_param.funding_period,
-        vault_total_weight: old_param.vault_total_weight,
-        vault_cooldown_period: old_param.vault_cooldown_period,
-        referral_active: old_param.referral_active,
-        min_referrer_volume: old_param.min_referrer_volume,
-        referrer_commission_rates: old_param.referrer_commission_rates,
-    };
+    for (pair_id, old) in old_params {
+        let new = perps::PairParam {
+            tick_size: old.tick_size,
+            min_order_size: old.min_order_size,
+            max_abs_oi: old.max_abs_oi,
+            max_abs_funding_rate: old.max_abs_funding_rate,
+            initial_margin_ratio: old.initial_margin_ratio,
+            maintenance_margin_ratio: old.maintenance_margin_ratio,
+            impact_size: old.impact_size,
+            vault_liquidity_weight: old.vault_liquidity_weight,
+            vault_half_spread: old.vault_half_spread,
+            vault_max_quote_size: old.vault_max_quote_size,
+            // New fields — disabled (zero) until governance sets real values.
+            vault_size_skew_factor: Dimensionless::ZERO,
+            vault_spread_skew_factor: Dimensionless::ZERO,
+            vault_max_skew_size: Quantity::ZERO,
+            bucket_sizes: old.bucket_sizes,
+        };
 
-    dango_perps::state::PARAM.save(storage, &new_param)?;
+        dango_perps::state::PAIR_PARAMS.save(storage, &pair_id, &new)?;
+    }
 
-    tracing::info!(
-        "Migrated Param (added vault_deposit_cap = {})",
-        if let Some(cap) = vault_deposit_cap {
-            format!("Some(${cap})")
-        } else {
-            "None".to_string()
-        }
-    );
+    tracing::info!("Migrated {count} PairParam entries (added inventory skew fields)");
 
     Ok(())
 }
