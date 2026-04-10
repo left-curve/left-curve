@@ -387,10 +387,20 @@ mod tests {
         }
     }
 
+    /// Zero position produces the same quotes regardless of skew parameters.
+    ///
+    /// Setup: oracle = $1000, margin = $10k, half_spread = 1%, base_size = 50.
+    /// Skew params: size_factor = 0.5, spread_factor = 0.3, max_skew = 50.
+    /// Position = 0 → skew = 0.
+    ///
+    /// |     | naive        | skew-based   |
+    /// |-----|--------------|--------------|
+    /// | bid | 50 @ $990    | 50 @ $990    |
+    /// | ask | 50 @ $1010   | 50 @ $1010   |
+    ///
+    /// Effect: no adjustment because position is flat.
     #[test]
     fn zero_position_matches_naive() {
-        // With skew params set but zero position, output should be identical
-        // to the naive strategy (skew = 0 → no adjustment).
         let skew = skew_pair_param();
         let naive = default_pair_param();
         let oracle = UsdPrice::new_int(1000);
@@ -410,9 +420,19 @@ mod tests {
         assert_eq!(sa.size, na.size);
     }
 
+    /// Non-zero position with zero skew factors produces naive quotes.
+    ///
+    /// Setup: oracle = $1000, margin = $10k, base_size = 50.
+    /// Skew params: all zero (disabled). Position = 30 (long).
+    ///
+    /// |     | naive        | skew-based   |
+    /// |-----|--------------|--------------|
+    /// | bid | 50 @ $990    | 50 @ $990    |
+    /// | ask | 50 @ $1010   | 50 @ $1010   |
+    ///
+    /// Effect: position is ignored entirely when skew is disabled.
     #[test]
     fn zero_skew_factors_match_naive() {
-        // Non-zero position but zero skew factors → same as naive.
         let pair_param = default_pair_param(); // skew factors default to zero
         let oracle = UsdPrice::new_int(1000);
         let margin = UsdValue::new_int(10_000);
@@ -438,15 +458,24 @@ mod tests {
         assert_eq!(an.size, al.size);
     }
 
+    /// Long position reduces bid size and increases ask size.
+    ///
+    /// Setup: oracle = $1000, margin = $10k, base_size = 50.
+    /// Skew params: size_factor = 0.5, spread_factor = 0.3, max_skew = 50.
+    /// Position = 25 (long) → skew = 0.5.
+    ///
+    /// |     | naive | skew-based |
+    /// |-----|-------|------------|
+    /// | bid | 50    | 37.5       |
+    /// | ask | 50    | 62.5       |
+    ///
+    /// Effect: vault offers more on the sell side to unwind its long,
+    /// while reducing the buy side that would deepen it.
     #[test]
     fn skew_tilts_sizes_when_long() {
         let pair_param = skew_pair_param();
         let oracle = UsdPrice::new_int(1000);
         let margin = UsdValue::new_int(10_000);
-
-        // Position = 25 (half of max_skew_size=50), so skew = 0.5.
-        // bid_size = base * (1 - 0.5 * 0.5) = base * 0.75
-        // ask_size = base * (1 + 0.5 * 0.5) = base * 1.25
         let (bid, ask) = compute_vault_quotes(
             oracle,
             &pair_param,
@@ -464,15 +493,24 @@ mod tests {
         assert!(bid.size.checked_abs().unwrap() < ask.size.checked_abs().unwrap());
     }
 
+    /// Short position increases bid size and reduces ask size.
+    ///
+    /// Setup: oracle = $1000, margin = $10k, base_size = 50.
+    /// Skew params: size_factor = 0.5, spread_factor = 0.3, max_skew = 50.
+    /// Position = -25 (short) → skew = -0.5.
+    ///
+    /// |     | naive | skew-based |
+    /// |-----|-------|------------|
+    /// | bid | 50    | 62.5       |
+    /// | ask | 50    | 37.5       |
+    ///
+    /// Effect: vault offers more on the buy side to unwind its short,
+    /// while reducing the sell side that would deepen it.
     #[test]
     fn skew_tilts_sizes_when_short() {
         let pair_param = skew_pair_param();
         let oracle = UsdPrice::new_int(1000);
         let margin = UsdValue::new_int(10_000);
-
-        // Position = -25, skew = -0.5.
-        // bid_size = base * (1 - (-0.5) * 0.5) = base * 1.25
-        // ask_size = base * (1 + (-0.5) * 0.5) = base * 0.75
         let (bid, ask) = compute_vault_quotes(
             oracle,
             &pair_param,
@@ -490,6 +528,19 @@ mod tests {
         assert!(bid.size.checked_abs().unwrap() > ask.size.checked_abs().unwrap());
     }
 
+    /// Long position widens bid spread and tightens ask spread.
+    ///
+    /// Setup: oracle = $1000, margin = $10k, half_spread = 1%.
+    /// Skew params: size_factor = 0.5, spread_factor = 0.3, max_skew = 50.
+    /// Position = 25 (long) → skew = 0.5.
+    ///
+    /// |     | naive       | skew-based  |
+    /// |-----|-------------|-------------|
+    /// | bid | 50 @ $990   | 37.5 @ $988 |
+    /// | ask | 50 @ $1010  | 62.5 @ $1009|
+    ///
+    /// Effect: bid further from oracle (less likely to fill → less buying);
+    /// ask closer to oracle (more likely to fill → more selling to unwind).
     #[test]
     fn skew_tilts_spreads_when_long() {
         let pair_param = skew_pair_param();
@@ -520,13 +571,24 @@ mod tests {
         assert!(la.price <= na.price);
     }
 
+    /// Skew clamps at ±1 when position exceeds max_skew_size.
+    ///
+    /// Setup: oracle = $1000, margin = $10k.
+    /// Skew params: size_factor = 0.5, spread_factor = 0.3, max_skew = 50.
+    ///
+    /// |     | naive       | pos=50 (skew=1) | pos=100 (clamped to 1) |
+    /// |-----|-------------|-----------------|------------------------|
+    /// | bid | 50 @ $990   | 25 @ $987       | 25 @ $987              |
+    /// | ask | 50 @ $1010  | 75 @ $1007      | 75 @ $1007             |
+    ///
+    /// Effect: beyond max_skew_size the vault doesn't skew any harder,
+    /// preventing extreme behavior with very large positions.
     #[test]
     fn skew_saturates_at_max() {
         let pair_param = skew_pair_param();
         let oracle = UsdPrice::new_int(1000);
         let margin = UsdValue::new_int(10_000);
 
-        // Position = max_skew_size (50) → skew = 1.
         let (b1, a1) = compute_vault_quotes(
             oracle,
             &pair_param,
@@ -557,9 +619,22 @@ mod tests {
         assert_eq!(a1.size, a2.size);
     }
 
+    /// At maximum skew with size_factor = 1.0, one side is fully disabled.
+    ///
+    /// Setup: oracle = $1000, margin = $10k, base_size = 50.
+    /// Skew params: size_factor = 1.0, spread_factor = 0, max_skew = 50.
+    /// Position = 50 (long) → skew = 1.0.
+    ///
+    /// |     | naive       | skew-based    |
+    /// |-----|-------------|---------------|
+    /// | bid | 50 @ $990   | None (size=0) |
+    /// | ask | 50 @ $1010  | 100 @ $1010   |
+    ///
+    /// Effect: vault completely stops buying and doubles sell capacity.
+    /// Most aggressive unwinding posture — all liquidity directed at
+    /// reducing the long position.
     #[test]
     fn max_size_skew_disables_one_side() {
-        // size_skew_factor = 1.0 and position = max → bid_size = 0, ask_size = 2x.
         let pair_param = PairParam {
             vault_size_skew_factor: Dimensionless::new_int(1),
             vault_spread_skew_factor: Dimensionless::ZERO,
