@@ -19,18 +19,16 @@ export const OpenInterestDisplay: React.FC = () => {
 
   const { data: pairParam } = usePerpsPairParam({ pairId: getPerpsPairId() });
 
-  const { longOiUsd, shortOiUsd, totalOiUsd, isAtLimit } = useMemo(() => {
+  const { totalOiUsd, isAtLimit } = useMemo(() => {
     if (!pairState || !currentPrice) {
-      return { longOiUsd: null, shortOiUsd: null, totalOiUsd: null, isAtLimit: false };
+      return { totalOiUsd: null, isAtLimit: false };
     }
 
     const price = Decimal(currentPrice);
     const longOi = Decimal(pairState.longOi);
     const shortOi = Decimal(pairState.shortOi);
 
-    const longOiUsd = longOi.mul(price);
-    const shortOiUsd = shortOi.mul(price);
-    const totalOiUsd = longOiUsd.plus(shortOiUsd);
+    const totalOiUsd = longOi.mul(price).plus(shortOi.mul(price));
 
     // Check if OI is at limit
     let isAtLimit = false;
@@ -40,8 +38,6 @@ export const OpenInterestDisplay: React.FC = () => {
     }
 
     return {
-      longOiUsd: longOiUsd.toString(),
-      shortOiUsd: shortOiUsd.toString(),
       totalOiUsd: totalOiUsd.toString(),
       isAtLimit,
     };
@@ -64,7 +60,6 @@ export const OpenInterestDisplay: React.FC = () => {
             isAtLimit ? "text-status-fail" : "text-ink-secondary-700",
           )}
         >
-          <OiValue value={longOiUsd} /> / <OiValue value={shortOiUsd} /> /{" "}
           <OiValue value={totalOiUsd} />
         </p>
         {isAtLimit && (
