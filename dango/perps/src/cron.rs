@@ -562,14 +562,13 @@ fn process_triggered_order(
         None, // sl
         events,
     ) {
-        Err(_) => {
-            // Order couldn't fill (slippage exceeded or no liquidity).
-            // Cancel it gracefully — don't block other orders.
+        Err(err) => {
+            // Order couldn't fill — cancel it gracefully.
             events.push(ConditionalOrderRemoved {
                 pair_id: pair_id.clone(),
                 user,
                 trigger_direction,
-                reason: ReasonForOrderRemoval::SlippageExceeded,
+                reason: ReasonForOrderRemoval::Generic(err.to_string()),
             })?;
 
             if user_state.is_empty() {

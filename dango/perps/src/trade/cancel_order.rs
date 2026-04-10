@@ -205,7 +205,7 @@ pub fn _cancel_all_orders(
             order_key,
             order,
             events.as_deref_mut(),
-            reason,
+            reason.clone(),
             |_, pair_id| Ok(pair_params[pair_id].clone()),
         )?;
     }

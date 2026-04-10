@@ -1157,7 +1157,6 @@ pub struct ConditionalOrderRemoved {
 }
 
 #[grug::derive(Serde)]
-#[derive(Copy)]
 pub enum ReasonForOrderRemoval {
     /// The order was fully filled.
     Filled,
@@ -1182,6 +1181,11 @@ pub enum ReasonForOrderRemoval {
     /// The conditional order was triggered but could not fill within the
     /// user's max_slippage tolerance (insufficient book liquidity).
     SlippageExceeded,
+
+    /// A triggered conditional order failed for a reason not covered by other
+    /// variants (e.g. slippage exceeded, resulting position below minimum size,
+    /// no liquidity). Contains the error message.
+    Generic(String),
 }
 
 /// Event indicating a user has been liquidated in a specific pair.

@@ -111,7 +111,7 @@ $$
 
 **Book-crossing prevention:** if $\mathtt{bidPrice} \geq \mathtt{bestAsk}$, clamp to $\mathtt{bestAsk} - \mathtt{tickSize}$.
 
-Skip if $\mathtt{bidPrice} \leq 0$ or notional is below the minimum order size.
+Skip if $\mathtt{bidPrice} \leq 0$ or notional is below the minimum position size.
 
 ### Ask price
 
@@ -130,7 +130,7 @@ $$
 
 **Book-crossing prevention:** if $\mathtt{askPrice} \leq \mathtt{bestBid}$, clamp to $\mathtt{bestBid} + \mathtt{tickSize}$.
 
-Skip if notional is below the minimum order size.
+Skip if notional is below the minimum position size.
 
 ### Per-pair parameters
 
