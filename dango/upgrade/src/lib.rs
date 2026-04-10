@@ -9,9 +9,11 @@ use {
 
 const MAINNET_CHAIN_ID: &str = "dango-1";
 const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbea4f");
+const MAINNET_VAULT_DEPOSIT_CAP: Option<UsdValue> = Some(UsdValue::new_int(500_000));
 
 const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
 const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
+const TESTNET_VAULT_DEPOSIT_CAP: Option<UsdValue> = None;
 
 /// Legacy types matching the pre-upgrade Borsh layout.
 mod legacy {
@@ -42,21 +44,25 @@ mod legacy {
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
     let chain_id = CHAIN_ID.load(&storage)?;
 
-    let perps_address = match chain_id.as_str() {
-        MAINNET_CHAIN_ID => MAINNET_PERPS_ADDRESS,
-        TESTNET_CHAIN_ID => TESTNET_PERPS_ADDRESS,
+    let (perps_address, vault_deposit_cap) = match chain_id.as_str() {
+        MAINNET_CHAIN_ID => (MAINNET_PERPS_ADDRESS, MAINNET_VAULT_DEPOSIT_CAP),
+        TESTNET_CHAIN_ID => (TESTNET_PERPS_ADDRESS, TESTNET_VAULT_DEPOSIT_CAP),
         _ => panic!("unknown chain id: {chain_id}"),
     };
 
     let mut storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
 
-    Ok(_do_upgrade(&mut storage)?)
+    Ok(_do_upgrade(&mut storage, vault_deposit_cap)?)
 }
 
-fn _do_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
+fn _do_upgrade(storage: &mut dyn Storage, vault_deposit_cap: Option<UsdValue>) -> StdResult<()> {
     let old_param = legacy::PARAM.load(storage)?;
 
     let new_param = perps::Param {
+        // New!
+        vault_deposit_cap,
+
+        // Fields copied directly from the old `Param`.
         max_unlocks: old_param.max_unlocks,
         max_open_orders: old_param.max_open_orders,
         maker_fee_rates: old_param.maker_fee_rates,
@@ -70,12 +76,18 @@ fn _do_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
         referral_active: old_param.referral_active,
         min_referrer_volume: old_param.min_referrer_volume,
         referrer_commission_rates: old_param.referrer_commission_rates,
-        vault_deposit_cap: Some(UsdValue::new_int(500_000)),
     };
 
     dango_perps::state::PARAM.save(storage, &new_param)?;
 
-    tracing::info!("Migrated Param (added vault_deposit_cap = $500,000)");
+    tracing::info!(
+        "Migrated Param (added vault_deposit_cap = {})",
+        if let Some(cap) = vault_deposit_cap {
+            format!("Some(${cap})")
+        } else {
+            "None".to_string()
+        }
+    );
 
     Ok(())
 }
