@@ -892,7 +892,10 @@
                 "tick_size": "1",
                 "vault_half_spread": "0.0005",
                 "vault_liquidity_weight": "4",
-                "vault_max_quote_size": "200"
+                "vault_max_quote_size": "200",
+                "vault_max_skew_size": "0",
+                "vault_size_skew_factor": "0",
+                "vault_spread_skew_factor": "0"
               },
               "perp/ethusd": {
                 "bucket_sizes": [
@@ -909,7 +912,10 @@
                 "tick_size": "1",
                 "vault_half_spread": "0.0006",
                 "vault_liquidity_weight": "3",
-                "vault_max_quote_size": "2000"
+                "vault_max_quote_size": "2000",
+                "vault_max_skew_size": "0",
+                "vault_size_skew_factor": "0",
+                "vault_spread_skew_factor": "0"
               }
             },
             "param": {
