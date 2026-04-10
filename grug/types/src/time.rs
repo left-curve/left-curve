@@ -151,6 +151,18 @@ impl Timestamp {
     }
 }
 
+impl From<std::time::Duration> for Duration {
+    fn from(duration: std::time::Duration) -> Self {
+        Self::from_nanos(duration.as_nanos())
+    }
+}
+
+impl From<Duration> for std::time::Duration {
+    fn from(duration: Duration) -> Self {
+        std::time::Duration::from_nanos(duration.into_nanos() as u64)
+    }
+}
+
 #[cfg(feature = "chrono")]
 impl From<DateTime<Utc>> for Timestamp {
     /// ## Panics
