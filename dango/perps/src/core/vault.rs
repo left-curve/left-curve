@@ -68,11 +68,11 @@ pub fn compute_vault_quotes(
     // bid_size = base_size * (1 - skew * size_skew_factor)
     // ask_size = base_size * (1 + skew * size_skew_factor)
     let skew_size_term = skew.checked_mul(pair_param.vault_size_skew_factor)?;
-    let bid_size = base_size.checked_mul(Dimensionless::ONE.checked_sub(skew_size_term)?)?;
-    let ask_size = base_size.checked_mul(Dimensionless::ONE.checked_add(skew_size_term)?)?;
 
+    let bid_size = base_size.checked_mul(Dimensionless::ONE.checked_sub(skew_size_term)?)?;
     let bid = compute_bid(oracle_price, pair_param, best_ask, bid_size, skew)?;
 
+    let ask_size = base_size.checked_mul(Dimensionless::ONE.checked_add(skew_size_term)?)?;
     let ask = compute_ask(oracle_price, pair_param, best_bid, ask_size, skew)?;
 
     Ok((bid, ask))
