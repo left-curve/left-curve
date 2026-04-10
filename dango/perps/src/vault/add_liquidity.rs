@@ -4,7 +4,7 @@ use {
         core::compute_user_equity,
         oracle,
         querier::NoCachePerpQuerier,
-        state::{STATE, USER_STATES},
+        state::{PARAM, STATE, USER_STATES},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -39,6 +39,8 @@ pub fn add_liquidity(
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
+    let param = PARAM.load(ctx.storage)?;
+
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
@@ -53,6 +55,7 @@ pub fn add_liquidity(
         &mut vault_user_state,
         amount,
         min_shares_to_mint,
+        param.vault_deposit_cap,
     )?;
 
     // ------------------------ 3. Apply state changes -------------------------
@@ -94,6 +97,7 @@ fn _add_liquidity(
     vault_user_state: &mut UserState,
     amount: UsdValue,
     min_shares_to_mint: Option<Uint128>,
+    vault_deposit_cap: Option<UsdValue>,
 ) -> anyhow::Result<Uint128> {
     // ----------------------- Step 1. Validate deposit ------------------------
 
@@ -108,6 +112,17 @@ fn _add_liquidity(
         user_state.margin,
         amount
     );
+
+    if let Some(cap) = vault_deposit_cap {
+        let post_deposit_margin = vault_user_state.margin.checked_add(amount)?;
+        ensure!(
+            post_deposit_margin <= cap,
+            "vault deposit cap exceeded! current ({}) + deposit ({}) > cap ({})",
+            vault_user_state.margin,
+            amount,
+            cap,
+        );
+    }
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
@@ -190,6 +205,7 @@ mod tests {
             &mut vault_user_state,
             UsdValue::new_int(1),
             None,
+            None,
         )
         .unwrap();
 
@@ -222,6 +238,7 @@ mod tests {
             &mut vault_user_state,
             UsdValue::new_int(1),
             None,
+            None,
         )
         .unwrap();
 
@@ -247,6 +264,7 @@ mod tests {
             &mut user_state,
             &mut vault_user_state,
             UsdValue::ZERO,
+            None,
             None,
         )
         .unwrap_err();
@@ -279,6 +297,7 @@ mod tests {
             &mut vault_user_state,
             UsdValue::new_int(1),
             None,
+            None,
         )
         .unwrap_err();
 
@@ -307,6 +326,7 @@ mod tests {
             &mut vault_user_state,
             UsdValue::new_int(1),
             Some(Uint128::new(1_000_000)),
+            None,
         )
         .unwrap();
 
@@ -335,6 +355,7 @@ mod tests {
             &mut vault_user_state,
             UsdValue::new_int(1),
             Some(Uint128::new(1_000_001)),
+            None,
         )
         .unwrap_err();
 
@@ -368,6 +389,7 @@ mod tests {
             &mut user_state,
             &mut vault_user_state,
             UsdValue::new_int(one_billion as i128),
+            None,
             None,
         )
         .unwrap();
@@ -409,6 +431,7 @@ mod tests {
             &mut vault_user_state,
             UsdValue::new_raw(1),
             None,
+            None,
         )
         .unwrap();
 
@@ -440,11 +463,107 @@ mod tests {
             &mut vault_user_state,
             UsdValue::new_int(1),
             None,
+            None,
         )
         .unwrap();
 
         // effective_supply = 3M, effective_equity = $3
         // floor(3M * 1M / 3M) = 1_000_000 (exact, no rounding needed).
         assert_eq!(user_state.vault_shares, Uint128::new(1_000_000));
+    }
+
+    // ---- Test: deposit within cap succeeds ----
+    #[test]
+    fn deposit_within_cap_succeeds() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::ZERO;
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(10),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        let shares = _add_liquidity(
+            &mut oracle_querier,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(5),
+            None,
+            Some(UsdValue::new_int(10)),
+        )
+        .unwrap();
+
+        assert!(shares > Uint128::ZERO);
+        assert_eq!(user_state.margin, UsdValue::new_int(5));
+    }
+
+    // ---- Test: deposit exceeding cap rejected ----
+    #[test]
+    fn deposit_exceeding_cap_rejected() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::ZERO;
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(10),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(5),
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        let err = _add_liquidity(
+            &mut oracle_querier,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(5),
+            None,
+            Some(UsdValue::new_int(8)),
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("vault deposit cap exceeded"));
+    }
+
+    // ---- Test: deposit exactly at cap succeeds ----
+    #[test]
+    fn deposit_exactly_at_cap_succeeds() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+
+        let mut vault_share_supply = Uint128::ZERO;
+        let mut user_state = UserState {
+            margin: UsdValue::new_int(10),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(5),
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        let shares = _add_liquidity(
+            &mut oracle_querier,
+            &mut vault_share_supply,
+            &perp_querier,
+            &mut user_state,
+            &mut vault_user_state,
+            UsdValue::new_int(5),
+            None,
+            Some(UsdValue::new_int(10)),
+        )
+        .unwrap();
+
+        assert!(shares > Uint128::ZERO);
+        assert_eq!(vault_user_state.margin, UsdValue::new_int(10));
     }
 }

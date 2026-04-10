@@ -57,6 +57,7 @@ fn param() -> Param {
                 UsdValue::new_int(100_000_000) => Dimensionless::new_percent(30), // 30% at $100M+
             },
         },
+        vault_deposit_cap: Some(UsdValue::new_int(500_000)), // $500k
     }
 }
 

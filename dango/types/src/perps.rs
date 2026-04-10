@@ -268,6 +268,11 @@ pub struct Param {
     /// Volume-tiered referrer commission rates. Highest qualifying tier wins;
     /// base rate applies when no tier is met.
     pub referrer_commission_rates: RateSchedule,
+
+    /// Maximum total margin the counterparty vault may hold. Deposits that
+    /// would push `vault_margin + deposit` above this cap are rejected.
+    /// `None` means no cap (unlimited deposits).
+    pub vault_deposit_cap: Option<UsdValue>,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
