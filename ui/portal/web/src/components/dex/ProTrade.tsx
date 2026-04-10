@@ -17,6 +17,7 @@ import {
   useLivePerpsTradesState,
   usePerpsUserState,
   usePerpsUserStateExtended,
+  useAppConfig,
   useOrdersByUser,
   usePerpsOrdersByUser,
   perpsOrdersByUserStore,
@@ -273,6 +274,7 @@ type PerpsPositionRow = {
   entryPrice: string;
   currentPrice: number;
   pnl: number;
+  estLiquidationPrice: number | null;
   conditionalOrderAbove?: ConditionalOrder;
   conditionalOrderBelow?: ConditionalOrder;
 };
@@ -283,6 +285,7 @@ const PerpsPositionsTable: React.FC = () => {
   const { formatNumberOptions } = settings;
   const { onChangePairId } = useProTrade();
 
+  const { data: appConfig } = useAppConfig();
   const userState = perpsUserStateStore((s) => s.userState);
   const perpsStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
 
@@ -305,6 +308,20 @@ const PerpsPositionsTable: React.FC = () => {
       const markPrice = Number(perpsStatsByPairId[pairId]?.currentPrice ?? pos.entryPrice);
       const size = Number(pos.size);
       const pnl = size * (markPrice - Number(pos.entryPrice));
+
+      let estLiquidationPrice: number | null = null;
+      const entryPrice = Number(pos.entryPrice);
+      const params = appConfig.perpsPairs[pairId];
+      if (Math.abs(size) > 0 && params) {
+        const imr = Number(params.initialMarginRatio ?? 0);
+        const mmr = Number(params.maintenanceMarginRatio ?? 0);
+        const leverage = imr > 0 ? 1 / imr : 1;
+        const isLong = size > 0;
+        estLiquidationPrice = isLong
+          ? (entryPrice * (1 - 1 / leverage)) / (1 - mmr)
+          : (entryPrice * (1 + 1 / leverage)) / (1 + mmr);
+      }
+
       result.push({
         pairId,
         symbol: coinSymbol,
@@ -312,12 +329,13 @@ const PerpsPositionsTable: React.FC = () => {
         entryPrice: pos.entryPrice,
         currentPrice: markPrice,
         pnl,
+        estLiquidationPrice,
         conditionalOrderAbove: pos.conditionalOrderAbove,
         conditionalOrderBelow: pos.conditionalOrderBelow,
       });
     }
     return result;
-  }, [userState, perpsStatsByPairId, symbolToDenom, coins.byDenom]);
+  }, [userState, appConfig, perpsStatsByPairId, symbolToDenom, coins.byDenom]);
 
   const columns: TableColumn<PerpsPositionRow> = useMemo(
     () => [
@@ -404,6 +422,24 @@ const PerpsPositionsTable: React.FC = () => {
             />
           );
         },
+      },
+      {
+        header: m["dex.protrade.positions.liqPrice"](),
+        cell: ({ row }) => (
+          <Cell.Text
+            text={
+              row.original.estLiquidationPrice != null ? (
+                <FormattedNumber
+                  number={row.original.estLiquidationPrice.toString()}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
+              ) : (
+                "N/A"
+              )
+            }
+          />
+        ),
       },
       {
         header: m["dex.protrade.positions.tpsl"](),
