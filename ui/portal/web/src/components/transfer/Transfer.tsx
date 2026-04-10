@@ -31,7 +31,14 @@ import {
 } from "@left-curve/applets-kit";
 import type { Address } from "@left-curve/dango/types";
 import { isValidAddress } from "@left-curve/dango";
-import { Decimal, formatUnits, parseUnits, wait, withResolvers } from "@left-curve/dango/utils";
+import {
+  Decimal,
+  formatUnits,
+  parseUnits,
+  truncateDec,
+  wait,
+  withResolvers,
+} from "@left-curve/dango/utils";
 import { perpsMarginAsset } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -306,7 +313,7 @@ const TransferSpotPerp: React.FC = () => {
         } else {
           await signingClient.withdrawMargin({
             sender,
-            amount,
+            amount: truncateDec(amount),
           });
         }
       },

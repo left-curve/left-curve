@@ -19,6 +19,7 @@ export {
   formatDisplayNumber,
   formatDisplayString,
   bucketSizeToFractionDigits,
+  truncateDec,
   formatUnits,
   parseUnits,
 } from "./formatters.js";

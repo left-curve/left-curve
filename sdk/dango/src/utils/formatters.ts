@@ -268,6 +268,25 @@ export function bucketSizeToFractionDigits(bucketSize: string): number {
 }
 
 /**
+ * Truncate (don't round) a decimal string to at most `maxFraction` fractional
+ * digits so we never exceed the user's intended/available value.
+ *
+ * Defaults to 6 digits to match on-chain `Dec<i128, 6>`.
+ */
+export function truncateDec(value: string, maxFraction = 6): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  const negative = trimmed.startsWith("-");
+  const unsigned = negative ? trimmed.slice(1) : trimmed;
+  const [intPart, fracPart = ""] = unsigned.split(".");
+  const truncated =
+    fracPart.length > maxFraction
+      ? `${intPart}.${fracPart.slice(0, maxFraction)}`
+      : unsigned;
+  return negative ? `-${truncated}` : truncated;
+}
+
+/**
  *  Divides a number by a given exponent of base 10 (10exponent), and formats it into a string representation of the number.
  * @param value The number to format.
  * @param decimals The number of decimals to divide the number by.

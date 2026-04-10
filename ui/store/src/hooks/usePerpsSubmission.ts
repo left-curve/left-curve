@@ -2,6 +2,8 @@ import { useSubmitTx } from "./useSubmitTx.js";
 import { useAccount } from "./useAccount.js";
 import { useSigningClient } from "./useSigningClient.js";
 
+import { truncateDec } from "@left-curve/dango/utils";
+
 import type { ChildOrder, PerpsOrderKind, PerpsTimeInForce } from "@left-curve/dango/types";
 
 type UsePerpsSubmissionParameters = {
@@ -19,22 +21,6 @@ type UsePerpsSubmissionParameters = {
 };
 
 const DEFAULT_TPSL_SLIPPAGE = "0.05";
-
-// On-chain `Dec<i128, 6>` allows at most 6 fractional digits. Truncate (don't
-// round) so we never exceed the user's intended/available value.
-const DEC_FRACTIONAL_DIGITS = 6;
-function truncateDec(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return trimmed;
-  const negative = trimmed.startsWith("-");
-  const unsigned = negative ? trimmed.slice(1) : trimmed;
-  const [intPart, fracPart = ""] = unsigned.split(".");
-  const truncated =
-    fracPart.length > DEC_FRACTIONAL_DIGITS
-      ? `${intPart}.${fracPart.slice(0, DEC_FRACTIONAL_DIGITS)}`
-      : unsigned;
-  return negative ? `-${truncated}` : truncated;
-}
 
 export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
   const {
