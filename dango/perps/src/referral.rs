@@ -1,12 +1,13 @@
 mod apply_fee_commissions;
 mod commission;
+mod force_set_fee_share_ratio;
 mod set_commission_rate_override;
 mod set_fee_share_ratio;
 mod set_referral;
 
 pub use {
-    apply_fee_commissions::*, commission::*, set_commission_rate_override::*,
-    set_fee_share_ratio::*, set_referral::*,
+    apply_fee_commissions::*, commission::*, force_set_fee_share_ratio::*,
+    set_commission_rate_override::*, set_fee_share_ratio::*, set_referral::*,
 };
 
 use {

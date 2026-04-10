@@ -832,6 +832,19 @@ pub enum ReferralMsg {
         user: UserIndex,
         commission_rate: Op<CommissionRate>,
     },
+
+    /// Forcibly set a user's fee share ratio.
+    ///
+    /// Only callable by the chain owner.
+    ///
+    /// A referrer is only allowed to increase his fee share ratio, not decreasing
+    /// it. This is to prevent malicious referrers from rugpull their referees.
+    /// However, if a referrer makes an honest mistake setting the wrong ratio,
+    /// the owner can step in to correct it.
+    ForceSetFeeShareRatio {
+        user: UserIndex,
+        share_ratio: FeeShareRatio,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
