@@ -91,7 +91,7 @@ fn adl_bug_absurd_book_price() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -183,7 +183,7 @@ fn adl_bug_absurd_book_price() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(100_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,

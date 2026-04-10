@@ -115,7 +115,7 @@ fn liquidation_on_order_book() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -198,7 +198,7 @@ fn liquidation_on_order_book() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -403,7 +403,7 @@ fn liquidation_with_adl() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -469,7 +469,7 @@ fn liquidation_with_adl() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -663,7 +663,7 @@ fn liquidation_cancels_conditional_orders() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -763,7 +763,7 @@ fn liquidation_cancels_conditional_orders() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1041,7 +1041,7 @@ fn vault_liquidation_on_order_book() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_600),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,

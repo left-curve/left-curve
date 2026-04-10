@@ -311,14 +311,7 @@ fn order_without_client_order_id() {
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
     setup_margins(&mut suite, &mut accounts, &contracts);
 
-    place_ask(
-        &mut suite,
-        &mut accounts.user1,
-        &contracts,
-        5,
-        2_000,
-        None,
-    );
+    place_ask(&mut suite, &mut accounts.user1, &contracts, 5, 2_000, None);
 
     let orders = query_orders(&suite, &contracts, accounts.user1.address());
     assert_eq!(orders.len(), 1);

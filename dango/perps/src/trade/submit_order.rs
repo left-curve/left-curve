@@ -1700,7 +1700,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -1757,7 +1757,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -1818,7 +1818,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -1877,7 +1877,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -1936,7 +1936,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -2291,7 +2291,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_100),
                 time_in_force: TimeInForce::GoodTilCanceled,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -2341,7 +2341,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_050),
                 time_in_force: TimeInForce::GoodTilCanceled,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -3165,7 +3165,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -3219,7 +3219,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -3266,7 +3266,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -3319,7 +3319,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -3372,7 +3372,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -3424,7 +3424,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -3487,7 +3487,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
-            client_order_id: None,
+                client_order_id: None,
             },
             true,
             None,
@@ -3547,7 +3547,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             None,
@@ -4053,7 +4053,7 @@ mod tests {
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(50_000),
                     time_in_force: TimeInForce::GoodTilCanceled,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 false,
                 None,
@@ -4344,7 +4344,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             make_tp(55_000),
@@ -4411,7 +4411,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
-            client_order_id: None,
+                client_order_id: None,
             },
             false,
             make_tp(55_000),

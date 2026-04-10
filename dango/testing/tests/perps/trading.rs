@@ -75,7 +75,7 @@ fn trading_lifecycle() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -245,7 +245,7 @@ fn limit_order_partial_fill_and_cancel() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -271,7 +271,7 @@ fn limit_order_partial_fill_and_cancel() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::GoodTilCanceled,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -452,7 +452,7 @@ fn liquidity_depth_tracking() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -491,7 +491,7 @@ fn liquidity_depth_tracking() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -534,7 +534,7 @@ fn liquidity_depth_tracking() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::GoodTilCanceled,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -661,7 +661,7 @@ fn protocol_fee_accumulates_across_fills() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -713,7 +713,7 @@ fn protocol_fee_accumulates_across_fills() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -835,7 +835,7 @@ fn negative_maker_fee_rebate_lifecycle() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -974,7 +974,7 @@ fn ioc_limit_order_partial_fill() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1000,7 +1000,7 @@ fn ioc_limit_order_partial_fill() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::ImmediateOrCancel,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1087,7 +1087,7 @@ fn ioc_limit_order_no_fill_rejected() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_900),
                     time_in_force: perps::TimeInForce::ImmediateOrCancel,
-                client_order_id: None,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
