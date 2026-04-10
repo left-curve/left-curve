@@ -102,6 +102,10 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
         "paneProperties.background": toolbar_bg,
         "paneProperties.topMargin": 10,
         "paneProperties.bottomMargin": 10,
+        ...(theme === "dark" && {
+          "paneProperties.vertGridProperties.color": "#ffffff0F",
+          "paneProperties.horzGridProperties.color": "#ffffff0F",
+        }),
       },
 
       studies_overrides: {
@@ -137,6 +141,10 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
       widget.applyOverrides({
         "paneProperties.background": toolbar_bg,
         "scalesProperties.textColor": textColor,
+        ...(theme === "dark" && {
+          "paneProperties.vertGridProperties.color": "#ffffff0F",
+          "paneProperties.horzGridProperties.color": "#ffffff0F",
+        }),
         timezone:
           timeZone === "utc"
             ? "Etc/UTC"
