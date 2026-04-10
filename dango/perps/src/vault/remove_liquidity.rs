@@ -29,12 +29,12 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 
     let mut state = STATE.load(ctx.storage)?;
 
-    let mut vault_user_state = USER_STATES
-        .may_load(ctx.storage, ctx.contract)?
-        .unwrap_or_default();
-
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
+        .unwrap_or_default();
+
+    let mut vault_user_state = USER_STATES
+        .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);

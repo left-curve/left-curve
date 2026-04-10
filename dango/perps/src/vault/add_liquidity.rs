@@ -29,17 +29,17 @@ pub fn add_liquidity(
 
     ensure!(ctx.funds.is_empty(), "no funds expected");
 
-    let mut state = STATE.load(ctx.storage)?;
+    let param = PARAM.load(ctx.storage)?;
 
-    let mut vault_user_state = USER_STATES
-        .may_load(ctx.storage, ctx.contract)?
-        .unwrap_or_default();
+    let mut state = STATE.load(ctx.storage)?;
 
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
-    let param = PARAM.load(ctx.storage)?;
+    let mut vault_user_state = USER_STATES
+        .may_load(ctx.storage, ctx.contract)?
+        .unwrap_or_default();
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
