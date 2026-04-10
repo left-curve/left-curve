@@ -154,23 +154,26 @@ fn _remove_liquidity(
     );
 
     let end_time = current_time + param.vault_cooldown_period;
-
     let unlock = Unlock {
         amount_to_release,
         end_time,
     };
 
-    // Update vault state.
-    vault_user_state
-        .margin
-        .checked_sub_assign(amount_to_release)?;
+    // Reduce vault share supply.
     state
         .vault_share_supply
         .checked_sub_assign(shares_to_burn)?;
 
-    // Update user state.
+    // Burn the vault shares from the user's state.
     user_state.vault_shares.checked_sub_assign(shares_to_burn)?;
+
+    // Create an unlock in the user's state.
     user_state.unlocks.push_back(unlock);
+
+    // Deduct margin from the vault.
+    vault_user_state
+        .margin
+        .checked_sub_assign(amount_to_release)?;
 
     Ok((amount_to_release, end_time))
 }

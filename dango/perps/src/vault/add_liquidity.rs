@@ -162,15 +162,19 @@ fn _add_liquidity(
         );
     }
 
-    // Deduct margin from user and credit to vault.
-    user_state.margin.checked_sub_assign(amount)?;
-    vault_user_state.margin.checked_add_assign(amount)?;
+    // Increse vault shares supply.
     state
         .vault_share_supply
         .checked_add_assign(shares_to_mint)?;
 
-    // Update user state.
+    // Mint new vault shares to the user.
     user_state.vault_shares.checked_add_assign(shares_to_mint)?;
+
+    // Deduct margin from user.
+    user_state.margin.checked_sub_assign(amount)?;
+
+    // Add the margin to the vault.
+    vault_user_state.margin.checked_add_assign(amount)?;
 
     Ok(shares_to_mint)
 }
