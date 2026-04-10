@@ -301,10 +301,14 @@ pub struct State {
 pub struct PairParam {
     /// Minimum price increment for limit orders in this pair. All limit order
     /// prices must be an integer multiple of `tick_size`.
+    ///
+    /// Bounds: `> 0`. Used as a divisor in price snapping.
     pub tick_size: UsdPrice,
 
     /// Minimum notional value for an order. Reduce-only orders are exempt.
     /// Prevents dust orders from cluttering the order book.
+    ///
+    /// Bounds: `>= 0`. Zero disables the minimum.
     pub min_order_size: UsdValue,
 
     /// The maximum allowed open interest for both long and short.
@@ -313,6 +317,8 @@ pub struct PairParam {
     /// pair_state.long_oi <= max_abs_oi && pair_state.short_oi <= max_abs_oi
     ///
     /// This constraint does not apply to reduce-only orders.
+    ///
+    /// Bounds: `> 0`.
     pub max_abs_oi: Quantity,
 
     /// Maximum absolute funding rate, as a fraction per day.
@@ -322,59 +328,81 @@ pub struct PairParam {
     ///
     /// This prevents runaway rates from causing cascading liquidations and bad
     /// debt spirals during prolonged skew.
+    ///
+    /// Bounds: `>= 0`.
     pub max_abs_funding_rate: FundingRate,
 
     /// Margin requirement when opening or increasing a position in this trading
     /// pair. E.g. 5% indicates a 1 / 5% = 20x maximum leverage.
     ///
     /// initial_margin = |position_size| * oracle_price * initial_margin_ratio
+    ///
+    /// Bounds: `(0, 1]`. Must be `> maintenance_margin_ratio`.
+    /// Used as a divisor in vault quote size computation.
     pub initial_margin_ratio: Dimensionless,
 
     /// Margin requirement for maintaining a position in this trading pair.
-    ///
-    /// Must be strictly less than `initial_margin_ratio`.
     ///
     /// When a user's equity falls below the sum of maintenance margins across
     /// all his positions, the user becomes eligible for liquidations.
     ///
     /// maintenance_margin = |position_size| * oracle_price * maintenance_margin_ratio
+    ///
+    /// Bounds: `(0, 1]`. Must be `< initial_margin_ratio`.
     pub maintenance_margin_ratio: Dimensionless,
 
     /// Notional value used to compute impact prices from the order book.
     /// The cron job walks bids/asks to find the average execution price for
     /// selling/buying this much notional.
+    ///
+    /// Bounds: `> 0`.
     pub impact_size: UsdValue,
 
     /// Weight determining what fraction of the vault's available margin
     /// is allocated to this pair for market-making.
     /// The pair's share = `vault_liquidity_weight / Param::vault_total_weight`.
+    ///
+    /// Bounds: `>= 0`. Zero disables vault quoting for this pair.
     pub vault_liquidity_weight: Dimensionless,
 
     /// Half the bid-ask spread the vault quotes around the oracle price. The
     /// vault places bids at `oracle_price * (1 - vault_half_spread)` and asks
     /// at `oracle_price * (1 + vault_half_spread)`.
+    ///
+    /// Bounds: `(0, 1)`. Zero disables vault quoting; >= 1 would produce a
+    /// non-positive bid price.
     pub vault_half_spread: Dimensionless,
 
     /// Maximum notional size (in quote currency) of the vault's resting orders
     /// on each side of the book. Limits the vault's exposure per pair.
+    ///
+    /// Bounds: `> 0`. Zero disables vault quoting for this pair.
     pub vault_max_quote_size: Quantity,
 
     /// How aggressively to tilt order sizes based on inventory.
-    /// 0 = no skew (symmetric), 1 = fully stop quoting on one side at max position.
-    /// Range: [0, 1].
+    /// 0 = no skew (symmetric), 1 = fully stop quoting on one side at max
+    /// position.
+    ///
+    /// Bounds: `[0, 1]`. Values > 1 would produce negative order sizes.
     pub vault_size_skew_factor: Dimensionless,
 
     /// How aggressively to tilt spreads based on inventory.
-    /// 0 = no skew (symmetric). Must be < 1 to avoid negative spreads.
-    /// Range: [0, 1).
+    /// 0 = no skew (symmetric spreads on both sides).
+    ///
+    /// Bounds: `[0, 1)`. At 1, the effective spread on the tightened side
+    /// reaches zero; > 1 would produce a negative spread.
     pub vault_spread_skew_factor: Dimensionless,
 
     /// Position size at which inventory skew saturates.
     /// When the vault's position reaches this size, skew is at maximum (±1).
+    ///
+    /// Bounds: `>= 0`. Zero disables inventory skew (skew always 0).
     pub vault_max_skew_size: Quantity,
 
     /// Price bucket sizes for which aggregated order book depth is maintained.
     /// Each entry defines a granularity level for the depth query.
+    ///
+    /// Bounds: each entry `> 0`.
     pub bucket_sizes: BTreeSet<UsdPrice>,
 }
 
