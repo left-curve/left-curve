@@ -208,11 +208,12 @@ pub fn submit_order(
             None => {
                 // Clean up client_order_id mapping for fully-removed maker orders.
                 // The order is still in storage (pure inner fn didn't write).
-                if let Some(order) = maker_book.may_load(ctx.storage, order_key.clone())? {
-                    if let Some(ref coid) = order.client_order_id {
-                        CLIENT_ORDER_IDS.remove(ctx.storage, (&order.user, coid.as_str()));
-                    }
+                if let Some(order) = maker_book.may_load(ctx.storage, order_key.clone())?
+                    && let Some(ref coid) = order.client_order_id
+                {
+                    CLIENT_ORDER_IDS.remove(ctx.storage, (&order.user, coid.as_str()));
                 }
+
                 maker_book.remove(ctx.storage, order_key)?;
             },
         }
