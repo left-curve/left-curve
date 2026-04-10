@@ -58,7 +58,7 @@ export const FundingCountdown: React.FC = () => {
   return (
     <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
       <p className="diatype-xs-medium text-ink-tertiary-500">{m["dex.protrade.spot.funding"]()}</p>
-      <div className="flex items-center gap-2">
+      <div className="flex items-baseline gap-2 diatype-xs-medium">
         <Tooltip
           title={
             annualizedPercent
