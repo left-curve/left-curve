@@ -389,13 +389,8 @@ pub(crate) fn _submit_order(
 
     // ---------------------- Step 4. Post-only fast path ----------------------
 
-    if let Some(limit_price) = kind.post_only_price() {
-        let client_order_id = match kind {
-            OrderKind::Limit {
-                client_order_id, ..
-            } => client_order_id,
-            _ => None,
-        };
+    if let Some((limit_price, client_order_id)) = kind.as_post_only() {
+        let client_order_id = client_order_id.map(str::to_owned);
 
         let StoreLimitOrderOutcome {
             user_state: updated_taker_state,

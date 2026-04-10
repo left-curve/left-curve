@@ -112,15 +112,15 @@ pub enum OrderKind {
 }
 
 impl OrderKind {
-    /// If this is a post-only limit order, return the limit price.
-    /// Otherwise, return `None`.
-    pub fn post_only_price(&self) -> Option<UsdPrice> {
+    /// If this is a post-only limit order, return the limit price and
+    /// client order ID. Otherwise, return `None`.
+    pub fn as_post_only(&self) -> Option<(UsdPrice, Option<&str>)> {
         match self {
             OrderKind::Limit {
                 limit_price,
                 time_in_force: TimeInForce::PostOnly,
-                ..
-            } => Some(*limit_price),
+                client_order_id,
+            } => Some((*limit_price, client_order_id.as_deref())),
             _ => None,
         }
     }
