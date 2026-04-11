@@ -163,7 +163,17 @@ export type PerpsCancelConditionalOrderRequest =
 
 export type PerpsQueryMsg =
   | { userState: { user: Address } }
-  | { userStateExtended: { user: Address; includeEquity: boolean; includeAvailableMargin: boolean; includeUnrealizedPnl: boolean; includeUnrealizedFunding: boolean; includeLiquidationPrice: boolean } }
+  | {
+      userStateExtended: {
+        user: Address;
+        includeEquity?: boolean;
+        includeAvailableMargin?: boolean;
+        includeUnrealizedPnl?: boolean;
+        includeUnrealizedFunding?: boolean;
+        includeLiquidationPrice?: boolean;
+        includeAll?: boolean;
+      };
+    }
   | { userStates: { startAfter?: Address; limit?: number } }
   | { param: Record<string, never> }
   | { pairParam: { pairId: string } }
