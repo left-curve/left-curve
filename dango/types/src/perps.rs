@@ -203,22 +203,33 @@ pub enum ReferrerStatsOrderIndex {
 #[derive(Default)]
 pub struct Param {
     /// Maximum number of unlock requests a single user may have.
+    ///
+    /// Bounds: `> 0`.
     pub max_unlocks: usize,
 
     /// Maximum number of resting limit order a single user may have across all
     /// trading pairs.
+    ///
+    /// Bounds: `> 0`.
     pub max_open_orders: usize,
 
     /// Volume-tiered maker fee rates. Highest qualifying tier wins;
     /// base rate applies when no tier is met.
+    ///
+    /// Bounds: base and every tier rate in `[-1, 1]`. Negative values
+    /// represent a rebate paid to the maker.
     pub maker_fee_rates: RateSchedule,
 
     /// Volume-tiered taker fee rates. Highest qualifying tier wins;
     /// base rate applies when no tier is met.
+    ///
+    /// Bounds: base and all tier rates in `[0, 1]`.
     pub taker_fee_rates: RateSchedule,
 
     /// Fraction of each trading fee routed to the protocol treasury.
     /// The remainder (1 − `protocol_fee_rate`) stays with the vault.
+    ///
+    /// Bounds: `[0, 1]`.
     pub protocol_fee_rate: Dimensionless,
 
     /// Fee paid to the insurance fund as a fraction of the total notional
@@ -229,6 +240,8 @@ pub struct Param {
     ///   ceil(|position_size| * oracle_price * liquidation_fee_rate / settlement_currency_price),
     ///   user_remaining_margin
     /// )
+    ///
+    /// Bounds: `[0, 1]`.
     pub liquidation_fee_rate: Dimensionless,
 
     /// Buffer applied during liquidation so that the user's post-liquidation
@@ -240,21 +253,32 @@ pub struct Param {
     ///
     /// When `b = 0`, positions are closed to bring equity exactly to the
     /// maintenance margin boundary (default behavior). Recommended: 5-10%.
+    ///
+    /// Bounds: `[0, 1)`.
     pub liquidation_buffer_ratio: Dimensionless,
 
     /// Duration between funding collections. The cron job applies funding
     /// only when this period elapses.
+    ///
+    /// Bounds: `(0, 7 days]`. The upper bound is a governance guardrail —
+    /// a longer period would effectively suspend funding collection.
     pub funding_period: Duration,
 
     /// Sum of `vault_liquidity_weight` across all trading pairs.
     /// Precomputed to avoid iterating all pair params when placing
     /// vault orders. Must be kept in sync when pairs are added/removed
     /// or weights change.
+    ///
+    /// Bounds: `>= 0`. Must equal the sum of `vault_liquidity_weight`
+    /// across all pairs.
     pub vault_total_weight: Dimensionless,
 
     /// Once a request to withdraw liquidity from the counterparty vault has been
     /// submitted, the waiting time that must elapsed before the funds are released
     /// to the liquidity provider.
+    ///
+    /// Bounds: `(0, 30 days]`. The upper bound is a governance guardrail —
+    /// a longer cooldown would effectively lock LPs out of their deposits.
     pub vault_cooldown_period: Duration,
 
     /// Whether the referral commission system is active.
@@ -263,15 +287,21 @@ pub struct Param {
 
     /// Minimum lifetime perps trading volume a user must have
     /// before they can become a referrer by setting a fee share ratio.
+    ///
+    /// Bounds: `>= 0`. Zero means no minimum.
     pub min_referrer_volume: UsdValue,
 
     /// Volume-tiered referrer commission rates. Highest qualifying tier wins;
     /// base rate applies when no tier is met.
+    ///
+    /// Bounds: base and all tier rates in `[0, 1]`.
     pub referrer_commission_rates: RateSchedule,
 
     /// Maximum total margin the counterparty vault may hold. Deposits that
     /// would push `vault_margin + deposit` above this cap are rejected.
     /// `None` means no cap (unlimited deposits).
+    ///
+    /// Bounds: if `Some`, `> 0`. Use `None` for unlimited.
     pub vault_deposit_cap: Option<UsdValue>,
 }
 
@@ -329,7 +359,8 @@ pub struct PairParam {
     /// This prevents runaway rates from causing cascading liquidations and bad
     /// debt spirals during prolonged skew.
     ///
-    /// Bounds: `>= 0`.
+    /// Bounds: `[0, 1]`. 100% per day is already pathological — the upper
+    /// bound is a governance guardrail.
     pub max_abs_funding_rate: FundingRate,
 
     /// Margin requirement when opening or increasing a position in this trading
@@ -369,14 +400,21 @@ pub struct PairParam {
     /// vault places bids at `oracle_price * (1 - vault_half_spread)` and asks
     /// at `oracle_price * (1 + vault_half_spread)`.
     ///
-    /// Bounds: `(0, 1)`. Zero disables vault quoting; >= 1 would produce a
-    /// non-positive bid price.
+    /// Bounds: `(0, 1)`. Zero would collapse bid and ask onto the oracle
+    /// price; `>= 1` would produce a non-positive bid price. To disable the
+    /// vault for a pair, set `vault_liquidity_weight = 0` instead.
+    ///
+    /// Cross-field invariant: `vault_half_spread * (1 + vault_spread_skew_factor) < 1`.
+    /// Under maximum positive inventory skew the bid's effective spread
+    /// widens by this factor, and the product must stay strictly below 1
+    /// so the bid price never collapses to or below zero.
     pub vault_half_spread: Dimensionless,
 
     /// Maximum notional size (in quote currency) of the vault's resting orders
     /// on each side of the book. Limits the vault's exposure per pair.
     ///
-    /// Bounds: `> 0`. Zero disables vault quoting for this pair.
+    /// Bounds: `> 0`. To disable the vault for a pair, set
+    /// `vault_liquidity_weight = 0` instead.
     pub vault_max_quote_size: Quantity,
 
     /// How aggressively to tilt order sizes based on inventory.
@@ -412,6 +450,8 @@ impl PairParam {
         Self {
             max_abs_oi: Quantity::new_int(1_000_000),
             impact_size: UsdValue::new_int(10_000),
+            vault_half_spread: Dimensionless::new_permille(10), // 1%
+            vault_max_quote_size: Quantity::new_int(100),
             ..Default::default()
         }
     }
