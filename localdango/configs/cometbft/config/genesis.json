@@ -871,7 +871,11 @@
           "msg": {
             "pair_params": {
               "perp/ethusd": {
-                "bucket_sizes": [],
+                "bucket_sizes": [
+                  "1",
+                  "10",
+                  "100"
+                ],
                 "impact_size": "10000",
                 "initial_margin_ratio": "0.1",
                 "maintenance_margin_ratio": "0.05",
@@ -879,9 +883,9 @@
                 "max_abs_oi": "1000000",
                 "min_order_size": "0",
                 "tick_size": "1",
-                "vault_half_spread": "0",
-                "vault_liquidity_weight": "0",
-                "vault_max_quote_size": "0",
+                "vault_half_spread": "0.0006",
+                "vault_liquidity_weight": "3",
+                "vault_max_quote_size": "2000",
                 "vault_max_skew_size": "0",
                 "vault_size_skew_factor": "0",
                 "vault_spread_skew_factor": "0"
