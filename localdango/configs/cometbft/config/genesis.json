@@ -914,7 +914,7 @@
               },
               "vault_cooldown_period": "86400",
               "vault_deposit_cap": null,
-              "vault_total_weight": "0"
+              "vault_total_weight": "3"
             }
           },
           "salt": "ZGFuZ28vcGVycHM="
