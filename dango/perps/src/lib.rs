@@ -240,6 +240,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             include_unrealized_pnl,
             include_unrealized_funding,
             include_liquidation_price,
+            include_all,
         } => {
             let res = query::query_user_state_extended(
                 ctx,
@@ -249,6 +250,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
                 include_unrealized_pnl,
                 include_unrealized_funding,
                 include_liquidation_price,
+                include_all,
             )?;
             res.to_json_value()
         },

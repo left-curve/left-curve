@@ -85,13 +85,14 @@ pub fn query_user_state_extended(
     include_unrealized_pnl: bool,
     include_unrealized_funding: bool,
     include_liquidation_price: bool,
+    include_all: bool,
 ) -> anyhow::Result<UserStateExtended> {
     let user_state = USER_STATES.load(ctx.storage, user)?;
 
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
-    let equity = if include_equity {
+    let equity = if include_all || include_equity {
         Some(compute_user_equity(
             &mut oracle_querier,
             &perp_querier,
@@ -101,7 +102,7 @@ pub fn query_user_state_extended(
         None
     };
 
-    let available_margin = if include_available_margin {
+    let available_margin = if include_all || include_available_margin {
         Some(compute_available_margin(
             &mut oracle_querier,
             &perp_querier,
@@ -115,21 +116,21 @@ pub fn query_user_state_extended(
         .positions
         .iter()
         .map(|(pair_id, position)| {
-            let unrealized_pnl = if include_unrealized_pnl {
+            let unrealized_pnl = if include_all || include_unrealized_pnl {
                 let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
                 Some(compute_position_unrealized_pnl(position, oracle_price)?)
             } else {
                 None
             };
 
-            let unrealized_funding = if include_unrealized_funding {
+            let unrealized_funding = if include_all || include_unrealized_funding {
                 let pair_state = perp_querier.query_pair_state(pair_id)?;
                 Some(compute_position_unrealized_funding(position, &pair_state)?)
             } else {
                 None
             };
 
-            let liquidation_price = if include_liquidation_price {
+            let liquidation_price = if include_all || include_liquidation_price {
                 compute_liquidation_price(pair_id, &user_state, &mut oracle_querier, &perp_querier)?
             } else {
                 None
