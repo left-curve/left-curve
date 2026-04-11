@@ -14,7 +14,7 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        UsdValue,
+        Quantity, UsdValue,
         perps::{LimitOrder, ReasonForOrderRemoval},
     },
     grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
@@ -123,9 +123,22 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             .transpose()?
             .map(|((stored_price, _), _)| stored_price);
 
-        // Compute vault quotes.
-        let (bid, ask) =
-            compute_vault_quotes(oracle_price, &pair_param, best_bid, best_ask, pair_margin)?;
+        // Vault's current position for this pair (zero if none).
+        let position_size = vault_state
+            .positions
+            .get(pair_id)
+            .map(|p| p.size)
+            .unwrap_or(Quantity::ZERO);
+
+        // Compute vault quotes with inventory skew.
+        let (bid, ask) = compute_vault_quotes(
+            oracle_price,
+            &pair_param,
+            best_bid,
+            best_ask,
+            pair_margin,
+            position_size,
+        )?;
 
         // Place bid order.
         if let Some(bid_quote) = bid {
