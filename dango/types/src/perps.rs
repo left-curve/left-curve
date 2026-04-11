@@ -936,11 +936,26 @@ pub enum QueryMsg {
     #[returns(UserStateExtended)]
     UserStateExtended {
         user: Addr,
+
+        #[serde(default)]
         include_equity: bool,
+
+        #[serde(default)]
         include_available_margin: bool,
+
+        #[serde(default)]
         include_unrealized_pnl: bool,
+
+        #[serde(default)]
         include_unrealized_funding: bool,
+
+        #[serde(default)]
         include_liquidation_price: bool,
+
+        /// If `include_all` is true, all fields are computed, overriding other
+        /// options (even they are false).
+        #[serde(default)]
+        include_all: bool,
     },
 
     /// Query a single limit order by ID.

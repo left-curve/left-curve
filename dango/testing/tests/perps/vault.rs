@@ -835,6 +835,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             include_unrealized_pnl: false,
             include_unrealized_funding: false,
             include_liquidation_price: false,
+            include_all: false,
         })
         .should_succeed();
 
@@ -942,6 +943,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             include_unrealized_pnl: false,
             include_unrealized_funding: false,
             include_liquidation_price: false,
+            include_all: false,
         })
         .should_succeed();
 
