@@ -5,18 +5,28 @@
     update_cache: yes
     cache_valid_time: 86400
 
+# Key is stored as an ASCII-armored .asc file (not dearmored .gpg) and
+# referenced via `signed-by=` in the sources list, matching Docker's official
+# install docs: https://docs.docker.com/engine/install/debian/
+- name: Ensure apt keyrings directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
 - name: Add Docker GPG key
   become: true
   get_url:
     url: https://download.docker.com/linux/debian/gpg
-    dest: /usr/share/keyrings/docker.gpg
+    dest: /etc/apt/keyrings/docker.asc
     mode: '0644'
     force: true
 
 - name: Add Docker APT repo with signed-by
   become: true
   apt_repository:
-    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian {{ ansible_facts['distribution_release'] }} stable"
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_facts['distribution_release'] }} stable"
     filename: docker
     update_cache: true
 
