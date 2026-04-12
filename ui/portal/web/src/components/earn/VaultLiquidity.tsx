@@ -5,6 +5,7 @@ import {
   RangeWithButtons,
   Skeleton,
   Tabs,
+  WarningContainer,
   createContext,
   numberMask,
   useApp,
@@ -36,21 +37,21 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
 }) => {
   const controllers = useInputs({ strategy: "onChange" });
   const state = useVaultLiquidityState({ action, onChangeAction, controllers });
-  const { userHasShares, userUnlocks } = state;
-  const hasPosition = userHasShares || userUnlocks.length > 0;
+  const { account } = useAccount();
+  const isLoggedIn = !!account;
 
   return (
     <VaultLiquidityProvider value={{ state, controllers }}>
       <div
         className={`w-full mx-auto flex flex-col md:flex-row pt-6 mb-16 gap-4 px-4 md:px-0 ${
-          hasPosition ? "md:max-w-[50rem]" : "md:max-w-[25rem]"
+          isLoggedIn ? "md:max-w-[50rem]" : "md:max-w-[25rem]"
         }`}
       >
         <div className="flex flex-col gap-4 w-full md:max-w-[25rem]">
           <MobileTitle title={m["vaultLiquidity.title"]()} />
           {children}
         </div>
-        {hasPosition && (
+        {isLoggedIn && (
           <div className="flex flex-col gap-4 w-full md:max-w-[24rem]">
             <UserPosition />
           </div>
@@ -218,6 +219,29 @@ const DepositForm: React.FC = () => {
         </div>
       </div>
 
+      <WarningContainer
+        color="error"
+        className="border border-outline-primary-red"
+        description={
+          <ul className="list-disc pl-4 flex flex-col gap-1">
+            <li>
+              {m["vaultLiquidity.riskWarning1Pre"]()}
+              <strong>{m["vaultLiquidity.riskWarning1Bold"]()}</strong>
+              {m["vaultLiquidity.riskWarning1Post"]()}
+            </li>
+            <li>
+              {m["vaultLiquidity.riskWarning2Pre"]()}
+              <strong>{m["vaultLiquidity.riskWarning2Bold"]()}</strong>
+              {m["vaultLiquidity.riskWarning2Post"]()}
+            </li>
+            <li>
+              {m["vaultLiquidity.riskWarning3Pre"]()}
+              <strong>{m["vaultLiquidity.riskWarning3Bold"]()}</strong>
+            </li>
+          </ul>
+        }
+      />
+
       {isLoggedIn ? (
         <Button
           size="md"
@@ -342,28 +366,29 @@ const UserPosition: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      {userHasShares && (
-        <div className="flex flex-col gap-4 p-4 rounded-xl bg-surface-secondary-rice shadow-account-card">
-          <p className="exposure-sm-italic text-ink-tertiary-500">
-            {m["vaultLiquidity.liquidity"]()}
-          </p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <img
-                src={perpsMarginAsset.logoURI}
-                alt={perpsMarginAsset.symbol}
-                className="w-5 h-5 rounded-full"
-              />
-              <span className="text-ink-tertiary-500 diatype-m-regular">
-                {perpsMarginAsset.symbol}
-              </span>
-            </div>
+      <div className="flex flex-col gap-4 p-4 rounded-xl bg-surface-secondary-rice shadow-account-card">
+        <p className="exposure-sm-italic text-ink-tertiary-500">
+          {m["vaultLiquidity.liquidity"]()}
+        </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <img
+              src={perpsMarginAsset.logoURI}
+              alt={perpsMarginAsset.symbol}
+              className="w-5 h-5 rounded-full"
+            />
             <span className="text-ink-tertiary-500 diatype-m-regular">
-              {formatNumber(userSharesValue, { ...formatNumberOptions, currency: "USD" })}
+              {perpsMarginAsset.symbol}
             </span>
           </div>
+          <span className="text-ink-tertiary-500 diatype-m-regular">
+            {formatNumber(userHasShares ? userSharesValue : "0", {
+              ...formatNumberOptions,
+              currency: "USD",
+            })}
+          </span>
         </div>
-      )}
+      </div>
 
       <UserWithdrawals unlocks={userUnlocks} />
     </div>

@@ -49,29 +49,42 @@ export const UserWithdrawals: React.FC<UserWithdrawalsProps> = ({ unlocks }) => 
     },
   ];
 
+  const hasUnlocks = unlocks.length > 0;
+
   return (
     <div className="flex flex-col gap-3 p-4 rounded-xl bg-surface-secondary-rice shadow-account-card">
-      <div className="flex flex-col gap-1">
-        <p className="exposure-sm-italic text-ink-secondary-700">
-          {m["vaultLiquidity.myWithdrawals"]()}
-        </p>
-        <p className="text-ink-tertiary-500 diatype-xs-regular">
-          {m["vaultLiquidity.withdrawalsDescription"]()}
-        </p>
-      </div>
+      <p className="exposure-sm-italic text-ink-secondary-700">
+        {m["vaultLiquidity.myWithdrawals"]()}
+      </p>
 
-      <Table
-        columns={columns}
-        data={unlocks}
-        classNames={{
-          base: "bg-transparent shadow-none p-0 gap-0",
-        }}
-        emptyComponent={
-          <p className="text-ink-tertiary-500 diatype-sm-regular py-4">
+      {hasUnlocks ? (
+        <>
+          <p className="text-ink-tertiary-500 diatype-xs-regular">
+            {m["vaultLiquidity.withdrawalsDescription"]()}
+          </p>
+          <Table
+            columns={columns}
+            data={unlocks}
+            classNames={{
+              base: "bg-transparent shadow-none p-0 gap-0",
+            }}
+          />
+        </>
+      ) : (
+        <div className="flex flex-col items-center gap-2 py-4">
+          <img
+            src="/images/notifications/no-notifications.svg"
+            alt="No withdrawals"
+            className="w-[120px] h-auto"
+          />
+          <p className="exposure-sm-italic text-ink-secondary-700">
             {m["vaultLiquidity.noWithdrawals"]()}
           </p>
-        }
-      />
+          <p className="text-ink-tertiary-500 diatype-xs-regular text-center">
+            {m["vaultLiquidity.noWithdrawalsDescription"]()}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
