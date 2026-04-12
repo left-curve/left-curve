@@ -92,7 +92,7 @@ export const TradeHeader: React.FC = () => {
           >
             <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
             <HeaderPrice />
-            {mode === "perps" && <HeaderOraclePrice baseDenom={pairId.baseDenom} />}
+            {mode === "perps" && <HeaderOraclePrice denom={getPerpsPairId()} />}
             <Header24hChange
               currentPrice={pairStatsData?.currentPrice}
               price24HAgo={pairStatsData?.price24HAgo}
@@ -147,9 +147,9 @@ const HeaderPrice: React.FC = () => {
   );
 };
 
-const HeaderOraclePrice: React.FC<{ baseDenom: string }> = ({ baseDenom }) => {
+const HeaderOraclePrice: React.FC<{ denom: string }> = ({ denom }) => {
   const { getPrice } = usePrices();
-  const oraclePrice = getPrice(1, baseDenom);
+  const oraclePrice = getPrice(1, denom);
 
   return (
     <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">
