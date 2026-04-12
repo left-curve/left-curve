@@ -50,9 +50,11 @@ export const OpenInterestDisplay: React.FC = () => {
 
   return (
     <div className="flex gap-1 flex-col items-start lg:min-w-[4rem] col-span-3 lg:col-span-1">
-      <p className="diatype-xs-medium text-ink-tertiary-500">
-        {m["dex.protrade.spot.openInterest"]()}
-      </p>
+      <Tooltip title="The sum of the notional values of all long and short positions.">
+        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+          {m["dex.protrade.spot.openInterest"]()}
+        </p>
+      </Tooltip>
       <div className="flex items-center gap-1">
         <p
           className={twMerge(
