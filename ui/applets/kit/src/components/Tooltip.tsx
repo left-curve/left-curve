@@ -171,10 +171,10 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
           {title || description ? (
             <div className="flex flex-col">
               {title ? (
-                <p className="diatype-sm-bold text-primitives-white-light-100">{title}</p>
+                <p className="diatype-xs-medium text-primitives-white-light-100">{title}</p>
               ) : null}
               {description ? (
-                <p className="diatype-sm-regular text-primitives-gray-dark-200">{description}</p>
+                <p className="diatype-xs-regular text-primitives-gray-dark-200">{description}</p>
               ) : null}
             </div>
           ) : (
@@ -215,7 +215,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
 export const tooltipVariants = tv({
   slots: {
     panel:
-      "fixed bg-primitives-gray-dark-950 text-primitives-gray-dark-200 p-3 rounded-2xl shadow-account-card max-w-[18rem] w-max text-left min-w-[8rem] diatype-sm-regular z-50",
+      "fixed bg-primitives-gray-dark-950 text-primitives-gray-dark-200 p-3 rounded-2xl shadow-account-card max-w-[18rem] w-max text-left min-w-[8rem] diatype-xs-regular z-50",
     arrow: "absolute w-3 h-3 rotate-45 bg-primitives-gray-dark-950",
   },
   variants: {
