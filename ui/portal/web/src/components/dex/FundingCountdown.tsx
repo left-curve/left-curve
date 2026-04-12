@@ -38,16 +38,16 @@ export const FundingCountdown: React.FC = () => {
     showLeadingZeros: true,
   });
 
-  const { dailyRate, percentValue, annualizedPercent, isPositive } = useMemo(() => {
+  const { hourlyRate, percentValue, annualizedPercent, isPositive } = useMemo(() => {
     if (!pairState?.fundingRate) {
-      return { dailyRate: null, percentValue: null, annualizedPercent: null, isPositive: true };
+      return { hourlyRate: null, percentValue: null, annualizedPercent: null, isPositive: true };
     }
 
     const rate = Decimal(pairState.fundingRate);
 
     return {
-      dailyRate: rate.toString(),
-      percentValue: rate.mul(100).toString(),
+      hourlyRate: rate.toString(),
+      percentValue: rate.mul(100).div(24).toString(),
       annualizedPercent: rate.mul(100).mul(365).toString(),
       isPositive: rate.gte(0),
     };
@@ -69,7 +69,7 @@ export const FundingCountdown: React.FC = () => {
           <span
             className={twMerge(
               "diatype-xs-medium cursor-help",
-              dailyRate === null
+              hourlyRate === null
                 ? "text-ink-secondary-700"
                 : isPositive
                   ? "text-status-success"

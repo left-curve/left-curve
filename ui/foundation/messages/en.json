@@ -1132,7 +1132,7 @@
         "24hChange": "24h Change",
         "volume": "24h Volume",
         "openInterest": "Open Interest",
-        "funding": "Funding / Countdown",
+        "funding": "Funding (1h) / Countdown",
         "oiLimitReached": "OI limit reached",
         "oiLimitDescription": "No new positions can be opened",
         "fees": "Fees",
