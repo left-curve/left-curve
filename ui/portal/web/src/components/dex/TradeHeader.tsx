@@ -5,6 +5,7 @@ import {
   FormattedNumber,
   IconChevronDownFill,
   PairStatValue,
+  Tooltip,
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -18,6 +19,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
   useCurrentPrice,
+  usePrices,
   allPairStatsStore,
   allPerpsPairStatsStore,
   TradePairStore,
@@ -90,6 +92,7 @@ export const TradeHeader: React.FC = () => {
           >
             <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
             <HeaderPrice />
+            {mode === "perps" && <HeaderOraclePrice baseDenom={pairId.baseDenom} />}
             <Header24hChange
               currentPrice={pairStatsData?.currentPrice}
               price24HAgo={pairStatsData?.price24HAgo}
@@ -123,7 +126,11 @@ const HeaderPrice: React.FC = () => {
 
   return (
     <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">
-      <p className="diatype-xs-medium text-ink-tertiary-500">{m["dex.protrade.history.price"]()}</p>
+      <Tooltip title={m["dex.protrade.spot.lastPriceTooltip"]()}>
+        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help">
+          {m["dex.protrade.spot.lastPrice"]()}
+        </p>
+      </Tooltip>
       <p
         className={twMerge(
           "diatype-xs-medium text-ink-secondary-700",
@@ -135,6 +142,24 @@ const HeaderPrice: React.FC = () => {
         )}
       >
         {currentPrice ? <FormattedNumber number={currentPrice} as="span" /> : "-"}
+      </p>
+    </div>
+  );
+};
+
+const HeaderOraclePrice: React.FC<{ baseDenom: string }> = ({ baseDenom }) => {
+  const { getPrice } = usePrices();
+  const oraclePrice = getPrice(1, baseDenom);
+
+  return (
+    <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">
+      <Tooltip title={m["dex.protrade.spot.oraclePriceTooltip"]()}>
+        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help">
+          {m["dex.protrade.spot.oraclePrice"]()}
+        </p>
+      </Tooltip>
+      <p className="diatype-xs-medium text-ink-secondary-700">
+        {oraclePrice ? <FormattedNumber number={oraclePrice} as="span" /> : "-"}
       </p>
     </div>
   );
