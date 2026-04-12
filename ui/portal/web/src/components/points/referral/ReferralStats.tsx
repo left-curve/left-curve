@@ -108,12 +108,12 @@ const AffiliateLockedBanner: React.FC<AffiliateLockedBannerProps> = ({
       <div className="flex flex-col gap-2">
         <h3 className="display-heading-xs text-ink-primary-900 max-w-sm">
           {needsCommissionSetup
-            ? m["referral.affiliateSection.setCommissionTitle"]()
+            ? m["referral.affiliateSection.setFeeShareTitle"]()
             : m["referral.affiliateSection.unlockTitle"]()}
         </h3>
         <p className="text-ink-tertiary-500 diatype-m-regular max-w-sm">
           {needsCommissionSetup
-            ? m["referral.affiliateSection.setCommissionDescription"]()
+            ? m["referral.affiliateSection.setFeeShareDescription"]()
             : m["referral.affiliateSection.unlockDescription"]({
                 percent: "30%",
               })}
@@ -125,7 +125,7 @@ const AffiliateLockedBanner: React.FC<AffiliateLockedBannerProps> = ({
         </Button>
       ) : needsCommissionSetup ? (
         <Button variant="primary" onClick={onSetCommission}>
-          {m["referral.affiliateSection.setCommissionRate"]()}
+          {m["referral.affiliateSection.setFeeShareRate"]()}
         </Button>
       ) : (
         <Button variant="primary" onClick={onTrade}>

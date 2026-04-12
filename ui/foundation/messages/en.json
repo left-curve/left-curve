@@ -1259,7 +1259,7 @@
     "affiliate": "Affiliate",
     "trader": "Trader",
     "stats": {
-      "commissionRate": "Commission Rate (You/ Referee)",
+      "commissionRate": "Commission Rate (You / Referee)",
       "totalCommission": "Total Commission",
       "totalReferralVolume": "Total Referral Volume",
       "totalReferees": "Total Referees",
@@ -1279,9 +1279,9 @@
     "affiliateSection": {
       "unlockTitle": "Unlock your referral code with $10k volume!",
       "unlockDescription": "Invite your friends and earn up to {percent} commission.",
-      "setCommissionTitle": "Set your commission rate to become a referrer!",
-      "setCommissionDescription": "You've reached the volume threshold. Set your commission rate to activate your referral code and start earning.",
-      "setCommissionRate": "Set Commission Rate",
+      "setFeeShareTitle": "Set your fee share ratio to become a referrer!",
+      "setFeeShareDescription": "You've reached the volume threshold. Set your fee share ratio to activate your referral code and start earning.",
+      "setFeeShareRate": "Set Fee Share Ratio",
       "tradeNow": "Trade now",
       "logIn": "Log In"
     },
@@ -1334,10 +1334,10 @@
       "commission": "Commission",
       "volume": "Volume"
     },
-    "editCommission": {
-      "title": "Edit Commission Rate",
+    "editFeeShare": {
+      "title": "Edit Fee Share Ratio",
       "description": "Adjust how much of your commission you share with referees. The share ratio can only be increased and cannot exceed 50%.",
-      "yourRate": "Your commission rate:",
+      "yourRate": "Your current fee share ratio:",
       "commissionRateLabel": "Commission rate (tier-based)",
       "readOnly": "read-only",
       "refereeReceives": "Referee receives",
@@ -1461,11 +1461,22 @@
       "faqs": {
         "title": "FAQs",
         "question1": "How do I unlock a referral link?",
-        "answer1": "You must first achieve $10,000 in traded volume.",
+        "answer1": "You must first achieve $10,000 in traded volume. Then, create your referral link by setting the fee share ratio.",
         "question2": "Can I earn points by referring users?",
         "answer2": "Yes. You will get 1 point for every 5 points earned by your direct referrals, and 1 point for every 20 points earned by your indirect referrals.",
         "question3": "Is there a limit to how much of my commission I can share with my referees?",
-        "answer3": "Yes. Referrers cannot share more than 50% of their total commission with their referees."
+        "answer3": "Yes. Referrers cannot share more than 50% of their total commission with their referees.",
+        "question4": "Why am I not allowed to reduce my fee share ratio?",
+        "answer4": "A common \"rug pull\" is a referrer sets a high fee share ratio to lure referees in, then secretly tune down the ratio. This is to prevent this exact scenario.",
+        "question5": "What is the difference between \"commission rate\" and \"fee share ratio\"?",
+        "answer5": "Commission rate: how big a portion of trading fee that protocol gives you.\nFee share ratio: how big a portion of the commission you receive, you give to your referees.",
+        "answer5Example": "Example:",
+        "answer5Step1": "You trade more than $10k but less than $10M volume. This grants you a 10% commission rate.",
+        "answer5Step2": "You set your fee share ratio to 30%.",
+        "answer5Step3": "A referee of yours makes a trade, paying $100 in fees.",
+        "answer5Step4": "You get $100 × 10% = $10 in commission.",
+        "answer5Step5": "You give $10 × 30% = $3 of that commission to the referee.",
+        "answer5Step6": "Net: the referee pays $100 - $3 = $97 in fees; you earn $10 - $3 = $7."
       }
     },
     "boosters": {
