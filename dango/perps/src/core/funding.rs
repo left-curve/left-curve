@@ -4,15 +4,14 @@ use {
 };
 
 /// Walk an ordered sequence of `(limit_price, size)` pairs and compute the
-/// volume-weighted average execution price for filling up to `impact_size`
-/// worth of notional value.
+/// volume-weighted average execution price for filling `impact_size` worth
+/// of notional value.
 ///
 /// Each item is `(limit_price, absolute_order_size)`. The caller is responsible
 /// for iterating the correct side of the book (bids or asks) in price-priority
 /// order and mapping storage entries to `(real_price, absolute_size)`.
 ///
-/// Returns: `Some(vwap)` of whatever depth was walked, up to `impact_size`.
-/// `None` only if the side has no depth at all.
+/// Returns: `Some(vwap)` if enough depth exists, `None` otherwise.
 pub fn compute_impact_price(
     orders: impl Iterator<Item = StdResult<(UsdPrice, Quantity)>>,
     impact_size: UsdValue,
@@ -39,7 +38,7 @@ pub fn compute_impact_price(
         total_notional.checked_add_assign(order_notional)?;
     }
 
-    if total_size.is_zero() {
+    if total_notional < impact_size {
         return Ok(None);
     }
 
@@ -121,12 +120,11 @@ mod tests {
     }
 
     #[test]
-    fn impact_price_partial_depth_returns_vwap_of_walked() {
-        // Need 100_000 notional but only 50_000 of depth is available.
-        // The walk returns the VWAP of the one available order: 50_000 / 1 = 50_000.
+    fn impact_price_insufficient_depth() {
         let orders = vec![Ok((UsdPrice::new_int(50_000), Quantity::new_int(1)))];
+        // Need 100_000 notional but only have 50_000
         let result = compute_impact_price(orders.into_iter(), UsdValue::new_int(100_000)).unwrap();
-        assert_eq!(result, Some(UsdPrice::new_int(50_000)));
+        assert_eq!(result, None);
     }
 
     #[test]

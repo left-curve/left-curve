@@ -20,7 +20,7 @@ use {
     },
     dango_oracle::OracleQuerier,
     dango_types::{
-        Days, UsdPrice, UsdValue,
+        Days, Dimensionless, UsdPrice, UsdValue,
         perps::{
             ConditionalOrderRemoved, ConditionalOrderTriggered, LiquidityReleased, OrderKind,
             PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State, TriggerDirection,
@@ -191,17 +191,19 @@ fn process_funding_for_pair(
             Ok((stored_price, order.size.checked_abs()?))
         });
 
-    let (Some(impact_bid), Some(impact_ask)) = (
-        compute_impact_price(bid_iter, pair_param.impact_size)?,
-        compute_impact_price(ask_iter, pair_param.impact_size)?,
-    ) else {
-        // One or both sides of the book are empty — skip this pair's
-        // funding update for this cycle. Its `funding_per_unit` and
-        // `funding_rate` remain at their previous values.
-        return Ok(());
-    };
+    let impact_bid = compute_impact_price(bid_iter, pair_param.impact_size)?;
+    let impact_ask = compute_impact_price(ask_iter, pair_param.impact_size)?;
 
-    let premium = compute_premium(impact_bid, impact_ask, oracle_price)?;
+    // Fall back to zero premium when either side of the book lacks the
+    // depth to compute an impact price. Matches the pre-change behavior:
+    // `funding_rate` is zeroed for this cycle and `funding_per_unit` is
+    // left unchanged.
+    let premium = match (impact_bid, impact_ask) {
+        (Some(impact_bid), Some(impact_ask)) => {
+            compute_premium(impact_bid, impact_ask, oracle_price)?
+        },
+        _ => Dimensionless::ZERO,
+    };
 
     let (funding_delta, funding_rate) = compute_funding_delta(
         premium,
