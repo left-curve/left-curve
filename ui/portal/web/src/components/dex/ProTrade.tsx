@@ -17,11 +17,11 @@ import {
   useLivePerpsTradesState,
   usePerpsUserState,
   usePerpsUserStateExtended,
-  useAppConfig,
   useOrdersByUser,
   usePerpsOrdersByUser,
   perpsOrdersByUserStore,
   perpsUserStateStore,
+  perpsUserStateExtendedStore,
   TradePairStore,
   tradeInfoStore,
   useTradeCoins,
@@ -281,8 +281,8 @@ const PerpsPositionsTable: React.FC = () => {
   const { formatNumberOptions } = settings;
   const { onChangePairId } = useProTrade();
 
-  const { data: appConfig } = useAppConfig();
   const userState = perpsUserStateStore((s) => s.userState);
+  const extendedPositions = perpsUserStateExtendedStore((s) => s.positions);
   const perpsStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
 
   const symbolToDenom = useMemo(() => {
@@ -305,18 +305,8 @@ const PerpsPositionsTable: React.FC = () => {
       const size = Number(pos.size);
       const pnl = size * (markPrice - Number(pos.entryPrice));
 
-      let estLiquidationPrice: number | null = null;
-      const entryPrice = Number(pos.entryPrice);
-      const params = appConfig.perpsPairs[pairId];
-      if (Math.abs(size) > 0 && params) {
-        const imr = Number(params.initialMarginRatio ?? 0);
-        const mmr = Number(params.maintenanceMarginRatio ?? 0);
-        const leverage = imr > 0 ? 1 / imr : 1;
-        const isLong = size > 0;
-        estLiquidationPrice = isLong
-          ? (entryPrice * (1 - 1 / leverage)) / (1 - mmr)
-          : (entryPrice * (1 + 1 / leverage)) / (1 + mmr);
-      }
+      const backendLiqPrice = extendedPositions[pairId]?.liquidationPrice;
+      const estLiquidationPrice = backendLiqPrice != null ? Number(backendLiqPrice) : null;
 
       result.push({
         pairId,
@@ -331,7 +321,7 @@ const PerpsPositionsTable: React.FC = () => {
       });
     }
     return result;
-  }, [userState, appConfig, perpsStatsByPairId, symbolToDenom, coins.byDenom]);
+  }, [userState, extendedPositions, perpsStatsByPairId, symbolToDenom, coins.byDenom]);
 
   const columns: TableColumn<PerpsPositionRow> = useMemo(
     () => [

@@ -9,12 +9,17 @@ import {
   snakeCaseJsonSerialization,
 } from "@left-curve/dango/encoding";
 
-import type { PerpsUserStateExtended, QueryRequest } from "@left-curve/dango/types";
+import type {
+  PerpsPositionExtended,
+  PerpsUserStateExtended,
+  QueryRequest,
+} from "@left-curve/dango/types";
 
 export const perpsUserStateExtendedStore = createBlockStore({
   initialState: {
     equity: null as string | null,
     availableMargin: null as string | null,
+    positions: {} as Record<string, PerpsPositionExtended>,
   },
 });
 
@@ -77,6 +82,7 @@ export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtended
         setState({
           equity: response.wasmSmart?.equity ?? null,
           availableMargin: response.wasmSmart?.availableMargin ?? null,
+          positions: response.wasmSmart?.positions ?? {},
           blockHeight,
         });
       },
