@@ -264,6 +264,7 @@ export {
   usePerpsUserStateExtended,
   perpsUserStateExtendedStore,
 } from "./hooks/usePerpsUserStateExtended.js";
+export { computeLiquidationPrice } from "./hooks/computeLiquidationPrice.js";
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
 export { useLiveSpotTradesState, liveSpotTradesStore } from "./hooks/useLiveSpotTradesState.js";
