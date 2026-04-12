@@ -118,6 +118,48 @@ List queries use **cursor-based pagination** (Relay Connection specification).
 
 Use `first` + `after` for forward pagination, `last` + `before` for backward.
 
+### 1.4 Multi-query
+
+When you need to fetch multiple pieces of state (e.g. oracle prices and user positions), use the **multi-query** to execute them **atomically within a single block**. This is the preferred method over issuing separate GraphQL requests, which may be evaluated at different block heights and return an inconsistent snapshot.
+
+Wrap the individual queries in a `multi` array:
+
+```graphql
+query {
+  queryApp(request: {
+    multi: [
+      {
+        wasm_smart: {
+          contract: "ORACLE_CONTRACT",
+          msg: { prices: {} }
+        }
+      },
+      {
+        wasm_smart: {
+          contract: "PERPS_CONTRACT",
+          msg: {
+            user_state: { user: "0x1234...abcd" }
+          }
+        }
+      }
+    ]
+  })
+}
+```
+
+**Response:**
+
+```json
+{
+  "multi": [
+    { "Ok": { "wasm_smart": { /* oracle prices */ } } },
+    { "Ok": { "wasm_smart": { /* user state */ } } }
+  ]
+}
+```
+
+Each element in the response array corresponds to the query at the same index in the request. Individual queries that fail return `{"Err": "..."}` without aborting the others.
+
 ## 2. Authentication and transactions
 
 ### 2.1 Transaction structure
