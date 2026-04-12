@@ -118,6 +118,48 @@ List queries use **cursor-based pagination** (Relay Connection specification).
 
 Use `first` + `after` for forward pagination, `last` + `before` for backward.
 
+### 1.4 Multi-query
+
+When you need to fetch multiple pieces of state (e.g. oracle prices and user positions), use the **multi-query** to execute them **atomically within a single block**. This is the preferred method over issuing separate GraphQL requests, which may be evaluated at different block heights and return an inconsistent snapshot.
+
+Wrap the individual queries in a `multi` array:
+
+```graphql
+query {
+  queryApp(request: {
+    multi: [
+      {
+        wasm_smart: {
+          contract: "ORACLE_CONTRACT",
+          msg: { prices: {} }
+        }
+      },
+      {
+        wasm_smart: {
+          contract: "PERPS_CONTRACT",
+          msg: {
+            user_state: { user: "0x1234...abcd" }
+          }
+        }
+      }
+    ]
+  })
+}
+```
+
+**Response:**
+
+```json
+{
+  "multi": [
+    { "Ok": { "wasm_smart": { /* oracle prices */ } } },
+    { "Ok": { "wasm_smart": { /* user state */ } } }
+  ]
+}
+```
+
+Each element in the response array corresponds to the query at the same index in the request. Individual queries that fail return `{"Err": "..."}` without aborting the others.
+
 ## 2. Authentication and transactions
 
 ### 2.1 Transaction structure
@@ -2311,4 +2353,4 @@ Additional integer types:
 | -------------------------- | -------------------------------------------- | -------------------------------------------- |
 | `ACCOUNT_FACTORY_CONTRACT` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` |
 | `ORACLE_CONTRACT`          | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` |
-| `PERPS_CONTRACT`           | `0x90bc84df68d1aa59a857e04ed529e9a26edbea4f` | `0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69` |
+| `PERPS_CONTRACT`           | `0x90bc84df68d1aa59a857e04ed529e9a26edbea4f` | `0xf6344c5e2792e8f9202c58a2d88fbbde4cd3142f` |
