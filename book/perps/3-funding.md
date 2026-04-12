@@ -4,7 +4,7 @@ Fundings are periodic payments between longs and shorts that anchor the perpetua
 
 ## 1. Premium
 
-Each funding cycle begins with measuring how far the order book deviates from the oracle. The contract computes two **impact prices** by walking the book:
+Each funding cycle begins with measuring how far the on-chain book has drifted from the oracle. The contract computes two **impact prices** by walking the book, takes their midpoint, and compares it to the oracle:
 
 - **Impact bid** — the volume-weighted average price (VWAP) obtained by selling $\mathtt{impactSize}$ worth of base asset into the bid side.
 - **Impact ask** — the VWAP obtained by buying $\mathtt{impactSize}$ worth from the ask side.
@@ -12,10 +12,14 @@ Each funding cycle begins with measuring how far the order book deviates from th
 The premium is then:
 
 $$
-\mathtt{premium} = \frac{\max(0,\;\mathtt{impactBid} - \mathtt{oracle}) - \max(0,\;\mathtt{oracle} - \mathtt{impactAsk})}{\mathtt{oracle}}
+\mathtt{midImpactPrice} = \frac{\mathtt{impactBid} + \mathtt{impactAsk}}{2}
 $$
 
-If either side has insufficient depth to fill $\mathtt{impactSize}$, its $\max(0, \ldots)$ term contributes zero. When both sides lack depth, the premium is zero.
+$$
+\mathtt{premium} = \frac{\mathtt{midImpactPrice} - \mathtt{oracle}}{\mathtt{oracle}}
+$$
+
+If a side of the book has less than $\mathtt{impactSize}$ of depth, the walk returns the VWAP of whatever depth is available. If a side has no depth at all, the sample is skipped for that cycle rather than a one-sided mid being computed. In steady state both sides are always populated by the vault.
 
 ## 2. Sampling
 
@@ -29,7 +33,7 @@ $$
 \mathtt{premiumSamples} \mathrel{+}= 1
 $$
 
-Sampling more frequently than collecting gives the average premium resilience against momentary spikes — a single large order cannot dominate the rate.
+Sampling at a cadence close to the block rate gives each observation roughly equal weight. A resting order that momentarily drags the mid can only influence the average in proportion to how long it sits on the book relative to the full funding period.
 
 ## 3. Collection
 
@@ -79,8 +83,40 @@ $$
 
 ## 5. Parameters
 
-| Field                  | Type          | Description                                                                                                             |
-| ---------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `funding_period`       | `Duration`    | Minimum time between funding collections.                                                                               |
-| `impact_size`          | `UsdValue`    | Notional depth walked on each side of the book to compute impact prices.                                                |
-| `max_abs_funding_rate` | `FundingRate` | Symmetric clamp applied to the average premium before scaling to a delta. Prevents runaway rates during prolonged skew. |
+| Field                  | Type          | Description                                                                                                                                                                                                     |
+| ---------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `funding_period`       | `Duration`    | Minimum time between funding collections.                                                                                                                                                                       |
+| `impact_size`          | `UsdValue`    | Notional depth walked on each side of the book to compute impact prices. A larger value dilutes the influence of any single resting order on the premium in proportion to the fraction of the walk it occupies. |
+| `max_abs_funding_rate` | `FundingRate` | Symmetric clamp applied to the average premium before scaling to a delta. Prevents runaway rates during prolonged skew.                                                                                         |
+
+## 6. Discussions
+
+### Vault being the sole maker
+
+As of today, the [protocol-owned vault](5-vault.md) is the dominant maker in Dango's markets. The [vault's inventory-skew-aware quoting policy](5-vault.md#5-market-making-policy) causes the book mid to drift from the oracle whenever the vault holds inventory:
+
+$$
+\mathtt{vaultBid} = \mathtt{oracle} \cdot (1 - \mathtt{halfSpread} \cdot (1 + \mathtt{skew} \cdot \mathtt{spreadSkewFactor}))
+$$
+
+$$
+\mathtt{vaultAsk} = \mathtt{oracle} \cdot (1 + \mathtt{halfSpread} \cdot (1 - \mathtt{skew} \cdot \mathtt{spreadSkewFactor}))
+$$
+
+Suppose the vault is literally the only maker in the entire market, we can substitute the vault's bid and ask into the $\mathtt{midImpactPrice}$ formula:
+
+$$
+\mathtt{midImpactPrice} = \mathtt{oracle} \cdot (1 - \mathtt{halfSpread} \cdot \mathtt{skew} \cdot \mathtt{spreadSkewFactor})
+$$
+
+and therefore
+
+$$
+\mathtt{premium} = -\mathtt{halfSpread} \cdot \mathtt{skew} \cdot \mathtt{spreadSkewFactor}
+$$
+
+Positive skew (vault long, because sell flow has dominated) produces a negative premium, so longs receive funding from shorts — which credits the vault-as-long for absorbed inventory. Symmetric when short. The sign is economically correct by construction.
+
+### Comparison with other exchanges
+
+The "book mid minus oracle" premium is the dominant on-chain perpetual-funding pattern — see [Drift](https://docs.drift.trade/protocol/trading/perpetuals-trading/funding-rates) (bid/ask TWAP mid vs oracle TWAP), [Vertex](https://vertex-protocol.gitbook.io/docs/basics/funding-rates) (mark vs spot index), [Paradex](https://docs.paradex.trade/risk/funding-mechanism) (Fair Basis from mark), and [MCDEX v2](https://mcdex.medium.com/introduce-mcdex-v2-perpetual-c97b18ff4e23) (AMM mid vs index). Dango's formulation differs in reading impact prices (depth-walked VWAPs) rather than top-of-book, which bakes depth distribution into the primitive and forces any book-level manipulation to commit notional proportional to $\mathtt{impactSize}$.
