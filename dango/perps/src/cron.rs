@@ -191,8 +191,15 @@ fn process_funding_for_pair(
             Ok((stored_price, order.size.checked_abs()?))
         });
 
-    let impact_bid = compute_impact_price(bid_iter, pair_param.impact_size)?;
-    let impact_ask = compute_impact_price(ask_iter, pair_param.impact_size)?;
+    let (Some(impact_bid), Some(impact_ask)) = (
+        compute_impact_price(bid_iter, pair_param.impact_size)?,
+        compute_impact_price(ask_iter, pair_param.impact_size)?,
+    ) else {
+        // One or both sides of the book are empty — skip this pair's
+        // funding update for this cycle. Its `funding_per_unit` and
+        // `funding_rate` remain at their previous values.
+        return Ok(());
+    };
 
     let premium = compute_premium(impact_bid, impact_ask, oracle_price)?;
 
@@ -1034,8 +1041,10 @@ mod tests {
             0,
         );
 
-        // Bid at $51,000 above oracle $50,000 → positive premium.
+        // Bid $51,000 and ask $53,000 around oracle $50,000 → mid $52,000
+        // → positive premium.
         place_bid_order(&mut storage, &pair_id, 51_000, 1, 1);
+        place_ask_order(&mut storage, &pair_id, 53_000, 1, 2);
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
             pair_id.clone() => PrecisionedPrice::new(
@@ -1119,10 +1128,14 @@ mod tests {
             .save(&mut storage, &eth, &PairState::default())
             .unwrap();
 
-        // BTC: bid above oracle → positive premium.
+        // BTC: bid $51,000 and ask $53,000 around oracle $50,000 → mid
+        // $52,000 → positive premium.
         place_bid_order(&mut storage, &btc, 51_000, 1, 1);
-        // ETH: ask below oracle → negative premium.
-        place_ask_order(&mut storage, &eth, 2_900, 10, 2);
+        place_ask_order(&mut storage, &btc, 53_000, 1, 2);
+        // ETH: bid $2,800 and ask $2,900 below oracle $3,000 → mid $2,850
+        // → negative premium.
+        place_bid_order(&mut storage, &eth, 2_800, 10, 3);
+        place_ask_order(&mut storage, &eth, 2_900, 10, 4);
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
             btc.clone() => PrecisionedPrice::new(
@@ -1169,8 +1182,10 @@ mod tests {
             0,
         );
 
-        // Bid above oracle → positive delta added to existing accumulator.
+        // Bid $51,000 and ask $53,000 around oracle $50,000 → mid $52,000
+        // → positive delta added to existing accumulator.
         place_bid_order(&mut storage, &pair_id, 51_000, 1, 1);
+        place_ask_order(&mut storage, &pair_id, 53_000, 1, 2);
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
             pair_id.clone() => PrecisionedPrice::new(
