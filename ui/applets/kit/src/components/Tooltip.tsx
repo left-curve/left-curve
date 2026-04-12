@@ -202,7 +202,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
       onMouseEnter={handleOpen}
       onMouseLeave={handleClose}
       onMouseMove={handleMouseMove}
-      className="relative w-fit cursor-pointer"
+      className="relative w-fit cursor-pointer text-[0px]"
     >
       {children ? children : <IconInfo className="text-ink-tertiary-500" />}
       {typeof document !== "undefined"
