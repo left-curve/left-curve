@@ -127,7 +127,7 @@ const HeaderPrice: React.FC = () => {
   return (
     <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">
       <Tooltip title={m["dex.protrade.spot.lastPriceTooltip"]()}>
-        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help">
+        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[3px] decoration-current">
           {m["dex.protrade.spot.lastPrice"]()}
         </p>
       </Tooltip>
@@ -154,7 +154,7 @@ const HeaderOraclePrice: React.FC<{ baseDenom: string }> = ({ baseDenom }) => {
   return (
     <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">
       <Tooltip title={m["dex.protrade.spot.oraclePriceTooltip"]()}>
-        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help">
+        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[3px] decoration-current">
           {m["dex.protrade.spot.oraclePrice"]()}
         </p>
       </Tooltip>
