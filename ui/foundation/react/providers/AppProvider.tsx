@@ -1,4 +1,4 @@
-import { useAppConfig, useConfig, useStorage } from "@left-curve/store";
+import { useConfig, useStorage } from "@left-curve/store";
 import { useCallback, useState } from "react";
 import { createContext } from "../utils/context";
 
@@ -9,7 +9,6 @@ import type { ToastController } from "../types/toast";
 export type AppState = {
   toast: ToastController;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
-  config: ReturnType<typeof useAppConfig>;
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
   isSearchBarVisible: boolean;
@@ -88,7 +87,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
 
   // App Config
   const { subscriptions } = useConfig();
-  const config = useAppConfig();
 
   const changeSettings = useCallback(
     (s: Partial<AppState["settings"]>) => setSettings((prev) => ({ ...prev, ...s })),
@@ -106,7 +104,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
   return (
     <AppContextProvider
       value={{
-        config,
         navigate,
         subscriptions,
         isSidebarVisible,
