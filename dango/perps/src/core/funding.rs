@@ -171,6 +171,7 @@ mod tests {
     #[test_case( 97,  99, 100, -20_000 ; "mid below oracle (vault long skew)")]
     #[test_case(100, 100, 100,       0 ; "bid and ask at oracle")]
     #[test_case( 99, 103, 100,  10_000 ; "asymmetric spread, mid above oracle")]
+    #[test_case( 99, 100, 100,  -5_000 ; "odd sum, mid below oracle by half unit")]
     fn compute_premium_works(bid: i128, ask: i128, oracle: i128, expected_raw: i128) {
         let impact_bid = UsdPrice::new_int(bid);
         let impact_ask = UsdPrice::new_int(ask);

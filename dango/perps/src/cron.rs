@@ -1100,6 +1100,128 @@ mod tests {
     }
 
     #[test]
+    fn funding_empty_book_zeros_rate_and_preserves_accumulator() {
+        let mut storage = MockStorage::new();
+        let pair_id = btc_pair_id();
+
+        // Seed non-zero initial state so the zero-out and preserve
+        // semantics of the `(None, None)` fallback arm are observable.
+        let initial_funding_per_unit = FundingPerUnit::new_int(1_234);
+        let initial_funding_rate = FundingRate::new_raw(42_000);
+
+        init_funding_storage(
+            &mut storage,
+            &pair_id,
+            &default_funding_pair_param(),
+            &PairState {
+                funding_per_unit: initial_funding_per_unit,
+                funding_rate: initial_funding_rate,
+                ..Default::default()
+            },
+            3600,
+            0,
+        );
+
+        let mut oracle = OracleQuerier::new_mock(hash_map! {
+            pair_id.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(5_000_000), // $50,000
+                Timestamp::from_seconds(0),
+                8,
+            ),
+        });
+
+        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
+
+        // Empty book → premium = 0 → rate overwritten to zero; the
+        // accumulator receives a zero delta, so it is preserved.
+        let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
+        assert_eq!(pair_state.funding_rate, FundingRate::ZERO);
+        assert_eq!(pair_state.funding_per_unit, initial_funding_per_unit);
+    }
+
+    #[test]
+    fn funding_one_sided_book_bid_only_zeros_rate() {
+        let mut storage = MockStorage::new();
+        let pair_id = btc_pair_id();
+
+        let initial_funding_per_unit = FundingPerUnit::new_int(1_234);
+        let initial_funding_rate = FundingRate::new_raw(42_000);
+
+        init_funding_storage(
+            &mut storage,
+            &pair_id,
+            &default_funding_pair_param(),
+            &PairState {
+                funding_per_unit: initial_funding_per_unit,
+                funding_rate: initial_funding_rate,
+                ..Default::default()
+            },
+            3600,
+            0,
+        );
+
+        // Only the bid side has depth. `compute_impact_price` returns
+        // `None` for the empty ask side, so the match falls into the
+        // `(Some, None)` arm → premium = 0.
+        place_bid_order(&mut storage, &pair_id, 51_000, 1, 1);
+
+        let mut oracle = OracleQuerier::new_mock(hash_map! {
+            pair_id.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(5_000_000), // $50,000
+                Timestamp::from_seconds(0),
+                8,
+            ),
+        });
+
+        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
+
+        let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
+        assert_eq!(pair_state.funding_rate, FundingRate::ZERO);
+        assert_eq!(pair_state.funding_per_unit, initial_funding_per_unit);
+    }
+
+    #[test]
+    fn funding_one_sided_book_ask_only_zeros_rate() {
+        let mut storage = MockStorage::new();
+        let pair_id = btc_pair_id();
+
+        let initial_funding_per_unit = FundingPerUnit::new_int(1_234);
+        let initial_funding_rate = FundingRate::new_raw(42_000);
+
+        init_funding_storage(
+            &mut storage,
+            &pair_id,
+            &default_funding_pair_param(),
+            &PairState {
+                funding_per_unit: initial_funding_per_unit,
+                funding_rate: initial_funding_rate,
+                ..Default::default()
+            },
+            3600,
+            0,
+        );
+
+        // Only the ask side has depth. `compute_impact_price` returns
+        // `None` for the empty bid side, so the match falls into the
+        // `(None, Some)` arm → premium = 0.
+        place_ask_order(&mut storage, &pair_id, 49_000, 1, 1);
+
+        let mut oracle = OracleQuerier::new_mock(hash_map! {
+            pair_id.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(5_000_000), // $50,000
+                Timestamp::from_seconds(0),
+                8,
+            ),
+        });
+
+        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
+
+        let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
+        assert_eq!(pair_state.funding_rate, FundingRate::ZERO);
+        assert_eq!(pair_state.funding_per_unit, initial_funding_per_unit);
+    }
+
+    #[test]
     fn funding_multiple_pairs() {
         let mut storage = MockStorage::new();
         let btc = btc_pair_id();
@@ -1157,13 +1279,15 @@ mod tests {
         let state = STATE.load(&storage).unwrap();
         assert_eq!(state.last_funding_time, Timestamp::from_seconds(3600));
 
+        // BTC: mid $52,000 above oracle $50,000 → strictly positive.
         let btc_state = PAIR_STATES.load(&storage, &btc).unwrap();
-        assert_ne!(btc_state.funding_per_unit, FundingPerUnit::ZERO);
-        assert_ne!(btc_state.funding_rate, FundingRate::ZERO);
+        assert!(btc_state.funding_per_unit > FundingPerUnit::ZERO);
+        assert!(btc_state.funding_rate > FundingRate::ZERO);
 
+        // ETH: mid $2,850 below oracle $3,000 → strictly negative.
         let eth_state = PAIR_STATES.load(&storage, &eth).unwrap();
-        assert_ne!(eth_state.funding_per_unit, FundingPerUnit::ZERO);
-        assert_ne!(eth_state.funding_rate, FundingRate::ZERO);
+        assert!(eth_state.funding_per_unit < FundingPerUnit::ZERO);
+        assert!(eth_state.funding_rate < FundingRate::ZERO);
     }
 
     #[test]
